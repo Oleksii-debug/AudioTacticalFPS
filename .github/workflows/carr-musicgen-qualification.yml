@@ -6,6 +6,7 @@ on:
     branches: [carr/musicgen-qualification-20261126-137c]
     paths:
       - carr-library/scripts/musicgen_qualification.py
+      - carr-library/src/carr_library/audio/model_manifest.py
       - .github/workflows/carr-musicgen-qualification.yml
   workflow_dispatch:
     inputs:
