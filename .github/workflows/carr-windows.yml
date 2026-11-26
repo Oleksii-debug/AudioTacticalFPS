@@ -2,7 +2,7 @@ name: CARR Windows integrated desktop
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
