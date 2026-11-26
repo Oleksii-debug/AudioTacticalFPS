@@ -6,7 +6,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.research.evidence_export import _block
-from carr_library.research.outline_export import export_outline
+from carr_library.research.outline_export import export_filtered_outline as export_outline
 
 
 @pytest.fixture

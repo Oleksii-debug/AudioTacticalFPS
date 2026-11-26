@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ..research.export_file import write_export
 from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
-from ..research.outline_export import export_outline
+from ..research.outline_export import export_filtered_outline as export_outline
 from .literature_matrix import make_matrix_dialog
 
 
@@ -256,8 +256,22 @@ def install_academic_actions(frame):
     from .bibliography_import import open_bibliography_import
     from .catalog_quality import open_catalog_quality
 
+    existing = getattr(frame, 'academic_actions', None)
+    if isinstance(existing, AcademicActions):
+        return existing
+
     actions = AcademicActions(frame)
-    menu = wx.Menu()
+    menu_index = frame.menu_bar.FindMenu('Academic')
+    if menu_index >= 0:
+        menu = frame.menu_bar.GetMenu(menu_index)
+        if menu.GetMenuItemCount():
+            menu.AppendSeparator()
+    else:
+        menu = wx.Menu()
+        help_index = frame.menu_bar.FindMenu('Help')
+        frame.menu_bar.Insert(
+            help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(),
+            menu, '&Academic')
     commands = (
         ('Compare sources in active topic\tCtrl+Alt+M', actions.compare_sources),
         ('Export research outline with subtopics', actions.outline),
@@ -268,8 +282,7 @@ def install_academic_actions(frame):
     for title, handler in commands:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
-    # Preserve existing menus and their handlers, including post-merge fixes.
-    help_index = frame.menu_bar.FindMenu('Help')
-    frame.menu_bar.Insert(help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(), menu, '&Academic')
+    # Extend the existing academic library menu without replacing its entries
+    # or registering a second Alt+A menu. Installation is idempotent.
     frame.academic_actions = actions
     return actions

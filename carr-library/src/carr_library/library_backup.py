@@ -4,7 +4,9 @@ Backups include all workspaces, saved research and registered original files.
 Retained files from failed/unpublished imports are deliberately not included.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
-Legacy version 1 backups are accepted only for that same canonical schema.
+Legacy version 1 backups and version 2 backups are accepted only for an exact
+supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
+restored library performs the normal checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing
@@ -86,16 +88,16 @@ def create_backup(app, destination):
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=3)) as storage:
+            with closing(Storage(app.database, schema_version=4)) as storage:
                 storage.backup(snapshot)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
-            with closing(Storage(snapshot, schema_version=3)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-            manifest = dict(version=2, kind='carr-library', schema_version=3,
+            manifest = dict(version=2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
@@ -144,7 +146,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         fields.add('schema_fingerprint')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] != 3
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] == 2:
@@ -223,7 +225,7 @@ def restore_backup(source, destination, expected_manifest_sha256):
         stage = Path(tmp)
         snapshot = stage / DATABASE
         _copy_database(source / DATABASE, snapshot, manifest)
-        with closing(Storage(snapshot, schema_version=3)) as storage:
+        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
             storage.check()
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,

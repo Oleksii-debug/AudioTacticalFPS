@@ -1,7 +1,9 @@
 """Desktop launcher and installed-package diagnostic entrypoint."""
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
+import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
@@ -30,6 +32,19 @@ def self_test():
         saved, = reopened.evidence(first, topic)
         if saved.evidence_id != evidence or 'A separate test note.' not in reopened.export_topic(first, topic):
             raise RuntimeError('Saved research did not survive reopening.')
+        from .research.academic_library import AcademicLibrary
+        with reopened.write(first) as db:
+            references = AcademicLibrary(db, first)
+            reference = references.create(title='Synthetic academic reference',
+                authors=('Synthetic researcher',), year='2026', reading_status='reading',
+                priority='high', progress=25, tags=('Installation check',),
+                edition_id=imported['edition'])
+        with reopened.read(first) as db:
+            references = AcademicLibrary(db, first)
+            if references.list(status='reading') != (reference,):
+                raise RuntimeError('Academic reading-list check failed.')
+            if 'Synthetic academic reference' not in references.export(format='ris'):
+                raise RuntimeError('Academic bibliography export check failed.')
         backup = Path(temp) / 'backup'
         checksum = app.backup(backup)
         from .library_backup import restore_backup
@@ -38,8 +53,12 @@ def self_test():
         recovered = LibraryApp(restored)
         if recovered.evidence(first, topic)[0].anchor.quote != hit.quote:
             raise RuntimeError('Backup quotation check failed.')
+        with recovered.read(first) as db:
+            if AcademicLibrary(db, first).get(reference.id) != reference:
+                raise RuntimeError('Academic reference backup check failed.')
         return {'status': 'PASS', 'checks': ['original import', 'scoped search', 'exact quotation',
-            'workspace isolation', 'saved research', 'reopen persistence', 'backup and restore'],
+            'workspace isolation', 'saved research', 'reopen persistence', 'academic reading list',
+            'bibliography export', 'backup and restore'],
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
@@ -54,7 +73,30 @@ def main(argv=None):
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    research = parser.add_mutually_exclusive_group()
+    research.add_argument('--list-libraries', action='store_true',
+                          help='Print active library names and stable IDs as JSON, without opening the desktop')
+    research.add_argument('--search', metavar='TEXT',
+                          help='Search explicitly selected libraries and print source excerpts as JSON')
+    parser.add_argument('--workspace', action='append', dest='workspaces',
+                        help='Library ID for --search; repeat to include another library')
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+                        default='phrase', help='Retrieval method for --search')
+    parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
+                        help='Short quotations or contiguous thematic excerpts')
+    parser.add_argument('--title', help='Source title filter for --search')
+    parser.add_argument('--author', help='Source author filter for --search')
+    parser.add_argument('--language', help='Exact language code filter for --search')
+    parser.add_argument('--edition', help='Exact edition filter for --search')
+    parser.add_argument('--limit-per-library', type=int, default=20,
+                        help='Maximum results from each selected library, 1 to 100')
     args = parser.parse_args(argv)
+    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
+    if args.search is not None and not args.workspaces:
+        parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
+    if args.workspaces and args.search is None:
+        parser.error('--workspace is only used with --search.')
     native_handle = None
     try:
         from .native_runtime import activate_bundled_runtime
@@ -96,6 +138,24 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
+        if args.list_libraries:
+            print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
+            return 0
+        if args.search is not None:
+            from .search.federated import FederatedSearch
+            notices = []
+            session = FederatedSearch(app).search(args.workspaces, args.search,
+                mode=args.search_mode, result_mode=args.result_mode, title=args.title,
+                author=args.author, language=args.language, edition=args.edition,
+                limit_per_library=args.limit_per_library, on_status=notices.append)
+            print(json.dumps({'query': session.query, 'mode': session.mode,
+                'limit_per_library': session.limit_per_library,
+                'ordering': 'Selected libraries in selection order; relevance is local to each library.',
+                'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
+                'libraries': [{'id': group.workspace, 'name': group.library_name,
+                               'results': [asdict(hit.result) for hit in group.hits]}
+                              for group in session.groups]}, ensure_ascii=False, indent=2))
+            return 0
         if args.backup:
             checksum = app.backup(args.backup)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
@@ -111,7 +171,7 @@ def main(argv=None):
         frame.Show()
         desktop.MainLoop()
         return 0
-    except (ValueError, RuntimeError, OSError) as exc:
+    except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
     finally:

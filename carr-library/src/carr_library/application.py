@@ -163,7 +163,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
 
     def _check_database_paths(self):
@@ -189,7 +189,7 @@ class LibraryApp:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
             try:
-                if db.execute('PRAGMA user_version').fetchone()[0] != 3 or _schema_signature(db) != _expected_signature(3):
+                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
@@ -201,7 +201,7 @@ class LibraryApp:
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -283,6 +283,40 @@ class LibraryApp:
         with self.read(workspace) as db:
             return browse_editions(Catalog(db, workspace), **filters)
 
+    def prepare_edition_file(self, workspace, edition_id, *, cancelled=lambda: False):
+        """Open a catalog-linked original without inventing a quotation.
+
+        A zero-width, view-only selection reuses the original-file authorization
+        and byte-verification boundary. It cannot be copied as source evidence.
+        Existing search selections and unsaved research notes remain available.
+        """
+        if cancelled():
+            raise InterruptedError('Opening the linked document was cancelled.')
+        with self.read(workspace) as db:
+            get_edition(Catalog(db, workspace), edition_id)
+            row = db.execute('SELECT revision,ordinal FROM active_page '
+                'WHERE workspace=? AND edition=? ORDER BY ordinal LIMIT 1',
+                (workspace, edition_id)).fetchone()
+            if row is None:
+                raise ValueError('The linked document has no completed source revision.')
+            revision, ordinal = row
+            selection = _Selection(workspace, edition_id, revision, ordinal, 0, 0, None)
+            self._resolve_selection(db, workspace, selection, revision, cancelled=cancelled)
+            ref = uuid4().hex
+            self._selections[ref] = selection
+        from .reader.source_file import prepare_source_file
+        try:
+            return prepare_source_file(self, workspace, ref, revision, cancelled=cancelled)
+        except BaseException:
+            self._selections.pop(ref, None)
+            raise
+
+    def export_bibliography(self, workspace, *, collection=None, format='csl-json',
+                            cancelled=lambda: False):
+        """Use the shared catalog exporter for the Bibliography desktop command."""
+        return self.export_catalog(workspace, collection=collection, format=format,
+                                   cancelled=cancelled)
+
     def edition_metadata(self, workspace, edition_id):
         """Read one exact edition in a fresh authorized catalog snapshot."""
         with self.read(workspace) as db:
@@ -357,7 +391,7 @@ class LibraryApp:
         revision = uuid4().hex
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
@@ -488,6 +522,31 @@ class LibraryApp:
                                      result=request.get('result')))
             return tuple(rows)
 
+    def plan_import_batch(self, workspace, paths, *, collections=(), recursive=True,
+                          config=None, cancelled=lambda: False):
+        """Inspect selected files and persist a resumable private import queue."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).plan(workspace, paths, collections=collections,
+            recursive=recursive, config=config, cancelled=cancelled)
+
+    def import_batches(self, workspace):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).list(workspace)
+
+    def import_batch(self, workspace, batch_id):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).get(workspace, batch_id)
+
+    def run_import_batch(self, workspace, batch_id, *, cancelled=lambda: False,
+                         timeout=120.0, retry_failed=False, progress=None):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).run(workspace, batch_id, cancelled=cancelled,
+            timeout=timeout, retry_failed=retry_failed, progress=progress)
+
+    def set_import_batch_row(self, workspace, batch_id, row_id, *, included):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).set_row(workspace, batch_id, row_id, included=included)
+
     def pending_review(self, workspace, request_id):
         """Return the exact quarantined page for an explicit human comparison."""
         from .ingest.worker import pending_review
@@ -505,7 +564,7 @@ class LibraryApp:
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
-                     _request_id=None, _resume_job=None):
+                     _request_id=None, _resume_job=None, _expected_manifest=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -514,14 +573,27 @@ class LibraryApp:
         """
         from .extract.page_ocr import Config
         path = Path(path).absolute()
-        asset = snapshot(path.parent, path.name)
+        collections = tuple(collections)
+        with self.read(workspace) as db:
+            catalog = Catalog(db, workspace)
+            for collection in collections:
+                catalog._active_collection(collection)
+        if _expected_manifest is None:
+            asset = snapshot(path.parent, path.name)
+        else:
+            from .ingest.batch_scan import planned_snapshot
+            asset = planned_snapshot(path)
+        if _expected_manifest is not None and asset.manifest() != _expected_manifest:
+            raise ValueError('Source changed after import planning; plan this file again.')
         record = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,
             asset.manifest(), _metadata(title) or path.stem, tuple(authors), language,
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 self._authorize(storage.db, workspace)
+                for collection in collections:
+                    Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
@@ -530,15 +602,10 @@ class LibraryApp:
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
+                        from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
-                        settings = canonical({'adapter': 'epub-spine-v1', 'kind': 'logical_segment',
-                            'provenance': extracted['provenance'],
-                            'chapters': [r['logical_locator'] for r in extracted['records']],
-                            'alternatives': [r.get('alternatives', []) for r in extracted['records']],
-                            'warnings': extracted['warnings']})
-                        if len(settings.encode('utf-8')) > 4 * 1024 * 1024:
-                            raise ValueError('The EPUB section index exceeds the supported limit.')
+                        settings = extraction_settings(extracted)
                     else:
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
@@ -1017,6 +1084,14 @@ class LibraryApp:
                                    (workspace, topic)).fetchone()
                 return export_saved(workspace, topic, rows, load, format=format, title=name)
             return export_saved(workspace, topic, rows, load, format=format)
+
+    def export_outline(self, workspace, topic, *, cancelled=lambda: False):
+        """Export this topic and its visible descendants with freshly verified evidence."""
+        from .research.outline_export import export_outline
+        with self.read(workspace) as db:
+            load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
+            return export_outline(db, workspace, topic, load_page=load,
+                                  attest_metadata=metadata, cancelled=cancelled)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):
         identity = uuid4().hex

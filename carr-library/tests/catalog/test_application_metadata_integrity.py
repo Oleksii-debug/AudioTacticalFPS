@@ -64,7 +64,7 @@ def test_shared_work_correction_updates_all_active_citations_and_preserves_editi
             assert hit.quote in app.preview(workspace, hit.ref, hit.revision)
             assert hit.verified
         assert hits['e1'].revision == revision
-    with closing(Storage(app.database, schema_version=3)) as storage:
+    with closing(Storage(app.database, schema_version=4)) as storage:
         storage.check()
 
 

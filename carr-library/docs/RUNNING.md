@@ -28,6 +28,11 @@ load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
 These checks do not change your research data.
 
+The launchers require the installation-complete marker created after all install
+checks succeed. If installation fails or is interrupted, extract the package to
+a fresh program folder and run `Install.cmd` there. Keep research data in its
+existing separate location; the installer does not overwrite an environment.
+
 A private complete package may include the verified Microsoft C++ runtime
 supplement required by wxPython and ONNX Runtime. Its original licenses and
 source provenance accompany the files. This supplement is for the account
@@ -80,6 +85,12 @@ your documents. Search and library data remain on the local computer.
 
 ## Open original sources and export research
 
+The **Bibliography** menu adds reviewed local RIS/CSL-JSON metadata intake and
+whole-library or collection bibliography export. **Ctrl+Shift+E** exports a
+research topic together with its visible subtopics. See
+[academic workflows](ACADEMIC_WORKFLOWS.md) for the field-review steps, supported
+metadata and size limits.
+
 After selecting a search result, use **Open original source file** to open a
 copy in the computer's default PDF, text, Word or EPUB reader. The search status gives
 the physical PDF page or logical text segment. Use the external reader to reach
@@ -96,6 +107,13 @@ The reader also includes supplementary sections in the book's declared order.
 EPUB section numbers are not printed page numbers. Text remains an unverified
 extraction; the application's verified-quotation and saved-evidence commands
 do not approve it automatically. See [EPUB reading](EPUB_READING.md).
+
+For embedded contents, chapter headings and literal search inside the chapter,
+select the EPUB in **Books and Collections** and press **Ctrl+Shift+O**
+(**Library, Read electronic book contents**). `F3` finds the next occurrence and
+`Shift+F3` the previous one. An extraction report explains omissions and shows
+authored image descriptions separately. Earlier imports open with their stored
+chapter starts, without rewriting their text or existing research references.
 
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
@@ -128,6 +146,47 @@ Save dialog's confirmation. If another program changes the destination during
 export, select it again before replacing it. A failed save keeps the previous
 file intact.
 
+## Academic references and reading plans
+
+Open a library, then choose **Academic, Open academic library** or press
+**Ctrl+Shift+B**. References can describe books, articles, theses, reports and
+web resources even when no source document is available. Bibliographic titles,
+authors, identifiers and publication page ranges do not establish quotation or
+printed-page verification. They remain separate from retained originals and
+historical source citations.
+
+The catalog supports reading status, priority, progress, rating, tags, abstracts
+and personal reading notes. Search and filter within the active library; use
+Previous and Next when the list spans multiple pages. Opening the catalog keeps
+the main research notebook and any unsaved evidence note in place. Dialogs use
+named native text fields, choices and buttons; Tab, Shift+Tab, arrow keys,
+Ctrl+Tab and Escape provide keyboard navigation.
+
+Use **Add selected book to academic catalog** from the Academic menu to link an
+already imported book. **Open linked document** opens a checked viewing copy;
+changes in an external viewer do not modify the retained original. Standalone
+references do not fabricate document text or allow source quotation.
+
+Import RIS or CSL JSON files through a preview. Select the records to keep;
+possible duplicates and unsupported fields are reported before import. Selected
+records are saved in one transaction. DOI and ISBN comparisons and conservative
+title/author/year matches identify possible duplicates for review. Records are
+never automatically merged or deleted. Archive and restore retain their IDs.
+
+Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
+CSV or text. Bibliographic exports omit personal notes by default. Include notes
+only when you deliberately choose that option. The plain bibliography is a
+readable reference list, not a certified APA, MLA or Chicago citation style.
+BibTeX import and online DOI lookup are not part of this version. Entering a DOI
+or URL does not send a network request or download an attachment.
+
+Version 0.2 opens the exact supported version-three library layout through a
+transactional upgrade. Existing source documents and citations are preserved.
+Install an update into a new program folder, with a backup of your library saved
+first. Open the existing data folder in the new program. Do not use an earlier
+program version on the upgraded data folder. Previous valid backups can still
+be restored into a new folder and upgraded on opening.
+
 ## Review the source catalog
 
 Open a library, then use the **Research** menu:
@@ -159,6 +218,24 @@ See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
 interchange details.
 
 ## Research from the keyboard
+
+### Search several libraries and manage saved criteria
+
+Press **Ctrl+Alt+F**, or choose **Research, Research Search Center...**.
+Only the current library is selected initially. Use Space to select additional
+libraries, then enter a phrase and optional title, author, language or edition
+filters. Results identify their originating library and verification status.
+Context, copying and saving recheck the original source; saving offers topics
+from the result's own library. This dialog preserves the active notebook and
+unsaved note. **Cancel operation** stops pending work without publishing partial
+results.
+
+With a research topic open, choose **Research, Manage saved topic searches…**
+to create or edit criteria for saved quotations or research notes, run the
+current definition, duplicate it, archive it or restore it. Each run searches
+the topic's current evidence. Definitions survive reopening and normal library
+backup/restore. See [academic search](ACADEMIC_SEARCH.md) for limits, source
+safeguards and the headless `--list-libraries` / `--search` commands.
 
 ### Library and collection tools
 

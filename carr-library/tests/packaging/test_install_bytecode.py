@@ -19,6 +19,8 @@ import types
 import unittest
 import venv
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -255,6 +257,82 @@ class InstallBytecodeTests(unittest.TestCase):
             self.assertTrue(all(row['dont_write'] and row['no_user_site'] and row['safe_path']
                                 for row in records), records)
             self.assertFalse(list((root / 'venv').rglob('bootstrap_probe.*.pyc')))
+
+
+@pytest.mark.parametrize('fail_stage', [None, 'ensurepip', 'pip', 'carr_library.native_checks', 'carr_library'])
+def test_install_completion_lifecycle(tmp_path, fail_stage):
+    source = ROOT / 'packaging' / 'install_windows.py'
+    root = tmp_path / 'Program Ω'
+    root.mkdir()
+    data = tmp_path / 'Data Ω' / 'Universal Research Library'
+    data.mkdir(parents=True)
+    sentinel = data / 'private.sqlite'
+    sentinel.write_bytes(b'private synthetic research')
+    for name in ['install.lock', 'install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd',
+                 'CheckInstallation.cmd', 'README.txt', 'wheelhouse/fixture.whl']:
+        file = root / name
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_bytes(source.read_bytes() if name == 'install_windows.py' else b'fixture')
+    files = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+             for p in root.rglob('*') if p.is_file()}
+    (root / 'bundle-manifest.json').write_text(json.dumps({'schema': 1, 'files': files}))
+    spec = importlib.util.spec_from_file_location('installer', root / 'install_windows.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.os = types.SimpleNamespace(name='nt', environ={**os.environ, 'LOCALAPPDATA': str(data.parent)},
+                                      path=os.path, walk=os.walk)
+    module.sys = types.SimpleNamespace(version_info=(3, 11, 18))
+    module.platform = types.SimpleNamespace(architecture=lambda: ('64bit', ''))
+    dest = root / '.venv'
+    marker = dest / '.installation-complete'
+    calls = []
+
+    class Builder:
+        def __init__(self, **kwargs):
+            pass
+
+        def create(self, path):
+            (path / 'Scripts').mkdir()
+            (path / 'Scripts/python.exe').write_bytes(b'executable placeholder')
+
+    def run(command, **kwargs):
+        assert not marker.exists()
+        stage = command[command.index('-m') + 1]
+        calls.append(stage)
+        if stage == fail_stage:
+            raise subprocess.CalledProcessError(1, command)
+
+    module.venv = types.SimpleNamespace(EnvBuilder=Builder)
+    module.subprocess = types.SimpleNamespace(run=run)
+    if fail_stage:
+        with pytest.raises(subprocess.CalledProcessError):
+            module.main()
+        assert not marker.exists()
+        assert calls[-1] == fail_stage
+    else:
+        assert module.main() == 0
+        assert marker.is_file()
+        assert calls == ['ensurepip', 'pip', 'carr_library.native_checks', 'carr_library']
+    assert (dest / 'Scripts/python.exe').exists()
+    with pytest.raises(RuntimeError, match='already has an environment'):
+        module.main()
+    assert marker.exists() == (fail_stage is None)
+    assert sentinel.read_bytes() == b'private synthetic research'
+    module.verify(root)
+
+
+@pytest.mark.parametrize('name', ['ResearchLibrary.cmd', 'CheckInstallation.cmd'])
+def test_launcher_requires_completion_before_python(name):
+    launcher = (ROOT / 'packaging' / name).read_text(encoding='utf-8')
+    guard = 'if not exist "%~dp0.venv\\.installation-complete" (\n'
+    start = launcher.index(guard)
+    end = launcher.index('\n)', start)
+    assert 'exit /b 1' in launcher[start:end]
+    assert 'fresh package' in launcher[start:end]
+    invocations = [line for line in launcher.splitlines()
+                   if line.lstrip().startswith('"%~dp0.venv\\Scripts\\python.exe" ')]
+    assert invocations
+    assert all(launcher.index(line) > end for line in invocations)
 
 
 if __name__ == '__main__':

@@ -134,6 +134,9 @@ def main():
                    check=True, env=environment, cwd=root)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)
+    # An incomplete or interrupted install must never be treated as ready.
+    # Exclusive creation is the final lifecycle step; never delete an old environment.
+    (destination / ".installation-complete").touch(exist_ok=False)
     print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
     return 0
 

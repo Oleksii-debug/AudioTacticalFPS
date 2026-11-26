@@ -8,7 +8,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.catalog.membership import Catalog
-from carr_library.catalog import quality
+from carr_library.catalog import insights, quality
 
 
 @pytest.fixture
@@ -210,24 +210,139 @@ def test_catalog_bound_rejects_incomplete_summary_instead_of_silently_truncating
         quality.catalog_quality(app, workspace)
 
 
-def test_sqlite_progress_cancellation_interrupts_actual_author_join(library, monkeypatch):
+def _must_not_materialize(*args, **kwargs):
+    pytest.fail('The report materialized catalog rows before rejecting its input budget')
+
+
+def test_report_budget_rejects_real_large_author_catalog_before_browse(library, monkeypatch):
+    app, workspace, _ = library
+    # All values fit the catalog's existing per-work limits. Together these
+    # real SQLite rows exceed the default report budget before any EditionView.
+    authors = tuple(f'{number:03}' + '\u754c' * 997 for number in range(100))
+    with app.catalog_transaction(workspace) as catalog:
+        for number in range(100):
+            add(catalog, f'heavy-{number:03}', authors=authors)
+    with app.read(workspace) as db:
+        size = db.execute('SELECT SUM(length(CAST(name AS BLOB))) '
+                          'FROM catalog_author WHERE workspace=?', (workspace,)).fetchone()[0]
+        assert size == 29_940_000
+    monkeypatch.setattr(quality, 'browse_editions', _must_not_materialize)
+
+    with pytest.raises(ValueError, match='metadata.*limit'):
+        quality.catalog_quality(app, workspace)
+
+
+@pytest.mark.parametrize('field', ('title', 'authors', 'language', 'edition', 'volume'))
+def test_report_preflight_counts_utf8_metadata_before_browse(library, monkeypatch, field):
+    app, workspace, _ = library
+    value = '\u754c' * 400  # 400 code points, but 1,200 UTF-8 bytes.
+    with app.catalog_transaction(workspace) as catalog:
+        add(catalog, 'source', **{field: (value,) if field == 'authors' else value})
+    monkeypatch.setattr(insights, 'MAX_METADATA_BYTES', 1024)
+    monkeypatch.setattr(quality, 'browse_editions', _must_not_materialize)
+
+    with pytest.raises(ValueError, match='metadata.*limit'):
+        quality.catalog_quality(app, workspace)
+
+
+def test_report_preflight_rejects_source_count_before_browse(library, monkeypatch):
+    app, workspace, _ = library
+    with app.catalog_transaction(workspace) as catalog:
+        add(catalog, 'one')
+        add(catalog, 'two')
+    monkeypatch.setattr(insights, 'MAX_SOURCES', 1)
+    monkeypatch.setattr(quality, 'browse_editions', _must_not_materialize)
+
+    with pytest.raises(ValueError, match='Too many sources'):
+        quality.catalog_quality(app, workspace)
+
+
+@pytest.mark.parametrize('bound', ('bytes', 'count'))
+def test_report_preflight_rejects_collection_limit_before_view(library, monkeypatch, bound):
+    app, workspace, _ = library
+    with app.catalog_transaction(workspace) as catalog:
+        catalog.create_collection('one', '\u754c' * 200)
+        catalog.create_collection('two', '\u8a9e' * 200)
+    monkeypatch.setattr(insights, 'MAX_METADATA_BYTES', 1024 if bound == 'bytes' else 4096)
+    monkeypatch.setattr(insights, 'MAX_COLLECTIONS', 1 if bound == 'count' else 10)
+    monkeypatch.setattr(insights, 'active_collections', _must_not_materialize)
+    monkeypatch.setattr(quality, 'browse_editions', _must_not_materialize)
+
+    with pytest.raises(ValueError, match='(?i)(metadata.*limit|too many active collections)'):
+        quality.catalog_quality(app, workspace)
+
+
+def test_report_budget_combines_collection_names_and_selected_metadata(library, monkeypatch):
+    app, workspace, _ = library
+    with app.catalog_transaction(workspace) as catalog:
+        catalog.create_collection('selected', '\u754c' * 200)
+        add(catalog, 'source', title='\u8a9e' * 200)
+        catalog.assign('selected', 'source')
+    # Either part fits independently, while the complete snapshot does not.
+    monkeypatch.setattr(insights, 'MAX_METADATA_BYTES', 1024)
+    monkeypatch.setattr(quality, 'browse_editions', _must_not_materialize)
+
+    with pytest.raises(ValueError, match='metadata.*limit'):
+        quality.catalog_quality(app, workspace, collection='selected')
+
+
+def test_report_preflight_preserves_selected_scope_and_duplicate_hints(library, monkeypatch):
+    app, workspace, other = library
+    with app.catalog_transaction(workspace) as catalog:
+        catalog.create_collection('selected', 'Selected')
+        for identity, edition in (('a', 'First'), ('b', 'Revised')):
+            add(catalog, identity, asset='a' * 64, edition=edition)
+            catalog.assign('selected', identity)
+        add(catalog, 'excluded', authors=('x' * 2000,))
+        catalog.create_collection('archived', '\u754c' * 2000)
+        catalog.archive('archived')
+    with app.catalog_transaction(other) as catalog:
+        for number in range(3):
+            add(catalog, f'private-{number}', authors=('\u754c' * 2000,))
+            catalog.create_collection(str(number), str(number) + '\u8a9e' * 2000)
+    monkeypatch.setattr(insights, 'MAX_SOURCES', 2)
+    monkeypatch.setattr(insights, 'MAX_COLLECTIONS', 1)
+    monkeypatch.setattr(insights, 'MAX_METADATA_BYTES', 1024)
+
+    result = quality.catalog_quality(app, workspace, collection='selected')
+
+    assert result.collections == (('selected', 'Selected'),)
+    assert tuple(row.edition_id for row in result.editions) == ('a', 'b')
+    assert tuple(row.edition for row in result.editions) == ('First', 'Revised')
+    assert result.summary == quality.QualitySummary(2, 2, 1, 1, 1, 1, 2)
+    assert issues(result, 'same_asset')[0].edition_ids == ('a', 'b')
+    assert issues(result, 'possible_duplicate')[0].edition_ids == ('a', 'b')
+    assert not issues(result, 'unfiled')
+    assert 'private' not in repr(result)
+
+
+@pytest.mark.parametrize('phase', ('preflight', 'browse'))
+def test_sqlite_progress_cancellation_interrupts_actual_author_join(library, monkeypatch, phase):
     app, workspace, _ = library
     with app.catalog_transaction(workspace) as catalog:
         for number in range(20):
             add(catalog, f'e{number:04}', authors=tuple(f'Author {i}' for i in range(100)))
-    calls, interrupted = 0, []
+    calls, interrupted, active = 0, [], False
     def cancelled():
         nonlocal calls
+        if not active:
+            return False
         calls += 1
-        return calls >= 4
-    original = quality.browse_editions
+        return calls >= 2
+    target = insights if phase == 'preflight' else quality
+    name = '_preflight_editions' if phase == 'preflight' else 'browse_editions'
+    original = getattr(target, name)
     def observe(*args, **kwargs):
+        nonlocal active
+        active = True
         try:
             return original(*args, **kwargs)
         except sqlite3.OperationalError as exc:
             interrupted.append(exc.sqlite_errorcode)
             raise
-    monkeypatch.setattr(quality, 'browse_editions', observe)
+        finally:
+            active = False
+    monkeypatch.setattr(target, name, observe)
     with pytest.raises(InterruptedError, match='cancelled'):
         quality.catalog_quality(app, workspace, cancelled=cancelled)
     assert interrupted == [sqlite3.SQLITE_INTERRUPT]

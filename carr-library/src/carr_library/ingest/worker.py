@@ -64,19 +64,22 @@ def _store(root, request_id, record, *, create=False):
     raw = (canonical(record) + '\n').encode('utf-8')
     if len(raw) > MAX_REQUEST:
         raise ValueError('Import request metadata is too large.')
-    if create:
-        with path.open('xb') as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        return
+    if create and os.path.lexists(path):
+        raise FileExistsError('Import request identity already exists.')
     temporary = path.with_name(request_id + '-' + uuid4().hex + '.tmp')
     try:
-        with temporary.open('xb') as stream:
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'wb') as stream:
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
+        if os.name != 'nt':
+            directory = os.open(path.parent, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -305,6 +308,55 @@ def _stop(process):
         process.wait(timeout=2)
 
 
+def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
+    metadata = dict(metadata)
+    if metadata.get('title') in (None, ''):
+        metadata['title'] = Path(source).stem
+    metadata['work_id'] = metadata.get('work_id') or uuid4().hex
+    metadata['edition_id'] = metadata.get('edition_id') or uuid4().hex
+    record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
+                  workspace=workspace, source=str(Path(source).absolute()),
+                  metadata=metadata, config=asdict(config), state='pending')
+    if expected_manifest is not None:
+        from ..catalog.intake import MAX_BYTES
+        if (not isinstance(expected_manifest, dict)
+                or set(expected_manifest) != {'sha256', 'mime', 'size'}
+                or not isinstance(expected_manifest['sha256'], str)
+                or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
+                or expected_manifest['mime'] not in (
+                    'text/plain', 'application/pdf', 'application/epub+zip',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                or type(expected_manifest['size']) is not int
+                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+            raise ValueError('Invalid planned source manifest.')
+        record['expected_manifest'] = dict(expected_manifest)
+    # Compare the exact representation persisted by JSON, including sequences.
+    return json.loads(canonical(record))
+
+
+def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
+                    expected_manifest=None):
+    """Persist stable import identities without opening or processing the source.
+
+    A batch can save its request ID first and safely repeat this preparation
+    after a crash. An existing request must retain the entire planned identity.
+    """
+    request_id = request_id or uuid4().hex
+    with request_lock(root, request_id):
+        planned = _request_record(root, workspace, source, metadata, config,
+                                  request_id, expected_manifest)
+        try:
+            existing = load_request(root, request_id)
+        except FileNotFoundError:
+            _store(root, request_id, planned, create=True)
+            return planned
+        identity = set(planned) - {'state'}
+        if (any(existing.get(key) != planned[key] for key in identity)
+                or existing.get('expected_manifest') != planned.get('expected_manifest')):
+            raise ValueError('Persisted import request differs from its planned identity.')
+        return existing
+
+
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
                 timeout=120.0, request_id=None):
     """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
@@ -322,14 +374,7 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
     if new:
-        metadata = dict(metadata)
-        if metadata.get('title') in (None, ''):
-            metadata['title'] = Path(source).stem
-        metadata['work_id'] = metadata.get('work_id') or uuid4().hex
-        metadata['edition_id'] = metadata.get('edition_id') or uuid4().hex
-        record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
-                      workspace=workspace, source=str(Path(source).absolute()),
-                      metadata=metadata, config=asdict(config), state='pending')
+        record = _request_record(root, workspace, source, metadata, config, request_id)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
@@ -508,7 +553,8 @@ def main():
                 source = app.assets.resolve(record['asset_sha256'])
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
-                                      _request_id=record['request_id'], _resume_job=record.get('job'))
+                                      _request_id=record['request_id'], _resume_job=record.get('job'),
+                                      _expected_manifest=record.get('expected_manifest'))
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

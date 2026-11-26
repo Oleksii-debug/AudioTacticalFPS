@@ -12,7 +12,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.research import topic_literature_matrix as matrix_module
 from carr_library.research.topic_literature_matrix import build_literature_matrix, export_matrix
-from carr_library.research.outline_export import export_outline
+from carr_library.research.outline_export import export_filtered_outline as export_outline
 
 
 @pytest.fixture

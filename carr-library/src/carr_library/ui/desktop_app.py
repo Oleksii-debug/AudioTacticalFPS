@@ -28,10 +28,14 @@ from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
-from .academic_tools import install_academic_actions
+from .academic_tools import install_academic_actions as install_academic_tools
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
+from .ebook_actions import install_ebook_actions
+from .federated_search import install_federated_search_actions
+from .query_manager import install_query_manager_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -395,15 +399,15 @@ class DesktopSearchPanel(PagedSearchPanel):
                 return
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
+                labels = scope_labels((hit.workspace, t.id, t.name) for t in topics)
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', scope_labels(
-                                                  (hit.workspace, t.id, t.name) for t in topics))
+                                              'Save quotation', labels)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
                     index = dialog.GetSelection()
-                    if not 0 <= index < len(topics):
-                        raise ValueError('Choose a research topic first.')
+                    if type(index) is not int or not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic for this quotation.')
                     selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
@@ -458,7 +462,9 @@ class DesktopFrame(WorkspaceFrame):
             ('Open existing library folder',self.open_library_folder),
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
-            ('Import books\tCtrl+I', self.import_books), ('Resume interrupted import',self.resume_import),
+            ('Import books\tCtrl+I', self.import_books),
+            ('Import Center: files, folders and queues', self.import_center),
+            ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
@@ -470,6 +476,8 @@ class DesktopFrame(WorkspaceFrame):
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
+            ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
@@ -486,10 +494,14 @@ class DesktopFrame(WorkspaceFrame):
         install_research_actions(self)
         install_source_review_actions(self)
         install_academic_actions(self)
+        install_academic_tools(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
+        install_ebook_actions(self)
         install_catalog_insights_actions(self)
+        install_federated_search_actions(self)
+        install_query_manager_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -725,6 +737,13 @@ class DesktopFrame(WorkspaceFrame):
                 self._open_workspace(workspace)
         finally:
             dialog.Destroy()
+
+    def import_center(self, event=None):
+        try:
+            from .import_center import show_import_center
+            show_import_center(self, self._workspace())
+        except Exception as exc:
+            self.report(str(exc))
 
     def import_books(self, event):
         try:
@@ -1041,26 +1060,51 @@ class DesktopFrame(WorkspaceFrame):
         self.run_job('Checking this installation', self_test,
             lambda result: show_text(self, 'Installation check', '\n'.join(result['checks']) + '\n\nAll checks passed.'))
 
+    def open_academic_library(self, event):
+        from .academic_library_dialog import open_academic_library
+        open_academic_library(self)
+
+    def add_selected_book_reference(self, event):
+        from .academic_library_dialog import add_selected_book_reference
+        add_selected_book_reference(self)
+
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+A for Academic, Alt+D for Reading, and Alt+H for Help.\n'
-            'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports outlines with subtopics, reviews RIS metadata, and checks the catalog.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS fields, and checks the catalog.\n'
+
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
+            'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
+            'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+B opens the academic bibliography and reading list for the current library.\n'
+            'Inside the Reading Desk dialog, Ctrl+Shift+B manages page bookmarks instead.\n'
+            'Academic, Add selected book links an imported book to an editable bibliographic reference.\n'
+            'Academic references have reading status, priority, rating, progress, tags and personal notes.\n'
+            'Use Apply filters, Next page and Previous page to browse every matching reference.\n'
+            'Academic library imports are reviewed before saving. Its exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
+            'Ctrl+Alt+F opens Research Search Center for explicitly selected libraries and source metadata filters.\n'
+            'Research, Manage saved topic searches creates, edits, archives or restores searches of quotations and notes in the active topic.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
             'F1 inside the reader explains page navigation and bookmarks.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
+            'Ctrl+Shift+E exports the active topic together with its nonarchived subtopics.\n'
+            'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
+            'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
+            'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
             'In Export topic, choose Word or HTML for a readable research document with heading navigation.\n'
             'The Research menu also opens Library overview, Source metadata and indexing checklist, '
             'and Export source comparison matrix for this library or one of its collections.\n'
-            'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
+            'Choose a library or topic, then Open selected scope. The Search tab stays inside that library.\n'
+            'Research Search Center searches only the libraries explicitly checked in its dialog.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'

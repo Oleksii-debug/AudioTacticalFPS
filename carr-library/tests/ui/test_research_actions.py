@@ -262,6 +262,44 @@ def test_combined_rename_describe_keeps_notebook_and_unsaved_note(frame):
     assert frame.choice.selection == frame.scopes.index(frame.active)
 
 
+@pytest.mark.parametrize('generated_name_collision', [False, True])
+def test_rename_keeps_scope_labels_distinct_and_ids_unchanged(frame, generated_name_collision):
+    workspace, topic = frame.active
+    first = frame.library.create_topic(workspace, 'History')
+    second = frame.library.create_topic(workspace, 'History')
+    if generated_name_collision:
+        frame.library.create_topic(workspace, f'History (library {workspace}; topic {first})')
+    before_ids = tuple((w, t) for w, t, _ in frame.library.list_scopes())
+    frame.evidence.note.SetValue('Unsaved draft — keep it')
+    book = frame.book
+
+    ResearchActions(frame, Dialogs({'name': 'Renamed', 'description': 'Description'})).rename_or_describe_library()
+
+    assert len(frame.choice.items) == len(set(frame.choice.items))
+    assert tuple(frame.scopes) == before_ids
+    assert frame.scopes[frame.choice.selection] == (workspace, topic)
+    assert (workspace, first) in frame.scopes and (workspace, second) in frame.scopes
+    assert frame.book is book and frame.evidence.note.GetValue() == 'Unsaved draft — keep it'
+    assert frame.catalog.refreshed == frame.search.invalidated == 0
+    assert frame.choice.focused
+
+
+def test_rename_cancel_keeps_existing_choices_and_unsaved_note(frame):
+    before = tuple(frame.library.list_scopes())
+    frame.choice.SetItems(['Existing first choice', 'Existing topic choice'])
+    choices = frame.choice.items[:]
+    book = frame.book
+    frame.evidence.note.SetValue('Unfinished note')
+
+    ResearchActions(frame, Dialogs()).rename_or_describe_library()
+
+    assert tuple(frame.library.list_scopes()) == before
+    assert frame.choice.items == choices
+    assert frame.book is book and frame.evidence.note.GetValue() == 'Unfinished note'
+    assert frame.catalog.refreshed == frame.search.invalidated == 0
+    assert frame.choice.focused
+
+
 @pytest.mark.parametrize('method, answer', [
     ('edit_book_metadata', metadata_values()),
     ('edit_library_description', 'Unexpected description'),

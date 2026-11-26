@@ -213,4 +213,3 @@ def test_declined_scope_change_does_not_replace_the_existing_note_editor(researc
     actions.open_evidence(AcademicScope(frame.library, *frame.active), selected)
     frame._open_workspace.assert_called_once_with(research[1], research[4])
     frame.evidence.refresh.assert_not_called()
-
