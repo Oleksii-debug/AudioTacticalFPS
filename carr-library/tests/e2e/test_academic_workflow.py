@@ -194,4 +194,3 @@ def test_linked_document_checks_library_and_retained_bytes_again(tmp_path):
     app.assets.resolve(imported['asset']).write_bytes(b'Changed source bytes.')
     with pytest.raises(ValueError):
         app.prepare_edition_file(workspace, imported['edition'])
-

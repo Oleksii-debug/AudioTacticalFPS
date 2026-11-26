@@ -16,12 +16,15 @@ implemented functionality.
 | Check repetitive imports | DOI, ISBN and conservative title/author/year duplicate groups | Suggestions only; never automatic deletion or merging |
 | Move references into a writing workflow | RIS, BibTeX, CSL JSON, CSV and plain bibliography export | Notes opt-in; format escaping; no named-style conformity claim |
 | Read an attached document | Link an existing local edition and open a verified viewing copy | Original bytes and historical evidence stay unchanged |
+| Read retained books | Full-source reader, EPUB sections, named bookmarks and last-page resume | Source identities and unverified text remain explicit; bookmark state has a separate export |
+| Inspect the source catalog | Completeness reports, retained-file duplicate groups, bibliography and review-matrix exports | Reports do not infer source verification or silently merge records |
 | Upgrade and recover | Exact V3-to-V4 migration and V3/V4 backup validation | Transactional migration; schema identity; archived data retained |
 
 These are implemented using the existing SQLite, native wx controls and pinned
 RIS components. No additional required runtime dependency or hosted service is
 introduced. Existing exact quotations, OCR review, source retention and local
-semantic search continue to use their original authority boundaries.
+semantic search continue to use their original authority boundaries. The composed
+EPUB increment adds the separately pinned defusedxml runtime for XML parsing.
 
 ## Research basis
 
@@ -57,8 +60,8 @@ Existing pinned vendor notices remain authoritative for code actually bundled.
    provenance and timestamps, rate-limit handling and an offline fallback.
 4. BibTeX/BibLaTeX import through a maintained parser with license/pin review,
    macros and name parsing tested against real interchange cases.
-5. Accessible document bookmarks and reading-position recovery; preserve the
-   distinction between annotations and independently verified quotations.
+5. Include the reading desk bookmark/resume sidecar in a single checked library
+   backup; the present reader exposes its own explicit export/import workflow.
 6. User-reviewed duplicate consolidation with relationship and reading-note
    preservation, reversible history and no historical citation retargeting.
 

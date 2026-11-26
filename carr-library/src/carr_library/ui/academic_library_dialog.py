@@ -134,6 +134,14 @@ def reference_labels(rows, *, offset=0):
     return result
 
 
+def book_link_labels(rows):
+    """Expose edition metadata when choosing between similarly named books."""
+    return [f'{number}. {row.title or "Untitled"} — {"; ".join(row.authors) or "Unknown author"}; '
+            f'Edition: {row.edition or "unknown"}; Volume: {row.volume or "unknown"}; '
+            f'Language: {row.language or "unknown"}'
+            for number, row in enumerate(rows, 1)]
+
+
 def reference_details(row):
     values = (
         ('Title', row.title), ('Authors', '\n'.join(row.authors) or 'Unknown'),
@@ -286,8 +294,8 @@ def _native_types():
                                  ('doi', 'DOI'), ('isbn', 'ISBN'), ('url', 'Web address')):
                 text(bibliography, key, caption)
             linked = [(None, 'No linked local book')]
-            for number, row in enumerate(books, 1):
-                linked.append((row.edition_id, f'{number}. {row.title or "Untitled"} — {"; ".join(row.authors) or "Unknown author"}'))
+            for row, label in zip(books, book_link_labels(books)):
+                linked.append((row.edition_id, label))
             if values['edition_id'] is not None and values['edition_id'] not in {key for key, _ in linked}:
                 linked.append((values['edition_id'], 'Keep existing local book link'))
             choice(bibliography, 'edition_id', 'Linked imported book; optional', linked)

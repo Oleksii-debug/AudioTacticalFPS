@@ -13,7 +13,7 @@ from carr_library.application import LibraryApp
 from carr_library.research.academic_library import AcademicLibrary
 from carr_library.ui.academic_library_dialog import (
     AcademicController, PAGE_SIZE, form_values, initial_fields,
-    reference_details, reference_labels, selected_row, statistics_text,
+    book_link_labels, reference_details, reference_labels, selected_row, statistics_text,
 )
 
 
@@ -203,3 +203,21 @@ def test_duplicate_suggestions_and_reading_overview_are_readable(controller):
     assert len(controller.list()) == 1 and len(controller.list(include_archived=True)) == 2
     restored = controller.archive(archived, archived=False)
     assert not restored.archived and len(controller.list()) == 2
+
+
+def test_local_book_choices_explain_editions_and_keep_the_selected_source(controller):
+    app, workspace = controller.library, controller.workspace
+    app.add_text(workspace, 'Same book', 'First edition text.', authors=('Same Author',),
+                 edition='First', volume='I', language='en')
+    second = app.add_text(workspace, 'Same book', 'Second edition source.', authors=('Same Author',),
+                          edition='Second', volume='II', language='uk')
+    books = controller.books()
+    labels = book_link_labels(books)
+    index = next(index for index, row in enumerate(books) if row.edition_id == second['edition'])
+    assert 'Edition: Second' in labels[index]
+    assert 'Volume: II' in labels[index] and 'Language: uk' in labels[index]
+    selected = selected_row(books, index)
+    reference = controller.create(controller.from_book(selected.edition_id))
+    source = controller.prepare_document(reference)
+    assert source.path.read_bytes() == app.assets.resolve(second['asset']).read_bytes()
+    assert reference.edition_id == selected.edition_id == second['edition']
