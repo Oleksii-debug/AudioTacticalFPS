@@ -14,6 +14,7 @@ def manifest(data=b'synthetic'):
 def connect(path):
     db = sqlite3.connect(path, isolation_level=None)
     db.execute('PRAGMA foreign_keys=ON')
+    db.execute('PRAGMA recursive_triggers=ON')
     return db
 
 
