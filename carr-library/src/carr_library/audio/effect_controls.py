@@ -55,7 +55,8 @@ class EffectsBackend:
         render.run_process([self.ffprobe, '-version'], cancelled=cancelled,
                            timeout_seconds=20)
         # These inventories describe the selected executable, not web metadata.
-        filters = set(re.findall(r'^\s*[TSC.]{3}\s+([A-Za-z0-9_]+)\s',
+        # FFmpeg 9 removed the command flag; older releases print three flags.
+        filters = set(re.findall(r'^\s*[TSC.]{2,3}\s+([A-Za-z0-9_]+)\s',
                                  values['-filters'], re.M))
         encoders = set(re.findall(r'^\s*A[A-Z.]{5}\s+([A-Za-z0-9_]+)\s',
                                   values['-encoders'], re.M))
