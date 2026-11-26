@@ -29,6 +29,8 @@ PROVIDER_HOSTS = {
     'crossref': 'api.crossref.org',
     'unpaywall': 'api.unpaywall.org',
     'europe_pmc': 'www.ebi.ac.uk',
+    'openalex': 'api.openalex.org',
+    'openlibrary': 'openlibrary.org',
 }
 MAX_JSON_BYTES = 2 * 1024 * 1024
 MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024

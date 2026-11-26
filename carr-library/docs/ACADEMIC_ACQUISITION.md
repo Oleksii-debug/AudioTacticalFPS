@@ -1,23 +1,26 @@
-# DOI metadata and open-access acquisition
+# DOI/ISBN metadata and open-access acquisition
 
-This is the V3-08 DOI workflow in the existing Universal Research Library desktop.
-Open **Academic > DOI lookup and open-access sources**. Opening this dialog makes
+This is the V3-08 metadata workflow in the existing Universal Research Library desktop.
+Open **Academic > DOI/ISBN lookup and open-access sources**. Opening this dialog makes
 no network request. Bibliographic metadata, downloaded documents and approved
 quotations remain separate.
 
 ## Use the desktop
 
 1. Select the destination library. A selected local book is optional.
-2. Enter a DOI, `doi:` identifier, or a `https://doi.org/…` resolver URL.
-3. Select Crossref, Europe PMC, and/or Unpaywall. Crossref is the default.
-   Unpaywall requires your own contact email, held only for this dialog/request.
-4. Explicitly allow this online lookup and choose **Look up DOI**. Only the DOI
+2. Choose DOI or ISBN. Enter a DOI, `doi:` identifier, a `https://doi.org/…`
+   resolver URL, or a checksum-valid ISBN-10/ISBN-13 in the selected mode.
+3. For DOI, select Crossref, Europe PMC, Unpaywall and/or OpenAlex. Crossref is
+   the default. Unpaywall requires your own contact email, held only for this
+   dialog/request. ISBN mode uses Open Library and disables DOI provider options.
+4. Explicitly allow this online lookup and choose the lookup button. Only the identifier
    and the optional provider contact email are sent. Source text, notes, saved
    quotations, unrelated catalog entries and credentials are never uploaded.
 5. Review all supplied metadata and provider response hashes. Missing data stays
    missing. Different provider titles and version information are shown for review.
 6. **Save bibliographic reference** saves an independent academic reference.
-   Exact DOI deduplication preserves an existing reference and its private notes.
+   Exact DOI and equivalent ISBN-10/ISBN-13 deduplication preserve an existing
+   reference and its private notes. Multiple existing matches require review.
    **Apply metadata to selected book** requires a separate confirmation and an
    unchanged current catalog record. Missing authors/language/volume preserve
    current values; the current edition label is preserved. Saved evidence keeps
@@ -41,6 +44,8 @@ be recorded on a real Windows/NVDA installation separately from automated tests.
 | Crossref | Exact DOI `/works/{doi}` | Deposited bibliographic metadata; its links alone are not proof of open access. |
 | Unpaywall | Exact DOI `/v2/{doi}` with user contact email | Reported OA locations, version and license; only a reported OA PDF can be downloaded. |
 | Europe PMC | Exact DOI index search, core JSON response | Exact matching record and reported full-text locations; partial/ambiguous responses are rejected. |
+| OpenAlex | Exact DOI singleton `/works/doi:{doi}` | Bibliographic metadata and each location's own OA, version and license claims; a work-wide OA label does not approve unrelated locations. |
+| Open Library | Exact ISBN `/api/books?bibkeys=ISBN:…&format=json&jscmd=data` | Book metadata with a matching ISBN response key and explicit matching identifiers; preview/borrow links do not authorize document acquisition. |
 
 The selected provider must return the same normalized DOI. DOI comparison folds
 ASCII A–Z only and preserves other Unicode distinctions. No best-guess title
@@ -48,16 +53,28 @@ match or silent DOI substitution is accepted. Provider data is bounded, parsed
 as data, and rendered as text. An OA flag or URL is not a new license grant.
 An accepted manuscript can differ from the publisher's version and pagination.
 Publication page extent is never treated as a verified quotation pinpoint.
+OpenAlex's language field describes its title/abstract metadata, so it is shown
+as a provider warning and never replaces the imported book's full-text language.
 
-This increment does not add ISBN searches, OpenAlex, publisher-specific login,
-paywall/DRM bypass, browser cookies, or automatic library-wide enrichment. These
-are not implied by a successful DOI lookup. No model weights or commercial API
-calls are needed.
+An ISBN record must explicitly contain the queried ISBN. Its equivalent ISBN-10
+or ISBN-13 can also be present; an unrelated ISBN or a guessed title match is
+rejected. A book's page count is not converted into a publication page range.
+Saving an ISBN record creates no DOI and does not replace an existing record.
+Open Library currently documents this Books API as a legacy endpoint; service
+availability is checked at request time and cannot be guaranteed by local tests.
+
+OpenAlex's current authentication and singleton documentation permits basic
+anonymous queries and free exact DOI singleton requests. This integration uses
+that bounded query only; it does not create an account, submit an email to obtain
+a key, purchase credits or invoke paid search/download endpoints. Changed access
+requirements produce an unavailable-provider result, not an automatic purchase.
+Publisher-specific login, paywall/DRM bypass, browser cookies and automatic
+library-wide enrichment are not implemented. No model weights are needed.
 
 ## Privacy, cancellation and recovery
 
 The offline core and all existing telemetry/model-offline settings remain in
-force. DOI requests and downloads each require explicit permission. Permissions
+force. Metadata requests and downloads each require explicit permission. Permissions
 are not remembered across dialogs or application restarts. An in-memory cache
 avoids repeated identical requests for ten minutes; a cached result still needs
 an explicitly approved lookup. The cache is local, bounded and not backed up.
@@ -86,7 +103,7 @@ Retry that local file through Import Center; it need not be downloaded again.
 On a crash, a remaining `.acquisition-incomplete` marks a folder that must not be
 treated as a completed acquisition.
 
-The receipt records DOI, public source URLs, provider license/version statements,
+The provenance records the identifier type, DOI/ISBN, public source URLs, provider license/version statements,
 retrieval time, response hashes, PDF hash/size and the explicit acquisition
 acknowledgement. It records no contact email. Completed imports retain exact source
 bytes; the academic reference records the acquisition provenance in its notes,
@@ -103,12 +120,22 @@ one DOI in exactly one library:
 research-library --data-dir LIBRARY --workspace ID --lookup-doi 10.5555/example --allow-online-doi
 ```
 
-Repeat `--doi-provider crossref`, `--doi-provider europe_pmc`, or
-`--doi-provider unpaywall` to select providers. For Unpaywall, set your own contact
+Repeat `--doi-provider crossref`, `--doi-provider europe_pmc`,
+`--doi-provider openalex`, or `--doi-provider unpaywall` to select providers. For Unpaywall, set your own contact
 email in an environment variable and name it with `--unpaywall-email-env VARIABLE`.
 No email is written to the preview, provenance receipt or application settings.
 `--save-doi-reference` saves the reviewed bibliographic proposal. JSON output
 includes provider metadata and sources without raw response bytes.
+
+For one book ISBN, use its separate explicit consent:
+
+```text
+research-library --data-dir LIBRARY --workspace ID --lookup-isbn 9780306406157 --allow-online-isbn
+```
+
+Add `--save-isbn-reference` to save the preview. ISBN mode rejects DOI-provider,
+Unpaywall-email and source-download options; it does not imply open access to the
+book. Both modes require exactly one explicitly selected workspace.
 
 To download after reviewing the preview, supply its exact PDF URL:
 
@@ -133,6 +160,11 @@ API behavior was checked against these primary sources on 2026-11-26:
 - [Unpaywall API](https://unpaywall.org/api)
 - [Unpaywall data format and OA locations](https://unpaywall.org/data-format)
 - [Europe PMC REST documentation](https://europepmc.org/RestfulWebService)
+- [OpenAlex current authentication](https://help.openalex.org/api/authentication/)
+- [OpenAlex exact singleton queries](https://help.openalex.org/api/get-single-entities/)
+- [OpenAlex work attributes](https://help.openalex.org/data/works/attributes/)
+- [OpenAlex source locations](https://help.openalex.org/data/locations/)
+- [Open Library Books API](https://openlibrary.org/dev/docs/api/books)
 
 External API availability and deposited metadata quality may change. Automated
 fixtures establish our request/response contracts and failure handling, not live

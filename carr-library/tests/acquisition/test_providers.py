@@ -12,11 +12,12 @@ import pytest
 
 from carr_library.acquisition.models import (
     AccessLocation, MetadataPreview, ProviderConfig, ProviderRequest,
-    MAX_RESPONSE_BYTES, MAX_TEXT, MAX_AUTHORS, MAX_LOCATIONS,
+    MAX_RESPONSE_BYTES, MAX_TEXT, MAX_AUTHORS, MAX_LOCATIONS, DOI_PROVIDERS, PROVIDERS,
     normalize_doi, safe_source_url,
 )
 from carr_library.acquisition.providers import (
     lookup_doi, provider_request, parse_crossref, parse_unpaywall, parse_europe_pmc,
+    lookup_isbn, isbn_request, parse_openalex, parse_openlibrary,
 )
 
 
@@ -406,4 +407,231 @@ def test_normal_rtl_unicode_names_remain_unchanged():
     name = 'أحمد محمود'
     result = parse_crossref(encoded(crossref(author=[{'name': name}])), DOI)
     assert result.authors == (name,)
+
+
+ISBN13, ISBN10 = '9780306406157', '0306406152'
+
+
+def openalex(**changes):
+    primary = dict(landing_page_url='https://publisher.example/article',
+        pdf_url='https://publisher.example/paper.pdf', is_oa=False,
+        license=None, version='publishedVersion', source={
+            'display_name': 'Synthetic Review', 'type': 'journal',
+            'host_organization': 'https://openalex.org/P123',
+            'host_organization_name': 'Synthetic Publisher'})
+    repository = dict(landing_page_url='https://repository.example/item',
+        pdf_url='https://repository.example/accepted.pdf', is_oa=True,
+        license='cc-by', version='acceptedVersion', source={'type': 'repository'})
+    record = dict(doi='https://doi.org/' + DOI, ids={'doi': DOI}, title='Точний запис',
+        publication_year=2024, type='article', language='uk',
+        authorships=[{'raw_author_name': 'Олена; автор', 'author': {'display_name': 'Different profile'}},
+                     {'author': {'display_name': '東京研究会'}}],
+        authors_count=2, primary_location=primary, best_oa_location=repository,
+        locations=[primary, repository], locations_count=2, open_access={'is_oa': True},
+        biblio={'volume': '7', 'issue': '2', 'first_page': 'e12', 'last_page': 'e19'},
+        abstract_inverted_index={'Source': [0, 2], 'metadata.': [1]})
+    record.update(changes)
+    return record
+
+
+def openlibrary(*, key=ISBN13, **changes):
+    record = dict(title='Точна книга', authors=[{'name': 'Олена; автор'}, {'name': '東京研究会'}],
+        identifiers={'isbn_13': [ISBN13], 'isbn_10': [ISBN10]},
+        publishers=[{'name': 'Synthetic Press'}], publish_date='2024', number_of_pages=120,
+        url='https://openlibrary.org/books/OL123M', preview='full',
+        ebooks=[{'preview_url': 'https://archive.example/borrow/item',
+                 'availability': 'borrow', 'is_oa': True}],
+        links=[{'url': 'https://publisher.example/book.pdf', 'title': 'Preview'}])
+    record.update(changes)
+    return {'ISBN:' + key: record}
+
+
+def test_openalex_exact_anonymous_request_has_no_search_or_api_key():
+    request = provider_request('openalex', '10.1234/ÄA')
+    assert request.endpoint == 'https://api.openalex.org/works/doi:10.1234%2F%C3%84a'
+    assert request.query == ()
+    assert 'openalex' in DOI_PROVIDERS and 'openlibrary' in PROVIDERS
+    assert 'openlibrary' not in DOI_PROVIDERS
+    with pytest.raises(ValueError):
+        ProviderRequest('openalex', request.endpoint, (('api_key', 'secret'),))
+    with pytest.raises(ValueError):
+        ProviderRequest('openalex', 'https://api.openalex.org/works/W123')
+
+
+def test_openalex_preserves_byline_order_raw_bytes_and_location_specific_rights():
+    raw = encoded(openalex())
+    preview = parse_openalex(raw, DOI)
+    assert preview.provider == 'openalex' and preview.doi == DOI
+    assert preview.authors == ('Олена; автор', '東京研究会')
+    assert preview.title == 'Точний запис' and preview.year == '2024'
+    assert preview.publisher == 'Synthetic Publisher' and preview.container_title == 'Synthetic Review'
+    assert (preview.volume, preview.issue, preview.pages) == ('7', '2', 'e12–e19')
+    assert preview.abstract == 'Source metadata. Source'
+    assert preview.language == ''
+    assert any('metadata language uk' in warning for warning in preview.warnings)
+    assert preview.raw_json == raw and preview.raw_sha256 == sha256(raw).hexdigest()
+    sources = {source.url: source for source in preview.locations}
+    assert len(sources) == 2
+    closed = sources['https://publisher.example/paper.pdf']
+    opened = sources['https://repository.example/accepted.pdf']
+    assert closed.reported_open_access is False and closed.license == ''
+    assert opened.reported_open_access is True and opened.license == 'cc-by'
+    assert opened.version == 'acceptedVersion' and closed.version == 'publishedVersion'
+    assert any('profile name' in warning for warning in preview.warnings)
+
+
+def test_openalex_global_access_does_not_fill_missing_location_access():
+    record = openalex()
+    del record['locations'][0]['is_oa']
+    record['primary_location']['source']['host_organization'] = 'https://openalex.org/I123'
+    preview = parse_openalex(encoded(record), DOI)
+    assert next(s for s in preview.locations if 'publisher.example' in s.url).reported_open_access is None
+    assert preview.publisher == ''
+    minimal = parse_openalex(encoded({'doi': DOI, 'created_date': '2026-01-01'}), DOI)
+    assert (minimal.title, minimal.authors, minimal.year, minimal.publisher) == ('', (), '', '')
+
+
+@pytest.mark.parametrize('changes', (
+    {'doi': '10.1234/another'}, {'ids': {'doi': '10.1234/another'}},
+    {'is_authors_truncated': True}, {'authors_count': 3},
+    {'authorships': [{}] * (MAX_AUTHORS + 1)}, {'locations_count': 3},
+    {'open_access': {'is_oa': False}}, {'open_access': {'is_oa': 'true'}},
+), ids=('wrong-doi', 'wrong-ids-doi', 'truncated-authors', 'author-count',
+         'too-many-authors', 'location-count', 'contradictory-access', 'invalid-access'))
+def test_openalex_rejects_mismatches_truncation_and_false_access_claims(changes):
+    with pytest.raises(ValueError):
+        parse_openalex(encoded(openalex(**changes)), DOI)
+
+
+@pytest.mark.parametrize('index', (
+    {'a': [0], 'b': [0]}, {'a': [1]}, {'a': [10**9]}, {'a': [-1]}, {'a': [True]},
+    {'x' * MAX_TEXT: list(range(26))},
+), ids=('duplicate-position', 'missing-position', 'huge-position', 'negative-position',
+         'boolean-position', 'excess-abstract'))
+def test_openalex_does_not_invent_or_allocate_unbounded_abstract_positions(index):
+    with pytest.raises(ValueError):
+        parse_openalex(encoded(openalex(abstract_inverted_index=index)), DOI)
+
+
+def test_isbn_request_is_exact_json_data_without_preview_or_borrow_actions():
+    request = isbn_request('ISBN-13: 978-0-306-40615-7')
+    assert request.provider == 'openlibrary' and request.endpoint == 'https://openlibrary.org/api/books'
+    assert request.query == (('bibkeys', 'ISBN:' + ISBN13), ('format', 'json'), ('jscmd', 'data'))
+    for query in (
+        (('bibkeys', 'ISBN:' + ISBN13),),
+        (('bibkeys', 'ISBN:' + ISBN13), ('format', 'javascript'), ('jscmd', 'data')),
+        (('bibkeys', 'ISBN:' + ISBN13), ('format', 'json'), ('jscmd', 'viewapi')),
+        (('bibkeys', 'ISBN:' + ISBN13 + ',ISBN:' + ISBN10), ('format', 'json'), ('jscmd', 'data')),
+    ):
+        with pytest.raises(ValueError):
+            ProviderRequest('openlibrary', request.endpoint, query)
+    with pytest.raises(ValueError):
+        ProviderRequest('openlibrary', 'https://openlibrary.org/search.json', request.query)
+
+
+def test_openlibrary_exact_identity_metadata_and_preview_links_preserve_provenance():
+    raw = encoded(openlibrary())
+    preview = parse_openlibrary(raw, ISBN13)
+    assert preview.provider == 'openlibrary' and preview.doi == ''
+    assert preview.isbn == (ISBN13, ISBN10) and preview.item_type == 'book'
+    assert preview.authors == ('Олена; автор', '東京研究会')
+    assert preview.title == 'Точна книга' and preview.publisher == 'Synthetic Press'
+    assert preview.year == '2024' and preview.pages == ''
+    assert preview.raw_json == raw and preview.raw_sha256 == sha256(raw).hexdigest()
+    assert len(preview.locations) == 3 and all(s.reported_open_access is None for s in preview.locations)
+    assert any('metadata only' in warning for warning in preview.warnings)
+    ten = parse_openlibrary(encoded(openlibrary(key=ISBN10)), ISBN10)
+    assert ten.isbn == (ISBN10, ISBN13)
+    with pytest.raises(ValueError):
+        replace(preview.locations[0], reported_open_access=True)
+
+
+@pytest.mark.parametrize('response', (
+    {}, openlibrary(key=ISBN10), {**openlibrary(), **openlibrary(key=ISBN10)},
+    openlibrary(identifiers={'isbn_10': [ISBN10]}),
+    openlibrary(identifiers={'isbn_13': ['9780140328721']}),
+    openlibrary(identifiers={'isbn_13': [ISBN13, '9780140328721']}),
+    openlibrary(identifiers={'isbn_13': [ISBN13], 'isbn_10': ['1234567890']}),
+    openlibrary(identifiers=None), openlibrary(identifiers={'isbn_13': [ISBN10]}),
+), ids=('missing', 'wrong-key', 'extra-result', 'equivalent-only', 'wrong-identifier',
+         'ambiguous-edition', 'bad-checksum', 'missing-identifiers', 'wrong-identifier-kind'))
+def test_openlibrary_requires_exact_query_key_and_explicit_matching_record_identifier(response):
+    with pytest.raises(ValueError):
+        parse_openlibrary(encoded(response), ISBN13)
+
+
+@pytest.mark.parametrize('date,year', (
+    ('2024', '2024'), ('2024-02-29', '2024'), ('February 29, 2024', '2024'),
+    ('Sep 2024', '2024'), ('2023-02-29', ''), ('February 30, 2024', ''),
+    ('2024-13', ''), ('c1999', ''), ('1900–1910', ''), ('0000', ''), ('unknown 2024', ''),
+))
+def test_openlibrary_publication_year_requires_a_valid_supported_date(date, year):
+    result = parse_openlibrary(encoded(openlibrary(publish_date=date)), ISBN13)
+    assert result.year == year
+    if not year:
+        assert any('no year was inferred' in warning for warning in result.warnings)
+
+
+def test_openlibrary_missing_metadata_and_unsafe_links_are_not_invented_or_echoed():
+    raw = encoded({'ISBN:' + ISBN13: {'identifiers': {'isbn_13': [ISBN13]}}})
+    result = parse_openlibrary(raw, ISBN13)
+    assert (result.title, result.authors, result.year, result.publisher, result.pages) == ('', (), '', '', '')
+    result = parse_openlibrary(encoded(openlibrary(ebooks=[{
+        'preview_url': 'https://private.example/document?token=private-secret'}])), ISBN13)
+    assert all('private.example' not in location.url for location in result.locations)
+    assert 'private-secret' not in repr(result)
+
+
+def test_only_openlibrary_can_use_empty_doi_and_requires_canonical_isbn_identity():
+    assert MetadataPreview('openlibrary', '', isbn=(ISBN13,)).doi == ''
+    for provider, doi, isbns in (
+        ('crossref', '', (ISBN13,)), ('openalex', '', (ISBN13,)),
+        ('openlibrary', '', ()), ('openlibrary', DOI, (ISBN13,)),
+        ('openlibrary', '', ('978-0-306-40615-7',)),
+        ('openlibrary', '', ('9780306406158',)),
+    ):
+        with pytest.raises(ValueError):
+            MetadataPreview(provider, doi, isbn=isbns)
+
+
+@pytest.mark.parametrize('permission', (False, 0, 1, 'yes', None))
+def test_isbn_lookup_denies_nonliteral_consent_before_validation_or_transport(permission):
+    calls = []
+    with pytest.raises(PermissionError):
+        lookup_isbn(None, consent=permission, transport=lambda *args, **kwargs: calls.append(args))
+    assert calls == []
+
+
+@pytest.mark.parametrize('kind', ('openalex', 'openlibrary'))
+def test_new_provider_lookup_is_single_explicit_request_and_cancellable(kind):
+    calls = []
+    cancelled = False
+    payload = encoded(openalex() if kind == 'openalex' else openlibrary())
+
+    def transport(request, *, cancelled):
+        calls.append(request)
+        assert not cancelled()
+        return payload
+
+    def lookup(boundary, cancellation=lambda: False):
+        if kind == 'openalex':
+            return lookup_doi(kind, DOI, transport=boundary, consent=True, cancelled=cancellation)
+        return lookup_isbn(ISBN13, transport=boundary, consent=True, cancelled=cancellation)
+
+    assert lookup(transport).provider == kind and len(calls) == 1
+    assert calls[0].provider == kind
+    with pytest.raises(InterruptedError):
+        lookup(transport, lambda: True)
+    assert len(calls) == 1
+
+    # Set cancellation only after the boundary's pre-transfer observation.
+    def completed_then_cancelled(request, **kwargs):
+        nonlocal cancelled
+        result = transport(request, **kwargs)
+        cancelled = True
+        return result
+
+    with pytest.raises(InterruptedError):
+        lookup(completed_then_cancelled, lambda: cancelled)
+    assert len(calls) == 2
 

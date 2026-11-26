@@ -345,6 +345,12 @@ class LibraryApp:
         from .acquisition.service import service_for
         return service_for(self).save_reference(workspace, preview, cancelled=cancelled)
 
+    def lookup_isbn(self, workspace, isbn, *, online_allowed=False, cancelled=lambda: False):
+        """Preview one exact book ISBN through an explicitly approved metadata request."""
+        from .acquisition.service import service_for
+        return service_for(self).lookup_isbn(workspace, isbn, online_allowed=online_allowed,
+            cancelled=cancelled)
+
     def apply_doi_metadata(self, workspace, edition_id, preview, *, expected_metadata,
                            cancelled=lambda: False):
         from .acquisition.service import service_for

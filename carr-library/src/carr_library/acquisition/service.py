@@ -21,9 +21,9 @@ from uuid import uuid4
 
 from ..catalog.membership import Catalog
 from ..data_paths import guard_data_directory
-from ..research.academic_library import AcademicLibrary, normalize_doi, normalize_isbn
+from ..research.academic_library import AcademicLibrary, normalize_doi, normalize_isbn, _isbn_key
 from . import providers as provider_api
-from .models import MetadataPreview
+from .models import MetadataPreview, DOI_PROVIDERS
 from .transport import (NetworkConsent, SafeTransport, PROVIDER_HOSTS,
                         MAX_DOWNLOAD_BYTES, validate_https_url)
 
@@ -39,6 +39,8 @@ class AcquisitionPreview:
     warnings: tuple[str, ...]
     fetched_utc: str
     cached: bool = False
+    identifier_kind: str = 'doi'
+    identifier: str = ''
 
 
 @dataclass(frozen=True)
@@ -161,28 +163,38 @@ class AcquisitionService:
         with self._lock:
             if (not isinstance(preview, AcquisitionPreview) or preview.workspace != workspace
                     or self._previews.get(preview.token) is not preview):
-                raise ValueError('This DOI preview is stale or belongs to another library. Look up the DOI again.')
+                raise ValueError('This metadata preview is stale or belongs to another library. Look up the identifier again.')
         return preview
 
     def lookup(self, workspace, doi, *, online_allowed=False, providers=('crossref',),
                unpaywall_email='', cancelled=lambda: False):
+        return self._lookup(workspace, doi, identifier_kind='doi', online_allowed=online_allowed,
+            providers=providers, unpaywall_email=unpaywall_email, cancelled=cancelled)
+
+    def lookup_isbn(self, workspace, isbn, *, online_allowed=False, cancelled=lambda: False):
+        return self._lookup(workspace, isbn, identifier_kind='isbn', online_allowed=online_allowed,
+            providers=('openlibrary',), cancelled=cancelled)
+
+    def _lookup(self, workspace, identifier, *, identifier_kind, online_allowed=False,
+                providers=('crossref',), unpaywall_email='', cancelled=lambda: False):
         self._scope(workspace, cancelled)
         if online_allowed is not True:
-            raise PermissionError('Online DOI lookup is disabled. Approve this request explicitly.')
-        doi = normalize_doi(doi)
-        if not doi:
-            raise ValueError('Enter a DOI to look up.')
-        if (not isinstance(providers, (tuple, list)) or not providers or len(providers) > 3
-                or len(set(providers)) != len(providers)
-                or any(provider not in PROVIDER_HOSTS for provider in providers)):
-            raise ValueError('Select Crossref, Europe PMC, or Unpaywall once each.')
+            raise PermissionError('Online metadata lookup is disabled. Approve this request explicitly.')
+        identifier = (normalize_doi if identifier_kind == 'doi' else normalize_isbn)(identifier)
+        if not identifier:
+            raise ValueError('Enter a valid DOI or ISBN to look up.')
+        allowed_providers = ('openlibrary',) if identifier_kind == 'isbn' else DOI_PROVIDERS
+        if (not isinstance(providers, (tuple, list)) or not providers or len(providers) > len(allowed_providers)
+                or any(not isinstance(provider, str) or provider not in allowed_providers for provider in providers)
+                or len(set(providers)) != len(providers)):
+            raise ValueError('Select each supported metadata provider at most once for this identifier type.')
         providers = tuple(providers)
         config = provider_api.ProviderConfig(unpaywall_email=unpaywall_email)
         if not isinstance(unpaywall_email, str):
             raise ValueError('Unpaywall requires a valid contact email.')
-        key = (workspace, doi, providers, sha256(unpaywall_email.encode('utf-8')).hexdigest())
+        key = (workspace, identifier_kind, identifier, providers, sha256(unpaywall_email.encode('utf-8')).hexdigest())
         if not self._lookup_lock.acquire(blocking=False):
-            raise ValueError('A DOI lookup is already running. Cancel it or wait for it to finish.')
+            raise ValueError('A metadata lookup is already running. Cancel it or wait for it to finish.')
         try:
             with self._lock:
                 cached = self._cache.get(key)
@@ -196,8 +208,12 @@ class AcquisitionService:
                 for provider in providers:
                     self._scope(workspace, cancelled)
                     try:
-                        record = provider_api.lookup_doi(provider, doi, transport=transport,
-                            consent=True, config=config, cancelled=cancelled)
+                        if identifier_kind == 'isbn':
+                            record = provider_api.lookup_isbn(identifier, transport=transport,
+                                consent=True, cancelled=cancelled)
+                        else:
+                            record = provider_api.lookup_doi(provider, identifier, transport=transport,
+                                consent=True, config=config, cancelled=cancelled)
                     except (InterruptedError, TimeoutError):
                         raise
                     except (ValueError, OSError):
@@ -208,8 +224,8 @@ class AcquisitionService:
                     records.append(record)
                     warnings.extend(record.warnings)
                 if not records:
-                    raise ValueError('No selected provider returned valid metadata for this exact DOI. '
-                                     'Check the DOI, connection, and Unpaywall contact email, or try another provider.')
+                    raise ValueError('No selected provider returned valid metadata for this exact identifier. '
+                                     'Check the DOI or ISBN, connection, and any required contact email.')
                 # Prefer Crossref for bibliographic metadata but never splice
                 # mismatched fields into a fictitious combined publication.
                 metadata = next((r for r in records if r.provider == 'crossref'), records[0])
@@ -224,8 +240,9 @@ class AcquisitionService:
                 if len({r.title for r in records if r.title}) > 1:
                     warnings.append('Providers returned different titles. Review the edition and author list before using metadata.')
                 warnings.append('Online metadata and access statements are provider claims; they do not verify source text or citation page numbers.')
-                preview = AcquisitionPreview(uuid4().hex, workspace, doi, metadata,
-                    tuple(records), tuple(sources), tuple(dict.fromkeys(warnings)), _utc())
+                preview = AcquisitionPreview(uuid4().hex, workspace, identifier if identifier_kind == 'doi' else '',
+                    metadata, tuple(records), tuple(sources), tuple(dict.fromkeys(warnings)), _utc(),
+                    identifier_kind=identifier_kind, identifier=identifier)
                 self._scope(workspace, cancelled)
                 with self._lock:
                     self._cache[key] = (self.clock(), preview)
@@ -244,6 +261,9 @@ class AcquisitionService:
     @staticmethod
     def _provenance(preview):
         return {'schema': 'research-library-acquisition-v1', 'doi': preview.doi,
+            'identifier_kind': preview.identifier_kind,
+            'identifier': preview.identifier or preview.doi,
+            'isbn': list(preview.metadata.isbn),
             'retrieved_utc': preview.fetched_utc,
             'metadata_provider': preview.metadata.provider,
             'metadata_source_url': preview.metadata.source_url,
@@ -266,7 +286,8 @@ class AcquisitionService:
         return dict(title=meta.title, authors=meta.authors, item_type=meta.item_type,
             year=meta.year, container_title=meta.container_title, publisher=meta.publisher,
             volume=meta.volume, issue=meta.issue, pages=meta.pages, doi=preview.doi,
-            isbn=isbn, url='https://doi.org/' + quote(preview.doi, safe='/'), abstract=meta.abstract,
+            isbn=isbn, url=('https://doi.org/' + quote(preview.doi, safe='/')
+                            if preview.doi else meta.source_url), abstract=meta.abstract,
             notes='Acquisition provenance (metadata only):\n' + json.dumps(
                 AcquisitionService._provenance(preview), ensure_ascii=False, sort_keys=True))
 
@@ -275,10 +296,28 @@ class AcquisitionService:
         with self.app.write(workspace) as db:
             _cancel(cancelled)
             library = AcademicLibrary(db, workspace)
-            rows = tuple(db.execute('SELECT id FROM academic_reference '
-                'WHERE workspace=? AND doi=? AND archived=0 ORDER BY id LIMIT 2', (workspace, preview.doi)))
+            if preview.doi:
+                rows = tuple(db.execute('SELECT id FROM academic_reference '
+                    'WHERE workspace=? AND doi=? AND archived=0 ORDER BY id LIMIT 2', (workspace, preview.doi)))
+            else:
+                isbn = normalize_isbn(preview.identifier)
+                if preview.identifier_kind != 'isbn' or not isbn:
+                    raise ValueError('The metadata preview has no valid bibliographic identifier.')
+                # Reuse the catalogue's ISBN equivalence, but never merge or
+                # overwrite existing references. An ISBN-10 and its 978 form
+                # identify the same edition; a 979 ISBN has no ISBN-10 form.
+                canonical = _isbn_key(isbn)
+                variants = {isbn, canonical}
+                if canonical.startswith('978'):
+                    prefix = canonical[3:12]
+                    check = (-sum((10 - i) * int(c) for i, c in enumerate(prefix))) % 11
+                    variants.add(prefix + ('X' if check == 10 else str(check)))
+                marks = ','.join('?' for _ in variants)
+                rows = tuple(db.execute('SELECT id FROM academic_reference '
+                    f'WHERE workspace=? AND isbn IN ({marks}) AND archived=0 ORDER BY id LIMIT 2',
+                    (workspace, *sorted(variants))))
             if len(rows) > 1:
-                raise ValueError('More than one reference already has this DOI. Resolve its duplicates in the academic library first.')
+                raise ValueError('More than one reference already has this identifier. Resolve its duplicates in the academic library first.')
             if rows:
                 return library.get(rows[0][0])
             reference = library.create(**self._fields(preview))
@@ -290,7 +329,7 @@ class AcquisitionService:
         preview = self._checked(workspace, preview, cancelled)
         meta = preview.metadata
         if expected_metadata is None:
-            raise ValueError('Review the current book metadata before applying a DOI suggestion.')
+            raise ValueError('Review the current book metadata before applying a metadata suggestion.')
         # Preserve fields absent from the remote record. Publication page extent
         # is never applied as a source locator or printed page assertion.
         return self.app.update_metadata(workspace, edition_id, title=meta.title or expected_metadata.title,
@@ -307,7 +346,7 @@ class AcquisitionService:
         if online_allowed is not True or rights_confirmed is not True:
             raise PermissionError('Approve this separate document download and confirm you may obtain this source.')
         if type(source_index) is not int or not 0 <= source_index < len(preview.sources):
-            raise ValueError('Choose a source from this DOI preview.')
+            raise ValueError('Choose a source from this metadata preview.')
         source = preview.sources[source_index]
         if source.reported_open_access is not True or source.format.casefold() != 'pdf':
             raise ValueError('Automatic acquisition requires a provider-reported open-access PDF. Other links remain metadata only.')

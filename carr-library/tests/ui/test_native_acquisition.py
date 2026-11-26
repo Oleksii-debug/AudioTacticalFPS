@@ -32,6 +32,7 @@ class Control:
         self.options = kwargs
     def Bind(self, event, callback): self.bindings[event] = callback
     def SetName(self, name): self.name = name
+    def SetLabel(self, label): self.label = label
     def SetValue(self, value): self.value = value
     def GetValue(self): return self.value
     def SetSelection(self, index): self.index = index
@@ -42,6 +43,7 @@ class Control:
     def SetMaxLength(self, length): self.max_length = length
     def SetMinSize(self, value): self.min_size = value
     def SetSizer(self, value): self.sizer = value
+    def Layout(self): pass
     def SetEscapeId(self, value): self.escape_id = value
     def Add(self, *args): pass
     def AddPage(self, page, label): self.pages.append((page, label))
@@ -122,6 +124,19 @@ def preview_fixture(workspace='a', *, sources=True):
         fetched_utc='2026-11-26T12:00:00Z', cached=False)
 
 
+def isbn_preview_fixture(workspace='a'):
+    preview = preview_fixture(workspace, sources=False)
+    preview.token = 'immutable-isbn-preview-1'
+    preview.identifier_kind, preview.identifier = 'isbn', '9780306406157'
+    preview.doi = ''
+    preview.metadata.provider, preview.metadata.doi = 'openlibrary', ''
+    preview.metadata.item_type = 'book'
+    preview.metadata.isbn = (preview.identifier, '0306406152')
+    preview.metadata.locations = ()
+    preview.metadata.source_url = 'https://openlibrary.org/books/OL123M'
+    return preview
+
+
 class Library:
     def __init__(self, root):
         from carr_library.application import LibraryApp
@@ -158,6 +173,9 @@ class Library:
             raise InterruptedError('Cancelled by service.')
     def lookup_doi(self, workspace, doi, **kwargs):
         self._call('lookup', workspace, (doi,), kwargs)
+        return self.preview
+    def lookup_isbn(self, workspace, isbn, **kwargs):
+        self._call('lookup_isbn', workspace, (isbn,), kwargs)
         return self.preview
     def save_doi_reference(self, workspace, preview, **kwargs):
         self._call('save', workspace, (preview,), kwargs)
@@ -307,6 +325,119 @@ def test_email_is_not_sent_when_unpaywall_is_unselected(setup):
     assert form.lookup()
     frame.finish()
     assert library.calls[0][3]['unpaywall_email'] == ''
+
+
+def test_openalex_is_an_explicit_optional_doi_provider(setup):
+    form, frame, library = setup
+    assert form.identifier_kind.items == ['DOI', 'ISBN']
+    assert form.identifier_kind.GetSelection() == 0
+    assert not form.providers['openalex'].GetValue()
+    form.doi.SetValue('10.1234/reading')
+    form.online.SetValue(True)
+    form.providers['openalex'].SetValue(True)
+    assert form.lookup()
+    frame.finish()
+    assert library.calls[0][3]['providers'] == ('crossref', 'openalex')
+
+
+def select_isbn(setup):
+    form, frame, library = setup
+    form.identifier_kind.SetSelection(1)
+    form.on_identifier_kind_changed()
+    library.preview = isbn_preview_fixture()
+    form.doi.SetValue('978-0-306-40615-7')
+    return setup
+
+
+def test_switch_to_isbn_resets_preview_consent_and_disables_doi_options(setup):
+    form, frame, library = looked_up(setup)
+    form.rights.SetValue(True)
+    form.providers['unpaywall'].SetValue(True)
+    form.email.SetValue('private-contact@example.org')
+    form.identifier_kind.SetSelection(1)
+    form.on_identifier_kind_changed()
+    assert form.preview is None and form.doi.GetValue() == ''
+    assert not form.online.GetValue() and not form.rights.GetValue()
+    assert all(not control.enabled for control in form.providers.values())
+    assert not form.email.enabled and 'Open Library' in form.network_notice.label
+    assert form.doi.name == 'ISBN-10 or ISBN-13'
+    assert form.lookup_button.label == '&Look up ISBN'
+    assert form.metadata_preview.name == 'Complete ISBN metadata and provider provenance preview'
+    assert not form.save_button.enabled and library.calls == frame.jobs == []
+    form.identifier_kind.SetSelection(0)
+    form.on_identifier_kind_changed()
+    assert all(control.enabled for control in form.providers.values())
+    assert form.email.enabled and form.doi.name == 'DOI or DOI resolver link'
+    assert not form.online.GetValue()
+
+
+def test_isbn_lookup_requires_its_own_fresh_consent(setup):
+    form, frame, library = select_isbn(setup)
+    assert form.lookup() is False
+    assert 'Enable online access' in form.status.GetValue()
+    assert frame.jobs == library.calls == []
+
+
+def test_isbn_lookup_sends_only_isbn_and_displays_no_doi_or_download_claims(setup):
+    form, frame, library = select_isbn(setup)
+    form.providers['unpaywall'].SetValue(True)
+    form.email.SetValue('private-contact@example.org')
+    form.online.SetValue(True)
+    assert form.lookup()
+    assert library.calls == []
+    frame.finish()
+    kind, workspace, args, kwargs = library.calls[0]
+    assert (kind, workspace, args) == ('lookup_isbn', 'a', ('978-0-306-40615-7',))
+    assert set(kwargs) == {'online_allowed', 'cancelled'} and kwargs['online_allowed'] is True
+    text = form.metadata_preview.GetValue()
+    assert text.startswith('ISBN metadata proposal\nISBN: 9780306406157\n')
+    assert 'Provider: openlibrary' in text and '0306406152' in text
+    assert 'DOI:' not in text and 'private-contact' not in text
+    assert form.preview is library.preview and form.metadata_preview.focused
+    assert form.save_button.enabled and form.apply_button.enabled
+    assert not form.rights.enabled and not form.download_button.enabled
+
+
+def test_isbn_preview_can_save_and_apply_through_existing_local_services(module, setup):
+    form, frame, library = select_isbn(setup)
+    form.online.SetValue(True)
+    assert form.lookup()
+    frame.finish()
+    library.calls.clear()
+    form.online.SetValue(False)
+    form.on_online_changed()
+    assert form.save_reference()
+    frame.finish()
+    assert library.calls[0][0] == 'save' and library.calls[0][2][0] is library.preview
+    assert 'for ISBN 9780306406157' in form.status.GetValue()
+    assert form.apply_metadata()
+    confirmation = module.wx.dialogs[0]
+    assert 'Apply ISBN 9780306406157 metadata' in confirmation.args[1]
+    frame.finish()
+    assert library.calls[1][0] == 'apply' and library.calls[1][2][1] is library.preview
+    assert library.calls[1][3]['expected_metadata'] is library.metadata
+    assert 'ISBN metadata applied' in form.status.GetValue()
+
+
+def test_identifier_kind_switch_cancels_pending_old_lookup(setup):
+    form, frame, library = setup
+    form.doi.SetValue('10.1234/reading')
+    form.online.SetValue(True)
+    assert form.lookup()
+    form.identifier_kind.SetSelection(1)
+    form.on_identifier_kind_changed()
+    frame.finish()
+    assert form.preview is None and library.calls == [] and not form.pending
+    assert not form.online.GetValue() and not form.save_button.enabled
+
+
+def test_isbn_lookup_rejects_wrong_identifier_kind_result(setup):
+    form, frame, library = select_isbn(setup)
+    library.preview = preview_fixture()
+    form.online.SetValue(True)
+    assert form.lookup()
+    frame.finish()
+    assert form.preview is None and 'different identifier type' in form.status.GetValue()
 
 
 @pytest.mark.parametrize('timing', ['before_worker', 'during_worker', 'before_callback'])
@@ -824,13 +955,16 @@ def test_review_completed_lookup_rechecks_external_archive(module, tmp_path, arc
 
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Actual wx window probe requires Windows desktop')
-def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
+@pytest.mark.parametrize('identifier_kind', ['doi', 'isbn'])
+def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path, identifier_kind):
     """No network: native event dispatch plus real worker/CallAfter completion."""
     wx = pytest.importorskip('wx')
     ui = Path(carr_library.__file__).resolve().parent / 'ui'
     module = _load(ui / 'acquisition_dialog.py', 'carr_library.ui._acquisition_native_probe')
     app = wx.GetApp() or wx.App(False)
     library = Library(tmp_path)
+    if identifier_kind == 'isbn':
+        library.preview = isbn_preview_fixture()
     failures = []
 
     class NativeHost(wx.Frame):
@@ -868,9 +1002,12 @@ def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
                 return
             assert form.preview is library.preview
             assert 'Олена Коваль' in form.metadata_preview.GetValue()
-            assert form.metadata_preview.GetName() == 'Complete DOI metadata and provider provenance preview'
+            assert form.metadata_preview.GetName() == f'Complete {identifier_kind.upper()} metadata and provider provenance preview'
             assert wx.Window.FindFocus() is form.metadata_preview
             assert not form.rights.GetValue() and not form.download_button.IsEnabled()
+            if identifier_kind == 'isbn':
+                assert all(not control.IsEnabled() for control in form.providers.values())
+                assert not form.email.IsEnabled()
         except BaseException as exc:
             failures.append(exc)
         finally:
@@ -884,7 +1021,13 @@ def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
     def exercise():
         try:
             assert not form.online.GetValue() and library.calls == []
-            form.doi.SetValue('10.1234/reading')
+            if identifier_kind == 'isbn':
+                form.identifier_kind.SetSelection(1)
+                event = wx.CommandEvent(wx.EVT_CHOICE.typeId, form.identifier_kind.GetId())
+                event.SetEventObject(form.identifier_kind)
+                form.identifier_kind.GetEventHandler().ProcessEvent(event)
+                assert not form.online.GetValue()
+            form.doi.SetValue('9780306406157' if identifier_kind == 'isbn' else '10.1234/reading')
             form.online.SetValue(True)
             form.on_online_changed()
             event = wx.CommandEvent(wx.EVT_BUTTON.typeId, form.lookup_button.GetId())

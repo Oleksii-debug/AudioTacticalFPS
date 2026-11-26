@@ -179,6 +179,7 @@ jobs:
             'tests/e2e/test_catalog_tools.py',
             'tests/acquisition/test_providers.py',
             'tests/acquisition/test_acquisition_security.py',
+            'tests/acquisition/test_identifier_lookup_security.py',
             'tests/acquisition/test_acquisition_workflow.py',
             'tests/acquisition/test_acquisition_cli.py',
             'tests/ui/test_native_acquisition.py',
@@ -466,6 +467,7 @@ jobs:
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
                             'tests/acquisition/test_providers.py',
                             'tests/acquisition/test_acquisition_security.py',
+                            'tests/acquisition/test_identifier_lookup_security.py',
                             'tests/acquisition/test_acquisition_workflow.py',
                             'tests/acquisition/test_acquisition_cli.py',
                             'tests/ui/test_native_acquisition.py']
