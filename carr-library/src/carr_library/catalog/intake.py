@@ -6,6 +6,7 @@ import os
 import stat
 
 from ._filetype.archive import Exe, Pdf, Rtf, Zip
+from .office_archive import validate_office
 
 MAX_BYTES = 64 * 1024 * 1024
 
@@ -31,8 +32,13 @@ def classify(data, suffix):
     if not data:
         raise IntakeError("empty asset")
     head = data[:262]
-    if Exe().match(head) or Zip().match(head) or head.startswith(b"\x7fELF"):
-        raise IntakeError("executable or archive not accepted by this adapter")
+    if Exe().match(head) or head.startswith(b"\x7fELF"):
+        raise IntakeError("executable not accepted by this adapter")
+    if Zip().match(head):
+        try:
+            return validate_office(data, suffix.lower())
+        except ValueError as exc:
+            raise IntakeError(str(exc)) from exc
     if Pdf().match(head):
         mime = "application/pdf"
         if not head.removeprefix(b"\xef\xbb\xbf").startswith(b"%PDF-"):
