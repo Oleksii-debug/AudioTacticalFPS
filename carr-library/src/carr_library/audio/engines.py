@@ -26,6 +26,7 @@ import wave
 
 from .model_manifest import (LocalModelManifest, ModelManifestError, digest_file,
                              local_path, offline_environment, read_json)
+from .dordiai_discovery import DISCOVERY_PROTOCOL, REQUIRED_HELPERS, parse_discovery
 
 
 ADAPTER_VERSION = 'local-speech-1'
@@ -501,37 +502,45 @@ class DordiaiVoicesEngine:
         self.binary = _binary(self.manifest.asset(settings.get('python', 'python/python.exe')))
         self.worker = self.manifest.asset(settings.get('worker', 'nvda_worker.py'))
         self.catalog_path = self.manifest.asset(settings.get('catalog', 'models/voices/catalog.json'))
-        self.timeout = timeout
+        self.runtime_root = self.worker.parent
+        self.models = local_path(self.runtime_root / 'models')
+        self.references = local_path(self.models / 'voices')
+        if self.catalog_path != self.references / 'catalog.json':
+            raise ModelManifestError('The selected catalogue does not belong to this worker model directory.')
+        for filename in REQUIRED_HELPERS:
+            relative = (self.runtime_root / filename).relative_to(self.manifest.root).as_posix()
+            self.manifest.asset(relative)
+        self.timeout = _number(timeout, .01, 86400, 'Speech timeout')
         self._profiles = {}
+        self._voice_languages = {}
         self._languages = ()
 
-    def voices(self):
-        self.manifest.verify(require_complete=True)
-        catalog = read_json(self.catalog_path)
-        profiles = catalog.get('voices') if isinstance(catalog, dict) else None
-        languages = catalog.get('languages') if isinstance(catalog, dict) else None
-        if not isinstance(profiles, dict) or not isinstance(languages, dict) or len(profiles) > 4096:
-            raise ModelManifestError('Invalid dordiai-voices catalogue.')
-        language_codes = []
-        for code in languages:
-            if isinstance(code, str) and re.fullmatch('[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*', code):
-                language_codes.append(code)
+    def voices(self, *, cancelled=lambda: False):
+        self.manifest.verify(cancelled=cancelled, require_complete=True)
+        bridge = Path(__file__).with_name('dordiai_discovery.py')
+        command = [self.binary, '-I', '-B', '-u', bridge,
+                   self.runtime_root, self.models, self.references]
+        raw = _run(command, cancelled=cancelled, timeout=min(self.timeout, 30),
+                   env=offline_environment(), cwd=self.runtime_root)
+        try:
+            discovered = parse_discovery(raw)
+        except (ValueError, UnicodeError) as exc:
+            raise ModelManifestError('Invalid installed dordiai-voices discovery response.') from exc
+        if not discovered:
+            raise EngineUnavailable('No installed dordiai-voices profile has compatible language resources. '
+                                    'Install and verify the required engine and voice packs first.')
         rows = []
-        records = {}
-        for key, info in profiles.items():
-            if not isinstance(key, str) or not re.fullmatch('[A-Za-z0-9_-]{1,128}', key) or not isinstance(info, dict):
-                raise ModelManifestError('Invalid dordiai-voices profile.')
-            if info.get('disabled') is True or info.get('enabled') is False:
-                continue
-            name = info.get('name')
-            if not isinstance(name, str) or not name or len(name) > 256:
-                raise ModelManifestError('Invalid dordiai-voices profile label.')
+        records, voice_languages = {}, {}
+        for key, name, language_codes in discovered:
             identity = self.id + ':' + key
             records[identity] = key
-            rows.append(Voice(identity, name, tuple(language_codes), self.id,
+            voice_languages[identity] = language_codes
+            rows.append(Voice(identity, name, language_codes, self.id,
                               controls=('rate', 'pitch', 'volume'), license=self.manifest.license,
                               revision=self.manifest.revision))
-        self._profiles, self._languages = records, tuple(language_codes)
+        self.manifest.verify(cancelled=cancelled, require_complete=True)
+        self._profiles, self._voice_languages = records, voice_languages
+        self._languages = tuple(dict.fromkeys(code for row in rows for code in row.languages))
         return tuple(rows)
 
     def cache_identity(self, voice):
@@ -541,24 +550,24 @@ class DordiaiVoicesEngine:
             raise EngineUnavailable('Choose an enabled profile from the installed dordiai-voices catalogue.')
         self.manifest.verify(require_complete=True)
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION, 'voice': voice,
-                'protocol': 'nvda-worker-jsonl-pcm24k-v1'}
+                'protocol': 'nvda-worker-jsonl-pcm24k-v1', 'discovery': DISCOVERY_PROTOCOL}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
         self.cache_identity(voice)
         code = language.lower().replace('_', '-').split('-')[0]
-        if code not in self._languages:
-            raise EngineUnavailable('This language is absent from the installed dordiai-voices catalogue.')
+        if code not in self._voice_languages[voice]:
+            raise EngineUnavailable('This dordiai-voices profile has no compatible installed resources '
+                                    'for the selected language.')
         self.manifest.verify(cancelled=cancelled, require_complete=True)
         target = _output(output)
-        root = self.manifest.root
         # Arguments are the versioned installed worker's fixed interface, not a
         # command supplied by a script, book, scene or model response.
         command = [str(self.binary), '-I', '-B', '-u', '-c', _DORDIAI_OFFLINE_BOOTSTRAP,
-                   str(self.worker), str(root / 'models'),
-                   '--reference-model', str(root / 'models/Holos'),
-                   '--references', str(root / 'models/voices'), '--reference-engine', 'holos',
+                   str(self.worker), str(self.models),
+                   '--reference-model', str(self.models / 'Holos'),
+                   '--references', str(self.references), '--reference-engine', 'holos',
                    '--preload-language', 'mixed']
         request = {'mode': 'reference', 'profile': self._profiles[voice], 'language': code,
                    'text': text, 'speed': 2 ** (rate / 10), 'stream': True,
@@ -588,7 +597,8 @@ class DordiaiVoicesEngine:
         options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
         with tempfile.TemporaryFile() as errors:
             process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
-                                       cwd=self.manifest.root, env=offline_environment(), shell=False, **options)
+                                       cwd=getattr(self, 'runtime_root', self.manifest.root),
+                                       env=offline_environment(), shell=False, **options)
             def read_replies():
                 try:
                     while not finished.is_set():
