@@ -21,6 +21,7 @@ from .ingest.retained_assets import RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .storage.revisions import Storage, _expected_signature, _schema_signature
+from .data_paths import guard_data_directory
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -33,7 +34,7 @@ MAX_ASSET_BYTES = 8 * 1024**3
 
 
 def _destination(value, source):
-    path = Path(value).absolute()
+    path = guard_data_directory(value, purpose='backup or restored library')
     _plain(path.parent, directory=True)
     if os.path.lexists(path):
         raise FileExistsError(path)

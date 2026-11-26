@@ -34,6 +34,7 @@ from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
 from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
+from .data_paths import guard_data_directory
 
 
 @dataclass(frozen=True)
@@ -144,7 +145,7 @@ class _CatalogPublisher:
 class LibraryApp:
     """One private data directory, persistent workspaces and fresh scoped services."""
     def __init__(self, data_dir, *, semantic_ranker=None):
-        self.root = Path(data_dir).absolute()
+        self.root = guard_data_directory(data_dir)
         if (self.root / '.restore-incomplete').exists():
             raise ValueError('This restore is incomplete. Restore again to a new directory.')
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)

@@ -1,5 +1,6 @@
 @echo off
 setlocal
+set "CARR_PROGRAM_DIR=%~dp0"
 if exist "%~dp0ocr\ocr-manifest.json" set "CARR_OCR_DIR=%~dp0ocr"
 if not exist "%~dp0.venv\Scripts\python.exe" (
   echo Run Install.cmd in this folder first.

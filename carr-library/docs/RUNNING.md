@@ -29,10 +29,17 @@ candidate until you compare and explicitly approve it against the source page;
 OCR does not establish printed page numbers. No language download is needed.
 
 The default data location is `%LOCALAPPDATA%\Universal Research Library`.
-Program files and research data are separate. To uninstall this portable
-package, close the application and delete only its extracted program folder.
-Your research data remains in its data directory. Back up that directory before
-moving or removing it. The installer refuses to replace an existing environment.
+The portable launcher identifies its program folder. The application rejects
+library data and backup/restore destinations inside that folder, including paths
+that resolve there through an alias or junction. Existing saved library locations
+use the same check. Choose a separate location for your research and backups.
+
+To uninstall, close the application and check your selected library, backup and
+export locations first. Earlier builds may have allowed research or backups
+inside the extracted program folder. Copy any such personal files to a separate
+location and verify the copy before deleting that program folder. Never delete
+a folder containing your only research copy. The application does not silently
+move existing data. The installer refuses to replace an existing environment.
 
 ## Installation from a source checkout
 

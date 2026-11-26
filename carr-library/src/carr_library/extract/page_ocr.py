@@ -267,6 +267,11 @@ def _native_visibility_warning(page, pdfium, max_pixels):
                             raw.FPDF_TEXTRENDERMODE_FILL_CLIP, raw.FPDF_TEXTRENDERMODE_STROKE_CLIP,
                             raw.FPDF_TEXTRENDERMODE_FILL_STROKE_CLIP):
                 return 'native_text_nonpainting_or_unknown'
+            # An internal clipping path can hide only part of a text object
+            # while leaving its bounds inside the page and its prefix visible.
+            clip = raw.FPDFPageObj_GetClipPath(obj.raw)
+            if clip and raw.FPDFClipPath_CountPaths(clip) != -1:
+                return 'native_clip_path_unverified'
             # Form object transforms need separate coordinate verification.
             if obj.level:
                 return 'native_form_coordinates_unverified'

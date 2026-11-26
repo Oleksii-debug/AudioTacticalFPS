@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from uuid import uuid4
 
+from .data_paths import guard_data_directory
+
 
 def preference_file():
     from platformdirs import user_config_path
@@ -25,11 +27,11 @@ def selected_directory(settings=None):
     directory = Path(directory)
     if not directory.is_absolute():
         raise ValueError('The saved library location must be absolute.')
-    return directory
+    return guard_data_directory(directory)
 
 
 def remember_directory(directory, settings=None):
-    directory = Path(directory).resolve(strict=True)
+    directory = guard_data_directory(directory).resolve(strict=True)
     if not (directory / 'library.sqlite').is_file() or (directory / '.restore-incomplete').exists():
         raise ValueError('Open a complete library before remembering its location.')
     path = Path(settings) if settings is not None else preference_file()
