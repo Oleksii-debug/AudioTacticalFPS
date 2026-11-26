@@ -129,6 +129,13 @@ python packaging/build_windows_bundle.py --wheel dist/universal_research_library
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.
+For a release build, also pass `--source-commit` with the full commit SHA from
+the local Git repository. The builder checks the application wheel's package
+files against that commit and checks its complete wheel hash inventory before
+recording the source identity. A stale wheel with the same version is rejected.
+Git is required on the build host for this check, not on the user's computer.
+The project's `.gitattributes` preserves those committed bytes on Windows too;
+build from a fresh checkout if an older checkout converted line endings.
 The exact Windows CPython 3.11.18 archive URL and publisher SHA256 are recorded
 in `packaging/windows-python.json`, sourced from uv 0.13.9's official download
 metadata. The bundler checks that SHA256 before unpacking with Python's standard

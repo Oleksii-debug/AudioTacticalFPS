@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -96,6 +97,15 @@ def wheel_metadata(path):
     return name, version, parsed
 
 
+def verify_application_source(wheel, source_commit):
+    """Bind a release source claim to the wheel's actual committed payload."""
+    spec = importlib.util.spec_from_file_location(
+        "carr_source_wheel_verifier", HERE / "source_wheel.py")
+    verifier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    return verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
                  ocr_source_archive=None):
@@ -139,8 +149,14 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     with ZipFile(wheel) as archive:
         if "carr_library/__main__.py" not in archive.namelist():
             raise ValueError("application wheel has no production entrypoint")
+    source_evidence = (verify_application_source(wheel, source_commit)
+                       if source_commit is not None else None)
     selected[name] = (wheel, version, metadata)
-    inventory[wheel.name] = sha256(wheel)
+    # Retain the digest of the exact bytes inspected by the source verifier.
+    # A concurrent build can replace this fixed-name wheel before copying it;
+    # the existing copy-time comparison must reject that replacement.
+    inventory[wheel.name] = (source_evidence["wheel_sha256"]
+                            if source_evidence is not None else sha256(wheel))
     if python_archive is not None:
         python_archive = regular(Path(python_archive))
         runtime = json.loads((HERE / "windows-python.json").read_text(encoding="utf-8"))
@@ -296,7 +312,8 @@ def main():
     parser.add_argument("--model-dir", type=Path, help="Optional approved MiniLM model directory")
     parser.add_argument("--model-manifest", type=Path, help="Approved MiniLM manifest")
     parser.add_argument("--sbom", type=Path, help="uv-generated runtime CycloneDX 1.5 inventory")
-    parser.add_argument("--source-commit", help="Full reviewed Git SHA for the packaged source snapshot")
+    parser.add_argument("--source-commit",
+                        help="Full local Git commit; verify the application wheel against its committed package files")
     parser.add_argument("--ocr-dir", type=Path,
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,

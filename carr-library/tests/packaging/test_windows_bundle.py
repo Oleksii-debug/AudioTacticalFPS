@@ -4,7 +4,9 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
+from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
 
 
@@ -90,6 +92,31 @@ class WindowsBundleTests(unittest.TestCase):
         self.app = wheel(self.root, "universal_research_library")
         with self.assertRaisesRegex(ValueError, "production entrypoint"):
             self.build()
+
+    def test_source_commit_does_not_certify_an_unrelated_application_wheel(self):
+        commit = subprocess.check_output(['git', '-C', str(ROOT.parent), 'rev-parse', 'HEAD'],
+                                         text=True).strip()
+        # This wheel is intentionally synthetic, despite having the right name
+        # and an entrypoint. It must not be labelled as the real source commit.
+        with self.assertRaises(ValueError):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 source_commit=commit)
+        self.assertFalse(self.output.exists())
+
+    def test_application_replaced_after_source_verification_is_rejected(self):
+        verified_digest = builder.sha256(self.app)
+
+        def replace_after_verification(path, source_commit):
+            with ZipFile(path, "a") as archive:
+                archive.writestr("carr_library/later_build.py", "changed = True\n")
+            return {"wheel_sha256": verified_digest}
+
+        with patch.object(builder, "verify_application_source",
+                          side_effect=replace_after_verification):
+            with self.assertRaisesRegex(ValueError, "changed during bundle assembly"):
+                builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                     source_commit="a" * 40)
+        self.assertFalse(self.output.exists())
 
     def test_existing_installation_preserved(self):
         self.output.mkdir()
