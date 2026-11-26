@@ -4,7 +4,7 @@ FastEmbed 0.9.1 source: qdrant/fastembed@2099c36036115e689ea9b3b5bf1aafa79dc0119
 Model: Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q
 revision faf4aa4225822f3bc6376869cb1164e8e3feedd0 (Apache-2.0).
 Never downloads. CARR07_MODEL_DIR and CARR07_MODEL_MANIFEST must point to an
-independently verified offline bundle and its SHA256 JSON map. Synthetic data only.
+independently verified offline bundle and its PR46 sealed manifest. Synthetic data only.
 """
 import hashlib
 import json
@@ -16,14 +16,25 @@ from time import perf_counter
 import pytest
 
 MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+# Match CARR-11 PR46 model_bundle.seal output; no separate download path.
+REPO = "Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"
+REVISION = "faf4aa4225822f3bc6376869cb1164e8e3feedd0"
+LICENSE = "Apache-2.0"
 PINNED = {
     "model_optimized.onnx": "634d0f66c29dc934c8fa72b8a4fe91dd4d420a22f1d82a241058d4316e659a99",
     "tokenizer.json": "fa685fc160bbdbab64058d4fc91b60e62d207e8dc60b9af5c002c5ab946ded00",
+    "unigram.json": "da145b5e7700ae40f16691ec32a0b1fdc1ee3298db22a31ea55f57a966c4a65d",
 }
-REQUIRED = set(PINNED) | {"config.json", "tokenizer_config.json", "special_tokens_map.json"}
+REQUIRED = set(PINNED) | {"config.json", "tokenizer_config.json", "special_tokens_map.json",
+                          ".gitattributes", "README.md", "ort_config.json"}
 
 
 def verify_bundle(directory, manifest, pinned=PINNED):
+    if (not isinstance(manifest, dict) or set(manifest) != {"repo", "revision", "license", "hashes"}
+            or manifest["repo"] != REPO or manifest["revision"] != REVISION
+            or manifest["license"] != LICENSE or not isinstance(manifest["hashes"], dict)):
+        raise ValueError("invalid sealed model manifest identity")
+    manifest = manifest["hashes"]
     directory = Path(directory)
     if directory.is_symlink() or not directory.is_dir():
         raise ValueError("expected local model directory")
@@ -66,7 +77,7 @@ def synthetic_bundle(tmp_path):
         payload = name.encode()
         (tmp_path / name).write_bytes(payload)
         manifest[name] = hashlib.sha256(payload).hexdigest()
-    return tmp_path, manifest
+    return tmp_path, {"repo": REPO, "revision": REVISION, "license": LICENSE, "hashes": manifest}
 
 
 def test_bundle_checks(synthetic_bundle):
@@ -91,6 +102,29 @@ def test_missing_asset_rejected(synthetic_bundle):
     (directory / "config.json").unlink()
     with pytest.raises(ValueError, match="missing"):
         verify_bundle(directory, manifest, pinned={})
+
+
+@pytest.mark.parametrize("field", ["repo", "revision", "license"])
+def test_wrong_manifest_identity(synthetic_bundle, field):
+    directory, manifest = synthetic_bundle
+    manifest[field] = "wrong"
+    with pytest.raises(ValueError, match="identity"):
+        verify_bundle(directory, manifest, pinned={})
+
+
+def test_legacy_flat_manifest_rejected(synthetic_bundle):
+    directory, manifest = synthetic_bundle
+    with pytest.raises(ValueError, match="identity"):
+        verify_bundle(directory, manifest["hashes"], pinned={})
+
+
+def test_unigram_pin_required(synthetic_bundle):
+    directory, manifest = synthetic_bundle
+    pins = {"unigram.json": manifest["hashes"]["unigram.json"]}
+    verify_bundle(directory, manifest, pinned=pins)
+    manifest["hashes"]["unigram.json"] = "0" * 64
+    with pytest.raises(ValueError, match="revision"):
+        verify_bundle(directory, manifest, pinned=pins)
 
 
 def test_rank_math_and_tie_break():
