@@ -503,10 +503,14 @@ class DesktopFrame(WorkspaceFrame):
         from .studio_dialog import install_studio_actions
         from .assistant_dialog import install_assistant_actions
         from .save_actions import install_save_actions
+        from .document_conversion import install_conversion_actions
+        from .keyboard_settings import install_keyboard_settings
         install_speech_actions(self)
         install_studio_actions(self)
         install_assistant_actions(self)
+        install_conversion_actions(self)
         install_save_actions(self)
+        install_keyboard_settings(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -667,6 +671,8 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        if getattr(self, 'keyboard_settings', None) is not None:
+            self.keyboard_settings.reload()
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:

@@ -64,6 +64,20 @@ def main():
                     shortcuts.append(label.split('\t', 1)[1].casefold())
         assert len(shortcuts) == len(set(shortcuts)), 'Global menu shortcut collision'
         result['checks'].append('native menu integration and unique global shortcuts')
+        from carr_library.academic_integration import render_citations, export_citation_docx, read_citation_docx
+        bibliography = render_citations([{'id': 'synthetic-reference', 'type': 'book',
+            'title': 'The Synthetic Archive', 'author': [{'family': 'Example', 'given': 'Jane'}],
+            'issued': {'date-parts': [[2026]]}, 'publisher': 'Fixture Press'}], style='apa')
+        exported = export_citation_docx(bibliography, root / 'citations.docx')
+        assert exported.is_file() and 'Synthetic Archive' in bibliography.bibliography[0].text
+        assert read_citation_docx(exported)
+        result['checks'].append('actual installed CSL processor and native DOCX provenance')
+        from carr_library.conversion import ConversionService
+        source = root / 'synthetic-reading.txt'
+        source.write_text('Synthetic conversion source. Український текст.', encoding='utf-8')
+        converted = ConversionService(root / 'converted', input_roots=(root,)).extract(source, 'reading.txt')
+        assert 'Український' in converted.path.read_text(encoding='utf-8')
+        result['checks'].append('actual isolated document conversion and atomic Windows publication')
 
         def inspect_dialog(open_dialog, required_names, close_id=None):
             inspected = []

@@ -151,7 +151,9 @@ class Archive:
             target = rel.get('Target', '')
             if not target or '\\' in target or ':' in target or '%' in target or '?' in target or '#' in target:
                 raise ConversionError('Unsafe document relationship target.')
-            normalized = posixpath.normpath(posixpath.join(base, target))
+            if target.startswith('//'):
+                raise ConversionError('Network document relationships are not supported.')
+            normalized = posixpath.normpath(target.lstrip('/') if target.startswith('/') else posixpath.join(base, target))
             if normalized.startswith('/') or normalized == '..' or normalized.startswith('../'):
                 raise ConversionError('Document relationship escapes its archive.')
             result[identity] = normalized
@@ -347,6 +349,8 @@ def xlsx(data, output):
                 value = node.text or '' if node is not None else ''
                 if kind == 's':
                     try:
+                        if not value.isdecimal():
+                            raise ValueError('invalid shared string index')
                         value = shared[int(value)]
                     except (ValueError, IndexError):
                         raise ConversionError('Spreadsheet shared-string reference is invalid.') from None

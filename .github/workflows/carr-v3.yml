@@ -60,7 +60,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         run: |
-          python -m pytest -q tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

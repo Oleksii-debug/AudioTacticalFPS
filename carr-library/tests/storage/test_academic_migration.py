@@ -270,7 +270,10 @@ def test_process_exit_during_v4_migration(tmp_path, mode, committed):
     # the same source root as the parent even when pytest uses its own sys.path.
     env = os.environ.copy()
     source_root = str(Path(revisions.__file__).resolve().parents[2])
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, (source_root, env.get("PYTHONPATH"))))
+    # The exact source checkout also owns the bootstrap package used by the
+    # application imports in this test module; never fall back to an old wheel.
+    project_root = str(Path(source_root).parent)
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, (source_root, project_root, env.get("PYTHONPATH"))))
     result = subprocess.run(
         [sys.executable, str(Path(__file__).resolve()), str(path), str(int(committed))],
         env=env, capture_output=True, text=True, timeout=30,
