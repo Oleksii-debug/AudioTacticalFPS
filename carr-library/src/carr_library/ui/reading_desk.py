@@ -211,6 +211,10 @@ class ReadingDialog:
                      wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('B'))
         self._button(bookmarks, 'Reader keyboard guide', self.help, wx.ACCEL_NORMAL, wx.WXK_F1)
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
+        audio = wx.WrapSizer(wx.HORIZONTAL)
+        self._button(audio, 'Prepare narration of this source location...', self.prepare_narration,
+                     wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('N'))
+        layout.Add(audio, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Reading operation status')
         self.status.SetMinSize((-1, 65))
@@ -335,6 +339,21 @@ class ReadingDialog:
             self.location.SetInsertionPoint(0)
             self.location.SetFocus()
         self._run('Checking current source location', self.controller.where, show)
+
+    def prepare_narration(self,event=None):
+        from .audio_studio import prepare_reading_studio,StudioDialog
+        def prepare():
+            page=self.controller.where()
+            studio=prepare_reading_studio(self.controller.desk.library.root,page)
+            return page,studio
+        def opened(value):
+            page,studio=value
+            self.controller.check()
+            StudioDialog(self.dialog,studio,script=page.raw_text,
+                title=page.title+' — '+page.locator.display()).show()
+            self.controller.check()
+            self.text.SetFocus()
+        self._run('Preparing a separate narration copy',prepare,opened)
 
     def add_bookmark(self, event=None):
         if self.busy:

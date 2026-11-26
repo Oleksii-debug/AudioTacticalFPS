@@ -27,6 +27,9 @@ SORTS = ('title', 'year', 'priority', 'updated')
 MAX_IMPORT_BYTES = 8 * 1024 * 1024
 MAX_IMPORT_RECORDS = 2000
 MAX_REFERENCES = 100000
+MAX_REFERENCE_BYTES = 32 * 1024 * 1024
+MAX_DUPLICATE_KEY_BYTES = 16 * 1024 * 1024
+MAX_DUPLICATE_PREVIEW_SLOTS = 100_000
 _BIDI = frozenset('\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069')
 _STAMP = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -415,7 +418,7 @@ class AcademicLibrary:
         return tuple(_row_reference(row) for row in rows)
 
     def _all(self, *, include_archived=False):
-        self._scope()
+        self._preflight(_COLUMNS, MAX_REFERENCE_BYTES, include_archived=include_archived)
         rows = self.db.execute(f'SELECT {_SELECT} FROM academic_reference WHERE workspace=?'
             + ('' if include_archived else ' AND archived=0') + ' ORDER BY id LIMIT ?',
             (self.workspace, MAX_REFERENCES + 1))
@@ -424,11 +427,53 @@ class AcademicLibrary:
             raise ValueError('This operation supports at most 100,000 references per library.')
         return result
 
-    def duplicates(self):
+    def _preflight(self, columns, byte_limit, *, include_archived=False):
+        """Bound selected fields in SQLite before materializing Python objects.
+
+        Both reads use the caller's authorized snapshot. The columns are fixed
+        internal projections, never user-supplied identifiers. Notes, abstracts
+        and search caches are deliberately absent from duplicate-key reads.
+        """
+        self._scope()
+        size = '+'.join(f'COALESCE(length(CAST({name} AS BLOB)),0)' for name in columns)
+        count, total = self.db.execute(
+            f'SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM (SELECT {size} AS bytes '
+            'FROM academic_reference WHERE workspace=?'
+            + ('' if include_archived else ' AND archived=0')
+            + ' ORDER BY id LIMIT ?)', (self.workspace, MAX_REFERENCES + 1)).fetchone()
+        if count > MAX_REFERENCES:
+            raise ValueError('This operation supports at most 100,000 references per library.')
+        if total > byte_limit:
+            raise ValueError('Reference metadata exceeds the operation memory budget. '
+                             'Choose a smaller reference selection or library.')
+
+    def _duplicate_index(self):
+        columns = ('id', 'title', 'authors', 'year', 'item_type', 'doi', 'isbn')
+        self._preflight(columns, MAX_DUPLICATE_KEY_BYTES)
         groups = defaultdict(list)
-        for row in self._all():
-            for key in _duplicate_keys(_metadata(row)):
-                groups[key].append(row.id)
+        rows = self.db.execute('SELECT ' + ','.join(columns)
+            + ' FROM academic_reference WHERE workspace=? AND archived=0 ORDER BY id',
+            (self.workspace,))
+        for row in rows:
+            identity = _identity(row[0])
+            values = dict(zip(columns[1:], row[1:]))
+            try:
+                authors = json.loads(values['authors'])
+            except (TypeError, ValueError, RecursionError) as exc:
+                raise ValueError('Invalid stored authors.') from exc
+            if type(authors) is not list or _json(authors) != values['authors']:
+                raise ValueError('Invalid stored authors.')
+            values['authors'] = tuple(authors)
+            values = {**_DEFAULTS, **values}
+            checked = _validate(values)
+            if checked != values:
+                raise ValueError('Academic reference duplicate metadata has changed.')
+            for key in _duplicate_keys(checked):
+                groups[key].append(identity)
+        return groups
+
+    def duplicates(self):
+        groups = self._duplicate_index()
         return tuple(DuplicateGroup(reason, tuple(identities), exact)
             for (reason, _, exact), identities in groups.items() if len(identities) > 1)
 
@@ -455,17 +500,22 @@ class AcademicLibrary:
     def import_preview(self, data, format='ris'):
         self._scope()
         parsed, general = _parse_import(data, format)
-        existing = defaultdict(list)
-        for reference in self._all():
-            for key in _duplicate_keys(_metadata(reference)):
-                existing[key].append(reference.id)
+        existing = self._duplicate_index()
         batch = defaultdict(list)
         for index, (values, _) in enumerate(parsed):
             for key in _duplicate_keys(values):
                 batch[key].append(index)
         entries = []
+        remaining = MAX_DUPLICATE_PREVIEW_SLOTS
         for index, (values, warnings) in enumerate(parsed):
             keys = _duplicate_keys(values)
+            # Count before allocating sets/tuples: a small import file can
+            # otherwise multiply an existing duplicate group into GB of slots.
+            cost = sum(len(existing[key]) + len(batch[key]) for key in keys)
+            if cost > remaining:
+                raise ValueError('Too many duplicate matches to preview safely. '
+                                 'Refine the reference batch or library.')
+            remaining -= cost
             ids = tuple(sorted({identity for key in keys for identity in existing[key]}))
             indices = tuple(sorted({number for key in keys for number in batch[key] if number != index}))
             entries.append(ImportEntry(index, MappingProxyType(values), tuple(warnings), ids, indices))
@@ -488,15 +538,19 @@ class AcademicLibrary:
             if not isinstance(entry, ImportEntry) or entry.index != index:
                 raise ValueError('The import preview has changed.')
             entries.append((index, _validate(dict(entry.fields))))
-        existing = defaultdict(list)
-        for row in self._all():
-            for key in _duplicate_keys(_metadata(row)):
-                existing[key].append(row.id)
+        existing = self._duplicate_index()
         imported, skipped, duplicates = [], [], set()
+        remaining = MAX_DUPLICATE_PREVIEW_SLOTS
         self.db.execute('SAVEPOINT academic_import')
         try:
             for index, values in entries:
-                matches = {identity for key in _duplicate_keys(values) for identity in existing[key]}
+                keys = _duplicate_keys(values)
+                cost = sum(len(existing[key]) for key in keys)
+                if cost > remaining:
+                    raise ValueError('Too many duplicate matches to import safely. '
+                                     'Refine the reference batch or library.')
+                remaining -= cost
+                matches = {identity for key in keys for identity in existing[key]}
                 duplicates.update(matches)
                 if matches and skip_duplicates:
                     skipped.append(index)

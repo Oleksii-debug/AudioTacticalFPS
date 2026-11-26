@@ -63,6 +63,8 @@ Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/ca
 include-package-data = true
 packages = [
   "carr_library",
+  "carr_library.audio",
+  "carr_library.assistant",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",
@@ -88,7 +90,7 @@ carr_library = "src/carr_library"
 bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
-"*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+"*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.extract" = ["ocr-model-catalog.json"]
 
 [tool.pytest.ini_options]

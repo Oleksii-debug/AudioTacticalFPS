@@ -1,5 +1,8 @@
 """The desktop cancellation control covers the complete source search operation."""
 from threading import Event
+from contextlib import closing
+import sqlite3
+from time import monotonic
 
 import pytest
 
@@ -147,3 +150,81 @@ def test_unavailable_model_reports_fallback_even_without_results(research):
     assert app.search(workspace, 'unrelated botanical source', mode='semantic',
                       on_status=messages.append) == ()
     assert messages == ['Local model unavailable; keyword search used.']
+
+
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
+def test_search_busy_fails_promptly_and_preserves_previous_selection(research, mode):
+    app, workspace = research
+    old, = app.search(workspace, 'history')
+    previous = dict(app._selections)
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        assert writer.execute('PRAGMA journal_mode=DELETE').fetchone()[0] == 'delete'
+        writer.execute('BEGIN EXCLUSIVE')
+        try:
+            started = monotonic()
+            with pytest.raises((RuntimeError, TimeoutError), match='busy|timed out'):
+                app.search(workspace, 'railway', timeout=.05, mode=mode)
+            # A deliberately broad bound detects the old fixed five-second wait
+            # without asserting hard real-time behavior on a shared CI runner.
+            assert monotonic() - started < 1.0
+            assert app._selections == previous
+        finally:
+            writer.rollback()
+    assert app.copy(workspace, old.ref, old.revision, 'quote') == 'history'
+    assert app.search(workspace, 'archives', mode=mode)
+
+
+@pytest.mark.parametrize('journal', ['DELETE', 'WAL'])
+@pytest.mark.parametrize('stage', ['schema', 'authorization'])
+def test_cancellation_interrupts_snapshot_setup_before_publication(research, monkeypatch, journal, stage):
+    app, workspace = research
+    with closing(sqlite3.connect(app.database)) as db:
+        assert db.execute('PRAGMA journal_mode=' + journal).fetchone()[0] == journal.lower()
+    old, = app.search(workspace, 'history')
+    previous = dict(app._selections)
+    setup = Event()
+    finished = []
+    original = application._schema_signature if stage == 'schema' else app._authorize
+
+    def slow_setup(db, *args):
+        setup.set()
+        try:
+            db.execute('WITH RECURSIVE n(v) AS '
+                '(SELECT 1 UNION ALL SELECT v+1 FROM n WHERE v<20000) '
+                'SELECT sum(v) FROM n').fetchone()
+            finished.append(True)
+            return original(db, *args)
+        finally:
+            setup.clear()
+
+    owner, name = (application, '_schema_signature') if stage == 'schema' else (app, '_authorize')
+    monkeypatch.setattr(owner, name, slow_setup)
+    with pytest.raises(TimeoutError, match='cancelled or timed out'):
+        app.search(workspace, 'railway', cancelled=setup.is_set)
+    assert not finished and app._selections == previous
+    monkeypatch.setattr(owner, name, original)
+    assert app.copy(workspace, old.ref, old.revision, 'quote') == 'history'
+    # Ordinary reads retain their own policy and still roll back their snapshot.
+    with app.read(workspace) as db:
+        assert db.execute('PRAGMA busy_timeout').fetchone()[0] == 5000
+        assert db.in_transaction
+    assert app.search(workspace, 'archives')
+
+
+def test_federated_name_lookup_respects_budget_and_retains_completed_session(research):
+    from carr_library.search.federated import FederatedSearch
+    app, workspace = research
+    service = FederatedSearch(app)
+    completed = service.search((workspace,), 'history')
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        writer.execute('PRAGMA journal_mode=DELETE')
+        writer.execute('BEGIN EXCLUSIVE')
+        try:
+            started = monotonic()
+            with pytest.raises((RuntimeError, TimeoutError), match='busy|timed out'):
+                service.search((workspace,), 'railway', timeout=.05)
+            assert monotonic() - started < 1.0
+            assert service.current is completed
+        finally:
+            writer.rollback()
+    assert service.copy(completed.hits[0], 'quote') == 'history'

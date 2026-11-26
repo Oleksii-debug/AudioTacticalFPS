@@ -80,7 +80,7 @@ def main(argv=None):
                           help='Search explicitly selected libraries and print source excerpts as JSON')
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'advanced', 'thematic', 'semantic'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -90,17 +90,23 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    from .audio.cli import add_arguments as add_audio_arguments, requested as audio_requested
+    add_audio_arguments(parser)
     args = parser.parse_args(argv)
+    if audio_requested(args) and any((args.self_test, args.backup, args.restore, args.list_libraries, args.search is not None)):
+        parser.error('Choose one operation: audio, library search, self-test, backup, or restore.')
     if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
         parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None:
         parser.error('--workspace is only used with --search.')
-    native_handle = None
+    native_handle = audio_handle = None
     try:
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        from .audio.runtime import activate_bundled_audio_runtime
+        audio_handle = activate_bundled_audio_runtime()
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
@@ -125,6 +131,9 @@ def main(argv=None):
             except (OSError, ValueError) as exc:
                 location_notice = f'Could not read the last library location: {exc}. Use Library, Open existing library folder.'
                 args.data_dir = default
+        if audio_requested(args):
+            from .audio.cli import execute as execute_audio
+            return execute_audio(args, args.data_dir)
         from .application import LibraryApp
         ranker = None
         model_notice = ''
@@ -175,6 +184,8 @@ def main(argv=None):
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
     finally:
+        if audio_handle is not None:
+            audio_handle.close()
         if native_handle is not None:
             native_handle.close()
 

@@ -1,7 +1,9 @@
 """Complete local research-library backups using the canonical SQLite snapshot.
 
 Backups include all workspaces, saved research and registered original files.
-Retained files from failed/unpublished imports are deliberately not included.
+Version 3 also preserves reading state, accepted studio/assistant state,
+nonsecret connection profiles and meaningful import recovery journals. Exact
+retained bytes referenced by those import journals are included separately.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Legacy version 1 backups and version 2 backups are accepted only for an exact
@@ -27,12 +29,13 @@ from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
+from . import backup_sidecars
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
 MANIFEST = 'manifest.json'
 INCOMPLETE = '.restore-incomplete'
-MAX_MANIFEST = 8 * 1024 * 1024
+MAX_MANIFEST = 64 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
@@ -81,7 +84,7 @@ def create_backup(app, destination):
     publication interrupted before manifest.json is incomplete and not restorable.
     """
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root):
+    with exclusive_writer(app.root), backup_sidecars.state_locks(app.root):
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
@@ -101,6 +104,9 @@ def create_backup(app, destination):
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
+            sidecars = backup_sidecars.snapshot(app, stage, {entry.digest for entry in entries})
+            if sidecars is not None:
+                manifest.update(version=3, sidecars=sidecars)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -114,6 +120,8 @@ def create_backup(app, destination):
             os.link(snapshot, destination / DATABASE)
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
+            if sidecars is not None:
+                backup_sidecars.publish(stage, destination, sidecars, backup=True)
             _sync_directory(destination / ORIGINALS)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
@@ -125,7 +133,9 @@ def _read_manifest(directory, expected_manifest_sha256):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    if set(p.name for p in directory.iterdir()) != {DATABASE, ORIGINALS, MANIFEST}:
+    names = set(p.name for p in directory.iterdir())
+    if names not in ({DATABASE, ORIGINALS, MANIFEST},
+                     {DATABASE, ORIGINALS, MANIFEST, backup_sidecars.DIRECTORY}):
         raise RestoreError('incomplete backup or unexpected files')
     size = _plain(directory / MANIFEST).st_size
     if not 0 < size <= MAX_MANIFEST:
@@ -139,17 +149,23 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2)):
+            or manifest['version'] not in (1, 2, 3)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
-    if manifest['version'] == 2:
+    if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
+    if manifest['version'] == 3:
+        fields.add('sidecars')
+        if backup_sidecars.DIRECTORY not in names:
+            raise RestoreError('version 3 backup sidecars are missing')
+    elif backup_sidecars.DIRECTORY in names:
+        raise RestoreError('unexpected legacy backup sidecars')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
-    if manifest['version'] == 2:
+    if manifest['version'] >= 2:
         fingerprint = manifest['schema_fingerprint']
         if (not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint)
                 or fingerprint != expected_schema_fingerprint(manifest['schema_version'])):
@@ -177,6 +193,12 @@ def _read_manifest(directory, expected_manifest_sha256):
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    if manifest['version'] == 3:
+        sidecars = backup_sidecars.validate_manifest(manifest['sidecars'])
+        pending = {Path(row['path']).name for row in sidecars['files']
+                   if row['path'].startswith('pending-originals/')}
+        if pending & filenames:
+            raise RestoreError('pending import originals duplicate registered assets')
     return manifest
 
 
@@ -203,7 +225,7 @@ def _copy_database(source, target, library_manifest):
         fingerprint = schema_fingerprint(db)
         if fingerprint != expected_schema_fingerprint(library_manifest['schema_version']):
             raise RestoreError('backup schema mismatch')
-        if (library_manifest['version'] == 2
+        if (library_manifest['version'] >= 2
                 and fingerprint != library_manifest['schema_fingerprint']):
             raise RestoreError('backup schema fingerprint mismatch')
 
@@ -234,6 +256,10 @@ def restore_backup(source, destination, expected_manifest_sha256):
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        sidecars = None
+        if manifest['version'] == 3:
+            sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
+                                               stage, manifest['sidecars'], destination)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -241,6 +267,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
+        if sidecars is not None:
+            backup_sidecars.publish(stage, destination, sidecars, backup=False)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

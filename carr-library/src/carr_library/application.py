@@ -180,21 +180,30 @@ class LibraryApp:
             raise ValueError('The selected library is missing or archived.')
 
     @contextmanager
-    def read(self, workspace=None):
+    def read(self, workspace=None, *, budget=None):
         with closing(sqlite3.connect(self.database.as_uri() + '?mode=ro', uri=True,
-                                     isolation_level=None, timeout=5)) as db:
+                                     isolation_level=None, timeout=0 if budget is not None else 5)) as db:
             db.row_factory = sqlite3.Row
-            db.execute('PRAGMA foreign_keys=ON')
-            db.execute('PRAGMA recursive_triggers=ON')
-            db.execute('PRAGMA query_only=ON')
-            db.execute('BEGIN')
+            # Schema and authorization reads are part of the search, too. A
+            # SQLite busy handler cannot poll cancellation, so budgeted readers
+            # return an actionable retry instead of waiting its fixed 5 seconds.
+            if budget is not None:
+                db.set_progress_handler(lambda: int(budget.stopped()), 1000)
             try:
+                db.execute('PRAGMA foreign_keys=ON')
+                db.execute('PRAGMA recursive_triggers=ON')
+                db.execute('PRAGMA query_only=ON')
+                db.execute('BEGIN')
                 if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
+                if budget is not None:
+                    budget.check()
                 yield db
             finally:
+                if budget is not None:
+                    db.set_progress_handler(None, 0)
                 db.rollback()
 
     @contextmanager
@@ -211,23 +220,24 @@ class LibraryApp:
     def _search_read(self, workspace, timeout, cancelled):
         budget = _SearchBudget(timeout, cancelled)
         budget.check()
-        with self.read(workspace) as db:
-            db.set_progress_handler(lambda: int(budget.stopped()), 1000)
-            try:
+        try:
+            with self.read(workspace, budget=budget) as db:
                 budget.check()
                 yield db, budget
                 budget.check()
-            except InterruptedError as exc:
-                if budget.stopped():
-                    raise TimeoutError('Search cancelled or timed out.') from exc
-                raise
-            except sqlite3.OperationalError as exc:
-                if budget.stopped() or getattr(exc, 'sqlite_errorcode', None) == sqlite3.SQLITE_INTERRUPT:
-                    raise TimeoutError('Search cancelled or timed out.') from exc
-                raise
-            finally:
-                # Remove the callback before the reader rolls back its snapshot.
-                db.set_progress_handler(None, 0)
+        except InterruptedError as exc:
+            if budget.stopped():
+                raise TimeoutError('Search cancelled or timed out.') from exc
+            raise
+        except sqlite3.OperationalError as exc:
+            code = getattr(exc, 'sqlite_errorcode', None)
+            # Extended SQLite codes retain the primary code in the low byte.
+            code = code & 0xff if isinstance(code, int) else code
+            if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
+                raise TimeoutError('Search cancelled or timed out.') from exc
+            if code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                raise RuntimeError('The library is busy. Retry the search after the writer finishes.') from exc
+            raise
 
     def workspaces(self, *, include_archived=False):
         with self.read() as db:
@@ -773,7 +783,7 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
-        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
+        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')

@@ -287,3 +287,30 @@ def test_planned_snapshot_rejects_parent_link_replacement_before_read(tmp_path, 
 def test_existing_assets_must_be_explicit_sha256_digests(assets):
     with pytest.raises(ValueError, match='SHA256'):
         batch_scan.scan_paths([], existing_assets=assets)
+
+
+@pytest.mark.parametrize('recursive,max_depth', [(False,64),(True,1),(True,2),(True,64)])
+def test_explicit_nested_root(tmp_path, monkeypatch, recursive, max_depth):
+    nested = tmp_path / 'nested'
+    deeper = nested / 'deeper'
+    deeper.mkdir(parents=True)
+    for path in (tmp_path / 'a.txt', nested / 'b.txt', deeper / 'c.txt'):
+        path.write_text(path.name, encoding='utf-8')
+    opened = []
+    def snapshot(root, name):
+        path = root / name
+        opened.append(path)
+        raw = path.read_bytes()
+        return SimpleNamespace(manifest=lambda: {'sha256': sha256(raw).hexdigest(), 'mime': 'text/plain', 'size': len(raw)})
+    monkeypatch.setattr(batch_scan, 'snapshot', snapshot)
+    monkeypatch.setattr(batch_scan, 'MAX_DEPTH', max_depth)
+    rows = batch_scan.scan_paths([nested, tmp_path], recursive=recursive)
+    expected = [tmp_path / 'a.txt', nested / 'b.txt']
+    if recursive and max_depth > 1:
+        expected.append(deeper / 'c.txt')
+        assert [row['state'] for row in rows] == ['queued', 'queued', 'queued']
+    else:
+        assert [row['state'] for row in rows] == ['queued', 'queued', 'rejected']
+        assert rows[-1]['source'] == str(deeper)
+    assert opened == expected
+    assert len({row['source'] for row in rows}) == len(rows)
