@@ -58,6 +58,99 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+    def sbom(self, version="1.0"):
+        path = self.root / "input-sbom.json"
+        path.write_text(json.dumps({
+            "bomFormat": "CycloneDX", "specVersion": "1.5",
+            "components": [{"name": "fixture", "version": version}],
+        }, indent=2) + "\n", encoding="utf-8")
+        return path
+
+    def test_sbom_exact_bytes_are_sealed_and_tampering_is_rejected(self):
+        sbom = self.sbom()
+        expected = sbom.read_bytes()
+        builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        sealed = self.output / "runtime-sbom.cdx.json"
+        self.assertEqual(sealed.read_bytes(), expected)
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
+        self.assertEqual(manifest["files"]["runtime-sbom.cdx.json"],
+                         hashlib.sha256(expected).hexdigest())
+        installer.verify(self.output)
+        sealed.write_bytes(b"changed")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
+    def test_sbom_initial_mismatch_rejected(self):
+        sbom = self.sbom("9.9")
+        with self.assertRaisesRegex(ValueError, "SBOM does not match"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+    def test_duplicate_sbom_components_rejected_before_output(self):
+        # Both exact duplicates and case-equivalent package names can otherwise
+        # disappear into the inventory set, even with different component refs.
+        cases = (
+            [{"name": "fixture", "version": "1.0"}] * 2,
+            [{"name": "fixture", "version": "1.0", "bom-ref": "fixture"}] * 2,
+            [{"name": "fixture", "version": "1.0", "bom-ref": "first"},
+             {"name": "FIXTURE", "version": "1.0", "bom-ref": "second"}],
+        )
+        for index, components in enumerate(cases):
+            with self.subTest(components=components):
+                sbom = self.sbom()
+                bom = json.loads(sbom.read_text(encoding="utf-8"))
+                bom["components"] = components
+                sbom.write_text(json.dumps(bom), encoding="utf-8")
+                output = self.root / f"duplicate-component-{index}"
+                with self.assertRaisesRegex(ValueError, "duplicate"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, output, sbom=sbom)
+                self.assertFalse(output.exists())
+
+    def test_duplicate_sbom_refs_rejected_for_distinct_locked_components(self):
+        other = wheel(self.wheels, "second_fixture", version="2.0")
+        self.lock.write_text(self.lock.read_text() +
+                            f"second-fixture==2.0 --hash=sha256:{builder.sha256(other)}\n")
+        sbom = self.sbom()
+        bom = json.loads(sbom.read_text(encoding="utf-8"))
+        bom["components"] = [
+            {"name": "fixture", "version": "1.0", "bom-ref": "shared"},
+            {"name": "second_fixture", "version": "2.0", "bom-ref": "shared"},
+        ]
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+        # A valid two-package inventory with distinct refs still builds and is
+        # accepted by the actual sealed-bundle verifier.
+        bom["components"][1]["bom-ref"] = "second"
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        result = builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual(result["wheels"], 3)
+        self.assertEqual((self.output / "runtime-sbom.cdx.json").read_bytes(), sbom.read_bytes())
+        installer.verify(self.output)
+
+    def test_sbom_replaced_after_validation_cannot_change_sealed_bytes(self):
+        sbom = self.sbom()
+        expected = sbom.read_bytes()
+        original_copy = builder.shutil.copyfile
+        replacements = []
+
+        def copy_after_replacement(source, destination, *args, **kwargs):
+            if Path(source) == self.dep and not replacements:
+                replacement = sbom.with_suffix(".replacement")
+                replacement.write_bytes(expected.replace(b'"1.0"', b'"9.9"'))
+                replacement.replace(sbom)
+                replacements.append(True)
+            return original_copy(source, destination, *args, **kwargs)
+
+        with patch.object(builder.shutil, "copyfile", side_effect=copy_after_replacement):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual(replacements, [True])
+        self.assertNotEqual(sbom.read_bytes(), expected)
+        self.assertEqual((self.output / "runtime-sbom.cdx.json").read_bytes(), expected)
+        installer.verify(self.output)
+
     def test_changed_wheel_rejected_before_output(self):
         with ZipFile(self.dep, "a") as archive:
             archive.writestr("unapproved.txt", "changed after lock generation")
