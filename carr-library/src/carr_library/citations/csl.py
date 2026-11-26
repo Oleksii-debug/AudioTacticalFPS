@@ -13,6 +13,7 @@ from html import escape
 from html.parser import HTMLParser
 import json
 from pathlib import Path
+import re
 import unicodedata
 from urllib.parse import urlsplit
 
@@ -23,6 +24,10 @@ ATTRIBUTION = ('(c) Frank Bennett\n'
 PROCESSOR_PACKAGE_VERSION = '2.4.63'
 PROCESSOR_REPORTED_VERSION = '1.4.61'
 LOCALES = ('en-US', 'en-GB', 'uk-UA', 'sk-SK')
+MAX_CUSTOM_STYLE_BYTES = 512 * 1024
+MAX_CUSTOM_STYLE_DEPTH = 64
+MAX_CUSTOM_STYLE_NODES = 10000
+MAX_CUSTOM_STYLE_ATTRIBUTES = 32768
 _BIDI = frozenset('\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069')
 
 
@@ -32,6 +37,18 @@ class StyleInfo:
     title: str
     kind: str
     filename: str
+
+
+@dataclass(frozen=True)
+class CustomStyle:
+    """An explicitly supplied style snapshot; never a path or remote resource.
+
+    Use :func:`load_custom_style` to construct it. Rendering checks the source,
+    digest and metadata again, including when this value was built directly.
+    """
+    info: StyleInfo
+    source: bytes
+    sha256: str
 
 
 _STYLES = (
@@ -99,6 +116,8 @@ class RenderedBibliography:
     attribution: str = ATTRIBUTION
     processor_package_version: str = PROCESSOR_PACKAGE_VERSION
     processor_reported_version: str = PROCESSOR_REPORTED_VERSION
+    style_sha256: str = ''
+    custom_style: bool = False
 
     @property
     def bibliography(self):
@@ -135,7 +154,7 @@ def _xml_json(text):
         attrs = {key.replace('{http://www.w3.org/XML/1998/namespace}', 'xml:').split('}')[-1]: value
                  for key, value in element.attrib.items()}
         children = [node(child) for child in element]
-        if not children and name in ('term', 'single', 'multiple'):
+        if not children and (element.text and element.text.strip() or name in ('term', 'single', 'multiple')):
             children = [element.text or '']
         return {'name': name, 'attrs': attrs, 'children': children}
 
@@ -146,6 +165,288 @@ _PROTECTED = frozenset(('__proto__', 'prototype', 'constructor', 'toString',
     'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf',
     'propertyIsEnumerable', '__defineGetter__', '__defineSetter__',
     '__lookupGetter__', '__lookupSetter__'))
+
+_CSL_NAMESPACE = 'http://purl.org/net/xbiblio/csl'
+_XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace'
+_STYLE_FORMATTING = frozenset(('font-style', 'font-variant', 'font-weight',
+                              'text-decoration', 'vertical-align'))
+_STYLE_AFFIXES = frozenset(('prefix', 'suffix'))
+_STYLE_RENDERING = frozenset(('text', 'date', 'number', 'names', 'label', 'group', 'choose'))
+_STYLE_NAME_OPTIONS = frozenset(('and', 'delimiter-precedes-et-al', 'delimiter-precedes-last',
+    'et-al-min', 'et-al-use-first', 'et-al-use-last', 'et-al-subsequent-min',
+    'et-al-subsequent-use-first', 'initialize', 'initialize-with', 'name-as-sort-order',
+    'sort-separator', 'name-delimiter', 'names-delimiter', 'name-form'))
+_STYLE_TEXT_OPTIONS = _STYLE_FORMATTING | _STYLE_AFFIXES | {
+    'text-case', 'strip-periods', 'quotes', 'display'}
+_STYLE_CONDITIONS = frozenset(('disambiguate', 'is-numeric', 'is-uncertain-date',
+                              'locator', 'position', 'type', 'variable', 'locale'))
+_STYLE_ATTRIBUTES = {
+    'style': _STYLE_NAME_OPTIONS | {'version', 'class', 'default-locale',
+        'initialize-with-hyphen', 'page-range-format', 'demote-non-dropping-particle'},
+    'info': set(), 'author': set(), 'contributor': set(), 'id': set(),
+    'issn': set(), 'eissn': set(), 'issnl': set(), 'email': set(), 'uri': set(),
+    'updated': set(), 'published': set(),
+    'title': {'xml:lang'}, 'title-short': {'xml:lang'}, 'summary': {'xml:lang'},
+    'rights': {'license', 'xml:lang'}, 'link': {'href', 'rel', 'xml:lang'},
+    'category': {'citation-format', 'field'},
+    'macro': {'name'}, 'locale': {'xml:lang'}, 'terms': set(),
+    'term': {'name', 'form', 'gender', 'gender-form', 'match'},
+    'single': set(), 'multiple': set(),
+    'style-options': {'punctuation-in-quote', 'limit-day-ordinals-to-day-1'},
+    'citation': _STYLE_NAME_OPTIONS | {'disambiguate-add-names', 'disambiguate-add-givenname',
+        'disambiguate-add-year-suffix', 'givenname-disambiguation-rule', 'cite-group-delimiter',
+        'collapse', 'year-suffix-delimiter', 'after-collapse-delimiter', 'near-note-distance'},
+    'bibliography': _STYLE_NAME_OPTIONS | {'hanging-indent', 'second-field-align', 'line-spacing',
+        'entry-spacing', 'subsequent-author-substitute', 'subsequent-author-substitute-rule'},
+    'layout': _STYLE_FORMATTING | _STYLE_AFFIXES | {'delimiter', 'locale'},
+    'sort': set(), 'key': {'variable', 'macro', 'sort', 'names-min', 'names-use-first', 'names-use-last'},
+    'text': _STYLE_TEXT_OPTIONS | {'variable', 'macro', 'term', 'value', 'form', 'plural'},
+    'date': _STYLE_TEXT_OPTIONS | {'variable', 'form', 'date-parts', 'delimiter'},
+    'date-part': _STYLE_TEXT_OPTIONS | {'name', 'form', 'range-delimiter'},
+    'number': _STYLE_TEXT_OPTIONS | {'variable', 'form'},
+    'names': _STYLE_FORMATTING | _STYLE_AFFIXES | _STYLE_NAME_OPTIONS | {'variable', 'delimiter', 'display'},
+    'name': _STYLE_FORMATTING | _STYLE_AFFIXES | _STYLE_NAME_OPTIONS | {'form', 'delimiter'},
+    'name-part': _STYLE_TEXT_OPTIONS | {'name'},
+    'et-al': _STYLE_FORMATTING | {'term'}, 'substitute': set(),
+    'label': _STYLE_TEXT_OPTIONS | {'variable', 'form', 'plural'},
+    'group': _STYLE_FORMATTING | _STYLE_AFFIXES | {'delimiter', 'display'},
+    'choose': set(), 'if': _STYLE_CONDITIONS | {'match'},
+    'else-if': _STYLE_CONDITIONS | {'match'}, 'else': set(),
+}
+_STYLE_METADATA = frozenset(('id', 'title', 'title-short', 'summary', 'rights', 'link',
+    'published', 'updated', 'issn', 'eissn', 'issnl', 'email', 'uri'))
+_STYLE_CHILDREN = {
+    'style': {'info', 'locale', 'macro', 'citation', 'bibliography'},
+    'info': _STYLE_METADATA | {'author', 'contributor', 'category'},
+    'author': {'name', 'email', 'uri'}, 'contributor': {'name', 'email', 'uri'},
+    'locale': {'info', 'terms', 'date', 'style-options'}, 'terms': {'term'},
+    'term': {'single', 'multiple'}, 'citation': {'sort', 'layout'},
+    'bibliography': {'sort', 'layout'}, 'sort': {'key'},
+    'macro': _STYLE_RENDERING, 'layout': _STYLE_RENDERING, 'group': _STYLE_RENDERING,
+    'substitute': _STYLE_RENDERING, 'if': _STYLE_RENDERING,
+    'else-if': _STYLE_RENDERING, 'else': _STYLE_RENDERING,
+    'choose': {'if', 'else-if', 'else'}, 'date': {'date-part'},
+    'names': {'name', 'et-al', 'label', 'substitute'}, 'name': {'name-part'},
+}
+_STYLE_KEY_VALUES = frozenset(('name', 'macro', 'term', 'variable', 'type', 'form',
+    'gender', 'gender-form', 'match', 'xml:lang', 'locale', 'default-locale',
+    'is-numeric', 'is-uncertain-date', 'locator', 'position'))
+_STYLE_LOCAL_CODES = frozenset((*LOCALES, 'en', 'uk', 'sk'))
+
+
+def _style_element(tag):
+    if not isinstance(tag, str) or not tag.startswith('{' + _CSL_NAMESPACE + '}'):
+        raise ValueError('Custom style elements must use the CSL XML namespace.')
+    name = tag[len(_CSL_NAMESPACE) + 2:]
+    if name not in _STYLE_ATTRIBUTES:
+        raise ValueError('The custom style contains an unsupported CSL element.')
+    return name
+
+
+def _style_attribute(key):
+    if key == '{' + _XML_NAMESPACE + '}lang':
+        return 'xml:lang'
+    if '{' in key or ':' in key:
+        raise ValueError('The custom style contains an unsupported XML attribute namespace.')
+    return key
+
+
+def _custom_style_tree(source):
+    """Enforce parser limits as nodes arrive, before constructing a large tree."""
+    from defusedxml import ElementTree
+    from defusedxml.common import DefusedXmlException
+    from xml.etree.ElementTree import ParseError, TreeBuilder
+
+    class BoundedTree(TreeBuilder):
+        def __init__(self):
+            super().__init__()
+            self.depth = self.nodes = self.attributes = self.characters = self.namespaces = 0
+
+        def start(self, tag, attrs):
+            self.depth += 1
+            self.nodes += 1
+            self.attributes += len(attrs)
+            if self.depth > MAX_CUSTOM_STYLE_DEPTH:
+                raise ValueError('The custom CSL style exceeds the XML depth limit of 64.')
+            if self.nodes > MAX_CUSTOM_STYLE_NODES:
+                raise ValueError('The custom CSL style exceeds the XML node budget.')
+            if len(attrs) > 64 or self.attributes > MAX_CUSTOM_STYLE_ATTRIBUTES:
+                raise ValueError('The custom CSL style exceeds the XML attribute budget.')
+            name = _style_element(tag)
+            for key, value in attrs.items():
+                key = _style_attribute(key)
+                if key not in _STYLE_ATTRIBUTES[name]:
+                    raise ValueError('The custom style contains an unsupported CSL attribute.')
+                _text(value, 'custom CSL attribute', 8192)
+                if key in _STYLE_KEY_VALUES and any(part in _PROTECTED or part.lower() in _PROTECTED
+                                                    for part in value.split()):
+                    raise ValueError('The custom style contains a reserved processor identifier.')
+                if key in ('xml:lang', 'locale', 'default-locale') and (not value.split()
+                        or any(not re.fullmatch(r'[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*', part)
+                               or any(segment in _PROTECTED or segment.lower() in _PROTECTED
+                                      for segment in part.split('-')) for part in value.split())):
+                    raise ValueError('The custom style contains an invalid locale identifier.')
+                if key == 'locale' and any(part not in _STYLE_LOCAL_CODES for part in value.split()):
+                    raise ValueError('The custom style requests a locale unavailable offline. '
+                                     'Use en-US, en-GB, uk-UA or sk-SK.')
+            # Upstream derives another object key by dropping "ordinal-".
+            # Validate that numeric suffix, not just the complete term name.
+            if name == 'term':
+                term = attrs.get('name', '')
+                if not term.strip():
+                    raise ValueError('Custom CSL locale terms need a name.')
+                if term.startswith('ordinal') and term != 'ordinal' and not re.fullmatch(r'ordinal-[0-9]{2}', term):
+                    raise ValueError('Custom CSL ordinal terms must be ordinal or ordinal-00 through ordinal-99.')
+            return super().start(tag, attrs)
+
+        def end(self, tag):
+            result = super().end(tag)
+            self.depth -= 1
+            return result
+
+        def data(self, value):
+            self.characters += len(value)
+            if self.characters > 256 * 1024:
+                raise ValueError('The custom CSL style exceeds the XML text budget.')
+            _text(value, 'custom CSL text', 256 * 1024)
+            super().data(value)
+
+        def comment(self, value):
+            self.characters += len(value)
+            if self.characters > 256 * 1024:
+                raise ValueError('The custom CSL style exceeds the XML text budget.')
+            _text(value, 'custom CSL comment', 256 * 1024)
+
+        def pi(self, target, value):
+            raise ValueError('XML processing instructions are not supported in custom CSL styles.')
+
+        def start_ns(self, prefix, uri):
+            self.namespaces += 1
+            if self.namespaces > 64 or uri not in (_CSL_NAMESPACE, _XML_NAMESPACE):
+                raise ValueError('The custom style contains unsupported XML namespace declarations.')
+
+    parser = ElementTree.DefusedXMLParser(target=BoundedTree(), forbid_dtd=True,
+                                          forbid_entities=True, forbid_external=True)
+    try:
+        parser.feed(source)
+        return parser.close()
+    except (ParseError, DefusedXmlException) as exc:
+        raise ValueError('Custom CSL must be well-formed XML without DTDs, entities or external resources.') from exc
+
+
+def _validate_style_structure(root):
+    tag = lambda name: '{' + _CSL_NAMESPACE + '}' + name
+    if root.tag != tag('style'):
+        raise ValueError('Choose an independent CSL style, not a locale or another XML document.')
+    if any(node.attrib.get('rel') == 'independent-parent' for node in root.iter(tag('link'))):
+        raise ValueError('Dependent CSL styles require an external parent. Choose the independent '
+                         'parent style file; external styles are never downloaded.')
+    if root.attrib.get('version') != '1.0' or root.attrib.get('class') not in ('in-text', 'note'):
+        raise ValueError('A custom CSL style needs version="1.0" and class="in-text" or "note".')
+    for node in root.iter():
+        name = _style_element(node.tag)
+        children = [_style_element(child.tag) for child in node]
+        if set(children) - _STYLE_CHILDREN.get(name, set()):
+            raise ValueError('The custom CSL style contains misplaced elements.')
+        if node.text and node.text.strip() and name not in _STYLE_METADATA | {'name', 'term', 'single', 'multiple'}:
+            raise ValueError('The custom CSL style contains text outside a supported text element.')
+        if any(child.tail and child.tail.strip() for child in node):
+            raise ValueError('The custom CSL style contains unsupported mixed XML content.')
+        if name == 'text' and len(set(node.attrib) & {'variable', 'macro', 'term', 'value'}) != 1:
+            raise ValueError('Each CSL text element must select exactly one variable, macro, term or value.')
+        if name in ('macro', 'layout') and not children:
+            raise ValueError('Custom CSL macros and layouts must contain rendering instructions.')
+        if name == 'choose' and (not children or children[0] != 'if' or children.count('if') != 1
+                or children.count('else') > 1 or 'else' in children[:-1]):
+            raise ValueError('The custom style contains an invalid CSL conditional.')
+        if name in ('if', 'else-if') and not set(node.attrib) & _STYLE_CONDITIONS:
+            raise ValueError('Each custom CSL condition needs an explicit test.')
+        if name == 'term' and children and sorted(children) != ['multiple', 'single']:
+            raise ValueError('Custom CSL plural terms need one single and one multiple form.')
+    infos = root.findall(tag('info'))
+    if len(infos) != 1 or len(root) == 0 or root[0] is not infos[0]:
+        raise ValueError('A custom CSL style must begin with exactly one info element.')
+    info = infos[0]
+    metadata = {}
+    for name, maximum in (('title', 1024), ('id', 4096)):
+        nodes = info.findall(tag(name))
+        if len(nodes) != 1 or len(nodes[0]):
+            raise ValueError('A custom CSL style needs exactly one plain-text title and id.')
+        value = _text(nodes[0].text or '', 'custom CSL ' + name, maximum, required=True).strip()
+        if name == 'id' and (value in _PROTECTED or any(char.isspace() for char in value)):
+            raise ValueError('The custom style identifier must be nonreserved and contain no whitespace.')
+        metadata[name] = ' '.join(value.split()) if name == 'title' else value
+    for name in ('citation', 'bibliography'):
+        sections = root.findall(tag(name))
+        if len(sections) != 1:
+            raise ValueError('This bibliography workbench needs one citation and one bibliography '
+                             'section in each independent CSL style.')
+        children = [_style_element(child.tag) for child in sections[0]]
+        if children not in (['layout'], ['sort', 'layout']):
+            raise ValueError('Each CSL citation and bibliography section needs one layout after any sort.')
+    macros = {}
+    for node in root.findall(tag('macro')):
+        name = _text(node.attrib.get('name', ''), 'custom CSL macro name', 256, required=True)
+        if name in macros:
+            raise ValueError('Custom CSL macro names must be unique.')
+        macros[name] = {child.attrib['macro'] for child in node.iter() if 'macro' in child.attrib}
+    for node in root.iter():
+        if 'macro' in node.attrib and node.attrib['macro'] not in macros:
+            raise ValueError('The custom CSL style refers to an undefined macro.')
+    visiting, heights = set(), {}
+
+    def height(name):
+        if name in visiting:
+            raise ValueError('The custom CSL style contains recursive macros.')
+        if len(visiting) >= MAX_CUSTOM_STYLE_DEPTH:
+            raise ValueError('The custom CSL style exceeds the macro depth limit of 64.')
+        if name not in heights:
+            visiting.add(name)
+            heights[name] = 1 + max((height(child) for child in macros[name]), default=0)
+            visiting.remove(name)
+            if heights[name] > MAX_CUSTOM_STYLE_DEPTH:
+                raise ValueError('The custom CSL style exceeds the macro depth limit of 64.')
+        return heights[name]
+
+    for name in macros:
+        height(name)
+    return StyleInfo(metadata['id'], metadata['title'], root.attrib['class'], '')
+
+
+def load_custom_style(data: bytes | str) -> CustomStyle:
+    """Validate explicit UTF-8 XML content and freeze its exact bytes and SHA-256.
+
+    Only independent styles with citation and bibliography layouts are accepted.
+    This function never reads a path, fetches a URL, or persists a style file.
+    Inline locale terms are permitted; all external locale data stays pinned.
+    """
+    if type(data) not in (bytes, str) or not 0 < len(data) <= MAX_CUSTOM_STYLE_BYTES:
+        raise ValueError('Choose a nonempty custom CSL file no larger than 512 KiB.')
+    try:
+        source = data.encode('utf-8', errors='strict') if type(data) is str else data
+        if len(source) > MAX_CUSTOM_STYLE_BYTES:
+            raise ValueError('Choose a nonempty custom CSL file no larger than 512 KiB.')
+        text = source.decode('utf-8', errors='strict')
+    except UnicodeError as exc:
+        raise ValueError('Custom CSL files must contain valid UTF-8 text.') from exc
+    _text(text, 'custom CSL source', MAX_CUSTOM_STYLE_BYTES, required=True)
+    declaration = re.match(r'\ufeff?<\?xml\s[^?]*\?>', text)
+    if declaration:
+        encoding = re.search(r'\bencoding\s*=\s*([\'"])([^\'"]+)\1', declaration.group())
+        if encoding and encoding.group(2).casefold() != 'utf-8':
+            raise ValueError('Custom CSL XML must declare UTF-8 encoding.')
+    root = _custom_style_tree(source)
+    info = _validate_style_structure(root)
+    return CustomStyle(info, source, sha256(source).hexdigest())
+
+
+def _checked_custom_style(style):
+    if type(style) is not CustomStyle or type(style.source) is not bytes or type(style.info) is not StyleInfo:
+        raise ValueError('Invalid custom CSL snapshot. Load the style again.')
+    checked = load_custom_style(style.source)
+    if type(style.sha256) is not str or style.sha256 != checked.sha256 or style.info != checked.info:
+        raise ValueError('The custom CSL style snapshot changed. Load the style again.')
+    return checked
 _NAMES = frozenset(('author', 'editor', 'translator', 'recipient', 'interviewer',
     'composer', 'director', 'illustrator', 'original-author', 'collection-editor',
     'container-author', 'editorial-director', 'reviewed-author', 'chair', 'compiler',
@@ -420,7 +721,8 @@ _BRIDGE = r'''
         retrieveLocale: function (name) {
             if (Object.prototype.hasOwnProperty.call(payload.locales, name)) return payload.locales[name];
             var aliases = {'en':'en-US', 'uk':'uk-UA', 'sk':'sk-SK'};
-            return aliases[name] ? payload.locales[aliases[name]] || false : false;
+            return Object.prototype.hasOwnProperty.call(aliases, name)
+                ? payload.locales[aliases[name]] || false : false;
         }
     };
     var engine = new CSL.Engine(sys, payload.style, payload.locale, true);
@@ -468,8 +770,15 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
     into quotation locators. Caller-provided locators are explicitly unverified.
     Input records are copied and are never mutated by the processor.
     """
-    if not isinstance(style, str) or style not in _STYLE_BY_ID:
-        raise ValueError('Choose one of the installed citation styles.')
+    custom = None
+    if type(style) is CustomStyle:
+        custom = _checked_custom_style(style)
+        style_info, style_hash = custom.info, custom.sha256
+    elif isinstance(style, str) and style in _STYLE_BY_ID:
+        style_info = _STYLE_BY_ID[style]
+        style_hash = _HASHES['styles/' + style_info.filename]
+    else:
+        raise ValueError('Choose an installed citation style or an explicitly loaded custom CSL style.')
     if locale not in LOCALES:
         raise ValueError('Choose an installed citation locale: ' + ', '.join(LOCALES) + '.')
     if output not in ('text', 'html'):
@@ -480,19 +789,21 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
     budget.validate()
     rows, identities, warnings = _records(records, budget)
     clusters, manual_locator = _clusters(citations, rows, identities, budget)
-    style_info = _STYLE_BY_ID[style]
     if manual_locator:
         warnings.append('Citation locators were supplied manually; formatting does not verify those page or source positions.')
     if style_info.kind == 'note' and any(row.get('page') for row in rows):
         warnings.append('Page ranges in full bibliographic notes describe publication extent, not verified quotation locations.')
     payload = {'records': rows, 'citations': clusters, 'locale': locale,
         'output': output, 'noteStyle': style_info.kind == 'note',
-        'style': _xml_json(_resource('styles/' + style_info.filename)),
+        'style': _xml_json(custom.source.decode('utf-8') if custom
+                           else _resource('styles/' + style_info.filename)),
         'locales': {name: _xml_json(_resource('styles/locales-' + name + '.xml'))
-                    for name in dict.fromkeys(('en-US', locale))}}
+                    for name in (LOCALES if custom else dict.fromkeys(('en-US', locale)))}}
     # Bound bibliographic input and the number of cite-item repetitions before
     # allocating the complete interpreter payload.
     user_size = len(json.dumps({'records': rows, 'citations': clusters}, ensure_ascii=False).encode('utf-8'))
+    if custom:
+        user_size += len(custom.source)
     if user_size > budget.max_input_bytes:
         raise ValueError('References and citation clusters exceed the configured formatting byte budget.')
     encoded = json.dumps(payload, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
@@ -537,4 +848,4 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
         tuple(clean(entry).strip() for entry in entries),
         tuple(tuple(group) for group in entry_ids),
         tuple(clean(citation).strip() for citation in rendered_citations),
-        tuple(dict.fromkeys(warnings)))
+        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None)

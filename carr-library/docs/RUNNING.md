@@ -178,7 +178,8 @@ CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
 readable reference list. The separate **Citation styles** action uses a real,
 pinned, offline CSL processor for APA 7, Chicago author-date or notes,
-MLA, Harvard, Vancouver/NLM and IEEE. It previews citations and bibliography
+MLA, Harvard, Vancouver/NLM and IEEE, or an explicitly loaded independent
+custom CSL file. It previews citations and bibliography
 entries and exports text, formatted HTML or an editable Word document. Author
 names stay literal by default; choose the explicit **Family, Given, optional
 Suffix** convention to format personal initials and inverted names. Braced

@@ -36,9 +36,11 @@ The QuickJS binding MIT license and underlying engine copyright/license
 notices from its exact source-distribution compiler inputs are retained as
 `QUICKJS_NG_LICENSE` and `QUICKJS_CORE_NOTICES`; the source archive SHA-256 is
 `a1a890300a5c460d7735481bc38e8ab10e6f06b733a517f7fa9887f6d121df40`.
-The runtime verifies every executable/style/locale resource against hashes
-embedded in `csl.py` before using it. No arbitrary filename, URL, external
-style or executable JavaScript can be selected through the public API.
+The runtime verifies every installed executable/style/locale resource against
+hashes embedded in `csl.py` before using it. An explicitly supplied independent
+CSL style can additionally enter through the bounded custom-content API below.
+No API interprets a style string as a filename, fetches a URL, or accepts
+executable JavaScript.
 
 ## Attribution in the application
 
@@ -84,7 +86,64 @@ records. `render(records, style="apa", citations=None, locale="en-US",
 output="text", budget=None)` accepts CSL-JSON records and returns
 `RenderedBibliography`. Text and sanitized HTML outputs include entries,
 entry identifiers, ordered citation strings, warnings, attribution and exact
-processor identity. The result's `bibliography` property joins its entries.
+processor identity. `style_sha256` identifies the exact style bytes for both
+installed and custom styles; `custom_style` distinguishes their origin. The
+result's `bibliography` property joins its entries.
+
+### Explicit custom CSL styles
+
+`load_custom_style(data: bytes | str) -> CustomStyle` accepts explicit UTF-8 XML
+content. `CustomStyle(info: StyleInfo, source: bytes, sha256: str)` is frozen,
+including its nested `StyleInfo`. `source` preserves the exact UTF-8 bytes,
+including a byte-order mark or line endings when supplied; its digest is not
+calculated over normalized or reserialized XML. The declared title, identifier
+and class supply `info`; `info.filename` is empty because this object never
+refers to a path. Natural RTL letters and multilingual text are supported.
+
+Call `render(records, style=custom_style, ...)` to use that snapshot with the
+same actual citeproc-js engine. Rendering reparses and validates the source and
+compares its digest and metadata, so direct dataclass construction, a forged
+digest or changed display metadata cannot bypass intake. A caller keeps this
+same immutable object with a preview and reuses it for export; the engine does
+not reread a selected file, discover local styles or create a persistent sidecar.
+
+The parser uses the existing `defusedxml` dependency with DTDs, entities and
+external references explicitly forbidden. It enforces limits as the XML tree
+is constructed: at most **512 KiB of UTF-8 source**, **64 levels**, **10,000
+elements**, **32,768 attributes**, **64 attributes per element**, **8,192
+characters per attribute value**, and **256 Ki characters of element/comment
+text in total**. `MAX_CUSTOM_STYLE_BYTES` is public so callers can bound the
+initial file read before handing content to the engine. Custom source bytes
+also count toward the render operation's combined input budget.
+
+Intake checks the CSL namespace, `version="1.0"`, an `in-text` or `note` class,
+one initial `info` block with a title and identifier, and one citation and one
+bibliography section with rendering layouts. CSL permits styles without a
+bibliography, but this workbench requires both outputs. Metadata and structural
+rules follow the [CSL 1.0.2 specification](https://docs.citationstyles.org/en/v1.0.2/specification.html).
+The checks are a bounded supported-input boundary, not a claim of complete
+Relax NG schema validation. Unsupported elements, attributes and structural
+extensions are rejected clearly; all seven included official styles also pass
+this boundary as custom input.
+
+Dependent styles bearing `rel="independent-parent"` are rejected with a request
+for the actual independent parent file. Foreign XML namespaces, processing
+instructions, unsupported controls (including numeric character references),
+duplicate/undefined/recursive macros, and macro call chains deeper than 64 are
+also rejected. Reserved JavaScript property names are prohibited in processor
+key positions such as macro names and locale term names/forms; ordinary literal
+output containing such words is retained as text. This matters because the
+unchanged upstream processor stores several style structures in ordinary
+JavaScript objects. XML enters the interpreter through JSON data only.
+
+Custom rendering makes all four pinned locale resources available locally.
+The caller's selected locale overrides a style's `default-locale`; explicit
+locale conditions/layouts must use a pinned locale or its `en`, `uk` or `sk`
+language alias. Inline locale terms remain part of the frozen style source.
+Style metadata links are inert, and no independent parent, locale, module or
+other resource is downloaded. Processor incompatibility or resource exhaustion
+returns an error without a partial bibliography or a substitute formatting
+algorithm. HTML uses the existing typography-only sanitizer.
 
 `citations` is an ordered sequence of clusters. Each cluster contains cite-item
 dictionaries with `id` and optional `locator`, `label`, `prefix`, `suffix` or
@@ -157,7 +216,7 @@ writing Word or standalone HTML output.
 From `carr-library/`, with the pinned `quickjs-ng` dependency installed:
 
 ```console
-python -m pytest -q tests/citations/test_csl.py
+python -m pytest -q tests/citations/test_csl.py tests/citations/test_custom_csl.py
 ```
 
 The suite uses the actual interpreter and actual pinned resources. It covers
@@ -169,6 +228,16 @@ JavaScript-shaped text, invalid records/citation clusters, bounded repeated
 inputs, genuine interpreter CPU/memory exhaustion, missing runtime and
 resource-tampering rejection. It also verifies every copied resource and
 license notice against the provenance manifest.
+
+The custom-style suite exercises the actual processor with synthetic independent
+styles, macros, bibliography sorting, grouped citations, inline locale terms,
+four offline locales, note-style locators and sanitized typography. It covers
+exact source snapshots, forged dataclass fields, literal JavaScript-shaped text,
+UTF-8 byte limits, parser budgets, prohibited XML resource loading, foreign
+namespaces, controls in decoded XML, prototype-sensitive values, dependent
+parents, macro recursion/depth, installed-style compatibility and real runtime
+CPU/output limits. Passing these tests does not certify arbitrary user styles
+against the full CSL schema or a publisher's formatting manual.
 
 The initial full run caught a real integration defect: registering every item
 as uncited before citing caused numeric styles to use import order. The fix

@@ -81,6 +81,15 @@ jobs:
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check the installed offline OCR catalogue and console entrypoint
+        timeout-minutes: 2
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrModels = Join-Path (Split-Path $env:CARR_PYTHON) 'research-library-ocr-models.exe'
+          & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise native academic references and reading controls
         timeout-minutes: 3
         run: |
@@ -163,6 +172,7 @@ jobs:
             'tests/e2e/test_academic_document_export.py',
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
+            'tests/extract/test_ocr_model_catalog.py',
             'tests/storage/test_library_backup.py',
             'tests/storage/test_library_backup_reading_state.py',
             'tests/catalog/test_metadata_backup_roundtrip.py',
@@ -430,6 +440,8 @@ jobs:
           & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
