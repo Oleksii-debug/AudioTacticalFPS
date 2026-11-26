@@ -286,7 +286,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
             if _asset_manifest(entries) != manifest['assets']:
                 raise RestoreError('asset manifest disagrees with the database')
             _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
-            backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
+            restored_sidecars = backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
         backup_sidecars._check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -295,7 +295,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-        backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
+        backup_sidecars.publish(stage, destination, restored_sidecars, sync_directory=_sync_directory)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

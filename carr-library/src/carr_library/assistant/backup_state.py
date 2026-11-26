@@ -13,6 +13,9 @@ from .models import SCHEMA, Scope, Step, canonical, text
 
 
 MAX_BYTES = 64 * 1024 * 1024
+MAX_REVIEW_BYTES = 1024
+_REVIEW_SCHEMA = 'carr-assistant-restore-review/1'
+_REVIEW_NAME = re.compile(r'state/assistant/([0-9a-f]{32})\.restore-review\.json\Z')
 _NAME = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _STATUS = {'queued', 'running', 'paused', 'cancelled', 'complete', 'attention', 'failed'}
@@ -35,6 +38,9 @@ def _path(value):
 
 def validate_state_bytes(name, raw):
     """Return referenced workspace IDs after pure structural validation."""
+    if isinstance(name, str) and _REVIEW_NAME.fullmatch(name):
+        _review_marker(name, raw)
+        return ()
     match = _NAME.fullmatch(name) if isinstance(name, str) else None
     if match is None or type(raw) is not bytes or not 0 < len(raw) <= MAX_BYTES:
         raise ValueError('Invalid assistant state filename or size.')
@@ -135,3 +141,65 @@ def validate_state_bytes(name, raw):
     if creates > 1:
         raise ValueError('An assistant plan may create at most one library.')
     return tuple(dict.fromkeys(workspaces))
+
+
+def _review_marker(name, raw):
+    match = _REVIEW_NAME.fullmatch(name) if isinstance(name, str) else None
+    if match is None or type(raw) is not bytes or not 0 < len(raw) <= MAX_REVIEW_BYTES:
+        raise ValueError('Invalid restored assistant review marker.')
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_pairs,
+                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid number.')))
+    if (type(value) is not dict
+            or set(value) != {'schema', 'id', 'checkpoint_sha256', 'review_required'}
+            or value['schema'] != _REVIEW_SCHEMA or value['id'] != match[1]
+            or value['review_required'] is not True
+            or not isinstance(value['checkpoint_sha256'], str)
+            or not _HASH.fullmatch(value['checkpoint_sha256'])):
+        raise ValueError('Invalid restored assistant review marker.')
+    return value
+
+
+def restore_review_bytes(name, raw):
+    """Bind a review gate to unchanged, validated archived checkpoint bytes."""
+    match = _NAME.fullmatch(name) if isinstance(name, str) else None
+    if match is None or match[2]:
+        raise ValueError('An assistant job checkpoint is required.')
+    validate_state_bytes(name, raw)
+    value = {'schema': _REVIEW_SCHEMA, 'id': match[1],
+             'checkpoint_sha256': sha256(raw).hexdigest(), 'review_required': True}
+    return (canonical(value) + '\n').encode('utf-8')
+
+
+def restored_report(directory, identity):
+    """Read archived history without reconstructing its old Scope or paths."""
+    from pathlib import Path
+    import os
+    from .models import JobReport, local_path
+    from ..backup_sidecars import read_regular
+
+    if not isinstance(identity, str) or not re.fullmatch(r'[0-9a-f]{32}', identity):
+        raise ValueError('Invalid assistant job identity.')
+    directory = Path(directory)
+    marker_path = directory / (identity + '.restore-review.json')
+    if not os.path.lexists(marker_path):
+        return None
+    # Only the current store directory is resolved. Archived input/output/data
+    # paths remain inert strings; opening old external folders is unnecessary.
+    directory = local_path(directory)
+    marker = _review_marker('state/assistant/' + marker_path.name,
+                            read_regular(directory / marker_path.name, MAX_REVIEW_BYTES))
+    raw = read_regular(directory / (identity + '.json'), MAX_BYTES)
+    if sha256(raw).hexdigest() != marker['checkpoint_sha256']:
+        raise ValueError('The restored assistant checkpoint changed after review was required.')
+    validate_state_bytes('state/assistant/' + identity + '.json', raw)
+    record = json.loads(raw)
+    complete = tuple(step['result'] for step in record['steps'] if step['status'] == 'complete')
+    return JobReport(identity, 'paused', len(complete), len(record['steps']), complete,
+                     'Restored checkpoint is read-only. Review its unfinished steps and '
+                     'current library and folder permissions, then submit a new plan.')
+
+
+def require_reviewed(directory, identity):
+    """Never resume archived work implicitly, including a same-path restore."""
+    if restored_report(directory, identity) is not None:
+        raise PermissionError('This restored job requires a new review; submit a new plan with current permissions.')
