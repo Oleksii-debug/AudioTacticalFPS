@@ -31,7 +31,8 @@ def test_inventory_parser_preserves_script_identity_case_and_order():
     listing((' eng',)), listing(('eng+ukr',)), listing(('script/Latin/extra',)),
     listing(('eng',)).replace(b'(1)', b'(9)'), b'\xff',
     b'x' * (selection.MAX_INVENTORY_BYTES + 1),
-])
+], ids=('empty', 'not-listing', 'duplicate', 'traversal', 'leading-space',
+        'combined-id', 'nested-path', 'wrong-count', 'invalid-utf8', 'over-budget'))
 def test_untrusted_or_incomplete_model_listing_is_rejected(data):
     with pytest.raises(ValueError):
         selection.parse_installed_models(data)
