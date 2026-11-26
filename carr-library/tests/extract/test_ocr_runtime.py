@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -264,3 +266,111 @@ def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bu
     assert result['provenance']['config']['model_policy'] == 'default'
     assert 'wrapper_version' not in orientation
     assert result['status'] == 'review_required'
+
+
+def test_language_inventory_needs_no_english_and_includes_sealed_script_models(bundle, monkeypatch):
+    (bundle / 'tessdata' / 'eng.traineddata').rename(bundle / 'tessdata' / 'ukr.traineddata')
+    (bundle / 'tessdata' / 'script').mkdir()
+    (bundle / 'tessdata' / 'script' / 'Latin.traineddata').write_bytes(b'synthetic script inventory')
+    (bundle / 'tessdata' / 'osd.traineddata').write_bytes(b'synthetic orientation inventory')
+    write_manifest(bundle)
+    monkeypatch.setenv('CARR_OCR_DIR', str(bundle))
+    monkeypatch.setattr(runtime.subprocess, 'Popen', lambda *args, **kwargs:
+                        pytest.fail('Portable metadata requires no native process'))
+    assert runtime.discover_ocr_languages() == ('script/Latin', 'ukr')
+    assert runtime.discover_ocr_runtime(None).languages == ('osd', 'script/Latin', 'ukr')
+    assert runtime.discover_ocr_runtime('ukr+script/Latin', orientation=True).portable
+    with pytest.raises(runtime.OcrRuntimeError, match='language'):
+        runtime.discover_ocr_runtime('eng')
+    (bundle / 'tessdata' / 'script' / 'Latin.traineddata').write_bytes(b'tampered')
+    with pytest.raises(runtime.OcrRuntimeError, match='checksum'):
+        runtime.discover_ocr_languages()
+
+
+def test_missing_engine_language_inventory_is_empty_without_process(monkeypatch):
+    monkeypatch.setattr(runtime.shutil, 'which', lambda _: None)
+    monkeypatch.setattr(runtime.subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('No executable'))
+    assert runtime.discover_ocr_languages() == ()
+
+
+@pytest.mark.parametrize('languages,expected', [
+    (['deu', 'ukr', 'script/Latin', 'osd'], ('deu', 'script/Latin', 'ukr')),
+    (['custom_model'], ('custom_model',)), (['osd'], ()), ([], ()),
+])
+def test_actual_bounded_process_reads_installed_model_report(monkeypatch, tmp_path, languages, expected):
+    # Real subprocess, synthetic metadata only; no language-recognition claim.
+    report = f'List of available languages in "synthetic model directory" ({len(languages)}):\n'
+    report += '\n'.join(languages) + '\n'
+    process_runtime = SimpleNamespace(executable=sys.executable, root=tmp_path, portable=False,
+        command=lambda _: [sys.executable, '-c', f'print({report!r}, end="")'])
+    calls = []
+    def discover(languages, *, remaining):
+        calls.append(languages)
+        remaining()
+        return process_runtime
+    monkeypatch.setattr(runtime, 'discover_ocr_runtime', discover)
+    assert runtime.discover_ocr_languages() == expected
+    assert calls == [None], 'Metadata discovery must not demand English'
+
+
+@pytest.mark.parametrize('report', [
+    '', 'eng\n', 'List of available languages in "models" (2):\neng\n',
+    'List of available languages in "models" (2):\neng\neng\n',
+    'List of available languages in "models" (1):\n../../outside\n',
+    'List of available languages in "models" (1):\n-l eng\n',
+    'List of available languages in "models" (99999):\n',
+])
+def test_malformed_model_inventory_is_rejected(monkeypatch, report):
+    monkeypatch.setattr(runtime, 'discover_ocr_runtime', lambda *args, **kwargs:
+                        SimpleNamespace(portable=False))
+    monkeypatch.setattr(runtime, '_language_report', lambda *args: report)
+    with pytest.raises(runtime.OcrRuntimeError, match='inventory'):
+        runtime.discover_ocr_languages()
+
+
+@pytest.mark.parametrize('program,timeout,message', [
+    ('import time; time.sleep(10)', .1, 'timed out'),
+    ('import sys; sys.stdout.write("X" * 300000)', 5, 'size limit'),
+    ('import sys; sys.exit(2)', 5, 'could not list'),
+])
+def test_real_discovery_process_time_output_and_failure_bounds(monkeypatch, tmp_path, program, timeout, message):
+    process_runtime = SimpleNamespace(executable=sys.executable, root=tmp_path, portable=False,
+        command=lambda _: [sys.executable, '-c', program])
+    monkeypatch.setattr(runtime, 'discover_ocr_runtime', lambda *args, **kwargs: process_runtime)
+    processes = []
+    original = runtime.subprocess.Popen
+    def tracked(*args, **kwargs):
+        child = original(*args, **kwargs)
+        processes.append(child)
+        return child
+    monkeypatch.setattr(runtime.subprocess, 'Popen', tracked)
+    with pytest.raises(runtime.OcrRuntimeError, match=message):
+        runtime.discover_ocr_languages(timeout=timeout)
+    assert processes and all(child.poll() is not None for child in processes)
+
+
+@pytest.mark.parametrize('selection', ['', 'eng+eng', 'osd', 'eng+osd', '../ukr',
+    'script/../../eng', 'script\\Latin', 'models/eng', '--version', 'eng --psm 1',
+    'eng\nukr', '+eng', None, '+'.join(f'model{i}' for i in range(33))])
+def test_unsafe_or_unbounded_text_language_selection_is_rejected(selection):
+    from carr_library.extract.page_ocr import Config
+    with pytest.raises(ValueError, match='language'):
+        Config(languages=selection)
+
+
+def test_real_tesseract_metadata_and_identity_support_script_inventory_without_english(native_bundle, monkeypatch):
+    # Reuse real English model bytes under a synthetic script filename solely
+    # to exercise actual CLI enumeration and path-bound fingerprinting.
+    executable = runtime.verify_ocr_bundle(native_bundle).executable
+    scripts = native_bundle / 'tessdata' / 'script'
+    scripts.mkdir()
+    (native_bundle / 'tessdata' / 'eng.traineddata').rename(scripts / 'Latin.traineddata')
+    monkeypatch.delenv('CARR_OCR_DIR')
+    monkeypatch.setenv('TESSDATA_PREFIX', str(native_bundle / 'tessdata'))
+    monkeypatch.setattr(runtime.shutil, 'which', lambda _: executable)
+    assert runtime.discover_ocr_languages() == ('script/Latin',)
+    from carr_library.extract.page_ocr import Config
+    from carr_library.extract.runtime_identity import runtime_identity
+    identity = runtime_identity(Config(languages='script/Latin'))
+    assert identity['ocr']['model_sha256'] == {
+        'script/Latin': sha256((scripts / 'Latin.traineddata').read_bytes()).hexdigest()}

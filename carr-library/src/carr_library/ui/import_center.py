@@ -150,14 +150,13 @@ class ImportCenterActions:
 
     def plan(self, paths):
         from ..extract.page_ocr import Config
-        from .ocr_options import LANGUAGES
         self._bound()
         index = self.collection.GetSelection()
         language = self.languages.GetSelection()
-        if not 0 <= index < len(self.collection_ids) or not 0 <= language < len(LANGUAGES):
+        if not 0 <= index < len(self.collection_ids) or not 0 <= language < len(self.language_choices):
             raise ValueError('Choose a destination collection and text recognition languages.')
         collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
-        config = Config(languages=LANGUAGES[language][1])
+        config = Config(languages=self.language_choices[language][1])
         recursive = self.recursive.GetValue()
 
         def done(batch):
@@ -168,6 +167,31 @@ class ImportCenterActions:
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
             cancelled=self.frame.cancel_event.is_set), done, planning=True)
+
+    def choose_languages(self, event=None):
+        from ..extract.page_ocr import Config
+        from .ocr_options import choose_ocr_config, language_label
+        if self.busy or self.frame.working:
+            return
+        try:
+            self._bound()
+            index = self.languages.GetSelection()
+            initial = (Config(languages=self.language_choices[index][1])
+                       if 0 <= index < len(self.language_choices) else Config())
+            selected = choose_ocr_config(self, (), initial=initial, force=True)
+            if selected is None:
+                return
+            index = next((i for i, (_, code) in enumerate(self.language_choices)
+                          if code == selected.languages), None)
+            if index is None:
+                label = ', '.join(language_label(code) for code in selected.languages.split('+'))
+                self.language_choices = (*self.language_choices, (label, selected.languages))
+                index = len(self.language_choices) - 1
+                self.languages.SetItems([label for label, _ in self.language_choices])
+            self.languages.SetSelection(index)
+            self.report('Text recognition languages selected: ' + self.language_choices[index][0])
+        except Exception as exc:
+            self.report(str(exc))
 
     def add_files(self, event=None):
         import wx
@@ -284,7 +308,7 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
-    from .ocr_options import LANGUAGES
+    from .ocr_options import available_language_choices
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
@@ -307,7 +331,8 @@ def show_import_center(frame, workspace):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
             self.collection = wx.Choice(self, choices=collection_labels)
-            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
+            self.language_choices = available_language_choices()
+            self.languages = wx.Choice(self, choices=[label for label, _ in self.language_choices])
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
@@ -315,6 +340,13 @@ def show_import_center(frame, workspace):
                 options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
                 self.mutable.append(control)
+            self.languages.SetSelection(next((i for i, (_, code) in enumerate(self.language_choices)
+                                               if code == 'eng'), 0))
+            multiple = wx.Button(self, label='Choose &multiple OCR languages...')
+            multiple.Bind(wx.EVT_BUTTON, self.choose_languages)
+            self.mutable.append(multiple)
+            options.Add(wx.StaticText(self, label='Installed languages and scripts'), 0, wx.ALIGN_CENTER_VERTICAL)
+            options.Add(multiple, 1, wx.EXPAND)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
             self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)

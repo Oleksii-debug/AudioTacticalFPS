@@ -90,9 +90,14 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    from .audio import cli as audio_cli
+    audio_cli.add_arguments(parser)
     args = parser.parse_args(argv)
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
+    operations = (args.self_test, args.backup is not None, args.restore is not None,
+                  args.list_libraries, args.search is not None, audio_cli.selected(args))
+    if sum(operations) > 1:
+        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, search or audio.')
+    audio_cli.validate(args, parser)
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None:
@@ -101,6 +106,8 @@ def main(argv=None):
     try:
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        if audio_cli.selected(args):
+            return audio_cli.run(args)
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
@@ -171,6 +178,10 @@ def main(argv=None):
         frame.Show()
         desktop.MainLoop()
         return 0
+    except (InterruptedError, KeyboardInterrupt):
+        detail = ' Verified completed audio chunks remain available for resume.' if audio_cli.selected(args) else ''
+        print('Research Library: Operation cancelled.' + detail, file=sys.stderr)
+        return 130
     except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1

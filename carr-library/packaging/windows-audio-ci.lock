@@ -1,0 +1,4 @@
+# Test-only Windows x64 FFmpeg carrier. Not a production dependency or bundled asset.
+# PyPI release 0.8.1, publishing source 26277bb102b64c42d939c3a550301edbe2c81921.
+# https://pypi.org/project/imageio-ffmpeg/0.8.1/
+imageio-ffmpeg==0.8.1 --hash=sha256:f27ca4cb85e2d4946deedbce1a81245dfd942a2bcf94b53676fb3956aa95bf1b

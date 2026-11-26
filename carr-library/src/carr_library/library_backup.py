@@ -1,9 +1,11 @@
 """Complete local research-library backups using the canonical SQLite snapshot.
 
-Backups include all workspaces, saved research and registered original files.
+Backups include all workspaces, saved research, registered original files and
+the optional personal reading-state file with bookmarks and resume positions.
 Retained files from failed/unpublished imports are deliberately not included.
 The independently retained manifest digest binds the database and every asset.
-Version 2 also identifies the exact schema, not just its numeric user_version.
+Version 2 also identifies the exact schema, not just its numeric user_version;
+version 3 additionally binds reading-state bytes and their original locations.
 Legacy version 1 backups and version 2 backups are accepted only for an exact
 supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
@@ -27,6 +29,7 @@ from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
+from .reader import reading_state
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -36,6 +39,7 @@ MAX_MANIFEST = 8 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
+READING_STATE = reading_state.FILENAME
 
 
 def _destination(value, source):
@@ -73,6 +77,46 @@ def _sync_directory(path):
             os.close(fd)
 
 
+def _validate_reading_locations(db, positions, bookmarks):
+    """Bind personal state to exact sealed pages, including historical revisions.
+
+    A backup preserves archived libraries and inactive reading positions. It
+    does not grant permission to open an archived library, approve a quotation,
+    or move an old position to a newer revision. The reader rechecks access and
+    current revision when those locations are opened after restoration.
+    """
+    locations = {row[0] for row in positions.values()} | {
+        bookmark.location for bookmark in bookmarks.values()}
+    for location in locations:
+        # Select the appropriate existing composite index without scanning all
+        # pages in a revision for every saved location. Both predicates are
+        # fixed application text; identities and indexes stay bound parameters.
+        predicate = ('p.physical=?' if location.kind == 'physical_page'
+                     else 'p.physical IS NULL AND p.ordinal=?')
+        row = db.execute('''SELECT p.digest FROM revision r
+            JOIN sealed s ON s.revision=r.id
+            JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition
+                AND e.asset=r.asset
+            JOIN page p ON p.revision=r.id
+            WHERE r.workspace=? AND r.edition=? AND r.id=? AND r.asset=? AND ''' + predicate,
+            (location.workspace, location.edition, location.revision,
+             location.asset_sha256, location.index)).fetchone()
+        if row is None or row[0] != location.text_sha256:
+            raise RestoreError('reading state does not match the exact library source snapshot')
+
+
+def _reading_snapshot(root, db, expected=None):
+    """Validate bounded personal state using the reader's ordinary file rules."""
+    raw, positions, bookmarks, _ = reading_state.ReadingState(root)._read_validated()
+    if expected is not None:
+        if (raw is None or len(raw) != expected['size_bytes']
+                or sha256(raw).hexdigest() != expected['sha256']):
+            raise RestoreError('reading-state digest or size mismatch')
+    if raw is not None:
+        _validate_reading_locations(db, positions, bookmarks)
+    return raw
+
+
 def create_backup(app, destination):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
@@ -94,13 +138,19 @@ def create_backup(app, destination):
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
             with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+                reading = _reading_snapshot(app.root, snapshot_storage.db)
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-            manifest = dict(version=2, kind='carr-library', schema_version=4,
+            reading_manifest = None
+            if reading is not None:
+                _sync_file(stage / READING_STATE, reading)
+                reading_manifest = dict(filename=READING_STATE, size_bytes=len(reading),
+                                        sha256=sha256(reading).hexdigest())
+            manifest = dict(version=3, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
-                assets=_asset_manifest(entries))
+                assets=_asset_manifest(entries), reading_state=reading_manifest)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -114,6 +164,8 @@ def create_backup(app, destination):
             os.link(snapshot, destination / DATABASE)
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
+            if reading is not None:
+                os.link(stage / READING_STATE, destination / READING_STATE)
             _sync_directory(destination / ORIGINALS)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
@@ -125,7 +177,9 @@ def _read_manifest(directory, expected_manifest_sha256):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    if set(p.name for p in directory.iterdir()) != {DATABASE, ORIGINALS, MANIFEST}:
+    names = set(p.name for p in directory.iterdir())
+    required = {DATABASE, ORIGINALS, MANIFEST}
+    if not required <= names or not names <= required | {READING_STATE}:
         raise RestoreError('incomplete backup or unexpected files')
     size = _plain(directory / MANIFEST).st_size
     if not 0 < size <= MAX_MANIFEST:
@@ -139,21 +193,35 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2)):
+            or manifest['version'] not in (1, 2, 3)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
-    if manifest['version'] == 2:
+    if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
+    if manifest['version'] == 3:
+        fields.add('reading_state')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
-    if manifest['version'] == 2:
+    if manifest['version'] >= 2:
         fingerprint = manifest['schema_fingerprint']
         if (not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint)
                 or fingerprint != expected_schema_fingerprint(manifest['schema_version'])):
             raise RestoreError('unsupported backup schema fingerprint')
+    reading = manifest.get('reading_state')
+    if reading is not None:
+        if (type(reading) is not dict or set(reading) != {'filename','size_bytes','sha256'}
+                or reading['filename'] != READING_STATE
+                or type(reading['size_bytes']) is not int
+                or not 0 < reading['size_bytes'] <= reading_state.MAX_BYTES
+                or not isinstance(reading['sha256'], str)
+                or not re.fullmatch(r'[0-9a-f]{64}', reading['sha256'])):
+            raise RestoreError('invalid reading-state manifest')
+        required.add(READING_STATE)
+    if names != required:
+        raise RestoreError('incomplete backup or unexpected reading-state file')
     database = manifest['database']
     if (type(database) is not dict or set(database) != {'filename','size_bytes','sha256'}
             or database['filename'] != DATABASE or type(database['size_bytes']) is not int
@@ -203,7 +271,7 @@ def _copy_database(source, target, library_manifest):
         fingerprint = schema_fingerprint(db)
         if fingerprint != expected_schema_fingerprint(library_manifest['schema_version']):
             raise RestoreError('backup schema mismatch')
-        if (library_manifest['version'] == 2
+        if (library_manifest['version'] >= 2
                 and fingerprint != library_manifest['schema_fingerprint']):
             raise RestoreError('backup schema fingerprint mismatch')
 
@@ -227,6 +295,10 @@ def restore_backup(source, destination, expected_manifest_sha256):
         _copy_database(source / DATABASE, snapshot, manifest)
         with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
             storage.check()
+            reading = None
+            if manifest.get('reading_state') is not None:
+                reading = _reading_snapshot(source, storage.db, manifest['reading_state'])
+                _sync_file(stage / READING_STATE, reading)
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
@@ -241,6 +313,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
+        if reading is not None:
+            os.link(stage / READING_STATE, destination / READING_STATE)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

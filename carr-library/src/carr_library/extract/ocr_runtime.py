@@ -14,12 +14,34 @@ import re
 import shutil
 import stat
 import sys
+import subprocess
+from threading import Thread
+import time
 
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
 MAX_FILES = 2048
 MAX_FILE = 256 * 1024 * 1024
 MAX_TOTAL = 512 * 1024 * 1024
+MAX_LANGUAGE_REPORT = 128 * 1024
+MAX_LANGUAGES = 1024
+
+
+def is_model_name(value):
+    """Allow Tesseract language IDs and official script/Name IDs, never paths."""
+    return (isinstance(value, str) and len(value) <= 128
+            and re.fullmatch(r'(?:script/)?[A-Za-z0-9_]+', value) is not None)
+
+
+def selected_languages(value):
+    """Validate a bounded language selection shared by UI and OCR execution."""
+    if not isinstance(value, str) or not 1 <= len(value) <= 2048:
+        raise ValueError('invalid language selection')
+    selected = value.split('+')
+    if (len(selected) > 32 or len(set(selected)) != len(selected)
+            or any(not is_model_name(item) or item == 'osd' for item in selected)):
+        raise ValueError('invalid language selection; choose up to 32 distinct text languages')
+    return tuple(selected)
 
 
 class OcrRuntimeError(ValueError):
@@ -117,7 +139,8 @@ class OcrRuntime:
 
     def require_languages(self, languages, orientation=False):
         if self.portable:
-            wanted = set(languages.split('+')) | ({'osd'} if orientation else set())
+            wanted = set() if languages is None else set(selected_languages(languages))
+            wanted |= {'osd'} if orientation else set()
             if not wanted <= set(self.languages):
                 raise OcrRuntimeError('The portable OCR bundle lacks the selected language or orientation model.')
 
@@ -153,8 +176,15 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         files = data['files']
         if not isinstance(files, dict) or not 1 <= len(files) <= MAX_FILES:
             raise OcrRuntimeError('Invalid portable OCR file inventory.')
-        if executable not in files or f'{tessdata}/eng.traineddata' not in files:
-            raise OcrRuntimeError('Portable OCR needs an executable and English language data.')
+        languages = []
+        for name in files:
+            path = _relative(name)
+            if path.is_relative_to(tessdata) and path.suffix == '.traineddata':
+                language = path.relative_to(tessdata).with_suffix('').as_posix()
+                if is_model_name(language):
+                    languages.append(language)
+        if executable not in files or not languages:
+            raise OcrRuntimeError('Portable OCR needs an executable and language data.')
         if MANIFEST in files or len({name.casefold() for name in files}) != len(files):
             raise OcrRuntimeError('Ambiguous portable OCR file inventory.')
         total = 0
@@ -193,11 +223,8 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         # The manifest cannot be changed between selecting and checking its files.
         if _read(root / MANIFEST, MAX_MANIFEST, remaining)[1] != manifest_hash:
             raise OcrRuntimeError('Portable OCR manifest changed during validation.')
-        languages = tuple(sorted(Path(name).stem for name in files
-                                 if PurePosixPath(name).parent == PurePosixPath(tessdata)
-                                 and name.endswith('.traineddata')))
         return OcrRuntime(str(root / executable), root / tessdata, data['target'],
-                          manifest_hash, tuple(hashes), languages, root)
+                          manifest_hash, tuple(hashes), tuple(sorted(languages)), root)
     except (OSError, UnicodeError, ValueError, TypeError) as exc:
         if isinstance(exc, OcrRuntimeError):
             raise
@@ -222,6 +249,7 @@ def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda
     Automatic discovery is limited to the interpreter prefixes and their two
     immediate ancestors. A Windows bundle is never auto-executed on Linux.
     An explicit environment selection is also useful for build-host testing.
+    languages=None requests metadata only; it does not require an English pack.
     """
     explicit = os.environ.get('CARR_OCR_DIR')
     if explicit is not None:
@@ -249,6 +277,86 @@ def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda
             return runtime
     executable = shutil.which('tesseract')
     return OcrRuntime(executable) if executable else None
+
+
+def _language_report(runtime, remaining):
+    """Collect a local engine report with a shared deadline and bounded memory."""
+    output, errors = [], []
+    process = subprocess.Popen(runtime.command([runtime.executable, '--list-langs']),
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cwd=runtime.root, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+
+    def collect():
+        try:
+            raw = process.stdout.read(MAX_LANGUAGE_REPORT + 1)
+            if len(raw) > MAX_LANGUAGE_REPORT:
+                errors.append('The OCR language report exceeds its size limit.')
+                if process.poll() is None:
+                    process.kill()
+            else:
+                output.append(raw)
+        except OSError:
+            errors.append('The OCR language report could not be read.')
+        finally:
+            process.stdout.close()
+
+    reader = Thread(target=collect, name='ocr-language-discovery', daemon=True)
+    reader.start()
+    try:
+        process.wait(timeout=remaining())
+        reader.join(timeout=remaining())
+        if reader.is_alive():
+            raise OcrRuntimeError('OCR language discovery timed out.')
+        if errors:
+            raise OcrRuntimeError(errors[0])
+        if process.returncode != 0 or not output:
+            raise OcrRuntimeError('The local OCR engine could not list its installed languages.')
+        return output[0].decode('utf-8')
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=1)
+        reader.join(timeout=1)
+
+
+def discover_ocr_languages(*, timeout=5):
+    """List installed text models without downloads or English-model dependence.
+
+    A portable bundle is fully verified before its inventory is exposed. A
+    system Tesseract receives only --list-langs. Model availability is not a
+    recognition-quality test; original extraction/review gates remain in force.
+    OSD is orientation data, so it is not offered as a text language.
+    """
+    if type(timeout) not in (int, float) or not 0 < timeout <= 30:
+        raise ValueError('OCR discovery timeout must be between 0 and 30 seconds.')
+    deadline = time.monotonic() + timeout
+
+    def remaining():
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise OcrRuntimeError('OCR language discovery timed out.')
+        return seconds
+
+    try:
+        runtime = discover_ocr_runtime(None, remaining=remaining)
+        if runtime is None:
+            return ()
+        if runtime.portable:
+            return tuple(name for name in runtime.languages if name != 'osd')
+        report = _language_report(runtime, remaining)
+        lines = [line.strip() for line in report.splitlines() if line.strip()]
+        header = re.fullmatch(r'List of available languages in "[^\r\n]+" \(([0-9]{1,4})\):',
+                              lines[0] if lines else '')
+        if not header or not 0 <= int(header[1]) <= MAX_LANGUAGES:
+            raise OcrRuntimeError('The OCR engine returned an invalid language inventory.')
+        languages = lines[1:]
+        if (len(languages) != int(header[1]) or len(set(languages)) != len(languages)
+                or any(not is_model_name(name) for name in languages)):
+            raise OcrRuntimeError('The OCR engine returned an invalid language inventory.')
+        remaining()
+        return tuple(sorted(name for name in languages if name != 'osd'))
+    except (OSError, UnicodeError, subprocess.SubprocessError) as exc:
+        raise OcrRuntimeError('Local OCR language discovery failed or timed out.') from exc
 
 
 def check_runtime(*, timeout=30):

@@ -91,7 +91,7 @@ def runtime_identity(config):
             models = {}
             for lang in selected:
                 remaining()
-                if not re.fullmatch(r'[A-Za-z0-9_]+', lang):
+                if not ocr_runtime.is_model_name(lang):
                     raise IdentityError('invalid model name')
                 models[lang] = _hash(Path(match[1]) / (lang + '.traineddata'), remaining=remaining)
         if before != _hash(exe, remaining=remaining):

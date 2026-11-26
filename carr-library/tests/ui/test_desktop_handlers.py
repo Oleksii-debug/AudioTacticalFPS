@@ -39,8 +39,12 @@ def classes():
     chooser = Mock()
     chooser.ShowModal.return_value = 1
     chooser.GetSelection.return_value = 0
+    multi_chooser = Mock()
+    multi_chooser.ShowModal.return_value = 1
+    multi_chooser.GetSelections.return_value = [0]
     wx = SimpleNamespace(CallAfter=queued.append,YES=1,ID_OK=1,YES_NO=2,NO_DEFAULT=4,ICON_QUESTION=8,
                          SingleChoiceDialog=Mock(return_value=chooser),
+                         MultiChoiceDialog=Mock(return_value=multi_chooser),
                          MessageBox=Mock(return_value=0),TheClipboard=Mock(),TextDataObject=lambda value:value)
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
@@ -123,7 +127,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions',
+        'install_audio_studio_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -414,7 +419,7 @@ def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
     assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
 
 
-@pytest.mark.parametrize('choice,languages',[(0,'eng'),(1,'ukr'),(2,'slk'),(3,'eng+ukr+slk')])
+@pytest.mark.parametrize('choice,languages',[([0],'eng'),([1],'ukr'),([2],'slk'),([0,1,2],'eng+ukr+slk')])
 def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,choice,languages):
     from carr_library.extract.page_ocr import Config
     from carr_library.ui import ocr_options
@@ -424,6 +429,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     f.run_job = Mock()
     wx = classes[0]['wx']
     monkeypatch.setitem(sys.modules,'wx',wx)
+    monkeypatch.setattr(ocr_options, 'discover_ocr_languages', lambda: ('eng', 'ukr', 'slk'))
     chooser = Mock(wraps=ocr_options.choose_ocr_config)
     monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
@@ -431,7 +437,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
-    wx.SingleChoiceDialog.return_value.GetSelection.return_value = choice
+    wx.MultiChoiceDialog.return_value.GetSelections.return_value = choice
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -447,18 +453,20 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
     f.run_job = Mock()
     wx = classes[0]['wx']
     monkeypatch.setitem(sys.modules,'wx',wx)
+    monkeypatch.setattr(ocr_options, 'discover_ocr_languages', lambda: ('eng', 'ukr', 'slk'))
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     dialog = Mock()
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    wx.MultiChoiceDialog.return_value.ShowModal.return_value = 0
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
@@ -483,6 +491,7 @@ def test_text_and_docx_import_reuse_helper_config_without_language_dialog(classe
     f.import_books(None)
     chooser.assert_called_once_with(f,['notes.txt','chapter.docx'])
     wx.SingleChoiceDialog.assert_not_called()
+    wx.MultiChoiceDialog.assert_not_called()
     f.run_job.call_args.args[1]()
     assert f.library.import_files.call_args.kwargs['config'] == Config()
 
@@ -715,3 +724,28 @@ def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, moda
     chooser.Destroy.assert_called_once()
     p.frame.run_job.assert_not_called()
     p.frame.library.save_hit.assert_not_called()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+@pytest.mark.parametrize('index', [0, 1])
+def test_save_presentation_equivalent_topic_labels(classes, names, index):
+    import unicodedata
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = tuple(
+        SimpleNamespace(id=f'topic-{i}', name=name)
+        for i, name in enumerate(names))
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = index
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', x).split())
+                for x in labels}) == 2
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with(
+        'a', f'topic-{index}', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()

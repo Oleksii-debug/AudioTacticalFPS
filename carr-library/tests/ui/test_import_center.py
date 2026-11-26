@@ -80,6 +80,8 @@ def center(monkeypatch, tmp_path):
     view.busy = view.closed = False
     view.batch, view.summaries = deepcopy(saved['first']), ()
     view.collection_ids = [None, 'selected-collection']
+    view.language_choices = (('English', 'eng'), ('Ukrainian', 'ukr'), ('Slovak', 'slk'),
+                             ('Selected combination', 'eng+ukr+slk'))
     view.collection, view.languages = Control(selection=1), Control(selection=3)
     view.recursive = Control(value=True)
     view.batches, view.rows = Control(), Control(selection=0)
@@ -121,6 +123,28 @@ def test_invalid_plan_choices_never_start_a_job(center, control, selection):
         center.plan(('/selected/folder',))
     center.frame.run_job.assert_not_called()
     center.library.plan_import_batch.assert_not_called()
+
+
+def test_import_center_accepts_installed_custom_language_combination(center, monkeypatch):
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ui import ocr_options
+    chooser = Mock(return_value=Config(languages='deu+script/Latin'))
+    monkeypatch.setattr(ocr_options, 'choose_ocr_config', chooser)
+    center.choose_languages()
+    chooser.assert_called_once_with(center, (), initial=Config(languages='eng+ukr+slk'), force=True)
+    assert center.language_choices[-1][1] == 'deu+script/Latin'
+    assert center.languages.GetSelection() == 4
+    center.plan(('/selected/folder',))
+    center.jobs[-1].operation()
+    assert center.library.plan_import_batch.call_args.kwargs['config'].languages == 'deu+script/Latin'
+
+
+def test_import_center_cancelled_language_change_keeps_previous_choice(center, monkeypatch):
+    from carr_library.ui import ocr_options
+    before = center.language_choices
+    monkeypatch.setattr(ocr_options, 'choose_ocr_config', lambda *args, **kwargs: None)
+    center.choose_languages()
+    assert center.language_choices is before and center.languages.GetSelection() == 3
 
 
 def test_progress_is_marshaled_and_completion_preserves_quarantine_status(center):

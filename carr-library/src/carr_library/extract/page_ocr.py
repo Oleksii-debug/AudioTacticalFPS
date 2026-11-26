@@ -13,7 +13,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
+from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime, selected_languages
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -77,8 +77,7 @@ class Config:
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
-        if not re.fullmatch(r'[A-Za-z0-9_]+(?:\+[A-Za-z0-9_]+)*', self.languages):
-            raise ValueError('invalid language selection')
+        selected_languages(self.languages)
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_policy == POLICY:
