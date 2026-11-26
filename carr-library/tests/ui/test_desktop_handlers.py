@@ -715,3 +715,28 @@ def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, moda
     chooser.Destroy.assert_called_once()
     p.frame.run_job.assert_not_called()
     p.frame.library.save_hit.assert_not_called()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+@pytest.mark.parametrize('index', [0, 1])
+def test_save_presentation_equivalent_topic_labels(classes, names, index):
+    import unicodedata
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = tuple(
+        SimpleNamespace(id=f'topic-{i}', name=name)
+        for i, name in enumerate(names))
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = index
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', x).split())
+                for x in labels}) == 2
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with(
+        'a', f'topic-{index}', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
