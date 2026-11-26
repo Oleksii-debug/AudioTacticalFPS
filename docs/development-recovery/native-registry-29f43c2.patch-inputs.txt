@@ -1,0 +1,237 @@
+Exact successful edit inputs for local commit 29f43c22a34766fe4e7afdae8568f538775dfae6
+Date: 2026-11-26
+Purpose: source-only recovery artifact; no application source changes in this recovery tree.
+
+Original tested base: 48894734920b98a8da5aab9e72d19a8e375ae2e0.
+Durable recovery tree base: 119ae6010f45b0c000a5b5460c419f3ec629fce2.
+Preserve newer remote work and review context before replay; this text is not a git-apply patch.
+
+Each section below is one successful apply_patch tool input, in execution order.
+The only normalization is replacing the owned worktree's absolute Update File header prefix
+with repository-relative paths. All patch hunk text is retained from the successful tool inputs.
+No local absolute paths, private sources, model data, samples or application state are included.
+
+Between input 1 and input 2, an attempted combined test edit failed during writing.
+The affected primary test file was restored from HEAD before inputs 2 and 3.
+The failed/reverted input contributes no committed change and is intentionally not replayed.
+
+Observed commit summary: 8 files changed, 100 insertions(+), 19 deletions(-).
+Observed verification: 219 passed in 2.88s, no failures or skips; git diff --check passed.
+Executed from carr-library with prepared project CPython 3.12.14 environment:
+python -m pytest tests/ui/test_primary_keyboard_integration.py tests/ui/test_keyboard_manager.py tests/ui/test_operation_progress.py tests/ui/test_desktop_handlers.py tests/storage/test_keyboard_preferences.py tests/storage/test_evidence_drafts.py -q
+All 18 configured V3 test paths were independently checked to exist.
+Native Windows GUI, NVDA and audible listening were NOT_RUN locally.
+
+Dependencies: canonical PR105 KeyboardManager/CommandRegistry; primary PR103 native
+citation_formatting, language_matrix, operation_progress and OCR manager; saved legacy
+keymap import and Windows same-API state-reader fixes from 0d13db7 already in the base.
+Keep install_keyboard_settings last. Preserve native SAPI, primary audio dialogs and current
+source/Windows gates. The workflow edit replaces the removed caption-keymap test with
+canonical primary/manager suites and includes Windows state-reader and v5 backup tests.
+Later remote additions must be reconciled rather than overwritten by this older edit context.
+
+=== SUCCESSFUL APPLY_PATCH INPUT 1 ===
+*** Begin Patch
+*** Update File: carr-library/src/carr_library/ui/citation_formatting.py
+@@
+ def install_citation_actions(frame):
+@@
+     import wx
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
+@@
+     item = menu.Append(wx.ID_ANY, "Format bibliography and citations...\tCtrl+Alt+C")
+     frame.Bind(wx.EVT_MENU, lambda event: show_citation_formatter(frame), item)
++    register_menu_command(frame, CommandSpec("academic.csl_export", "Format bibliography and citations",
++        default_shortcut="Ctrl+Alt+C"), item)
+     item = menu.Append(wx.ID_ANY, "Preview DOI metadata (opt-in)...")
+     frame.Bind(wx.EVT_MENU, lambda event: show_doi_preview(frame), item)
++    register_menu_command(frame, CommandSpec("academic.doi_preview", "Preview DOI metadata (opt-in)"), item)
+*** Update File: carr-library/src/carr_library/ui/language_matrix.py
+@@
+ def install_language_actions(frame):
+@@
+     import wx
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
+@@
+     item = menu.Append(wx.ID_ANY, "Languages and capability evidence...")
+     frame.Bind(wx.EVT_MENU, lambda event: show_language_matrix(frame), item)
++    register_menu_command(frame, CommandSpec("language.evidence", "Languages and capability evidence"), item)
+*** Update File: carr-library/src/carr_library/ui/operation_progress.py
+@@
+ def install_operation_progress(frame):
+@@
+     import wx
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
+@@
+-    for title, handler in [('Current operation progress\tCtrl+Alt+P', controller.query),
+-                            ('Progress sound settings...', controller.settings_dialog)]:
++    for identity, title, shortcut, handler in [
++            ('progress.query', 'Current operation progress', 'Ctrl+Alt+P', controller.query),
++            ('progress.settings', 'Progress sound settings...', '', controller.settings_dialog)]:
++        title += '\t' + shortcut if shortcut else ''
+         item = menu.Append(wx.ID_ANY, title)
+         frame.Bind(wx.EVT_MENU, handler, item)
++        register_menu_command(frame, CommandSpec(identity, title.split('\t', 1)[0],
++            default_shortcut=shortcut), item)
+*** Update File: carr-library/src/carr_library/ui/desktop_app.py
+@@
+-        advanced_item = None
++        advanced_item = ocr_item = None
+@@
+                 if handler == self.build_advanced_query:
+                     advanced_item = item
++                elif handler == self.ocr_language_models:
++                    ocr_item = item
+@@
+         register_menu_command(self, CommandSpec('main.advanced_query', 'Build advanced query',
+             default_shortcut='Ctrl+Alt+Q'), advanced_item)
++        register_menu_command(self, CommandSpec('library.ocr_models', 'OCR language models: Fast and Best'), ocr_item)
+*** Update File: .github/workflows/carr-v3.yml
+@@
+-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_keyboard_settings.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
++          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_primary_keyboard_integration.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/storage/test_evidence_drafts.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_v5_backup_union.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+*** Update File: carr-library/tests/ui/test_desktop_handlers.py
+@@
+-    register_command.assert_called_once_with(value,
++    register_command.assert_any_call(value,
+         CommandSpec('main.advanced_query', 'Build advanced query', default_shortcut='Ctrl+Alt+Q'),
+         advanced_item)
++    ocr_item = next(item for item in menus['&Library'].items
++                    if item.title.startswith('OCR language models: Fast and Best'))
++    register_command.assert_any_call(value,
++        CommandSpec('library.ocr_models', 'OCR language models: Fast and Best'), ocr_item)
++    assert register_command.call_count == 2
+*** End Patch
+
+=== SUCCESSFUL APPLY_PATCH INPUT 2 ===
+*** Begin Patch
+*** Update File: carr-library/tests/ui/test_primary_keyboard_integration.py
+@@
+ from carr_library.ui import assistant_dialog, document_conversion, save_actions, speech_dialog, studio_dialog
++from carr_library.ui import citation_formatting, language_matrix, operation_progress
+@@
+     def GetMenuItems(self): return self.items
++    def GetMenuItemCount(self): return len(self.items)
+@@
+ class Timer:
+-    def __init__(self, frame): self.frame = frame
+-    def Start(self, interval): self.interval = interval
++    def __init__(self, frame): self.frame, self.running = frame, False
++    def Start(self, interval): self.interval, self.running = interval, True
++    def Stop(self): self.running = False
++    def IsRunning(self): return self.running
++
++
++class ProgressControl:
++    def SetName(self, value): self.name = value
++    def SetLabel(self, value): self.label = value
++    def SetRange(self, value): self.range = value
++    def SetValue(self, value): self.value = value
++    def Pulse(self): self.pulsed = True
+@@
+ INSTALLERS = (save_actions.install_save_actions, speech_dialog.install_speech_actions,
+               studio_dialog.install_studio_actions, assistant_dialog.install_assistant_actions,
+-              document_conversion.install_conversion_actions)
++              document_conversion.install_conversion_actions, citation_formatting.install_citation_actions,
++              language_matrix.install_language_actions, operation_progress.install_operation_progress)
+@@
+-           'conversion.documents', 'conversion.formats'}
++           'conversion.documents', 'conversion.formats', 'academic.csl_export', 'academic.doi_preview',
++           'language.evidence', 'progress.query', 'progress.settings'}
+@@
+     wx = SimpleNamespace(Menu=Menu, Timer=Timer, ID_ANY=-1, ID_EXIT=9, EVT_MENU=menu_event,
+-        EVT_TIMER=object(), CommandEvent=Event, CallAfter=lambda fn, *args: fn(*args),
++        EVT_TIMER=object(), EVT_WINDOW_DESTROY=object(), CommandEvent=Event, CallAfter=lambda fn, *args: fn(*args),
++        StaticText=lambda *args, **kwargs: ProgressControl(), Gauge=lambda *args, **kwargs: ProgressControl(),
++        GA_HORIZONTAL=1, EXPAND=2, ALL=4,
+         Window=SimpleNamespace(FindFocus=lambda: focused))
+@@
+-    def bind(event_type, handler, source):
++    def bind(event_type, handler, source=None):
+@@
+     frame.IsEnabled = lambda: frame.enabled
++    frame.IsActive = lambda: True
+@@
+     frame.status = SimpleNamespace(SetFocus=lambda: frame.focused_controls.append('status'))
++    frame.host, frame.progress_controls = object(), []
++    frame.layout = SimpleNamespace(Insert=lambda *args: frame.progress_controls.append(args))
+*** End Patch
+
+=== SUCCESSFUL APPLY_PATCH INPUT 3 ===
+*** Begin Patch
+*** Update File: carr-library/tests/ui/test_primary_keyboard_integration.py
+@@
+ def test_focus_commands_use_the_canonical_registry_and_existing_native_controls(frame):
+@@
+     assert sum(label.replace('&', '') == 'Options' for label, _ in frame.menu_bar.menus) == 1
++
++
++def test_citation_language_and_progress_commands_remap_original_handlers_together(frame, monkeypatch):
++    opened = []
++    monkeypatch.setattr(citation_formatting, 'show_citation_formatter', lambda owner: opened.append(('csl', owner)))
++    monkeypatch.setattr(citation_formatting, 'show_doi_preview', lambda owner: opened.append(('doi', owner)))
++    monkeypatch.setattr(language_matrix, 'show_language_matrix', lambda owner: opened.append(('language', owner)))
++    manager = installed(frame)
++    assert manager.shortcut('academic.csl_export') == 'Ctrl+Alt+C'
++    assert manager.shortcut('progress.query') == 'Ctrl+Alt+P'
++    assert manager.shortcut('language.evidence') == ''
++    changes = {'academic.csl_export': 'Ctrl+Alt+Shift+C', 'language.evidence': 'Ctrl+Alt+Shift+G',
++               'progress.query': 'Ctrl+Alt+Shift+P'}
++    manager.apply_overrides(changes)
++    assert KeymapStore(manager.store.path).load() == changes
++    for command, shortcut in changes.items():
++        assert manager.bindings[command].item.GetItemLabel().endswith('\t' + shortcut)
++    assert manager.invoke('academic.csl_export') and manager.invoke('academic.doi_preview')
++    assert manager.invoke('language.evidence')
++    assert opened == [('csl', frame), ('doi', frame), ('language', frame)]
++    frame.operation_progress.start('Formatting the chosen references', 4)
++    frame.operation_progress.update(2, 4)
++    assert manager.invoke('progress.query')
++    assert '50 percent' in frame.notices[-1] and 'Formatting' in frame.notices[-1]
++    frame.enabled = False
++    before = tuple(frame.notices)
++    assert not manager.invoke('progress.query') and not manager.invoke('academic.csl_export')
++    assert tuple(frame.notices) == before
+*** Update File: carr-library/tests/ui/test_operation_progress.py
+@@
+ def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch):
+-    from carr_library.ui.keyboard_settings import KeyboardSettings
++    from carr_library.ui.command_registry import CommandRegistry
++    from carr_library.ui.keyboard_settings import KeyboardManager
+@@
+         def IsSeparator(self): return False
+         def GetSubMenu(self): return None
++        def IsEnabled(self): return True
+@@
+-    frame.menu_bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda index: '&Help', GetMenu=lambda index: menu)
+-    frame.SetAcceleratorTable = lambda table: setattr(frame, 'table', table)
++    frame.menu_bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda index: '&Help',
++                                    GetMenu=lambda index: menu, IsEnabledTop=lambda index: True)
++    frame.GetMenuBar = lambda: frame.menu_bar
++    frame.IsEnabled = lambda: True
+@@
+     monkeypatch.setitem(__import__('sys').modules, 'wx', wx)
++    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
++                        lambda shortcut, identity: (3, ord('P'), identity))
+@@
+-    shortcuts = KeyboardSettings(frame, wx_module=wx)
+-    query = next(command for command in shortcuts.commands if command.action == 'help/current operation progress')
+-    assert query.default == 'Ctrl+Alt+P'
+-    assert (3, ord('P'), query.menu_id) in frame.table
++    pending = frame._pending_keyboard_commands
++    shortcuts = KeyboardManager(frame, registry=CommandRegistry(spec for spec, _ in pending))
++    for spec, item in pending:
++        shortcuts.register_menu_command(spec, item)
++    frame.keyboard_commands = shortcuts
++    assert shortcuts.shortcut('progress.query') == 'Ctrl+Alt+P'
++    assert shortcuts.available('progress.query') and shortcuts.available('progress.settings')
++    shortcuts.apply_overrides({'progress.query': 'Ctrl+Alt+Shift+P'})
++    query = shortcuts.bindings['progress.query'].item
++    assert query.GetItemLabel().endswith('\tCtrl+Alt+Shift+P')
+@@
+-    callback = next(binding[1] for binding in frame.bindings if len(binding) == 3 and binding[0] == 'menu' and binding[2].GetId() == query.menu_id)
++    callback = next(binding[1] for binding in frame.bindings if len(binding) == 3 and binding[0] == 'menu' and binding[2].GetId() == query.GetId())
+*** End Patch
