@@ -12,6 +12,28 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
+# Use pytest's own report classification in the isolated subprocess.
+PYTEST_CHILD = """
+import sys
+import pytest
+
+class RejectExpectedFailures:
+    seen = False
+
+    def pytest_runtest_logreport(self, report):
+        if hasattr(report, 'wasxfail'):
+            self.seen = True
+
+policy = RejectExpectedFailures()
+status = pytest.main(sys.argv[1:], plugins=[policy])
+if policy.seen:
+    print('FAIL: pytest reported XFAIL or XPASS', flush=True)
+    if status == pytest.ExitCode.OK:
+        status = pytest.ExitCode.TESTS_FAILED
+raise SystemExit(status)
+"""
+
 
 def run_suite(suite: str) -> bool:
     path = (ROOT / suite).resolve()
@@ -27,7 +49,7 @@ def run_suite(suite: str) -> bool:
         report = Path(tmp) / 'junit.xml'
         try:
             proc = subprocess.run([
-                sys.executable, '-m', 'pytest', '-o', 'addopts=',
+                sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--', str(path),
             ], cwd=ROOT, env=env, timeout=600, check=False)
@@ -39,7 +61,7 @@ def run_suite(suite: str) -> bool:
         skipped = sum(c.find('skipped') is not None for c in cases)
         passed = len(cases) - failed - skipped
         ok = proc.returncode == 0 and passed > 0 and failed == skipped == 0
-        print(f'{"PASS" if ok else "FAIL"}: {suite}: passed={passed}, failed={failed}, '
+        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
               f'skipped={skipped}, pytest_exit={proc.returncode}', flush=True)
         return ok
 
