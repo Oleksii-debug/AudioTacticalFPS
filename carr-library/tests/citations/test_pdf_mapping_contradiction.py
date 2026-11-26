@@ -9,6 +9,8 @@ from pypdf.generic import DecodedStreamObject, NameObject
 import pypdfium2 as pdfium
 from reportlab.pdfgen.canvas import Canvas
 
+from carr_library.extract.ocr_runtime import discover_ocr_runtime
+
 
 def fixture(tampered):
     buf = BytesIO()
@@ -64,11 +66,15 @@ def test_changed_mapping_does_not_change_rendered_pixels():
 
 
 def test_real_ocr_detects_contradiction(tmp_path):
+    runtime = discover_ocr_runtime('eng')
+    assert runtime is not None, 'The required actual OCR runtime was not prepared.'
     path = tmp_path / 'page.png'
     with pdfium.PdfDocument(fixture(True)) as doc:
         with closing(doc[0]) as page, closing(page.render(scale=4)) as bitmap:
             bitmap.to_pil().save(path)
-    result = subprocess.run(['tesseract', str(path), 'stdout', '-l', 'eng', '--psm', '7'],
-                            capture_output=True, check=True, timeout=20)
+    result = subprocess.run(runtime.command([
+        runtime.executable, str(path), 'stdout', '-l', 'eng', '--psm', '7']),
+        capture_output=True, check=True, timeout=20)
+    runtime.assert_unchanged()
     assert result.stdout.decode('utf-8').strip() == 'AAAA'
     assert inspect(fixture(True))[0].strip() != result.stdout.decode('utf-8').strip()
