@@ -2,7 +2,6 @@
 from copy import deepcopy
 import json
 from pathlib import Path
-import shutil
 import sqlite3
 import subprocess
 import sys
@@ -11,6 +10,7 @@ from time import monotonic
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.extract.ocr_runtime import discover_ocr_runtime
 from carr_library.ingest.worker import load_request, _store
 
 
@@ -175,14 +175,18 @@ def scanned_pdf(path, texts):
     canvas = Canvas(str(path), pagesize=(612, 792))
     for text in texts:
         image = Image.new('RGB', (1200, 300), 'white')
-        font = ImageFont.truetype('DejaVuSans.ttf', 72)
+        try:
+            font = ImageFont.truetype('DejaVuSans.ttf', 72)
+        except OSError:
+            # The synthetic scan is ASCII; Pillow supplies this font on Windows.
+            font = ImageFont.load_default(size=72)
         ImageDraw.Draw(image).text((30, 70), text, font=font, fill='black')
         canvas.drawImage(ImageReader(image), 50, 500, 500, 125)
         canvas.showPage()
     canvas.save()
 
 
-@pytest.mark.skipif(not shutil.which('tesseract'), reason='local OCR engine unavailable')
+@pytest.mark.skipif(discover_ocr_runtime() is None, reason='local OCR engine unavailable')
 def test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication(app, tmp_path):
     source = tmp_path / 'Scanned railway.pdf'
     scanned_pdf(source, ['Railway bridge', 'Railway station'])
@@ -252,7 +256,7 @@ def test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publica
         app.copy(workspace, refreshed[0].ref, refreshed[0].revision, 'quote')
 
 
-@pytest.mark.skipif(not shutil.which('tesseract'), reason='local OCR engine unavailable')
+@pytest.mark.skipif(discover_ocr_runtime() is None, reason='local OCR engine unavailable')
 def test_reviewed_import_rejects_changed_approval_without_publishing(app, tmp_path):
     source = tmp_path / 'scan.pdf'
     scanned_pdf(source, ['Railway bridge'])
