@@ -1,2 +1,2 @@
 # Candidate source pin; not a complete dependency lock. Install only after review.
-fastembed @ git+https://github.com/qdrant/fastembed.git@2099c36036115e689ea9b3b5bf1aafa79dc01190
+fastembed @ git+https://github.com/qdrant/fastembed.git@4305bb4bd1d6155aaa9e21258b6255a81accf110

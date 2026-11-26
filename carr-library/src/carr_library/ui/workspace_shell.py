@@ -5,27 +5,12 @@ bind_scope(workspace, topic) returns ScopeServices after fresh authorization.
 Every bound service must independently enforce authorization on each operation.
 No global search, database access, or new persistence contract here.
 """
-from dataclasses import dataclass
-from typing import Callable
-
 import wx
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
 from .evidence_panel import EvidencePanel
-
-
-@dataclass(frozen=True)
-class ScopeServices:
-    workspace: str
-    topic: str | None
-    search: Callable
-    load_context: Callable
-    verified_copy: Callable
-    catalog_tx: Callable
-    collections: Callable
-    topic_tx: Callable
-    evidence_tx: Callable | None = None
+from .scope_bindings import ScopeServices, bind_scope_services
 
 
 class WorkspaceFrame(wx.Frame):
@@ -33,6 +18,7 @@ class WorkspaceFrame(wx.Frame):
         super().__init__(parent, title='Research Library', size=(900, 700))
         self.list_scopes, self.bind_scope = list_scopes, bind_scope
         self.active = self.book = self.evidence = None
+        self.evidence_index = None
         self.scopes = []
         self.busy = False
         self.host = wx.Panel(self)
@@ -62,9 +48,16 @@ class WorkspaceFrame(wx.Frame):
             'Discard the unsaved research note?', 'Unsaved note',
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
 
+    def _focus_evidence(self):
+        if self.book is not None and self.evidence is not None:
+            # A control on an inactive notebook page cannot receive native focus.
+            self.book.SetSelection(self.evidence_index)
+            self.evidence.note.SetFocus()
+
     def _drop(self):
         old = self.book
         self.active = self.book = self.evidence = None
+        self.evidence_index = None
         if old is not None:
             old.Hide()
             self.layout.Detach(old)
@@ -93,7 +86,8 @@ class WorkspaceFrame(wx.Frame):
             self.choice.Clear()
             self.scopes = ids
             for workspace, topic, label in rows:
-                self.choice.Append(f'{label} (library {workspace}; topic {topic or "none"})')
+                detail = 'library only; no research topic' if topic is None else f'topic {topic}'
+                self.choice.Append(f'{label} (library {workspace}; {detail})')
             if self.active is not None and self.active not in ids:
                 self._drop()
                 self.status.SetValue('Access changed. Previous view closed; unsaved edits not saved.')
@@ -129,7 +123,7 @@ class WorkspaceFrame(wx.Frame):
                 raise ValueError('scope no longer authorized')
             if not self._confirm():
                 self.choice.SetSelection(self.scopes.index(self.active))
-                self.evidence.note.SetFocus()
+                self._focus_evidence()
                 return
             services = self.bind_scope(*scope)
             if not isinstance(services, ScopeServices) or (services.workspace, services.topic) != scope:
@@ -137,11 +131,16 @@ class WorkspaceFrame(wx.Frame):
             self._drop()
             book = wx.Notebook(self.host)
             book.SetName('Research library sections')
+            save = (lambda *args: self._save_hit(services, search, *args)) if callable(services.save_hit) else None
             search = PagedSearchPanel(book, services.search, services.load_context,
-                                      verified_copy=services.verified_copy)
+                                      verified_copy=services.verified_copy, save_evidence=save,
+                                      preview_search=services.preview_search)
             search.set_workspace(scope[0])
+            select_collection = (lambda *args: self._select_collection(services, search, *args)
+                                 ) if callable(services.select_collection) else None
             pages = [(search, 'Search'),
-                     (CatalogPanel(book, scope[0], services.catalog_tx, services.collections), 'Books and Collections'),
+                     (CatalogPanel(book, scope[0], services.catalog_tx, services.collections,
+                                   select_collection=select_collection), 'Books and Collections'),
                      (TopicPanel(book, scope[0], services.topic_tx), 'Topics and Sections')]
             evidence = None
             if scope[1] is not None:
@@ -152,6 +151,7 @@ class WorkspaceFrame(wx.Frame):
                     raise RuntimeError('could not add page')
             self.layout.Add(book, 1, wx.EXPAND)
             self.book, self.evidence, self.active = book, evidence, scope
+            self.evidence_index = len(pages) - 1 if evidence is not None else None
             book = None
             self.host.Layout()
             self.status.SetValue('Research library opened.')
@@ -167,6 +167,46 @@ class WorkspaceFrame(wx.Frame):
         finally:
             self.busy = False
 
+    def _select_collection(self, services, search, workspace, collection):
+        if self.active != (workspace, services.topic) or services.workspace != workspace:
+            raise ValueError('library changed')
+        services.select_collection(workspace, collection)
+        # Selection changes must invalidate modal contexts and all previous hits.
+        search.set_workspace(workspace)
+        search.status.ChangeValue('Search scope: all books in this library.' if collection is None else
+                                  'Search scope: selected collection. Enter a query.')
+        self.book.SetSelection(0)
+        search.query.SetFocus()
+
+    def _save_hit(self, services, search, workspace, ref, revision, quote, citation):
+        scope = (workspace, services.topic)
+        expected = (workspace, ref, revision, quote, citation)
+
+        def current():
+            hit = search.selected()
+            return (self.active == scope and self.evidence is not None and
+                    (hit.workspace, hit.ref, hit.revision, hit.quote, hit.citation) == expected)
+
+        if services.workspace != workspace or not current():
+            raise ValueError('source selection changed')
+        if not self._confirm():
+            self._focus_evidence()
+            return None
+        # The confirmation dialog runs a nested event loop; recheck its selection.
+        if not current():
+            raise ValueError('source selection changed')
+        evidence_id = services.save_hit(*expected)
+        self.evidence.refresh(evidence_id=evidence_id)
+        self.book.SetSelection(self.evidence_index)
+        if (self.evidence.displayed is not None and
+                self.evidence.displayed.evidence_id == evidence_id):
+            self.evidence.note.SetFocus()
+            self.status.SetValue('Evidence saved. Add or edit your research note.')
+        else:
+            self.evidence.status.SetFocus()
+            self.status.SetValue('Evidence saved; refresh the evidence list to read it.')
+        return evidence_id
+
     def on_close(self, event):
         if event.CanVeto():
             if self.busy:
@@ -176,7 +216,7 @@ class WorkspaceFrame(wx.Frame):
             try:
                 if not self._confirm():
                     event.Veto()
-                    self.evidence.note.SetFocus()
+                    self._focus_evidence()
                     return
             finally:
                 self.busy = False

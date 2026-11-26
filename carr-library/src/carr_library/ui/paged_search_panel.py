@@ -9,12 +9,13 @@ class PagedSearchPanel(SearchPanel):
     Reuses the native search panel and grid; never calls legacy string More.
     This provisional UI binding does not change the source/storage contract.
     """
-    def __init__(self, parent, search, load_context, *, verified_copy):
+    def __init__(self, parent, search, load_context, *, verified_copy, save_evidence=None, preview_search=None):
         if not callable(load_context):
             raise TypeError('verified page context loader required')
         self._context_epoch = 0
         self._load_context = load_context
-        super().__init__(parent, search, load_context, verified_copy=verified_copy)
+        super().__init__(parent, search, load_context, verified_copy=verified_copy,
+                         save_evidence=save_evidence, preview_search=preview_search)
 
     def set_workspace(self, workspace):
         self._context_epoch += 1
@@ -23,6 +24,10 @@ class PagedSearchPanel(SearchPanel):
     def on_search(self, event):
         self._context_epoch += 1
         super().on_search(event)
+
+    def on_source_mode(self, event):
+        self._context_epoch += 1
+        super().on_source_mode(event)
 
     def on_more(self, event):
         epoch = self._context_epoch

@@ -51,18 +51,30 @@ def search_topic(store, workspace, topic, query, *, field='quote', limit=50):
     try:
         index.execute('PRAGMA temp_store=MEMORY')
         index.execute("CREATE VIRTUAL TABLE saved_fts USING fts5(text, tokenize='unicode61 remove_diacritics 0')")
-        for i, row in enumerate(rows, 1):
+        indexed = []
+        for row in rows:
             if (row.topic_id != topic or row.anchor.identity.workspace != workspace
                     or row.evidence_id in seen):
                 raise ValueError('invalid or cross-scope saved evidence')
             seen.add(row.evidence_id)
-            text = row.anchor.quote if field == 'quote' else row.note
-            index.execute('INSERT INTO saved_fts(rowid,text) VALUES(?,?)',
-                          (i, unicodedata.normalize('NFC', text)))
+            anchors = getattr(row, 'anchors', (row.anchor,))
+            texts = (a.quote for a in anchors) if field == 'quote' else (row.note,)
+            for text in texts:
+                indexed.append(row)
+                index.execute('INSERT INTO saved_fts(rowid,text) VALUES(?,?)',
+                              (len(indexed), unicodedata.normalize('NFC', text)))
         # Parameterized SQL plus FTS5 phrase quoting: user text is never an operator.
         expression = '"' + query.replace('"', '""') + '"'
         result = index.execute('SELECT rowid FROM saved_fts WHERE saved_fts MATCH ? '
-                               'ORDER BY bm25(saved_fts), rowid LIMIT ?', (expression, limit))
-        return tuple(TopicHit(rows[i-1], field) for (i,) in result)
+                               'ORDER BY bm25(saved_fts), rowid', (expression,))
+        hits, selected = [], set()
+        for (i,) in result:
+            row = indexed[i-1]
+            if row.evidence_id not in selected:
+                selected.add(row.evidence_id)
+                hits.append(TopicHit(row, field))
+                if len(hits) == limit:
+                    break
+        return tuple(hits)
     finally:
         index.close()

@@ -24,9 +24,9 @@ class Control:
 
 
 wx = types.ModuleType('wx')
-for name in ('Panel', 'ListBox', 'TextCtrl', 'BoxSizer', 'StaticText', 'Button'):
+for name in ('Panel', 'ListBox', 'Choice', 'TextCtrl', 'BoxSizer', 'StaticText', 'Button'):
     setattr(wx, name, Control)
-for name in ('LB_SINGLE', 'TE_MULTILINE', 'TE_READONLY', 'VERTICAL', 'EXPAND', 'EVT_BUTTON', 'EVT_LISTBOX',
+for name in ('LB_SINGLE', 'TE_MULTILINE', 'TE_READONLY', 'VERTICAL', 'EXPAND', 'EVT_BUTTON', 'EVT_LISTBOX', 'EVT_CHOICE',
              'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES'):
     setattr(wx, name, 1)
 wx.MessageBox = lambda *a: wx.YES
@@ -148,6 +148,33 @@ class EvidencePanelTests(unittest.TestCase):
         p = EvidencePanel(None, 'a', 'empty', self.transaction)
         self.assertEqual(p.rows, ())
         self.assertFalse(p.save_button.enabled)
+
+    def test_multi_page_evidence_keeps_exact_slices_and_unsaved_note(self):
+        first = make_anchor(self.identity, self.loc, self.raw, 0, len(self.raw),
+                            self.meta, text_verified=True)
+        second_raw = 'Друга сторінка. Separate original source.'
+        second_loc = Locator('physical_page', 4)
+        second = make_anchor(self.identity, second_loc, second_raw, 0, 15,
+                             self.meta, text_verified=True)
+
+        def load(identity, locator):
+            if locator == self.loc:
+                return self.identity, self.loc, self.raw, True
+            return self.identity, second_loc, second_raw, True
+
+        self.load = load
+        with self.transaction() as s:
+            s.save_span('t', 'span', (first, second), 'Shared note')
+        self.panel.refresh(evidence_id='span')
+        self.assertEqual(self.panel.quote.value, first.quote)
+        self.assertEqual(len(self.panel.page_choice.options), 2)
+        self.panel.note.SetValue('Unsaved shared note')
+        self.panel.page_choice.SetSelection(1)
+        self.panel.show_page()
+        self.assertEqual(self.panel.quote.value, second.quote)
+        self.assertIn('PDF page 4', self.panel.citation.value)
+        self.assertEqual(self.panel.note.value, 'Unsaved shared note')
+        self.assertNotIn(first.quote, self.panel.quote.value)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 """Opt-in CPU model acceptance probe, not a production search backend.
 
-FastEmbed 0.9.1 source: qdrant/fastembed@2099c36036115e689ea9b3b5bf1aafa79dc01190 (Apache-2.0).
+FastEmbed 0.9.1 source: qdrant/fastembed@4305bb4bd1d6155aaa9e21258b6255a81accf110 (Apache-2.0).
 Model: Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q
 revision faf4aa4225822f3bc6376869cb1164e8e3feedd0 (Apache-2.0).
 Never downloads. CARR07_MODEL_DIR and CARR07_MODEL_MANIFEST must point to an
@@ -149,8 +149,12 @@ def test_real_cpu_model(monkeypatch):
         pytest.skip("NOT_RUN: approved offline model bundle not supplied")
     verify_bundle(directory, json.loads(Path(manifest_path).read_text(encoding="utf-8")))
     assert version("fastembed") == "0.9.1"
+    monkeypatch.setenv("ORT_DISABLE_TELEMETRY", "1")
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("HF_HUB_DISABLE_TELEMETRY", "1")
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
+    import onnxruntime
+    onnxruntime.disable_telemetry_events()
     from fastembed import TextEmbedding
     from carr_library.search.thematic import Passage, search
 

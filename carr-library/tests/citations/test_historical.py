@@ -69,7 +69,8 @@ def test_unsealed(store):
     with store.transaction():
         store.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',('draft','A','edition',ASSET,'native'))
         store.db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) VALUES(?,?,?,?,?,?,?)',('draft',1,7,'iv',1,RAW,digest(RAW)))
-        assert store.get_page('A','draft',1) is not None
+        # The public storage reader also excludes unpublished draft revisions.
+        assert store.get_page('A','draft',1) is None
         with pytest.raises(ValueError):
             historical_loader(store.db,'A',lambda *_: True)(Identity('A','edition',ASSET,'draft'),LOC)
 

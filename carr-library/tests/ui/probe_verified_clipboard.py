@@ -34,7 +34,8 @@ def candidate():
 
     context = open_context('A', [anchor], load)
     page = context.page(0)
-    hit = NS(workspace='A', ref='passage-1', revision='r1', quote=page.quote, citation=page.citation)
+    hit = NS(workspace='A', ref='passage-1', revision='r1', quote=page.quote, citation=page.citation,
+             citation_verified=True, verification_status='Verified source text')
     panel.model = Mock()
     panel.model.workspace = 'A'
     panel.model.hit.return_value = hit

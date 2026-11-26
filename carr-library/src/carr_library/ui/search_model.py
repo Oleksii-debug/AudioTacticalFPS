@@ -14,6 +14,8 @@ class Hit:
     page: str  # already formatted by citation service, never inferred by UI
     quote: str
     citation: str
+    citation_verified: bool = True
+    verification_status: str = 'Verified source text'
 
 
 class SearchModel(GridModel):
@@ -34,7 +36,10 @@ class SearchModel(GridModel):
             raise ValueError('Search scope changed')
         rows = tuple(hits)
         if any(not isinstance(h, Hit) or h.workspace != workspace or
-               not h.ref or not h.revision or not h.citation or not h.page
+               not h.ref or not h.revision or not h.citation or not h.page or
+               type(h.citation_verified) is not bool or
+               not isinstance(h.verification_status, str) or not h.verification_status.strip() or
+               (not h.citation_verified and h.verification_status == 'Verified source text')
                for h in rows):
             raise ValueError('Invalid or out-of-scope result')
         self.hits = rows
@@ -42,7 +47,8 @@ class SearchModel(GridModel):
     def columns(self):
         return [Column('title', 'Title', True, 'wide'), Column('author', 'Author'),
                 Column('edition', 'Edition'), Column('page', 'Page'),
-                Column('quote', 'Quotation', width_hint='wide')]
+                Column('quote', 'Excerpt', width_hint='wide'),
+                Column('verification_status', 'Verification', width_hint='wide')]
 
     def row_count(self):
         return len(self.hits)

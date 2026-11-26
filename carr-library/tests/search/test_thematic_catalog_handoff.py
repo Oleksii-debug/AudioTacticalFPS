@@ -5,6 +5,7 @@ not an acceptance result. Assemble the pinned candidate files before running.
 """
 from hashlib import sha256
 from pathlib import Path
+import sqlite3
 
 import pytest
 
@@ -15,14 +16,9 @@ from carr_library.search.thematic import search_active, search_catalog
 def library(tmp_path):
     catalog = pytest.importorskip('carr_library.catalog.membership')
     revisions = pytest.importorskip('carr_library.storage.revisions')
-    schema = Path(__file__).resolve().parents[1] / 'catalog' / 'catalog_membership_candidate.sql'
-    if not schema.is_file():
-        pytest.skip('PR53 catalog schema candidate not assembled')
-    storage = revisions.Storage(tmp_path / 'library.db')
+    storage = revisions.Storage(tmp_path / 'library.db', schema_version=2)
     db = storage.db
     try:
-        db.execute('CREATE TABLE workspace(id TEXT PRIMARY KEY)')
-        db.executescript(schema.read_text(encoding='utf-8'))
         with storage.transaction():
             for ws in ('A', 'B'):
                 db.execute('INSERT INTO workspace VALUES (?)', (ws,))
@@ -80,7 +76,22 @@ def test_membership_remove_and_archive(library):
 def test_asset_mismatch_fails_even_for_nonmatching_text(library):
     storage, _, Page = library
     db = storage.db
-    storage.publish_revision('A', 'e', 'wrong', 'f'*64, 'cfg', [Page('Unrelated topic.')])
+    # The shared schema rejects a mismatched asset at the publication boundary.
+    with pytest.raises(sqlite3.IntegrityError):
+        storage.publish_revision('A', 'e', 'wrong', 'f'*64, 'cfg', [Page('Unrelated topic.')])
+    assert db.execute("SELECT 1 FROM revision WHERE id='wrong'").fetchone() is None
+    # Fault injection models an externally corrupted file, not an authorized
+    # publication. The read adapter still must reject it before ranking.
+    db.execute('PRAGMA foreign_keys=OFF')
+    db.execute('BEGIN')
+    raw = 'Unrelated topic.'
+    db.execute('INSERT INTO revision VALUES(?,?,?,?,?)', ('wrong', 'A', 'e', 'f'*64, 'cfg'))
+    db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) '
+               'VALUES(?,1,NULL,NULL,0,?,?)', ('wrong', raw, sha256(raw.encode()).hexdigest()))
+    db.execute('INSERT INTO sealed VALUES(?)', ('wrong',))
+    db.execute("UPDATE active SET revision='wrong' WHERE workspace='A' AND edition='e'")
+    db.commit()
+    db.execute('PRAGMA foreign_keys=ON')
     with storage.transaction():
         # The previous adapter accepts the wrong asset for the authorized ID.
         hit, = search_active(db, 'A', {'e': 'work'}, 'unrelated')

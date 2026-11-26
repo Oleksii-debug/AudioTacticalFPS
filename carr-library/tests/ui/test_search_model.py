@@ -15,7 +15,7 @@ def test_grid_model():
     assert m.cell_text(0, 'quote') == hit().quote
     assert m.hit(0).citation == hit().citation
     assert m.cell_text(0, 'page') == hit().page
-    assert clamp_column(4, 1, len(m.columns())) == 4
+    assert clamp_column(4, 1, len(m.columns())) == len(m.columns()) - 1
 
 
 def test_switch_clears_and_rejects_late_result():

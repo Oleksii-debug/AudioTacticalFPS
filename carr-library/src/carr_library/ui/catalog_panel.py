@@ -10,11 +10,14 @@ import wx
 
 
 class CatalogPanel(wx.Panel):
-    def __init__(self, parent, workspace, transaction, collections):
+    def __init__(self, parent, workspace, transaction, collections, *, select_collection=None):
         super().__init__(parent)
         self.workspace = workspace
         self.transaction = transaction
         self.collections = collections
+        if select_collection is not None and not callable(select_collection):
+            raise TypeError('collection selection service must be callable')
+        self.select_collection = select_collection
         self.ready = False
         self.groups = {}
         self.rows = {}
@@ -41,6 +44,10 @@ class CatalogPanel(wx.Panel):
                               ('Refresh catalog', self.refresh)]:
             button = wx.Button(self, label=label)
             button.Bind(wx.EVT_BUTTON, action)
+            layout.Add(button)
+        if select_collection is not None:
+            button = wx.Button(self, label='Search this collection')
+            button.Bind(wx.EVT_BUTTON, self.search_collection)
             layout.Add(button)
         self.status.SetName('Catalog operation status')
         layout.Add(self.status, 0, wx.EXPAND)
@@ -142,6 +149,21 @@ class CatalogPanel(wx.Panel):
             service.create_collection(key, self.name.GetValue())
             return (selected[0], key, selected[2])
         self._change(action, self._selection())
+
+    def search_collection(self, event=None):
+        selection = self._selection()
+        try:
+            if not self.ready or not callable(self.select_collection):
+                raise ValueError('catalog selection unavailable')
+            with self.transaction() as service:
+                self._snapshot(service, selection[0])
+            if selection != self._selection():
+                raise ValueError('selection changed')
+            # The bound search service rechecks this identity in its own snapshot.
+            self.select_collection(self.workspace, selection[0])
+        except Exception:
+            self.status.SetValue('Search scope unavailable. Refresh the catalog and retry.')
+            self.status.SetFocus()
 
     def assign(self, event=None):
         def action(service, selected):

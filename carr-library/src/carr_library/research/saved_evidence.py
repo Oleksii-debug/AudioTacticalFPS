@@ -1,10 +1,11 @@
-"""Single-anchor evidence persistence candidate; no implicit migration or commit."""
+"""Versioned evidence persistence with read compatibility for legacy anchors."""
 from dataclasses import asdict
 import json
 
 from ..citations.anchors import Anchor, Identity, Locator, Metadata, digest, resolve_span
 from .topic_tree import TopicTree, _id
 from .anchored_export import SavedEvidence
+from .span_snapshot import seal_span, restore_span
 
 
 def _encode(anchor):
@@ -48,13 +49,17 @@ class SavedEvidenceStore:
         resolve_span((anchor,), self.load_page)
 
     def save(self, topic, evidence, anchor, note=''):
+        return self.save_span(topic, evidence, (anchor,), note)
+
+    def save_span(self, topic, evidence, anchors, note=''):
+        """Save one ordered span; existing records and checksums stay immutable."""
         self.tree._visible(topic)
         _id(evidence)
         _note(note)
-        self._verify(anchor)
-        payload = _encode(anchor)
+        payload, checksum = seal_span(self.workspace, anchors,
+                                      self.load_page, self.attest_metadata)
         self.db.execute('INSERT INTO research_evidence(workspace,topic,id,payload,checksum,note) VALUES(?,?,?,?,?,?)',
-                        (self.workspace, topic, evidence, payload, digest(payload), note))
+                        (self.workspace, topic, evidence, payload, checksum, note))
 
     def edit_note(self, topic, evidence, note):
         self.tree._visible(topic)
@@ -73,11 +78,9 @@ class SavedEvidenceStore:
         for evidence, payload, checksum, note in self.db.execute(
                 'SELECT id,payload,checksum,note FROM research_evidence WHERE workspace=? AND topic=? ORDER BY id',
                 (self.workspace, topic)):
-            if digest(payload) != checksum:
-                raise ValueError('evidence snapshot drift')
-            anchor = _decode(payload)
-            if _encode(anchor) != payload:
-                raise ValueError('invalid snapshot encoding')
-            self._verify(anchor)
-            rows.append(SavedEvidence(topic, _id(evidence), anchor, _note(note)))
+            context = restore_span(self.workspace, payload, checksum,
+                                   self.load_page, self.attest_metadata)
+            anchors = tuple(page.anchor for page in context.pages)
+            rows.append(SavedEvidence(topic, _id(evidence), anchors[0],
+                                      _note(note), anchors, checksum))
         return tuple(rows)

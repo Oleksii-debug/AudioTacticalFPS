@@ -6,18 +6,14 @@ from pathlib import Path
 from dataclasses import replace
 from carr_library.catalog.membership import Catalog
 from carr_library.catalog.registration import Registration, register_batch
-from carr_library.storage import revisions
 from carr_library.storage.revisions import Storage, Page
 
 class Assembly(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.path = Path(tmp.name)/'library.db'
-        self.s = Storage(self.path); self.addCleanup(self.s.close)
+        self.s = Storage(self.path, schema_version=2); self.addCleanup(self.s.close)
         self.db = self.s.db
-        # Baseline candidates have no combined schema; patched candidate initializes both.
-        if not self.db.execute("SELECT 1 FROM sqlite_master WHERE name='workspace'").fetchone():
-            self.db.executescript('CREATE TABLE workspace(id TEXT PRIMARY KEY);'+Path(__file__).with_name('catalog_membership_candidate.sql').read_text())
         with self.s.transaction():
             for ws in ('a','b'):
                 self.db.execute('INSERT INTO workspace VALUES(?)',(ws,))
@@ -26,8 +22,7 @@ class Assembly(unittest.TestCase):
     def record(self, ws):
         return Registration('work','edition',dict(sha256=ws*64,mime='text/plain',size=3),'Same title',(ws,), 'uk',collections=('c',))
     def stage(self, ws, edition, rev, asset, pages):
-        # Baseline calls existing API; patched candidate makes staging explicit.
-        return getattr(self.s,'stage_revision',self.s.publish_revision)(ws,edition,rev,asset,'synthetic',pages)
+        return self.s.stage_revision(ws,edition,rev,asset,'synthetic',pages)
     def test_composite_binding(self):
         for ws,edition,asset in [('a','edition','b'*64),('a','missing','a'*64),('unknown','edition','a'*64)]:
             with self.subTest(ws=ws,edition=edition,asset=asset), self.assertRaises(sqlite3.IntegrityError):
@@ -66,8 +61,10 @@ class Assembly(unittest.TestCase):
             copy.check(); self.assertEqual(copy.get_page('a','a1',1)['printed'],'iv')
         finally: copy.close()
     def test_corruption_rejected_at_backup(self):
+        # Simulate an external writer bypassing FK enforcement. The production
+        # publisher itself correctly refuses such a connection.
         self.db.execute('PRAGMA foreign_keys=OFF')
-        self.s.publish_revision('a','edition','wrong','b'*64,'synthetic',[Page('wrong')])
+        self.db.execute("INSERT INTO revision VALUES('wrong','a','edition',?,'corrupt fixture')", ('b'*64,))
         self.db.execute('PRAGMA foreign_keys=ON')
         out=self.path.with_name('bad.db')
         with self.assertRaisesRegex(ValueError,'database integrity failure'): self.s.backup(out)

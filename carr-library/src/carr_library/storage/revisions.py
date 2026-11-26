@@ -8,6 +8,8 @@ import sqlite3
 import os
 from tempfile import TemporaryDirectory
 
+from .schema_v3 import RESEARCH_V3
+
 SCHEMA = '''
 CREATE TABLE revision(id TEXT PRIMARY KEY, workspace TEXT NOT NULL, edition TEXT NOT NULL,
  asset TEXT NOT NULL, config TEXT NOT NULL, UNIQUE(workspace, edition, id));
@@ -109,7 +111,8 @@ SCHEMA_V2 = CATALOG_V2 + SCHEMA.replace(
     'UNIQUE(workspace, edition, id), FOREIGN KEY(workspace,edition,asset) '
     'REFERENCES catalog_edition(workspace,id,asset));',
 ).replace('PRAGMA user_version=1;', 'PRAGMA user_version=2;')
-SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2}
+SCHEMA_V3 = SCHEMA_V2.replace('PRAGMA user_version=2;', '') + RESEARCH_V3 + '\nPRAGMA user_version=3;\n'
+SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3}
 
 
 def _schema_signature(db):
@@ -118,7 +121,7 @@ def _schema_signature(db):
         'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'))
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=3)
 def _expected_signature(version):
     with closing(sqlite3.connect(':memory:')) as reference:
         reference.executescript(SCHEMAS[version])
@@ -256,7 +259,8 @@ class Storage:
             SELECT 1 FROM ordered WHERE ordinal != expected
                 OR (physical IS NULL AND (printed IS NOT NULL OR verified != 0))
                 OR (physical IS NOT NULL AND typeof(physical) != 'integer')
-                OR (verified=1 AND (printed IS NULL OR trim(printed, char(9,10,13,32))=''))
+                OR (verified=1 AND (printed IS NULL OR typeof(printed) != 'text'
+                    OR instr(printed, char(0)) > 0 OR trim(printed, char(9,10,13,32))=''))
                 OR (expected>1 AND previous_logical != (physical IS NULL))
                 OR (physical IS NOT NULL AND physical <= previous_physical)
             LIMIT 1
@@ -290,6 +294,9 @@ class Storage:
         if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
             raise ValueError('active index content mismatch')
         self.db.execute("INSERT INTO page_fts(page_fts,rank) VALUES('integrity-check',1)")
+        if self.schema_version == 3:
+            from .research_integrity import check_research
+            check_research(self.db)
 
     def check(self):
         with self.transaction():

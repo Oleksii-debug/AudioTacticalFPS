@@ -54,6 +54,13 @@ def test_logical_and_unknown_and_repeat_labels():
         resolve(anchor(), I, Locator('physical_page', 5, 'iv', True), RAW)
 
 
+@pytest.mark.parametrize('label', [b'iv', 'iv\x00forged', '\ud800'])
+@pytest.mark.parametrize('verified', [True, False])
+def test_invalid_printed_labels_never_reach_citation(label, verified):
+    with pytest.raises(ValueError):
+        Locator('physical_page', 1, label, verified)
+
+
 def test_cross_page_span():
     a, b = anchor(), anchor('next', Locator('physical_page', 5, 'iv', True))
     assert validate_span([a, b]) == (a, b)

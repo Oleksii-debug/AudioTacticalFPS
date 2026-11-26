@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carr-research-library"
+version = "0.1.0"
+description = "Local research workspaces with immutable source quotations and accessible desktop controls"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "filelock==3.29.0",
+    "platformdirs==4.10.0",
+]
+
+[project.optional-dependencies]
+pdf = ["pypdf==6.21.4", "pypdfium2==5.13.0", "Pillow==13.0.0"]
+desktop = ["wxPython==4.3.2"]
+docx = ["python-docx==1.2.0", "defusedxml==0.7.1"]
+semantic = ["fastembed==0.9.1", "onnxruntime==1.32.0", "tokenizers==0.23.3", "huggingface-hub==1.16.1"]
+
+[project.scripts]
+carr-library = "carr_library.__main__:main"
+
+[project.gui-scripts]
+carr-library-desktop = "carr_library.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src", "bootstrap" = "bootstrap"}
+packages = [
+    "carr_library", "carr_library.catalog", "carr_library.catalog._filetype",
+    "carr_library.citations", "carr_library.extract", "carr_library.ingest",
+    "carr_library.reader", "carr_library.research", "carr_library.research._vendor_rispy",
+    "carr_library.search", "carr_library.search._vendor", "carr_library.search._vendor.rifflux",
+    "carr_library.storage", "carr_library.ui", "carr_library.ui._vendor",
+    "carr_library.ui._vendor.wx_grid", "bootstrap", "bootstrap.vendor",
+    "bootstrap.vendor.cairn_extractors",
+]
+
+[tool.setuptools.package-data]
+"*" = ["LICENSE", "*.md", "*.json", "_rispy_LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
+pythonpath = ["src", "."]

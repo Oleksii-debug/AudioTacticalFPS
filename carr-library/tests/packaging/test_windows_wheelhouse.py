@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -139,16 +140,20 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(self.out.read_bytes(), b'old lock')
 
     def test_real_universal_wheel(self):
-        # Explicitly supplied distro wheel, not downloaded or executed.
-        fixture = Path('/usr/share/python-wheels/pip-25.1.1-py3-none-any.whl')
+        # Explicitly supplied fixture; the test never downloads or executes it.
+        supplied = os.environ.get('CARR_PIP_WHEEL')
+        fixture = Path(supplied) if supplied else Path('/usr/share/python-wheels/pip-25.1.1-py3-none-any.whl')
         if not fixture.is_file():
             self.skipTest('local distro pip wheel not available')
         shutil.copyfile(fixture, self.wheels / fixture.name)
         self.req.write_text('pip==25.1.1\n', encoding='utf-8')
         self.approve_fixture()
-        # Known prior distro wheel digest, not newly self-approved bytes.
+        # Independently pinned publisher/distro bytes, never a newly generated
+        # approval. PyPI: https://pypi.org/pypi/pip/25.1.1/json
         approved = json.loads(self.manifest.read_text(encoding='utf-8'))
-        approved[fixture.name] = '20568e5d750393b2a331d6b261886cbe5d62aca3f54d49a39815b7474d34cd9c'
+        approved[fixture.name] = ('2913a38a2abf4ea6b64ab507bd9e967f3b53dc1ede74b01b0931e1ce548751af'
+                                  if supplied else
+                                  '20568e5d750393b2a331d6b261886cbe5d62aca3f54d49a39815b7474d34cd9c')
         self.manifest.write_text(json.dumps(approved), encoding='utf-8')
         self.run_resolve()
         lock = self.out.read_text(encoding='utf-8')

@@ -14,12 +14,16 @@ class EvidencePanel(wx.Panel):
         self.displayed = None
         self.items = wx.ListBox(self, style=wx.LB_SINGLE)
         self.items.SetName('Saved evidence')
+        self.page_choice = wx.Choice(self)
+        self.page_choice.SetName('Evidence source page or segment')
         self.quote = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.citation = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.note = wx.TextCtrl(self, style=wx.TE_MULTILINE)
         self.status = wx.TextCtrl(self, style=wx.TE_READONLY)
         layout = wx.BoxSizer(wx.VERTICAL)
         layout.Add(self.items, 1, wx.EXPAND)
+        layout.Add(wx.StaticText(self, label='Evidence source page or segment'))
+        layout.Add(self.page_choice, 0, wx.EXPAND)
         for label, control in [('Exact quotation (read only)', self.quote),
                                ('Source citation (read only)', self.citation),
                                ('Research note (editable)', self.note),
@@ -35,6 +39,7 @@ class EvidencePanel(wx.Panel):
             if handler == self.save_note:
                 self.save_button = button
         self.items.Bind(wx.EVT_LISTBOX, self.select)
+        self.page_choice.Bind(wx.EVT_CHOICE, self.show_page)
         self.SetSizer(layout)
         self.refresh()
 
@@ -44,6 +49,8 @@ class EvidencePanel(wx.Panel):
 
     def _clear_details(self):
         self.displayed = None
+        self.page_choice.Clear()
+        self.page_choice.Enable(False)
         self.quote.SetValue('')
         self.citation.SetValue('')
         self.note.SetValue('')
@@ -69,11 +76,28 @@ class EvidencePanel(wx.Panel):
     def _show(self, row, editable):
         self._clear_details()
         self.displayed = row
-        self.quote.SetValue(row.anchor.quote)
-        self.citation.SetValue(format_citation(row.anchor))
+        anchors = getattr(row, 'anchors', (row.anchor,))
+        for position, anchor in enumerate(anchors, 1):
+            self.page_choice.Append(f'Source part {position} of {len(anchors)}; {anchor.locator.display()}')
+        self.page_choice.SetSelection(0)
+        self.page_choice.Enable(len(anchors) > 1)
+        self.show_page()
         self.note.SetValue(row.note)
         self.note.Enable(editable)
         self.save_button.Enable(editable)
+
+    def show_page(self, event=None):
+        """Keep each exact slice separate; changing page never edits the note."""
+        row = self.displayed
+        anchors = getattr(row, 'anchors', (row.anchor,)) if row is not None else ()
+        index = self.page_choice.GetSelection()
+        if not 0 <= index < len(anchors):
+            self.quote.SetValue('')
+            self.citation.SetValue('')
+            return
+        anchor = anchors[index]
+        self.quote.SetValue(anchor.quote)
+        self.citation.SetValue(format_citation(anchor))
 
     def refresh(self, event=None, *, evidence_id=None):
         if evidence_id is None:

@@ -19,6 +19,8 @@ class Hit:
     page: str = 'Printed page unknown'
     citation: str = 'Citation'
     quote: str = 'Точний текст'
+    citation_verified: bool = True
+    verification_status: str = 'Verified source text'
 
 
 def load_class(filename, classname, env):
@@ -108,4 +110,17 @@ def test_out_of_scope_selection_never_opens_dialog(panel):
     p.model.workspace = 'B'
     p.on_more(None)
     show.assert_not_called()
+    p.grid.focus_row.assert_not_called()
+
+
+def test_source_filter_change_invalidates_open_context(panel):
+    p, show, _ = panel
+
+    def modal(parent, identity, current, load):
+        assert current() == identity
+        p.on_source_mode(None)
+        assert current() is None
+
+    show.side_effect = modal
+    p.on_more(None)
     p.grid.focus_row.assert_not_called()

@@ -23,6 +23,7 @@ class Control:
     def SetSelection(self, x): self.selection = x
     def GetSelection(self): return self.selection
     def SetValue(self, x): self.value = x
+    def ChangeValue(self, x): self.value = x
     def GetValue(self): return self.value
     def SetFocus(self): self.focused = True
     def Hide(self): self.hidden = True
@@ -35,10 +36,15 @@ class Control:
 class Child:
     def __init__(self, *args, **kw):
         self.args = args
+        self.kwargs = kw
         self.query = self.note = Control()
+        self.status = Control()
         self.displayed = SimpleNamespace(note='saved')
         self.note.SetValue('saved')
     def set_workspace(self, workspace): self.workspace = workspace
+    def refresh(self, *, evidence_id=None):
+        self.displayed = SimpleNamespace(note='', evidence_id=evidence_id)
+        self.note.SetValue('')
 
 
 def load():
@@ -59,6 +65,7 @@ def load():
     source = Path(__file__).resolve().parent / 'workspace_shell.py'
     if not source.exists():
         source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/workspace_shell.py'
+    pkg.__path__ = [str(source.parent)]
     spec = importlib.util.spec_from_file_location('shell_probe.workspace_shell', source)
     mod = importlib.util.module_from_spec(spec)
     mods[spec.name] = mod

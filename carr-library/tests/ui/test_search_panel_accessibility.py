@@ -35,7 +35,7 @@ def test_readable_details_preserve_source_metadata_and_quote(panel):
     p.on_selection(Mock())
     assert p.details.ChangeValue.call_args.args[0] == (
         f'Title: {h.title}\nAuthor: {h.author}\nEdition: {h.edition}\nPage: {h.page}'
-        f'\nCitation: {h.citation}\n\nQuotation:\n{h.quote}')
+        f'\nVerification: {h.verification_status}\nCitation: {h.citation}\n\nExcerpt:\n{h.quote}')
 
 
 def test_selection_loss_clears_details(panel):
@@ -105,3 +105,35 @@ def test_more_return_refreshes_details_without_selection_event(panel, monkeypatc
     p.grid.focus_row.assert_called_once_with(0)
     assert h.quote in p.details.ChangeValue.call_args.args[0]
     assert h.citation in p.details.ChangeValue.call_args.args[0]
+
+
+def test_save_evidence_passes_identity_and_displayed_source(panel):
+    p, h, _ = panel
+    p.save_evidence_service = Mock(return_value='new-evidence')
+    p.on_save_evidence(None)
+    p.save_evidence_service.assert_called_once_with(h.workspace, h.ref, h.revision, h.quote, h.citation)
+    assert p.status.ChangeValue.call_args.args[0] == 'Evidence saved to selected topic.'
+    p.status.SetFocus.assert_not_called()
+
+
+@pytest.mark.parametrize('fault', ['scope', 'missing', 'rejected'])
+def test_save_evidence_rejects_invalid_or_stale_result(panel, fault):
+    p, h, _ = panel
+    p.save_evidence_service = Mock(side_effect=ValueError('source changed'))
+    if fault == 'scope':
+        p.model.workspace = 'other-library'
+    elif fault == 'missing':
+        p.grid.selected_rows.return_value = []
+    p.on_save_evidence(None)
+    if fault != 'rejected':
+        p.save_evidence_service.assert_not_called()
+    assert p.status.ChangeValue.call_args.args[0].startswith('Evidence not saved.')
+    p.status.SetFocus.assert_called_once()
+
+
+def test_cancel_save_preserves_shell_focus_on_unsaved_note(panel):
+    p, _, _ = panel
+    p.save_evidence_service = Mock(return_value=None)
+    p.on_save_evidence(None)
+    assert p.status.ChangeValue.call_args.args[0] == 'Evidence save cancelled.'
+    p.status.SetFocus.assert_not_called()

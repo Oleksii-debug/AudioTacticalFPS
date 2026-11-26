@@ -1,4 +1,40 @@
-# CARR-05 atomic revision storage (candidate)
+# Versioned shared library storage
+
+## Current application schema (V3)
+
+`Storage(path, schema_version=3)` explicitly creates the shared catalog,
+sealed-revision, workspace-profile, topic, evidence, saved-query and immutable
+metadata-snapshot schema in one transaction. Existing V1/V2 formats retain
+their exact signatures and can still be opened explicitly; opening one as V3
+fails without changing it. No implicit live upgrade or inferred identity
+mapping is performed. `Storage(path)` detects an existing V3 database.
+
+`WorkspaceStore(db)` creates, renames, describes and archives research
+workspaces. The application calls `require_active(id)` before scoped work.
+`MetadataSnapshots(db, workspace)` records explicitly supplied attribution for
+the exact sealed revision, independently of later mutable catalog edits.
+Snapshots can be revoked, but their identity, payload and checksum cannot be
+rewritten. They do not approve OCR text or printed labels. Strict TXT
+attestation still checks the retained original bytes; PDF/OCR requires its
+separate verification evidence.
+
+All service operations use the caller's transaction and existing catalog,
+topic, saved-evidence and query APIs. `check()` and `backup()` additionally
+validate workspace profiles, topic reachability, evidence codecs/checksums,
+exact sealed-page slices and revision-bound metadata. Revoked or archived
+history is preserved in backups while runtime authorization prevents its use.
+Database hashes are corruption detection, not protection against an attacker
+who can rewrite the entire private database. Source-byte retention and complete
+application bundle restore remain separate orchestration responsibilities.
+
+The actual disk-backed V3 suite is `tests/storage/test_shared_v3.py`; it composes
+the real services and TXT attestor, including reopen, rollback, isolation,
+revocation, original-byte drift and checked backup. Legacy V1/V2, replacement,
+recovery and schema-boundary suites remain applicable. Windows/NVDA acceptance
+is separate from these storage tests.
+
+## Earlier V1 candidate provenance
+
 This is the storage-only adaptation of the SQLite external-content approach already used in PR #17, not another research UI or search engine. CARR-03 owns its MIT cairnsearch extraction integration; extracted pages enter this boundary through Page records. Catalog workspace/edition identifiers are supplied by the caller; CARR-02/01 must agree on their authoritative foreign keys before production wiring.
 
 ## Reuse and provenance

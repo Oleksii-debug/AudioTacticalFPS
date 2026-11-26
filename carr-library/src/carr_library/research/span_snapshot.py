@@ -2,8 +2,9 @@
 from dataclasses import asdict
 from itertools import islice
 import json
+import re
 
-from ..citations.anchors import Anchor, Identity, Locator, Metadata, digest
+from ..citations.anchors import Anchor, Identity, Locator, Metadata, digest, validate_span
 from ..reader.context import open_context
 
 MAX_PAGES = 64
@@ -42,31 +43,63 @@ def seal_span(workspace, anchors, load_page, attest_metadata):
     return payload, digest(payload)
 
 
-def restore_span(workspace, payload, checksum, load_page, attest_metadata):
-    """Return verified Context; no active-revision fallback or joined quote.
+def decode_saved_span(payload, checksum):
+    """Validate stored bytes and decode version 1 or canonical legacy evidence.
 
-    Caller must independently authorize topic and record membership and supply
-    historical readers within one consistent read transaction.
+    This is an integrity codec, not an authorization or source attestation. The
+    original checksum is checked before parsing. Legacy bytes are never written
+    back or replaced with a normalized checksum; fresh copy still binds the
+    displayed checksum to the exact selected database record.
     """
     if not isinstance(payload, str) or len(payload) > MAX_PAYLOAD:
         raise ValueError('invalid evidence snapshot size')
-    if len(payload.encode('utf-8')) > MAX_PAYLOAD or digest(payload) != checksum:
-        raise ValueError('evidence snapshot drift')
     try:
+        if len(payload.encode('utf-8')) > MAX_PAYLOAD or digest(payload) != checksum:
+            raise ValueError('evidence snapshot drift')
         data = json.loads(payload)
-        if type(data['version']) is not int or data['version'] != 1:
-            raise ValueError('unsupported evidence snapshot version')
-        if not isinstance(data['anchors'], list) or not 1 <= len(data['anchors']) <= MAX_PAGES:
-            raise ValueError('invalid span size')
+        if type(data) is not dict:
+            raise ValueError('invalid evidence snapshot')
+        legacy = 'version' not in data
+        if legacy:
+            items = [data]
+        else:
+            if type(data['version']) is not int or data['version'] != 1:
+                raise ValueError('unsupported evidence snapshot version')
+            items = data['anchors']
+            if type(items) is not list or not 1 <= len(items) <= MAX_PAGES:
+                raise ValueError('invalid span size')
         anchors = []
-        for item in data['anchors']:
+        for item in items:
             item = dict(item)
             item['identity'] = Identity(**item['identity'])
             item['locator'] = Locator(**item['locator'])
             item['metadata'] = Metadata(**item['metadata'])
-            anchors.append(Anchor(**item))
-        if _encode(anchors) != payload:
+            anchor = Anchor(**item)
+            if (type(anchor.raw_length) is not int or type(anchor.start) is not int
+                    or type(anchor.end) is not int
+                    or not 0 <= anchor.start < anchor.end <= anchor.raw_length
+                    or type(anchor.quote) is not str
+                    or len(anchor.quote) != anchor.end - anchor.start
+                    or type(anchor.raw_sha256) is not str
+                    or not re.fullmatch('[0-9a-f]{64}', anchor.raw_sha256)):
+                raise ValueError('invalid evidence anchor')
+            anchors.append(anchor)
+        canonical = (json.dumps(asdict(anchors[0]), ensure_ascii=False,
+                                sort_keys=True, separators=(',', ':'))
+                     if legacy else _encode(anchors))
+        if canonical != payload:
             raise ValueError('noncanonical evidence snapshot')
-    except (KeyError, TypeError, RecursionError, AttributeError) as exc:
+    except (KeyError, TypeError, RecursionError, AttributeError, UnicodeError) as exc:
         raise ValueError('invalid evidence snapshot') from exc
-    return _verify(workspace, tuple(anchors), load_page, attest_metadata)
+    return validate_span(anchors)
+
+
+def restore_span(workspace, payload, checksum, load_page, attest_metadata):
+    """Return a verified Context from either supported immutable payload format.
+
+    Caller independently authorizes topic and record membership and supplies
+    historical readers within one consistent read transaction. Neither the
+    decoder nor checksum substitutes for those source/metadata attestations.
+    """
+    return _verify(workspace, decode_saved_span(payload, checksum),
+                   load_page, attest_metadata)
