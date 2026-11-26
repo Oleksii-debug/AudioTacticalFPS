@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -139,20 +140,29 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(self.out.read_bytes(), b'old lock')
 
     def test_real_universal_wheel(self):
-        # Explicitly supplied distro wheel, not downloaded or executed.
-        fixture = Path('/usr/share/python-wheels/pip-25.1.1-py3-none-any.whl')
+        # A separately acquired publisher-verified wheel; tests never download.
+        # The environment override makes this gate portable across Linux/Windows.
+        provided = os.environ.get('CARR_TEST_PYPDF_WHEEL')
+        fixture = Path(provided) if provided else Path('/usr/share/python-wheels/pip-25.1.1-py3-none-any.whl')
         if not fixture.is_file():
-            self.skipTest('local distro pip wheel not available')
+            self.skipTest('set CARR_TEST_PYPDF_WHEEL to the approved pypdf 7.1.1 wheel')
+        if provided:
+            self.assertEqual(fixture.name, 'pypdf-7.1.1-py3-none-any.whl')
+            requirement = 'pypdf==7.1.1'
+            expected = '04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1'
+        else:
+            requirement = 'pip==25.1.1'
+            expected = '20568e5d750393b2a331d6b261886cbe5d62aca3f54d49a39815b7474d34cd9c'
         shutil.copyfile(fixture, self.wheels / fixture.name)
-        self.req.write_text('pip==25.1.1\n', encoding='utf-8')
+        self.req.write_text(requirement + '\n', encoding='utf-8')
         self.approve_fixture()
-        # Known prior distro wheel digest, not newly self-approved bytes.
+        # Independently recorded publisher/distro digest, not self-approved bytes.
         approved = json.loads(self.manifest.read_text(encoding='utf-8'))
-        approved[fixture.name] = '20568e5d750393b2a331d6b261886cbe5d62aca3f54d49a39815b7474d34cd9c'
+        approved[fixture.name] = expected
         self.manifest.write_text(json.dumps(approved), encoding='utf-8')
         self.run_resolve()
         lock = self.out.read_text(encoding='utf-8')
-        self.assertIn('pip==25.1.1', lock)
+        self.assertIn(requirement, lock)
         self.assertIn(hashlib.sha256(fixture.read_bytes()).hexdigest(), lock)
 
 

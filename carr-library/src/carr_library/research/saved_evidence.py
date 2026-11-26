@@ -1,10 +1,11 @@
-"""Single-anchor evidence persistence candidate; no implicit migration or commit."""
+"""Immutable single/multi-page evidence persistence; caller owns the transaction."""
 from dataclasses import asdict
 import json
 
 from ..citations.anchors import Anchor, Identity, Locator, Metadata, digest, resolve_span
 from .topic_tree import TopicTree, _id
 from .anchored_export import SavedEvidence
+from .span_snapshot import restore_anchors, seal_span
 
 
 def _encode(anchor):
@@ -48,13 +49,18 @@ class SavedEvidenceStore:
         resolve_span((anchor,), self.load_page)
 
     def save(self, topic, evidence, anchor, note=''):
+        """Save an Anchor or an ordered contiguous span using the versioned codec."""
         self.tree._visible(topic)
         _id(evidence)
         _note(note)
-        self._verify(anchor)
-        payload = _encode(anchor)
+        anchors = (anchor,) if isinstance(anchor, Anchor) else anchor
+        try:
+            payload, checksum = seal_span(self.workspace, anchors, self.load_page,
+                                          self.attest_metadata)
+        except TypeError as exc:
+            raise ValueError('invalid evidence span') from exc
         self.db.execute('INSERT INTO research_evidence(workspace,topic,id,payload,checksum,note) VALUES(?,?,?,?,?,?)',
-                        (self.workspace, topic, evidence, payload, digest(payload), note))
+                        (self.workspace, topic, evidence, payload, checksum, note))
 
     def edit_note(self, topic, evidence, note):
         self.tree._visible(topic)
@@ -63,21 +69,53 @@ class SavedEvidenceStore:
                            (_note(note), self.workspace, topic, evidence)).rowcount != 1:
             raise ValueError('unknown evidence')
 
-    def list_saved(self, topic):
+    def list_saved(self, topic, *, cancelled=lambda: False):
+        return tuple(self.iter_saved(topic, cancelled=cancelled))
+
+    def iter_saved(self, topic, *, cancelled=lambda: False):
+        """Verify records lazily, checking cancellation around each source read.
+
+        Each yielded record is fully authenticated, including every page of a
+        span. A caller returning a complete topic must exhaust this iterator;
+        stopping early does not attest the remaining evidence. Cancellation is
+        cooperative and cannot interrupt an already running native source read.
+        """
+        if not callable(cancelled):
+            raise ValueError('cancellation callback required')
+
+        def check():
+            if cancelled():
+                raise TimeoutError('saved evidence loading cancelled or timed out')
+
+        def load_page(*args):
+            check()
+            result = self.load_page(*args)
+            check()
+            return result
+
+        def attest_metadata(*args):
+            check()
+            result = self.attest_metadata(*args)
+            check()
+            return result
+
+        check()
         self.tree._ready()
         _id(topic)
         if not self.db.execute('SELECT 1 FROM research_topic WHERE workspace=? AND id=?',
                                (self.workspace, topic)).fetchone():
             raise ValueError('unknown topic')
-        rows = []
-        for evidence, payload, checksum, note in self.db.execute(
+        cursor = self.db.execute(
                 'SELECT id,payload,checksum,note FROM research_evidence WHERE workspace=? AND topic=? ORDER BY id',
-                (self.workspace, topic)):
-            if digest(payload) != checksum:
-                raise ValueError('evidence snapshot drift')
-            anchor = _decode(payload)
-            if _encode(anchor) != payload:
-                raise ValueError('invalid snapshot encoding')
-            self._verify(anchor)
-            rows.append(SavedEvidence(topic, _id(evidence), anchor, _note(note)))
-        return tuple(rows)
+                (self.workspace, topic))
+        try:
+            for evidence, payload, checksum, note in cursor:
+                check()
+                anchors = restore_anchors(self.workspace, payload, checksum, load_page,
+                                          attest_metadata)
+                check()
+                yield SavedEvidence(topic, _id(evidence), anchors[0], _note(note),
+                                    anchors if len(anchors) > 1 else (), checksum)
+            check()
+        finally:
+            cursor.close()

@@ -19,9 +19,11 @@ class SearchPanel(wx.Panel):
         self.model = SearchModel()
         layout = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(layout)
+        self.field_labels = {}
 
         def add(label, ctrl):
-            layout.Add(wx.StaticText(self, label=label), 0, wx.ALL, 3)
+            self.field_labels[label] = wx.StaticText(self,label=label)
+            layout.Add(self.field_labels[label], 0, wx.ALL, 3)
             ctrl.SetName(label)
             layout.Add(ctrl, 0, wx.EXPAND | wx.ALL, 3)
             return ctrl

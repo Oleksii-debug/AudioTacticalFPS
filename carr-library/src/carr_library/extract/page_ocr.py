@@ -2,8 +2,9 @@
 from dataclasses import dataclass
 from contextlib import closing
 from hashlib import sha256
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
+import csv
 import importlib.metadata as metadata
 import math
 import re
@@ -13,6 +14,55 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
+
+
+_MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
+_TSV_FIELDS = ('level', 'page_num', 'block_num', 'par_num', 'line_num',
+               'word_num', 'left', 'top', 'width', 'height', 'conf', 'text')
+
+
+class _OcrOutputLimit(ValueError):
+    pass
+
+
+def _read_ocr_output(path):
+    # Match the ingestion checkpoint ceiling before reading an unbounded file.
+    # The journal still checks the size of the complete serialized checkpoint.
+    with path.open('rb') as stream:
+        data = stream.read(_MAX_OCR_OUTPUT_BYTES + 1)
+    if len(data) > _MAX_OCR_OUTPUT_BYTES:
+        raise _OcrOutputLimit('OCR output exceeds checkpoint limit')
+    return data.decode('utf-8')
+
+
+def _ocr_blocks(tsv, render_size):
+    """Decode Tesseract's unquoted TSV without changing recognized punctuation."""
+    rows = csv.DictReader(StringIO(tsv, newline=''), delimiter='\t',
+                          quoting=csv.QUOTE_NONE)
+    if tuple(rows.fieldnames or ()) != _TSV_FIELDS:
+        raise ValueError('unexpected OCR layout header')
+    width, height = render_size
+    blocks = []
+    for row in rows:
+        if None in row or any(value is None for value in row.values()):
+            raise ValueError('incomplete OCR layout row')
+        level = int(row['level'])
+        if not 1 <= level <= 5 or int(row['page_num']) != 1:
+            raise ValueError('invalid OCR layout page')
+        if level != 5 or not row['text']:
+            continue
+        confidence = float(row['conf'])
+        left, top, box_width, box_height = (int(row[k]) for k in ('left', 'top', 'width', 'height'))
+        line = tuple(int(row[k]) for k in ('block_num', 'par_num', 'line_num'))
+        if (not math.isfinite(confidence) or not -1 <= confidence <= 100
+                or not (0 <= left < width and 0 <= top < height)
+                or not (0 < box_width <= width - left and 0 < box_height <= height - top)
+                or any(part < 1 for part in line) or int(row['word_num']) < 1
+                or '\x00' in row['text']):
+            raise ValueError('invalid OCR layout word')
+        blocks.append(dict(text=row['text'], confidence=confidence,
+                           bbox=(left, top, box_width, box_height), line=line))
+    return blocks
 
 
 @dataclass(frozen=True)
@@ -99,7 +149,9 @@ def extract_page(asset, physical_index, config=Config()):
             with closing(page.render(scale=scale)) as bitmap:
                 image = bitmap.to_pil().convert('RGB')
                 provenance['render_size'] = image.size
-                if all(lo >= 250 for lo, hi in image.getextrema()) and not native.strip():
+                # Near-white marks can still contain source text. Only an
+                # entirely white raster is eligible for automatic blank status.
+                if all(lo == 255 for lo, hi in image.getextrema()) and not native.strip():
                     result['status'] = 'blank'
                     provenance['method'] = 'render_blank'
                     return result
@@ -137,8 +189,8 @@ def extract_page(asset, physical_index, config=Config()):
                             run([exe, str(inp), str(out), '-l', config.languages,
                                  '--dpi', str(config.dpi), '--psm', '3', *model_args,
                                  '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'])
-                            return (out.with_suffix('.txt').read_bytes().decode('utf-8'),
-                                    out.with_suffix('.tsv').read_bytes().decode('utf-8'))
+                            return (_read_ocr_output(out.with_suffix('.txt')),
+                                    _read_ocr_output(out.with_suffix('.tsv')))
 
                         provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
                         raw, tsv = recognize(image, 'baseline')
@@ -146,17 +198,21 @@ def extract_page(asset, physical_index, config=Config()):
                         if config.orientation:
                             from .ocr_orientation_bridge import orientation_candidate
                             provenance['orientation'] = orientation_candidate(image, config, exe, remaining, run, recognize)
+                except _OcrOutputLimit:
+                    result['status'] = 'review_required'
+                    result['warnings'].append('ocr_output_limit')
+                    return result
                 except (OSError, subprocess.SubprocessError, UnicodeError):
                     result['status'] = 'review_required'
                     result['warnings'].append('ocr_failed_or_timed_out')
                     return result
     provenance.update(method='ocr_candidate', ocr_text=raw, ocr_tsv=tsv, psm=3)
-    import csv
-    for row in csv.DictReader(tsv.splitlines(), delimiter='\t'):
-        if row['level'] == '5' and row['text']:
-            result['blocks'].append(dict(text=row['text'], confidence=float(row['conf']),
-                                        bbox=tuple(int(row[k]) for k in ('left', 'top', 'width', 'height')),
-                                        line=tuple(int(row[k]) for k in ('block_num', 'par_num', 'line_num'))))
+    try:
+        result['blocks'] = _ocr_blocks(tsv, provenance['render_size'])
+    except (csv.Error, ValueError, OverflowError):
+        # Preserve both raw outputs for review, but never expose a partial or
+        # malformed layout as usable word-coordinate evidence.
+        result['warnings'].append('ocr_layout_invalid')
     # Mixed pages retain both candidates; no automatic concatenation or publication.
     if not native.strip() or suspect:
         result['raw_text'] = raw

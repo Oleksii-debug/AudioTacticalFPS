@@ -13,7 +13,7 @@ import zipfile
 
 PIN = 'pip==25.1.1'
 WHEEL = 'pip-25.1.1-py3-none-any.whl'
-UV_VERSION = 'uv 0.10.0'
+UV_VERSION = 'uv 0.13.9'
 
 
 def require(condition, message):

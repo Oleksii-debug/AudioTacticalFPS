@@ -8,6 +8,8 @@ import sqlite3
 import os
 from tempfile import TemporaryDirectory
 
+from .research_schema import RESEARCH_SCHEMA
+
 SCHEMA = '''
 CREATE TABLE revision(id TEXT PRIMARY KEY, workspace TEXT NOT NULL, edition TEXT NOT NULL,
  asset TEXT NOT NULL, config TEXT NOT NULL, UNIQUE(workspace, edition, id));
@@ -109,7 +111,8 @@ SCHEMA_V2 = CATALOG_V2 + SCHEMA.replace(
     'UNIQUE(workspace, edition, id), FOREIGN KEY(workspace,edition,asset) '
     'REFERENCES catalog_edition(workspace,id,asset));',
 ).replace('PRAGMA user_version=1;', 'PRAGMA user_version=2;')
-SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2}
+SCHEMA_V3 = SCHEMA_V2.replace('PRAGMA user_version=2;', '') + RESEARCH_SCHEMA + '\nPRAGMA user_version=3;\n'
+SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3}
 
 
 def _schema_signature(db):
@@ -118,7 +121,7 @@ def _schema_signature(db):
         'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'))
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=3)
 def _expected_signature(version):
     with closing(sqlite3.connect(':memory:')) as reference:
         reference.executescript(SCHEMAS[version])
@@ -256,6 +259,7 @@ class Storage:
             SELECT 1 FROM ordered WHERE ordinal != expected
                 OR (physical IS NULL AND (printed IS NOT NULL OR verified != 0))
                 OR (physical IS NOT NULL AND typeof(physical) != 'integer')
+                OR (printed IS NOT NULL AND (typeof(printed)!='text' OR instr(printed,char(0))>0))
                 OR (verified=1 AND (printed IS NULL OR trim(printed, char(9,10,13,32))=''))
                 OR (expected>1 AND previous_logical != (physical IS NULL))
                 OR (physical IS NOT NULL AND physical <= previous_physical)
@@ -290,6 +294,87 @@ class Storage:
         if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
             raise ValueError('active index content mismatch')
         self.db.execute("INSERT INTO page_fts(page_fts,rank) VALUES('integrity-check',1)")
+        if self.schema_version == 3:
+            self._check_research()
+
+    def _check_research(self):
+        """Check persisted research identities and source slices before backup.
+
+        This validates the stored snapshot, not an external reviewer's authority.
+        Citation actions must still use fresh text/metadata attestors and assets.
+        """
+        from ..citations.anchors import Identity, Locator, Metadata, resolve, validate_span
+        from ..research.saved_evidence import _note
+        from ..research.span_snapshot import _decode_snapshot
+        from ..research.saved_topic_query import _definition
+        from ..research.topic_tree import _id, _name, _position
+
+        # Reuse the canonical assembly's workspace-profile invariant with this
+        # host's table names. A backup must not silently strand existing sources
+        # and evidence behind a missing or malformed library presentation row.
+        if self.db.execute('SELECT 1 FROM workspace w LEFT JOIN workspace_meta m '
+                'ON m.workspace=w.id WHERE m.workspace IS NULL LIMIT 1').fetchone():
+            raise ValueError('workspace profile missing')
+        for ws, name, description, archived in self.db.execute(
+                'SELECT workspace,name,description,archived FROM workspace_meta'):
+            _id(ws)
+            if (not isinstance(name, str) or not name.strip() or len(name) > 512
+                    or '\x00' in name):
+                raise ValueError('invalid workspace name')
+            if (not isinstance(description, str) or len(description) > 100000
+                    or '\x00' in description):
+                raise ValueError('invalid workspace description')
+            if type(archived) is not int or archived not in (0, 1):
+                raise ValueError('invalid workspace archive state')
+
+        if self.db.execute('''WITH RECURSIVE reachable(workspace,id) AS (
+            SELECT workspace,id FROM research_topic WHERE parent IS NULL
+            UNION SELECT t.workspace,t.id FROM research_topic t
+            JOIN reachable r ON t.workspace=r.workspace AND t.parent=r.id
+        ) SELECT workspace,id FROM research_topic
+          EXCEPT SELECT workspace,id FROM reachable LIMIT 1''').fetchone():
+            raise ValueError('unreachable research topic or cycle')
+        for ws, ident, name, position in self.db.execute(
+                'SELECT workspace,id,name,position FROM research_topic'):
+            _id(ws)
+            _id(ident)
+            _name(name)
+            _position(position)
+        for row in self.db.execute('SELECT name,query,field,result_limit FROM research_saved_query'):
+            _definition(*row)
+        for ws, topic, ident, payload, checksum, note in self.db.execute(
+                'SELECT workspace,topic,id,payload,checksum,note FROM research_evidence'):
+            _id(ws)
+            _id(topic)
+            _id(ident)
+            _note(note)
+            for anchor in validate_span(_decode_snapshot(payload, checksum)):
+                if anchor.identity.workspace != ws:
+                    raise ValueError('invalid evidence snapshot identity')
+                identity, locator = anchor.identity, anchor.locator
+                row = self.db.execute('''SELECT r.workspace,r.edition,r.asset,r.id,
+                    p.ordinal,p.physical,p.printed,p.verified,p.raw FROM revision r
+                    JOIN sealed s ON s.revision=r.id JOIN page p ON p.revision=r.id
+                    WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.id=?
+                    AND ((?='physical_page' AND p.physical=?) OR
+                         (?='logical_segment' AND p.physical IS NULL AND p.ordinal=?))''',
+                    (ws, identity.edition_id, identity.asset_sha256, identity.revision,
+                     locator.kind, locator.index, locator.kind, locator.index)).fetchone()
+                if row is None:
+                    raise ValueError('missing sealed evidence source')
+                source_id = Identity(*row[:4])
+                source_locator = (Locator('physical_page', row[5], row[6], bool(row[7]))
+                                  if row[5] is not None else Locator('logical_segment', row[4]))
+                resolve(anchor, source_id, source_locator, row[8])
+                metadata = self.db.execute('''SELECT author,title,volume,edition_label
+                    FROM source_metadata WHERE workspace=? AND edition=? AND revision=?''',
+                    (ws, identity.edition_id, identity.revision)).fetchone()
+                if metadata is None or Metadata(*metadata) != anchor.metadata:
+                    raise ValueError('evidence metadata snapshot drift')
+        if self.db.execute('''SELECT 1 FROM source_page_review v JOIN page p
+            ON p.revision=v.revision AND p.physical=v.physical
+            WHERE v.raw_sha256<>p.digest LIMIT 1''').fetchone():
+            raise ValueError('page review text digest mismatch')
 
     def check(self):
         with self.transaction():
@@ -343,3 +428,47 @@ class Storage:
             if _sidecars(path):
                 raise FileExistsError(path)
             os.link(staged, path)
+
+
+def migrate_v2_snapshot(source, destination):
+    """Create a separately checked V3 library; never replace or upgrade source.
+
+    V1 lacks authoritative catalog bindings and cannot be upgraded by guessing.
+    V2 has no research tables, so adding V3 leaves every source/revision intact.
+    No extraction, printed-page or bibliographic review is manufactured here.
+    """
+    source, destination = Path(source), Path(destination)
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    if os.path.lexists(destination) or _sidecars(destination):
+        raise FileExistsError(destination)
+    with TemporaryDirectory(prefix='.carr-migrate-', dir=destination.parent) as work:
+        staged = Path(work) / 'library.db'
+        original = Storage(source, schema_version=2)
+        try:
+            original.backup(staged)
+        finally:
+            original.close()
+        with closing(sqlite3.connect(staged, isolation_level=None)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            db.execute('PRAGMA recursive_triggers=ON')
+            db.execute('BEGIN IMMEDIATE')
+            try:
+                sql = ''
+                for line in RESEARCH_SCHEMA.splitlines():
+                    sql += line + '\n'
+                    if sqlite3.complete_statement(sql):
+                        db.execute(sql)
+                        sql = ''
+                db.execute('INSERT INTO workspace_meta(workspace,name) SELECT id,id FROM workspace')
+                db.execute('PRAGMA user_version=3')
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
+        upgraded = Storage(staged, schema_version=3)
+        try:
+            upgraded.backup(destination)
+        finally:
+            upgraded.close()
+    return destination

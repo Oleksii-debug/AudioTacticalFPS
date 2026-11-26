@@ -118,7 +118,7 @@ class TopicSearchTests(unittest.TestCase):
 
     def test_untrusted_row_and_transaction(self):
         rows = self.a.list_saved('t')
-        with patch.object(self.a, 'list_saved', return_value=(replace(rows[0], topic_id='other'),)):
+        with patch.object(self.a, 'iter_saved', return_value=iter((replace(rows[0], topic_id='other'),))):
             with self.assertRaises(ValueError):
                 self.search('railway')
         self.db.commit()

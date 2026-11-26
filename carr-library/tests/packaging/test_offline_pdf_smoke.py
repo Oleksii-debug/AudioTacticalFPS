@@ -39,7 +39,7 @@ class OfflineSmokeTests(unittest.TestCase):
     def test_pip_rejects_tampered_wheel(self):
         with tempfile.TemporaryDirectory(prefix='Wheel house Ž ') as root:
             wheelhouse = Path(root)
-            (wheelhouse / 'pypdf-5.9.0-py3-none-any.whl').write_bytes(b'not a genuine wheel')
+            (wheelhouse / 'pypdf-7.1.1-py3-none-any.whl').write_bytes(b'not a genuine wheel')
             completed = subprocess.run([
                 sys.executable, '-I', '-m', 'pip', '--isolated', '--disable-pip-version-check',
                 'install', '--dry-run', '--ignore-installed', '--no-index', '--no-deps',

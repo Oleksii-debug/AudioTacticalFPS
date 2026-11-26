@@ -34,7 +34,7 @@ def probe() -> dict:
     if sys.version_info < (3, 11):
         raise RuntimeError('Python 3.11 or newer required')
     import pypdf
-    if importlib.metadata.version('pypdf') != '5.9.0':
+    if importlib.metadata.version('pypdf') != '7.1.1':
         raise RuntimeError('Unexpected pypdf version for this smoke lock')
     from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
     with tempfile.TemporaryDirectory(prefix='Research library ') as tmp:

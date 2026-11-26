@@ -151,6 +151,8 @@ def test_real_cpu_model(monkeypatch):
     assert version("fastembed") == "0.9.1"
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
+    import onnxruntime
+    onnxruntime.disable_telemetry_events()
     from fastembed import TextEmbedding
     from carr_library.search.thematic import Passage, search
 

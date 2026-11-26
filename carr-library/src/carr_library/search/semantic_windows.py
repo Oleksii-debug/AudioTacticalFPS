@@ -65,13 +65,15 @@ def source_windows(tokenizer, raw, *, max_windows=MAX_WINDOWS, check=lambda: Non
 def search_windowed(workspace, passages, query, *, tokenizer=None,
                     semantic_ranker=None, limit=20, timeout=5.0,
                     cancelled=lambda: False):
-    """Opt-in bounded candidate; existing BM25/RRF performs the actual ranking.
+    """Rank source pages with complete lexical and bounded semantic evidence.
 
     The caller owns snapshot authorization and model approval. This adapter
     accepts no arbitrary model prefixes. On budget errors the caller must show
     an explicit degraded status before retrying ordinary lexical search.
+    Window cuts never remove whole-page lexical matches. Semantic windows are
+    deduplicated to their source pages before combining the two page rankings.
     """
-    from .thematic import Passage, _groups, search_hybrid
+    from .thematic import Passage, _groups, search, search_hybrid, fuse_scoped_rankings
     if semantic_ranker is None:
         return search_hybrid(workspace, passages, query, limit=limit,
                              timeout=timeout, cancelled=cancelled)
@@ -91,6 +93,13 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     def check():
         if stopped():
             raise TimeoutError('semantic windows cancelled or timed out')
+
+    def remaining():
+        check()
+        value = deadline - monotonic()
+        if value <= 0:
+            raise TimeoutError('semantic windows cancelled or timed out')
+        return value
 
     check()
     if not _groups(query):
@@ -140,21 +149,61 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
             parents[identity] = (p.edition_id, p.revision_id, p.passage_id)
             windows.append(replace(p, passage_id=identity, start=a, end=b))
     check()
-    # One bounded ranking call; no new retrieval engine or generated quotations.
-    remaining = deadline-monotonic()
-    if remaining <= 0:
-        raise TimeoutError('semantic windows cancelled or timed out')
-    hits = search_hybrid(workspace, windows, query, semantic_ranker=semantic_ranker,
-                         limit=100, timeout=remaining, cancelled=stopped)
-    result, returned = [], set()
-    for hit in hits:
+    # Lexical concepts can straddle a tokenizer cut. Rank the original source
+    # spans, rather than changing the query's meaning to "inside one window".
+    lexical = search(workspace, refs, query, limit=100, timeout=remaining(),
+                     cancelled=stopped)
+    parent_keys = [(p.workspace, p.edition_id, p.revision_id, p.passage_id) for p in refs]
+    lexical_keys = [(workspace, hit['edition_id'], hit['revision_id'], hit['passage_id'])
+                    for hit in lexical]
+    lexical_by_parent = dict(zip(lexical_keys, lexical))
+    window_by_key = {(p.workspace, p.edition_id, p.revision_id, p.passage_id): p for p in windows}
+    window_keys = list(window_by_key)
+    windows_by_parent = {key: [] for key in parent_keys}
+    for p in windows:
+        windows_by_parent[(workspace, *parents[p.passage_id])].append(p)
+
+    # Reuse the hybrid adapter's authorization boundary. Only bounded source
+    # slices reach the model, and its output may contain only those locator keys.
+    fuse_scoped_rankings(workspace, window_keys, [], [], limit=limit)
+    check()
+    semantic = semantic_ranker(query, tuple((key, p.raw_page[p.start:p.end])
+                                            for key, p in window_by_key.items()))
+    check()
+    fuse_scoped_rankings(workspace, window_keys, [], semantic, limit=limit)
+    semantic_parents, best_semantic_window = [], {}
+    for key in semantic:
         check()
-        parent = parents[hit['passage_id']]
-        if parent in returned:
-            continue
-        returned.add(parent)
-        result.append(dict(hit, parent_passage_id=parent[2]))
-        if len(result) == limit:
-            break
+        p = window_by_key[key]
+        parent = (workspace, *parents[p.passage_id])
+        if parent not in best_semantic_window:
+            semantic_parents.append(parent)
+            best_semantic_window[parent] = p
+    # Deduplication precedes the result limit, so a long page with many relevant
+    # windows cannot consume all slots before a second page is considered.
+    ranked = (fuse_scoped_rankings(workspace, parent_keys, lexical_keys, semantic_parents, limit=limit)
+              if semantic else [(key, lexical_by_parent[key]['score']) for key in lexical_keys[:limit]])
+    result = []
+    for parent, score in ranked:
+        check()
+        if parent in lexical_by_parent:
+            # Prefer a readable bounded excerpt only when all lexical concepts
+            # really occur there. Otherwise retain the complete original span.
+            excerpts = search(workspace, windows_by_parent[parent], query, limit=1,
+                              timeout=remaining(), cancelled=stopped)
+            hit = dict(excerpts[0] if excerpts else lexical_by_parent[parent])
+        else:
+            p = best_semantic_window[parent]
+            hit = dict(passage_id=p.passage_id, work_id=p.work_id,
+                       edition_id=p.edition_id, revision_id=p.revision_id,
+                       physical_index=p.physical_index, start=p.start, end=p.end,
+                       page_sha256=p.page_sha256, raw_quote=p.raw_page[p.start:p.end],
+                       matched_terms=())
+            if p.physical_index is None:
+                hit.update(locator_kind='logical_segment', segment_index=p.segment_index)
+        hit.update(parent_passage_id=parent[3], score=score,
+                   reason=('hybrid RRF rank; not semantic verification' if semantic
+                           else lexical_by_parent[parent]['reason']))
+        result.append(hit)
     check()
     return result

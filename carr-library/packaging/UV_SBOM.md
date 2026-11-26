@@ -1,5 +1,10 @@
 # Build-only dependency locking and SBOM preflight (candidate)
 
+## Integrated desktop build update — 2026-11-26
+
+The current application pins pypdf 7.1.1 (publisher wheel SHA256 `04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1`), replacing the historical synthetic-only 5.9.0 smoke pin. The offline PDF smoke and tampered-wheel test use that same pin. The native uv resolver/SBOM wrappers now pin uv 0.13.9, upstream commit `6b2d39dcc390293d51c9c0d2bbcd650f4bcbfdce` (MIT/Apache-2.0), and preserve hash verification, Windows target selection and negative checks. The earlier evidence below remains historical. Current packaging entrypoints and offline installation instructions are in `docs/RUNNING.md`; application wheels retain all vendored license files.
+
+
 Adopt Astral uv's existing resolver, hash compiler, installer and CycloneDX 1.5 exporter instead of implementing a resolver or SBOM generator. Tested tool: uv 0.10.0, upstream commit [0ba432459aa4e84d793fd8cfc98d13cf619316bb](https://github.com/astral-sh/uv/tree/0ba432459aa4e84d793fd8cfc98d13cf619316bb), dual MIT/Apache-2.0 (LICENSE-MIT and LICENSE-APACHE read at that commit). Build host tool only; no uv executable or wheel redistributed here. The installed uv version was exercised, not authenticated against an upstream binary attestation. A release build must use a separately security-reviewed, provenance-verified tool binary. See https://docs.astral.sh/uv/concepts/projects/export/.
 
 ## Reproduce the smoke

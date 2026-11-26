@@ -5,27 +5,12 @@ bind_scope(workspace, topic) returns ScopeServices after fresh authorization.
 Every bound service must independently enforce authorization on each operation.
 No global search, database access, or new persistence contract here.
 """
-from dataclasses import dataclass
-from typing import Callable
-
 import wx
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
 from .evidence_panel import EvidencePanel
-
-
-@dataclass(frozen=True)
-class ScopeServices:
-    workspace: str
-    topic: str | None
-    search: Callable
-    load_context: Callable
-    verified_copy: Callable
-    catalog_tx: Callable
-    collections: Callable
-    topic_tx: Callable
-    evidence_tx: Callable | None = None
+from .scope_bindings import ScopeServices, bind_scope_services
 
 
 class WorkspaceFrame(wx.Frame):
@@ -93,7 +78,7 @@ class WorkspaceFrame(wx.Frame):
             self.choice.Clear()
             self.scopes = ids
             for workspace, topic, label in rows:
-                self.choice.Append(f'{label} (library {workspace}; topic {topic or "none"})')
+                self.choice.Append(label)
             if self.active is not None and self.active not in ids:
                 self._drop()
                 self.status.SetValue('Access changed. Previous view closed; unsaved edits not saved.')
@@ -137,15 +122,14 @@ class WorkspaceFrame(wx.Frame):
             self._drop()
             book = wx.Notebook(self.host)
             book.SetName('Research library sections')
-            search = PagedSearchPanel(book, services.search, services.load_context,
-                                      verified_copy=services.verified_copy)
+            search = self.make_search_panel(book, services)
             search.set_workspace(scope[0])
             pages = [(search, 'Search'),
                      (CatalogPanel(book, scope[0], services.catalog_tx, services.collections), 'Books and Collections'),
                      (TopicPanel(book, scope[0], services.topic_tx), 'Topics and Sections')]
             evidence = None
             if scope[1] is not None:
-                evidence = EvidencePanel(book, *scope, services.evidence_tx)
+                evidence = self.make_evidence_panel(book, services)
                 pages.append((evidence, 'Evidence and Notes'))
             for page, label in pages:
                 if not book.AddPage(page, label):
@@ -181,3 +165,11 @@ class WorkspaceFrame(wx.Frame):
             finally:
                 self.busy = False
         event.Skip()
+
+    def make_search_panel(self, parent, services):
+        """Allow the desktop host to add filters without replacing service boundaries."""
+        return PagedSearchPanel(parent, services.search, services.load_context,
+                                verified_copy=services.verified_copy)
+
+    def make_evidence_panel(self,parent,services):
+        return EvidencePanel(parent,services.workspace,services.topic,services.evidence_tx)

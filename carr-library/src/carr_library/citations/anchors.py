@@ -20,6 +20,13 @@ class Locator:
             raise ValueError('invalid locator')
         if type(self.verified) is not bool or (self.printed is not None and not isinstance(self.printed, str)):
             raise ValueError('invalid label state')
+        if self.printed is not None:
+            if '\x00' in self.printed:
+                raise ValueError('invalid printed label')
+            try:
+                self.printed.encode('utf-8', errors='strict')
+            except UnicodeError as exc:
+                raise ValueError('invalid printed label') from exc
         if self.kind == 'logical_segment' and (self.printed is not None or self.verified):
             raise ValueError('unpaginated source cannot have printed page')
         if self.verified and not (isinstance(self.printed, str) and self.printed.strip()):

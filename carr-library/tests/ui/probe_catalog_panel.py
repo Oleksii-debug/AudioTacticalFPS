@@ -18,6 +18,7 @@ class Control:
         self.index = -1
         self.value = ''
         self.focus = False
+        self.enabled = True
 
     def SetName(self, name): self.name = name
     def Bind(self, event, handler): pass
@@ -30,6 +31,8 @@ class Control:
     def GetValue(self): return self.value
     def SetValue(self, value): self.value = value
     def SetFocus(self): self.focus = True
+    def Enable(self, enabled): self.enabled = enabled
+    def IsEnabled(self): return self.enabled
 
 
 wx = types.SimpleNamespace(**{name: Control for name in (
@@ -94,6 +97,8 @@ class CatalogPanelTests(unittest.TestCase):
         self.assertEqual(self.panel.book_ids, ['e1', 'e2'])
         self.assertNotEqual(*self.panel.books.items)
         self.assertTrue(all('Історія' in x for x in self.panel.books.items))
+        self.assertIn('Author e1',self.panel.books.items[0])
+        self.assertIn('Author e2',self.panel.books.items[1])
         self.assertEqual(self.panel.target_ids, ['c1', 'c2'])
 
     def test_membership_only_remove(self):
@@ -114,7 +119,7 @@ class CatalogPanelTests(unittest.TestCase):
         self.panel.filter.SetSelection(self.panel.filter_ids.index(key))
         self.panel.refresh()
         self.assertEqual(self.panel.book_ids, [])
-        self.assertIn('No books', self.panel.status.value)
+        self.assertIn('collection is empty', self.panel.status.value)
 
     def test_workspace_switch_fails_closed(self):
         self.select()
@@ -149,6 +154,29 @@ class CatalogPanelTests(unittest.TestCase):
         self.assertEqual(self.panel._selection()[0], None)
         self.assertEqual(self.panel.book_ids, ['e1', 'e2'])
         self.assertEqual(self.db.execute("SELECT count(*) FROM catalog_membership WHERE workspace='a'").fetchone()[0], 1)
+
+    def test_archive_prompt_names_exact_collection_and_cancellation_preserves_it(self):
+        self.select(target='c1')
+        with patch.object(wx,'MessageBox',return_value=0) as prompt:
+            self.panel.archive()
+        self.assertIn('"c1"',prompt.call_args.args[0])
+        self.assertEqual(len(self.collections(Catalog(self.db,'a'))),2)
+
+    def test_remove_keeps_next_available_book_selected(self):
+        with self.transaction() as catalog:
+            catalog.assign('c1','e2')
+        self.select(book='e1',target='c1',collection='c1')
+        self.panel.remove()
+        self.assertEqual(self.panel.book_ids,['e2'])
+        self.assertEqual(self.panel._selection(),('c1','c1','e2'))
+        self.assertTrue(self.panel.books.focus)
+
+    def test_remove_last_book_explains_collection_is_empty(self):
+        self.select(book='e1',target='c1',collection='c1')
+        self.panel.remove()
+        self.assertEqual(self.panel.book_ids,[])
+        self.assertIn('collection is now empty',self.panel.status.value)
+        self.assertEqual(self.panel._selection()[:2],('c1','c1'))
 
     def test_write_requires_recursive_triggers(self):
         self.select()

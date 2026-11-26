@@ -26,6 +26,18 @@ class CIEntrypointTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('passed=1, failed=0, skipped=0', result.stdout)
 
+    def test_offline_gate_blocks_connections_and_name_resolution(self):
+        source = '''import socket
+import pytest
+def test_offline():
+    for action in (lambda: socket.create_connection(('example.invalid', 443)),
+                   lambda: socket.getaddrinfo('example.invalid', 443)):
+        with pytest.raises(OSError, match='disabled during offline verification'):
+            action()
+'''
+        result = self.run_fixture(source, 'test_sample.py')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_failure_not_green(self):
         result = self.run_fixture('def test_bad(): assert False\n', 'test_sample.py')
         self.assertEqual(result.returncode, 1)

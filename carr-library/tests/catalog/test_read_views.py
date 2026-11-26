@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from carr_library.catalog.membership import Catalog
-from carr_library.catalog.read_views import active_collections, browse_editions
+from carr_library.catalog.read_views import active_collections, browse_editions, get_edition
 
 SCHEMA = Path(__file__).with_name('catalog_membership_candidate.sql').read_text()
 MANIFEST = dict(sha256='a'*64, mime='text/plain', size=8)
@@ -93,3 +93,22 @@ class CatalogReadTests(unittest.TestCase):
             self.assertEqual(len(browse_editions(cat)), 3)
             self.assertEqual(active_collections(cat), (('c', 'Local'),))
         reader.close()
+
+    def test_exact_edition_identity_does_not_cross_workspace_or_reinterpret_id(self):
+        changes = self.db.total_changes
+        self.assertEqual(get_edition(self.a, 'e1'), browse_editions(self.a, limit=1)[0])
+        self.assertEqual(get_edition(self.a, 'e1').authors, ('Олена', 'Žan'))
+        self.assertEqual(get_edition(self.b, 'e1').authors, ('Private',))
+        self.assertIsNone(get_edition(self.a, 'e3').title)
+        for identity in ('missing', "' OR 1=1 --", '1'):
+            with self.subTest(identity=identity), self.assertRaisesRegex(ValueError, 'unknown edition'):
+                get_edition(self.a, identity)
+        self.assertEqual(self.db.total_changes, changes)
+
+    def test_exact_edition_requires_identity_and_snapshot(self):
+        for identity in (None, '', 1, '\x00', '\ud800'):
+            with self.subTest(identity=repr(identity)), self.assertRaises(ValueError):
+                get_edition(self.a, identity)
+        self.db.commit()
+        with self.assertRaisesRegex(ValueError, 'caller snapshot'):
+            get_edition(self.a, 'e1')
