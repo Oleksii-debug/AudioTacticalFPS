@@ -186,3 +186,52 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise
     finally:
         index.close()
+
+
+def search_file(path, workspace, query, *, timeout=5.0,
+                cancelled=lambda: False, **options):
+    """Search a trusted local library file on a dedicated read-only connection.
+
+    The source SQL and transient FTS share one outer deadline and a sticky
+    cancellation flag. Never change a caller's writer/progress handler.
+    Lock contention fails immediately with SQLite's explicit busy/locked error;
+    it is not a successful empty search. No file creation or immutable URI
+    (the latter would ignore concurrent commits). WAL sidecars and filesystem
+    stalls remain subject to SQLite/OS behavior; not a hard real-time deadline.
+    """
+    from pathlib import Path
+
+    if type(timeout) not in (int, float) or not 0 < timeout <= 60:
+        raise ValueError('invalid search budget')
+    deadline = monotonic() + timeout
+    latched = False
+
+    def stopped():
+        nonlocal latched
+        latched = latched or cancelled() or monotonic() >= deadline
+        return latched
+
+    def check():
+        if stopped():
+            raise TimeoutError('literal search cancelled or timed out')
+
+    check()
+    db = None
+    try:
+        uri = Path(path).absolute().as_uri() + '?mode=ro'
+        db = sqlite3.connect(uri, uri=True, timeout=0.0)
+        db.set_progress_handler(lambda: int(stopped()), 1000)
+        db.execute('PRAGMA query_only=ON')
+        db.execute('PRAGMA trusted_schema=OFF')
+        check()
+        hits = search(db, workspace, query, timeout=timeout,
+                      cancelled=stopped, **options)
+        check()
+        return hits
+    except sqlite3.OperationalError as exc:
+        if stopped():
+            raise TimeoutError('literal search cancelled or timed out') from exc
+        raise
+    finally:
+        if db is not None:
+            db.close()
