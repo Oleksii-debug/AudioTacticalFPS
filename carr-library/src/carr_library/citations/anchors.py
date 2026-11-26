@@ -18,6 +18,8 @@ class Locator:
     def __post_init__(self):
         if self.kind not in ('physical_page', 'logical_segment') or type(self.index) is not int or self.index < 1:
             raise ValueError('invalid locator')
+        if type(self.verified) is not bool or (self.printed is not None and not isinstance(self.printed, str)):
+            raise ValueError('invalid label state')
         if self.kind == 'logical_segment' and (self.printed is not None or self.verified):
             raise ValueError('unpaginated source cannot have printed page')
         if self.verified and not (isinstance(self.printed, str) and self.printed.strip()):
@@ -97,6 +99,7 @@ def resolve(anchor, identity, locator, raw):
 
 def validate_span(anchors):
     """Cross-page evidence is an ordered tuple of exact slices, never joined as a raw quote."""
+    anchors = tuple(anchors)
     if not anchors:
         raise ValueError('empty span')
     for a, b in zip(anchors, anchors[1:]):
@@ -115,3 +118,51 @@ def format_citation(anchor):
     if m.edition:
         fields.append(f'edition {m.edition}')
     return ', '.join([*fields, anchor.locator.display()])
+
+
+@dataclass(frozen=True)
+class LabelCorrection:
+    """An explicit proposed map revision; persist append-only in storage, not in place."""
+    identity: Identity
+    previous: Locator
+    replacement: Locator
+    reason: str
+    reviewer: str
+    evidence_sha256: str
+
+    def __post_init__(self):
+        if (self.previous.kind != 'physical_page' or self.replacement.kind != 'physical_page'
+                or self.previous.index != self.replacement.index):
+            raise ValueError('label correction cannot change physical source')
+        if self.previous == self.replacement:
+            raise ValueError('no label change')
+        if not all(isinstance(v, str) and v.strip() for v in (self.reason, self.reviewer)):
+            raise ValueError('manual verification requires provenance')
+        if not isinstance(self.evidence_sha256, str) or not re.fullmatch('[0-9a-f]{64}', self.evidence_sha256):
+            raise ValueError('invalid verification evidence digest')
+
+
+def resolve_span(anchors, load_page):
+    """Resolve every page through caller's authorized historical source reader.
+
+    load_page(identity, locator) -> (identity, locator, raw_text, text_verified).
+    Returns separate (anchor, raw context) pairs; no artificial joining of quotations.
+    """
+    pairs = []
+    for a in validate_span(anchors):
+        identity, locator, raw, verified = load_page(a.identity, a.locator)
+        if verified is not True:
+            raise ValueError('unverified extraction')
+        pairs.append((a, resolve(a, identity, locator, raw)))
+    return tuple(pairs)
+
+
+def format_span_citation(anchors, load_page):
+    """Format only fully resolved pages, enumerating labels rather than inventing ranges."""
+    pairs = resolve_span(anchors, load_page)
+    first = pairs[0][0]
+    if len(pairs) == 1:
+        return format_citation(first)
+    # Reuse the single-page formatter, retaining its exact metadata prefix.
+    prefix = format_citation(first).removesuffix(first.locator.display())
+    return prefix + '; '.join(a.locator.display() for a, _ in pairs)
