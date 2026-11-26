@@ -1,0 +1,4 @@
+# Synthetic smoke only, not approved for untrusted PDF or release distribution.
+# PyPI wheel attestation: py-pdf/pypdf@2a91bd4d0b5bda90f2eae741e383813b6cda9721
+# https://pypi.org/project/pypdf/5.9.0/#files
+pypdf==5.9.0 --hash=sha256:be10a4c54202f46d9daceaa8788be07aa8cd5ea8c25c529c50dd509206382c35
