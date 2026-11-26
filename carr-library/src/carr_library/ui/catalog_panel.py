@@ -10,14 +10,9 @@ import wx
 from carr_library.catalog.read_views import browse_editions
 
 
-class _ViewTooLarge(ValueError):
-    """A bounded view failed, but its authorized collection choices remain valid."""
-    def __init__(self, collections):
-        super().__init__('Choose a smaller collection for this view.')
-        self.collections = collections
-
-
 class CatalogPanel(wx.Panel):
+    PAGE_SIZE = 200
+
     def __init__(self, parent, workspace, transaction, collections):
         super().__init__(parent)
         self.workspace = workspace
@@ -29,8 +24,18 @@ class CatalogPanel(wx.Panel):
         self.filter_ids = []
         self.target_ids = []
         self.book_ids = []
+        self._collection = None
+        self._after = None
+        self._history = []
+        self._has_next = False
         self.filter = wx.Choice(self)
         self.books = wx.ListBox(self, style=wx.LB_SINGLE)
+        self.previous_books = wx.Button(self, label='Previous books')
+        self.next_books = wx.Button(self, label='Next books')
+        self.previous_books.SetName('Previous books')
+        self.next_books.SetName('Next books')
+        self.previous_books.Bind(wx.EVT_BUTTON, self.previous_page)
+        self.next_books.Bind(wx.EVT_BUTTON, self.next_page)
         self.target = wx.Choice(self)
         self.name = wx.TextCtrl(self)
         self.status = wx.TextCtrl(self, style=wx.TE_READONLY)
@@ -42,6 +47,9 @@ class CatalogPanel(wx.Panel):
             layout.Add(wx.StaticText(self, label=label))
             control.SetName(label)
             layout.Add(control, 1 if control is self.books else 0, wx.EXPAND)
+            if control is self.books:
+                layout.Add(self.previous_books)
+                layout.Add(self.next_books)
         for label, action in [('Create collection', self.create),
                               ('Add selected edition to collection', self.assign),
                               ('Remove selected edition from collection', self.remove),
@@ -66,7 +74,7 @@ class CatalogPanel(wx.Panel):
                 self._selected(self.target, self.target_ids),
                 self._selected(self.books, self.book_ids))
 
-    def _snapshot(self, service, collection):
+    def _snapshot(self, service, collection, *, after=None):
         if service.workspace != self.workspace:
             raise ValueError('workspace changed')
         pairs = tuple(self.collections(service))
@@ -75,27 +83,25 @@ class CatalogPanel(wx.Panel):
             raise ValueError('invalid collection identities')
         if collection is not None and collection not in groups:
             raise ValueError('collection no longer active')
-        editions = []
-        after = None
-        while True:
-            page = browse_editions(service, collection=collection, after=after, limit=500)
-            editions.extend(page)
-            if len(editions) > 10000:
-                raise _ViewTooLarge(groups)
-            if len(page) < 500:
-                break
-            after = page[-1].edition_id
+        # One extra row tells us whether Next is available without loading the
+        # whole catalogue or inventing a total. Authors share this same snapshot.
+        page = browse_editions(service, collection=collection, after=after,
+                               limit=self.PAGE_SIZE + 1)
+        editions = page[:self.PAGE_SIZE]
         rows = {r.edition_id: r for r in editions}
         if len(rows) != len(editions):
             raise ValueError('duplicate edition identity')
-        return groups, rows
+        return groups, rows, len(page) > self.PAGE_SIZE
 
     def _clear(self):
         self.ready = False
+        self._has_next = False
         self.groups, self.rows = {}, {}
         self.filter_ids, self.target_ids, self.book_ids = [], [], []
         for control in (self.filter, self.target, self.books):
             control.Clear()
+        self.previous_books.Enable(False)
+        self.next_books.Enable(False)
 
     def _show_collections(self, groups, collection, target):
         self.groups = groups
@@ -113,10 +119,23 @@ class CatalogPanel(wx.Panel):
 
     def refresh(self, event=None, *, selection=None):
         collection, target, edition = self._selection() if selection is None else selection
+        after, history = self._after, list(self._history)
+        if collection != self._collection:
+            after, history = None, []
+        fell_back = False
         try:
             with self.transaction() as service:
-                groups, rows = self._snapshot(service, collection)
+                groups, rows, has_next = self._snapshot(service, collection, after=after)
+                # A removed final member can empty the current page. Revisit a
+                # previous cursor rather than strand the user on an empty page.
+                # Every query remains bounded and uses this authorized snapshot.
+                while not rows and history:
+                    after, _ = history.pop()
+                    fell_back = True
+                    groups, rows, has_next = self._snapshot(service, collection, after=after)
             self._clear()
+            self._collection, self._after, self._history = collection, after, history
+            self._has_next = has_next
             self._show_collections(groups, collection, target)
             self.rows = rows
             self.book_ids = list(rows)
@@ -127,35 +146,65 @@ class CatalogPanel(wx.Panel):
             if edition in self.book_ids:
                 self.books.SetSelection(self.book_ids.index(edition))
             elif self.book_ids:
-                self.books.SetSelection(0)
+                self.books.SetSelection(len(self.book_ids) - 1 if fell_back else 0)
             self.ready = True
-            self.status.SetValue(f'{len(rows)} editions in this view.' if rows else
-                ('This collection is empty. Add an existing book or import one.' if collection is not None else
-                 'This library has no books. Import a file or add original text.'))
+            self.previous_books.Enable(bool(history))
+            self.next_books.Enable(has_next)
+            self.status.SetValue(self._page_status())
             return True
-        except _ViewTooLarge as exc:
-            # Do not show a partial list as the complete catalogue. Keep the
-            # authorized selectors so the user can actually choose another view.
-            self._clear()
-            self._show_collections(exc.collections, collection, target)
-            self.status.SetValue('This view has more than 10,000 editions. '
-                                 'Use Browse collection to choose a smaller collection.')
-            self.filter.SetFocus()
-            return False
         except Exception:
             self._clear()
+            self._collection, self._after, self._history = None, None, []
             self.status.SetValue('Catalog unavailable. Refresh after checking the active library.')
             return False
 
+    def _page_status(self):
+        if not self.rows:
+            return ('This collection is empty. Add an existing book or import one.'
+                    if self._collection is not None else
+                    'This library has no books. Import a file or add original text.')
+        return (f'Page {len(self._history) + 1}. Showing {len(self.rows)} editions. ' +
+                ('More books are available. Choose Next books.' if self._has_next else 'Last page.'))
+
+    def next_page(self, event=None):
+        collection, target, edition = self._selection()
+        if not self.ready:
+            return False
+        if collection != self._collection:
+            return self.refresh()
+        if not self._has_next or not self.book_ids:
+            return False
+        self._history.append((self._after, edition))
+        self._after = self.book_ids[-1]
+        if self.refresh(selection=(collection, target, None)):
+            (self.books if self.book_ids else self.status).SetFocus()
+            return True
+        return False
+
+    def previous_page(self, event=None):
+        collection, target, _ = self._selection()
+        if not self.ready:
+            return False
+        if collection != self._collection:
+            return self.refresh()
+        if not self._history:
+            return False
+        self._after, edition = self._history.pop()
+        if self.refresh(selection=(collection, target, edition)):
+            (self.books if self.book_ids else self.status).SetFocus()
+            return True
+        return False
+
     def _change(self, action, selection, *, needs_target=False, needs_book=False):
-        if not self.ready or selection != self._selection():
+        if (not self.ready or selection != self._selection() or
+                selection[0] != self._collection):
             self.status.SetValue('Selection changed. Refresh and try again.')
             self.status.SetFocus()
             return
         collection, target, edition = selection
         try:
             with self.transaction() as service:
-                groups, rows = self._snapshot(service, collection)
+                groups, rows, _ = self._snapshot(service, collection, after=self._after)
                 if needs_target and (target not in groups or groups[target] != self.groups.get(target)):
                     raise ValueError('stale collection')
                 if needs_book and (edition not in rows or rows[edition] != self.rows.get(edition)):
@@ -167,7 +216,9 @@ class CatalogPanel(wx.Panel):
             self.status.SetFocus()
             return
         if self.refresh(selection=next_selection):
-            self.status.SetValue('Catalog updated.' + (' This collection is now empty.' if not self.rows and next_selection[0] is not None else ''))
+            self.status.SetValue('Catalog updated. ' +
+                ('This collection is now empty.' if not self.rows and next_selection[0] is not None
+                 else self._page_status()))
             self.books.SetFocus()
         else:
             self.status.SetValue('Catalog change committed; refresh failed. Refresh before another change.')

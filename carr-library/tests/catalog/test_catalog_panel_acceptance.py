@@ -23,6 +23,7 @@ class Control:
         self.index = -1
         self.value = ''
         self.focus = False
+        self.enabled = True
 
     def SetName(self, name): self.name = name
     def Bind(self, event, handler): pass
@@ -35,6 +36,8 @@ class Control:
     def GetValue(self): return self.value
     def SetValue(self, value): self.value = value
     def SetFocus(self): self.focus = True
+    def Enable(self, enabled): self.enabled = enabled
+    def IsEnabled(self): return self.enabled
 
 
 @pytest.fixture
@@ -113,6 +116,8 @@ def choose(panel, *, collection=None, target='destination', edition=None):
     assert panel.refresh()
     panel.target.SetSelection(panel.target_ids.index(target))
     if edition is not None:
+        while edition not in panel.book_ids and panel.next_books.IsEnabled():
+            assert panel.next_page()
         panel.books.SetSelection(panel.book_ids.index(edition))
 
 
@@ -121,11 +126,22 @@ def test_all_author_rows_beyond_two_pages_are_reachable(library, panel_class):
     before = library.stored_sources()
     panel = library.make_panel(panel_class)
     assert panel.ready
-    assert panel.book_ids == [f'edition-{n:05d}' for n in range(1001)]
-    assert len(set(panel.books.items)) == 1001
-    assert 'Author 01000; Žan; Олена' in panel.books.items[-1]
-    assert not any('Private' in label for label in panel.books.items)
+    assert panel.book_ids == [f'edition-{n:05d}' for n in range(200)]
+    assert not panel.previous_books.IsEnabled() and panel.next_books.IsEnabled()
+    seen = list(panel.book_ids)
+    labels = list(panel.books.items)
     assert panel._selection()[2] == 'edition-00000'
+    while panel.next_books.IsEnabled():
+        assert panel.next_page()
+        assert 0 < len(panel.book_ids) <= 200
+        seen.extend(panel.book_ids)
+        labels.extend(panel.books.items)
+    assert seen == [f'edition-{n:05d}' for n in range(1001)]
+    assert len(set(labels)) == 1001
+    assert 'Author 01000; Žan; Олена' in panel.books.items[-1]
+    assert not any('Private' in label for label in labels)
+    assert panel._selection()[2] == 'edition-01000'
+    assert 'Last page' in panel.status.value
     assert library.stored_sources() == before
 
 
@@ -177,39 +193,132 @@ def test_changed_workspace_cannot_reuse_selected_catalog_identity(library, panel
     assert 'Private' not in panel.status.value
 
 
-def test_full_view_capacity_is_inclusive(library, panel_class):
-    library.populate(10000)
+@pytest.mark.parametrize('count, has_next', [(199, False), (200, False), (201, True)])
+def test_next_button_describes_actual_remaining_books(library, panel_class, count, has_next):
+    library.populate(count)
     panel = library.make_panel(panel_class)
     assert panel.ready
-    assert len(panel.book_ids) == 10000
-    assert panel.book_ids[-1] == 'edition-09999'
-    assert 'Author 09999' in panel.books.items[-1]
+    assert len(panel.book_ids) == min(200, count)
+    assert panel.next_books.IsEnabled() is has_next
+    if has_next:
+        assert 'Next books' in panel.status.value
+    else:
+        assert 'Last page' in panel.status.value
+        assert panel.next_page() is False
 
 
-def test_oversized_view_retains_collection_navigation_and_explains_recovery(library, panel_class):
+def test_more_than_ten_thousand_books_are_reachable_without_collections(library, panel_class):
     library.populate(10001)
+    with library.transaction() as catalog:
+        for identity, _ in active_collections(catalog):
+            catalog.archive(identity)
     before = library.stored_sources()
     panel = library.make_panel(panel_class)
-    assert panel.ready is False
-    assert panel.books.items == []  # No incomplete list presented as all books.
-    assert 'small' in panel.filter_ids
-    assert 'collection' in panel.status.value.lower()
-    assert '10,000' in panel.status.value or '10000' in panel.status.value
-    panel.filter.SetSelection(panel.filter_ids.index('small'))
-    assert panel.refresh()
-    assert panel.ready and panel.book_ids == ['edition-00000', 'edition-10000']
+    assert panel.ready and panel.filter_ids == [None] and panel.target_ids == []
+    assert len(panel.book_ids) == 200
+    assert 'Page 1.' in panel.status.value and 'Next books' in panel.status.value
+    seen = []
+    while True:
+        assert 0 < len(panel.book_ids) <= 200
+        seen.extend(panel.book_ids)
+        if not panel.next_books.IsEnabled():
+            break
+        assert panel.next_page()
+    assert seen == [f'edition-{n:05d}' for n in range(10001)]
+    assert panel.book_ids == ['edition-10000']
+    assert 'Author 10000; Žan; Олена' in panel.books.items[0]
+    assert 'Page 51.' in panel.status.value and 'Last page' in panel.status.value
+    assert panel.previous_books.IsEnabled()
     assert library.stored_sources() == before
 
 
-def test_oversized_collection_can_be_replaced_by_smaller_view(library, panel_class):
-    library.populate(10001)
+def test_collection_change_resets_cursor_and_history(library, panel_class):
+    library.populate(401)
     panel = library.make_panel(panel_class)
-    assert panel.refresh(selection=('small', 'destination', 'edition-10000'))
-    assert panel._selection() == ('small', 'destination', 'edition-10000')
-    panel.filter.SetSelection(panel.filter_ids.index('large'))
-    assert panel.refresh() is False
-    assert panel.books.items == []
-    assert panel._selection()[:2] == ('large', 'destination')
+    choose(panel, collection='large', edition='edition-00300')
+    assert panel.previous_books.IsEnabled()
     panel.filter.SetSelection(panel.filter_ids.index('small'))
     assert panel.refresh()
-    assert panel.book_ids == ['edition-00000', 'edition-10000']
+    assert panel.book_ids == ['edition-00000', 'edition-00400']
+    assert not panel.previous_books.IsEnabled() and not panel.next_books.IsEnabled()
+    panel.filter.SetSelection(panel.filter_ids.index('large'))
+    assert panel.refresh()
+    assert panel.book_ids[0] == 'edition-00000'
+    assert not panel.previous_books.IsEnabled() and panel.next_books.IsEnabled()
+    assert panel._selection()[:2] == ('large', 'destination')
+
+
+def test_previous_page_restores_the_prior_selected_identity(library, panel_class):
+    library.populate(401)
+    panel = library.make_panel(panel_class)
+    panel.books.SetSelection(panel.book_ids.index('edition-00123'))
+    assert panel.next_page()
+    assert panel.book_ids == [f'edition-{n:05d}' for n in range(200, 400)]
+    panel.books.SetSelection(panel.book_ids.index('edition-00245'))
+    assert panel.next_page()
+    assert panel.book_ids == ['edition-00400'] and not panel.next_books.IsEnabled()
+    assert panel.previous_page()
+    assert panel._selection()[2] == 'edition-00245'
+    assert panel.previous_page()
+    assert panel._selection()[2] == 'edition-00123'
+    assert not panel.previous_books.IsEnabled()
+    assert panel.previous_page() is False
+
+
+def test_removing_only_book_on_last_page_returns_to_previous_page(library, panel_class):
+    library.populate(401)
+    before = library.stored_sources()
+    panel = library.make_panel(panel_class)
+    choose(panel, collection='large', target='large', edition='edition-00400')
+    assert panel.book_ids == ['edition-00400']
+    panel.remove()
+    assert panel.book_ids == [f'edition-{n:05d}' for n in range(200, 400)]
+    assert panel._selection() == ('large', 'large', 'edition-00399')
+    assert panel.previous_books.IsEnabled() and not panel.next_books.IsEnabled()
+    assert 'Page 2.' in panel.status.value and 'Catalog updated.' in panel.status.value
+    assert panel.books.focus
+    with library.transaction() as catalog:
+        assert len(catalog.editions('large')) == 400
+        assert len(catalog.editions()) == 401
+    assert library.stored_sources() == before
+
+
+def test_membership_removed_after_display_rejects_stale_page_selection(library, panel_class):
+    library.populate(401)
+    panel = library.make_panel(panel_class)
+    choose(panel, collection='large', edition='edition-00200')
+    with library.transaction() as catalog:
+        catalog.remove('large', 'edition-00200')
+    panel.assign()
+    assert 'rejected' in panel.status.value
+    with library.transaction() as catalog:
+        assert catalog.editions('destination') == ()
+    assert panel.book_ids[0] == 'edition-00201'
+
+
+def test_new_row_moving_selection_off_page_cannot_redirect_membership_write(library, panel_class):
+    library.populate(401)
+    panel = library.make_panel(panel_class)
+    choose(panel, collection='large', edition='edition-00399')
+    with library.transaction() as catalog:
+        catalog.add_work('new-work', 'New book', ('New author',))
+        catalog.add_edition('edition-00200-new', 'new-work',
+            dict(sha256='a' * 64, mime='text/plain', size=16))
+        catalog.assign('large', 'edition-00200-new')
+    panel.assign()
+    assert 'rejected' in panel.status.value
+    with library.transaction() as catalog:
+        assert catalog.editions('destination') == ()
+    assert 'edition-00399' not in panel.book_ids
+
+
+def test_next_page_rechecks_workspace_authorization(library, panel_class):
+    library.populate(201)
+    panel = library.make_panel(panel_class)
+    assert panel.next_books.IsEnabled()
+    library.workspace = 'b'
+    assert panel.next_page() is False
+    assert not panel.ready and panel.books.items == []
+    assert panel.filter.items == [] and panel.target.items == []
+    assert not panel.previous_books.IsEnabled() and not panel.next_books.IsEnabled()
+    assert 'Private' not in panel.status.value
