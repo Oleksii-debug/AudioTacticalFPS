@@ -21,8 +21,11 @@ def main():
     report = {}
     state = {'current': True}
     loads = []
+    long_tail = 'Native end marker: Ωmega 😀 COMPLETE TAIL.\n'
     texts = ('Opening 😀 text.\nSecond 😀 Alpha and alpha.\nEnd.',
-             'Supplementary chapter.\nNo printed-page claim.')
+             'Supplementary chapter.\n' +
+             'Long chapter body without a printed-page reference. 😀\n' * 1600 + long_tail)
+    assert len(texts[1]) > 65536
     chapters = [dict(ordinal=i, title=f'Chapter title {i}', member=f'chapter-{i}.xhtml',
                      linear=i == 1, characters=len(raw),
                      warnings=['images_not_transcribed'] if i == 2 else [],
@@ -128,11 +131,20 @@ def main():
         assert 'wrapped' in named('Chapter and navigation status').GetValue()
         click('Next chapter')
         assert reader.GetValue() == texts[1]
+        assert reader.GetValue().endswith(long_tail), 'The native control lost the long chapter tail.'
         status = named('Chapter and navigation status').GetValue()
         assert 'author-supplied and unverified' in status
         assert 'Author-supplied chart description.' in status
         assert 'Author-supplied chart description.' not in reader.GetValue()
         assert not button('Next chapter').IsEnabled()
+        named('Find in this chapter (literal text, ignores case)').ChangeValue('COMPLETE TAIL')
+        click('Find from start')
+        assert reader.GetStringSelection() == 'COMPLETE TAIL'
+        start, end = reader.GetSelection()
+        expected = texts[1].index('COMPLETE TAIL')
+        assert expected > 65536
+        assert reader.GetRange(0, start) == texts[1][:expected]
+        assert reader.GetValue() == texts[1], 'Finding text changed the long chapter.'
         click('Previous chapter')
         assert reader.GetValue() == texts[0]
         later(stale)
@@ -155,6 +167,7 @@ def main():
             checks=['native modal and labelled text controls', 'initial chapter-information focus',
                     'grouping and linked contents entries', 'chapter navigation and button bounds',
                     'multiline and non-BMP exact caret mapping', 'literal case-insensitive find and wrap',
+                    'complete chapter beyond 64 KiB and exact tail search',
                     'native find selection and focus', 'separate unverified image descriptions',
                     'stale callback blocked and source text cleared', 'unchanged unsaved parent note'],
             chapter_loads=loads, source_services='synthetic callbacks', windows_nvda='NOT_RUN',

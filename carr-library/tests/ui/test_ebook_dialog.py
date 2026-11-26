@@ -306,6 +306,31 @@ def test_unavailable_native_position_keeps_chapter_and_explains_fallback(monkeyp
     run_dialog(monkeypatch, interaction)
 
 
+def test_truncated_native_chapter_clears_text_and_cannot_claim_complete_fallback(monkeypatch):
+    native_write = Control.ChangeValue
+
+    def truncate_reader(control, value):
+        native_write(control, value[:12] if control.name == NOTICE and value else value)
+
+    monkeypatch.setattr(Control, 'ChangeValue', truncate_reader)
+
+    def interaction(wx):
+        assert wx.named(NOTICE).GetValue() == ''
+        assert wx.named('EPUB extraction report').GetValue() == ''
+        status = wx.named('Chapter and navigation status')
+        assert status.focused
+        assert 'could not display the complete extracted chapter' in status.GetValue()
+        assert 'complete chapter is available from its beginning' not in status.GetValue()
+        for label in ('Chapter (unpaginated)', 'Book contents (levels and chapter destinations)',
+                      'Find in this chapter (literal text, ignores case)'):
+            assert not wx.named(label).enabled
+        assert not wx.button('&Previous chapter').enabled
+        assert not wx.button('&Next chapter').enabled
+
+    loads, _ = run_dialog(monkeypatch, interaction)
+    assert loads == [1]
+
+
 def test_dialog_changed_scope_on_find_clears_source_without_new_load(monkeypatch):
     state = {'current': True}
 

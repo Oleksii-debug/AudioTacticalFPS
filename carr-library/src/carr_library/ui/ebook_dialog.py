@@ -99,6 +99,9 @@ def show_ebook(parent, load_contents, load_chapter, *, still_current=lambda: Tru
                 session.check_current()
                 # ChangeValue does not emit text-edit events or touch a note.
                 reader.ChangeValue(session.raw_text)
+                if reader.GetValue() != session.raw_text:
+                    raise ValueError('The native text control could not display the complete extracted '
+                                     'chapter without changing it. Its text has been cleared.')
                 chapters.SetSelection(ordinal - 1)
                 if entry_label is None:
                     contents.SetSelection(wx.NOT_FOUND)
