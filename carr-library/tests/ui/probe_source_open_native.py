@@ -3,12 +3,14 @@
 From carr-library: PYTHONPATH=src:. python tests/ui/probe_source_open_native.py
 Only the external-viewer callback is replaced. SQLite, imports, search, source
 preparation, controls, event bindings and the wx event loop are real. This is
-not Windows/NVDA acceptance, and it launches no external viewer.
+followed by the real Research Search Center workflow in the same event loop.
+This is not Windows/NVDA acceptance, and it launches no external viewer.
 """
 from hashlib import sha256
 import json
 from pathlib import Path
 import platform
+from runpy import run_path
 from tempfile import TemporaryDirectory
 import traceback
 
@@ -148,13 +150,25 @@ def main():
                 external_viewer='recording callback only', windows_nvda='NOT_RUN',
                 desktop_app_sha256=sha256(Path(desktop_app.__file__).read_bytes()).hexdigest(),
                 source_file_sha256=sha256(Path(source_file.__file__).read_bytes()).hexdigest())
-            frame.Close()
+            # Load the adjacent test helper by path because the installed-package
+            # CI command uses isolated Python (-I), without the checkout on sys.path.
+            helper = run_path(str(Path(__file__).with_name('federated_native_smoke.py')))
+
+            def completed(result):
+                report['federated_search'] = result
+                frame.Close()
+
+            def failed(error):
+                failures.append(error)
+                gui.ExitMainLoop()
+
+            helper['run_native_federated_smoke'](frame, completed, failed)
 
         def timed_out():
-            failures.append('Native probe exceeded 20 seconds.')
+            failures.append('Native probe exceeded 45 seconds.')
             gui.ExitMainLoop()
 
-        timeout = wx.CallLater(20000, timed_out)
+        timeout = wx.CallLater(45000, timed_out)
         later(begin_search, milliseconds=80)
         try:
             gui.MainLoop()
@@ -170,6 +184,7 @@ def main():
         print(json.dumps({'status': 'FAIL', 'errors': failures, 'windows_nvda': 'NOT_RUN'}, ensure_ascii=False))
         return 1
     assert report.get('status') == 'PASS', 'Native probe exited without completing the action.'
+    assert report.get('federated_search', {}).get('status') == 'PASS', 'Research Search Center was not checked.'
     print(json.dumps(report, ensure_ascii=False))
     return 0
 

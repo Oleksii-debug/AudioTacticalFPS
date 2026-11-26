@@ -248,6 +248,7 @@ def _native_types():
                      executor=None, confirm_discard=None):
             super().__init__(parent, title='Edit academic reference' if reference else 'New academic reference',
                              size=(780, 740), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._window_alive = True
             self.save, self.executor = save, executor
             self.confirm_discard = confirm_discard
             self.pending, self.saved = False, None
@@ -324,8 +325,14 @@ def _native_types():
             self.SetMinSize((620, 540))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self._initial = self.raw_values()
             self.controls['title'].SetFocus()
+
+        def on_destroy(self, event):
+            if event.GetEventObject() is self:
+                self._window_alive = False
+            event.Skip()
 
         def raw_values(self):
             values = {}
@@ -345,11 +352,16 @@ def _native_types():
 
         def _finish(self, result=None, error=None):
             self.pending = False
+            # A save can commit before a forced destruction. Retain its result,
+            # but never re-enter native controls after their destroy event.
+            if error is None:
+                self.saved = result
+            if not self._window_alive:
+                return
             self._enabled(True)
             if error is not None:
                 report(self.status, f'Reference not saved: {error}\nYour edits remain in this form.')
                 return
-            self.saved = result
             if self.IsModal():
                 self.EndModal(wx.ID_OK)
             else:
@@ -357,7 +369,7 @@ def _native_types():
                 self.Hide()
 
         def on_save(self, event=None):
-            if self.pending:
+            if not self._window_alive or self.pending:
                 return
             try:
                 values = form_values(self.raw_values())
@@ -408,6 +420,8 @@ def _native_types():
             return bool(answer)
 
         def on_cancel(self, event=None):
+            if not self._window_alive:
+                return
             if self._can_discard():
                 if self.IsModal():
                     self.EndModal(wx.ID_CANCEL)
@@ -416,6 +430,8 @@ def _native_types():
                     self.Hide()
 
         def on_close(self, event):
+            if not self._window_alive:
+                return
             if not self._can_discard():
                 if event.CanVeto():
                     event.Veto()
@@ -528,6 +544,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
         def __init__(self):
             super().__init__(parent, title='Academic library', size=(960, 820),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._window_alive = True
             self.controller, self.executor = controller, executor
             self.rows, self.offset, self.has_more = (), 0, False
             self.pending = False
@@ -609,8 +626,15 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.SetMinSize((740, 680))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.refresh()
             self.query.SetFocus()
+
+        def on_destroy(self, event):
+            if event.GetEventObject() is self:
+                self._window_alive = False
+                self.cancel_event.set()
+            event.Skip()
 
         def filters(self):
             status_index = self.reading_status.GetSelection()
@@ -640,6 +664,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.next.Enable(self.has_more)
 
         def _run(self, title, operation, done):
+            if not self._window_alive:
+                return
             if self.pending:
                 report(self.status, 'An academic library operation is running. Use Cancel operation to stop it.')
                 return
@@ -652,6 +678,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
 
             def complete(result=None, error=None):
                 self.pending = False
+                if not self._window_alive:
+                    return
                 for control in self.job_controls:
                     control.Enable()
                 self.close_button.SetLabel('&Close')
@@ -690,6 +718,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
             future.add_done_callback(finished)
 
         def on_cancel(self, event=None):
+            if not self._window_alive:
+                return
             if self.pending:
                 self.cancel_event.set()
                 report(self.status, 'Cancellation requested. Wait for the current operation to stop.')
@@ -699,6 +729,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 self.Hide()
 
         def on_close(self, event):
+            if not self._window_alive:
+                return
             if self.pending:
                 self.on_cancel()
                 if event.CanVeto():

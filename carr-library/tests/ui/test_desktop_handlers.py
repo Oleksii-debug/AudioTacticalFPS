@@ -122,7 +122,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
-        'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions')}
+        'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
+        'install_federated_search_actions', 'install_query_manager_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -144,6 +145,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
     assert 'Library, Import Center' in guide
     assert 'Ctrl+Shift+B opens Import Center' not in guide
+    assert 'Ctrl+Alt+F opens Research Search Center' in guide
+    assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
 
 
 def test_repeated_enter_does_not_clear_an_active_search(classes):
