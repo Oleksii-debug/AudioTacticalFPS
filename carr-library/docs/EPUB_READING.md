@@ -26,6 +26,15 @@ original's identity. Closing a dialog or changing the active library prevents
 old callbacks from displaying another book. Automated control tests are separate
 from manual Windows/NVDA acceptance.
 
+The general **Reading, Read selected book** command (`Ctrl+R`) also opens imported
+EPUB sections. Use that [reading desk](READING_DESK.md) for named bookmarks,
+page/segment resume and navigation history. Both readers use the same retained
+original and section order, including separate positions for repeated sections.
+The EPUB-specific reader additionally presents chapter titles and authored image
+descriptions. Its navigation does not update the reading desk's saved position.
+Reading positions and bookmarks have their own export/import action; include
+that export when moving a library backup to another computer.
+
 ## Text, locations and source preservation
 
 Paragraphs, headings, list items, block quotes, line breaks and simple table

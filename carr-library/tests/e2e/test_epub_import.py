@@ -156,6 +156,42 @@ def test_repeated_spine_occurrences_remain_distinct_logical_segments(app, tmp_pa
     assert len({hit.ref for hit in hits}) == 2
 
 
+def test_epub_sections_share_exact_locations_with_reading_desk_bookmarks(app, tmp_path):
+    from carr_library.reader.ebook import read_ebook_section
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.reader.reading_state import ReadingState
+    from carr_library.ui.reading_desk import ReaderController
+
+    source = tmp_path / 'bookmark-sections.epub'
+    original = write_epub(source, repeat_first=True)
+    workspace = app.create_workspace('EPUB reading integration')
+    result = app.import_file(workspace, source, title='Book with repeated sections')
+    assert result['state'] == 'complete', result
+    book, = app.browse(workspace)
+    reader = ReaderController(ReadingDesk(app, workspace, book.edition_id), ReadingState(app.root))
+    first = reader.start()
+    third = reader.go(3)
+    assert first.raw_text == third.raw_text and first.location != third.location
+    assert third.verified is False and third.location.kind == 'logical_segment'
+    bookmark = reader.add_bookmark('Repeated section for seminar', third.location)
+
+    reopened = LibraryApp(app.root)
+    resumed = ReaderController(ReadingDesk(reopened, workspace, book.edition_id),
+                               ReadingState(reopened.root))
+    assert resumed.start().location == bookmark.location
+    resumed.go(2)
+    assert resumed.open_bookmark(bookmark).location == third.location
+    section = read_ebook_section(reopened, workspace, book.edition_id, result['id'], 3)
+    assert section.raw_text == third.raw_text and section.position == 3 and not section.verified
+    assert reopened._selections == {} and source.read_bytes() == original
+
+    reopened.archive_workspace(workspace)
+    with pytest.raises(ValueError, match='archived'):
+        resumed.open_bookmark(bookmark)
+    with pytest.raises(ValueError, match='archived'):
+        read_ebook_section(reopened, workspace, book.edition_id, result['id'], 3)
+
+
 def test_epub_original_survives_reopen_and_backup_restore_exactly(app, tmp_path):
     source = tmp_path / 'retained.epub'
     original = write_epub(source)
