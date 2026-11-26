@@ -130,8 +130,16 @@ class ProductionDirector:
         job = self.status(project_id, job_id)
         if job.get('restore_requires_new_output'):
             raise ValueError('This job was restored from backup. Start a new render in a new output folder; accepted chunks will be reused.')
-        if output_dir is not None and Path(output_dir).absolute() != Path(job['output_dir']):
-            raise ValueError('A resumed job keeps its original output folder.')
+        if output_dir is not None:
+            requested = Path(output_dir).absolute()
+            plain(requested.parent, directory=True)
+            plain(requested, directory=True, missing=True)
+            # Creation binds the resolved parent. Apply the same identity rule
+            # on initial execution and resume, including Windows short-name
+            # temporary directories and harmless parent/.. spellings.
+            requested = requested.parent.resolve() / requested.name
+            if requested != Path(job['output_dir']):
+                raise ValueError('A resumed job keeps its original output folder.')
         project = Project.from_dict(job['project'])
         # A job is bound to its approved revision. Editing creates another job,
         # reusing unchanged content hashes rather than changing an in-flight plan.
