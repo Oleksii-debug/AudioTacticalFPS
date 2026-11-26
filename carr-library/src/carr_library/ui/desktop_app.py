@@ -30,6 +30,7 @@ from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
 from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
+from .catalog_insights_actions import install_catalog_insights_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -482,6 +483,7 @@ class DesktopFrame(WorkspaceFrame):
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
+        install_catalog_insights_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1019,6 +1021,8 @@ class DesktopFrame(WorkspaceFrame):
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
+            'The Research menu also opens Library overview, Source metadata and indexing checklist, '
+            'and Export source comparison matrix for this library or one of its collections.\n'
             'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
