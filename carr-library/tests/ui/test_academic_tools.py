@@ -82,6 +82,37 @@ def test_closed_frame_does_not_receive_comparison_result(research):
     dialogs.matrix.assert_not_called()
 
 
+@pytest.mark.parametrize('change', ['archive_topic', 'archive_workspace', 'cancel'])
+def test_comparison_completion_rechecks_real_scope_after_worker_returns(research, change):
+    frame, actions, dialogs = make_actions(research)
+    actions.compare_sources()
+    _, operation, done, _ = frame.jobs[0]
+    snapshot = operation()
+    assert snapshot.sources and snapshot.sources[0].evidence
+    # The actual worker has finished; the GUI callback is still queued. A second
+    # instance may archive this scope without changing this frame's selection.
+    if change == 'archive_topic':
+        with frame.library.topic_transaction(research[1]) as tree:
+            tree.archive(research[3])
+    elif change == 'archive_workspace':
+        frame.library.archive_workspace(research[1])
+    else:
+        frame.cancel_event.set()
+    done(snapshot)
+    assert frame.active == (research[1], research[3])
+    dialogs.matrix.assert_not_called()
+    assert len(frame.jobs) == 1
+
+
+def test_new_comparison_after_previous_cancellation_is_available(research):
+    frame, actions, dialogs = make_actions(research)
+    frame.cancel_event.set()
+    actions.compare_sources()
+    assert not frame.cancel_event.is_set()
+    snapshot = frame.complete()
+    dialogs.matrix.assert_called_once_with(frame, snapshot, include_descendants=True, tag_filter=None)
+
+
 def test_matrix_export_reloads_notes_after_display_instead_of_exporting_cache(research, tmp_path):
     output = tmp_path / 'review.csv'
     frame, actions, dialogs = make_actions(research,
