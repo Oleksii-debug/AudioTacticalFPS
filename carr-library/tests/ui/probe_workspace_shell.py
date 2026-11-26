@@ -27,8 +27,12 @@ class Control:
     def SetFocus(self): self.focused = True
     def Hide(self): self.hidden = True
     def Destroy(self): self.destroyed = True
+    def GetPageCount(self): return len(self.pages)
+    def GetPage(self, index): return self.pages[index][0]
+    def ChangeSelection(self, index): self.selection = index
     def AddPage(self, page, label):
         self.pages.append((page, label))
+        if self.selection == -1: self.selection = 0
         return True
 
 
@@ -143,6 +147,47 @@ class Tests(unittest.TestCase):
         self.f.on_close(e)
         self.assertTrue(e.veto)
         self.assertFalse(e.skipped)
+    def test_hidden_note_cancel_switch(self):
+        self.open(0)
+        book, note = self.f.book, self.f.evidence.note
+        note.SetValue("draft")
+        book.SetSelection(0)
+        with patch.object(note, "SetFocus", side_effect=lambda: self.assertIs(book.GetPage(book.GetSelection()), self.f.evidence)):
+            self.open(1)
+        self.assertIs(self.f.book, book)
+        self.assertEqual(self.f.active, ("a", "t"))
+        self.assertEqual(note.GetValue(), "draft")
+        self.assertEqual(book.GetSelection(), 3)
+    def test_hidden_note_cancel_close(self):
+        self.open(0)
+        book, note = self.f.book, self.f.evidence.note
+        note.SetValue("draft")
+        book.SetSelection(1)
+        e = SimpleNamespace(CanVeto=lambda: True, veto=False, skipped=False)
+        e.Veto = lambda: setattr(e, "veto", True)
+        e.Skip = lambda: setattr(e, "skipped", True)
+        with patch.object(note, "SetFocus", side_effect=lambda: self.assertIs(book.GetPage(book.GetSelection()), self.f.evidence)):
+            self.f.on_close(e)
+        self.assertTrue(e.veto)
+        self.assertFalse(e.skipped)
+        self.assertEqual(note.GetValue(), "draft")
+        self.assertEqual(book.GetSelection(), 3)
+    def test_focus_failure_preserves_draft(self):
+        self.open(0)
+        book, note = self.f.book, self.f.evidence.note
+        note.SetValue("draft")
+        with patch.object(book, "ChangeSelection", side_effect=RuntimeError("focus failure")):
+            self.open(1)
+        self.assertIs(self.f.book, book)
+        self.assertEqual(self.f.active, ("a", "t"))
+        self.assertEqual(note.GetValue(), "draft")
+        self.assertIn("Note retained", self.f.status.value)
+    def test_library_only_topic_none_label(self):
+        self.scopes = [("a", None, "Same title"), ("a", "none", "Same title")]
+        self.f.refresh_scopes()
+        self.assertEqual(len(set(self.f.choice.items)), 2)
+        self.open(1)
+        self.assertEqual(self.f.active, ("a", "none"))
     def test_duplicate_ids(self):
         self.open(0)
         book = self.f.book
