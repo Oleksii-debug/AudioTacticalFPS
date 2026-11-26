@@ -184,7 +184,9 @@ class ProductionService:
                 # Each attempt gets a fresh path, including recovery from corrupt cache bytes.
                 path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')
                 operation(path)
-                check()
+                # The provider has atomically completed a real output. Verify
+                # and receipt it before honoring cancellation of the next step,
+                # so resume cannot silently repeat accepted expensive work.
                 info = runtime.inspect(path)
                 if info.duration <= 0 or info.channels not in (1, 2):
                     raise ValueError('The audio engine returned an empty or unsupported output.')
@@ -194,6 +196,7 @@ class ProductionService:
                             'channels': info.channels}, replace=receipt_path.exists())
                 state['nodes'][key] = {'kind': kind, 'sha256': digest, 'reused': False}
                 self._save(state)
+                check()
                 return path, info
 
             def silence(duration):

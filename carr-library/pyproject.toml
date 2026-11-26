@@ -82,6 +82,7 @@ packages = [
   "carr_library.speech",
   "carr_library.studio",
   "carr_library.assistant",
+  "carr_library.conversion",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",

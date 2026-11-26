@@ -215,3 +215,14 @@ def test_offline_cli_outputs_search_results_and_reports_errors(capsys):
     assert result[0]['code'] == 'ukr' and result[0]['profile'] == 'best'
     assert catalog.main(['prepare', '--source', '.', '--destination', '.', '--models', 'unreviewed']) == 1
     assert 'absent' in capsys.readouterr().err
+
+
+def test_prepare_cli_preserves_unicode_paths_with_ascii_safe_json(model_files, tmp_path, capsys):
+    root, _, _ = model_files
+    destination = tmp_path / 'Підготовлені моделі'
+    assert catalog.main(['prepare', '--source', str(root), '--destination', str(destination),
+                         '--models', 'eng']) == 0
+    output = capsys.readouterr().out
+    assert output.isascii()
+    assert json.loads(output)['path'] == str(destination)
+    assert (destination / 'models.json').is_file()

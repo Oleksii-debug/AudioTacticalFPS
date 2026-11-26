@@ -267,9 +267,10 @@ class SapiProvider:
     name = 'Installed SAPI 5'
 
     def __init__(self, executable, *, architecture='64'):
-        self.executable = system_powershell(executable) if os.name == 'nt' else local_file(executable)
         if architecture not in ('32', '64'):
             raise ValueError('SAPI host architecture must be 32 or 64.')
+        self.executable = (system_powershell(executable, architecture=architecture)
+                           if os.name == 'nt' else local_file(executable))
         self.architecture = architecture
         self._tokens = {}
 

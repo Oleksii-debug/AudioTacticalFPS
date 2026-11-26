@@ -129,6 +129,10 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         if (bom.get("bomFormat") != "CycloneDX" or bom.get("specVersion") != "1.5"
                 or actual != expected):
             raise ValueError("runtime SBOM does not match the dependency lock")
+        components = bom["components"]
+        refs = [item["bom-ref"] for item in components if "bom-ref" in item]
+        if len(components) != len(expected) or len(refs) != len(set(refs)):
+            raise ValueError("duplicate runtime SBOM component or reference")
     selected = {}
     inventory = {}
     for path in sorted(wheelhouse.iterdir()):

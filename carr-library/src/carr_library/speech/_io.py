@@ -76,7 +76,7 @@ def windows_directory():
     return Path(buffer.value)
 
 
-def system_powershell(path):
+def system_powershell(path, *, architecture=None):
     """Accept Windows' serviced PowerShell executable, including WinSxS hard links.
 
     This exception is confined to the two fixed OS executables. Source files,
@@ -85,8 +85,12 @@ def system_powershell(path):
     """
     candidate = Path(path).absolute()
     root = windows_directory()
+    if architecture not in (None, '32', '64'):
+        raise ValueError('SAPI host architecture must be 32 or 64.')
+    folders = (('System32', 'SysWOW64') if architecture is None else
+               (('System32',) if architecture == '64' else ('SysWOW64',)))
     allowed = {root / folder / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
-               for folder in ('System32', 'SysWOW64')}
+               for folder in folders}
     if candidate not in allowed:
         raise ValueError('SAPI must use the installed Windows system PowerShell host.')
     return local_file(candidate, _allow_hardlinks=True)

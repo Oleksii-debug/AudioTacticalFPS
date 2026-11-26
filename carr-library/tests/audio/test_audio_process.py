@@ -1,6 +1,7 @@
 """Real subprocess lifecycle and no-clobber publication regression tests."""
 from pathlib import Path
 import os
+import stat
 import sys
 import time
 
@@ -94,3 +95,22 @@ def test_publication_does_not_overwrite_or_publish_on_cancellation(tmp_path):
     assert not target.exists()
     publish_file(staged, target)
     assert target.read_bytes() == b'new'
+
+
+def test_audio_publication_flushes_a_writable_handle(tmp_path, monkeypatch):
+    staged, target = tmp_path / 'staged.wav', tmp_path / 'published.wav'
+    staged.write_bytes(b'Exact unchanged audio bytes')
+    actual = os.fsync
+    flushed = []
+
+    def require_write_access(descriptor):
+        if stat.S_ISREG(os.fstat(descriptor).st_mode):
+            # A zero-byte write checks descriptor access without changing data.
+            # This models the Windows flush requirement on every test platform.
+            assert os.write(descriptor, b'') == 0
+            flushed.append(descriptor)
+        actual(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', require_write_access)
+    publish_file(staged, target)
+    assert flushed and target.read_bytes() == staged.read_bytes() == b'Exact unchanged audio bytes'

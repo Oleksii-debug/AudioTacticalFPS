@@ -4,6 +4,8 @@ from pathlib import Path
 import json
 import os
 import sys
+import struct
+import wave
 from tempfile import TemporaryDirectory
 
 
@@ -32,8 +34,15 @@ def main():
         spoken = registry.synthesize('This is an actual offline native voice acceptance check.', voice.id,
                                       root / 'spoken.wav', settings=SpeechSettings(volume=65))
         assert spoken.duration_seconds > .2 and spoken.frames > 0
+        peak = 0
+        with wave.open(str(spoken.path), 'rb') as speech:
+            assert speech.getsampwidth() == 2
+            while raw := speech.readframes(65536):
+                peak = max(peak, max(abs(value[0]) for value in struct.iter_unpack('<h', raw)))
+        assert peak > 100, 'The installed speech engine emitted silent PCM.'
         result['checks'].append('actual installed SAPI voice to measured PCM')
         result['voices'] = [{'id': item.id, 'name': item.name, 'language': item.language} for item in sapi]
+        result['speech_peak_pcm16'] = peak
         service = ProductionService(library.root / 'state' / 'studio', voices=registry)
         script = ('[Scene: First chapter]\n[Music: suspense; tempo=80]\n'
                   'Narrator [center]: A quiet archive.\nAlice [left]: I found the letter.\n'
@@ -42,6 +51,7 @@ def main():
         project = service.create(script, voice_ids=tuple(item.id for item in sapi[:3]))
         job = service.submit(project, root, stems=True, format='flac')
         report = service.run(job)
+        assert project.original_script == script
         assert report['status'] == 'complete' and report['result']['duration'] > 3
         assert len(report['result']['chapters']) == 2 and not report['result']['loudness']['silent']
         resumed = ProductionService(service.root, voices=registry).run(job)
