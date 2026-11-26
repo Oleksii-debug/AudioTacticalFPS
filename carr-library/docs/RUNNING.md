@@ -192,6 +192,26 @@ See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
 limits and provenance. These commands add no runtime dependency or schema
 migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
 
+## Search across saved research topics
+
+Choose **Research, Search saved research** or press **Ctrl+Shift+F**. Search
+quotations, your own notes, or both across the currently open library. An exact
+tag can narrow the search or find tagged material without a text query.
+Archived topics are excluded unless you explicitly include them.
+
+Results identify the topic, source, matching field and archive state. Original
+quotations, citations and your notes have separate readable controls. Choose a
+source part to read another page of a saved excerpt. Copying quotations and
+citations verifies the selected saved source again; opening a topic uses the
+existing protection for unsaved notes. Archived results remain read only.
+
+The dialog has its own **Cancel current operation** and **Close** controls.
+Tab and Shift+Tab move between controls, arrow keys choose a result or source
+part, and Enter starts the search from the query field. Counts disclose a
+result limit; refine the phrase or tag when more matches exist. See
+`docs/RESEARCH_NOTEBOOK.md` in the source distribution for matching rules and
+integrity boundaries.
+
 ## Optional local semantic search
 
 The `semantic` extra supplies the pinned FastEmbed runtime. A separately
