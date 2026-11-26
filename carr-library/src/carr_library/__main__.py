@@ -63,6 +63,10 @@ def self_test():
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'audio':
+        from .audio.cli import main as audio_main
+        return audio_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Offline Universal Research Library')
     parser.add_argument('--version', action='version', version=__version__)
@@ -90,7 +94,7 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
     if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
         parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
