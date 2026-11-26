@@ -80,3 +80,38 @@ def test_drift(staged):
         return result
     with patch.object(HfApi, 'list_repo_tree', return_value=entries), patch.object(HfApi, 'verify_repo_checksums', changed), pytest.raises(ValueError, match='changed during'):
         m.seal(root)
+
+
+def test_hardlink_to_external_file(staged):
+    root, entries = staged
+    outside = root.parent / (root.name + '-external-config')
+    source = root / 'config.json'
+    source.rename(outside)
+    source.hardlink_to(outside)
+    with patch.object(HfApi, 'list_repo_tree', return_value=entries), pytest.raises(ValueError):
+        m.seal(root)
+    assert source.read_bytes() == outside.read_bytes()
+
+
+def test_linked_ancestor(staged, tmp_path_factory):
+    root, entries = staged
+    alias = tmp_path_factory.mktemp('alias-parent') / 'linked'
+    alias.symlink_to(root.parent, target_is_directory=True)
+    with patch.object(HfApi, 'list_repo_tree', return_value=entries), pytest.raises(ValueError):
+        m.seal(alias / root.name)
+
+
+def test_reparse_attribute(staged, monkeypatch):
+    import stat
+    from types import SimpleNamespace
+    root, entries = staged
+    original = Path.lstat
+    def flagged(path):
+        info = original(path)
+        if path == root / 'config.json':
+            return SimpleNamespace(st_mode=info.st_mode, st_nlink=info.st_nlink,
+                                   st_file_attributes=stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        return info
+    monkeypatch.setattr(Path, 'lstat', flagged)
+    with patch.object(HfApi, 'list_repo_tree', return_value=entries), pytest.raises(ValueError):
+        m.seal(root)
