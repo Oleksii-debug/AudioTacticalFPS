@@ -6,7 +6,12 @@ from ..durable_state import atomic_json, read_json
 
 def install_save_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    if getattr(frame, '_save_actions_installed', False):
+        return
     menu = wx.Menu()
+    commands = []
 
     def save(event=None):
         if frame.working:
@@ -31,14 +36,20 @@ def install_save_actions(frame):
         except Exception as exc:
             frame.report(f'Could not recover the draft: {exc}')
 
-    for title, handler in [('&Save\tCtrl+S', save), ('Save &all', save),
-                            ('Recover research-note draft...', recover)]:
-        item = menu.Append(wx.ID_ANY, title)
+    for identity, title, shortcut, handler in [
+            ('file.save', '&Save', 'Ctrl+S', save),
+            ('file.save_all', 'Save &all', '', save),
+            ('file.recover_note', 'Recover research-note draft...', '', recover)]:
+        label = title + ('\t' + shortcut if shortcut else '')
+        item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, handler, item)
+        commands.append((CommandSpec(identity, title.replace('&', ''), default_shortcut=shortcut), item))
     menu.AppendSeparator()
     item = menu.Append(wx.ID_EXIT, 'E&xit\tAlt+F4')
     frame.Bind(wx.EVT_MENU, lambda event: frame.Close(), item)
     frame.menu_bar.Insert(0, menu, '&File')
+    for spec, item in commands:
+        register_menu_command(frame, spec, item)
     timer = wx.Timer(frame)
     frame._draft_save_timer = timer
     previous = [None]
@@ -66,6 +77,7 @@ def install_save_actions(frame):
     timer.Start(3000)
 
     edit = wx.Menu()
+    edit_commands = []
     def focused(action):
         target = wx.Window.FindFocus()
         method = getattr(target, action, None)
@@ -73,8 +85,13 @@ def install_save_actions(frame):
             method()
         else:
             frame.report('This command is available in an editable text control.')
-    for label, action in [('Undo', 'Undo'), ('Redo', 'Redo'), ('Cut', 'Cut'), ('Copy', 'Copy'),
-                           ('Paste', 'Paste'), ('Select all', 'SelectAll')]:
+    for identity, label, action in [('edit.undo', 'Undo', 'Undo'), ('edit.redo', 'Redo', 'Redo'),
+            ('edit.cut', 'Cut', 'Cut'), ('edit.copy', 'Copy', 'Copy'), ('edit.paste', 'Paste', 'Paste'),
+            ('edit.select_all', 'Select all', 'SelectAll')]:
         item = edit.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, lambda event, action=action: focused(action), item)
+        edit_commands.append((CommandSpec(identity, label), item))
     frame.menu_bar.Insert(1, edit, '&Edit')
+    for spec, item in edit_commands:
+        register_menu_command(frame, spec, item)
+    frame._save_actions_installed = True

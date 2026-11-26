@@ -5,9 +5,11 @@ import json
 from pathlib import Path
 import threading
 
-from ..durable_state import atomic_json, atomic_bytes, read_json
+from ..durable_state import atomic_json, atomic_bytes, local_path, read_json
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
+
+AUDIO_FORMATS = ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma')
 
 SCRIPT_HELP = '''Write ordinary prose for one narrator, or use named speaking roles:
 Narrator [center]: The team enters the archive.
@@ -37,30 +39,53 @@ class StudioController:
         self.draft = library.root / 'state' / 'studio' / 'draft.json'
         self.project = None
 
-    def autosave(self, text, title, voice_ids):
+    def autosave(self, text, title, voice_ids, *, format='wav', stems=True):
+        if format not in AUDIO_FORMATS or type(stems) is not bool:
+            raise ValueError('Choose a supported output format and an explicit stem export setting.')
         atomic_json(self.draft, {'schema': 1, 'text': text, 'title': title,
-                    'voice_ids': list(voice_ids), 'project_id': self.project.id if self.project else None},
+                    'voice_ids': list(voice_ids), 'project_id': self.project.id if self.project else None,
+                    'format': format, 'stems': stems},
                     replace=self.draft.exists())
 
-    def save(self, text, title, voice_ids):
+    def save(self, text, title, voice_ids, *, format='wav', stems=True):
         # Keep even an invalid script draft, and report the validation failure.
-        self.autosave(text, title, voice_ids)
-        project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
+        first_save = self.project is None
+        self.autosave(text, title, voice_ids, format=format, stems=stems)
+        if self.project is not None and text == self.project.original_script:
+            # Imported projects can contain authored scenes, cue files, source
+            # links and non-default sample rates that the text grammar cannot
+            # represent. A no-op save must retain that typed project exactly.
+            project = replace(self.project, title=title)
+        else:
+            if self.project is not None:
+                previous_text_plan = parse_script(self.project.original_script,
+                    title=self.project.title, mode=self.project.mode, project_id=self.project.id)
+                if previous_text_plan.scenes != self.project.scenes:
+                    raise ValueError('This project has custom scenes or cues. Its unchanged plan can be saved or rendered; '
+                                     'start a new script project to change the text without losing those settings.')
+            project = parse_script(text, title=title, voice_ids=voice_ids,
+                mode=self.project.mode if self.project else 'faithful',
+                project_id=self.project.id if self.project else None)
         if self.project:
-            previous = {role.name.casefold(): role for role in self.project.roles}
-            roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
-                                  language=previous[role.name.casefold()].language,
-                                  pan=previous[role.name.casefold()].pan,
-                                  gain_db=previous[role.name.casefold()].gain_db,
-                                  rate=previous[role.name.casefold()].rate,
-                                  volume=previous[role.name.casefold()].volume)
-                          if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, revision=self.project.revision)
+            roles = project.roles
+            if text != self.project.original_script:
+                previous = {role.name.casefold(): role for role in self.project.roles}
+                roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
+                                      language=previous[role.name.casefold()].language,
+                                      pan=previous[role.name.casefold()].pan,
+                                      gain_db=previous[role.name.casefold()].gain_db,
+                                      rate=previous[role.name.casefold()].rate,
+                                      volume=previous[role.name.casefold()].volume)
+                              if role.name.casefold() in previous else role for role in project.roles)
+            project = replace(project, roles=roles, revision=self.project.revision,
+                              sample_rate=self.project.sample_rate)
             if project.to_dict() != self.project.to_dict():
                 project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+        self.service.projects.save(project,
+            expected_revision=self.project.revision if self.project else None)
         self.project = project
+        if first_save:
+            self.autosave(text, title, voice_ids, format=format, stems=stems)
         return project
 
 
@@ -75,6 +100,8 @@ def show_studio(frame):
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
+    operation_epoch = 0
+    last_autosave_signature = None
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 6)
@@ -84,22 +111,22 @@ def show_studio(frame):
         return control
 
     title = field('Project &title', value='Audio production')
-    voice_choice = field('Default &voice (local; role overrides below)', wx.Choice)
-    editor = field('&Script — prose or named roles; Help explains directions', proportion=1,
+    voice_choice = field('Default &voice for new roles (edit existing roles below)', wx.Choice)
+    editor = field('Script — prose or named roles; Help explains directions', proportion=1,
                    style=wx.TE_MULTILINE | wx.TE_DONTWRAP)
-    formats = ['wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma']
+    formats = list(AUDIO_FORMATS)
     format_choice = field('Final audio &format (WAV master is always retained)', wx.Choice, choices=formats)
     format_choice.SetSelection(0)
-    stems = wx.CheckBox(dialog, label='Export separate &speaker and music stems')
+    stems = wx.CheckBox(dialog, label='Export separate speaker and music stems')
     stems.SetValue(True)
     layout.Add(stems, 0, wx.ALL, 6)
     status = field('Production and save status', style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='Loading installed local voices. No audio starts automatically.', size=(-1, 100))
     buttons = {}
     for row in ((('save', '&Save (Ctrl+S)'), ('open', '&Open project'), ('saveas', 'Save &as (Ctrl+Shift+S)'),
-                 ('roles', 'Edit &roles and voices'), ('help', '&Help')),
+                 ('roles', 'Edit ro&les and voices'), ('help', '&Help')),
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
-                 ('preview', 'Listen to &output'), ('close', '&Close'))):
+                 ('preview', 'Listen to o&utput'), ('close', '&Close'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -121,42 +148,74 @@ def show_studio(frame):
             return (voices[selected].id,)
         return ()
 
+    def draft_signature():
+        return (editor.GetValue(), title.GetValue(), selected_voices(),
+                format_choice.GetSelection(), stems.GetValue())
+
     def controls():
-        for name in ('render', 'open', 'roles', 'jobs'):
+        for name in ('render', 'open', 'roles', 'jobs', 'save', 'saveas'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
         buttons['preview'].Enable(not busy and current_job is not None)
         editor.Enable(not busy)
         title.Enable(not busy)
         voice_choice.Enable(not busy)
+        format_choice.Enable(not busy)
+        stems.Enable(not busy)
 
-    def run(operation, complete):
-        nonlocal busy
+    def run(operation, complete, *, with_progress=False):
+        nonlocal busy, operation_epoch
         if busy:
             return
         busy = True
+        operation_epoch += 1
+        epoch = operation_epoch
         cancel.clear()
         controls()
-        future = executor.submit(operation)
+        def progress(message):
+            if not alive or epoch != operation_epoch:
+                return
+            def apply():
+                if alive and busy and epoch == operation_epoch:
+                    report(message)
+            wx.CallAfter(apply)
+        try:
+            future = executor.submit(lambda: operation(progress) if with_progress else operation())
+        except Exception as exc:
+            busy = False
+            controls()
+            report(f'The operation could not start: {exc}. Your draft was retained.', True)
+            return
         def finish(done):
+            if not alive or epoch != operation_epoch:
+                return
             def apply():
                 nonlocal busy
-                if not alive:
+                if not alive or epoch != operation_epoch:
                     return
                 busy = False
                 controls()
                 try:
-                    complete(done.result())
+                    result = done.result()
+                    if cancel.is_set():
+                        report('Operation cancelled. Your draft and completed production chunks were retained.', True)
+                    else:
+                        complete(result)
                 except Exception as exc:
                     report(str(exc), True)
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
     def save(event=None):
-        nonlocal draft_dirty
+        nonlocal draft_dirty, last_autosave_signature
         try:
-            result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
+            if busy:
+                raise ValueError('Wait for the current operation or pause it before saving the project.')
+            last_autosave_signature = None
+            result = controller.save(editor.GetValue(), title.GetValue(), selected_voices(),
+                format=formats[format_choice.GetSelection()], stems=stems.GetValue())
             draft_dirty = False
+            last_autosave_signature = draft_signature()
             report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
             return result
         except Exception as exc:
@@ -170,23 +229,51 @@ def show_studio(frame):
         event.Skip()
 
     def autosave(event=None):
-        nonlocal draft_dirty
-        if not draft_dirty or busy:
-            return
+        nonlocal last_autosave_signature
+        if not draft_dirty:
+            return True
+        if busy:
+            return False
+        signature = draft_signature()
+        if signature == last_autosave_signature:
+            return True
         try:
-            controller.autosave(editor.GetValue(), title.GetValue(), selected_voices())
-            draft_dirty = False
+            controller.autosave(editor.GetValue(), title.GetValue(), selected_voices(),
+                format=formats[format_choice.GetSelection()], stems=stems.GetValue())
+            last_autosave_signature = signature
+            return True
         except Exception as exc:
             report(f'Automatic draft save failed: {exc}', True)
+            return False
+
+    def confirm_replace():
+        if busy:
+            report('Wait for the current operation or pause it before opening another project.', True)
+            return False
+        if not draft_dirty:
+            return True
+        answer = wx.MessageBox('Save the current project before replacing this draft?',
+            'Unsaved audio project', wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION, dialog)
+        if answer == wx.CANCEL:
+            return False
+        return answer == wx.NO or save() is not None
+
+    def select_project_voice(project):
+        desired = project.roles[0].voice_id if project.roles else ''
+        voice_choice.SetSelection(next((index for index, voice in enumerate(voices)
+            if voice.id == desired), wx.NOT_FOUND))
 
     def open_project(event=None):
+        nonlocal current_job, draft_dirty
+        if not confirm_replace():
+            return
         chooser = wx.FileDialog(dialog, 'Open project JSON or UTF-8 script',
                                 wildcard='Project and script (*.json;*.txt;*.md)|*.json;*.txt;*.md',
                                 style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
             if chooser.ShowModal() != wx.ID_OK:
                 return
-            path = Path(chooser.GetPath())
+            path = local_path(chooser.GetPath(), exists=True)
             if path.stat().st_size > 16 * 1024**2:
                 raise ValueError('The script exceeds the editable text budget; split it by chapters.')
             if path.suffix.casefold() == '.json':
@@ -195,10 +282,13 @@ def show_studio(frame):
                 controller.project = project
                 editor.SetValue(project.original_script)
                 title.SetValue(project.title)
+                select_project_voice(project)
             else:
                 controller.project = None
                 editor.SetValue(path.read_text(encoding='utf-8-sig'))
                 title.SetValue(path.stem)
+            current_job = None
+            draft_dirty = True
             report('Opened. Review voices and directions before rendering.', True)
         except Exception as exc:
             report(str(exc), True)
@@ -294,13 +384,14 @@ def show_studio(frame):
             finally:
                 chooser.Destroy()
         identity = current_job
-        run(lambda: service.run(identity, cancelled=cancel.is_set,
-                progress=lambda text: wx.CallAfter(report, text)),
+        run(lambda progress: service.run(identity, cancelled=cancel.is_set, progress=progress),
             lambda result: report('Production complete. ' + result['destination'] +
-                '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True))
+                '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True), with_progress=True)
 
     def jobs(event=None):
-        nonlocal current_job
+        nonlocal current_job, draft_dirty
+        if not confirm_replace():
+            return
         try:
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
@@ -315,10 +406,15 @@ def show_studio(frame):
                 return
             row = rows[index]
             project = Project.from_dict(row['project'])
-            controller.project = service.projects.load(project.id)
+            # Resume the selected job's exact snapshot. A later save uses CAS
+            # and must not silently merge it into a newer project revision.
+            service.projects.load(project.id)
+            controller.project = project
             editor.ChangeValue(project.original_script)
             title.ChangeValue(project.title)
             current_job = row['id']
+            draft_dirty = False
+            select_project_voice(project)
             report(f'{row["status"]}. {row["error"]}\nChoose Render / resume to continue or Listen to output after completion.', True)
             controls()
         except Exception as exc:
@@ -346,38 +442,50 @@ def show_studio(frame):
 
     def close(event=None):
         nonlocal alive
-        autosave()
+        if not autosave():
+            cancel.set()
+            report('The draft was not saved. The window remains open; retry Save or Save as before closing.', True)
+            if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
+                event.Veto()
+            return False
         cancel.set()
         if current_job is not None and busy:
             service.request_pause(current_job)
         timer.Stop()
         if getattr(dialog, '_audio_player', None):
-            dialog._audio_player.stop()
+            dialog._audio_player.close()
         alive = False
         executor.shutdown(wait=False, cancel_futures=True)
         dialog.EndModal(wx.ID_CLOSE)
+        return True
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
+    accelerator_ids = []
     for modifiers, key, callback in [(wx.ACCEL_CTRL, ord('S'), save),
         (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), save_as), (0, wx.WXK_F6, render),
         (0, wx.WXK_F8, lambda event: cancel.set())]:
-        identity = int(wx.NewIdRef())
+        reference = wx.NewIdRef()
+        accelerator_ids.append(reference)
+        identity = int(reference)
         dialog.Bind(wx.EVT_MENU, callback, id=identity)
         bindings.append((modifiers, key, identity))
     dialog.SetAcceleratorTable(wx.AcceleratorTable(bindings))
     editor.Bind(wx.EVT_TEXT, changed)
     title.Bind(wx.EVT_TEXT, changed)
+    voice_choice.Bind(wx.EVT_CHOICE, changed)
+    format_choice.Bind(wx.EVT_CHOICE, changed)
+    stems.Bind(wx.EVT_CHECKBOX, changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, timer)
     timer.Start(4000)
 
     def loaded(result):
-        nonlocal voices, draft_dirty
+        nonlocal voices, draft_dirty, last_autosave_signature
         voices = result
         voice_choice.SetItems([v.name + '; ' + v.language for v in voices])
         if voices:
@@ -387,9 +495,16 @@ def show_studio(frame):
                 draft = read_json(controller.draft)
                 editor.ChangeValue(draft['text'])
                 title.ChangeValue(draft['title'])
+                selected_format = draft.get('format', 'wav')
+                if selected_format not in formats or type(draft.get('stems', True)) is not bool:
+                    raise ValueError('The saved draft has invalid output settings.')
+                format_choice.SetSelection(formats.index(selected_format))
+                stems.SetValue(draft.get('stems', True))
                 if draft.get('project_id'):
                     controller.project = service.projects.load(draft['project_id'])
                 choices = draft.get('voice_ids', ())
+                if choices:
+                    voice_choice.SetSelection(wx.NOT_FOUND)
                 for index, voice in enumerate(voices):
                     if voice.id in choices:
                         voice_choice.SetSelection(index)
@@ -397,7 +512,9 @@ def show_studio(frame):
             except Exception as exc:
                 report(f'Saved draft needs review: {exc}', True)
                 return
-        draft_dirty = False
+        draft_dirty = (bool(editor.GetValue()) if controller.project is None else
+            editor.GetValue() != controller.project.original_script or title.GetValue() != controller.project.title)
+        last_autosave_signature = draft_signature()
         report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
@@ -481,10 +598,20 @@ def show_audio_conversion(frame):
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    if getattr(frame, '_studio_actions_installed', False):
+        return
     menu = wx.Menu()
-    for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
-                            ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
-                            ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
-        item = menu.Append(wx.ID_ANY, title)
+    commands = []
+    for identity, title, shortcut, handler in [
+            ('studio.open', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
+            ('studio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
+            ('studio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
+        item = menu.Append(wx.ID_ANY, title + ('\t' + shortcut if shortcut else ''))
         frame.Bind(wx.EVT_MENU, handler, item)
+        commands.append((CommandSpec(identity, title, default_shortcut=shortcut), item))
     frame.menu_bar.Append(menu, 'Audio St&udio')
+    for spec, item in commands:
+        register_menu_command(frame, spec, item)
+    frame._studio_actions_installed = True

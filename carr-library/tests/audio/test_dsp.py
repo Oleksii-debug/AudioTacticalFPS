@@ -3,6 +3,7 @@ from array import array
 from dataclasses import replace
 import hashlib
 import math
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -57,7 +58,51 @@ def amplitude(values, frequency, rate=RATE):
 
 @pytest.fixture
 def runtime(tmp_path):
-    return AudioRuntime(tmp_path)
+    # Exercise an explicitly selected installed version without changing PATH.
+    return AudioRuntime(tmp_path, ffmpeg=os.environ.get('CARR_TEST_FFMPEG'),
+                        ffprobe=os.environ.get('CARR_TEST_FFPROBE'))
+
+
+@pytest.mark.parametrize('flags', [('..C', 'T.C', '...'), ('..', 'T.', '..')])
+def test_capability_inventory_accepts_ffmpeg7_and_ffmpeg9_filter_rows(runtime, monkeypatch, flags):
+    from carr_library.audio import dsp
+    from carr_library.audio.process import ProcessResult
+    command, timeline, plain = flags
+    listing = f'''Filters:
+  T.. = Timeline support
+  .S. = Slice threading
+  ..C = Command support
+  A = Audio input/output
+  ------
+ {command} sidechaincompress AA->A Sidechain compressor.
+ {timeline} alimiter A->A Audio lookahead limiter.
+ {command} volume A->A Change input volume.
+ {plain} loudnorm A->A EBU R128 loudness normalization.
+ {plain} anullsrc |->A Null audio source.
+ {plain} anullsink A->| Discard audio.
+ {plain} amix N->A Audio mixing.
+ {plain} unsupported-row no-audio-signature
+'''
+
+    def probe(args, **kwargs):
+        if '-filters' in args:
+            text = listing
+        elif '-encoders' in args:
+            text = 'Encoders:\n A..... = Audio\n A....D pcm_s16le PCM signed 16-bit little-endian\n'
+        elif '-muxers' in args:
+            text = 'Muxers:\n E = Muxing supported\n  E wav WAV / WAVE (Waveform Audio)\n'
+        else:
+            text = 'ffmpeg fixture inventory\nconfiguration: fixture only\n'
+        return ProcessResult(text.encode('utf-8'), b'', 0)
+
+    monkeypatch.setattr(dsp, 'run_process', probe)
+    capabilities = runtime.capabilities()
+    assert set(capabilities['filters']) == {'sidechaincompress', 'alimiter', 'volume',
+        'loudnorm', 'anullsrc', 'anullsink', 'amix'}
+    assert capabilities['encoders'] == ['pcm_s16le']
+    assert capabilities['muxers'] == ['wav']
+    assert '.wav' in capabilities['formats']
+    assert set(capabilities['effects']) == {'gain', 'limiter', 'loudness'}
 
 
 def test_actual_pan_timing_frames_and_source_unchanged(runtime, tmp_path):

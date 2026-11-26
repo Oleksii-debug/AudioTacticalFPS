@@ -293,8 +293,12 @@ class AudioRuntime:
             filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget).stdout.decode('utf-8', 'replace')
             encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget).stdout.decode('utf-8', 'replace')
             muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget).stdout.decode('utf-8', 'replace')
-            # FFmpeg 9 removed the command-support column (three flags -> two).
-            filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{2,3}\s+([a-zA-Z0-9_]+)\s', filters, re.M)}
+            # FFmpeg 9 removed the third (command-support) flag from filter
+            # rows. Match both table layouts, including the input->output
+            # signature, so legend text cannot become an advertised filter.
+            filter_names = {match.group(1) for match in re.finditer(
+                r'^[ \t]*[T.][S.](?:[C.])?[ \t]+([A-Za-z0-9_]+)[ \t]+'
+                r'[AVN|]+->[AVN|]+(?:[ \t]|$)', filters, re.M)}
             encoder_names = {match.group(1) for match in re.finditer(r'^\s*[A-Z.]{6}\s+(\S+)\s', encoders, re.M)}
             filter_names.discard('=')
             encoder_names.discard('=')

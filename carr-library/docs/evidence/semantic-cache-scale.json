@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-26T22:32:54.891511+00:00",
+  "source_path": "src/carr_library/semantic_cache.py",
+  "source_sha256": "e0068da783a4ee22531b4b860be8c4079db8c56e3c424b80bf011c8f6e7c9453",
+  "source_matches_worktree_after_run": true,
+  "harness_sha256": "fbd4c1fd22084dfb40a3f40aca912a9e28d04f95a888fff450a66332883545af",
+  "environment": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "sqlite": "3.53.1",
+    "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; Linux KiB converted to bytes"
+  },
+  "method": {
+    "storage": "Actual SQLite files and production cache implementation snapshot",
+    "vectors": "Deterministic normalized 384-dimensional unit coordinate vectors",
+    "identity": "Synthetic model/content/workspace/edition/revision/window identities",
+    "isolation": "Fresh child process and new database per size; read phases reopen connections",
+    "read_temperature": "Reopened and repeated reads use the same OS page cache; neither is a cold-disk measurement",
+    "peak_memory": "Whole child-process high-water RSS, not an allocation-only measurement",
+    "writes": "Synchronous FULL SQLite transactions, at most 512 vectors per batch"
+  },
+  "claims": {
+    "neural_inference": "NOT_RUN",
+    "retrieval_quality": "NOT_MEASURED",
+    "native_windows": "NOT_RUN",
+    "source_authority": "NOT_ESTABLISHED_BY_CACHE"
+  },
+  "cases": [
+    {
+      "status": "PASS",
+      "source_sha256": "e0068da783a4ee22531b4b860be8c4079db8c56e3c424b80bf011c8f6e7c9453",
+      "requested_entries": 1000,
+      "stored_entries": 1000,
+      "dimensions": 384,
+      "maximum_batch_size": 512,
+      "write_batches": 2,
+      "write_seconds": 0.0732861699998466,
+      "reopened_read": {
+        "seconds": 0.09085129000004599,
+        "hits": 1000
+      },
+      "repeated_read": {
+        "seconds": 0.10058675299978859,
+        "hits": 1000
+      },
+      "baseline_peak_rss_bytes": 17039360,
+      "process_peak_rss_bytes": 36028416,
+      "database_size_bytes": 4808704,
+      "page_count": 1174,
+      "page_size_bytes": 4096,
+      "files": [
+        {
+          "name": "embeddings-db91eaa68687eaba52af93172dfa96119c728ccc03a83af20141229aadc399f5.sqlite",
+          "size_bytes": 4808704
+        }
+      ],
+      "entry_budget": 50000,
+      "byte_budget": 268435456,
+      "sqlite_quick_check": "ok",
+      "schema": [
+        "CREATE TABLE embedding (identity TEXT PRIMARY KEY, vector BLOB NOT NULL, checksum TEXT NOT NULL, touched INTEGER NOT NULL) WITHOUT ROWID",
+        "CREATE INDEX embedding_recent ON embedding(touched,identity)"
+      ],
+      "local_fixture_path": "/workspace/scratch/411a574878e3/semantic-cache-benchmark/runs/20261126T223233111207Z/1000"
+    },
+    {
+      "status": "PASS",
+      "source_sha256": "e0068da783a4ee22531b4b860be8c4079db8c56e3c424b80bf011c8f6e7c9453",
+      "requested_entries": 10000,
+      "stored_entries": 10000,
+      "dimensions": 384,
+      "maximum_batch_size": 512,
+      "write_batches": 20,
+      "write_seconds": 1.1183019740001328,
+      "reopened_read": {
+        "seconds": 0.9977545990000181,
+        "hits": 10000
+      },
+      "repeated_read": {
+        "seconds": 1.0446558829999049,
+        "hits": 10000
+      },
+      "baseline_peak_rss_bytes": 17039360,
+      "process_peak_rss_bytes": 37322752,
+      "database_size_bytes": 47828992,
+      "page_count": 11677,
+      "page_size_bytes": 4096,
+      "files": [
+        {
+          "name": "embeddings-db91eaa68687eaba52af93172dfa96119c728ccc03a83af20141229aadc399f5.sqlite",
+          "size_bytes": 47828992
+        }
+      ],
+      "entry_budget": 50000,
+      "byte_budget": 268435456,
+      "sqlite_quick_check": "ok",
+      "schema": [
+        "CREATE TABLE embedding (identity TEXT PRIMARY KEY, vector BLOB NOT NULL, checksum TEXT NOT NULL, touched INTEGER NOT NULL) WITHOUT ROWID",
+        "CREATE INDEX embedding_recent ON embedding(touched,identity)"
+      ],
+      "local_fixture_path": "/workspace/scratch/411a574878e3/semantic-cache-benchmark/runs/20261126T223233111207Z/10000"
+    },
+    {
+      "status": "PASS",
+      "source_sha256": "e0068da783a4ee22531b4b860be8c4079db8c56e3c424b80bf011c8f6e7c9453",
+      "requested_entries": 50000,
+      "stored_entries": 50000,
+      "dimensions": 384,
+      "maximum_batch_size": 512,
+      "write_batches": 98,
+      "write_seconds": 6.991845300000023,
+      "reopened_read": {
+        "seconds": 5.5617658060000394,
+        "hits": 50000
+      },
+      "repeated_read": {
+        "seconds": 5.444788338999842,
+        "hits": 50000
+      },
+      "baseline_peak_rss_bytes": 16777216,
+      "process_peak_rss_bytes": 37425152,
+      "database_size_bytes": 239153152,
+      "page_count": 58387,
+      "page_size_bytes": 4096,
+      "files": [
+        {
+          "name": "embeddings-db91eaa68687eaba52af93172dfa96119c728ccc03a83af20141229aadc399f5.sqlite",
+          "size_bytes": 239153152
+        }
+      ],
+      "entry_budget": 50000,
+      "byte_budget": 268435456,
+      "sqlite_quick_check": "ok",
+      "schema": [
+        "CREATE TABLE embedding (identity TEXT PRIMARY KEY, vector BLOB NOT NULL, checksum TEXT NOT NULL, touched INTEGER NOT NULL) WITHOUT ROWID",
+        "CREATE INDEX embedding_recent ON embedding(touched,identity)"
+      ],
+      "local_fixture_path": "/workspace/scratch/411a574878e3/semantic-cache-benchmark/runs/20261126T223233111207Z/50000"
+    }
+  ]
+}

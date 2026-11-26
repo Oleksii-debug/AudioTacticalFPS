@@ -853,8 +853,16 @@ class DoiMetadataClient:
 
 def _https_once(request: MetadataRequest) -> MetadataResponse:
     """Worker-only HTTPS transport: no proxies, cookies, redirects or retries."""
+    # Keep this directly launched isolated worker self-contained. The client
+    # defaults verify certificates and hostnames without consulting the
+    # environment's SSLKEYLOGFILE (unlike create_default_context).
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_default_certs(ssl.Purpose.SERVER_AUTH)
     connection = http.client.HTTPSConnection(request.host, port=443, timeout=request.timeout,
-                                             context=ssl.create_default_context())
+                                             context=context)
     deadline = time.monotonic() + request.timeout
     try:
         connection.request("GET", request.path, headers={

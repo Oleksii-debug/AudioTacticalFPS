@@ -82,6 +82,40 @@ def auth(profile, **changes):
 PAYLOAD = {'messages': [{'role': 'user', 'content': 'Synthetic test only'}]}
 
 
+def test_cancellation_during_actual_connection_prevents_post_and_marks_not_sent(server, tmp_path, monkeypatch):
+    from urllib.parse import urlsplit
+    from carr_library.assistant.providers import Gateway
+    address, requests, settings = server
+    target = urlsplit(address)
+    stopped = [False]
+    key_log = tmp_path / 'unexpected-tls-secrets.log'
+    monkeypatch.setenv('SSLKEYLOGFILE', str(key_log))
+
+    class CancelAfterConnect(http.client.HTTPConnection):
+        def connect(self):
+            super().connect()
+            stopped[0] = True
+
+    def local_boundary(host, port, **options):
+        # TLS context creation is real. Only the remote endpoint is replaced
+        # with the actual local server; no external request or credential exists.
+        assert options['context'].check_hostname
+        assert options['context'].keylog_filename is None
+        return CancelAfterConnect(target.hostname, target.port, timeout=options['timeout'])
+
+    monkeypatch.setattr(http.client, 'HTTPSConnection', local_boundary)
+    profile = remote()
+    approval = auth(profile)
+    gateway = Gateway(tmp_path / 'providers', vault=Vault(), mode='APPROVED_REMOTE')
+    with pytest.raises(InterruptedError, match='before transmission'):
+        gateway.request(profile, 'llm.chat', PAYLOAD, task_id='project-one', data_class='selected-script',
+            authorization=approval, max_cost='0.20', operation_id='cancelled-connect',
+            cancelled=lambda: stopped[0])
+    assert not requests and not key_log.exists()
+    assert gateway.ledger.get(approval.id)['operations']['cancelled-connect']['status'] == 'not_sent'
+    assert os.environ['SSLKEYLOGFILE'] == str(key_log)
+
+
 def test_local_only_denies_before_any_vault_or_connection(tmp_path, monkeypatch):
     vault = Vault()
     gateway = Gateway(tmp_path / 'providers', vault=vault)

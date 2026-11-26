@@ -226,7 +226,9 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
                                 minimum_duration=minimum))
         lines, music, minimum = [], None, 0
 
-    for raw in text.splitlines():
+    # A UTF-8 signature is source metadata. Preserve it in original_script,
+    # while allowing the first authored direction or role to parse normally.
+    for raw in text.removeprefix('\ufeff').splitlines():
         if not raw.strip():
             continue
         direction = re.fullmatch(r'\s*\[([^:\]]+):\s*(.*?)\]\s*', raw)

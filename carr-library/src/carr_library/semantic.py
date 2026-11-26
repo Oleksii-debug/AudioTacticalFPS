@@ -9,6 +9,7 @@ import importlib.metadata
 import json
 import math
 import os
+from itertools import islice
 from pathlib import Path
 import re
 import sqlite3
@@ -76,7 +77,7 @@ def verify_model_bundle(directory, manifest=None):
 
 
 def _unit(vector):
-    vector = tuple(float(value) for value in vector)
+    vector = tuple(float(value) for value in islice(vector, 385))
     if len(vector) != 384 or not all(map(math.isfinite, vector)):
         raise ValueError('Invalid MiniLM embedding.')
     norm = math.hypot(*vector)
@@ -107,6 +108,18 @@ class OfflineSemanticRanker:
         verify_model_bundle(root, manifest)
         self.minimum_similarity = float(minimum_similarity)
         self.directory = root
+        self.cache = None
+        self.cache_statistics = {}
+
+    def bind_cache(self, library_directory, *, budget=None):
+        """Use disposable private vectors after normal library path validation.
+
+        Binding creates no files and changes no source authorization. Each rank
+        still checks the current token coverage and only returns supplied keys.
+        """
+        from .semantic_cache import EmbeddingCache, model_identity
+        self.cache = EmbeddingCache(Path(library_directory) / 'semantic-cache',
+                                    model_identity(APPROVED_MANIFEST), budget=budget)
 
     def __call__(self, query, candidates):
         return self.rank(query, candidates)
@@ -124,7 +137,7 @@ class OfflineSemanticRanker:
                 raise TimeoutError('Semantic search cancelled or timed out.')
 
         check()
-        candidates = tuple(candidates)
+        candidates = tuple(islice(candidates, 501))
         if len(candidates) > 500:
             raise ValueError('Semantic candidate budget exceeded.')
         keys = [key for key, _ in candidates]
@@ -147,16 +160,40 @@ class OfflineSemanticRanker:
             ids = [token for token, active in zip(actual.ids, actual.attention_mask) if active]
             if actual.overflowing or ids != complete.ids:
                 raise ValueError('Runtime tokenizer changed or truncated source text.')
+        # Cache keys include the exact model/preprocessor, current source text
+        # and workspace/revision/window. Authorization and complete token checks
+        # above are never replaced by cache membership.
+        cache = getattr(self, 'cache', None)
+        identities = []
+        cached = {}
+        if cache is not None:
+            from .semantic_cache import content_identity
+            identities = [content_identity(cache.model, query)]
+            identities.extend(content_identity(cache.model, text, key) for key, text in candidates)
+            check()
+            cached = cache.get_many(identities, check=check)
+            check()
+        embeddings = [cached.get(identity) for identity in identities] if identities else [None] * len(texts)
+        missing = [i for i, vector in enumerate(embeddings) if vector is None]
+        self.cache_statistics = {'hits': len(texts) - len(missing), 'misses': len(missing),
+                                 'embedded_texts': 0, 'available': bool(cache and cache.available)}
         # Native embedding batches remain bounded. Cancellation is checked on
         # both sides of each native batch; an in-flight CPU call is cooperative.
-        embeddings = []
-        for start in range(0, len(texts), 16):
+        for start in range(0, len(missing), 16):
+            indices = missing[start:start + 16]
             check()
-            batch = tuple(self.engine.embed(texts[start:start + 16], batch_size=16))
+            batch = tuple(self.engine.embed([texts[i] for i in indices], batch_size=16))
             check()
-            if len(batch) != len(texts[start:start + 16]):
+            if len(batch) != len(indices):
                 raise ValueError('Semantic embedding count mismatch.')
-            embeddings.extend(_unit(vector) for vector in batch)
+            normalized = tuple(_unit(vector) for vector in batch)
+            for i, vector in zip(indices, normalized):
+                embeddings[i] = vector
+            self.cache_statistics['embedded_texts'] += len(indices)
+            if cache is not None:
+                cache.put_many({identities[i]: vector for i, vector in zip(indices, normalized)}, check=check)
+                check()
+                self.cache_statistics['available'] = cache.available
         query_vector, *document_vectors = embeddings
         scored = [(key, math.fsum(a * b for a, b in zip(query_vector, vector)))
                   for key, vector in zip(keys, document_vectors)]

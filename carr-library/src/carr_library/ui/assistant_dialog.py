@@ -357,9 +357,19 @@ def show_provider_settings(frame):
 
 def install_assistant_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    if getattr(frame, '_assistant_actions_installed', False):
+        return
     menu = wx.Menu()
-    for title, handler in [('Local assistant...\tCtrl+Alt+J', lambda e: show_assistant(frame)),
-                            ('AI and API connections...', lambda e: show_provider_settings(frame))]:
-        item = menu.Append(wx.ID_ANY, title)
+    commands = []
+    for identity, title, shortcut, handler in [
+            ('assistant.open', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
+            ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
+        item = menu.Append(wx.ID_ANY, title + ('\t' + shortcut if shortcut else ''))
         frame.Bind(wx.EVT_MENU, handler, item)
+        commands.append((CommandSpec(identity, title, default_shortcut=shortcut), item))
     frame.menu_bar.Append(menu, '&Tools')
+    for spec, item in commands:
+        register_menu_command(frame, spec, item)
+    frame._assistant_actions_installed = True

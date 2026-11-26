@@ -29,6 +29,7 @@ from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
+from .state_backup import _stable_reader, read_state_bytes
 
 MAX_JOURNAL = 512 * 1024**2
 MAX_FILES = 25_000
@@ -107,19 +108,9 @@ def _stamp(info):
 
 
 def _read(path, maximum):
-    path = local_path(path, exists=True)
-    before = regular(path)
-    if not 0 < before.st_size <= maximum:
-        raise ValueError('Pending import file exceeds its size budget.')
-    with path.open('rb') as stream:
-        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
-            raise ValueError('Pending import file changed during read.')
-        raw = stream.read(maximum + 1)
-        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
-            raise ValueError('Pending import file changed during read.')
-    if len(raw) != before.st_size or _stamp(regular(path)) != _stamp(before):
-        raise ValueError('Pending import file changed during read.')
-    return raw
+    # Reuse the shared portable handle check: Windows path stat and descriptor
+    # fstat can represent an unchanged file with different inode/device values.
+    return read_state_bytes(path, maximum)
 
 
 def _write(path, raw):
@@ -141,10 +132,10 @@ def _copy(source, target, entry, cancelled):
     target = local_path(target)
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     hashed, size = sha256(), 0
-    with source.open('rb') as read, target.open('xb') as write:
-        if _stamp(os.fstat(read.fileno())) != _stamp(before):
-            raise ValueError('Pending import backup changed during read.')
-        while block := read.read(1024 * 1024):
+    with _stable_reader(source) as (read, opened), target.open('xb') as write:
+        if _stamp(opened) != _stamp(before):
+            raise ValueError('Pending import backup changed before opening.')
+        while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - size)):
             _check(cancelled)
             size += len(block)
             if size > entry['size_bytes']:
@@ -153,8 +144,6 @@ def _copy(source, target, entry, cancelled):
             write.write(block)
         write.flush()
         os.fsync(write.fileno())
-        if _stamp(os.fstat(read.fileno())) != _stamp(before):
-            raise ValueError('Pending import backup changed during read.')
     if (_stamp(regular(source)) != _stamp(before) or size != entry['size_bytes']
             or hashed.hexdigest() != entry['sha256']):
         raise ValueError('Pending import backup checksum mismatch.')
@@ -163,10 +152,10 @@ def _copy(source, target, entry, cancelled):
 def _entry(path, name, cancelled):
     before = regular(path)
     hashed, size = sha256(), 0
-    with Path(path).open('rb') as stream:
-        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
-            raise ValueError('Pending import file changed during hashing.')
-        while block := stream.read(1024 * 1024):
+    with _stable_reader(path) as (stream, opened):
+        if _stamp(opened) != _stamp(before):
+            raise ValueError('Pending import file changed before hashing.')
+        while block := stream.read(min(1024 * 1024, before.st_size + 1 - size)):
             _check(cancelled)
             size += len(block)
             if size > before.st_size:

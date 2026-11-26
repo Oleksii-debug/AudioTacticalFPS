@@ -19,6 +19,7 @@ Paths must be inside your selected input/output folders. No delete, shell or rem
 
 def preview(value, scope):
     text(value, 'assistant instruction', maximum=4 * 1024 * 1024)
+    value = value.removeprefix('\ufeff')
     if value.lstrip().startswith('{'):
         return Plan.from_json(value, scope=scope)
     steps = []

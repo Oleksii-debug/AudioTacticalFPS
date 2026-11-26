@@ -84,8 +84,13 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            & $python -I -B scripts/windows_sapi_probe.py --repeats 2 2>&1 | Tee-Object 'ci-v3-results/sapi-phases.txt'
+            $sapiResult = $LASTEXITCODE
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+            $studioResult = $LASTEXITCODE
+            & $python -I -B scripts/windows_audio_ui_lifecycle_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-audio-lifecycle.txt'
+            $lifecycleResult = $LASTEXITCODE
+            if ($sapiResult -ne 0 -or $studioResult -ne 0 -or $lifecycleResult -ne 0) { throw 'Actual native speech, production or keyboard lifecycle acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }

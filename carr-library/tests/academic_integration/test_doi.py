@@ -489,7 +489,7 @@ def test_cancel_before_request_and_between_providers_prevents_next_transmission(
     assert len(transport.requests) == 1 and transport.requests[0].provider == "crossref"
 
 
-def test_default_https_worker_keeps_exact_host_tls_and_never_follows_redirect(monkeypatch):
+def test_default_https_worker_keeps_exact_host_tls_and_never_follows_redirect(monkeypatch, tmp_path):
     calls = []
     body_reads = []
 
@@ -519,6 +519,8 @@ def test_default_https_worker_keeps_exact_host_tls_and_never_follows_redirect(mo
             calls.append("closed")
 
     monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.org")
+    keylog = tmp_path / "must-not-exist.keys"
+    monkeypatch.setenv("SSLKEYLOGFILE", str(keylog))
     monkeypatch.setattr(module.http.client, "HTTPSConnection", Connection)
     request = MetadataRequest("unpaywall", DOI, email=EMAIL)
     response = module._https_once(request)
@@ -526,6 +528,8 @@ def test_default_https_worker_keeps_exact_host_tls_and_never_follows_redirect(mo
     host, port, timeout, context = calls[0]
     assert host == "api.unpaywall.org" and port == 443
     assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname is True
+    assert context.minimum_version >= ssl.TLSVersion.TLSv1_2
+    assert context.keylog_filename is None and not keylog.exists()
     assert calls[1][0] == "GET" and calls[1][2]["Accept-Encoding"] == "identity"
     assert "Authorization" not in calls[1][2] and calls[-1] == "closed"
     assert len([entry for entry in calls if isinstance(entry, tuple) and entry[0] == "GET"]) == 1

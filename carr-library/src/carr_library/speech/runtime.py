@@ -16,6 +16,7 @@ import struct
 import sys
 import sysconfig
 from tempfile import TemporaryDirectory
+import time
 import wave
 
 from ._io import (check_cancelled, digest, local_file, new_output, run_process,
@@ -277,6 +278,35 @@ class VoiceRegistry:
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
 
 
+_SAPI_PHASES = frozenset(('script-entered', 'request-read', 'json-runtime-loading',
+    'json-runtime-ready', 'request-validated', 'sapi-activating', 'sapi-ready',
+    'voices-enumerating', 'voices-ready', 'voice-selected', 'stream-opening',
+    'speech-started', 'speech-complete', 'stream-closed', 'response-serializing',
+    'response-ready', 'complete', 'failed'))
+
+
+def _sapi_phase_trace(path):
+    """Read only bounded fixed-name/numeric worker diagnostics, never raw stderr."""
+    try:
+        with path.open('rb') as stream:
+            raw = stream.read(4097)
+        if len(raw) > 4096:
+            return []
+        phases = []
+        for line in raw.decode('ascii').splitlines():
+            name, utc_ms, worker_ms = line.split('\t')
+            if (name not in _SAPI_PHASES or not re.fullmatch(r'[0-9]{1,16}', utc_ms)
+                    or not re.fullmatch(r'[0-9]{1,9}', worker_ms) or len(phases) >= 32):
+                return []
+            item = {'phase': name, 'utc_ms': int(utc_ms), 'worker_ms': int(worker_ms)}
+            if phases and item['worker_ms'] < phases[-1]['worker_ms']:
+                return []
+            phases.append(item)
+        return phases
+    except (OSError, UnicodeError, ValueError):
+        return []
+
+
 class SapiProvider:
     name = 'Installed SAPI 5'
 
@@ -287,21 +317,48 @@ class SapiProvider:
                            if os.name == 'nt' else local_file(executable))
         self.architecture = architecture
         self._tokens = {}
+        # Fixed phase names/timings only; safe for a native cold-start diagnostic.
+        self.last_request_diagnostic = None
 
-    def _request(self, data, *, cancelled=lambda: False, timeout=30, output=None, budget=512*1024*1024):
+    def _request(self, data, *, cancelled=lambda: False, timeout=90, output=None, budget=512*1024*1024):
         if os.name != 'nt':
             raise RuntimeError('SAPI 5 requires a native Windows host.')
         helper = Path(__file__).with_name('sapi_worker.ps1')
         with TemporaryDirectory(prefix='research-sapi-') as temporary:
             request = Path(temporary) / 'request.json'
-            request.write_text(json.dumps({'version': 1, **data}, ensure_ascii=False), encoding='utf-8')
-            reply, _, _ = run_process([self.executable, '-NoLogo', '-NoProfile', '-NonInteractive',
-                '-File', helper, '-Request', request], cancelled=cancelled, timeout=timeout,
-                output_file=output, max_output=budget)
-        value = json.loads(reply.decode('utf-8-sig'))
-        if not isinstance(value, dict) or value.get('version') != 1:
-            raise ValueError('Invalid SAPI response.')
-        return value
+            trace = Path(temporary) / 'phases.tsv'
+            request.write_text(json.dumps({'version': 1, **data}, ensure_ascii=False,
+                                          allow_nan=False), encoding='utf-8')
+            diagnostic = {'architecture': self.architecture,
+                          'operation': 'voices' if data.get('operation') == 'voices' else 'render',
+                          'started_utc_ms': time.time_ns() // 1_000_000, 'outcome': 'failed'}
+            started = time.monotonic()
+            try:
+                # OS signature/CRL checks retain their normal security policy.
+                # Discovery has a fixed cold-start budget; render keeps its own
+                # SpeechSettings timeout. Source text is only in private JSON.
+                reply, _, _ = run_process([self.executable, '-NoLogo', '-NoProfile', '-NonInteractive',
+                    '-File', helper, '-Request', request, '-PhaseTrace', trace],
+                    cancelled=cancelled, timeout=timeout, output_file=output, max_output=budget)
+                value = json.loads(reply.decode('utf-8-sig'))
+                if (not isinstance(value, dict) or type(value.get('version')) is not int
+                        or value['version'] != 1):
+                    raise ValueError('Invalid SAPI response.')
+                diagnostic['outcome'] = 'complete'
+                return value
+            except TimeoutError:
+                diagnostic['outcome'] = 'timeout'
+                phases = _sapi_phase_trace(trace)
+                phase = phases[-1]['phase'] if phases else 'host-startup'
+                raise TimeoutError(f'SAPI {self.architecture}-bit {diagnostic["operation"]} '
+                    f'exceeded its {timeout:g}-second time budget (last worker phase: {phase}).') from None
+            except InterruptedError:
+                diagnostic['outcome'] = 'cancelled'
+                raise
+            finally:
+                diagnostic['elapsed_ms'] = round((time.monotonic() - started) * 1000)
+                diagnostic['phases'] = _sapi_phase_trace(trace)
+                self.last_request_diagnostic = diagnostic
 
     def voices(self):
         result = self._request({'operation': 'voices'})

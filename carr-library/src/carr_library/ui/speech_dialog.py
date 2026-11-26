@@ -25,6 +25,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     voices = ()
     alive = True
     busy = False
+    operation_epoch = 0
+    pending_future = None
     save_path = None
     last_audio = None
     source_loaded = source_loader is None
@@ -43,6 +45,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     except (OSError, ValueError, RuntimeError) as exc:
         recovery_notice = f'Reading-draft recovery is unavailable: {exc}. Save As remains available. '
         draft_store = None
+    requested_voice_id = recovered.voice_id if recovered else ''
     layout = wx.BoxSizer(wx.VERTICAL)
 
     def labelled(label, factory, *, proportion=0, **kwargs):
@@ -57,23 +60,23 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         style=wx.TE_READONLY)
     voice_choice = labelled('&Voice (installed locally)', wx.Choice)
     controls = wx.BoxSizer(wx.HORIZONTAL)
-    controls.Add(wx.StaticText(dialog, label='Synthesis &rate (-10 to 10)'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 6)
+    controls.Add(wx.StaticText(dialog, label='Synthesis rate (-10 to 10)'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 6)
     rate = wx.SpinCtrl(dialog, min=-10, max=10, initial=recovered.rate if recovered else 0)
     rate.SetName('Synthesis rate, minus ten to ten')
     controls.Add(rate, 0, wx.ALL, 6)
-    controls.Add(wx.StaticText(dialog, label='&Volume (0 to 100)'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 6)
+    controls.Add(wx.StaticText(dialog, label='Volume (0 to 100)'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 6)
     volume = wx.SpinCtrl(dialog, min=0, max=100, initial=recovered.volume if recovered else 80)
     volume.SetName('Speech volume, zero to one hundred')
     controls.Add(volume, 0, wx.ALL, 6)
-    reload_button = wx.Button(dialog, label='Reload &voices')
+    reload_button = wx.Button(dialog, label='&Reload voices')
     controls.Add(reload_button, 0, wx.ALL, 6)
     layout.Add(controls, 0, wx.EXPAND)
-    editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
+    editor = labelled('Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
     status = labelled('Speech and save status', wx.TextCtrl, style=wx.TE_READONLY | wx.TE_MULTILINE,
                       value='Finding installed local voices. No speech starts automatically.', size=(-1, 90))
     row = wx.BoxSizer(wx.HORIZONTAL)
-    read = wx.Button(dialog, label='Read &selection / all (F6)')
+    read = wx.Button(dialog, label='Read selection / all (F6)')
     cursor = wx.Button(dialog, label='Read from &cursor')
     pause = wx.Button(dialog, label='&Pause / resume (F7)')
     stop = wx.Button(dialog, label='S&top (F8)')
@@ -92,8 +95,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
-    seek = wx.Button(dialog, label='Seek to &time')
-    cleanup = wx.Button(dialog, label='Normalize s&paces')
+    seek = wx.Button(dialog, label='See&k to time')
+    cleanup = wx.Button(dialog, label='Normalize spaces')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
     for control in (seek, cleanup, close):
         row.Add(control, 0, wx.ALL, 4)
@@ -108,8 +111,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 status.SetFocus()
 
     def capabilities(event=None):
+        nonlocal requested_voice_id
         selected = voice_choice.GetSelection()
         current = voices[selected] if 0 <= selected < len(voices) else None
+        if current is not None:
+            requested_voice_id = current.id
         rate.Enable(bool(current and 'rate' in current.capabilities) and not busy)
         volume.Enable(bool(current and 'volume' in current.capabilities) and not busy)
         if current and 'rate' not in current.capabilities:
@@ -117,35 +123,57 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         if current and 'volume' not in current.capabilities:
             volume.SetValue(100)
         for button in (read, cursor, export_audio):
-            button.Enable(bool(current) and not busy)
+            button.Enable(bool(current) and source_loaded and not busy)
+        editor.Enable(source_loaded or not busy)
+        for button in (open_button, undo, redo, cleanup):
+            button.Enable(not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
 
     def run(work, on_done):
-        nonlocal busy
+        nonlocal busy, operation_epoch, pending_future
         if busy:
             report('A speech operation is running. Stop it before starting another.', focus=True)
             return
         busy = True
+        operation_epoch += 1
+        epoch = operation_epoch
         cancel.clear()
         capabilities()
         reload_button.Disable()
 
         def finish(future):
             nonlocal busy
-            if not alive:
+            if not alive or epoch != operation_epoch:
                 return
             busy = False
             reload_button.Enable()
             try:
-                on_done(future.result())
+                result = future.result()
+                if cancel.is_set():
+                    report('The operation was cancelled. The current reading copy was retained.', focus=True)
+                else:
+                    on_done(result)
             except Exception as exc:
                 report(f'Operation did not complete. {exc}', focus=True)
             capabilities()
-        executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+        try:
+            pending_future = executor.submit(work)
+            def queue_finish(future):
+                if alive and epoch == operation_epoch:
+                    wx.CallAfter(finish, future)
+            pending_future.add_done_callback(queue_finish)
+        except Exception as exc:
+            busy = False
+            reload_button.Enable()
+            capabilities()
+            report(f'The speech operation could not start: {exc}. The current reading copy was retained.', focus=True)
 
     def reload(event=None):
+        initial_text = editor.GetValue()
+        selected = voice_choice.GetSelection()
+        selected_id = voices[selected].id if 0 <= selected < len(voices) else requested_voice_id
         def discover_configured():
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
@@ -154,29 +182,37 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return VoiceRegistry.discover()
 
         def loaded(value):
-            nonlocal registry, voices, document, source_loaded
-            registry, source = value
-            voices = registry.voices()
+            nonlocal registry, voices, document, source_loaded, requested_voice_id
+            candidate_registry, source = value
+            candidate_voices = tuple(candidate_registry.voices())
             if source is not None:
                 source_guard()
+                typed_during_load = editor.GetValue()
                 if recovered is not None and recovered.document.source_text == source.text:
-                    document = recovered.document
+                    candidate_document = recovered.document
                 else:
-                    document = ReadingDocument(source.text, title=source.title)
-                editor.ChangeValue(document.text)
+                    candidate_document = ReadingDocument(source.text, title=source.title)
+                if typed_during_load != initial_text or initial_text:
+                    candidate_document.set_text(typed_during_load)
+                else:
+                    editor.ChangeValue(candidate_document.text)
+                document = candidate_document
                 source_loaded = True
                 source_status.ChangeValue(f'{source.title}; {len(source.positions)} source reading positions. '
                     + (' '.join(source.warnings[:3]) if source.warnings else 'Source positions authenticated.')
                     + ' This is a separate narration copy; it does not approve quotations.')
+            registry, voices = candidate_registry, candidate_voices
+            requested_voice_id = selected_id
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
             if voices:
-                selected = next((i for i, voice in enumerate(voices)
-                                 if recovered is not None and voice.id == recovered.voice_id), 0)
+                selected = next((i for i, voice in enumerate(voices) if voice.id == selected_id),
+                                wx.NOT_FOUND if selected_id else 0)
                 voice_choice.SetSelection(selected)
                 if recovered is not None:
                     editor.SetInsertionPoint(min(recovered.cursor, len(editor.GetValue())))
-                report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
-                       'Voice pitch, emotional delivery and word timing depend on the selected engine.')
+                report(recovery_notice + (f'{len(voices)} installed voices available. Select text or press F6 to read. '
+                    if selected != wx.NOT_FOUND else 'The previously selected voice is unavailable. Choose a voice explicitly before reading. ')
+                    + 'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
                 report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
@@ -225,15 +261,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         try:
             if registry is None or not voices:
                 raise ValueError('Choose an installed local voice first.')
+            if busy or not source_loaded:
+                raise ValueError('Wait for the current operation or stop it before reading.')
+            selected = voice_choice.GetSelection()
+            if not 0 <= selected < len(voices):
+                raise ValueError('The selected voice is unavailable. Choose an installed voice explicitly.')
             source_guard()
             content = selected_text(from_cursor)
-            voice = voices[voice_choice.GetSelection()]
+            voice = voices[selected]
             settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
             player.stop()
             output = destination or (Path(audio_files.name) / (uuid4().hex + '.wav'))
 
             def rendered(result):
                 nonlocal last_audio
+                source_guard()
                 last_audio = result.path
                 if destination is None:
                     player.play(result.path)
@@ -288,9 +330,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def save_project(event=None, *, choose=False):
         nonlocal save_path
         try:
+            if not source_loaded:
+                raise ValueError('The selected source is still loading. Your draft remains open; save it after loading completes.')
             sync_document()
             if not choose and save_path is None and draft_store is not None:
-                save_recovery(force=True)
+                if not save_recovery(force=True):
+                    raise RuntimeError('The reading draft was not committed for recovery.')
                 document._saved_signature = document._signature()
                 sync_document()
                 report('Reading draft, voice settings and current position saved for recovery. '
@@ -321,7 +366,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return
         try:
             sync_document()
-            if document.dirty and document.text and not save_project():
+            if document.dirty and not save_project():
                 return
             with wx.FileDialog(dialog, 'Open a local text file or reading project',
                 wildcard='Reading files (*.txt;*.md;*.json)|*.txt;*.md;*.json',
@@ -392,7 +437,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def closing(event):
         try:
             sync_document()
-            if document.dirty and document.text:
+            if document.dirty and (document.text or document.revision > 0):
                 answer = wx.MessageBox('Save the reading copy and its undo history before closing?',
                                        'Unsaved reading copy', wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION, dialog)
                 if answer == wx.CANCEL or (answer == wx.YES and not save_project()):
@@ -411,10 +456,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)
     accelerators = []
+    accelerator_ids = []
     for flags, key, handler in ((wx.ACCEL_CTRL, ord('S'), save_project),
         (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), lambda event: save_project(choose=True)),
         (0, wx.WXK_F6, speak), (0, wx.WXK_F7, pause_audio), (0, wx.WXK_F8, stop_audio)):
         identifier = wx.NewIdRef()
+        accelerator_ids.append(identifier)
         accelerators.append((flags, key, int(identifier)))
         dialog.Bind(wx.EVT_MENU, handler, id=int(identifier))
     dialog.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
@@ -431,16 +478,24 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         alive = False
         cancel.set()
         player.close()
-        # Wait only for the bounded worker cancellation path before deleting its
-        # output directory. The UI never destroys a still-running worker's files.
-        executor.shutdown(wait=True, cancel_futures=True)
-        audio_files.cleanup()
+        # Discovery can still be leaving a bounded native engine call. Close the
+        # dialog promptly, and keep the temporary output alive until its worker
+        # actually exits; never delete a synthesizer's active output directory.
+        executor.shutdown(wait=False, cancel_futures=True)
+        if pending_future is not None and not pending_future.done():
+            pending_future.add_done_callback(lambda _: audio_files.cleanup())
+        else:
+            audio_files.cleanup()
         dialog.Destroy()
 
 
 def install_speech_actions(frame):
     """Add one conventional menu without modifying existing keyboard bindings."""
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    if getattr(frame, 'speech_reading_actions', None) is not None:
+        return frame.speech_reading_actions
 
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
@@ -479,3 +534,8 @@ def install_speech_actions(frame):
     frame.Bind(wx.EVT_MENU, actions.open_book, selected)
     frame.speech_reading_actions = actions
     frame.GetMenuBar().Append(menu, '&Voice')
+    register_menu_command(frame, CommandSpec('speech.reader', 'Voice reader and reading copy',
+                                           default_shortcut='Ctrl+Alt+V'), item)
+    register_menu_command(frame, CommandSpec('speech.book', 'Narrate selected book or chapter',
+                                           default_shortcut='Ctrl+Alt+R'), selected)
+    return actions

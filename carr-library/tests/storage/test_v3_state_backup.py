@@ -3,6 +3,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -10,6 +11,8 @@ from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
 from carr_library.state_backup import snapshot_state, validate_state
+from carr_library import state_backup
+from carr_library.durable_state import state_lock
 
 
 @pytest.fixture
@@ -49,7 +52,9 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text())
-    assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
+    assert manifest['version'] == 5 and manifest['generated_audio_included'] is False
+    assert manifest['pending']['files']
+    assert manifest['sidecars'] == []
     assert {entry['filename'] for entry in manifest['state']} == set(values)
     for entry in manifest['state']:
         raw = (folder / 'state' / entry['filename']).read_bytes()
@@ -75,6 +80,22 @@ def test_optional_generated_cache_roundtrips_exactly(populated, tmp_path):
     assert manifest['generated_audio_included'] is True
     destination = restore_backup(folder, tmp_path / 'restored-with-cache', digest)
     assert (destination / 'state/studio/cache/chunk.wav').read_bytes() == b'synthetic-generated-audio-cache'
+
+
+@pytest.mark.parametrize('include_generated', [False, True])
+def test_accepted_original_cues_survive_even_without_generated_cache(populated, tmp_path, include_generated):
+    app, *_ = populated
+    raw = b'Labelled synthetic accepted original cue'
+    name = 'cue-' + sha256(raw).hexdigest() + '-1234567890.wav'
+    (app.root / 'state/studio/cache' / name).write_bytes(raw)
+    backup = tmp_path / 'with-original-cue'
+    digest = create_backup(app, backup, include_generated=include_generated)
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    names = {entry['filename'] for entry in manifest['state']}
+    assert 'studio/cache/' + name in names
+    assert ('studio/cache/chunk.wav' in names) == include_generated
+    restored = restore_backup(backup, tmp_path / 'restored-cue', digest)
+    assert (restored / 'state/studio/cache' / name).read_bytes() == raw
 
 
 @pytest.mark.parametrize('damage', ['corrupt', 'missing', 'unlisted', 'missing-state-directory', 'wrong-manifest'])
@@ -227,7 +248,7 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     import shutil
     manifest = json.loads((backup / 'manifest.json').read_text())
     manifest['version'] = 2
-    for key in ('state', 'generated_audio_included', 'pending'):
+    for key in ('sidecars', 'state', 'generated_audio_included', 'pending'):
         manifest.pop(key, None)
     for name in ('state', 'pending'):
         if (backup / name).exists():
@@ -238,3 +259,81 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'
     assert not (restored.root / 'state').exists()
+
+
+def test_active_production_is_rejected_by_the_shared_generation_guard(populated, tmp_path):
+    app, *_ = populated
+    with state_lock(app.root / 'state/studio', 'production'):
+        with pytest.raises(RuntimeError, match='another operation'):
+            create_backup(app, tmp_path / 'busy-backup')
+    assert not (tmp_path / 'busy-backup').exists()
+
+
+def test_empty_directories_also_consume_the_inventory_budget(tmp_path):
+    root, target = tmp_path / 'source', tmp_path / 'target'
+    root.mkdir()
+    target.mkdir()
+    for number in range(5):
+        (root / str(number)).mkdir()
+    with pytest.raises(ValueError, match='entry budget'):
+        snapshot_state(root, target, max_files=3)
+    assert not list(target.iterdir())
+
+
+def test_completed_files_are_rehashed_even_when_metadata_stamps_match(tmp_path, monkeypatch):
+    root, target = tmp_path / 'source', tmp_path / 'stage'
+    root.mkdir()
+    target.mkdir()
+    (root / 'a.json').write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'b' * (2 * 1024 * 1024))
+    monkeypatch.setattr(state_backup, '_stamp', lambda info: info.st_size)
+    changed = False
+
+    def competing_writer():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            changed = True
+            (root / 'a.json').write_bytes(b'new')
+        return False
+
+    with pytest.raises(ValueError, match='changed after capture'):
+        snapshot_state(root, target, cancelled=competing_writer)
+    assert changed and (root / 'a.json').read_bytes() == b'new'
+
+
+def test_windows_descriptor_and_path_identities_need_not_match(tmp_path, monkeypatch):
+    path = tmp_path / 'metadata.json'
+    path.write_bytes(b'{"stable":"fixture"}')
+    actual_fstat = os.fstat
+
+    def different_descriptor_identity(descriptor):
+        info = actual_fstat(descriptor)
+        fields = {name: getattr(info, name) for name in ('st_dev', 'st_ino', 'st_mode',
+            'st_nlink', 'st_size', 'st_mtime_ns', 'st_ctime_ns')}
+        fields.update(st_dev=info.st_dev + 100, st_ino=info.st_ino + 100)
+        return SimpleNamespace(**fields)
+
+    # Only this helper's OS view changes; pathlib keeps the actual host flavor.
+    platform = {name: getattr(os, name) for name in ('O_RDONLY', 'O_NONBLOCK',
+        'O_NOFOLLOW', 'open', 'fdopen') if hasattr(os, name)}
+    platform.update(name='nt', fstat=different_descriptor_identity)
+    monkeypatch.setattr(state_backup, 'os', SimpleNamespace(**platform))
+    assert state_backup.read_state_bytes(path, 1024) == b'{"stable":"fixture"}'
+
+
+def test_restore_cancellation_during_state_copy_never_publishes_library(populated, tmp_path):
+    app, *_ = populated
+    (app.root / 'state/large.json').write_bytes(b'x' * (2 * 1024 * 1024))
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    original = (backup / 'state/large.json').read_bytes()
+
+    def cancelled():
+        return any((stage / 'state/large.json').exists()
+                   for stage in tmp_path.glob('.carr-library-restore-*'))
+
+    with pytest.raises(InterruptedError):
+        restore_backup(backup, tmp_path / 'cancelled-restore', digest, cancelled=cancelled)
+    assert not (tmp_path / 'cancelled-restore').exists()
+    assert not list(tmp_path.glob('.carr-library-restore-*'))
+    assert (backup / 'state/large.json').read_bytes() == original

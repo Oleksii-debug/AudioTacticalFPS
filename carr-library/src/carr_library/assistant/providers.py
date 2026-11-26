@@ -12,12 +12,12 @@ import math
 import os
 from pathlib import Path
 import re
-import ssl
 from tempfile import NamedTemporaryFile
 from time import monotonic, time
 from uuid import uuid4
 
 from filelock import FileLock
+from ..network_tls import client_context
 from .credentials import WindowsCredentialVault, validate_profile_id
 from .models import canonical, local_path, text
 from .profiles import CAPABILITIES, ProviderProfile, endpoint
@@ -261,8 +261,16 @@ class Gateway:
             cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
             options = {'timeout': min(timeout, 30.0)}
             if target.scheme == 'https':
-                options['context'] = ssl.create_default_context()
+                options['context'] = client_context()
             connection = cls(target.hostname, target.port, **options)
+            # DNS/TLS setup can outlast a cancellation or the approved deadline.
+            # Establish the channel separately so a cancelled task cannot then
+            # transmit a billable POST through HTTPConnection's lazy connect.
+            if cancelled() or monotonic() - started > timeout:
+                raise InterruptedError('Provider operation cancelled before transmission.')
+            connection.connect()
+            if cancelled() or monotonic() - started > timeout:
+                raise InterruptedError('Provider operation cancelled before transmission.')
             # No proxy environment or redirects are consulted. Host/TLS authority stays fixed.
             prefix = target.path.rstrip('/')
             if profile.adapter == 'elevenlabs' and not prefix:

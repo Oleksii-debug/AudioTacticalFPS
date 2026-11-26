@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from carr_library.studio.project import Music, Project, ProjectStore, parse_script
+from carr_library.studio.project import Cue, Music, Project, ProjectStore, parse_script
 from carr_library.ui.studio_dialog import StudioController
 
 
@@ -67,6 +67,55 @@ def test_project_edit_detects_stale_revision(tmp_path):
     with pytest.raises(ValueError, match='changed'):
         store.save(replace(revised, title='Stale title', revision=3), expected_revision=1)
     assert store.load(original.id) == revised
+
+
+def test_opened_authored_project_preserves_custom_cues_rate_and_source_refs_on_save(tmp_path):
+    ui = controller(tmp_path)
+    source = parse_script('Alice: Keep this exact performance.', mode='authored', voice_ids=('voice-a',))
+    line = replace(source.scenes[0].lines[0], pause_after=1.75, source_ref='authenticated-position-7')
+    scene = replace(source.scenes[0], lines=(line,), cues=(Cue('cue-one', str(tmp_path / 'ambience.wav')),))
+    additional = replace(source.roles[0], id='another-role', name='ALICE', voice_id='voice-b')
+    imported = replace(source, roles=(*source.roles, additional), sample_rate=48000, scenes=(scene,))
+    ui.service.projects.save(imported)
+    ui.project = imported
+    assert ui.save(imported.original_script, imported.title, ('voice-a',)) == imported
+    renamed = ui.save(imported.original_script, 'Renamed performance', ('voice-a',))
+    assert renamed.mode == 'authored' and renamed.sample_rate == 48000
+    assert renamed.scenes == imported.scenes
+    assert renamed.revision == imported.revision + 1
+    assert ui.service.projects.load(imported.id) == renamed
+
+
+def test_edit_cannot_silently_reparse_an_imported_custom_scene(tmp_path):
+    ui = controller(tmp_path)
+    original = parse_script('An original line.', voice_ids=('voice-a',))
+    scene = replace(original.scenes[0], minimum_duration=77)
+    imported = replace(original, scenes=(scene,))
+    ui.service.projects.save(imported)
+    ui.project = imported
+    with pytest.raises(ValueError, match='custom scenes'):
+        ui.save('An edited line.', imported.title, ('voice-a',))
+    assert ui.service.projects.load(imported.id) == imported
+    assert json.loads(ui.draft.read_text())['text'] == 'An edited line.'
+
+
+def test_controller_cas_rejects_an_older_job_snapshot_without_overwriting_newer_project(tmp_path):
+    ui = controller(tmp_path)
+    first = ui.save('An original line.', 'Original title', ('voice-a',))
+    newer = replace(first, title='Newer title', revision=2)
+    ui.service.projects.save(newer, expected_revision=1)
+    with pytest.raises(ValueError, match='changed'):
+        ui.save(first.original_script, 'Older job title', ('voice-a',))
+    assert ui.service.projects.load(first.id) == newer
+
+
+def test_first_save_binds_recovery_to_saved_project_and_preserves_export_choices(tmp_path):
+    ui = controller(tmp_path)
+    saved = ui.save('A recoverable narration.', 'Recovery', ('voice-a',), format='flac', stems=False)
+    recovered = json.loads(ui.draft.read_text())
+    assert recovered['project_id'] == saved.id
+    assert recovered['format'] == 'flac' and recovered['stems'] is False
+    assert recovered['text'] == saved.original_script
 
 
 @pytest.mark.parametrize('kwargs', [dict(mood='unknown mood'), dict(seed=2**31), dict(seed=True)])
