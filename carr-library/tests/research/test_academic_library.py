@@ -1,0 +1,367 @@
+"""Real SQLite workflows for metadata-only references and safe interchange."""
+import csv
+import io
+import json
+import sqlite3
+
+import pytest
+
+from carr_library.catalog.membership import Catalog
+from carr_library.research import academic_library as academic
+from carr_library.research.academic_library import (
+    AcademicLibrary, normalize_doi, normalize_isbn,
+    validate_academic_database,
+)
+from carr_library.storage.academic_schema import ACADEMIC_SCHEMA
+from carr_library.storage.revisions import SCHEMA_V3
+
+
+@pytest.fixture
+def db(tmp_path):
+    connection = sqlite3.connect(tmp_path / 'academic.sqlite', isolation_level=None)
+    connection.execute('PRAGMA foreign_keys=ON')
+    connection.execute('PRAGMA recursive_triggers=ON')
+    connection.executescript(SCHEMA_V3 + ACADEMIC_SCHEMA + '\nPRAGMA user_version=4;')
+    for identity in ('first', 'second'):
+        connection.execute('INSERT INTO workspace VALUES(?)', (identity,))
+        connection.execute('INSERT INTO workspace_meta(workspace,name) VALUES(?,?)', (identity, identity))
+    connection.execute('BEGIN')
+    yield connection
+    connection.close()
+
+
+@pytest.fixture
+def library(db):
+    return AcademicLibrary(db, 'first')
+
+
+def test_reference_only_persists_without_inventing_a_source(db, library, tmp_path):
+    saved = library.create(title='Огляд літератури', authors=('Šimko, Ján', 'Іваненко, Олена'),
+        item_type='article', year='2024', container_title='Research', volume='12', issue='3',
+        pages='10–24', doi='https://doi.org/10.1234/ABC', isbn='0-306-40615-2',
+        reading_status='reading', progress=40, priority='high', rating=4,
+        tags=('Methods', 'Огляд'), notes='Private reading note\nSecond line.')
+    assert saved.doi == '10.1234/abc'
+    assert saved.isbn == '0306406152'
+    assert saved.edition_id is None
+    assert db.execute('SELECT count(*) FROM catalog_asset').fetchone()[0] == 0
+    assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+    validate_academic_database(db)
+    db.commit()
+    second = sqlite3.connect(tmp_path / 'academic.sqlite', isolation_level=None)
+    try:
+        second.execute('PRAGMA foreign_keys=ON')
+        second.execute('BEGIN')
+        assert AcademicLibrary(second, 'first').get(saved.id) == saved
+    finally:
+        second.close()
+
+
+def test_scoped_identity_and_real_document_link(db, library):
+    catalog = Catalog(db, 'first')
+    catalog.add_work('work', 'Existing source')
+    catalog.add_edition('edition', 'work', dict(sha256='a' * 64, mime='text/plain', size=12))
+    reference = library.create(title='Reference', edition_id='edition')
+    assert reference.edition_id == 'edition'
+    foreign = AcademicLibrary(db, 'second')
+    with pytest.raises(ValueError, match='belong to this library'):
+        foreign.create(title='Wrong link', edition_id='edition')
+    with pytest.raises(ValueError, match='unavailable'):
+        foreign.get(reference.id)
+    assert foreign.list() == ()
+    assert 'Reference' not in foreign.export()
+    assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
+
+
+def test_optimistic_edit_and_archive_preserve_concurrent_notes(library):
+    original = library.create(title='Before', notes='Draft')
+    changed = library.update(original.id, expected=original, title='After', notes='Saved elsewhere')
+    with pytest.raises(ValueError, match='changed while'):
+        library.update(original.id, expected=original, notes='Stale overwrite')
+    with pytest.raises(ValueError, match='changed while'):
+        library.archive(original.id, expected=original)
+    assert library.get(original.id) == changed
+    archived = library.archive(original.id, expected=changed)
+    assert archived.archived is True
+    assert library.list() == ()
+    restored = library.archive(original.id, False, expected=archived)
+    assert restored.notes == 'Saved elsewhere'
+    assert restored.created_utc == original.created_utc
+    assert restored.updated_utc > changed.updated_utc
+
+
+@pytest.mark.parametrize('change', [dict(rating=True), dict(progress=1.5), dict(progress=101),
+    dict(reading_status='complete'), dict(priority='urgent'), dict(archived=1),
+    dict(title='   '), dict(authors='Single string'), dict(tags=('same', 'same')),
+    dict(url='file:///C:/private.txt'), dict(url='https://user:password@example.org'),
+    dict(doi='10.١٢٣٤/abc'), dict(doi='10.１２３４/abc'),
+    dict(isbn='٠٣٠٦٤٠٦١٥٢'), dict(isbn='０３０６４０６１５２'),
+    dict(isbn='9780306406158'), dict(title='Spoof\u202eTitle'), dict(authors=('New\nAuthor',))])
+def test_invalid_values_never_publish_partial_reference(library, change):
+    with pytest.raises(ValueError):
+        library.create(**{'title': 'Safe', **change})
+    assert library.list() == ()
+
+
+def test_normalized_identifiers_are_valid_and_do_not_guess():
+    assert normalize_doi(' DOI:10.1234/ABCD ') == '10.1234/abcd'
+    assert normalize_isbn('ISBN-13: 978-0-306-40615-7') == '9780306406157'
+    assert normalize_isbn('0-8044-2957-X') == '080442957X'
+    assert normalize_doi('') == normalize_isbn('') == ''
+
+
+def test_search_tags_pagination_and_reading_sort_are_scoped(db, library):
+    first = library.create(title='Альфа', authors=('ŠIMKO',), tags=('selected',), priority='low')
+    second = library.create(title='Бета', notes='Straße', tags=('prefix"selected',),
+                            reading_status='reading', priority='high')
+    third = library.create(title='Гамма', tags=('selected', 'end'), year='2026')
+    AcademicLibrary(db, 'second').create(title='Бета', notes='Straße', tags=('selected',))
+    assert library.list(query='strasse') == (second,)
+    assert library.list(query='šimko') == (first,)
+    assert library.list(status='reading') == (second,)
+    assert library.list(tag='selected') == (first, third)
+    assert library.list(sort='priority')[0] == second
+    whole = library.list()
+    assert library.list(limit=2) + library.list(limit=2, offset=2) == whole
+    assert library.list(query='no matches') == ()
+
+
+def test_year_sort_puts_known_numeric_years_before_unknown_dates(library):
+    old = library.create(title='Older', year='950')
+    new = library.create(title='Newer', year='2026')
+    unknown = library.create(title='Undated', year='n.d.')
+    assert library.list(sort='year') == (new, old, unknown)
+
+
+def test_duplicate_suggestions_are_explained_and_never_merge(db, library):
+    one = library.create(title='Original', doi='10.1234/a', isbn='0306406152')
+    two = library.create(title='Another edition', doi='https://doi.org/10.1234/A', isbn='9780306406157')
+    third = library.create(title='Common title', authors=('Author',), year='2020')
+    fourth = library.create(title='Common title!', authors=('Author',), year='2020')
+    AcademicLibrary(db, 'second').create(title='Original', doi='10.1234/a')
+    groups = library.duplicates()
+    assert any(g.reason == 'Same DOI' and set(g.reference_ids) == {one.id, two.id} and g.exact for g in groups)
+    assert any(g.reason == 'Same ISBN' and set(g.reference_ids) == {one.id, two.id} and g.exact for g in groups)
+    assert any(not g.exact and set(g.reference_ids) == {third.id, fourth.id} for g in groups)
+    assert len(library.list()) == 4
+    library.archive(two.id)
+    assert not any(g.exact for g in library.duplicates())
+
+
+def test_sparse_metadata_never_creates_title_only_duplicate_groups(library):
+    library.create(title='Introduction')
+    library.create(title='Introduction')
+    assert library.duplicates() == ()
+
+
+def test_archived_workspace_checks_keep_references_but_deny_access(db, library):
+    row = library.create(title='Keep me', notes='Retained')
+    library.archive(row.id)
+    db.execute("UPDATE workspace_meta SET archived=1 WHERE workspace='first'")
+    validate_academic_database(db)
+    with pytest.raises(ValueError, match='missing or archived'):
+        library.get(row.id)
+    assert db.execute('SELECT count(*) FROM academic_reference').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('column,value', [('authors', '{}'), ('tags', '["a", "a"]'),
+                                        ('search_text', 'forged search'), ('doi', '10.1234/UPPER')])
+def test_full_validation_rejects_corrupted_metadata_and_search_cache(db, library, column, value):
+    row = library.create(title='Valid')
+    db.execute(f'UPDATE academic_reference SET {column}=? WHERE id=?', (value, row.id))
+    with pytest.raises(ValueError):
+        validate_academic_database(db)
+
+
+def test_identity_and_delete_guards_keep_archival_history(db, library):
+    row = library.create(title='Original')
+    for sql in ('DELETE FROM academic_reference WHERE id=?',
+                "UPDATE academic_reference SET workspace='second' WHERE id=?",
+                "UPDATE academic_reference SET created_utc='2020-01-01T00:00:00.000000Z' WHERE id=?"):
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute(sql, (row.id,))
+    assert library.get(row.id) == row
+
+
+def test_csl_preview_is_read_only_shows_unsupported_and_batch_duplicates(library):
+    existing = library.create(title='Already present', doi='10.1234/one')
+    data = json.dumps([
+        {'type': 'article-journal', 'title': 'Paper', 'author': [{'family': 'Šimko', 'given': 'Ján'}],
+         'issued': {'date-parts': [[2024, 5, 3]]}, 'DOI': '10.1234/ONE',
+         'volume': 12, 'issue': 3, 'page': '10–24', 'attachments': [{'path': 'C:/private/book.pdf'}]},
+        {'type': 'book', 'title': 'Other', 'DOI': '10.1234/one'}], ensure_ascii=False).encode()
+    preview = library.import_preview(data, format='csl-json')
+    assert len(library.list()) == 1
+    assert preview.entries[0].authors == ('Šimko, Ján',)
+    assert preview.entries[0].fields['year'] == '2024'
+    assert preview.entries[0].fields['volume'] == '12'
+    assert preview.entries[0].duplicate_ids == (existing.id,)
+    assert preview.entries[0].duplicate_indices == (1,)
+    assert any('attachments' in warning for warning in preview.entries[0].warnings)
+    with pytest.raises(TypeError):
+        preview.entries[0].fields['title'] = 'mutation'
+
+
+def test_csl_selected_import_is_explicit_and_rechecks_duplicates(library):
+    preview = library.import_preview(b'[{"title":"One","DOI":"10.1234/one"},{"title":"Two"}]',
+                                     format='csl-json')
+    first = library.create(title='Added after preview', doi='10.1234/one')
+    result = library.import_selected(preview, (0, 1), skip_duplicates=True)
+    assert len(result.imported_ids) == 1
+    assert result.skipped_indices == (0,)
+    assert result.duplicate_ids == (first.id,)
+    assert library.get(result.imported_ids[0]).title == 'Two'
+    assert len(library.list()) == 2
+
+
+def test_import_selection_is_not_implicitly_authorized_for_another_library(db, library):
+    preview = library.import_preview(b'[{"title":"One"}]', format='csl-json')
+    with pytest.raises(ValueError, match='cross-library'):
+        AcademicLibrary(db, 'second').import_selected(preview, (0,))
+    with pytest.raises(ValueError, match='repeated'):
+        library.import_selected(preview, (0, 0))
+    with pytest.raises(ValueError, match='Select at least'):
+        library.import_selected(preview, ())
+    assert library.list() == ()
+
+
+def test_failed_later_insert_rolls_back_whole_selected_batch(db, library, monkeypatch):
+    before = library.create(title='Preserve previous work')
+    preview = library.import_preview(b'[{"title":"First"},{"title":"Second"}]', format='csl-json')
+    class ConstantIdentity:
+        hex = 'same-identity'
+    monkeypatch.setattr(academic, 'uuid4', ConstantIdentity)
+    with pytest.raises(sqlite3.IntegrityError):
+        library.import_selected(preview, (0, 1))
+    assert db.in_transaction
+    assert library.list() == (before,)
+    # The caller can catch the failed batch and commit unrelated prior work.
+    db.commit()
+    db.execute('BEGIN')
+    assert library.get(before.id) == before
+
+
+@pytest.mark.parametrize('format,data', [
+    ('ris', b'TY  - BOOK\nTI  - Incomplete\n'),
+    ('ris', b'TY  - BOOK\nTI  - One\nER  -\nTY  - BOOK\nTI  - Incomplete'),
+    ('ris', b'TY  - BOOK\nTI  - One\nTI  - Conflicting\nER  -\n'),
+    ('csl-json', b'[{"title":"A","title":"B"}]'),
+    ('csl-json', b'[{"title":"A"},{"title":false}]'),
+    ('csl-json', b'[{"title":"A","issued":{"date-parts":[[true]]}}]'),
+    ('csl-json', b'[{"title":"A","volume":NaN}]'),
+    ('csl-json', b'[{"title":"A","URL":"file:///private"}]'),
+    ('csl-json', b'[{"title":"A","type":"\\u202eunsafe"}]'),
+    ('csl-json', b'[{"title":"A","bad\\nfield":"ignored"}]'),
+    ('csl-json', b'\xff'),
+])
+def test_invalid_import_never_returns_a_partial_batch(library, format, data):
+    with pytest.raises(ValueError):
+        library.import_preview(data, format=format)
+    assert library.list() == ()
+
+
+def test_import_count_and_byte_limits_are_explicit(library, monkeypatch):
+    monkeypatch.setattr(academic, 'MAX_IMPORT_BYTES', 100)
+    with pytest.raises(ValueError, match='8 MiB'):
+        library.import_preview(b' ' * 101, format='csl-json')
+    monkeypatch.setattr(academic, 'MAX_IMPORT_RECORDS', 1)
+    with pytest.raises(ValueError, match='2,000'):
+        library.import_preview(b'[{"title":"One"},{"title":"Two"}]', format='csl-json')
+
+
+def test_ris_retains_ordered_names_metadata_multiline_and_explicit_ignored_fields(library):
+    data = ('TY  - JOUR\nTI  - Дослідження\nAU  - Šimko, Ján\nA1  - Research and Testing\n'
+        'PY  - 2024\nY1  - 2024/05/03\nT2  - Journal\nVL  - 12\nIS  - 3\n'
+        'SP  - 10\nEP  - 24\nDO  - 10.1234/ABC\nSN  - 1234-5678\n'
+        'AB  - First line\n      Second line\nN1  - Private note\n      Next line\n'
+        'UR  - https://example.org/a;b\nL1  - C:/private.pdf\nER  -\n').encode()
+    preview = library.import_preview(data)
+    entry = preview.entries[0]
+    assert entry.authors == ('Šimko, Ján', 'Research and Testing')
+    assert entry.fields['abstract'] == 'First line\nSecond line'
+    assert entry.fields['notes'] == 'Private note\nNext line'
+    assert entry.fields['pages'] == '10-24'
+    assert entry.fields['url'] == 'https://example.org/a;b'
+    assert entry.fields['isbn'] == ''
+    assert any('ISSN' in warning for warning in entry.warnings)
+    assert any('L1' in warning for warning in entry.warnings)
+    assert len(library.import_selected(preview, (0,)).imported_ids) == 1
+
+
+@pytest.mark.parametrize('format', ['ris', 'bibtex', 'csl-json', 'csv', 'text'])
+def test_export_omits_personal_notes_unless_explicitly_selected(library, format):
+    library.create(title='Public metadata', authors=('Ján Šimko',), notes='PRIVATESENTINEL')
+    assert 'PRIVATESENTINEL' not in library.export(format=format)
+    assert 'PRIVATESENTINEL' in library.export(format=format, include_notes=True)
+
+
+def test_exports_use_selected_scope_and_do_not_silently_export_only_first_page(db, library):
+    rows = tuple(library.create(title=f'Book {number}') for number in range(5))
+    other = AcademicLibrary(db, 'second').create(title='PRIVATE_OTHER_LIBRARY')
+    library.archive(rows[-1].id)
+    all_rows = json.loads(library.export(format='csl-json'))
+    assert {row['id'] for row in all_rows} == {row.id for row in rows[:-1]}
+    one = json.loads(library.export((rows[2].id,), format='csl-json'))
+    assert [row['id'] for row in one] == [rows[2].id]
+    with pytest.raises(ValueError, match='unavailable'):
+        library.export((other.id,), format='text')
+
+
+def test_csv_untrusted_text_is_formula_safe_and_reversible(library):
+    row = library.create(title='=HYPERLINK("https://example.org")', authors=('=2+3',),
+        notes='\t=2+3\nUnicode: Україна', tags=('+formula',))
+    result = tuple(csv.DictReader(io.StringIO(library.export(format='csv', include_notes=True))))
+    assert len(result) == 1
+    assert result[0]['title_json'].startswith('"')
+    assert result[0]['notes_json'].startswith('"')
+    assert json.loads(result[0]['title_json']) == row.title
+    assert json.loads(result[0]['notes_json']) == row.notes
+    assert json.loads(result[0]['authors_json']) == list(row.authors)
+
+
+def test_ris_tag_injection_remains_inside_the_abstract_and_notes(library):
+    original = library.create(title='Real item', authors=('A and B',),
+        abstract='Before\nER  -\nTY  - BOOK\nTI  - Forged',
+        notes='Private\nTY  - GEN\nER  -', url='https://example.org/a;b')
+    exported = library.export(format='ris', include_notes=True)
+    preview = library.import_preview(exported.encode())
+    assert len(preview.entries) == 1
+    values = preview.entries[0].fields
+    assert values['title'] == original.title
+    assert values['authors'] == original.authors
+    assert values['abstract'] == original.abstract
+    assert values['notes'] == original.notes
+    assert values['url'] == original.url
+
+
+def test_bibtex_escapes_syntax_and_does_not_invent_doctoral_degree(library):
+    library.create(title=r'Unbalanced } \input{private}', authors=('Org and Partners',), item_type='thesis')
+    result = library.export(format='bibtex')
+    assert '\\input{private}' not in result
+    assert '{\\textbraceright}' in result
+    assert '@phdthesis' not in result
+    assert 'howpublished = {Thesis}' in result
+    assert sum(line.startswith('@') for line in result.splitlines()) == 1
+
+
+def test_csl_literal_author_and_identifier_roundtrip(library):
+    original = library.create(title='Unicode: Україна', authors=('Šimko, Ján', 'Research and Testing'),
+        item_type='article', year='2025', container_title='Studies', volume='4', issue='2',
+        pages='18–32', doi='10.1234/AbC', abstract='First\nSecond')
+    preview = library.import_preview(library.export(format='csl-json').encode(), format='csl-json')
+    fields = preview.entries[0].fields
+    for name in ('title', 'authors', 'item_type', 'year', 'container_title', 'volume',
+                 'issue', 'pages', 'doi', 'abstract'):
+        assert fields[name] == getattr(original, name)
+
+
+def test_statistics_separate_archived_records_from_active_reading_work(library):
+    one = library.create(title='Unread')
+    two = library.create(title='Reading', reading_status='reading', priority='high', year='2025')
+    three = library.create(title='Done', reading_status='read', doi='10.1234/done', authors=('Author',))
+    library.archive(one.id)
+    stats = library.statistics()
+    assert stats['total'] == 3 and stats['active'] == 2 and stats['archived'] == 1
+    assert stats['reading'] == stats['read'] == stats['high_priority'] == 1
+    assert stats['unread'] == 0
+    assert stats['missing_identifier'] == stats['missing_author'] == stats['missing_year'] == 1
