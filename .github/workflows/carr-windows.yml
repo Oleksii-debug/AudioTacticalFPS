@@ -254,7 +254,7 @@ jobs:
             'tests/packaging/test_delivery_archive.py',
             'tests/packaging/test_windows_bundle.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native Import Center and durable batch workflow
