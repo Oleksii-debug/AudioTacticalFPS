@@ -46,6 +46,27 @@ def test_confirmed_overwrite_replaces_ordinary_file(tmp_path, private):
     assert not tuple(tmp_path.glob('.research-export-*'))
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_cancel_after_temporary_write_preserves_destination(tmp_path, private, monkeypatch, existing):
+    destination = tmp_path / 'research.md'
+    if existing:
+        destination.write_bytes(b'previous export')
+    cancelled = False
+    original_fsync = export_file.os.fsync
+
+    def cancel_after_flush(descriptor):
+        nonlocal cancelled
+        original_fsync(descriptor)
+        cancelled = True
+
+    monkeypatch.setattr(export_file.os, 'fsync', cancel_after_flush)
+    with pytest.raises(InterruptedError, match='destination was not changed'):
+        write_export(destination, 'A newly rendered bibliography', private_root=private,
+                     cancelled=lambda: cancelled)
+    assert destination.read_bytes() == b'previous export' if existing else not destination.exists()
+    assert not tuple(tmp_path.glob('.research-export-*'))
+
+
 @pytest.mark.parametrize('relative', ['library.sqlite', 'originals/source.txt', 'new-export.md'])
 def test_export_never_writes_inside_private_library(private, relative):
     destination = private / relative

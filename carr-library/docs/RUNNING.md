@@ -28,6 +28,11 @@ load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
 These checks do not change your research data.
 
+The launchers require the installation-complete marker created after all install
+checks succeed. If installation fails or is interrupted, extract the package to
+a fresh program folder and run `Install.cmd` there. Keep research data in its
+existing separate location; the installer does not overwrite an environment.
+
 A private complete package may include the verified Microsoft C++ runtime
 supplement required by wxPython and ONNX Runtime. Its original licenses and
 source provenance accompany the files. This supplement is for the account
@@ -79,6 +84,12 @@ python -m carr_library --data-dir "D:\Research data"
 your documents. Search and library data remain on the local computer.
 
 ## Open original sources and export research
+
+The **Bibliography** menu adds reviewed local RIS/CSL-JSON metadata intake and
+whole-library or collection bibliography export. **Ctrl+Shift+E** exports a
+research topic together with its visible subtopics. See
+[academic workflows](ACADEMIC_WORKFLOWS.md) for the field-review steps, supported
+metadata and size limits.
 
 After selecting a search result, use **Open original source file** to open a
 copy in the computer's default PDF, text or Word reader. The search status gives

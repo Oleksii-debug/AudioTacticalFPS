@@ -79,7 +79,7 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
-def write_export(path, content, *, private_root):
+def write_export(path, content, *, private_root, cancelled=lambda: False):
     """Atomically write exact UTF-8 text to an explicitly selected destination.
 
     A normal existing file may be replaced after caller-side confirmation.
@@ -89,6 +89,10 @@ def write_export(path, content, *, private_root):
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
+    if not callable(cancelled):
+        raise ValueError('A cancellation callback is required.')
+    if cancelled():
+        raise InterruptedError('Export cancelled; the destination was not changed.')
     raw_path = os.fspath(path)
     if (not isinstance(raw_path, str) or not raw_path or raw_path in ('.', '..')
             or raw_path.endswith(('/', '\\'))):
@@ -111,6 +115,8 @@ def write_export(path, content, *, private_root):
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
+        if cancelled():
+            raise InterruptedError('Export cancelled; the destination was not changed.')
         os.replace(temporary, target)
         temporary = None
     finally:

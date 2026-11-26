@@ -19,7 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
-from .scope_bindings import ScopeServices
+from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
@@ -27,6 +27,7 @@ from .catalog_metadata_dialog import edit_selected_book
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .academic_actions import install_academic_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -383,7 +384,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             hit = self.selected()
             if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
                 raise ValueError('Select one result in the active library.')
-            topics = self.frame.library.topics(hit.workspace)
+            topics = tuple(self.frame.library.topics(hit.workspace))
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
                 self.status.SetFocus()
@@ -391,11 +392,15 @@ class DesktopSearchPanel(PagedSearchPanel):
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', [t.name for t in topics])
+                                              'Save quotation', scope_labels(
+                                                  (hit.workspace, t.id, t.name) for t in topics))
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
-                    selected_topic = topics[dialog.GetSelection()].id
+                    index = dialog.GetSelection()
+                    if not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic first.')
+                    selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
             epoch = self._context_epoch
@@ -474,6 +479,7 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_academic_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1006,6 +1012,10 @@ class DesktopFrame(WorkspaceFrame):
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
+            'Ctrl+Shift+E exports the active topic together with its nonarchived subtopics.\n'
+            'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
+            'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
+            'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
             'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
