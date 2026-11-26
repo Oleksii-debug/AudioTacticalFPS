@@ -144,8 +144,25 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     remaining = deadline-monotonic()
     if remaining <= 0:
         raise TimeoutError('semantic windows cancelled or timed out')
-    hits = search_hybrid(workspace, windows, query, semantic_ranker=semantic_ranker,
+    semantic_empty = False
+
+    def tracked_ranker(q, candidates):
+        nonlocal semantic_empty
+        ranked = semantic_ranker(q, candidates)
+        semantic_empty = isinstance(ranked, (tuple, list)) and not ranked
+        return ranked
+
+    hits = search_hybrid(workspace, windows, query, semantic_ranker=tracked_ranker,
                          limit=100, timeout=remaining, cancelled=stopped)
+    if semantic_empty:
+        # Lexical fallback must retain original phrase boundaries and page IDs,
+        # rather than search the token windows (which can split a phrase).
+        check()
+        remaining = deadline-monotonic()
+        if remaining <= 0:
+            raise TimeoutError('semantic windows cancelled or timed out')
+        return search_hybrid(workspace, refs, query, limit=limit,
+                             timeout=remaining, cancelled=stopped)
     result, returned = [], set()
     for hit in hits:
         check()
