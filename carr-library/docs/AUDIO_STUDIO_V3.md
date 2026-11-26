@@ -125,6 +125,17 @@ estimates separately from unknown actual billing. A provider's response cannot
 execute returned tools or shell commands. API tasks are currently a separate
 reviewed workflow, not automatic remote fallback inside local audio rendering.
 
+Reservations are checked before credentials are opened. An interrupted or
+uncertain operation blocks another operation ID in that job until explicit
+billing reconciliation; a confirmed failure before transmission releases its
+cost reservation while retaining the attempt record. Profile removal commits
+metadata before removing an unused key, so a failed settings write preserves
+the existing account. Cleanup failures are reported without exposing key data.
+The transport ignores inherited TLS session-key logging, rechecks cancellation
+after connecting and checks an elapsed-time budget during response streaming.
+Network cancellation is cooperative; the OS DNS resolver cannot be forcibly
+interrupted by these checks.
+
 Official adapter references inspected for this change:
 
 - [ElevenLabs speech](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)

@@ -180,7 +180,8 @@ def show_api_connections(frame):
             controller.store.save(profile, secret=key or None)
             key = ''
             self.refresh()
-            self.status.SetValue('Profile saved. No credential test or generation request was sent.')
+            self.status.SetValue('Profile saved. No credential test or generation request was sent.'
+                                 + (' ' + controller.store.warning if controller.store.warning else ''))
             self.status.SetFocus()
 
         def add(self, event):
@@ -203,6 +204,9 @@ def show_api_connections(frame):
                     return
                 controller.store.remove(profile.id)
                 self.refresh()
+                self.status.SetValue('Profile removed.'
+                                     + (' ' + controller.store.warning if controller.store.warning else ''))
+                self.status.SetFocus()
             except Exception as exc:
                 self.status.SetValue(str(exc))
 

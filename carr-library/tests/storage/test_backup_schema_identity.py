@@ -80,10 +80,12 @@ def test_fingerprint_is_layout_identity_not_database_content(tmp_path):
             assert schema_fingerprint(first.db) != original
 
 
-def test_legacy_v1_backup_restores_exact_current_schema(backup, tmp_path):
+@pytest.mark.parametrize('version', [1, 2])
+def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     app, workspace, topic, directory, manifest = backup
-    manifest['version'] = 1
-    del manifest['schema_fingerprint']
+    manifest['version'] = version
+    if version == 1:
+        del manifest['schema_fingerprint']
     digest = write_manifest(directory, manifest)
     original = bundle_bytes(directory)
     before = app.evidence(workspace, topic)[0]
@@ -93,7 +95,7 @@ def test_legacy_v1_backup_restores_exact_current_schema(backup, tmp_path):
     assert bundle_bytes(directory) == original
 
 
-@pytest.mark.parametrize('version', [1, 2])
+@pytest.mark.parametrize('version', [1, 2, 3])
 @pytest.mark.parametrize('sql', [
     # The competing unreleased layout used workspace_profile at user_version=3.
     'ALTER TABLE workspace_meta RENAME TO workspace_profile',
@@ -110,6 +112,8 @@ def test_different_layout_is_rejected_before_writable_open(
         db.execute(sql)
         db.commit()
     manifest['version'] = version
+    if version == 3:
+        manifest['sidecars'] = []
     if version == 1:
         del manifest['schema_fingerprint']
     # A valid outer checksum cannot turn an incompatible layout into our schema.

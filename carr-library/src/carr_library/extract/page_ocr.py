@@ -13,7 +13,8 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
+from .ocr_runtime import OcrRuntimeError, bind_model_pack, discover_ocr_runtime
+from .ocr_languages import split_languages
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -73,16 +74,20 @@ class Config:
     max_pixels: int = 20_000_000
     orientation: bool = False
     model_policy: str = 'default'
+    model_pack_path: str | None = None
+    model_pack_sha256: str | None = None
 
     def __post_init__(self):
+        from .language_manager import validate_pack_selection
+        validate_pack_selection(self.model_pack_path, self.model_pack_sha256)
+        if self.model_pack_path is not None and self.model_policy != 'default':
+            raise ValueError('A verified offline pack already fixes the model profile; choose the installed-model profile.')
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
-        if not re.fullmatch(r'[A-Za-z0-9_]+(?:\+[A-Za-z0-9_]+)*', self.languages):
-            raise ValueError('invalid language selection')
+        selected = split_languages(self.languages)
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_policy == POLICY:
-            selected = self.languages.split('+')
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
@@ -162,14 +167,18 @@ def extract_page(asset, physical_index, config=Config()):
                             raise subprocess.TimeoutExpired('tesseract', config.timeout)
                         return seconds
 
-                    runtime = discover_ocr_runtime(config.languages, orientation=config.orientation,
+                    runtime = discover_ocr_runtime('eng' if config.model_pack_path else config.languages,
+                                                   orientation=False if config.model_pack_path else config.orientation,
                                                    remaining=remaining)
+                    runtime = bind_model_pack(runtime, config.model_pack_path, config.model_pack_sha256,
+                                              languages=config.languages, orientation=config.orientation,
+                                              remaining=remaining)
                     if runtime is None:
                         result['status'] = 'review_required'
                         result['warnings'].append('ocr_engine_missing')
                         return result
                     exe = runtime.executable
-                    if runtime.portable:
+                    if runtime.portable or config.model_pack_path:
                         provenance['ocr_runtime'] = runtime.fingerprint()
 
                     with tempfile.TemporaryDirectory() as tmp:
@@ -205,7 +214,8 @@ def extract_page(asset, physical_index, config=Config()):
                         if config.orientation:
                             from .ocr_orientation_bridge import orientation_candidate
                             provenance['orientation'] = orientation_candidate(
-                                image, config, exe, remaining, run, recognize, native_cli=runtime.portable)
+                                image, config, exe, remaining, run, recognize,
+                                native_cli=runtime.portable or bool(config.model_pack_path))
                         runtime.assert_unchanged(remaining)
                 except _OcrOutputLimit:
                     result['status'] = 'review_required'

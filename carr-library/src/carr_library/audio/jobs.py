@@ -11,6 +11,8 @@ import stat
 import tempfile
 import uuid
 
+from .paths import filename_component
+
 
 class RenderCancelled(RuntimeError):
     """The current step stopped; previously sealed chunks remain reusable."""
@@ -22,9 +24,13 @@ def check_cancelled(cancelled):
 
 
 def checked_directory(path, *, create=False):
+    if str(path).startswith(('\\\\', '//')):
+        raise ValueError('Audio projects must use local paths, without network shares.')
     path = Path(path).absolute()
     if str(path).startswith(('\\\\', '//')) or any(':' in part for part in path.parts[1:]):
         raise ValueError('Audio projects must use local paths, without network shares or alternate streams.')
+    for name in path.parts[1:]:
+        filename_component(name)
     for parent in (*reversed(path.parents), path):
         if parent.is_symlink():
             raise ValueError('Audio project paths cannot contain symbolic links.')
@@ -41,6 +47,7 @@ def checked_directory(path, *, create=False):
 
 def regular_file(path):
     path = Path(path)
+    filename_component(path.name)
     checked_directory(path.parent)
     info = path.lstat()
     if not stat.S_ISREG(info.st_mode) or path.is_symlink() or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -95,8 +102,9 @@ def publish_new(source, destination):
     source, destination = Path(source), Path(destination)
     regular_file(source)
     checked_directory(destination.parent)
-    # Windows' CRT rejects fsync on a read-only descriptor. Opening an existing
-    # generated file for update does not truncate or change its contents.
+    # Windows FlushFileBuffers (used by os.fsync) requires a writable handle.
+    # These are our generated staging/cache files; opening r+b does not modify
+    # their bytes. Never suppress a genuine flush error before publication.
     with source.open('r+b') as stream:
         os.fsync(stream.fileno())
     os.link(source, destination)

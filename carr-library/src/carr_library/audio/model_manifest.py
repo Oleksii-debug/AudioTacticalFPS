@@ -15,6 +15,8 @@ import re
 import stat
 from typing import Any
 
+from .paths import filename_component
+
 
 # A normal reviewed CPU Torch wheel already contains more than 10,000 files.
 # Keep explicit byte, file and traversal budgets while permitting its complete
@@ -30,12 +32,19 @@ class ModelManifestError(ValueError):
 
 def local_path(path: Path | str, *, must_exist: bool = True) -> Path:
     """Reject network paths and links before resolving a local filesystem path."""
+    if str(path).startswith(('\\\\', '//')):
+        raise ModelManifestError('Choose a local path, not a network share.')
     path = Path(path).absolute()
     raw = str(path)
     if raw.startswith(('\\\\', '//')) or '\x00' in raw:
         raise ModelManifestError('Choose a local path, not a network share.')
     if any(':' in part for part in path.parts[1:]):
         raise ModelManifestError('Alternate streams and URL paths are not supported.')
+    try:
+        for name in path.parts[1:]:
+            filename_component(name)
+    except ValueError as exc:
+        raise ModelManifestError(str(exc)) from exc
     for part in (path, *path.parents):
         if part.is_symlink():
             raise ModelManifestError('Linked paths are not accepted for local engine assets.')
@@ -104,6 +113,11 @@ def _relative(value):
             any(p in ('', '.', '..') for p in value.split('/')) or
             any(ord(c) < 32 for c in value)):
         raise ModelManifestError('Model assets must use simple relative paths.')
+    try:
+        for name in path.parts:
+            filename_component(name)
+    except ValueError as exc:
+        raise ModelManifestError(str(exc)) from exc
     return path
 
 

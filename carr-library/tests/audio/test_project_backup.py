@@ -69,6 +69,106 @@ def test_snapshot_roundtrip_relocates_settings_and_recovery_with_exact_source(pr
     assert restored['recovery_relocated'] is True and result['files'] == 5
 
 
+def test_snapshot_and_restore_flush_only_writable_owned_files(project, tmp_path, monkeypatch):
+    """Windows rejects fsync on read-only handles; reproduce that on every OS."""
+    _, file, root = project
+    opened, synced = {}, []
+    real_open, real_sync = Path.open, os.fsync
+    def track_open(path, *args, **kwargs):
+        stream = real_open(path, *args, **kwargs)
+        opened[stream.fileno()] = stream
+        return stream
+    def windows_sync(descriptor):
+        stream = opened.get(descriptor)
+        if stream is not None and not stream.closed:
+            if not stream.writable():
+                raise OSError(9, 'Windows cannot flush a read-only file handle')
+            synced.append(Path(stream.name).name)
+        return real_sync(descriptor)
+    monkeypatch.setattr(Path, 'open', track_open)
+    monkeypatch.setattr(os, 'fsync', windows_sync)
+    snapshot = tmp_path / 'snapshot.zip'
+    backup_project(file, snapshot, project_dir=root)
+    restored = restore_project(snapshot, tmp_path / 'restored')
+    assert any(name.startswith('.audio-snapshot-') for name in synced)
+    assert 'project.json' in synced and 'restore-manifest.json' in synced
+    assert Path(restored['project_file']).is_file()
+
+
+def test_snapshot_sync_failure_does_not_publish_or_get_ignored(project, tmp_path, monkeypatch):
+    _, file, root = project
+    def fail_sync(descriptor):
+        raise OSError('disk flush failed')
+    monkeypatch.setattr(os, 'fsync', fail_sync)
+    target = tmp_path / 'snapshot.zip'
+    with pytest.raises(OSError, match='disk flush failed'):
+        backup_project(file, target, project_dir=root)
+    assert not target.exists()
+    assert not tuple(tmp_path.glob('.audio-snapshot-*'))
+
+def test_saved_reading_handoff_and_original_file_protection_survive_audio_restore(tmp_path):
+    from carr_library.reader.narration import NarrationStore, import_text
+    from carr_library.ui.narration_editor import NarrationController
+
+    private = tmp_path / 'library'
+    private.mkdir()
+    source = tmp_path / 'original.txt'
+    original = b'\xef\xbb\xbf# Heading\r\n[pause 2]\r\nDate: 2026-11-26\r\n'
+    source.write_bytes(original)
+    reading = NarrationController(NarrationStore(private), import_text(source))
+    reading.set_text(reading.pending_text + 'Explicit reading derivative.\r\n')
+    studio = reading.prepare_audio_studio()
+    reference = dict(studio.source_reference)
+    saved_reading = reading.store.load(reading.project.id)
+    output = tmp_path / 'audio'
+    output.mkdir()
+    studio.configure(output_dir=output)
+    project = tmp_path / 'studio.json'
+    studio.save(project)
+    studio.edit_script(studio.script + 'Audio recovery draft.\r\n')
+    studio.save_recovery()
+    snapshot = tmp_path / 'snapshot.zip'
+    backup_project(project, snapshot, project_dir=output)
+    restored = restore_project(snapshot, tmp_path / 'restored')
+    reopened = StudioController(private_root=private).open(restored['project_file'])
+    assert reopened.source_reference == reference
+    assert reopened.draft.source_text == original.decode('utf-8-sig')
+    assert reopened.script == reading.project.current_text
+    reopened.recover()
+    assert reopened.source_reference == reference
+    assert reopened.script.endswith('Audio recovery draft.\r\n')
+    for operation in (reopened.save, reopened.export_reading_copy):
+        with pytest.raises(ValueError, match='original source file is immutable'):
+            operation(source, overwrite=True)
+    assert source.read_bytes() == original
+    assert reading.store.load(reading.project.id) == saved_reading
+
+
+def test_reading_reference_unknown_fields_and_changed_original_are_not_snapshotted(tmp_path):
+    from carr_library.reader.narration import NarrationStore, new_project
+    from carr_library.ui.narration_editor import NarrationController
+
+    private = tmp_path / 'library'
+    private.mkdir()
+    reading = NarrationController(NarrationStore(private), new_project('Original'))
+    studio = reading.prepare_audio_studio()
+    output = tmp_path / 'audio'
+    output.mkdir()
+    studio.configure(output_dir=output)
+    project = tmp_path / 'studio.json'
+    studio.save(project)
+    original = json.loads(project.read_bytes())
+    for index, (key, value) in enumerate((('api_key', 'SYNTHETIC MUST NOT EXPORT'),
+                                         ('original_sha256', '0' * 64))):
+        candidate = json.loads(json.dumps(original))
+        candidate['source_reference'][key] = value
+        project.write_text(json.dumps(candidate), encoding='utf-8')
+        target = tmp_path / f'rejected-{index}.zip'
+        with pytest.raises(ValueError, match='reading-copy'):
+            backup_project(project, target, project_dir=output)
+        assert not target.exists()
+
+
 def test_snapshot_never_overwrites_and_busy_project_cannot_be_snapshotted(project, tmp_path):
     controller, file, root = project
     snapshot = tmp_path / 'backup.zip'

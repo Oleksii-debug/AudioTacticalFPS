@@ -111,6 +111,21 @@ class ProductionRenderTests(unittest.TestCase):
         self.assertEqual(second['output'], first['output'])
         self.assertEqual(len(self.engine.calls), 2)
 
+    def test_mixer_revision_rebuilds_mix_without_regenerating_speech_or_music(self):
+        from unittest.mock import patch
+        from carr_library.audio import ffmpeg as audio, music
+        plan = parse_script('[output sample_rate=8000 stems=false]\n[music mood=calm]\nNarrator: Test.')
+        first = self.run_plan(plan)
+        original_bytes = Path(first['output']).read_bytes()
+        speech_calls = list(self.engine.calls)
+        with patch.object(audio, 'MIX_REVISION', audio.MIX_REVISION + 1), patch.object(
+                music, 'generate_music', side_effect=AssertionError('A mixer fix must reuse the verified music cue.')):
+            second = self.run_plan(plan)
+        self.assertNotEqual(first['output'], second['output'])
+        self.assertEqual(self.engine.calls, speech_calls)
+        self.assertEqual(Path(first['output']).read_bytes(), original_bytes)
+        self.assertEqual(first['frames'], second['frames'])
+
     def test_cancel_then_restart_reuses_sealed_speech(self):
         cancel = [False]
         def progress(message):

@@ -19,15 +19,16 @@ def write(path, data=b'An original text.\n'):
 def test_sorted_folder_plan_uses_existing_intake_without_writing(tmp_path):
     write(tmp_path / 'z.txt', 'Український текст.\n'.encode())
     write(tmp_path / 'nested' / 'a.pdf', b'%PDF-1.7\n')
-    write(tmp_path / 'unsupported.html', b'<p>Not imported.</p>')
+    write(tmp_path / 'supported.html', b'<p>Static document preview.</p>')
+    write(tmp_path / 'unsupported.rtf', b'{\\rtf1 Not imported.}')
     # Structural DOCX intake fixture; preflight does not extract document text.
     with ZipFile(tmp_path / 'b.docx', 'w') as archive:
         for name in ('[Content_Types].xml', '_rels/.rels', 'word/document.xml'):
             archive.writestr(name, b'synthetic')
     before = {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
     rows = batch_scan.scan_paths([tmp_path])
-    assert [r['file'] for r in rows] == ['b.docx', 'nested/a.pdf', 'unsupported.html', 'z.txt']
-    assert [r['state'] for r in rows] == ['queued', 'queued', 'rejected', 'queued']
+    assert [r['file'] for r in rows] == ['b.docx', 'nested/a.pdf', 'supported.html', 'unsupported.rtf', 'z.txt']
+    assert [r['state'] for r in rows] == ['queued', 'queued', 'queued', 'rejected', 'queued']
     for row in rows:
         assert set(row) == {'source', 'file', 'title', 'state', 'message', 'manifest', 'duplicate_of'}
         assert Path(row['source']).is_absolute()
@@ -287,3 +288,30 @@ def test_planned_snapshot_rejects_parent_link_replacement_before_read(tmp_path, 
 def test_existing_assets_must_be_explicit_sha256_digests(assets):
     with pytest.raises(ValueError, match='SHA256'):
         batch_scan.scan_paths([], existing_assets=assets)
+
+
+@pytest.mark.parametrize('recursive,max_depth', [(False,64),(True,1),(True,2),(True,64)])
+def test_explicit_nested_root(tmp_path, monkeypatch, recursive, max_depth):
+    nested = tmp_path / 'nested'
+    deeper = nested / 'deeper'
+    deeper.mkdir(parents=True)
+    for path in (tmp_path / 'a.txt', nested / 'b.txt', deeper / 'c.txt'):
+        path.write_text(path.name, encoding='utf-8')
+    opened = []
+    def snapshot(root, name):
+        path = root / name
+        opened.append(path)
+        raw = path.read_bytes()
+        return SimpleNamespace(manifest=lambda: {'sha256': sha256(raw).hexdigest(), 'mime': 'text/plain', 'size': len(raw)})
+    monkeypatch.setattr(batch_scan, 'snapshot', snapshot)
+    monkeypatch.setattr(batch_scan, 'MAX_DEPTH', max_depth)
+    rows = batch_scan.scan_paths([nested, tmp_path], recursive=recursive)
+    expected = [tmp_path / 'a.txt', nested / 'b.txt']
+    if recursive and max_depth > 1:
+        expected.append(deeper / 'c.txt')
+        assert [row['state'] for row in rows] == ['queued', 'queued', 'queued']
+    else:
+        assert [row['state'] for row in rows] == ['queued', 'queued', 'rejected']
+        assert rows[-1]['source'] == str(deeper)
+    assert opened == expected
+    assert len({row['source'] for row in rows}) == len(rows)

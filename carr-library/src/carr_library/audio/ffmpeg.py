@@ -20,6 +20,12 @@ import time
 
 from .jobs import checked_directory, check_cancelled, publish_new, regular_file, sha256_file
 from .models import Effect, FORMATS, SAMPLE_RATES, number
+from .paths import filename_component
+
+
+# Part of the scene-mix and completed-production cache identity. Increment when
+# a mixing algorithm changes, without invalidating expensive speech/music cues.
+MIX_REVISION = 2
 
 
 @dataclass(frozen=True)
@@ -42,7 +48,11 @@ def wav_info(path):
         head = stream.read(12)
         if len(head) != 12 or head[:4] not in (b'RIFF', b'RF64') or head[8:] != b'WAVE':
             raise ValueError('Audio must be a PCM WAV file.')
-        data64 = None
+        rf64 = head[:4] == b'RF64'
+        declared_size = struct.unpack('<I', head[4:8])[0]
+        if (rf64 and declared_size != 0xffffffff) or (not rf64 and declared_size != total - 8):
+            raise ValueError('WAV container size metadata is inconsistent with the file.')
+        data64, frames64 = None, None
         format_info = None
         # An attacker cannot make us traverse millions of tiny metadata chunks.
         for _ in range(1024):
@@ -52,9 +62,13 @@ def wav_info(path):
             name, size = struct.unpack('<4sI', header)
             at = stream.tell()
             if name == b'ds64':
-                if size < 28 or size > 65536 or at + size > total:
+                if not rf64 or data64 is not None or size < 28 or size > 65536 or at + size > total:
                     raise ValueError('Invalid RF64 size table.')
-                _, data64, _, table = struct.unpack('<QQQI', stream.read(28))
+                riff64, data64, frames64, table = struct.unpack('<QQQI', stream.read(28))
+                if riff64 + 8 > total:
+                    raise ValueError('RF64 audio is truncated before its declared end.')
+                if riff64 + 8 != total:
+                    raise ValueError('RF64 container size metadata is inconsistent with the file.')
                 if table:
                     raise ValueError('Unsupported RF64 table.')
             elif name == b'fmt ':
@@ -70,12 +84,16 @@ def wav_info(path):
                     raise ValueError('Expected mono or stereo PCM16 WAV.')
                 format_info = (rate, channels, align)
             elif name == b'data':
+                if rf64 and (data64 is None or size != 0xffffffff):
+                    raise ValueError('RF64 data requires an explicit 64-bit size table and sentinel.')
                 size = data64 if size == 0xffffffff and head[:4] == b'RF64' else size
                 if format_info is None or size is None or size <= 0 or at + size > total:
                     raise ValueError('Truncated or empty WAV audio.')
                 rate, channels, align = format_info
                 if size % align:
                     raise ValueError('Incomplete audio frame.')
+                if frames64 not in (None, 0, size // align):
+                    raise ValueError('RF64 sample count disagrees with the PCM data length.')
                 return WaveInfo(rate, channels, size // align, at, size)
             if at + size > total:
                 raise ValueError('Truncated WAV metadata.')
@@ -158,6 +176,7 @@ def effect_filters(effects):
 
 def _destination(path):
     path = Path(path)
+    filename_component(path.name)
     checked_directory(path.parent, create=True)
     if path.exists() or path.is_symlink():
         raise FileExistsError(f'Audio output already exists: {path.name}')
@@ -279,9 +298,16 @@ def mix_scene(voices, music, output, *, ffmpeg, music_gain=0.15, cancelled=lambd
             raise ValueError('Music and narration timing must match exactly.')
         args += ['-protocol_whitelist', 'file', '-f', 'wav', '-i', str(music)]
         fade = min(0.25, info.seconds / 2)
-        graph = (f'[0:a]asplit=2[v][side];[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,'
+        # The sidechain filter can stop at the shorter queued block stream
+        # when a stereo WAV and mono WAV arrive in different decoder block
+        # sizes. Normalize both inputs to equal sample blocks and trim the
+        # padded tail back to the exact measured narration duration.
+        graph = (f'[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,'
+                 'asetnsamples=n=1024:p=1,asplit=2[v][side];'
+                 '[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,'
                  f'volume={music_gain:.9f},afade=t=in:d={fade:.9f},'
-                 f'afade=t=out:st={max(0, info.seconds-fade):.9f}:d={fade:.9f}[bed];'
+                 f'afade=t=out:st={max(0, info.seconds-fade):.9f}:d={fade:.9f},'
+                 'asetnsamples=n=1024:p=1[bed];'
                  '[bed][side]sidechaincompress=threshold=0.035:ratio=8:attack=10:release=200[ducked];'
                  f'[v][ducked]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95:level=0:latency=1,'
                  f'atrim=end_sample={info.frames}[out]')

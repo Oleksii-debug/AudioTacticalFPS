@@ -24,6 +24,9 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui.audio_studio import StudioController, AudioStudioDialog
+    from carr_library.assistant import AssistantService, Plan, Scope, Step
+    from carr_library.assistant.production import LocalProduction
+    from carr_library.ui.assistant_dialog import show_assistant
     import wx
 
     def offline(*args, **kwargs):
@@ -32,7 +35,9 @@ def main():
     socket.create_connection = offline
     socket.socket.connect = offline
     socket.socket.connect_ex = offline
-    ffmpeg = Path(os.environ['CARR_FFMPEG'])
+    from carr_library.audio.runtime import resolve_ffmpeg
+    ffmpeg = resolve_ffmpeg()
+    assert ffmpeg is not None, 'No verified local FFmpeg runtime is available.'
     registry = VoiceRegistry((SAPI5Engine(),))
     voices = tuple(v for v in registry.voices() if any(lang.lower().split('-')[0] == 'en' for lang in v.languages))
     assert voices, 'No usable English SAPI 5 voice is installed; this is not a successful smoke.'
@@ -90,6 +95,20 @@ def main():
 
         library = LibraryApp(root / 'library')
         frame = DesktopFrame(library)
+        assistant_output = root / 'assistant-output'
+        assistant_output.mkdir()
+        producer = LocalProduction(library.root, registry=registry, ffmpeg=ffmpeg)
+        assistant = AssistantService(library, production=producer)
+        literal = 'Narrator: This label remains spoken. [pause 1] is literal source text.'
+        job = assistant.submit(Plan(Scope(output_root=assistant_output, max_bytes=128 * 1024 ** 2), (
+            Step('audio.produce', {'text': literal, 'voice_ids': [voice], 'language': 'en', 'stems': False}),)))
+        report = assistant.run(job)
+        assert report.status == 'complete', report.message
+        assert report.results[0]['input_kind'] == 'narration'
+        assert report.results[0]['source_sha256'] == sha256(literal.encode('utf-8')).hexdigest()
+        assert wav_info(report.results[0]['output']).frames > 0
+        assert assistant.resume(job).status == 'complete'
+        checks.append('actual local assistant to SAPI/FFmpeg production and verified resume')
         controller = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
         controller.new(script, title='Synthetic local production', input_kind='script')
         desktop_output = root / 'desktop-output'
@@ -111,19 +130,64 @@ def main():
             assert studio.status.GetName() == 'Audio Studio status and render progress'
             studio.notebook.SetSelection(0)
             studio.script.SetFocus()
-            wait_for(lambda: wx.Window.FindFocus() is studio.script,
-                     'The editable script did not receive native focus.', timeout=5)
+            def script_has_focus():
+                focused = wx.Window.FindFocus()
+                while focused is not None and focused is not studio.script:
+                    focused = focused.GetParent()
+                return focused is studio.script
+            wait_for(script_has_focus, 'The editable script did not receive native focus.', timeout=5)
             studio.preview()
             application.Yield()
             assert studio.plan_text.GetValue() == controller.preview()
             assert controller.script == script, 'Native preview changed the original script.'
+            assert studio.playback_position.GetName() == 'Playback position and state'
+            assert studio.seek_seconds.GetName() == 'Seek to seconds'
+            studio.read_playback_position()
+            assert 'Stopped' in studio.status.GetValue()
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
-                           'native plan preview', 'project save and readback'])
+                           'native plan preview', 'project save and readback', 'native playback time and seek controls'])
+            studio.dialog.Hide()
+
+            native_result = {'complete': False, 'errors': []}
+            def ready(dialog, controls):
+                deadline = monotonic() + 20
+                def press(control):
+                    event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
+                    event.SetEventObject(control)
+                    assert control.GetEventHandler().ProcessEvent(event)
+                def fail(exc):
+                    native_result['errors'].append(str(exc))
+                    press(controls['close'])
+                def completed():
+                    try:
+                        if controls['run'].IsEnabled():
+                            assert controls['review'].GetValue().startswith('complete: 1 of 1'), controls['review'].GetValue()
+                            native_result['complete'] = True
+                            press(controls['close'])
+                        else:
+                            assert monotonic() < deadline, 'Native assistant did not finish.'
+                            wx.CallLater(25, completed)
+                    except Exception as exc:
+                        fail(exc)
+                try:
+                    assert controls['budget'].GetName() == 'Per-operation output and audio working-disk budget (MiB)'
+                    controls['instruction'].SetValue('List libraries')
+                    press(controls['preview'])
+                    assert controls['run'].IsEnabled()
+                    assert 'LOCAL ONLY' in controls['review'].GetValue()
+                    press(controls['run'])
+                    wx.CallLater(25, completed)
+                except Exception as exc:
+                    fail(exc)
+            show_assistant(frame, production=producer, on_ready=ready)
+            assert native_result['complete'] and not native_result['errors'], native_result
+            checks.append('native assistant plan preview, actual scoped execution and budget controls')
         finally:
             studio.closed = True
             studio.timer.Stop()
+            studio.playback_timer.Stop()
             studio.cancelled.set()
-            studio.playback.stop()
+            studio.playback.close()
             studio.executor.shutdown(wait=True, cancel_futures=True)
             studio.dialog.Destroy()
             frame._closing = True
@@ -134,7 +198,8 @@ def main():
     print(json.dumps({'status': 'PASS', 'checks': checks, 'sapi_voices_available': len(voices),
         'distinct_voices_used': min(3, len(voices)), 'duration_seconds': output['duration_seconds'],
         'measurements': output['measurements'], 'manual_nvda': 'NOT_RUN',
-        'neural_music': 'NOT_RUN', 'native_ukrainian_slovak_quality': 'NOT_RUN'}, ensure_ascii=False))
+        'physical_playback_device': 'NOT_RUN', 'neural_music': 'NOT_RUN',
+        'native_ukrainian_slovak_quality': 'NOT_RUN'}, ensure_ascii=False))
     return 0
 
 

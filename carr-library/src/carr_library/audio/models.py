@@ -8,6 +8,8 @@ import math
 import re
 from pathlib import PurePosixPath
 
+from .paths import filename_component
+
 
 SCHEMA = 1
 SAMPLE_RATES = (8000, 16000, 22050, 24000, 44100, 48000, 96000)
@@ -167,6 +169,7 @@ class Sound:
     def __post_init__(self):
         identity(self.id)
         text(self.asset, 'Sound asset', 240)
+        filename_component(self.asset)
         if self.asset in ('.', '..') or any(c in self.asset for c in '/\\:\x00\n\r') or self.asset.startswith('.'):
             raise ValueError('Sound asset must be a filename inside the project assets directory.')
         number(self.gain, 0, 2, 'Sound gain')

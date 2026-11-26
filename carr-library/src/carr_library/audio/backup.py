@@ -102,11 +102,17 @@ def _studio(payload):
     for name in ('title', 'voice', 'language'):
         if not isinstance(payload[name], str) or not payload[name].strip():
             raise ValueError('The saved Audio Studio settings are invalid.')
-    NarrationDraft.from_dict(payload['draft'])
+    draft = NarrationDraft.from_dict(payload['draft'])
     reference = payload['source_reference']
     if reference is not None:
-        if type(reference) is not dict or reference.get('kind') not in ('local-text', 'library-source-reading-copy'):
+        from ..reader.narration import READING_REFERENCE_KIND, validate_reading_project_reference
+        if type(reference) is not dict or reference.get('kind') not in (
+                'local-text', 'library-source-reading-copy', READING_REFERENCE_KIND):
             raise ValueError('Unknown source-reference settings are not exported.')
+        if reference['kind'] == READING_REFERENCE_KIND:
+            validate_reading_project_reference(reference, original_text=draft.source_text,
+                                               source_id=draft.source_id)
+            return payload
         allowed = ({'kind', 'filename', 'original_path', 'bytes_sha256'} if reference['kind'] == 'local-text'
                    else {'kind', 'workspace', 'edition', 'revision', 'pages', 'separator'})
         if set(reference) - allowed:

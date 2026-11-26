@@ -1,30 +1,34 @@
-"""Native language choice for the application's reviewed scanned-page import."""
+"""Installed-model choices for the application's reviewed scanned-page import."""
 from pathlib import Path
 
 from ..extract.page_ocr import Config
+from ..extract.ocr_languages import model_label, split_languages
+from ..extract.pinned_tessdata import POLICY
 
-LANGUAGES = (
-    ('English', 'eng'),
-    ('Ukrainian', 'ukr'),
-    ('Slovak', 'slk'),
-    ('English, Ukrainian and Slovak', 'eng+ukr+slk'),
-)
+
+def config_summary(config):
+    profile = 'pinned fast models' if config.model_policy == POLICY else 'installed model profile'
+    if config.model_pack_path:
+        profile = 'verified offline pack; manifest SHA256 ' + config.model_pack_sha256
+    names = ', '.join(model_label(code) for code in split_languages(config.languages))
+    return names + '; ' + profile + ('; orientation check on' if config.orientation else '')
+
+
+def choose_model_config(parent, initial=None, *, preset_root=None):
+    import wx
+    from .ocr_language_dialog import create_ocr_dialog
+    dialog = create_ocr_dialog(parent, initial, preset_root=preset_root)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return None
+        return dialog.result
+    finally:
+        dialog.Destroy()
 
 
 def choose_ocr_config(parent, paths):
-    """Return None on cancellation; native text-only imports need no OCR dialog."""
+    """Preserve direct-import API; native text-only imports need no model dialog."""
     if not any(Path(path).suffix.casefold() == '.pdf' for path in paths):
         return Config()
-    import wx
-    dialog = wx.SingleChoiceDialog(parent, 'Choose the languages used on scanned pages.',
-                                  'Text recognition languages', [label for label, _ in LANGUAGES])
-    try:
-        dialog.SetSelection(0)
-        if dialog.ShowModal() != wx.ID_OK:
-            return None
-        selected = dialog.GetSelection()
-        if not 0 <= selected < len(LANGUAGES):
-            raise ValueError('Choose languages for text recognition.')
-        return Config(languages=LANGUAGES[selected][1])
-    finally:
-        dialog.Destroy()
+    library = getattr(parent, 'library', None)
+    return choose_model_config(parent, preset_root=getattr(library, 'root', None))

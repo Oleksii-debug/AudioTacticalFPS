@@ -111,3 +111,79 @@ def test_linked_model_directory_is_rejected(ranker, tmp_path):
     with pytest.raises(ValueError, match='unlinked'):
         verify_model_bundle(link)
 
+
+def test_actual_persistent_embeddings_reopen_without_reinference(ranker, tmp_path):
+    app = LibraryApp(tmp_path / 'cache-library', semantic_ranker=ranker)
+    workspace = app.create_workspace('Persistent semantic cache')
+    collection = app.create_collection(workspace, 'Authorized sources')
+    raw = 'Залізниця з’єднувала промислові міста.'
+    imported = app.add_text(workspace, 'Railway history', raw, collections=(collection,))
+    query = 'How did trains link manufacturing towns?'
+    first = app.search(workspace, query, mode='semantic', collection=collection)
+    assert len(first) == 1 and first[0].quote == raw
+    assert ranker.cache_statistics['embedded_texts'] >= 2
+    reopened = LibraryApp(app.root, semantic_ranker=ranker)
+    with patch.object(ranker.engine, 'embed', side_effect=AssertionError('Cache hit must not repeat inference')):
+        again = reopened.search(workspace, query, mode='semantic', collection=collection)
+        assert len(again) == 1 and again[0].quote == raw and again[0].verified
+        assert ranker.cache_statistics['embedded_texts'] == 0
+        assert ranker.cache_statistics['hits'] >= 2
+        with reopened.catalog_transaction(workspace) as catalog:
+            catalog.remove(collection, imported['edition'])
+        assert reopened.search(workspace, query, mode='semantic', collection=collection) == ()
+        with pytest.raises(ValueError):
+            reopened.copy(workspace, again[0].ref, again[0].revision, 'quote')
+
+
+
+def test_actual_semantic_snapshot_survives_concurrent_membership_revocation(ranker, tmp_path):
+    """A committed writer during inference must not mix search snapshots.
+
+    The first result is from the original authorized read transaction; its
+    handle must not grant fresh access after the collection membership changes.
+    This exercises actual inference, not a substitute ranker.
+    """
+    import sqlite3
+    from contextlib import closing
+
+    app = LibraryApp(tmp_path / 'library', semantic_ranker=ranker)
+    workspace = app.create_workspace('Selected library')
+    foreign = app.create_workspace('Excluded library')
+    collection = app.create_collection(workspace, 'Selected')
+    raw = 'Залізниця з’єднувала промислові міста.'
+    imported = app.add_text(workspace, 'Railway', raw, collections=(collection,))
+    app.add_text(workspace, 'Not in collection', 'Railways connected manufacturing towns.')
+    app.add_text(foreign, 'Foreign source', 'Trains linked industrial cities.')
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as db:
+        assert db.execute('PRAGMA journal_mode=WAL').fetchone()[0] == 'wal'
+
+    actual_rank = ranker.rank
+    calls = []
+
+    def rank_and_revoke(query, candidates, **kwargs):
+        assert not calls
+        assert len(candidates) == 1 and candidates[0][1] == raw
+        ranked = actual_rank(query, candidates, **kwargs)
+        assert ranked == [candidates[0][0]], 'Actual model must produce the expected hit.'
+        # catalog_transaction opens a separate writer connection. WAL allows
+        # commit while the original search reader remains in its snapshot.
+        with app.catalog_transaction(workspace) as catalog:
+            assert catalog.remove(collection, imported['edition'])
+        calls.append(True)
+        return ranked
+
+    query = 'How did trains link manufacturing towns?'
+    with patch.object(ranker, 'rank', side_effect=rank_and_revoke):
+        hit, = app.search(workspace, query, mode='semantic', collection=collection)
+    assert calls == [True]
+    assert hit.quote == raw and hit.verified and 'MiniLM' in hit.reason
+    # The old snapshot is coherent, but membership is freshly authorized on
+    # every action. Neither copying nor opening context may use stale scope.
+    with pytest.raises(ValueError):
+        app.copy(workspace, hit.ref, hit.revision, 'quote')
+    with pytest.raises(ValueError):
+        app.context(workspace, hit.ref, hit.revision)
+    assert app.search(workspace, query, mode='semantic', collection=collection) == ()
+    # Removing membership is not deleting the source.
+    fresh, = app.search(workspace, query, mode='semantic', title='Railway')
+    assert fresh.quote == raw and app.copy(workspace, fresh.ref, fresh.revision, 'quote') == raw

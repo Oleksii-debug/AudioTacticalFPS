@@ -2,7 +2,6 @@ from array import array
 import hashlib
 import json
 from pathlib import Path
-import shutil
 import struct
 import sys
 import wave
@@ -10,13 +9,14 @@ import wave
 import pytest
 
 from carr_library.audio.engines import EngineUnavailable
+from carr_library.audio.runtime import resolve_ffmpeg
 from carr_library.audio.music import (_wave_frames, generate_music, music_capabilities,
                                       render_music)
 
 
 @pytest.fixture
 def ffmpeg():
-    executable = shutil.which('ffmpeg')
+    executable = resolve_ffmpeg()
     if not executable:
         pytest.skip('Actual local music tests require FFmpeg.')
     return Path(executable).resolve()
@@ -168,3 +168,14 @@ def test_rf64_parser_validates_large_frame_count_without_reading_audio(tmp_path)
         stream.truncate(100)
     with pytest.raises(ValueError, match='truncated'):
         _wave_frames(path)
+
+
+def test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_input(tmp_path, ffmpeg):
+    folder = tmp_path / 'Музична сцена with spaces'
+    folder.mkdir()
+    output = folder / 'Готова музика.wav'
+    result = render_music(output, duration=1.25, mood='calm', tempo=90, seed=62, ffmpeg=ffmpeg)
+    assert result['frames'] == 60000
+    with wave.open(str(output), 'rb') as audio:
+        assert audio.getnframes() == 60000 and audio.getframerate() == 48000
+    assert not list(folder.rglob('*.filters'))

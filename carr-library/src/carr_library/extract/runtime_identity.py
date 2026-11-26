@@ -10,7 +10,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
-from . import ocr_runtime
+from . import ocr_languages, ocr_runtime
 
 
 class IdentityError(ValueError):
@@ -34,11 +34,14 @@ def _hash(path, limit=256 * 1024 * 1024, remaining=lambda: None):
 
 
 def _source_hashes():
+    from . import language_manager
     root = Path(__file__).parent
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py')
     return {**{name: _hash(root / name) for name in names},
-            'ocr_runtime.py': _hash(ocr_runtime.__file__)}
+            'ocr_runtime.py': _hash(ocr_runtime.__file__),
+            'language_manager.py': _hash(language_manager.__file__),
+            'ocr_languages.py': _hash(ocr_languages.__file__)}
 
 
 def runtime_identity(config):
@@ -48,7 +51,11 @@ def runtime_identity(config):
     fails closed. Unpinned defaults are fingerprinted, not declared authentic.
     Caller must compare before resume, and after extraction before checkpoint.
     """
-    identity = dict(schema=1, config=asdict(config), source_sha256=_source_hashes(),
+    settings = asdict(config)
+    # The binding is private job configuration; the fingerprint retains its
+    # manifest identity without disclosing a local model installation path.
+    settings.pop('model_pack_path', None)
+    identity = dict(schema=1, config=settings, source_sha256=_source_hashes(),
                     packages={p: metadata.version(p) for p in ('pypdf', 'pypdfium2', 'Pillow')})
     deadline = time.monotonic() + config.timeout
 
@@ -59,8 +66,13 @@ def runtime_identity(config):
         return seconds
 
     try:
-        runtime = ocr_runtime.discover_ocr_runtime(config.languages, orientation=config.orientation,
+        pack_path = getattr(config, 'model_pack_path', None)
+        runtime = ocr_runtime.discover_ocr_runtime('eng' if pack_path else config.languages,
+                                                  orientation=False if pack_path else config.orientation,
                                                   remaining=remaining)
+        runtime = ocr_runtime.bind_model_pack(runtime, pack_path, getattr(config, 'model_pack_sha256', None),
+                                              languages=config.languages, orientation=config.orientation,
+                                              remaining=remaining)
         if runtime is None:
             identity['ocr'] = {'state': 'missing'}
             return identity
@@ -91,7 +103,7 @@ def runtime_identity(config):
             models = {}
             for lang in selected:
                 remaining()
-                if not re.fullmatch(r'[A-Za-z0-9_]+', lang):
+                if not ocr_languages.valid_model_code(lang):
                     raise IdentityError('invalid model name')
                 models[lang] = _hash(Path(match[1]) / (lang + '.traineddata'), remaining=remaining)
         if before != _hash(exe, remaining=remaining):
@@ -104,4 +116,6 @@ def runtime_identity(config):
                            model_sha256=models, policy=config.model_policy)
     if runtime.portable:
         identity['ocr']['portable'] = runtime.fingerprint()
+    if pack_path:
+        identity['ocr']['model_pack'] = runtime.pack.fingerprint()
     return identity
