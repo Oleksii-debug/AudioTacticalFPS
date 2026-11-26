@@ -67,6 +67,7 @@ packages = [
   "carr_library.citations",
   "carr_library.extract",
   "carr_library.ingest",
+  "carr_library.integrations",
   "carr_library.reader",
   "carr_library.research",
   "carr_library.research._vendor_rispy",
