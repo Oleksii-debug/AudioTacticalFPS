@@ -53,6 +53,40 @@ class OrderedDocxTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported body'):
             extract_docx(bytes_of(doc))
 
+    def test_custom_xml_body(self):
+        doc = Document()
+        doc.add_paragraph('Before')
+        hidden = doc.add_paragraph('Omitted body text')._p
+        wrapper = OxmlElement('w:customXml')
+        hidden.addprevious(wrapper)
+        wrapper.append(hidden)
+        doc.add_paragraph('After')
+        with self.assertRaisesRegex(ValueError, 'unsupported body'):
+            extract_docx(bytes_of(doc))
+
+    def test_custom_xml_cell(self):
+        doc = Document()
+        doc.add_paragraph('Before')
+        cell = doc.add_table(rows=1, cols=1).cell(0, 0)
+        cell.text = 'Visible cell'
+        hidden = cell.add_paragraph('Omitted cell text')._p
+        wrapper = OxmlElement('w:customXml')
+        hidden.addprevious(wrapper)
+        wrapper.append(hidden)
+        with self.assertRaisesRegex(ValueError, 'unsupported body'):
+            extract_docx(bytes_of(doc))
+
+    def test_custom_xml_inline(self):
+        doc = Document()
+        paragraph = doc.add_paragraph('Before ')
+        hidden = paragraph.add_run('Omitted inline text')._r
+        wrapper = OxmlElement('w:customXml')
+        hidden.addprevious(wrapper)
+        wrapper.append(hidden)
+        paragraph.add_run(' after')
+        with self.assertRaisesRegex(ValueError, 'unsupported body'):
+            extract_docx(bytes_of(doc))
+
     def test_corrupt(self):
         with self.assertRaises(ValueError):
             extract_docx(b'PK broken')
