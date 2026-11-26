@@ -916,6 +916,10 @@ class LibraryApp:
         with self.read(workspace) as db:
             load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             rows = SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
+            if format in ('docx', 'html'):
+                name, = db.execute('SELECT name FROM research_topic WHERE workspace=? AND id=?',
+                                   (workspace, topic)).fetchone()
+                return export_saved(workspace, topic, rows, load, format=format, title=name)
             return export_saved(workspace, topic, rows, load, format=format)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):

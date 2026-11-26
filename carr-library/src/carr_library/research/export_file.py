@@ -1,4 +1,4 @@
-"""Publish user-requested text exports without modifying private library files.
+"""Publish user-requested exports without modifying private library files.
 
 The caller obtains overwrite confirmation before calling ``write_export``.
 Checks cover ordinary desktop use and detect destination changes while the
@@ -89,13 +89,27 @@ def write_export(path, content, *, private_root):
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
+    _write_payload(path, content.encode('utf-8'), private_root=private_root)
+
+
+def write_binary_export(path, content, *, private_root):
+    """Atomically publish a rendered document using the text export safeguards.
+
+    The payload must be immutable bytes. As for ``write_export``, the caller
+    selects the destination and confirms replacement of an existing file.
+    """
+    if not isinstance(content, bytes):
+        raise ValueError('Binary document export required.')
+    _write_payload(path, content, private_root=private_root)
+
+
+def _write_payload(path, payload, *, private_root):
     raw_path = os.fspath(path)
     if (not isinstance(raw_path, str) or not raw_path or raw_path in ('.', '..')
             or raw_path.endswith(('/', '\\'))):
         raise ValueError('Choose an export filename, not an empty path or folder.')
     requested = Path(raw_path).absolute()
     _filename(requested.name)
-    payload = content.encode('utf-8')
     private = Path(private_root).absolute()
     target, parent_identity, previous = _destination(requested, private)
     temporary = None
