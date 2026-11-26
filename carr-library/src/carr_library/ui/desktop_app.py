@@ -19,7 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
-from .scope_bindings import ScopeServices
+from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
@@ -383,7 +383,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             hit = self.selected()
             if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
                 raise ValueError('Select one result in the active library.')
-            topics = self.frame.library.topics(hit.workspace)
+            topics = tuple(self.frame.library.topics(hit.workspace))
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
                 self.status.SetFocus()
@@ -391,11 +391,15 @@ class DesktopSearchPanel(PagedSearchPanel):
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', [t.name for t in topics])
+                                              'Save quotation', scope_labels(
+                                                  (hit.workspace, t.id, t.name) for t in topics))
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
-                    selected_topic = topics[dialog.GetSelection()].id
+                    index = dialog.GetSelection()
+                    if not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic first.')
+                    selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
             epoch = self._context_epoch
