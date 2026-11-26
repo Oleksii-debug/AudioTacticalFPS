@@ -15,6 +15,7 @@ import pytest
 
 from carr_library import application
 from carr_library.application import LibraryApp
+from carr_library.research import export_file
 from carr_library.research.export_file import write_binary_export, write_export
 
 
@@ -221,6 +222,20 @@ def test_cancellation_after_render_preserves_existing_destination(
     h.run()
     assert target.read_bytes() == b'Old output remains intact.'
     assert h.reports == ['Export not completed: Export cancelled; the destination was not changed.']
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_native_handler_keeps_cancellation_live_during_file_publication(
+        harness, tmp_path, monkeypatch, index, format, suffix):
+    target = tmp_path / ('cancelled-while-saving' + suffix)
+    target.write_bytes(b'Previous exported document.')
+    h = harness(target, index)
+    monkeypatch.setattr(export_file.os, 'fsync', lambda _fd: h.cancel_event.set())
+    h.invoke()
+    h.run()
+    assert target.read_bytes() == b'Previous exported document.'
+    assert len(h.reports) == 1 and 'cancelled' in h.reports[0].lower()
     assert not list(tmp_path.glob('.research-export-*'))
 
 
