@@ -159,14 +159,18 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
 
 
 def search_active(db, workspace, edition_to_work, query, *, limit=20,
-                  timeout=5.0, cancelled=lambda: False):
+                  timeout=5.0, cancelled=lambda: False, tokenizer=None,
+                  semantic_ranker=None):
     """Candidate handoff for the PR21 active_page view and PR23 locator V2.
 
     The caller supplies a catalog-authorized edition-to-work mapping for this
     workspace/collection/topic; no implicit global scope. Use a dedicated trusted
     storage reader; its own native SQL timeout/interrupt remains caller-owned.
     This additive candidate does not change the legacy physical search response.
-    Full contiguous pages/segments are ranked; no inferred printed page labels.
+    With no semantic ranker, full contiguous pages/segments are ranked.
+    Optional windowed hits retain the parent storage page and exact offsets;
+    the caller must supply an approved local ranker and tokenizer. No inferred
+    printed page labels.
     """
     if (not isinstance(workspace, str) or not workspace or
             not isinstance(edition_to_work, dict) or len(edition_to_work) > 500 or
@@ -224,7 +228,13 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
 
     source = passages()
     try:
-        hits = search(workspace, source, query, limit=limit, timeout=timeout, cancelled=stopped)
+        if semantic_ranker is None:
+            hits = search(workspace, source, query, limit=limit, timeout=timeout, cancelled=stopped)
+        else:
+            from .semantic_windows import search_windowed
+            hits = search_windowed(workspace, source, query, tokenizer=tokenizer,
+                                   semantic_ranker=semantic_ranker, limit=limit,
+                                   timeout=timeout, cancelled=stopped)
     except sqlite3.OperationalError as exc:
         if stopped():
             raise TimeoutError('active thematic search cancelled or timed out') from exc
@@ -232,7 +242,7 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
     finally:
         source.close()
     for hit in hits:
-        page_id, asset, printed, verified = metadata[hit['passage_id']]
+        page_id, asset, printed, verified = metadata[hit.get('parent_passage_id', hit['passage_id'])]
         hit.update(workspace_id=workspace, page_id=page_id, asset_sha256=asset,
                    locator_kind='logical_segment' if hit['physical_index'] is None else 'physical_page',
                    segment_index=hit.get('segment_index'), printed_label=printed,
@@ -243,12 +253,15 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
 
 
 def search_catalog(db, workspace, query, *, collection=None, limit=20,
-                   timeout=5.0, cancelled=lambda: False):
+                   timeout=5.0, cancelled=lambda: False, tokenizer=None,
+                   semantic_ranker=None):
     """Candidate PR53/PR21 handoff on a caller-owned SQLite read snapshot.
 
     Catalog memberships authorize editions; the active revision must reference
     the same immutable asset. No transaction is opened, committed or rolled back
     here. Use a dedicated trusted reader; the caller owns its native SQL budget.
+    The optional approved local ranker must not mutate or end this snapshot;
+    absent a ranker, the original whole-source lexical path is unchanged.
     """
     from carr_library.catalog.membership import Catalog
 
@@ -300,7 +313,10 @@ def search_catalog(db, workspace, query, *, collection=None, limit=20,
     if remaining <= 0:
         raise TimeoutError('catalog thematic search cancelled or timed out')
     hits = search_active(db, workspace, allowed, query, limit=limit,
-                         timeout=remaining, cancelled=stopped)
+                         timeout=remaining, cancelled=stopped, tokenizer=tokenizer,
+                         semantic_ranker=semantic_ranker)
+    if not db.in_transaction:
+        raise ValueError('catalog read snapshot ended during ranking')
     for hit in hits:
         check()
         if assets.get(hit['edition_id']) != hit['asset_sha256']:
