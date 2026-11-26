@@ -11,8 +11,10 @@ from __future__ import annotations
 import argparse
 from array import array
 import ast
+import csv
 import hashlib
 import importlib.metadata
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -106,6 +108,87 @@ def runtime_python(root):
     return root / "runtime" / "bin" / "python3.11"
 
 
+def manifest_payload(files):
+    return {"schema_version": 1, "engine": "musicgen", "model_id": "facebook/musicgen-small",
+            "revision": MODEL_REVISION, "license": "CC-BY-NC-4.0", "files": files,
+            "license_accepted": True, "trusted_weights": True, "personal_noncommercial": True,
+            "settings": {"source_revision": AUDIOCRAFT_REVISION, "device": "cpu",
+                         "python": "runtime/bin/python3.11", "timeout_seconds": 600}}
+
+
+def measure_inventory(root, manifest_module):
+    """Count the real tree without hiding files or changing acceptance caps."""
+    entries = files = total_bytes = path_json_bytes = 0
+    scan_limit = 2 * manifest_module.MAX_MODEL_DIRECTORY_ENTRIES
+    for path in root.rglob("*"):
+        entries += 1
+        if entries > scan_limit:
+            emit({"stage": "inventory_measurement_limit", "entries_lower_bound": entries,
+                  "files_lower_bound": files, "qualification_scan_limit": scan_limit})
+            raise ValueError("Inventory measurement exceeded its separate bounded traversal.")
+        manifest_module.local_path(path)
+        if path.is_file() and path != root / "local-model.json":
+            files += 1
+            total_bytes += path.stat().st_size
+            relative = path.relative_to(root).as_posix()
+            # Exact compact JSON contribution of path + 64-digit digest,
+            # including quotes, colon and comma. Hash contents do not change it.
+            path_json_bytes += len(json.dumps(relative).encode("ascii")) + 68
+    files_json_bytes = 2 + path_json_bytes - bool(files)
+    base_bytes = len(json.dumps(manifest_payload({}), separators=(",", ":")).encode("ascii"))
+    return {"files": files, "entries": entries, "bytes": total_bytes,
+            "estimated_manifest_bytes": base_bytes - 2 + files_json_bytes,
+            "file_limit": manifest_module.MAX_MODEL_FILES,
+            "entry_limit": manifest_module.MAX_MODEL_DIRECTORY_ENTRIES,
+            "manifest_byte_limit": manifest_module.MAX_MODEL_MANIFEST_BYTES}
+
+
+def distribution_record_counts(root):
+    """Report public package counts, never individual installed machine paths."""
+    prefix = root / "runtime"
+    site = prefix / "lib" / "python3.11" / "site-packages"
+    counts = {}
+    total_rows = 0
+    csv.field_size_limit(8192)
+    for number, record in enumerate(sorted(site.glob("*.dist-info/RECORD")), 1):
+        if number > 512:
+            raise ValueError("Runtime distribution inventory exceeds its diagnostic budget.")
+        declared = present = 0
+        with record.open(encoding="utf-8", newline="") as stream:
+            for row in csv.reader(stream):
+                total_rows += 1
+                if total_rows > 262144 or len(row) != 3:
+                    raise ValueError("Runtime distribution records exceed their diagnostic budget.")
+                declared += 1
+                path = (site / row[0]).resolve()
+                if not path.is_relative_to(prefix):
+                    raise ValueError("A distribution record escapes the reviewed runtime.")
+                present += path.is_file()
+        counts[record.parent.name.removesuffix(".dist-info")] = {
+            "declared_record_rows": declared, "present_files": present}
+    return counts
+
+
+def remove_redundant_bytecode(prefix):
+    """Remove only cache files whose corresponding Python source still exists."""
+    count = removed_bytes = 0
+    for path in prefix.rglob("*.pyc"):
+        try:
+            source = Path(importlib.util.source_from_cache(str(path)))
+        except ValueError:
+            source = path.with_suffix(".py")
+        if source.is_file() and source.is_relative_to(prefix):
+            removed_bytes += path.stat().st_size
+            path.unlink()
+            count += 1
+    for directory in sorted(prefix.rglob("__pycache__"), key=lambda path: len(path.parts), reverse=True):
+        try:
+            directory.rmdir()  # only empty cache directories, never modules/tests
+        except OSError:
+            pass
+    return {"removed_redundant_bytecode_files": count, "removed_bytes": removed_bytes}
+
+
 def source_modules(args):
     source = args.source_root / "src"
     sys.path.insert(0, str(source))
@@ -166,7 +249,7 @@ def capture_worker(python, code, request, *, root, env, timeout):
 def prepare_runtime(args):
     if sys.version_info[:2] != (3, 11) or sys.platform != "linux":
         raise ValueError("This candidate runtime requires Linux CPython 3.11.")
-    source_modules(args)  # Refuse the known manifest defect before any install.
+    model_manifest, _ = source_modules(args)  # Refuse the known defect before any install.
     args.root.parent.mkdir(parents=True, exist_ok=True)
     if shutil.disk_usage(args.root.parent).free < 10 * GIB:
         raise OSError("Qualification needs at least 10 GiB free before installation.")
@@ -218,6 +301,12 @@ def prepare_runtime(args):
                 raise ValueError("A runtime link materialization destination already exists.")
             shutil.copy2(target, temporary)
             os.replace(temporary, entry)
+    emit({"stage": "runtime_inventory_before_bytecode_cleanup",
+          **measure_inventory(args.root, model_manifest)})
+    cleaned = remove_redundant_bytecode(args.root / "runtime")
+    emit({"stage": "runtime_inventory_after_bytecode_cleanup", **cleaned,
+          **measure_inventory(args.root, model_manifest),
+          "distribution_record_counts": distribution_record_counts(args.root)})
     emit({"stage": "runtime_installed", "elapsed_seconds": round(time.monotonic() - started, 3),
           "actual_musicgen_inference": "NOT_RUN"})
 
@@ -258,20 +347,18 @@ print(json.dumps({'stage':'audited_real_framework_imports', 'python':sys.version
 '''
     print(capture_worker(runtime_python(args.root), probe, {"root": str(args.root)}, root=args.root,
                          env=environment(args.root, model_manifest), timeout=120), end="")
-    entries = files = total_bytes = 0
-    for path in args.root.rglob("*"):
-        entries += 1
-        model_manifest.local_path(path)
-        if path.is_file():
-            files += 1
-            total_bytes += path.stat().st_size
-        # Leave room for the six model assets, their directories, cache ref,
-        # version marker and final manifest. Fail before any weight download.
-        if (entries + 32 > model_manifest.MAX_MODEL_DIRECTORY_ENTRIES or
-                files + 16 > model_manifest.MAX_MODEL_FILES):
-            raise ValueError("The real runtime exceeds the reviewed manifest capacity before model acquisition.")
-    emit({"stage": "runtime_inventory_preflight", "files": files, "entries": entries,
-          "bytes": total_bytes, "actual_musicgen_inference": "NOT_RUN"})
+    inventory = measure_inventory(args.root, model_manifest)
+    emit({"stage": "runtime_inventory_preflight", **inventory, "actual_musicgen_inference": "NOT_RUN"})
+    # Leave room for model/cache files; preserve all application acceptance caps.
+    failures = []
+    if inventory["entries"] + 32 > inventory["entry_limit"]:
+        failures.append(f'entries {inventory["entries"]} + 32 reserve > {inventory["entry_limit"]}')
+    if inventory["files"] + 16 > inventory["file_limit"]:
+        failures.append(f'files {inventory["files"]} + 16 reserve > {inventory["file_limit"]}')
+    if inventory["estimated_manifest_bytes"] + 8192 > inventory["manifest_byte_limit"]:
+        failures.append(f'JSON bytes {inventory["estimated_manifest_bytes"]} + 8192 reserve > {inventory["manifest_byte_limit"]}')
+    if failures:
+        raise ValueError("Real runtime exceeds the reviewed manifest capacity before model acquisition: " + "; ".join(failures))
 
 
 def asset_target(root, destination):
@@ -344,11 +431,7 @@ def make_manifest(args):
         relative = asset_target(args.root, destination).relative_to(args.root).as_posix()
         if files.get(relative) != expected:
             raise ValueError("An exact reviewed model asset is missing from the inventory.")
-    manifest = {"schema_version": 1, "engine": "musicgen", "model_id": "facebook/musicgen-small",
-                "revision": MODEL_REVISION, "license": "CC-BY-NC-4.0", "files": files,
-                "license_accepted": True, "trusted_weights": True, "personal_noncommercial": True,
-                "settings": {"source_revision": AUDIOCRAFT_REVISION, "device": "cpu",
-                             "python": "runtime/bin/python3.11", "timeout_seconds": 600}}
+    manifest = manifest_payload(files)
     target = args.root / "local-model.json"
     with target.open("x", encoding="utf-8") as output:
         json.dump(manifest, output, sort_keys=True, separators=(",", ":"))
