@@ -167,7 +167,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS or CSL JSON files through a preview. Select the records to keep;
+Import RIS, BibTeX or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -176,9 +176,17 @@ never automatically merged or deleted. Archive and restore retain their IDs.
 Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
-readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+readable reference list. The separate **Citation styles** action uses a real,
+pinned, offline CSL processor for APA 7, Chicago author-date or notes,
+MLA, Harvard, Vancouver/NLM and IEEE. It previews citations and bibliography
+entries and exports text, formatted HTML or an editable Word document. Author
+names stay literal by default; choose the explicit **Family, Given, optional
+Suffix** convention to format personal initials and inverted names. Braced
+organisation names remain literal. Formatting does not approve source text or
+convert a publication's page range into a verified quotation pinpoint.
+See [citation styles and BibTeX import](V3_BIBLIOGRAPHY.md) for the keyboard and
+headless workflows, supported metadata and current acceptance evidence.
+Entering a DOI or URL alone does not send a network request or download an attachment.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.

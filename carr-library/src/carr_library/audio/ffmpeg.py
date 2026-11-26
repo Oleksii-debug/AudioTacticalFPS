@@ -22,6 +22,68 @@ from .jobs import checked_directory, check_cancelled, publish_new, regular_file,
 from .models import Effect, FORMATS, SAMPLE_RATES, number
 
 
+_TOOL_SUFFIX = '.exe' if sys.platform == 'win32' else ''
+
+
+def find_local_tool(name):
+    """Find a native tool only in absolute PATH directories, excluding CWD.
+
+    Reuses the CARR11 lookup: imported books and project folders cannot select
+    an executable through Python 3.11's Windows current-directory precedence.
+    Explicit executable selections remain separate from this default lookup.
+    """
+    if name not in {'ffmpeg', 'ffprobe', 'ffplay', 'espeak-ng'}:
+        raise ValueError('Unsupported local audio tool.')
+    try:
+        current = Path.cwd().resolve(strict=True)
+    except OSError:
+        return None
+    for entry in os.environ.get('PATH', '').split(os.pathsep):
+        if len(entry) >= 2 and entry[0] == entry[-1] == '"':
+            entry = entry[1:-1]
+        if not entry or entry.startswith(('\\\\', '//')):
+            continue
+        directory = Path(entry)
+        if not directory.is_absolute():
+            continue
+        try:
+            directory = directory.resolve(strict=True)
+            if directory == current or not directory.is_dir():
+                continue
+            candidate = directory / (name + _TOOL_SUFFIX)
+            if not candidate.is_file() or not os.access(candidate, os.X_OK):
+                continue
+            candidate = candidate.resolve(strict=True)
+            if candidate.parent != current:
+                return candidate
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return None
+
+
+def select_audio_tool(name, explicit=None):
+    """Select explicit local input, verified bundle, then installed source tools.
+
+    Invalid explicit selections and damaged bundle seals propagate as errors;
+    they cannot silently fall back to a different executable. Discovery neither
+    downloads nor changes PATH, and bundled files are reverified for each use.
+    """
+    if name not in {'ffmpeg', 'ffprobe', 'ffplay'}:
+        raise ValueError('Unsupported bundled audio tool.')
+    if explicit is not None:
+        path = Path(explicit)
+        if str(path).startswith(('\\\\', '//')) or not path.is_absolute() or not path.is_file():
+            raise ValueError('Select an installed local audio executable using its absolute path.')
+        return path
+    from ..audio_runtime import bundled_audio_tools
+    tools = bundled_audio_tools()
+    if tools is not None:
+        if sys.platform != 'win32' or struct.calcsize('P') != 8:
+            raise RuntimeError('The bundled audio tools require native Windows x64.')
+        return Path(tools[name])
+    return find_local_tool(name)
+
+
 @dataclass(frozen=True)
 class WaveInfo:
     rate: int

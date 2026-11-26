@@ -10,13 +10,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import threading
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export
+from ..audio.ffmpeg import select_audio_tool
 
 
 def _plain(value, label, *, limit=2048, empty=False):
@@ -90,6 +90,7 @@ class StudioController:
                  ffmpeg=None, loading_budget=64 * 1024 * 1024):
         self.private_root = Path(private_root).absolute()
         self.registry = registry
+        self._automatic_registry = registry is None
         self.parser, self.renderer = parser, renderer
         self.ffmpeg = Path(ffmpeg) if ffmpeg else None
         self.loading_budget = loading_budget
@@ -145,6 +146,8 @@ class StudioController:
                 raise ValueError('The selected FFmpeg executable does not exist.')
             values['ffmpeg'] = candidate
         for key, value in values.items():
+            if key == 'ffmpeg' and self.ffmpeg != value and self._automatic_registry:
+                self.registry = None
             if getattr(self, key) != value and key in ('voice', 'language'):
                 self.result = None
             setattr(self, key, value)
@@ -161,16 +164,25 @@ class StudioController:
                 raise ValueError('Choose an output folder without links or reparse points.')
         return candidate
 
+    def effective_ffmpeg(self):
+        selected = self.ffmpeg
+        if selected is None:
+            from ..audio.engine_settings import load_settings
+            selected = load_settings(self.private_root).ffmpeg
+        return select_audio_tool('ffmpeg', selected)
+
     def _registry(self):
+        selected = self.effective_ffmpeg()
         if self.registry is None:
-            from ..audio.engines import default_registry
-            self.registry = default_registry(ffmpeg=self.ffmpeg)
+            from ..audio.engine_settings import configured_registry
+            self.registry = configured_registry(self.private_root, ffmpeg=selected)
         return self.registry
 
     def voices(self, *, reload=False):
         if reload:
-            from ..audio.engines import default_registry
-            self.registry = default_registry(ffmpeg=self.ffmpeg)
+            from ..audio.engine_settings import configured_registry
+            self.registry = configured_registry(self.private_root, ffmpeg=self.effective_ffmpeg())
+            self._automatic_registry = True
         return tuple(_voice_dict(voice) for voice in self._registry().voices())
 
     def voice_status(self):
@@ -316,7 +328,7 @@ class StudioController:
             if self.output_dir is None:
                 raise ValueError('Choose the audio output folder first.')
             folder = self._output_folder(self.output_dir)
-            ffmpeg = self.ffmpeg or (Path(shutil.which('ffmpeg')) if shutil.which('ffmpeg') else None)
+            ffmpeg = self.effective_ffmpeg()
             if ffmpeg is None or not ffmpeg.is_file():
                 raise ValueError('Install a reviewed local FFmpeg build or choose its executable in Production.')
             renderer = self.renderer
@@ -363,7 +375,7 @@ class LocalPlayback:
             winsound.PlaySound(str(selected), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
             self.windows = True
         else:
-            player = shutil.which('ffplay')
+            player = select_audio_tool('ffplay')
             if player is None:
                 raise ValueError('Local playback is unavailable. Open the exported WAV in your audio player.')
             self.process = subprocess.Popen([player, '-nodisp', '-autoexit', '-loglevel', 'error',
@@ -480,7 +492,7 @@ class AudioStudioDialog:
         self._button(production_page, output_row, 'Choose output folder', self.choose_output)
         self._button(production_page, output_row, 'Choose FFmpeg executable', self.choose_ffmpeg)
         prod_layout.Add(output_row, 0, wx.ALL, 5)
-        self.runtime = wx.StaticText(production_page, label='FFmpeg: ' + str(controller.ffmpeg or shutil.which('ffmpeg') or 'not found'))
+        self.runtime = wx.StaticText(production_page, label='FFmpeg: ' + str(controller.effective_ffmpeg() or 'not found'))
         self.runtime.SetName('Local FFmpeg runtime path')
         prod_layout.Add(self.runtime, 0, wx.ALL, 5)
         self.plan_text = wx.TextCtrl(production_page, style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -1112,5 +1124,7 @@ def install_audio_studio_actions(frame):
         item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, handler, item)
     frame.menu_bar.Append(menu, 'A&udio')
+    from .voice_reader import install_voice_reader_actions
+    install_voice_reader_actions(frame, menu)
     frame.audio_studio_actions = actions
     return actions

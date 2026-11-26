@@ -299,6 +299,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         # Reserve a fresh destination; never overwrite an existing installation.

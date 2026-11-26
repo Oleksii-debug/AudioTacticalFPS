@@ -66,11 +66,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run provider safety, source integrity and audio recovery regressions
         run: |
-          python -m pytest -q tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_audio_cli.py --import-mode=importlib
+          python -m pytest -q tests/audio tests/speech tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_audio_cli.py --import-mode=importlib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify real offline SAPI output, native controls and OS credential vault
         run: |
           python -I scripts/windows_audio_smoke.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify installed native live reading and exact recovery
+        run: |
+          python -I -B scripts/windows_live_reader_smoke.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify the installed library still works
         run: |

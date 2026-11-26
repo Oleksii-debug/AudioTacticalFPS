@@ -62,7 +62,7 @@ jobs:
           New-Item -ItemType Directory -Force 'ci-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -90,6 +90,13 @@ jobs:
           & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise the installed native OCR catalogue and model manager
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
       - name: Exercise native academic references and reading controls
         timeout-minutes: 3
         run: |
@@ -102,12 +109,22 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verify pinned production source dependencies
-        timeout-minutes: 3
+      - name: Retain core-only fallback and offline startup coverage
+        timeout-minutes: 5
         run: |
+          & $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_semantic_fallback_status.py tests/e2e/test_offline_startup.py 2>&1 | Tee-Object 'ci-results/core-fallback.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Match production dependencies before required source suites
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==47 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -126,6 +143,11 @@ jobs:
       - name: Run required integrated source workflows
         timeout-minutes: 25
         run: |
+          # Use the already verified real OCR engine and pinned model bytes for
+          # source fixtures. Keep explicit runtime selection unset so tests that
+          # exercise developer discovery can still verify its failure paths.
+          $env:PATH = "$env:CARR_CI_OCR_DIR;$env:PATH"
+          $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
@@ -136,6 +158,9 @@ jobs:
             'tests/e2e/test_import_batches.py',
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
+            'tests/ui/test_ocr_model_manager.py',
+            'tests/ui/test_ocr_selection.py',
+            'tests/ui/test_ocr_options.py',
             'tests/e2e/test_epub_import.py',
             'tests/extract/test_document_formats_text.py',
             'tests/extract/test_document_formats_xml.py',
@@ -160,12 +185,21 @@ jobs:
             'tests/ingest/test_worker_isolated_launch.py',
             'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
+            'tests/search/test_semantic_cache.py',
+            'tests/search/test_semantic_cache_boundary.py',
             'tests/e2e/test_source_file.py',
             'tests/e2e/test_export_destination.py',
             'tests/e2e/test_academic_document_export.py',
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
             'tests/extract/test_ocr_model_catalog.py',
+            'tests/extract/test_ocr_model_cli.py',
+            'tests/extract/test_ocr_model_store.py',
+            'tests/extract/test_managed_ocr.py',
+            'tests/extract/test_ocr_languages.py',
+            'tests/extract/test_ocr_runtime.py',
+            'tests/extract/test_runtime_identity.py',
+            'tests/e2e/test_managed_ocr_import.py',
             'tests/storage/test_library_backup.py',
             'tests/storage/test_library_backup_reading_state.py',
             'tests/storage/test_backup_v4_sidecars.py',
@@ -177,6 +211,12 @@ jobs:
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
+            'tests/research/test_bibtex_import.py',
+            'tests/citations/test_csl.py',
+            'tests/citations/test_bibliography_workbench.py',
+            'tests/ui/test_citation_styles_jobs.py',
+            'tests/reader/test_export_no_clobber.py',
+            'tests/ingest/test_import_replay_identity.py',
             'tests/e2e/test_academic_workflow.py',
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
@@ -269,10 +309,15 @@ jobs:
             'tests/e2e/test_search_deadline.py',
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/e2e/test_provider_transport_boundaries.py',
-            'tests/e2e/test_audio_cli.py'
+            'tests/e2e/test_audio_cli.py',
+            'tests/audio/test_engine_settings.py',
+            'tests/speech/test_live_reader.py',
+            'tests/speech/test_source.py',
+            'tests/speech/test_player.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 
       - name: Exercise native Import Center and durable batch workflow
         timeout-minutes: 3
@@ -485,6 +530,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_live_reader_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-live-reader.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # This probe imports wx first: hold the application's verified DLL
@@ -508,7 +555,7 @@ jobs:
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, pathlib, sys
+          import ctypes, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
@@ -516,6 +563,10 @@ jobs:
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
+          # Test-only command discovery is scoped to this installed-package child.
+          # Production calls bind the verified runtime and never mutate PATH.
+          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
+          os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
           import carr_library.acquisition.service, carr_library.acquisition.transport
@@ -545,7 +596,22 @@ jobs:
                             'tests/storage/test_backup_v4_sidecars.py',
                             'tests/storage/test_backup_keyboard_drafts.py',
                             'tests/storage/test_library_backup_reading_state.py',
-                            'tests/e2e/test_provider_transport_boundaries.py']
+                            'tests/e2e/test_provider_transport_boundaries.py',
+                            'tests/extract/test_ocr_model_catalog.py',
+                            'tests/extract/test_ocr_model_cli.py',
+                            'tests/extract/test_ocr_model_store.py',
+                            'tests/extract/test_managed_ocr.py',
+                            'tests/e2e/test_managed_ocr_import.py',
+                            'tests/extract/test_ocr_languages.py',
+                            'tests/audio/test_engine_settings.py',
+                            'tests/speech/test_live_reader.py',
+                            'tests/speech/test_source.py',
+                            'tests/speech/test_player.py',
+                            'tests/research/test_bibtex_import.py',
+                            'tests/citations/test_csl.py',
+                            'tests/citations/test_bibliography_workbench.py',
+                            'tests/reader/test_export_no_clobber.py',
+                            'tests/storage/test_backup_publication_recovery.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)

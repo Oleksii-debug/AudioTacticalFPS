@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import queue
 import re
-import shutil
 import signal
 import stat
 import subprocess
@@ -26,6 +25,7 @@ import wave
 
 from .model_manifest import (LocalModelManifest, ModelManifestError, digest_file,
                              local_path, offline_environment, read_json)
+from .ffmpeg import find_local_tool, select_audio_tool
 
 
 ADAPTER_VERSION = 'local-speech-1'
@@ -743,14 +743,18 @@ def default_registry(*, dordiai_manifest=None, piper_executable=None, piper_mani
                 engines.append(SAPI5Engine(binary, engine_id=identity))
     else:
         notices.append({'engine': 'sapi5', 'available': False, 'reason': 'SAPI 5 requires Windows.'})
-    espeak = shutil.which('espeak-ng')
+    espeak = find_local_tool('espeak-ng')
     if espeak:
         engines.append(ESpeakEngine(Path(espeak).resolve()))
     else:
         notices.append({'engine': 'espeak-ng', 'available': False, 'reason': 'eSpeak NG is not installed.'})
-    selected_ffmpeg = ffmpeg or shutil.which('ffmpeg')
+    selected_ffmpeg = select_audio_tool('ffmpeg', ffmpeg)
     if selected_ffmpeg:
-        engines.append(FliteEngine(Path(selected_ffmpeg).resolve()))
+        try:
+            engines.append(FliteEngine(Path(selected_ffmpeg).resolve()))
+        except (EngineUnavailable, OSError, ValueError, RuntimeError):
+            notices.append({'engine': 'flite', 'available': False,
+                            'reason': 'The installed FFmpeg build has no usable Flite voices.'})
     if dordiai_manifest is not None:
         engines.append(DordiaiVoicesEngine(dordiai_manifest))
     else:

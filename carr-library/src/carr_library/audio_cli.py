@@ -2,7 +2,6 @@
 from dataclasses import asdict
 import json
 from pathlib import Path
-import shutil
 import sys
 
 
@@ -43,11 +42,13 @@ def validate_audio_arguments(args, parser):
 
 def run_audio(args):
     from .audio.engines import default_registry
+    from .audio.ffmpeg import select_audio_tool
     from .audio.models import ProductionPlan
     from .audio.production import parse_script, render_project
     from .reader.narration_text import decode_json, read_document
+    ffmpeg = select_audio_tool('ffmpeg', args.ffmpeg)
     registry = default_registry(dordiai_manifest=args.dordiai_manifest,
-        piper_executable=args.piper_executable, piper_manifest=args.piper_manifest)
+        piper_executable=args.piper_executable, piper_manifest=args.piper_manifest, ffmpeg=ffmpeg)
     if args.audio_voices:
         print(json.dumps({'voices': [asdict(v) for v in registry.voices()],
             'capabilities': registry.capabilities()}, ensure_ascii=False, indent=2))
@@ -66,7 +67,6 @@ def run_audio(args):
     if args.audio_preview:
         print(json.dumps(plan.to_dict(), ensure_ascii=False, indent=2))
         return 0
-    ffmpeg = args.ffmpeg or shutil.which('ffmpeg')
     if not ffmpeg:
         raise RuntimeError('Select an installed local FFmpeg executable with --ffmpeg.')
     result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
