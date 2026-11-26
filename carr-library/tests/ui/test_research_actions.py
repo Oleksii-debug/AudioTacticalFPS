@@ -506,3 +506,16 @@ def test_install_reuses_existing_menu_ids_and_registers_commands_once(monkeypatc
     assert len([label for menu in menus for label in menu.labels if label is not None]) == 6
     assert [identity for event, identity in unbound] == original_ids
     assert set(original_ids) <= {item.identity for _, _, item in bindings}
+
+
+def test_rename_preserves_distinct_topic_labels_and_unsaved_note(frame):
+    workspace, topic = frame.active
+    other = frame.library.create_topic(workspace, 'Evidence')
+    frame.evidence.note.SetValue('Unsaved draft')
+    book = frame.book
+    ResearchActions(frame, Dialogs({'name': 'Renamed', 'description': ''})).rename_or_describe_library()
+    assert len(frame.choice.items) == len(set(frame.choice.items)) == len(frame.scopes)
+    assert (workspace, other) in frame.scopes
+    assert frame.scopes[frame.choice.selection] == (workspace, topic)
+    assert frame.book is book and frame.evidence.note.GetValue() == 'Unsaved draft'
+    assert frame.choice.focused
