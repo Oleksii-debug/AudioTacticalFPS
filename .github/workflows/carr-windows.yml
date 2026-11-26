@@ -119,11 +119,11 @@ jobs:
       - name: Match production dependencies before required source suites
         timeout-minutes: 10
         run: |
-          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock -r packaging/windows-sync-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==47 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; text='\n'.join(pathlib.Path(p).read_text() for p in ('packaging/windows-semantic-cp311.lock','packaging/windows-sync-cp311.lock')); pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',text,re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -155,6 +155,9 @@ jobs:
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
+            'tests/packaging/test_windows_profile.py',
+            'tests/packaging/test_native_launcher_bundle.py',
+            'tests/packaging/test_native_checks.py',
             'tests/e2e/test_offline_startup.py',
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',
@@ -286,6 +289,15 @@ jobs:
             'tests/reader/test_narration.py',
             'tests/ui/test_narration_editor.py',
             'tests/ui/test_productivity.py',
+            'tests/ui/test_command_registry.py',
+            'tests/storage/test_keyboard_preferences.py',
+            'tests/ui/test_keyboard_manager.py',
+            'tests/ui/test_keyboard_composition.py',
+            'tests/ui/test_reader_command_dispatch.py',
+            'tests/ui/test_reader_keymap_context.py',
+            'tests/storage/test_evidence_drafts.py',
+            'tests/storage/test_backup_keyboard_drafts.py',
+            'tests/ui/test_evidence_draft_recovery.py',
             'tests/storage/test_backup_reading_state.py',
             'tests/storage/test_backup_source_binding_review.py',
             'tests/storage/test_backup_v3_compatibility.py',
@@ -425,6 +437,22 @@ jobs:
           "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Locate the installed native launcher toolchain
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }
+          "CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile the private launch entry from this exact source
+        shell: cmd
+        timeout-minutes: 3
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "packaging\native-launcher\build_msvc.ps1" -OutputDirectory "%RUNNER_TEMP%\carr-integrated-launcher"
+          if errorlevel 1 exit /b %errorlevel%
+
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         timeout-minutes: 20
         run: |
@@ -434,7 +462,10 @@ jobs:
           $baseBundle = Join-Path $bundleWork 'base bundle'
           $bundle = Join-Path $bundleWork 'complete bundle'
           New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock -r packaging/windows-sync-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $profile = Join-Path $bundleWork 'complete-profile'
+          & $env:CARR_PYTHON packaging/compose_windows_profile.py --lock packaging/windows-semantic-cp311.lock --lock packaging/windows-sync-cp311.lock --wheelhouse $wheelhouse --output $profile | Tee-Object 'ci-results/full-profile.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -459,12 +490,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $env:CARR_AUDIO_RUNTIME --source-commit $sourceCommit --sbom packaging/windows-semantic-sbom.cdx.json --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          $launcher = Join-Path $env:RUNNER_TEMP 'carr-integrated-launcher'
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock "$profile/runtime.lock" --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $env:CARR_AUDIO_RUNTIME --launcher-dir $launcher --source-commit $sourceCommit --sbom "$profile/runtime-sbom.cdx.json" --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $manifest = Join-Path $bundle 'bundle-manifest.json'
-          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
+          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath "$profile/runtime-sbom.cdx.json").Hash.ToLowerInvariant()
           $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
           if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
           $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
@@ -479,7 +511,7 @@ jobs:
           New-Item -ItemType Directory -Force $testWheels | Out-Null
           & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'ResearchLibrary.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -503,6 +535,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report ci-results/installed-native-entry.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
@@ -520,7 +554,7 @@ jobs:
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert all(manifest[k] for k in ('bundled_model','bundled_ocr','bundled_native_runtime','bundled_audio','bundled_encryption','bundled_launcher')); assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path(sys.argv[2]).read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',encryption='INCLUDED',native_entry='INCLUDED',nvda='NOT_RUN')))" $bundle "$profile/runtime-sbom.cdx.json" | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -536,6 +570,7 @@ jobs:
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
+          from carr_library.audio.runtime import activate_bundled_audio_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
@@ -546,6 +581,9 @@ jobs:
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
+          os.environ['CARR_FFMPEG'] = str(root / 'audio-runtime' / 'bin' / 'ffmpeg.exe')
+          audio_handle = activate_bundled_audio_runtime(bundle_root=root)
+          assert audio_handle is not None
           import carr_library.acquisition.service, carr_library.acquisition.transport
           import carr_library.acquisition.providers, carr_library.ui.acquisition_dialog
           for component in (carr_library.acquisition.service, carr_library.acquisition.transport,
@@ -572,7 +610,7 @@ jobs:
                             'tests/extract/test_managed_ocr.py',
                             'tests/e2e/test_managed_ocr_import.py',
                             'tests/extract/test_ocr_identifiers.py',
-                            'tests/ui/test_ocr_profile_options.py']
+                            'tests/ui/test_ocr_profile_options.py', 'tests/sync']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
@@ -609,5 +647,88 @@ jobs:
         with:
           name: carr-windows-${{ github.sha }}-${{ github.run_attempt }}
           path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  keyboard-native:
+    name: Windows x64 / native commands and draft recovery
+    runs-on: windows-2022
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the pinned desktop and record the tested source
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-keyboard-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'keyboard-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'keyboard-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require contextual commands and recovery regressions
+        id: keyboard-regressions
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_keyboard_composition.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/storage/test_backup_keyboard_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native Main keyboard settings and command dispatch
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-keyboard-settings.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual contextual Reader key remapping
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native research-note draft recovery and explicit save
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve actual keyboard and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-keyboard-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/keyboard-results/
           if-no-files-found: warn
           retention-days: 7

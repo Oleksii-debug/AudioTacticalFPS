@@ -230,7 +230,7 @@ class NarrationActions:
 
 def install_productivity_actions(frame):
     """Install after old menu installers so their positional lookups stay valid."""
-    existing = getattr(frame, 'keyboard_actions', None)
+    existing = getattr(frame, 'narration_actions', None)
     if existing is not None:
         return existing
     import wx
@@ -255,16 +255,8 @@ def install_productivity_actions(frame):
         append(menu, 'New editable reading copy...', narration.new)
         append(menu, 'Open saved reading copy...', narration.reopen)
 
-    # Add all commands before collecting defaults; closures resolve the action
-    # object only when invoked after construction has completed.
-    options = wx.Menu()
-    append(options, '&Keyboard shortcuts...', lambda event: keyboard.change(event))
-    append(options, '&List current keyboard shortcuts...', lambda event: keyboard.show_list(event))
-    append(options, '&Restore default keyboard shortcuts...', lambda event: keyboard.reset(event))
-    append(options, '&Export keyboard shortcuts...', lambda event: keyboard.transfer(save=True))
-    append(options, '&Import keyboard shortcuts...', lambda event: keyboard.transfer(save=False))
-    frame.menu_bar.Append(options, '&Options')
-    keyboard = KeyboardActions(frame, collect_commands(frame.menu_bar))
-    frame.keyboard_actions, frame.narration_actions = keyboard, narration
-    keyboard.reload()
-    return keyboard
+    # The shared Main/Reader registry is installed after this File menu. Only
+    # that manager owns live accelerators; the legacy profile remains readable
+    # for an explicit, reviewed import and is never silently rewritten.
+    frame.narration_actions = narration
+    return narration

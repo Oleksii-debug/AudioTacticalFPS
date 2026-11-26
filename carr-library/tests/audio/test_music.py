@@ -10,13 +10,14 @@ import wave
 import pytest
 
 from carr_library.audio.engines import EngineUnavailable
+from carr_library.audio.runtime import available_tool
 from carr_library.audio.music import (_wave_frames, generate_music, music_capabilities,
                                       render_music)
 
 
 @pytest.fixture
 def ffmpeg():
-    executable = shutil.which('ffmpeg')
+    executable = available_tool('ffmpeg')
     if not executable:
         pytest.skip('Actual local music tests require FFmpeg.')
     return Path(executable).resolve()
@@ -24,6 +25,17 @@ def ffmpeg():
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_actual_graph_file_handles_unicode_spaces_and_cleans_temporary_input(tmp_path, ffmpeg):
+    folder = tmp_path / 'Музична сцена with spaces'
+    folder.mkdir()
+    output = folder / 'Готова музика.wav'
+    result = render_music(output, duration=1.25, mood='calm', tempo=90, seed=62, ffmpeg=ffmpeg)
+    assert result['frames'] == 60000
+    with wave.open(str(output), 'rb') as audio:
+        assert audio.getnframes() == 60000 and audio.getframerate() == 48000
+    assert not list(folder.rglob('*.filters'))
 
 
 def test_actual_procedural_score_is_exact_reproducible_audio_with_midi(tmp_path, ffmpeg):

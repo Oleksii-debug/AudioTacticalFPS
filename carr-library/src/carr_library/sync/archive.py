@@ -254,7 +254,15 @@ def _preflight(stream, size, cancelled):
             raise ValueError('Unsupported snapshot central-directory metadata.')
         if stream.tell() + name_size + extra_size > offset + directory_size:
             raise ValueError('Truncated snapshot central directory.')
-        stream.seek(name_size + extra_size, os.SEEK_CUR)
+        # ZipInfo normalizes backslashes on Windows and truncates names at NUL.
+        # Validate the exact wire name before that lossy interpretation occurs.
+        flags = struct.unpack_from('<H', header, 8)[0]
+        try:
+            wire_name = stream.read(name_size).decode('utf-8' if flags & 0x800 else 'cp437')
+        except UnicodeError as exc:
+            raise ValueError('Invalid snapshot archive filename encoding.') from exc
+        _name(wire_name[:-1] if wire_name.endswith('/') else wire_name)
+        stream.seek(extra_size, os.SEEK_CUR)
     if stream.tell() != offset + directory_size:
         raise ValueError('Snapshot directory count does not match its records.')
     stream.seek(0)

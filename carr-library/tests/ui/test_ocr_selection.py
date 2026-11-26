@@ -160,6 +160,8 @@ class Control:
     def SetName(self, value): self.name = value
     def SetSelection(self, index): self.selection = index
     def GetSelection(self): return self.selection
+    def SetItems(self, items):
+        self.items, self.selection, self.checked = list(items), -1, set()
     def Check(self, index, value=True):
         self.checked.add(index) if value else self.checked.discard(index)
     def IsChecked(self, index): return index in self.checked
@@ -184,7 +186,8 @@ def wx(monkeypatch):
                          MessageBox=Mock(), callbacks=[])
     names = ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'EXPAND',
              'ALL', 'ALIGN_RIGHT', 'TE_READONLY', 'TE_MULTILINE', 'ID_CANCEL', 'ID_OK',
-             'EVT_BUTTON', 'EVT_CLOSE', 'OK', 'ICON_ERROR', 'CANCEL', 'ICON_INFORMATION')
+             'EVT_BUTTON', 'EVT_CLOSE', 'OK', 'ICON_ERROR', 'CANCEL', 'ICON_INFORMATION',
+             'EVT_WINDOW_DESTROY', 'LEFT', 'RIGHT', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'ID_YES')
     for index, name in enumerate(names):
         setattr(wx, name, 1 << index)
     class Dialog(Control):
@@ -202,7 +205,7 @@ def wx(monkeypatch):
             return wx.missing_engine_result if wx.missing_engine_result is not None else wx.ID_CANCEL
     wx.Dialog, wx.SingleChoiceDialog = Dialog, ProfileChoice
     wx.MessageDialog = Question
-    for name in ('TextCtrl', 'CheckListBox', 'CheckBox', 'Button', 'StaticText', 'BoxSizer'):
+    for name in ('TextCtrl', 'CheckListBox', 'CheckBox', 'Choice', 'Button', 'StaticText', 'BoxSizer'):
         setattr(wx, name, Control)
     wx.CallAfter = lambda callback, *args: wx.callbacks.append(lambda: callback(*args))
     monkeypatch.setitem(sys.modules, 'wx', wx)
@@ -378,3 +381,279 @@ def test_inventory_dialog_runs_future_off_ui_thread_and_can_cancel(wx, monkeypat
     wx.on_show = cancel
     assert selection._discover_with_dialog(None) is None
     assert wx.dialogs[-1].destroyed
+
+
+@pytest.fixture
+def managed_presets(tmp_path, monkeypatch):
+    """Real local store and checked synthetic model bytes; no model download."""
+    from hashlib import sha1
+    from carr_library.extract import model_catalog as catalogue
+    from carr_library.extract import ocr_model_store as store_module
+    from carr_library.extract.ocr_languages import store_preset, load_presets
+    library = tmp_path / 'library'
+    library.mkdir()
+    source = tmp_path / 'chosen-models'
+    source.mkdir()
+    rows = []
+    for identifier in ('eng', 'ukr', 'script/Latin', 'osd'):
+        raw = ('Explicit synthetic model ' + identifier + '\n').encode() * 13
+        relative = identifier + '.traineddata'
+        path = source / relative
+        path.parent.mkdir(exist_ok=True, parents=True)
+        path.write_bytes(raw)
+        kind = 'script' if identifier.startswith('script/') else 'auxiliary' if identifier == 'osd' else 'language'
+        blob = sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+        rows.append(catalogue.Model(identifier, identifier, kind, 'fast',
+            catalogue.REVISIONS['fast'], len(raw), blob, relative))
+    monkeypatch.setattr(store_module, 'models', lambda profile: tuple(replace(row, profile=profile,
+        revision=catalogue.REVISIONS[profile]) for row in rows))
+    monkeypatch.setattr(store_module, 'catalogue_sha256', lambda: 'b' * 64)
+    monkeypatch.setattr(store_module, 'license_bytes', lambda profile: b'Synthetic license for model fixture only.\n')
+    store = store_module.OcrModelStore(tmp_path / 'managed-models')
+    store.install('best', source, ('eng', 'ukr', 'script/Latin', 'osd'))
+    store.install('fast', source, ('eng', 'ukr'))
+    monkeypatch.setenv('CARR_OCR_MODELS_DIR', str(store.root))
+    config = Config(languages='ukr+script/Latin+eng', model_profile='best', orientation=True)
+    store_preset(library, 'Best ordered', config)
+    return SimpleNamespace(root=library, store=store, config=config, row=load_presets(library)[0])
+
+
+def test_managed_preset_checks_real_model_bytes_without_installing_or_running_system_ocr(managed_presets, monkeypatch):
+    fixture = managed_presets
+    def contents():
+        return {path: path.read_bytes() for path in fixture.store.root.rglob('*') if path.is_file()}
+    before = contents()
+    monkeypatch.setattr(selection, 'discover_installed_models', Mock(side_effect=AssertionError('No system inventory for Best')))
+    monkeypatch.setattr(type(fixture.store), 'install', Mock(side_effect=AssertionError('Applying never installs models')))
+    initial = Config(dpi=144, timeout=77, max_pixels=123456)
+    result, available = selection.verify_saved_preset(fixture.root, fixture.row, initial=initial)
+    assert result == replace(initial, languages=fixture.config.languages, model_profile='best', orientation=True)
+    assert {'eng', 'ukr', 'script/Latin', 'osd'} == set(available)
+    assert contents() == before
+
+
+@pytest.mark.parametrize('failure', ['changed', 'missing', 'missing-license'])
+def test_saved_preset_never_trusts_only_managed_manifest_inventory(managed_presets, failure):
+    fixture = managed_presets
+    directory = fixture.store._profile('best')
+    target = directory / ('LICENSE' if failure == 'missing-license' else 'tessdata/ukr.traineddata')
+    if failure == 'changed':
+        raw = target.read_bytes()
+        target.write_bytes(b'x' * len(raw))
+    else:
+        target.unlink()
+    # The cheap manifest inventory still lists the model, but application fails.
+    assert 'ukr' in fixture.store.available('best')
+    with pytest.raises((ValueError, OSError)):
+        selection.verify_saved_preset(fixture.root, fixture.row)
+
+
+def test_orientation_requires_real_osd_in_the_saved_profile(managed_presets):
+    from carr_library.extract.ocr_languages import store_preset, load_presets
+    fixture = managed_presets
+    store_preset(fixture.root, 'Fast with OSD', Config(languages='eng', model_profile='fast', orientation=True))
+    selected = next(row for row in load_presets(fixture.root) if row['name'] == 'Fast with OSD')
+    with pytest.raises(ValueError, match='selected OCR languages and orientation'):
+        selection.verify_saved_preset(fixture.root, selected)
+
+
+def test_cancel_after_real_model_check_does_not_publish_a_preset_result(managed_presets, monkeypatch):
+    fixture = managed_presets
+    cancelled = Event()
+    original = type(fixture.store).select
+    def check_then_cancel(*args, **kwargs):
+        result = original(*args, **kwargs)
+        cancelled.set()
+        return result
+    monkeypatch.setattr(type(fixture.store), 'select', check_then_cancel)
+    with pytest.raises(InterruptedError):
+        selection.verify_saved_preset(fixture.root, fixture.row, cancelled=cancelled.is_set)
+
+
+def test_preset_change_during_model_check_rejects_the_old_selection(managed_presets, monkeypatch):
+    from carr_library.extract.ocr_languages import store_preset
+    fixture = managed_presets
+    original = type(fixture.store).select
+    def check_then_change(*args, **kwargs):
+        result = original(*args, **kwargs)
+        store_preset(fixture.root, fixture.row['name'], Config(model_profile='fast'), replace=True)
+        return result
+    monkeypatch.setattr(type(fixture.store), 'select', check_then_change)
+    with pytest.raises(ValueError, match='changed or was deleted'):
+        selection.verify_saved_preset(fixture.root, fixture.row)
+
+
+def test_legacy_preset_uses_fresh_actual_inventory_process_and_retains_file_bytes(monkeypatch, tmp_path):
+    import json
+    from carr_library.extract.ocr_languages import FILENAME, load_presets
+    row = dict(name='Legacy priority', languages='ukr+eng', orientation=True, model_policy='default')
+    raw = json.dumps(dict(version=1, presets=[row]), indent=4).encode() + b'\n'
+    (tmp_path / FILENAME).write_bytes(raw)
+    report = listing(('eng', 'ukr', 'osd'), str(tmp_path))
+    runtime, discover = runtime_program(monkeypatch, tmp_path, f'import sys; sys.stdout.buffer.write({report!r})')
+    result, available = selection.verify_saved_preset(tmp_path, load_presets(tmp_path)[0],
+        initial=Config(model_profile='best', dpi=144))
+    assert result == Config(languages='ukr+eng', orientation=True, model_profile='installed', dpi=144)
+    assert available == ('eng', 'ukr', 'osd') and runtime.assert_unchanged.called
+    assert (tmp_path / FILENAME).read_bytes() == raw
+
+
+def test_verified_saved_profile_updates_authoritative_controls_and_preserves_order(wx, managed_presets, monkeypatch):
+    fixture = managed_presets
+    parent = SimpleNamespace(library=SimpleNamespace(root=fixture.root))
+    invocations = []
+    def verify(parent, *, operation, status):
+        invocations.append(status)
+        return operation(cancelled=lambda: False)
+    monkeypatch.setattr(selection, '_discover_with_dialog', verify)
+    def choose(dialog):
+        assert dialog.presets.name and all(button.name for button in dialog.preset_buttons)
+        dialog.load_preset()
+        assert dialog.profile == 'best'
+        assert [row[0] for row in dialog.rows[:3]] == ['ukr', 'script/Latin', 'eng']
+        assert dialog.orientation.GetValue() and dialog.entries.focused
+        assert 'Profile: best' in dialog.status.value
+        dialog.accept()
+    wx.on_show = choose
+    initial = Config(languages='eng', dpi=150, timeout=83, max_pixels=123456)
+    result = selection._choose_languages(parent, 'installed', ('eng',), initial)
+    assert result == replace(initial, languages=fixture.config.languages, model_profile='best', orientation=True)
+    assert len(invocations) == 1
+
+
+@pytest.mark.parametrize('outcome', ['cancelled', 'corrupt', 'scope-change'])
+def test_failed_or_cancelled_load_keeps_primary_selection_unchanged(wx, managed_presets, monkeypatch, tmp_path, outcome):
+    fixture = managed_presets
+    parent = SimpleNamespace(library=SimpleNamespace(root=fixture.root))
+    if outcome == 'corrupt':
+        (fixture.store._profile('best') / 'tessdata/ukr.traineddata').write_bytes(b'changed')
+    def verify(parent_dialog, *, operation, status):
+        if outcome == 'cancelled':
+            return None
+        value = operation(cancelled=lambda: False)
+        if outcome == 'scope-change':
+            parent.library = SimpleNamespace(root=tmp_path)
+        return value
+    monkeypatch.setattr(selection, '_discover_with_dialog', verify)
+    def choose(dialog):
+        before = dialog.current_config()
+        old_rows = dialog.rows
+        dialog.load_preset()
+        assert dialog.profile == 'installed' and dialog.rows == old_rows
+        assert dialog.config_base == before
+        assert not dialog.orientation.GetValue()
+        dialog.EndModal(wx.ID_CANCEL)
+    wx.on_show = choose
+    assert selection._choose_languages(parent, 'installed', ('eng',), Config()) is None
+
+
+def preset_prompt(wx, name, *, on_show=lambda: None):
+    class Prompt(Control):
+        def ShowModal(self):
+            on_show()
+            return wx.ID_OK
+        def GetValue(self):
+            return name
+    wx.TextEntryDialog = Prompt
+
+
+def test_native_preset_save_replace_and_delete_require_explicit_confirmation(wx, tmp_path):
+    from carr_library.extract.ocr_languages import FILENAME, load_presets
+    parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path))
+    preset_prompt(wx, 'Saved priority')
+    def choose(dialog):
+        dialog.orientation.SetValue(True)
+        dialog.save_preset()
+        path = tmp_path / FILENAME
+        original = path.read_bytes()
+        row, = load_presets(tmp_path)
+        assert row['model_profile'] == 'fast' and row['languages'] == 'ukr+eng' and row['orientation']
+        dialog.orientation.SetValue(False)
+        dialog.save_preset()  # Default confirmation is Cancel.
+        assert path.read_bytes() == original
+        wx.missing_engine_result = wx.ID_YES
+        dialog.save_preset()
+        assert not load_presets(tmp_path)[0]['orientation']
+        retained = dialog.current_config()
+        wx.missing_engine_result = wx.ID_CANCEL
+        dialog.remove_preset()
+        assert len(load_presets(tmp_path)) == 1
+        wx.missing_engine_result = wx.ID_YES
+        dialog.remove_preset()
+        assert load_presets(tmp_path) == () and dialog.current_config() == retained
+        dialog.accept()
+    wx.on_show = choose
+    result = selection._choose_languages(parent, 'fast', ('eng', 'ukr', 'osd'), Config(languages='ukr+eng'))
+    assert result.model_profile == 'fast' and result.languages == 'ukr+eng'
+
+
+def test_scope_change_inside_name_prompt_cannot_save_to_original_or_new_folder(wx, tmp_path):
+    from carr_library.extract.ocr_languages import FILENAME
+    other = tmp_path / 'other'
+    other.mkdir()
+    parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path))
+    preset_prompt(wx, 'Must not save', on_show=lambda: setattr(parent, 'library', SimpleNamespace(root=other)))
+    def choose(dialog):
+        dialog.save_preset()
+        assert 'folder changed' in dialog.status.value
+        assert not (tmp_path / FILENAME).exists() and not (other / FILENAME).exists()
+        dialog.EndModal(wx.ID_CANCEL)
+    wx.on_show = choose
+    assert selection._choose_languages(parent, 'installed', ('eng',), Config()) is None
+
+
+def test_invalid_preset_file_preserves_manual_selection_and_exact_bytes(wx, tmp_path):
+    from carr_library.extract.ocr_languages import FILENAME
+    raw = b'{"version":99,"presets":[]}'
+    path = tmp_path / FILENAME
+    path.write_bytes(raw)
+    def choose(dialog):
+        assert 'Manual model selection remains available' in dialog.status.value
+        dialog.accept()
+    wx.on_show = choose
+    result = selection._choose_languages(None, 'installed', ('eng',), Config(), preset_root=tmp_path)
+    assert result == Config() and path.read_bytes() == raw
+
+
+def test_inventory_forced_destroy_with_pending_completion_ignores_dead_window(wx, monkeypatch):
+    pending = []
+    class Executor:
+        def __init__(self, **kwargs): pass
+        def submit(self, operation, **kwargs):
+            future = Future()
+            pending.append(future)
+            return future
+        def shutdown(self, **kwargs): pass
+    monkeypatch.setattr(selection, 'ThreadPoolExecutor', Executor)
+    def destroy(dialog):
+        dialog.on_destroy(SimpleNamespace(GetEventObject=lambda: dialog, Skip=lambda: None))
+        pending[0].set_result(('eng',))
+        while wx.callbacks:
+            wx.callbacks.pop(0)()
+        assert dialog.result is None and dialog.modal_result is None
+        assert dialog.cancelled.is_set() and not dialog.alive
+    wx.on_show = destroy
+    assert selection._discover_with_dialog(None) is None
+    # The external destroy event already owns destruction; no second Destroy call.
+    assert not wx.dialogs[-1].destroyed
+
+
+@pytest.mark.parametrize('legacy', [True, False])
+def test_full_backup_restores_preset_bytes_without_changing_profile_or_legacy_shape(tmp_path, legacy):
+    import json
+    from carr_library.application import LibraryApp
+    from carr_library.extract.ocr_languages import FILENAME, load_presets, store_preset
+    from carr_library.library_backup import create_backup, restore_backup
+    library = LibraryApp(tmp_path / 'library')
+    library.create_workspace('Preset backup')
+    if legacy:
+        row = dict(name='Old ordered', languages='ukr+eng', orientation=True, model_policy='default')
+        (library.root / FILENAME).write_bytes(json.dumps(dict(version=1, presets=[row]), indent=4).encode() + b'\n\n')
+    else:
+        store_preset(library.root, 'Best ordered', Config(languages='ukr+eng', model_profile='best', orientation=True))
+    raw = (library.root / FILENAME).read_bytes()
+    before = load_presets(library.root)
+    digest = create_backup(library, tmp_path / 'backup')
+    destination = restore_backup(tmp_path / 'backup', tmp_path / 'restored', digest)
+    assert (destination / FILENAME).read_bytes() == raw == (library.root / FILENAME).read_bytes()
+    assert load_presets(destination) == before

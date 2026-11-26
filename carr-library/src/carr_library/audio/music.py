@@ -217,9 +217,12 @@ def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total
                  f'volume={gain:.8f},apad=whole_len={frame_count},atrim=end_sample={frame_count}[music]')
     script = Path(path).with_suffix('.filters')
     try:
-        script.write_text(';\n'.join(graph), encoding='ascii')
+        filters = ';\n'.join(graph)
+        if len(filters) > 24000:
+            raise ValueError('The bounded music filter graph exceeds its size budget.')
+        script.write_text(filters, encoding='ascii')
         _run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-filter_complex_threads', '1',
-              '-filter_complex_script', script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
+              '-/filter_complex', script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
               '-c:a', 'pcm_s16le', '-rf64', 'auto', '-f', 'wav', '-n', path],
              timeout=max(120, frame_count / sample_rate * 10), cancelled=cancelled,
              env=offline_environment())

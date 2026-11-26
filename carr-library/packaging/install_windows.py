@@ -30,6 +30,20 @@ def verify(root, *, manifest_bytes=None):
                 "CheckInstallation.cmd", "README.txt"}
     if not expected.issubset(files) or not any(p.startswith("wheelhouse/") for p in files):
         raise ValueError("incomplete installation bundle")
+    launcher_files = {'ResearchLibrary.exe', 'launcher-build.json'}
+    launcher = manifest.get('bundled_launcher', False)
+    if type(launcher) is not bool:
+        raise ValueError('invalid native launcher flag')
+    if launcher:
+        if not manifest.get('bundled_python') or not launcher_files <= files.keys():
+            raise ValueError('incomplete native launcher bundle')
+    elif any(name in files or os.path.lexists(root / name) for name in launcher_files):
+        raise ValueError('unannounced native launcher files')
+    encryption = manifest.get('bundled_encryption', False)
+    if type(encryption) is not bool:
+        raise ValueError('invalid encrypted backup runtime flag')
+    if encryption and not any(name.startswith('wheelhouse/cryptography-') for name in files):
+        raise ValueError('encrypted backup runtime is missing from the wheel inventory')
     for name, digest in files.items():
         relative = PurePosixPath(name)
         if (relative.is_absolute() or ".." in relative.parts or "\\" in name
@@ -162,7 +176,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entry = 'ResearchLibrary.exe' if (root / 'ResearchLibrary.exe').is_file() else 'ResearchLibrary.cmd'
+    print(f"Installation complete. Open {entry}. Research data has not been changed.")
     return 0
 
 

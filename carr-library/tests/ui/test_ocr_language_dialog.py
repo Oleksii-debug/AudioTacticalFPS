@@ -108,6 +108,27 @@ def test_saved_preset_reopens_with_order_and_missing_models_cannot_replace_curre
     assert 'not installed' in dialog.status.value
 
 
+@pytest.mark.parametrize('profile', ['fast', 'best'])
+def test_legacy_dialog_never_downgrades_managed_preset_to_installed_models(dialog, profile):
+    store_preset(dialog.preset_root, 'Managed', Config(languages='ukr+eng', model_profile=profile, orientation=True))
+    dialog._presets()
+    dialog.presets.SetSelection(next(i for i, row in enumerate(dialog.preset_items) if row[2] == 'Managed'))
+    before = dialog.current_config()
+    dialog.apply_preset()
+    assert dialog.current_config() == before
+    assert 'current OCR model chooser' in dialog.status.value
+    assert dialog.status.focused
+
+
+@pytest.mark.parametrize('profile', ['fast', 'best'])
+def test_managed_initial_configuration_cannot_bypass_primary_chooser_via_legacy_api(dialog, profile):
+    dialog.initial = Config(model_profile=profile)
+    dialog.accept()
+    assert dialog.result is None
+    assert 'current OCR model chooser' in dialog.status.value
+    dialog.EndModal.assert_not_called()
+
+
 def test_async_discovery_disables_accept_until_main_thread_receives_verified_result(dialog):
     catalog = dialog.catalog
     dialog.rescan()

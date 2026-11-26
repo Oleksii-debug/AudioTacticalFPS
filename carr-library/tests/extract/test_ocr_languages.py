@@ -196,7 +196,7 @@ def test_presets_reopen_keep_order_and_require_explicit_replacement(tmp_path):
     models.store_preset(tmp_path, 'Французька й англійська', first)
     row, = models.load_presets(tmp_path)
     assert row == dict(name='Французька й англійська', languages='fra+eng',
-                       orientation=True, model_policy='default')
+                       orientation=True, model_policy='default', model_profile='installed')
     before = (tmp_path / models.FILENAME).read_bytes()
     with pytest.raises(FileExistsError):
         models.store_preset(tmp_path, row['name'], Config())
@@ -244,3 +244,48 @@ def test_linked_preset_file_is_not_read_or_overwritten(tmp_path):
 def test_invalid_or_unbounded_saved_preferences_fail_closed(raw):
     with pytest.raises(ValueError):
         models.validate_presets_bytes(raw)
+
+
+def test_legacy_preset_load_and_backup_validation_preserve_exact_original_bytes(tmp_path):
+    row = dict(name='Українська спочатку', languages='ukr+eng', model_policy='default', orientation=True)
+    raw = json.dumps(dict(version=1, presets=[row]), ensure_ascii=False, indent=3).encode('utf-8') + b'\n\n'
+    path = tmp_path / models.FILENAME
+    path.write_bytes(raw)
+    assert models.load_presets(tmp_path) == (row,)
+    assert models.validate_presets_bytes(raw) == dict(version=1, presets=[row])
+    assert path.read_bytes() == raw
+    assert not list(tmp_path.glob('.ocr-language-presets-*.tmp'))
+
+
+@pytest.mark.parametrize('profile', ['installed', 'fast', 'best'])
+def test_new_preset_retains_explicit_profile_orientation_and_priority(tmp_path, profile):
+    config = Config(languages='ukr+script/Latin+eng', model_profile=profile, orientation=True)
+    models.store_preset(tmp_path, 'Exact selection', config)
+    payload = json.loads((tmp_path / models.FILENAME).read_bytes())
+    assert payload['version'] == 2
+    row, = models.load_presets(tmp_path)
+    assert row['model_profile'] == profile and row['orientation'] is True
+    assert row['languages'] == config.languages
+
+
+def test_explicit_new_save_upgrades_legacy_shape_but_keeps_its_installed_meaning(tmp_path):
+    old = dict(name='Legacy', languages='ukr+eng', model_policy=POLICY, orientation=False)
+    path = tmp_path / models.FILENAME
+    path.write_text(json.dumps(dict(version=1, presets=[old])), encoding='utf-8')
+    models.store_preset(tmp_path, 'Best', Config(languages='ukr', model_profile='best'))
+    legacy, best = models.load_presets(tmp_path)
+    assert legacy == dict(old, model_profile='installed')
+    assert best['model_profile'] == 'best'
+    assert json.loads(path.read_bytes())['version'] == 2
+
+
+@pytest.mark.parametrize('version,profile,policy', [
+    (1, 'fast', 'default'), (2, None, 'default'), (2, 'auto-download', 'default'),
+    (2, [], 'default'), (2, 'best', POLICY),
+])
+def test_profile_schema_and_policy_cannot_be_silently_reinterpreted(version, profile, policy):
+    row = dict(name='Invalid', languages='eng', orientation=False, model_policy=policy)
+    if profile is not None:
+        row['model_profile'] = profile
+    with pytest.raises(ValueError):
+        models.validate_presets_bytes(json.dumps(dict(version=version, presets=[row])).encode())

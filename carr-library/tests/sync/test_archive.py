@@ -59,6 +59,25 @@ def test_rejects_unsafe_members_before_creating_destination(tmp_path, bad):
     assert not (tmp_path / 'output').exists()
 
 
+@pytest.mark.parametrize('bad', ['a\\b', 'a\x00b'])
+def test_wire_aliases_rejected_before_zipinfo_normalization(tmp_path, monkeypatch, bad):
+    path = tmp_path / 'wire-name.zip'
+    with ZipFile(path, 'w') as archive:
+        archive.writestr(module.INVENTORY, '{}')
+        entry = ZipInfo('placeholder')
+        entry.filename = bad
+        archive.writestr(entry, 'bad')
+    assert bad.encode() in path.read_bytes()
+
+    def no_zipfile_allocation(*args, **kwargs):
+        pytest.fail('Hostile wire names must be rejected before ZipInfo normalization.')
+
+    monkeypatch.setattr(module, 'ZipFile', no_zipfile_allocation)
+    with pytest.raises(ValueError, match='Unsafe snapshot archive path'):
+        module.unpack_archive(path, tmp_path / 'output')
+    assert not (tmp_path / 'output').exists()
+
+
 @pytest.mark.parametrize('members', [('Book', 'book'), ('É', 'E\u0301'), ('Books', 'books/one.txt')])
 def test_rejects_case_unicode_and_parent_alias_collisions(tmp_path, members):
     path = tmp_path / 'aliases.zip'

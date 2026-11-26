@@ -18,7 +18,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.audio.models import Line, ProductionPlan
 from carr_library.audio.narration_bridge import (load_saved_reading_snapshot,
-    saved_reading_copies, snapshot_reading_project)
+    saved_reading_copies, snapshot_reading_project, validate_source_reference)
 from carr_library.reader.narration import (NarrationStore, PronunciationRule,
     encode_project, new_project, revise, undo)
 from carr_library.reader.reading_desk import ReadingDesk
@@ -49,6 +49,54 @@ def load_selected(saved, row=None, **kwargs):
     row = row or select_saved(saved)
     return load_saved_reading_snapshot(saved.app.root, row.project_id, workspace=saved.workspace,
         expected_project_sha256=row.project_sha256, **kwargs)
+
+
+def test_reference_validator_accepts_actual_snapshot_and_later_audio_history(saved):
+    snapshot = load_selected(saved)
+    reference, draft = snapshot.source_reference(), snapshot.new_draft()
+    assert validate_source_reference(reference, draft) is None
+    draft.edit_text('A later audio-only revision.')
+    assert validate_source_reference(reference, draft) is None
+    draft.undo()
+    draft.undo()  # Undo the initial reading capture as well.
+    draft.edit_text('An explicit new branch starting from the immutable original.')
+    restored = type(draft).from_dict(draft.to_dict())
+    assert restored.text != snapshot.reading_text
+    assert validate_source_reference(reference, restored) is None
+
+
+def test_reference_validator_does_not_reopen_or_require_original_producer(saved):
+    snapshot = load_selected(saved)
+    reference, draft = snapshot.source_reference(), snapshot.new_draft()
+    (saved.app.root / 'narration-projects' / (saved.project.id + '.json')).unlink()
+    assert validate_source_reference(reference, draft) is None
+    independent = snapshot_reading_project(new_project('Independent authored text.'))
+    assert validate_source_reference(independent.source_reference(), independent.new_draft()) is None
+
+
+@pytest.mark.parametrize('field,value', [
+    ('kind', 'verified-original'), ('version', True), ('quotation_authority', True),
+    ('quotation_authority', 0), ('provenance', 'Source independently verified'),
+    ('reading_project_id', 'a' * 32), ('reading_revision', True), ('reading_revision', 0),
+    ('reading_revision', 999), ('reading_project_sha256', 'b' * 64),
+    ('original_sha256', 'c' * 64), ('reading_sha256', 'd' * 64),
+    ('reading_sha256', 'NOT A HASH'), ('source_location', {}),
+])
+def test_reference_validator_rejects_conflicting_provenance(saved, field, value):
+    snapshot = load_selected(saved)
+    reference = {**snapshot.source_reference(), field: value}
+    with pytest.raises(ValueError):
+        validate_source_reference(reference, snapshot.new_draft())
+
+
+def test_reference_validator_rejects_missing_extra_fields_and_location_text_mismatch(saved):
+    snapshot = load_selected(saved)
+    reference, draft = snapshot.source_reference(), snapshot.new_draft()
+    for altered in ({key: value for key, value in reference.items() if key != 'reading_sha256'},
+                    {**reference, 'command': 'anything'},
+                    {**reference, 'source_location': {**reference['source_location'], 'text_sha256': 'e' * 64}}):
+        with pytest.raises(ValueError):
+            validate_source_reference(altered, draft)
 
 
 def test_actual_reading_source_snapshot_audio_save_reopen_preserves_each_identity(saved, tmp_path):

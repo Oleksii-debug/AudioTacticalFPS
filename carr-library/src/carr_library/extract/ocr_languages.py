@@ -235,12 +235,15 @@ def validate_presets_bytes(raw):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise OcrLanguageError('The saved OCR presets are invalid.') from exc
     if (type(data) is not dict or set(data) != {'version', 'presets'}
-            or type(data['version']) is not int or data['version'] != 1
+            or type(data['version']) is not int or data['version'] not in (1, 2)
             or type(data['presets']) is not list or len(data['presets']) > MAX_PRESETS):
         raise OcrLanguageError('The saved OCR preset format is unsupported.')
     names = set()
     for item in data['presets']:
-        if type(item) is not dict or set(item) != {'name', 'languages', 'model_policy', 'orientation'}:
+        fields = {'name', 'languages', 'model_policy', 'orientation'}
+        if data['version'] == 2:
+            fields.add('model_profile')
+        if type(item) is not dict or set(item) != fields:
             raise OcrLanguageError('The saved OCR preset fields are invalid.')
         name = _name(item['name']).casefold()
         if name in names:
@@ -250,6 +253,13 @@ def validate_presets_bytes(raw):
         if (type(item['orientation']) is not bool or item['model_policy'] not in ('default', POLICY)
                 or (item['model_policy'] == POLICY and any(code not in MODELS for code in codes))):
             raise OcrLanguageError('The saved OCR preset settings are invalid.')
+        # Version 1 described the runtime-installed models. Reading it never
+        # rewrites its bytes or invents a managed profile. Version 2 preserves
+        # that distinction explicitly, including a deliberate Best selection.
+        profile = item.get('model_profile', 'installed')
+        if (profile not in ('installed', 'fast', 'best')
+                or profile == 'best' and item['model_policy'] == POLICY):
+            raise OcrLanguageError('The saved OCR preset model profile is invalid.')
     return data
 
 
@@ -278,7 +288,8 @@ def store_preset(root, name, config, *, replace=False):
     from ..ingest.writer_guard import exclusive_writer
     _name(name)
     item = {'name': name, 'languages': config.languages,
-            'orientation': config.orientation, 'model_policy': config.model_policy}
+            'orientation': config.orientation, 'model_policy': config.model_policy,
+            'model_profile': config.model_profile}
     with exclusive_writer(root) as base:
         presets = list(load_presets(base))
         existing = next((i for i, old in enumerate(presets)
@@ -304,7 +315,10 @@ def delete_preset(root, name):
 
 
 def _write_presets(root, presets):
-    raw = (json.dumps({'version': 1, 'presets': presets}, ensure_ascii=False,
+    # Only an explicit Save/Delete upgrades legacy rows. load_presets and the
+    # backup validator preserve both version-1 dictionaries and exact file bytes.
+    presets = [dict(row, model_profile=row.get('model_profile', 'installed')) for row in presets]
+    raw = (json.dumps({'version': 2, 'presets': presets}, ensure_ascii=False,
                       sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     validate_presets_bytes(raw)
     path = _preset_path(root)

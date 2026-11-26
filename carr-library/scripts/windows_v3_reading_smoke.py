@@ -19,7 +19,7 @@ def main():
     native_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
-    from carr_library.keybindings import KeybindingStore
+    from carr_library.keyboard_preferences import KeymapStore
     from carr_library.library_backup import restore_backup
     from carr_library.reader.narration import NarrationStore, new_project
     from carr_library.reader.reading_desk import ReadingDesk
@@ -44,6 +44,8 @@ def main():
             return False
 
     gui = ProbeApp(False)
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
 
     def pump(predicate, timeout=15):
         deadline = monotonic() + timeout
@@ -85,26 +87,28 @@ def main():
             check('File is the first Alt menu', frame.menu_bar.GetMenuLabel(0).replace('&', '') == 'File')
             check('Options and Reading remain accessible', frame.menu_bar.FindMenu('Options') >= 0
                   and frame.menu_bar.FindMenu('Reading') >= 0)
-            keyboard = frame.keyboard_actions
-            inventory = {binding.command.identity: binding.command.shortcut
-                         for binding in keyboard.bindings}
+            keyboard = frame.keyboard_commands
+            inventory = {identity: keyboard.shortcut(identity) for identity in keyboard.bindings}
+            check('one authoritative Main keyboard manager is installed',
+                  not hasattr(frame, 'keyboard_actions')
+                  and sum(frame.menu_bar.GetMenuLabel(i).replace('&', '') == 'Options'
+                          for i in range(frame.menu_bar.GetMenuCount())) == 1)
             expected = {
-                'File/Save current changes': 'Ctrl+S',
-                'File/Save all changes': 'Ctrl+Shift+S',
-                'Research/Build advanced query': 'Ctrl+Alt+Q',
-                'Research/Research Search Center': 'Ctrl+Alt+F',
-                'Academic/Compare sources in active topic': 'Ctrl+Alt+M',
-                'Academic/Academic library': 'Ctrl+Shift+B',
-                'Reading/Read selected book': 'Ctrl+R',
-                'Library/Read EPUB book': 'Ctrl+Shift+R',
+                'file.save': 'Ctrl+S',
+                'file.save_all': 'Ctrl+Shift+S',
+                'research.advanced_query': 'Ctrl+Alt+Q',
+                'research.search_center': 'Ctrl+Alt+F',
+                'academic.compare_sources': 'Ctrl+Alt+M',
+                'academic.open': 'Ctrl+Shift+B',
+                'reading.open': 'Ctrl+R',
+                'library.epub_reader': 'Ctrl+Shift+R',
             }
             check('native academic, search, reader and save menus compose',
                   all(inventory.get(name) == shortcut for name, shortcut in expected.items()))
             shortcuts = [value.casefold() for value in inventory.values() if value]
             check('complete native command inventory has unique shortcuts', len(shortcuts) == len(set(shortcuts)))
             print(json.dumps({'menu_inventory': inventory}, ensure_ascii=False, sort_keys=True), flush=True)
-            save_binding = next(binding for binding in keyboard.bindings
-                                if binding.command.identity == 'File/Save current changes')
+            save_binding = keyboard.bindings['file.save']
             check('main Save exposes Ctrl+S', save_binding.item.GetItemLabel().endswith('\tCtrl+S'))
             frame.evidence.note.SetValue('Saved through the native File command.')
             event = wx.CommandEvent(wx.EVT_MENU.typeId, save_binding.item.GetId())
@@ -112,19 +116,19 @@ def main():
             pump(lambda: not frame.working)
             check('File Save commits the selected evidence note',
                   library.evidence(workspace, topic)[0].note == 'Saved through the native File command.')
-            keyboard.save({save_binding.command.identity: 'Ctrl+Alt+S'})
+            keyboard.apply_overrides({'file.save': 'Ctrl+Alt+S'})
             check('shortcut change updates native menu', save_binding.item.GetItemLabel().endswith('\tCtrl+Alt+S'))
             check('shortcut persists after reopening preferences',
-                  KeybindingStore(library.root).load()[save_binding.command.identity] == 'Ctrl+Alt+S')
-            old_labels = tuple(binding.item.GetItemLabel() for binding in keyboard.bindings)
+                  KeymapStore(library.root / 'keyboard-shortcuts.json').load()['file.save'] == 'Ctrl+Alt+S')
+            old_labels = tuple(binding.item.GetItemLabel() for binding in keyboard.bindings.values())
             try:
-                keyboard.save({save_binding.command.identity: 'Ctrl+I'})
+                keyboard.apply_overrides({'file.save': 'Ctrl+I'})
             except ValueError:
                 pass
             else:
                 raise AssertionError('Conflicting shortcut was accepted.')
             check('conflicting key leaves native menu unchanged',
-                  tuple(binding.item.GetItemLabel() for binding in keyboard.bindings) == old_labels)
+                  tuple(binding.item.GetItemLabel() for binding in keyboard.bindings.values()) == old_labels)
 
             desk = ReadingDesk(library, workspace, imported['edition'])
             page = desk.page(1)
@@ -205,7 +209,8 @@ def main():
                   ReadingState(restored).resume(workspace, imported['edition']) == page.location
                   and len(ReadingState(restored).bookmarks(workspace, imported['edition'])) == 1)
             check('complete backup restores keyboard preferences',
-                  KeybindingStore(restored).load() == KeybindingStore(library.root).load())
+                  KeymapStore(restored / 'keyboard-shortcuts.json').load()
+                  == KeymapStore(library.root / 'keyboard-shortcuts.json').load())
         finally:
             if not frame.IsBeingDeleted():
                 frame.Close()

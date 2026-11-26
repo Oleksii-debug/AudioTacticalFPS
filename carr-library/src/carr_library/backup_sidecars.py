@@ -21,7 +21,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'ocr-language-presets.json')
+           'evidence-drafts.json', 'ocr-language-presets.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -64,7 +64,9 @@ def sidecar_limit(name):
     if name == 'keybindings.json':
         return _model('keybindings').MAX_BYTES
     if name == 'keyboard-shortcuts.json':
-        return _model('ui.keyboard_commands').MAX_BYTES
+        return _model('keyboard_preferences').MAX_BYTES
+    if name == 'evidence-drafts.json':
+        return _model('evidence_drafts').MAX_BYTES
     if name == 'ocr-language-presets.json':
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
@@ -124,7 +126,12 @@ def validate_sidecar(db, name, raw):
         elif name == 'keybindings.json':
             _model('keybindings').decode_preferences(raw)
         elif name == 'keyboard-shortcuts.json':
-            _model('ui.keyboard_commands').validate_keymap_document(raw)
+            _model('keyboard_preferences').validate_keymap(raw)
+        elif name == 'evidence-drafts.json':
+            # Recovery is private, uncommitted user text. Preserve structurally
+            # valid drafts, including stale ones; only the live evidence panel
+            # may apply one after fresh source and baseline verification.
+            _model('evidence_drafts').validate_evidence_drafts(raw)
         elif name == 'ocr-language-presets.json':
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name.startswith('narration-projects/'):

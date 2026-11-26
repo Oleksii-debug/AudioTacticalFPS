@@ -75,7 +75,11 @@ class OcrOptionsActions:
         index = self.profile.GetSelection()
         if index not in (0, 1):
             raise OcrLanguageError('Choose a model profile.')
-        config = replace(self.initial, languages='+'.join(self.selected_codes),
+        if self.initial.model_profile != 'installed':
+            raise OcrLanguageError('Use the current OCR model chooser to verify a managed model profile.')
+        languages = '+'.join(self.selected_codes)
+        split_languages(languages)
+        config = replace(self.initial, languages=languages,
                          orientation=self.orientation.GetValue(),
                          model_policy=('default', POLICY)[index])
         if self.catalog.integrity != 'unavailable':
@@ -118,6 +122,9 @@ class OcrOptionsActions:
             if self.busy or self.catalog is None or not 0 <= index < len(self.preset_items):
                 raise OcrLanguageError('Select a preset first.')
             label, settings, _ = self.preset_items[index]
+            if settings.get('model_profile', 'installed') != 'installed':
+                raise OcrLanguageError('This preset uses managed OCR models. '
+                    'Apply it in the current OCR model chooser so its profile is verified.')
             self.catalog.validate(settings['languages'], orientation=settings['orientation'],
                                   model_policy=settings['model_policy'])
             self.selected_codes = list(split_languages(settings['languages']))

@@ -497,7 +497,9 @@ class DesktopFrame(WorkspaceFrame):
         self.SetMinSize((760, 650))
         self._menus()
         from .productivity import install_productivity_actions
-        keyboard = install_productivity_actions(self)
+        from .keyboard_settings import install_keyboard_settings
+        install_productivity_actions(self)
+        keyboard = install_keyboard_settings(self)
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
@@ -505,8 +507,8 @@ class DesktopFrame(WorkspaceFrame):
             self.status.SetValue('Welcome. Choose Library, New library to begin. All books stay on this computer.')
         if getattr(library,'semantic_notice',None):
             self.report(library.semantic_notice)
-        if keyboard.notice:
-            self.report(keyboard.notice)
+        if keyboard.load_notice:
+            self.report(keyboard.load_notice)
 
     def ocr_language_models(self, event):
         if self.working:
@@ -744,13 +746,14 @@ class DesktopFrame(WorkspaceFrame):
         self._drop()
         self.library = candidate
         self.list_scopes = candidate.list_scopes
-        keyboard = getattr(self, 'keyboard_actions', None)
-        keyboard_notice = keyboard.reload() if keyboard is not None else ''
+        keyboard = getattr(self, 'keyboard_commands', None)
+        if keyboard is not None:
+            keyboard.change_root(candidate.root)
         self.refresh_scopes()
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
-        self.report(f'Opened library folder: {candidate.root}' + ('\n' + keyboard_notice if keyboard_notice else ''))
+        self.report(f'Opened library folder: {candidate.root}')
         return True
 
     def open_library_folder(self,event):
@@ -1158,14 +1161,18 @@ class DesktopFrame(WorkspaceFrame):
         add_selected_book_reference(self)
 
     def help(self, event):
+        manager = getattr(self, 'keyboard_commands', None)
+        current_keys = (manager.help_text() + '\n\nWorkflow guide and default keys:\n'
+                        if manager is not None else '')
         show_text(self, 'Keyboard guide',
+            current_keys +
             'Use Alt+F for File, Alt+O for Options, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS metadata and checks the catalog.\n'
             'Ctrl+S saves the current research note; Ctrl+Shift+S saves all main-window changes. '
             'Modal editors have their own Save and Save As commands.\n'
-            'Options, Keyboard shortcuts changes main-window keys and checks conflicts. '
-            'Options, List current keyboard shortcuts shows the active assignments; the keys below are defaults.\n'
+            'Options, Keyboard shortcuts changes Main and Reading Desk keys and checks conflicts. '
+            'Options, Find a command shows active assignments; the keys below are defaults.\n'
             'File, New reading copy opens an editable text project. File, Open saved reading copy reopens saved work. '
             'Inside the book reader, Create editable reading copy makes a separate copy of the current page or segment. '
             'Original source text and quotations stay unchanged.\n'
