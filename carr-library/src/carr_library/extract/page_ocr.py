@@ -12,6 +12,8 @@ import subprocess
 import tempfile
 import time
 
+from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
+
 
 @dataclass(frozen=True)
 class Config:
@@ -20,12 +22,21 @@ class Config:
     timeout: int = 30
     max_pixels: int = 20_000_000
     orientation: bool = False
+    model_policy: str = 'default'
 
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
         if not re.fullmatch(r'[A-Za-z0-9_]+(?:\+[A-Za-z0-9_]+)*', self.languages):
             raise ValueError('invalid language selection')
+        if self.model_policy not in ('default', POLICY):
+            raise ValueError('unknown OCR model policy')
+        if self.model_policy == POLICY:
+            selected = self.languages.split('+')
+            if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
+                raise ValueError('unsupported pinned OCR language')
+            if self.orientation:
+                raise ValueError('pinned OCR orientation is not yet supported')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 
@@ -110,11 +121,24 @@ def extract_page(asset, physical_index, config=Config()):
                         def run(args):
                             return subprocess.run(args, check=True, capture_output=True, timeout=remaining())
 
+                        model_args = []
+                        if config.model_policy == POLICY:
+                            try:
+                                report = run([exe, '--list-langs']).stdout.decode('utf-8')
+                                model_args, model_provenance = stage_pinned_models(
+                                    report, config.languages, Path(tmp) / 'verified-models', remaining)
+                            except (ValueError, OSError, subprocess.SubprocessError):
+                                result['status'] = 'review_required'
+                                result['warnings'].append('pinned_ocr_model_unavailable_or_invalid')
+                                return result
+                            provenance['ocr_model'] = model_provenance
+
                         def recognize(raster, name):
                             inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
                             raster.save(inp, dpi=(config.dpi, config.dpi))
                             run([exe, str(inp), str(out), '-l', config.languages,
-                                 '--dpi', str(config.dpi), '--psm', '3', 'txt', 'tsv'])
+                                 '--dpi', str(config.dpi), '--psm', '3', *model_args,
+                                 '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'])
                             return (out.with_suffix('.txt').read_bytes().decode('utf-8'),
                                     out.with_suffix('.tsv').read_bytes().decode('utf-8'))
 
