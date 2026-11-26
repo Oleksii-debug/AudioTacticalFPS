@@ -47,12 +47,16 @@ def _lexical_focus(raw, start, end, query, budget, check):
     """
     source = raw[start:end]
     normalized = normalize('NFC', source)
-    folded, raw_starts, raw_ends = _mapped(source, check)
-    normalized_folded, normalized_starts, normalized_ends = _mapped(normalized, check)
-    if folded != normalized_folded:
-        raise ValueError('Unsupported source normalization for excerpts.')
-    normalized_starts = {original: folded for folded, original in normalized_starts.items()}
-    normalized_ends = {original: folded for folded, original in normalized_ends.items()}
+    # ASCII is unchanged by NFC. Native highlight offsets already address
+    # the original slice; do not invert the literal engine's sparse maps.
+    ascii_source = source.isascii()
+    if not ascii_source:
+        folded, raw_starts, raw_ends = _mapped(source, check)
+        normalized_folded, normalized_starts, normalized_ends = _mapped(normalized, check)
+        if folded != normalized_folded:
+            raise ValueError('Unsupported source normalization for excerpts.')
+        normalized_starts = {original: folded for folded, original in normalized_starts.items()}
+        normalized_ends = {original: folded for folded, original in normalized_ends.items()}
     groups = _groups(query)
     marker = '\x1eCARR-' + sha256(normalized.encode('utf-8')).hexdigest()
     while marker in normalized:
@@ -88,11 +92,14 @@ def _lexical_focus(raw, start, end, query, budget, check):
                 if right < 0:
                     raise ValueError('Incomplete native excerpt highlight.')
                 b = a + right - text_start
-                try:
-                    source_start = raw_starts[normalized_starts[a]] + start
-                    source_end = raw_ends[normalized_ends[b]] + start
-                except KeyError as exc:
-                    raise ValueError('Native phrase boundary splits a source character cluster.') from exc
+                if ascii_source:
+                    source_start, source_end = start + a, start + b
+                else:
+                    try:
+                        source_start = raw_starts[normalized_starts[a]] + start
+                        source_end = raw_ends[normalized_ends[b]] + start
+                    except KeyError as exc:
+                        raise ValueError('Native phrase boundary splits a source character cluster.') from exc
                 yield source_start, source_end, group
                 cursor, offset = right + len(closing), b
 
