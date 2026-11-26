@@ -5,6 +5,7 @@ scope authorization, native PDF import, references and backup are production.
 No public endpoint or private source is contacted by this suite.
 """
 from dataclasses import replace
+import errno
 from hashlib import sha256
 import io
 import json
@@ -313,3 +314,41 @@ def test_unverified_access_claim_cannot_download(sample, tmp_path):
             app.acquire_doi_source(workspace, preview, 0, tmp_path / 'closed',
                 online_allowed=True, rights_confirmed=True)
     assert not transfers.downloads
+
+
+def test_download_publication_on_filesystem_without_hardlinks(sample, tmp_path, monkeypatch):
+    from carr_library.acquisition import service
+    app, workspace, transfers = sample
+    preview = lookup(app, workspace, oa=True)
+    def unsupported(*args, **kwargs):
+        raise OSError(errno.EOPNOTSUPP, 'Synthetic filesystem has no hard links')
+    monkeypatch.setattr(service.os, 'link', unsupported)
+    # RetainedAssets has a separate filesystem contract, so this case verifies
+    # completed download publication and its truthful import-recovery result.
+    monkeypatch.setattr(app, 'import_file', lambda *a, **k: {'state': 'quarantined'})
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'portable-destination',
+        online_allowed=True, rights_confirmed=True)
+    assert result.state == 'quarantined'
+    assert result.sha256 == sha256(result.path.read_bytes()).hexdigest()
+    assert result.receipt_path.is_file() and result.path.stat().st_nlink == 1
+    assert not (result.path.parent / '.acquisition-incomplete').exists()
+    assert not tuple(tmp_path.glob('.carr-acquire-*'))
+
+
+def test_copy_publication_fallback_never_overwrites_and_cancels_cleanly(tmp_path, monkeypatch):
+    from carr_library.acquisition import service
+    source = tmp_path / 'source'
+    source.write_bytes(b'A' * 200000)
+    target = tmp_path / 'target'
+    def unsupported(*args, **kwargs):
+        raise OSError(errno.EOPNOTSUPP, 'Synthetic filesystem has no hard links')
+    monkeypatch.setattr(service.os, 'link', unsupported)
+    target.write_bytes(b'EXISTING')
+    with pytest.raises(FileExistsError):
+        service._publish_file(source, target, lambda: False)
+    assert target.read_bytes() == b'EXISTING'
+    target.unlink()
+    checks = [False, True]
+    with pytest.raises(InterruptedError):
+        service._publish_file(source, target, lambda: checks.pop(0))
+    assert not target.exists() and source.read_bytes() == b'A' * 200000

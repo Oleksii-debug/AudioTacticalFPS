@@ -346,6 +346,37 @@ def test_request_budget_is_shared_across_transfers_and_denies_before_next_dns():
     assert len(boundary.resolutions) == len(boundary.opens) == 12
 
 
+def test_actual_worker_bootstraps_from_active_package_without_network_or_payload(tmp_path):
+    """Exercise the installed script itself, including its isolated imports."""
+    import subprocess
+    from carr_library.acquisition import transport as module
+
+    worker = Path(module.__file__).resolve().with_name('network_worker.py')
+    assert worker.is_file()
+    result = subprocess.run([sys.executable, '-I', '-B', str(worker)],
+        input=b'{}', stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cwd=tmp_path, timeout=10, check=False, close_fds=True,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    assert result.returncode == 1 and result.stderr == b''
+    assert 0 < len(result.stdout) <= 32768
+    assert json.loads(result.stdout) == {'ok': False, 'error': 'transfer', 'requests': 0}
+    assert tuple(tmp_path.iterdir()) == ()
+
+
+def test_default_pinned_tls_context_requires_certificate_and_hostname_verification():
+    """Construct the real TLS context without opening a socket or resolving DNS."""
+    import ssl
+    from carr_library.acquisition import transport as module
+
+    connection = module._PinnedHTTPSConnection(HOST, (PUBLIC,), timeout=1.0)
+    try:
+        assert isinstance(connection._context, ssl.SSLContext)
+        assert connection._context.verify_mode == ssl.CERT_REQUIRED
+        assert connection._context.check_hostname is True
+    finally:
+        connection.close()
+
+
 @pytest.fixture
 def isolated_child(monkeypatch, tmp_path):
     """Substitute only the child command; real parent supervision is exercised."""

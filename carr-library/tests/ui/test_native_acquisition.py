@@ -15,6 +15,7 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import carr_library
 
 
 class Control:
@@ -94,7 +95,7 @@ def module(tmp_path):
     class TextEntryDialog(Popup): kind = 'name'
     class MessageDialog(Popup): kind = 'confirm'
     wx.DirDialog, wx.TextEntryDialog, wx.MessageDialog = DirDialog, TextEntryDialog, MessageDialog
-    ui = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    ui = Path(carr_library.__file__).resolve().parent / 'ui'
     with patch.dict(sys.modules, {'wx': wx}):
         helper = _load(ui / 'catalog_tools_dialog.py', 'carr_library.ui._acquisition_helpers')
         with patch.dict(sys.modules, {'carr_library.ui.catalog_tools_dialog': helper}):
@@ -769,7 +770,7 @@ def test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit(
 def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
     """No network: native event dispatch plus real worker/CallAfter completion."""
     wx = pytest.importorskip('wx')
-    ui = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    ui = Path(carr_library.__file__).resolve().parent / 'ui'
     module = _load(ui / 'acquisition_dialog.py', 'carr_library.ui._acquisition_native_probe')
     app = wx.GetApp() or wx.App(False)
     library = Library(tmp_path)

@@ -6,6 +6,7 @@ physical pages, a version match, or the right to redistribute a document.
 """
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+import errno
 from hashlib import sha256
 import json
 import os
@@ -79,6 +80,41 @@ def _sync_directory(path):
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+
+
+def _publish_file(source, target, cancelled):
+    """Exclusive publication, also on local filesystems without hard links."""
+    try:
+        os.link(source, target)
+        return
+    except OSError as exc:
+        if isinstance(exc, FileExistsError) or not (
+            exc.errno in {errno.EPERM, errno.EXDEV, errno.ENOSYS,
+                          getattr(errno, 'EOPNOTSUPP', errno.ENOSYS)}
+            or getattr(exc, 'winerror', None) in (1, 50, 1314)
+        ):
+            raise
+    # FAT/exFAT does not provide hard links. The new destination folder remains
+    # marked incomplete until every exclusive file is fully flushed. No rename
+    # or replace can overwrite a pre-existing name in this fallback.
+    created = False
+    try:
+        with target.open('xb') as output:
+            created = True
+            with source.open('rb') as stream:
+                while True:
+                    _cancel(cancelled)
+                    chunk = stream.read(65536)
+                    if not chunk:
+                        break
+                    output.write(chunk)
+            _cancel(cancelled)
+            output.flush()
+            os.fsync(output.fileno())
+    except BaseException:
+        if created:
+            target.unlink(missing_ok=True)
+        raise
 
 
 def _destination(value, library_root):
@@ -307,7 +343,7 @@ class AcquisitionService:
                     _cancel(cancelled)
                     output = target / name
                     # Hard-link publication fails if anyone created this name.
-                    os.link(staging / name, output)
+                    _publish_file(staging / name, output, cancelled)
                     owned.append(output)
                 self._scope(workspace, cancelled, collection)
                 _sync_directory(target)
