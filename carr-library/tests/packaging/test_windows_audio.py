@@ -1,5 +1,6 @@
 """Offline archive and installed-runtime checks using inert synthetic PE fixtures."""
 from hashlib import sha256
+import io
 import importlib.util
 import json
 import os
@@ -330,3 +331,55 @@ def test_changed_audio_inventory_between_verification_and_copy_is_rejected(packa
         builder.build_bundle(application, wheels, lock, output, audio_dir=root/runtime.DIRECTORY)
     assert not output.exists()
     assert not (package.root/'escape').exists()
+
+
+def test_explicit_download_retries_transport_failure_and_publishes_checked_bytes(package, monkeypatch):
+    payload = package.archive.read_bytes()
+    calls = []
+    class Opener:
+        def open(self, request, timeout):
+            calls.append((request.full_url, timeout))
+            if len(calls) == 1:
+                raise TimeoutError('Synthetic transport timeout')
+            return io.BytesIO(payload)
+    monkeypatch.setattr(prepare, 'build_opener', lambda *_: Opener())
+    monkeypatch.setattr(prepare.time, 'sleep', lambda *_: None)
+    target = package.root / 'downloaded.zip'
+    assert prepare.download_archive(target) == target
+    assert target.read_bytes() == payload
+    assert len(calls) == 2 and all(0 < timeout <= 30 for _, timeout in calls)
+    assert not list(package.root.glob('.carr-audio-download-*'))
+
+
+def test_explicit_download_stops_after_three_transport_failures(package, monkeypatch):
+    calls = []
+    class Opener:
+        def open(self, *args, **kwargs):
+            calls.append(True)
+            raise TimeoutError('Synthetic transport timeout')
+    monkeypatch.setattr(prepare, 'build_opener', lambda *_: Opener())
+    monkeypatch.setattr(prepare.time, 'sleep', lambda *_: None)
+    target = package.root / 'unpublished.zip'
+    with pytest.raises(TimeoutError):
+        prepare.download_archive(target)
+    assert len(calls) == 3 and not target.exists()
+    assert not list(package.root.glob('.carr-audio-download-*'))
+
+
+def test_explicit_download_never_retries_corruption_or_replaces_existing_file(package, monkeypatch):
+    payload = package.archive.read_bytes()
+    calls = []
+    class Opener:
+        def open(self, *args, **kwargs):
+            calls.append(True)
+            return io.BytesIO(bytes([payload[0] ^ 1]) + payload[1:])
+    monkeypatch.setattr(prepare, 'build_opener', lambda *_: Opener())
+    target = package.root / 'unpublished.zip'
+    with pytest.raises(ValueError, match='checksum'):
+        prepare.download_archive(target)
+    assert len(calls) == 1 and not target.exists()
+    target.write_bytes(b'Existing private archive')
+    with pytest.raises(FileExistsError):
+        prepare.download_archive(target)
+    assert len(calls) == 1 and target.read_bytes() == b'Existing private archive'
+    assert not list(package.root.glob('.carr-audio-download-*'))

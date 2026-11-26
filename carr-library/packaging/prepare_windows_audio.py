@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from http.client import IncompleteRead
 from hashlib import sha256
 import json
 import os
@@ -13,8 +14,10 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unicodedata
 from urllib.parse import urlsplit
+from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
 
@@ -130,21 +133,47 @@ class _ApprovedRedirects(HTTPRedirectHandler):
 def download_archive(destination):
     lock = load_lock()
     wanted = lock['archive']
+    destination = Path(destination).absolute()
+    _plain(destination.parent, directory=True)
+    if os.path.lexists(destination):
+        raise FileExistsError('Choose a new audio archive destination.')
     request = Request(wanted['url'], headers={'User-Agent': 'UniversalResearchLibrary-ExplicitRuntimeSetup/1'})
-    result, size = sha256(), 0
-    with build_opener(_ApprovedRedirects()).open(request, timeout=60) as response:
-        with Path(destination).open('xb') as stream:
-            for block in iter(lambda: response.read(1024 * 1024), b''):
-                size += len(block)
-                if size > wanted['size_bytes']:
-                    raise ValueError('Audio runtime download exceeded its pinned size.')
-                result.update(block)
-                stream.write(block)
-            stream.flush()
-            os.fsync(stream.fileno())
-    if size != wanted['size_bytes'] or result.hexdigest() != wanted['sha256']:
-        raise ValueError('Audio runtime download checksum or size does not match the publisher pin.')
-    return Path(destination)
+    deadline = time.monotonic() + 240
+    with tempfile.TemporaryDirectory(prefix='.carr-audio-download-', dir=destination.parent) as temporary:
+        for attempt in range(3):
+            staged = Path(temporary) / f'attempt-{attempt}.zip'
+            result, size = sha256(), 0
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('Audio runtime download exceeded its total deadline.')
+                with build_opener(_ApprovedRedirects()).open(request, timeout=min(30, remaining)) as response:
+                    with staged.open('xb') as stream:
+                        for block in iter(lambda: response.read(1024 * 1024), b''):
+                            if time.monotonic() >= deadline:
+                                raise TimeoutError('Audio runtime download exceeded its total deadline.')
+                            size += len(block)
+                            if size > wanted['size_bytes']:
+                                raise ValueError('Audio runtime download exceeded its pinned size.')
+                            result.update(block)
+                            stream.write(block)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                if size != wanted['size_bytes'] or result.hexdigest() != wanted['sha256']:
+                    raise ValueError('Audio runtime download checksum or size does not match the publisher pin.')
+                if os.name == 'nt':
+                    os.rename(staged, destination)
+                else:
+                    os.link(staged, destination)
+                return destination
+            except (TimeoutError, ConnectionError, URLError, IncompleteRead) as exc:
+                if isinstance(exc, HTTPError) and exc.code < 500 and exc.code != 429:
+                    raise
+                if attempt == 2 or time.monotonic() >= deadline:
+                    raise
+                staged.unlink(missing_ok=True)
+                time.sleep(min(2 ** attempt, max(0, deadline - time.monotonic())))
+    raise RuntimeError('Audio runtime download did not produce a verified archive.')
 
 
 def verify_runtime(directory, expected_manifest_sha256=None):

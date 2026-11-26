@@ -49,7 +49,11 @@ def test_rejects_unsafe_members_before_creating_destination(tmp_path, bad):
     path = tmp_path / 'unsafe.zip'
     with ZipFile(path, 'w') as z:
         z.writestr(module.INVENTORY, '{}')
-        z.writestr(bad, 'bad')
+        # ZipInfo's constructor normalizes backslashes on Windows. Set the
+        # wire filename afterwards so the hostile archive is identical there.
+        entry = ZipInfo('placeholder')
+        entry.filename = bad
+        z.writestr(entry, 'bad')
     with pytest.raises(ValueError):
         module.unpack_archive(path, tmp_path / 'output')
     assert not (tmp_path / 'output').exists()

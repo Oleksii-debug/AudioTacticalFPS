@@ -301,7 +301,11 @@ def test_safe_local_paths_and_regular_files(tmp_path, kind):
     with pytest.raises(crypto.CryptoError):
         crypto.encrypt_file(source, output, PASSWORD)
     assert (real / 'source').read_bytes() == before
-    if kind != 'destination_link':
+    if kind == 'reserved':
+        # Windows reports NUL.txt as a device even before this call.
+        # It must never become a real file in the destination directory.
+        assert not any(entry.name.casefold() == 'nul.txt' for entry in tmp_path.iterdir())
+    elif kind != 'destination_link':
         assert not output.exists()
     no_stage(tmp_path)
 
