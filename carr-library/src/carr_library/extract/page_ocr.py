@@ -128,7 +128,24 @@ def _native_visibility_warning(page, pdfium, max_pixels):
     try:
         left, bottom, right, top = page.get_bbox()
         objects = []
-        for obj in page.get_objects(filter=[raw.FPDF_PAGEOBJ_TEXT]):
+        text_bounds = []
+        # PDFium enumerates top-level page objects in painting order. Treat
+        # overlapping later non-text objects as review signals, not proof of
+        # occlusion: an outline or transparent fill can also overlap text.
+        for index, obj in enumerate(page.get_objects(max_depth=1)):
+            if index >= 256:
+                return 'native_visibility_work_limit'
+            if obj.type == raw.FPDF_PAGEOBJ_FORM:
+                return 'native_form_coordinates_unverified'
+            if obj.type != raw.FPDF_PAGEOBJ_TEXT:
+                if text_bounds:
+                    a, b, c, d = obj.get_bounds()
+                    if not all(math.isfinite(v) for v in (a, b, c, d)):
+                        return 'native_bounds_unverified'
+                    if any(a < x1 and c > x0 and b < y1 and d > y0
+                           for x0, y0, x1, y1 in text_bounds):
+                        return 'native_later_object_overlap'
+                continue
             if len(objects) >= 128:
                 return 'native_visibility_work_limit'
             objects.append(obj)
@@ -146,6 +163,9 @@ def _native_visibility_warning(page, pdfium, max_pixels):
                 return 'native_bounds_unverified'
             if x1 <= left or x0 >= right or y1 <= bottom or y0 >= top:
                 return 'native_text_outside_page'
+            if x0 < left or y0 < bottom or x1 > right or y1 > top:
+                return 'native_text_partially_outside_page'
+            text_bounds.append((x0, y0, x1, y1))
         if not objects:
             return 'native_text_objects_missing'
         width, height = page.get_size()
