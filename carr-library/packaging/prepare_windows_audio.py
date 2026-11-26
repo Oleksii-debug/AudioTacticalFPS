@@ -229,8 +229,13 @@ def prepare(lock_path, cache, output, *, download=False):
             seen, selected = set(), {}
             total = 0
             for member in members:
-                name = member.filename.rstrip('/') if member.is_dir() else member.filename
+                # ZipInfo.filename is normalized by the host and truncated at NUL.
+                # Validate the original central-directory name before trusting it.
+                raw_name = member.orig_filename
+                name = raw_name.removesuffix('/') if raw_name.endswith('/') else raw_name
                 relative(name)
+                if member.filename != raw_name:
+                    raise ValueError('Audio ZIP member path was normalized by the host.')
                 if name.casefold() in seen:
                     raise ValueError('Audio ZIP has duplicate or case-colliding paths.')
                 seen.add(name.casefold())

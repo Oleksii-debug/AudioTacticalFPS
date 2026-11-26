@@ -94,9 +94,12 @@ def test_archive_and_selected_member_tampering_do_not_publish(tmp_path):
         audio.prepare(path, cache, output)
 
 
-@pytest.mark.parametrize('bad', ['../outside', '/absolute', 'release/C:/escape', 'release\\escape'])
+@pytest.mark.parametrize('bad', ['../outside', '/absolute', 'release/C:/escape',
+    'release\\escape', 'release/nul\x00hidden'])
 def test_archive_paths_cannot_escape_even_with_a_matching_archive_hash(tmp_path, bad):
     path, cache, output, lock = fixture(tmp_path, extra=((bad, b'evil'),))
+    with zipfile.ZipFile(cache / lock['artifact']['filename']) as archive:
+        assert archive.infolist()[-1].orig_filename == bad
     with pytest.raises(ValueError, match='path'):
         audio.prepare(path, cache, output)
     assert not output.exists()

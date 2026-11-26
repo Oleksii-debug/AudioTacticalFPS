@@ -16,7 +16,7 @@ concurrency:
 jobs:
   native-studio:
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults:
       run:
         shell: pwsh
@@ -37,18 +37,20 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - name: Install exact application and native desktop dependencies
+        id: install-runtime
         run: |
           New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
+        id: audio-runtime
         run: |
           $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
           python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-v3-results/audio-runtime.json'
@@ -89,6 +91,7 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
       - name: Validate local services, DSP, integrity and provider permission boundaries
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
