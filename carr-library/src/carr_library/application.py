@@ -893,6 +893,25 @@ class LibraryApp:
             load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             return SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
 
+    def search_notebook(self, workspace, query, *, field='both', tag=None,
+                        include_archived=False, limit=50, timeout=60.0,
+                        cancelled=lambda: False):
+        from .research.notebook_search import search_notebook
+        with self._search_read(workspace, timeout, cancelled) as (db, budget):
+            load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
+            return search_notebook(SavedEvidenceStore(db, workspace, load, metadata), workspace, query,
+                field=field, tag=tag, include_archived=include_archived, limit=limit,
+                timeout=budget.remaining(), cancelled=budget.stopped)
+
+    def get_notebook_hit(self, workspace, topic, evidence, *, include_archived=False,
+                         timeout=60.0, cancelled=lambda: False):
+        from .research.notebook_search import get_notebook_hit
+        with self._search_read(workspace, timeout, cancelled) as (db, budget):
+            load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
+            return get_notebook_hit(SavedEvidenceStore(db, workspace, load, metadata), workspace,
+                topic, evidence, include_archived=include_archived,
+                timeout=budget.remaining(), cancelled=budget.stopped)
+
     def set_evidence_tags(self, workspace, topic, evidence, names):
         names = tuple(dict.fromkeys(_name(name) for name in names))
         if len(names) > 100:
@@ -1002,6 +1021,10 @@ class LibraryApp:
         with self.read(workspace) as db:
             load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             rows = SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
+            if format in ('docx', 'html'):
+                name, = db.execute('SELECT name FROM research_topic WHERE workspace=? AND id=?',
+                                   (workspace, topic)).fetchone()
+                return export_saved(workspace, topic, rows, load, format=format, title=name)
             return export_saved(workspace, topic, rows, load, format=format)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):
