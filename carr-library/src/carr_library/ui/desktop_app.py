@@ -582,6 +582,11 @@ class DesktopFrame(WorkspaceFrame):
             paths = dialog.GetPaths()
         finally:
             dialog.Destroy()
+        from .ocr_options import choose_ocr_config
+        config = choose_ocr_config(self, paths)
+        if config is None:
+            self.report('Import cancelled.')
+            return
         def done(rows):
             completed = sum(r['state'] == 'complete' for r in rows)
             self.report(f'{completed} of {len(rows)} books imported. ' +
@@ -591,7 +596,7 @@ class DesktopFrame(WorkspaceFrame):
             if self.book is not None:
                 self.book.GetPage(1).refresh()
         self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set), done)
+            cancelled=self.cancel_event.is_set, config=config), done)
 
     def add_text(self, event):
         try:

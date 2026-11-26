@@ -40,7 +40,7 @@ def _model_observations(exe, languages, remaining, run):
     return observed
 
 
-def orientation_candidate(image, config, exe, remaining, run, recognize):
+def orientation_candidate(image, config, exe, remaining, run, recognize, *, native_cli=False):
     """Never overwrite baseline OCR/boxes; use only remaining subprocess budget."""
     result = dict(status='not_run', algorithm='pr32-osd-v1-dpi', dpi=config.dpi,
                   min_confidence=15.0, source_size=image.size,
@@ -49,19 +49,21 @@ def orientation_candidate(image, config, exe, remaining, run, recognize):
                   traineddata_sha256_observed={})
     pinned = config.model_policy == POLICY
     try:
-        if pinned:
-            result['algorithm'] = 'pinned-native-osd-v1'
+        if pinned or native_cli:
+            result['algorithm'] = 'pinned-native-osd-v1' if pinned else 'portable-native-osd-v1'
             if not 0 < image.width * image.height <= config.max_pixels:
                 result['status'] = 'render_limit'
                 return result
             with tempfile.TemporaryDirectory() as tmp:
-                try:
-                    report = run([exe, '--list-langs']).stdout.decode('utf-8')
-                    args, model = stage_pinned_models(report, 'osd', Path(tmp) / 'verified osd', remaining, osd=True)
-                except (OSError, ValueError, subprocess.SubprocessError):
-                    result['status'] = 'pinned_osd_unavailable_or_invalid'
-                    return result
-                result['osd_model'] = model
+                args = ['--oem', '0']
+                if pinned:
+                    try:
+                        report = run([exe, '--list-langs']).stdout.decode('utf-8')
+                        args, model = stage_pinned_models(report, 'osd', Path(tmp) / 'verified osd', remaining, osd=True)
+                    except (OSError, ValueError, subprocess.SubprocessError):
+                        result['status'] = 'pinned_osd_unavailable_or_invalid'
+                        return result
+                    result['osd_model'] = model
                 inp = Path(tmp) / 'orientation.png'
                 image.save(inp, dpi=(config.dpi, config.dpi))
                 raw_osd = run([exe, str(inp), 'stdout', '-l', 'osd', '--psm', '0',

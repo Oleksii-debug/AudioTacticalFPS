@@ -10,6 +10,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
+from . import ocr_runtime
 
 
 class IdentityError(ValueError):
@@ -36,7 +37,8 @@ def _source_hashes():
     root = Path(__file__).parent
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py')
-    return {name: _hash(root / name) for name in names}
+    return {**{name: _hash(root / name) for name in names},
+            'ocr_runtime.py': _hash(ocr_runtime.__file__)}
 
 
 def runtime_identity(config):
@@ -48,10 +50,6 @@ def runtime_identity(config):
     """
     identity = dict(schema=1, config=asdict(config), source_sha256=_source_hashes(),
                     packages={p: metadata.version(p) for p in ('pypdf', 'pypdfium2', 'Pillow')})
-    exe = shutil.which('tesseract')
-    if exe is None:
-        identity['ocr'] = {'state': 'missing'}
-        return identity
     deadline = time.monotonic() + config.timeout
 
     def remaining():
@@ -60,11 +58,19 @@ def runtime_identity(config):
             raise IdentityError('OCR fingerprint timed out')
         return seconds
 
-    def run(arg):
-        return subprocess.run([exe, arg], check=True, capture_output=True,
-                              timeout=remaining()).stdout.decode('utf-8')
-
     try:
+        runtime = ocr_runtime.discover_ocr_runtime(config.languages, orientation=config.orientation,
+                                                  remaining=remaining)
+        if runtime is None:
+            identity['ocr'] = {'state': 'missing'}
+            return identity
+        exe = runtime.executable
+
+        def run(arg):
+            return subprocess.run(runtime.command([exe, arg]), check=True, capture_output=True,
+                                  timeout=remaining(), cwd=runtime.root,
+                                  creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout.decode('utf-8')
+
         before = _hash(exe, remaining=remaining)
         version = run('--version').splitlines()[0]
         if not re.fullmatch(r'tesseract [0-9][A-Za-z0-9.\-+~]*', version):
@@ -90,9 +96,12 @@ def runtime_identity(config):
                 models[lang] = _hash(Path(match[1]) / (lang + '.traineddata'), remaining=remaining)
         if before != _hash(exe, remaining=remaining):
             raise IdentityError('OCR executable changed during fingerprint')
+        runtime.assert_unchanged(remaining)
         remaining()
     except (OSError, subprocess.SubprocessError, ValueError, IndexError) as exc:
         raise IdentityError('OCR runtime fingerprint unavailable') from None
     identity['ocr'] = dict(state='present', version=version, executable_sha256=before,
                            model_sha256=models, policy=config.model_policy)
+    if runtime.portable:
+        identity['ocr']['portable'] = runtime.fingerprint()
     return identity

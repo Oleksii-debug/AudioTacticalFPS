@@ -8,12 +8,12 @@ import csv
 import importlib.metadata as metadata
 import math
 import re
-import shutil
 import subprocess
 import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
+from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -155,21 +155,28 @@ def extract_page(asset, physical_index, config=Config()):
                     result['status'] = 'blank'
                     provenance['method'] = 'render_blank'
                     return result
-                exe = shutil.which('tesseract')
-                if not exe:
-                    result['status'] = 'review_required'
-                    result['warnings'].append('ocr_engine_missing')
-                    return result
                 try:
-                    with tempfile.TemporaryDirectory() as tmp:
-                        def remaining():
-                            seconds = deadline - time.monotonic()
-                            if seconds <= 0:
-                                raise subprocess.TimeoutExpired(exe, config.timeout)
-                            return seconds
+                    def remaining():
+                        seconds = deadline - time.monotonic()
+                        if seconds <= 0:
+                            raise subprocess.TimeoutExpired('tesseract', config.timeout)
+                        return seconds
 
+                    runtime = discover_ocr_runtime(config.languages, orientation=config.orientation,
+                                                   remaining=remaining)
+                    if runtime is None:
+                        result['status'] = 'review_required'
+                        result['warnings'].append('ocr_engine_missing')
+                        return result
+                    exe = runtime.executable
+                    if runtime.portable:
+                        provenance['ocr_runtime'] = runtime.fingerprint()
+
+                    with tempfile.TemporaryDirectory() as tmp:
                         def run(args):
-                            return subprocess.run(args, check=True, capture_output=True, timeout=remaining())
+                            return subprocess.run(runtime.command(args), check=True, capture_output=True,
+                                                  timeout=remaining(), cwd=runtime.root,
+                                                  creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
 
                         model_args = []
                         if config.model_policy == POLICY:
@@ -197,10 +204,16 @@ def extract_page(asset, physical_index, config=Config()):
                         provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
                         if config.orientation:
                             from .ocr_orientation_bridge import orientation_candidate
-                            provenance['orientation'] = orientation_candidate(image, config, exe, remaining, run, recognize)
+                            provenance['orientation'] = orientation_candidate(
+                                image, config, exe, remaining, run, recognize, native_cli=runtime.portable)
+                        runtime.assert_unchanged(remaining)
                 except _OcrOutputLimit:
                     result['status'] = 'review_required'
                     result['warnings'].append('ocr_output_limit')
+                    return result
+                except OcrRuntimeError:
+                    result['status'] = 'review_required'
+                    result['warnings'].append('portable_ocr_runtime_unavailable_or_invalid')
                     return result
                 except (OSError, subprocess.SubprocessError, UnicodeError):
                     result['status'] = 'review_required'

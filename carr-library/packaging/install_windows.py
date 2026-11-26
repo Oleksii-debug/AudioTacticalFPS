@@ -55,6 +55,19 @@ def verify(root):
         if ("runtime/python.exe" not in actual
                 or actual != {p for p in files if p.startswith("runtime/")}):
             raise ValueError("unexpected or missing Python runtime file")
+    if manifest.get("bundled_ocr"):
+        ocr = root / "ocr"
+        for directory, dirs, _names in os.walk(ocr, followlinks=False):
+            for name in dirs:
+                info = (Path(directory) / name).lstat()
+                if (not stat.S_ISDIR(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                    raise ValueError("linked OCR runtime directories are not supported")
+        actual = {p.relative_to(root).as_posix() for p in ocr.rglob("*") if p.is_file()}
+        if ("ocr/ocr-manifest.json" not in actual or "ocr/tesseract.exe" not in actual
+                or "ocr/tessdata/eng.traineddata" not in actual
+                or actual != {p for p in files if p.startswith("ocr/")}):
+            raise ValueError("unexpected or missing OCR runtime file")
 
 
 def main():
@@ -82,6 +95,8 @@ def main():
     environment = {key: value for key, value in os.environ.items()
                    if not key.upper().startswith(("PYTHON", "PIP_"))}
     environment["PIP_NO_INDEX"] = "1"
+    if (root / "ocr" / "ocr-manifest.json").is_file():
+        environment["CARR_OCR_DIR"] = str(root / "ocr")
     # Python 3.11 ensurepip forwards -I, but not -B, to its own pip subprocess.
     # Explicit -s/-P and these three controlled variables preserve no-user-site,
     # safe import paths and no-bytecode behavior across that nested process.
@@ -95,6 +110,9 @@ def main():
                     "-r", str(root / "install.lock")], check=True, env=environment)
     subprocess.run([str(executable), "-I", "-B", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)
+    if (root / "ocr" / "ocr-manifest.json").is_file():
+        subprocess.run([str(executable), "-I", "-B", "-m", "carr_library.extract.ocr_runtime", "--check"],
+                       check=True, env=environment, cwd=root)
     print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
     return 0
 

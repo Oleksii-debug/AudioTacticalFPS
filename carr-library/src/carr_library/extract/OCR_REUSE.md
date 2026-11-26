@@ -25,3 +25,24 @@ Runtime: Linux Python 3.12.14, pypdf 7.1.1, pypdfium2 5.13.0, Pillow 13.0.0, Tes
 Final independently executed assembled subset: **125 passed, 0 failed, 0 skipped**, exit 0, 41.28 seconds. From the assembled product root, set `TESSDATA_PREFIX` to the verified pinned-model directory and run `PYTHONPATH=src:. python -m pytest -q tests/extract tests/ingest/test_pipeline.py tests/citations/test_pdf_mapping_contradiction.py tests/citations/test_pdf_review_attestation.py`. This includes the current DOCX guard corrections from PR47 and integration dependencies assembled at `7924b6fd46887e626b876ce7040f0d35ce5b3a7e`. The two new test files use real PDF/engine fixtures for ordinary paths; malformed OCR output and resource-limit cases inject subprocess output explicitly. New OCR regression file alone: 9 passed.
 
 This update preserves candidate/review status, separate native/OCR text and physical locators. It adds no new dependency, source download or neural model. Completely white rendered pixels are only the current bounded blank-screening rule, not a general proof about every possible PDF rendering. Native parser isolation, complete deadline enforcement, real corpus acceptance and Windows/NVDA remain separate product gates; no release declaration follows from this subset.
+
+### Portable runtime reconciliation
+
+The source-loss corrections and the two regression files above were imported from
+Oleksii-debug/AudioTacticalFPS commit
+`4574068581b34bdbc72127f4e9790bc09b38a486` (PR18) and reconciled with the
+package-local OCR runtime. The original TSV validation, bounded output reads and
+faint-scan handling remain intact. Runtime discovery, manifest integrity checks,
+explicit portable tessdata selection, native orientation and extraction
+fingerprints are preserved alongside them. This attribution identifies the
+upstream correction; the assembled file also contains the portable integration.
+
+Reconciliation verification on Linux, 2026-11-26: **136 passed, 0 failed,
+0 skipped**, exit 0, 52.54 seconds. With `TESSDATA_PREFIX` set to the existing
+verified eng/ukr/slk/osd directory, run `PYTHONPATH=src:. python -m pytest -q -p
+no:cacheprovider tests/extract tests/ingest/test_pipeline.py
+tests/citations/test_pdf_mapping_contradiction.py
+tests/citations/test_pdf_review_attestation.py`. This includes actual portable
+runtime inference without PATH installation, original source-loss regressions,
+native extraction fingerprints, pinned OCR models and citation boundaries.
+Native Windows/NVDA execution remains NOT_RUN.
