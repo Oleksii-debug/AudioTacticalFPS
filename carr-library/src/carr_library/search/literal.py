@@ -146,6 +146,9 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             size += len(raw)
             if len(rows) >= MAX_PAGES or size > MAX_CHARS:
                 raise ValueError('scope exceeds literal search budget')
+            # Validate every scoped source before candidate pruning or pagination.
+            if sha256(raw.encode('utf-8')).hexdigest() != row[10]:
+                raise ValueError('raw page digest mismatch')
             rows.append(tuple(row))
             index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
         check()
@@ -160,8 +163,6 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         for rowid in hits:
             check()
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
-            if sha256(raw.encode('utf-8')).hexdigest() != digest:
-                raise ValueError('raw page digest mismatch')
             folded, starts, ends = _mapped(raw, check)
             check()
             if mode == 'terms':
