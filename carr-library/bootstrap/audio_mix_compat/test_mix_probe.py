@@ -53,7 +53,7 @@ class MixTests(unittest.TestCase):
         self.voices = [Track('left.wav', 1000, -1),
                        Track('right.wav', 2000, 1), Track('center.wav', 3000, 0)]
         self.music = Track('music.wav')
-    
+
     def render(self, voices=None, name='out.wav'):
         return mix_prepared(self.root, self.voices if voices is None else voices,
                             self.music, name, duration_ms=4000, ffmpeg=FFMPEG)
