@@ -474,6 +474,8 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        from .ebook_reader import install_ebook_reader
+        install_ebook_reader(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -717,7 +719,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx)|*.txt;*.pdf;*.docx',
+            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:

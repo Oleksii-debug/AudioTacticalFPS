@@ -27,8 +27,10 @@ instructions.
 
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
-- Import UTF-8 TXT, PDF and DOCX. Retain originals, publish catalog/revision
+- Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
   changes atomically, isolate native parsers and resume interrupted imports.
+- Read EPUB books by their declared section order, with keyboard chapter
+  selection, previous/next navigation and separate authored image descriptions.
 - Search exact words, phrases or all terms; filter by collection, author, title,
   language and edition. Local thematic BM25 and multilingual MiniLM rank exact
   source slices. Catalog and source lookups share one authorized snapshot.
@@ -43,8 +45,9 @@ instructions.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
-as verified quotations. DOCX is imported as logical segments, with unknown
-printed pagination and an explicit unverified status. A model's similarity
+as verified quotations. DOCX and EPUB are imported as logical segments, with unknown
+printed pagination and an explicit unverified status. The [EPUB reading guide](docs/EPUB_READING.md)
+describes the supported static XHTML subset. A model's similarity
 score never approves a quotation.
 
 ## Candidate status and verification
