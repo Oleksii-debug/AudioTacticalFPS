@@ -136,7 +136,15 @@ def main():
                     assert 'Workflow complete' in form.status.GetValue()
                     checks.append('reviewed assistant plan executes actual selected-library search')
                 modal(AssistantDialog(frame),assistant)
-                assert library.search(workspace,'railway')[0].quote==source
+                # Literal search deliberately returns the authenticated matching
+                # span, not the entire source page. Check both identities so a
+                # shortened quote cannot conceal a changed retained original.
+                match=library.search(workspace,'railway')[0]
+                assert match.quote=='railway' and match.edition_id==imported['edition']
+                retained=ReadingDesk(library,workspace,imported['edition']).page(1)
+                assert retained.raw_text==source
+                assert retained.location.text_sha256==sha256(source.encode('utf-8')).hexdigest()
+                checks.append('literal quotation and retained source remain unchanged')
             finally:
                 frame.Close()
                 gui.Yield()
