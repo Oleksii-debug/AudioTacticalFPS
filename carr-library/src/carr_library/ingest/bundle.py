@@ -57,7 +57,7 @@ def create_revision_bundle(storage, directory, *, include_all_workspaces=False,
         size = _plain(snapshot).st_size
         if not 0 < size <= max_bytes:
             raise RestoreError('snapshot exceeds bundle size limit')
-        manifest = dict(version=1, kind='revision-storage', schema_version=1,
+        manifest = dict(version=1, kind='revision-storage', schema_version=storage.schema_version,
                         size_bytes=size, sha256=hash_file(snapshot))
         raw = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
         with (stage / MANIFEST).open('xb') as stream:
