@@ -68,6 +68,49 @@ def test_lexical_page_or_model_fallback_focuses_on_relevant_tail(library, retrie
         assert app.copy(workspace, hit.ref, hit.revision, 'quote') == hit.quote
 
 
+@pytest.mark.parametrize('mode', ['short', 'thematic'])
+@pytest.mark.parametrize('prefix', [
+    'a ' * 32760, 'a ' * 32768, 'a \t\n' * 20000, 'a ' * 1000, '\u0457 ' * 1000,
+], ids=['threshold-plus-tail', 'long-ascii', 'collapsed-whitespace',
+        'short-ascii', 'unicode'])
+def test_long_logical_source_focus_keeps_original_offsets(mode, prefix):
+    passage = 'Railway\t  archives.'
+    raw = 'Intro. ' + prefix + '\n\n' + passage + '\n\n' + 'z ' * 1000
+    start = len('Intro. ')
+    hit = dict(start=start, end=len(raw), raw_quote=raw[start:],
+               matched_terms=('railway', 'archives'))
+    a, b = presentation_span(raw, hit, 'railway archives', mode)
+    assert 0 <= a <= raw.index(passage) < raw.index(passage) + len(passage) <= b <= len(raw)
+    assert passage in raw[a:b]
+    assert b - a <= (SHORT_CHARS if mode == 'short' else THEMATIC_CHARS)
+
+
+@pytest.mark.parametrize('retrieval', ['thematic', 'semantic'])
+@pytest.mark.parametrize('result_mode', ['short', 'thematic'])
+def test_long_ascii_source_search_copy_and_context_use_exact_tail(library, retrieval, result_mode):
+    app, workspace = library
+    target = 'The railway\t  archives preserve the original transport history.'
+    page = 'Unrelated botanical material.\r\n\t' * 2500 + target + '\n\nTrailing material.'
+    assert page.isascii() and len(page) >= 65536
+    imported = app.add_text(workspace, 'Long logical source', page + '\fEXCLUDED OTHER SEGMENT.')
+    messages = []
+    hit, = app.search(workspace, 'railway archives', mode=retrieval,
+                     result_mode=result_mode, on_status=messages.append)
+    assert hit.verified and hit.revision == imported['id']
+    assert target in hit.quote and 'EXCLUDED OTHER SEGMENT' not in hit.quote
+    assert len(hit.quote) <= (SHORT_CHARS if result_mode == 'short' else THEMATIC_CHARS)
+    context = app.context(workspace, hit.ref, hit.revision)
+    assert len(context.pages) == 1 and context.pages[0].raw_text == page
+    anchor = context.pages[0].anchor
+    assert anchor.start > 65536 and page[anchor.start:anchor.end] == hit.quote
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == hit.quote
+    assert app.copy(workspace, hit.ref, hit.revision, 'citation') == hit.citation
+    if retrieval == 'semantic':
+        assert messages == ['Local model unavailable; keyword search used.']
+    else:
+        assert messages == []
+
+
 def test_exact_legacy_offsets_remain_available_to_existing_callers(library):
     app, workspace = library
     app.add_text(workspace, 'Source', 'A meaningful railway quotation in a sentence.')

@@ -29,7 +29,7 @@ def research(tmp_path):
                            original=app.assets.resolve(imported['asset']))
 
 
-def export_using_dialog(research, destination, monkeypatch):
+def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
     class FileDialog:
         def __init__(self, *args, **kwargs):
             pass
@@ -41,7 +41,7 @@ def export_using_dialog(research, destination, monkeypatch):
             return str(destination)
 
         def GetFilterIndex(self):
-            return 1  # Plain text.
+            return format_index
 
         def Destroy(self):
             pass
@@ -62,6 +62,7 @@ def export_using_dialog(research, destination, monkeypatch):
 
     frame = SimpleNamespace(library=research.app,
                             _topic=lambda: (research.workspace, research.topic),
+                            active=(research.workspace, research.topic),
                             report=reports.append, cancel_event=Event(), run_job=run_job)
     desktop_app.DesktopFrame.export_topic(frame, None)
     return reports
@@ -117,3 +118,24 @@ def test_failed_export_preserves_existing_output_and_library(research, tmp_path,
     assert research.app.database.read_bytes() == before_database
     assert research.original.read_bytes() == before_original
     assert not list(tmp_path.glob('.carr-export-*'))
+
+
+@pytest.mark.parametrize('format_index,extension', [(5, 'docx'), (6, 'html')])
+def test_desktop_document_export_uses_the_selected_format(
+        research, tmp_path, monkeypatch, format_index, extension):
+    from io import BytesIO
+    from docx import Document
+
+    destination = tmp_path / ('research-topic.' + extension)
+    before_original = research.original.read_bytes()
+    reports = export_using_dialog(research, destination, monkeypatch,
+                                  format_index=format_index)
+    assert len(reports) == 1 and reports[0].startswith('Research document exported')
+    if extension == 'docx':
+        text = '\n'.join(p.text for p in Document(BytesIO(destination.read_bytes())).paragraphs)
+    else:
+        text = destination.read_text(encoding='utf-8')
+        assert '<html' in text
+    assert 'source exact quotation' in text and 'Separate research note' in text
+    assert research.original.read_bytes() == before_original
+    assert not list(tmp_path.glob('.research-export-*'))

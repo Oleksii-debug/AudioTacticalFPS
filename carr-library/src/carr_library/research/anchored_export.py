@@ -19,7 +19,7 @@ class SavedEvidence:
         return self.span or (self.anchor,)
 
 
-def export_saved(workspace, topic, rows, load_page, *, format='text'):
+def export_saved(workspace, topic, rows, load_page, *, format='text', title='Research dossier'):
     """Use repository-authenticated rows and a scoped historical page loader.
 
     The caller must supply both within one consistent read transaction. A
@@ -56,4 +56,4 @@ def export_saved(workspace, topic, rows, load_page, *, format='text'):
                 title=meta.title, author=meta.author or '', edition=meta.edition or '',
                 volume=meta.volume or '', verified=True, note=row.note,
                 span_index=position, span_count=len(pairs)))
-    return export_topic(workspace, topic, resolved, format=format)
+    return export_topic(workspace, topic, resolved, format=format, title=title)

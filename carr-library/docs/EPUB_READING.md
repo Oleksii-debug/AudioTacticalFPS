@@ -35,6 +35,41 @@ descriptions. Its navigation does not update the reading desk's saved position.
 Reading positions and bookmarks have their own export/import action; include
 that export when moving a library backup to another computer.
 
+## Contents, headings and exact chapter search
+
+Select an EPUB in **Books and Collections**, then use **Library, Read electronic
+book contents** (`Ctrl+Shift+O`). This reader adds the book's embedded EPUB 3
+contents or EPUB 2 NCX, chapter headings, and a literal search within the current
+chapter. Contents grouping labels are announced as headings without a destination;
+they do not invent a text location. The chapter selector always follows spine
+order, including supplementary sections.
+
+Use **Find from start**, **Find next** (`F3`) and **Find previous** (`Shift+F3`).
+Search ignores case and selects the exact original characters, including Unicode
+text. Matches wrap within the current chapter. Tab reaches the named text controls;
+the chapter and navigation status receives focus after a chapter change. Press
+Escape or **Close** to return to the existing research screen and unsaved note.
+
+The extraction report explains omitted content and available authored image
+descriptions. Metadata taken from the EPUB is shown as a hint, without changing
+the catalog's citation metadata. Embedded page-list labels remain unverified;
+they never become printed-page citation numbers.
+
+Previously imported EPUBs can use this reader without reimport or database
+migration. Their saved chapter starts provide the available contents, and the
+report explains that embedded anchor navigation was not stored. Books with a
+repeated spine resource also retain every section occurrence; ambiguous embedded
+links are disabled rather than sent to an arbitrary occurrence. Navigation does
+not modify the source, its existing revisions or the reading desk's saved position.
+If repetition would multiply otherwise bounded headings beyond the navigation
+limit, optional headings and embedded contents are omitted with an explanation;
+the complete chapter order and extracted text remain available.
+
+Each read checks the current library/topic scope, active source revision, sealed
+extraction metadata and retained original. If those identities change, the reader
+clears the old text and asks for the book to be reopened. A native text control
+must preserve the complete chapter before search selections are accepted.
+
 ## Text, locations and source preservation
 
 Paragraphs, headings, list items, block quotes, line breaks and simple table
@@ -79,6 +114,10 @@ section/alternative metadata. ZIP members are read in memory, never extracted
 to paths supplied by the document. Duplicate/aliased members, unsafe paths,
 external entities, external DTDs, internal entity declarations and traversal
 outside the archive are rejected. An ordinary XHTML `<!DOCTYPE html>` is allowed.
+The added contents index has a 2 MiB serialized budget and at most 2,000 combined
+headings, contents entries and page hints. The complete persisted EPUB settings
+retain the existing 4 MiB bound. Navigation cannot resolve external destinations,
+ambiguous anchors, document base overrides or paths outside the retained archive.
 
 Import runs in the existing bounded worker. Publication reuses the current
 atomic catalog/revision transaction, original retention and non-destructive
@@ -113,8 +152,13 @@ From `carr-library/`, with the project/test dependencies installed:
 
 ```console
 python scripts/ci_check.py tests/extract/test_epub_ordered.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/ui/test_ebook_reader.py
+python scripts/ci_check.py tests/extract/test_epub_navigation.py tests/reader/test_ebook_contents.py tests/e2e/test_epub_library.py tests/e2e/test_epub_reading_desk.py tests/ui/test_ebook_dialog.py
 ```
 
 The Windows workflow also runs the EPUB import and reader tests against the
 installed offline bundle, with runtime egress blocked. Public tests create
 synthetic books in temporary directories; no user documents are published.
+The native contents probe is `python -I tests/ui/probe_ebook_native.py` against
+an installed package with a display. It checks full chapter readback, navigation,
+Unicode selections and search beyond 65,536 characters. It does not substitute
+for a manual screen-reader acceptance session.
