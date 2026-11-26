@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr-library]
+    branches: [carr/verify-release-73249a2-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -40,10 +40,10 @@ jobs:
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
     steps:
-      - name: Check out the exact event commit
+      - name: Check out the frozen release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: 73249a288d5cfd9c8c97bc08c0907523c02c8f2f
           persist-credentials: false
 
       - name: Set up native x64 CPython
