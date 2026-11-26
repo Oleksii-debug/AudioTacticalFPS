@@ -162,11 +162,16 @@ class LibraryApp:
         self.assets_dir.mkdir(mode=0o700, exist_ok=True)
         self.assets = RetainedAssets(self.assets_dir)
         self.semantic_ranker = semantic_ranker
+        self.semantic_cache = None
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
+        if semantic_ranker is not None:
+            from .semantic import OfflineSemanticRanker
+            if isinstance(semantic_ranker, OfflineSemanticRanker):
+                self.semantic_cache = semantic_ranker.cache_for(self.root)
 
     def _check_database_paths(self):
         for path in (self.database, self.root / 'imports.sqlite'):
@@ -712,35 +717,38 @@ class LibraryApp:
                             ingest.retry(workspace, job)
                     else:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                    published = storage.db.execute('SELECT 1 FROM revision WHERE id=?',
+                                                   (job,)).fetchone() is not None
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     if result['state'] in ('complete', 'superseded'):
-                        if cancelled():
-                            raise InterruptedError('Import cancelled before catalog registration.')
-                        # Recovery validates the retained asset/configuration and
-                        # checkpoint/page identity, but does not replay catalog
-                        # registration. Apply the same atomic membership and
-                        # metadata-conflict gate as the DOCX/EPUB replay path.
-                        # A journal's terminal state alone is not proof that its
-                        # source was actually published. Never reactivate an old
-                        # revision when current metadata has superseded it.
+                        # A terminal journal state is not proof of publication.
+                        # Validate the sealed source and active/result identity
+                        # even when the journal has no previously stored revision.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
-                            if cancelled():
-                                raise InterruptedError('Import cancelled before catalog registration.')
-                            published = storage.db.execute(
+                            current = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (published is None or tuple(published[:3]) !=
+                            if (current is None or tuple(current[:3]) !=
                                     (workspace, record.edition_id, asset.digest)
-                                    or published[3] is None):
+                                    or current[3] is None):
                                 raise ValueError('Completed import is missing its sealed source revision.')
-                            if (published[3] == job) != (result['state'] == 'complete'):
+                            if (current[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            register_batch(Catalog(storage.db, workspace), (record,))
-                            storage._check()
+                            if published:
+                                if cancelled():
+                                    raise InterruptedError('Import cancelled before catalog registration.')
+                                # A replay may add membership with exact current
+                                # metadata, including after a metadata revision.
+                                # Registration rejects stale metadata atomically;
+                                # it never reactivates the old source revision.
+                                register_batch(Catalog(storage.db, workspace), (record,))
+                                storage._check()
+                            # Initial publication already registered and checked
+                            # this request inside the source publication transaction.
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
@@ -911,7 +919,7 @@ class LibraryApp:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
                                            limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status)
+                                           on_status=on_status, cache=self.semantic_cache)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')

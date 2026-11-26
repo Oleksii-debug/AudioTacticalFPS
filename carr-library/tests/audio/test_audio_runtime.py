@@ -8,6 +8,18 @@ from carr_library.audio.runtime import (ARCHIVE_MEMBERS, FFMPEG_ARCHIVE_SHA256, 
                                         bundled_ffmpeg, resolve_ffmpeg, verify_runtime)
 
 
+def test_full_runtime_preserves_every_reviewed_publisher_file():
+    lock = json.loads((Path(__file__).resolve().parents[2] /
+                       'packaging/audio-runtime/source-lock.json').read_text())
+    actual = {member.removeprefix(lock['package_root'] + '/'):
+              {'size_bytes': size, 'sha256': digest}
+              for member, size, digest in ARCHIVE_MEMBERS.values()}
+    assert actual == lock['original_files']
+    assert {'ffmpeg.exe', 'ffplay.exe', 'ffprobe.exe'} <= set(ARCHIVE_MEMBERS)
+    assert FFMPEG_ARCHIVE_SHA256 == lock['archive']['sha256']
+    assert FFMPEG_SOURCE_COMMIT == lock['upstream_source']['commit']
+
+
 def test_bundle_discovery_uses_install_root_not_working_directory(tmp_path, monkeypatch):
     import carr_library.audio.runtime as runtime
     install = tmp_path / "installed"

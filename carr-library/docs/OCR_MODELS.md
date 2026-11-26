@@ -69,24 +69,58 @@ the existing offline-installation schema:
 ```
 
 The pack includes the upstream license and path-free provenance. The license is
-also embedded in `models.json` so the existing installer retains it even when it
-copies only the models and manifest. Neither a Git hash nor a locally computed
+also embedded in `models.json`; installation preserves that exact manifest and
+writes the full bound license to `LICENSE.txt`. Neither a Git hash nor a locally computed
 checksum is a publisher signature.
 
 ## Install and activate
 
-The native language manager can pass the prepared directory, a new installation
-directory and the separately retained manifest checksum to:
+Open **Recognition models** in Import Center and select the **Offline packs**
+tab in the existing language dialog. Its offline catalogue supports code/name
+filtering and fast/best profiles. Choose explicit model codes, a disk budget,
+an existing local model source, and a new prepared-pack folder. **Prepare
+verified pack** checks the pinned official bytes and reports the checksum.
+
+Review and retain that checksum separately, choose a new installation folder,
+then choose **Install reviewed pack**. Existing directories are never overwritten.
+Preparation and installation have cancellable background jobs. A partial
+installation cannot pass verification. An installation cannot be placed inside
+the sealed portable application or OCR tree.
+
+The same operation is available offline through:
+
+```console
+research-library-ocr-models install --source prepared-fast --destination installed-fast --manifest-sha256 INDEPENDENT_RECORDED_SHA256
+```
+
+The reusable API is:
 
 ```python
+from carr_library.extract.language_manager import install_offline_pack
 install_offline_pack(pack, destination, expected_manifest_sha256=checksum)
 ```
 
-Preparation does not activate or modify the application's sealed OCR runtime.
-Model selection/activation belongs to the language manager and must preserve
-the complete portable-runtime integrity inventory. A standalone Tesseract
-installation can use the installed directory through its explicit
-`--tessdata-dir` option. Choose the actual languages/scripts present on the page;
+Choose **Use verified pack** only after installation or when selecting an already
+installed pack with its independently retained checksum. The dialog verifies
+the complete pack and checks the engine's actual inventory before switching its
+model list. Review the recognition language order and choose **Use settings**.
+No language is silently substituted when the pack lacks a previous selection.
+
+Each private import job records `Config.model_pack_path` and
+`Config.model_pack_sha256`. Tesseract receives that exact model directory; the
+runtime fingerprint includes the pack identity and the base engine identity.
+The complete portable runtime inventory remains verified, including unused
+bundled models and native libraries. Pack contents and the runtime are rechecked
+around inference and before checkpoint reuse. Changing or removing the selected
+pack blocks that import; it does not silently fall back to system models.
+
+Choose **Use bundled or system models** explicitly to leave the pack for a new
+configuration. Keep installed packs available for resumable jobs. Library backups
+retain the private configuration and presets, but do not silently copy a separate
+model installation; restoring elsewhere may require installing the same verified
+pack and selecting its new path for a new import plan.
+
+Choose the actual languages/scripts present on the page;
 installing every model is not a reason to run all of them in one OCR pass.
 
 ## Implementation and verification boundary
@@ -96,6 +130,11 @@ the native manager. The preparer has no network or subprocess dependency and
 does not execute model files. Synthetic tests cover filesystem integrity,
 publication, cancellation and budgets. Real selected-model OCR smoke results
 are recorded separately; they must not be reported as all-language acceptance.
+`tests/extract/test_ocr_packs.py` exercises the complete preparation, installation,
+activation and actual English/Ukrainian/Slovak recognition flow, plus a durable
+reviewed import that rejects changed model bytes before checkpoint reuse and
+resumes only after the approved bytes are restored. Native Windows/NVDA results
+must be recorded separately from Linux and headless control-handler tests.
 
 Upstream provenance, revisions, license identities and documented compatibility
 are recorded in `extract/OCR_MODEL_CATALOG_REUSE.md`.

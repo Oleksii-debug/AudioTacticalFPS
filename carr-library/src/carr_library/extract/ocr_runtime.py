@@ -128,6 +128,92 @@ class OcrRuntime:
             raise OcrRuntimeError('Portable OCR runtime changed during execution.')
 
 
+@dataclass(frozen=True)
+class PackOcrRuntime:
+    """A separate model selection over the unchanged, fully verified runtime."""
+    base: OcrRuntime
+    pack: object
+
+    @property
+    def executable(self):
+        return self.base.executable
+
+    @property
+    def tessdata(self):
+        return self.pack.root
+
+    @property
+    def root(self):
+        return self.base.root
+
+    @property
+    def portable(self):
+        return self.base.portable
+
+    @property
+    def target(self):
+        return self.base.target
+
+    @property
+    def manifest_sha256(self):
+        return self.base.manifest_sha256
+
+    @property
+    def model_pack_sha256(self):
+        return self.pack.manifest_sha256
+
+    @property
+    def languages(self):
+        return self.pack.languages
+
+    def command(self, argv):
+        argv = list(argv)
+        if (argv.count('--tessdata-dir') > 1
+                or any(str(value).startswith('--tessdata-dir=') for value in argv)):
+            raise OcrRuntimeError('An OCR command attempted to replace the selected verified model pack.')
+        if '--tessdata-dir' in argv:
+            index = argv.index('--tessdata-dir')
+            if index + 1 >= len(argv) or argv[index + 1] != str(self.tessdata):
+                raise OcrRuntimeError('An OCR command attempted to replace the selected verified model pack.')
+        elif '--version' not in argv:
+            argv[1:1] = ['--tessdata-dir', str(self.tessdata)]
+        return argv
+
+    def fingerprint(self):
+        return {'base_runtime': self.base.fingerprint(), 'model_pack': self.pack.fingerprint()}
+
+    def require_languages(self, languages, orientation=False):
+        wanted = set(languages.split('+')) | ({'osd'} if orientation else set())
+        if not wanted <= set(self.languages):
+            raise OcrRuntimeError('The selected verified OCR pack lacks a selected language or OSD model.')
+
+    def assert_unchanged(self, remaining=lambda: None):
+        from .language_manager import verify_offline_pack
+        # Keep the entire original bundle inventory check, including its models,
+        # executable, libraries and licenses, even though recognition uses a pack.
+        self.base.assert_unchanged(remaining)
+        if verify_offline_pack(self.tessdata, expected_manifest_sha256=self.model_pack_sha256,
+                               remaining=remaining) != self.pack:
+            raise OcrRuntimeError('The selected OCR model pack changed during execution.')
+
+
+def bind_model_pack(runtime, path, digest, *, languages=None, orientation=False,
+                    remaining=lambda: None):
+    from .language_manager import validate_pack_selection, verify_offline_pack
+    validate_pack_selection(path, digest)
+    if path is None:
+        return runtime
+    if runtime is None:
+        raise OcrRuntimeError('A verified model pack also needs an installed local OCR engine.')
+    pack = verify_offline_pack(path, expected_manifest_sha256=digest, remaining=remaining)
+    if runtime.portable and (pack.root == runtime.root or pack.root.is_relative_to(runtime.root)):
+        raise OcrRuntimeError('A separate OCR pack cannot be installed inside the sealed runtime.')
+    bound = PackOcrRuntime(runtime, pack)
+    if languages is not None:
+        bound.require_languages(languages, orientation)
+    return bound
+
+
 def verify_ocr_bundle(root, *, remaining=lambda: None):
     """Validate the complete manifest inventory without executing native code.
 

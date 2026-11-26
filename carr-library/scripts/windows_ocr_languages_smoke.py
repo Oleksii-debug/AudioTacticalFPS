@@ -23,7 +23,7 @@ def main(argv=None):
     native_handle = activate_bundled_runtime()
     import wx
     from carr_library.extract.ocr_languages import discover_languages, store_preset, load_presets
-    from carr_library.extract.ocr_runtime import check_runtime
+    from carr_library.extract.ocr_runtime import check_runtime, discover_ocr_runtime
     from carr_library.extract.page_ocr import Config
     from carr_library.ui import ocr_language_dialog as ui
 
@@ -57,7 +57,11 @@ def main(argv=None):
         check('real bundled English recognition succeeds', inference['synthetic_recognition'] == 'RESEARCH')
 
     def click(window, label):
-        buttons = [child for child in window.GetChildren()
+        def descendants(parent):
+            for child in parent.GetChildren():
+                yield child
+                yield from descendants(child)
+        buttons = [child for child in descendants(window)
                    if isinstance(child, wx.Button) and child.GetLabel() == label]
         check('native button exists: ' + label, len(buttons) == 1)
         button, = buttons
@@ -65,8 +69,8 @@ def main(argv=None):
         event.SetEventObject(button)
         check('native button dispatches: ' + label, button.GetEventHandler().ProcessEvent(event))
 
-    def drive(dialog, action, expected):
-        deadline = monotonic() + 25
+    def drive(dialog, action, expected, *, timeout=25):
+        deadline = monotonic() + timeout
         timers = []
 
         def advance():
@@ -81,6 +85,8 @@ def main(argv=None):
                     timers.append(wx.CallLater(40, advance))
                     return
                 action(dialog)
+                if dialog.IsModal():
+                    timers.append(wx.CallLater(40, advance))
             except Exception:
                 errors.append(traceback.format_exc())
                 if dialog.IsModal():
@@ -108,6 +114,13 @@ def main(argv=None):
                       view.filter.GetName() == 'Filter installed languages and scripts'
                       and view.available.GetName() == 'Installed recognition models'
                       and view.chosen.GetName() == 'Selected models in recognition order')
+                check('offline pack flow is in the existing native dialog',
+                      isinstance(view.pages, wx.Notebook) and view.pages.GetPageCount() == 2
+                      and view.pages.GetPageText(1) == 'Offline packs')
+                check('official catalogue and binding controls are named',
+                      view.pack_models.GetName() == 'Official offline model catalogue'
+                      and view.pack_digest.GetName() == 'Independently recorded manifest SHA256'
+                      and view.pack_installed.GetName() == 'New installation folder, or existing installed pack to use')
                 check('status is a native read-only multiline control',
                       bool(view.status.GetWindowStyleFlag() & wx.TE_READONLY)
                       and bool(view.status.GetWindowStyleFlag() & wx.TE_MULTILINE))
@@ -161,6 +174,51 @@ def main(argv=None):
                 check('cancel does not return an accepted configuration', second.result is None)
             finally:
                 second.Destroy()
+            if arguments.require_bundled:
+                runtime = discover_ocr_runtime()
+                pack_view = ui.create_ocr_dialog(frame, Config(), preset_root=root)
+                prepared, installed = root / 'prepared-model-pack', root / 'installed-model-pack'
+                phase = 0
+
+                def pack_flow(view):
+                    nonlocal phase
+                    if phase == 0:
+                        view.pages.SetSelection(1)
+                        view.pack_source.SetValue(str(runtime.tessdata))
+                        view.pack_prepared.SetValue(str(prepared))
+                        view.pack_installed.SetValue(str(installed))
+                        view.pack_budget.SetValue('128')
+                        view.pack_codes.SetValue('eng ukr slk')
+                        click(view, 'Prepare verified pack')
+                    elif phase == 1:
+                        check('native preparation publishes verified official bytes', (prepared / 'models.json').is_file())
+                        check('preparation reports checksum without activating a pack',
+                              len(view.pack_digest.GetValue()) == 64 and view.active_pack is None)
+                        click(view, 'Install reviewed pack')
+                    elif phase == 2:
+                        check('native installation retains license and completed receipt',
+                              (installed / 'LICENSE.txt').is_file() and (installed / 'PACK-INSTALLED.json').is_file())
+                        check('installation requires a separate activation action', view.active_pack is None)
+                        click(view, 'Use verified pack')
+                    else:
+                        check('native activation uses actual verified model inventory',
+                              view.catalog.integrity == 'verified_model_pack'
+                              and set(view.catalog.codes) == {'eng', 'ukr', 'slk'})
+                        view.selected_codes = ['eng', 'ukr', 'slk']
+                        view._show_selected()
+                        click(view, view.ok.GetLabel())
+                    phase += 1
+
+                try:
+                    drive(pack_view, pack_flow, wx.ID_OK, timeout=90)
+                    selected = pack_view.result
+                    check('accepted OCR job binds pack path and independent manifest hash',
+                          selected.model_pack_path == str(installed)
+                          and selected.model_pack_sha256 == pack_view.pack_digest.GetValue())
+                    runtime.assert_unchanged()
+                    check('portable runtime is unchanged after pack installation', True)
+                finally:
+                    pack_view.Destroy()
         finally:
             frame.Destroy()
             application.ProcessPendingEvents()

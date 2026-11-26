@@ -711,18 +711,31 @@ def test_duplicate_preview_budget_preserves_sorted_deduplicated_matches(db, libr
         library.import_preview(data, format='csl-json')
 
 
-def test_duplicate_preview_budget_rejects_before_constructing_the_first_entry(library, monkeypatch):
+@pytest.mark.parametrize('format', ['ris', 'csl-json', 'bibtex'])
+@pytest.mark.parametrize('slots', [4, 5])
+def test_duplicate_preview_budget_rejects_before_constructing_the_first_entry(library, monkeypatch,
+                                                                           format, slots):
     for number in range(3):
         library.create(title=f'Existing {number}', doi='10.1234/shared')
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 3, raising=False)
+    if format == 'ris':
+        data = ''.join(f'TY  - BOOK\nTI  - Incoming {number}\nDO  - 10.1234/shared\nER  -\n'
+                       for number in range(2)).encode()
+    elif format == 'bibtex':
+        data = ''.join(f'@book{{incoming{number},title={{Incoming {number}}},doi={{10.1234/shared}}}}'
+                       for number in range(2)).encode()
+    else:
+        data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}
+                           for number in range(2)]).encode()
+    # Each row costs five slots. Even when the first row fits exactly, the
+    # complete preflight must reject the later excess before creating any row.
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', slots, raising=False)
 
     def unexpected_entry(*args, **kwargs):
         pytest.fail('An oversized duplicate result was materialized before the guard.')
 
     monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)
     with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(b'[{"title":"Incoming","DOI":"10.1234/shared"}]',
-                               format='csl-json')
+        library.import_preview(data, format=format)
 
 
 def test_duplicate_preview_accepts_maximum_nonduplicate_batch(library):

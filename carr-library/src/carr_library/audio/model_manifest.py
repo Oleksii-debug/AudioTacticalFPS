@@ -18,6 +18,14 @@ from typing import Any
 from .paths import filename_component
 
 
+# A normal reviewed CPU Torch wheel already contains more than 10,000 files.
+# Keep explicit byte, file and traversal budgets while permitting its complete
+# inventory together with the interpreter and other inference dependencies.
+MAX_MODEL_MANIFEST_BYTES = 16 * 1024 * 1024
+MAX_MODEL_FILES = 32768
+MAX_MODEL_DIRECTORY_ENTRIES = 65536
+
+
 class ModelManifestError(ValueError):
     """An optional local model has not passed the installation boundary."""
 
@@ -130,7 +138,7 @@ class LocalModelManifest:
     @classmethod
     def load(cls, path, *, engine=None, expected_sha256=None):
         path = local_path(path)
-        raw = read_json(path)
+        raw = read_json(path, max_bytes=MAX_MODEL_MANIFEST_BYTES)
         if not isinstance(raw, dict) or type(raw.get('schema_version')) is not int or raw.get('schema_version') != 1:
             raise ModelManifestError('Expected local-model manifest schema version 1.')
         known = {'schema_version', 'engine', 'model_id', 'revision', 'license', 'files',
@@ -147,7 +155,7 @@ class LocalModelManifest:
             raise ModelManifestError('Pin an exact model revision or SHA256, not a moving branch.')
         license_name = _text(raw.get('license'), 'model license')
         files = raw.get('files')
-        if not isinstance(files, dict) or not 1 <= len(files) <= 8192:
+        if not isinstance(files, dict) or not 1 <= len(files) <= MAX_MODEL_FILES:
             raise ModelManifestError('List every required local asset and its SHA256.')
         for name, digest in files.items():
             _relative(name)
@@ -172,8 +180,11 @@ class LocalModelManifest:
         return self.path.parent
 
     def asset(self, name: str) -> Path:
+        return self._asset(name, dict(self.files))
+
+    def _asset(self, name: str, inventory: dict[str, str]) -> Path:
         _relative(name)
-        if name not in dict(self.files):
+        if name not in inventory:
             raise ModelManifestError('The requested asset is not in the verified manifest.')
         path = local_path(self.root.joinpath(*PurePosixPath(name).parts))
         if not path.is_relative_to(self.root):
@@ -196,19 +207,19 @@ class LocalModelManifest:
             raise ModelManifestError('Invalid local asset verification budget.')
         if digest_file(self.path, cancelled=cancelled) != self.manifest_sha256:
             raise ModelManifestError('The model manifest changed after it was loaded.')
+        listed = dict(self.files)
         if require_complete:
-            listed = dict(self.files)
             for count, entry in enumerate(self.root.rglob('*'), 1):
                 if cancelled():
                     raise InterruptedError('Local asset verification cancelled.')
-                if count > 32768:
+                if count > MAX_MODEL_DIRECTORY_ENTRIES:
                     raise ModelManifestError('The model installation exceeds the directory entry budget.')
                 entry = local_path(entry)
                 if entry.is_file() and entry != self.path and entry.relative_to(self.root).as_posix() not in listed:
                     raise ModelManifestError('The local runtime contains a file missing from its reviewed manifest.')
         total = 0
         for name, expected in self.files:
-            path = self.asset(name)
+            path = self._asset(name, listed)
             total += path.stat().st_size
             if total > max_asset_bytes:
                 raise ModelManifestError('Local assets exceed the selected verification budget.')

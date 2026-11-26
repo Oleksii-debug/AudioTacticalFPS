@@ -11,7 +11,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import threading
 from uuid import uuid4
 
@@ -431,47 +430,8 @@ class StudioController:
         write_export(selected, self.script, private_root=self.private_root)
 
 
-class LocalPlayback:
-    """Play/stop an explicitly rendered local WAV; never open a file association."""
-
-    def __init__(self):
-        self.process = None
-        self.windows = False
-
-    def play(self, path):
-        selected = _local_path(path, 'audio file')
-        with selected.open('rb') as stream:
-            header = stream.read(12)
-        if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
-            raise ValueError('Preview requires the rendered PCM WAV master.')
-        self.stop()
-        if os.name == 'nt':
-            import winsound
-            winsound.PlaySound(str(selected), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
-            self.windows = True
-        else:
-            player = shutil.which('ffplay')
-            if player is None:
-                raise ValueError('Local playback is unavailable. Open the exported WAV in your audio player.')
-            self.process = subprocess.Popen([player, '-nodisp', '-autoexit', '-loglevel', 'error',
-                                             '-protocol_whitelist', 'file,pipe', '-i', str(selected)],
-                                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                            stderr=subprocess.DEVNULL, shell=False)
-
-    def stop(self):
-        if self.windows:
-            import winsound
-            winsound.PlaySound(None, 0)
-            self.windows = False
-        if self.process is not None:
-            if self.process.poll() is None:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=1)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                    self.process.wait(timeout=1)
-            self.process = None
+# Kept as the existing UI import name while all playback uses the shared adapter.
+from ..audio.player import WavePlayer as LocalPlayback
 
 
 SCRIPT_HELP = (
@@ -589,8 +549,17 @@ class AudioStudioDialog:
         self.cancel_button = self._button(production_page, production_buttons, 'Cancel studio operation', self.cancel, busy_safe=True)
         self.cancel_button.Disable()
         self._button(production_page, production_buttons, 'Play rendered master', self.play)
+        self._button(production_page, production_buttons, 'Pause / resume playback', self.pause_playback)
         self._button(production_page, production_buttons, 'Stop playback', self.stop_playback, busy_safe=True)
         prod_layout.Add(production_buttons, 0, wx.ALL, 5)
+        self.playback_position = wx.TextCtrl(production_page, value='Stopped. No recording opened.', style=wx.TE_READONLY)
+        self.playback_position.SetName('Playback position and state')
+        prod_layout.Add(self.playback_position, 0, wx.EXPAND | wx.ALL, 5)
+        self.seek_seconds = self._text(production_page, prod_layout, 'Seek to seconds', '0')
+        seek_row = wx.WrapSizer(wx.HORIZONTAL)
+        self._button(production_page, seek_row, 'Seek playback', self.seek_playback)
+        self._button(production_page, seek_row, 'Read playback position', self.read_playback_position, busy_safe=True)
+        prod_layout.Add(seek_row, 0, wx.ALL, 5)
         production_page.SetSizer(prod_layout)
 
         self.status = wx.TextCtrl(self.dialog, value='Local only. Enter a script, choose a local voice and output folder, then preview or render.',
@@ -621,6 +590,9 @@ class AudioStudioDialog:
         self.timer = wx.Timer(self.dialog)
         self.dialog.Bind(wx.EVT_TIMER, self.autosave, self.timer)
         self.timer.Start(30000)
+        self.playback_timer = wx.Timer(self.dialog)
+        self.dialog.Bind(wx.EVT_TIMER, self.update_playback_position, self.playback_timer)
+        self.playback_timer.Start(500)
         self._loading = False
         self._refresh_text()
 
@@ -1128,13 +1100,53 @@ class AudioStudioDialog:
                 raise ValueError('The script has unsaved edits. Preview and render it before playing a current result.')
             result_file = Path(self.controller.result['output'])
             self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file)
-            self._message('Playing the rendered master. Stop playback stops only this studio preview.', focus=True)
+            self.update_playback_position()
+            self._message('Playing the rendered master. Pause / resume and Seek affect this Studio preview.', focus=True)
         except Exception as exc:
             self._error(exc)
 
     def stop_playback(self, event=None):
-        self.playback.stop()
-        self._message('Studio playback stopped.', focus=True)
+        try:
+            self.playback.stop()
+            self.update_playback_position()
+            self._message('Studio playback stopped.', focus=True)
+        except Exception as exc:
+            self._error(exc)
+
+    def update_playback_position(self, event=None):
+        if self.closed:
+            return
+        try:
+            state = self.playback.state
+            position = self.playback.position_seconds
+            approximate = ' Approximate elapsed position.' if self.playback.position_is_approximate else ''
+            self.playback_position.ChangeValue(
+                f'{state.capitalize()}: {position:.1f} of {self.playback.duration_seconds:.1f} seconds.' + approximate)
+        except Exception as exc:
+            self.playback_position.ChangeValue('Playback device error: ' + str(exc))
+
+    def pause_playback(self, event=None):
+        try:
+            if self.playback.state == 'paused':
+                changed = self.playback.resume()
+            else:
+                changed = self.playback.pause()
+            if not changed:
+                raise ValueError('Play the rendered master before pausing or resuming.')
+            self.read_playback_position()
+        except Exception as exc:
+            self._error(exc)
+
+    def seek_playback(self, event=None):
+        try:
+            self.playback.seek(float(self.seek_seconds.GetValue()))
+            self.read_playback_position()
+        except Exception as exc:
+            self._error(exc)
+
+    def read_playback_position(self, event=None):
+        self.update_playback_position()
+        self._message(self.playback_position.GetValue(), focus=True)
 
     def close(self, event=None):
         if self.closed:
@@ -1152,7 +1164,8 @@ class AudioStudioDialog:
         self.closed = True
         self.cancelled.set()
         self.timer.Stop()
-        self.playback.stop()
+        self.playback_timer.Stop()
+        self.playback.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -1168,7 +1181,8 @@ class AudioStudioDialog:
             self.closed = True
             self.cancelled.set()
             self.timer.Stop()
-            self.playback.stop()
+            self.playback_timer.Stop()
+            self.playback.close()
             self.executor.shutdown(wait=False, cancel_futures=True)
             self.dialog.Destroy()
 

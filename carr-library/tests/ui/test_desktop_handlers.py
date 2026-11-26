@@ -127,7 +127,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
-        'install_academic_comparison_actions')}
+        'install_academic_comparison_actions', 'install_assistant_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.api_connections import install_api_connection_actions
@@ -137,7 +137,6 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
-
     value._menus()
 
     labels = [item.title for menu in menus.values() for item in menu.items]
@@ -189,7 +188,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
     """Execute every installer; this headless protocol is not native wx proof."""
     import importlib
     from itertools import count
-    from carr_library.ui.productivity import install_productivity_actions
+    from carr_library.ui.productivity import install_productivity_actions, collect_commands
 
     identifiers = count(1)
 
@@ -242,6 +241,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
     wx = env['wx']
     wx.Menu, wx.MenuBar, wx.Dialog, wx.Button = Menu, MenuBar, object, Mock(return_value=Mock())
     wx.ID_ANY, wx.ALL, wx.EVT_MENU, wx.EVT_BUTTON = -1, 1, 'menu', 'button'
+    wx.NOT_FOUND = -1
     monkeypatch.setitem(sys.modules, 'wx', wx)
     existing_modules = set(sys.modules)
     try:
@@ -264,7 +264,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         menu_globals = env['DesktopFrame']._menus.__code__.co_names
         for module_name, action_name in (
                 ('audio_studio', 'install_audio_studio_actions'),
-                ('api_connections', 'install_api_connection_actions')):
+                ('api_connections', 'install_api_connection_actions'),
+                ('assistant_dialog', 'install_assistant_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -277,7 +278,11 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         value.GetMenuBar = lambda: value.menu_bar
         value._menus()
         keyboard = install_productivity_actions(value)
-        bindings = {item.command.identity: item.command.shortcut for item in keyboard.bindings}
+        current = collect_commands(value.menu_bar)
+        bindings = {item.command.identity: item.command.shortcut for item in current}
+        registered_items = {binding.item.GetId() for binding in keyboard.bindings.values()}
+        assert all(binding.item.GetId() in registered_items for binding in current
+                   if binding.command.configurable)
         required = {
             'File/Save current changes': 'Ctrl+S',
             'File/Save all changes': 'Ctrl+Shift+S',
@@ -294,7 +299,10 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert value.menu_bar.GetMenuLabel(0) == '&File'
         shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]
         assert len(shortcuts) == len(set(shortcuts))
-        assert keyboard.notice == ''
+        assert keyboard.load_notice == ''
+        assert sum(value.menu_bar.GetMenuLabel(i) == '&Options'
+                   for i in range(value.menu_bar.GetMenuCount())) == 1
+        assert not hasattr(value, 'keyboard_actions')
     finally:
         # Native modules imported under this temporary headless wx adapter must
         # not remain cached for later genuine native probes or other tests.

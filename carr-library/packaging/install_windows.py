@@ -98,12 +98,13 @@ def verify(root, *, manifest_bytes=None):
     if type(included) is not bool:
         raise ValueError("invalid audio runtime installation flag")
     if included:
-        required_audio = {"audio-runtime/ffmpeg.exe", "audio-runtime/ffmpeg-runtime.json",
+        required_audio = {"audio-runtime/ffmpeg.exe", "audio-runtime/ffplay.exe", "audio-runtime/ffprobe.exe",
+                          "audio-runtime/ffmpeg-runtime.json",
                           "audio-runtime/FFmpeg-LICENSE.txt", "audio-runtime/FFmpeg-README.txt"}
         if not audio.is_dir() or audio.is_symlink():
             raise ValueError("missing or redirected audio runtime directory")
-        actual = {p.relative_to(root).as_posix() for p in audio.iterdir()}
-        if actual != expected_audio or actual != required_audio:
+        actual = {p.relative_to(root).as_posix() for p in audio.rglob('*') if p.is_file()}
+        if actual != expected_audio or not required_audio.issubset(actual):
             raise ValueError("unexpected or missing audio runtime file")
     elif os.path.lexists(audio) or expected_audio:
         raise ValueError("unannounced audio runtime files")
