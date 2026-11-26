@@ -99,6 +99,7 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
     aggregate = sha256()
     total = files = directories = visited = 0
     found_manifest = False
+    observed = {}
 
     def check():
         if cancelled():
@@ -166,10 +167,18 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
                 if checksum != manifest_sha256:
                     raise ValueError('The backup manifest differs from the producer receipt.')
             add('file', relative, count, checksum)
+            observed[child] = (False, _stamp(before_file))
         if _stamp(_plain(path, directory=True)) != _stamp(before):
             raise ValueError('The backup directory changed during verification.')
+        observed[path] = (True, _stamp(before))
 
     walk(root, 0)
+    # Re-attest earlier entries after later files have been scanned. Directory
+    # timestamps alone do not reveal in-place edits to an already hashed file.
+    for path, (is_directory, stamp) in observed.items():
+        check()
+        if _stamp(_plain(path, directory=is_directory)) != stamp:
+            raise ValueError('The backup tree changed during verification.')
     check()
     if not found_manifest:
         raise ValueError('A completed backup manifest is required.')

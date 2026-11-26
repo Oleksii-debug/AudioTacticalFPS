@@ -110,3 +110,46 @@ def test_real_library_backup_receipt_detects_database_tamper(tmp_path):
         stream.write(bytes([byte[0] ^ 1]))
     with pytest.raises(ValueError, match='completed backup changed'):
         verify_backup_receipt(directory, receipt, max_bytes=4 * 1024 * 1024, max_files=10)
+
+
+@pytest.mark.parametrize('operation', ['capture', 'verify', 'nested'])
+def test_receipt_rejects_change_after_earlier_file_scan(tmp_path, monkeypatch, operation):
+    import sqlite3
+    from carr_library.assistant import backup_receipt as receipt
+
+    root = tmp_path / 'backup'
+    root.mkdir()
+    with sqlite3.connect(root / 'library.sqlite') as db:
+        db.execute('create table t(v text)')
+        db.execute("insert into t values ('old')")
+    (root / 'manifest.json').write_bytes(b'{"synthetic":true}')
+    (root / 'originals').mkdir()
+    (root / 'originals/source.txt').write_bytes(b'original')
+    (root / 'z-last.txt').write_bytes(b'last')
+    digest = sha256((root / 'manifest.json').read_bytes()).hexdigest()
+    budget = dict(max_bytes=1000000, max_files=10)
+    old = receipt.capture_backup_receipt(root, digest, **budget)
+    plain = receipt._plain
+    changed = []
+
+    def hook(path, *, directory=False):
+        trigger = root / ('z-last.txt' if operation == 'nested' else 'manifest.json')
+        if path == trigger and not changed:
+            if operation == 'nested':
+                (root / 'originals/source.txt').write_bytes(b'modified')
+            else:
+                with sqlite3.connect(root / 'library.sqlite') as db:
+                    # A real in-place writer, without a sibling journal whose
+                    # directory timestamp would incidentally expose the edit.
+                    db.execute('pragma journal_mode=off')
+                    db.execute("update t set v='new'")
+            changed.append(True)
+        return plain(path, directory=directory)
+
+    monkeypatch.setattr(receipt, '_plain', hook)
+    with pytest.raises(ValueError, match='changed during verification'):
+        if operation == 'capture':
+            receipt.capture_backup_receipt(root, digest, **budget)
+        else:
+            receipt.verify_backup_receipt(root, old, **budget)
+    assert changed
