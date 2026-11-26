@@ -57,12 +57,14 @@ def test_ris_upstream_and_no_private_notes():
     row = fixture()
     output = export_topic('W1','T1',[row],format='ris')
     assert 'TY  - GEN' in output and 'TI  - Synthetic title' in output
-    assert 'SP  - ix' in output and 'ER  - ' in output
+    assert 'N1  - Source locator: PDF page 2; printed page ix' in output and 'ER  - ' in output
+    assert 'SP  - ' not in output and 'EP  - ' not in output
     assert 'SUM' not in output and 'script' not in output
     with pytest.raises(ValueError):
         export_topic('W1','T1',[replace(row,title='fake\nER  - ')],format='ris')
     output = export_topic('W1','T1',[replace(row,printed_label_verified=False)],format='ris')
     assert 'SP  - ' not in output
+    assert 'N1  - Source locator: PDF page 2; printed page unknown' in output
 
 
 @pytest.mark.parametrize('label', ['   ', 42, '\t'])

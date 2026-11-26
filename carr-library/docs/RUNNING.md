@@ -114,6 +114,26 @@ only bibliography; they omit quotations and private notes. CSV text columns
 ending in `_json` use reversible quoted text so line breaks and Unicode remain
 exact and spreadsheet programs cannot execute a quotation as a formula.
 
+Word (`.docx`) and HTML (`.html`) produce a readable research document titled
+with the current topic name. Heading navigation separates evidence, source citations,
+research notes and the source bibliography. A quotation spanning several source
+pages keeps its separate slices and locators. Unusual control characters and
+original line endings that a document reader cannot preserve are shown with
+explicit reversible text encoding; they are never silently rewritten as a
+different quotation. The document includes source identities for later checking.
+These documents contain the topic's research notes as well as quotations.
+
+In the Save dialog, choose the file type and use its matching extension. The
+Word document uses native paragraph styles and can be edited in a word processor;
+it is a static export and changes do not update the library. HTML is one local
+file with headings for screen-reader navigation. Neither export loads remote
+content or requires an internet connection. Source descriptions are not a
+claim of conformity to APA, Chicago or another journal's citation style.
+
+RIS and BibTeX preserve citation pinpoint locations as a labelled **Source
+locator** note. They do not infer a publication's page extent from the pages
+selected for a quotation. Research notes remain excluded from those formats.
+
 Choose a folder outside the private library data folder. Existing ordinary export files can be replaced after the
 Save dialog's confirmation. If another program changes the destination during
 export, select it again before replacing it. A failed save keeps the previous

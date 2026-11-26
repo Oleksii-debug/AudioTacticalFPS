@@ -13,7 +13,7 @@ import wx
 from ..application import LibraryApp
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export
+from ..research.export_file import write_export, write_binary_export
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
@@ -893,26 +893,55 @@ class DesktopFrame(WorkspaceFrame):
     def export_topic(self, event):
         try:
             workspace, topic = self._topic()
-            dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic.md',
-                wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv',
+            library = self.library
+            formats = ('markdown', 'text', 'ris', 'bibtex', 'csv', 'docx', 'html')
+            extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
+            dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
+                wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
                 style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
                 path = Path(dialog.GetPath())
-                format = ('markdown', 'text', 'ris', 'bibtex', 'csv')[dialog.GetFilterIndex()]
+                selected = dialog.GetFilterIndex()
+                if not 0 <= selected < len(formats):
+                    raise ValueError('Choose an export format.')
+                format, extension = formats[selected], extensions[selected]
             finally:
                 dialog.Destroy()
+            if not path.suffix:
+                # Some native save dialogs append the filter's extension and
+                # others do not. Confirm the actual target if we append it.
+                path = path.with_suffix(extension)
+                if path.exists() and wx.MessageBox(
+                    f'Replace the existing export {path.name}?', 'Replace export',
+                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
+                    return
+            elif format in ('docx', 'html') and path.suffix.lower() != extension:
+                raise ValueError(f'The selected format needs a {extension} filename. '
+                                 'Export again with the matching filename or file type.')
+
+            def selected_scope():
+                if self.library is not library or self.active != (workspace, topic):
+                    raise ValueError('The selected library or topic changed. Export again from the intended topic.')
+
             def export():
-                text = self.library.export_topic(workspace,topic,format=format,
-                                                cancelled=self.cancel_event.is_set)
+                selected_scope()
+                content = library.export_topic(workspace,topic,format=format,
+                                               cancelled=self.cancel_event.is_set)
+                selected_scope()
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
-                write_export(path,text,private_root=self.library.root)
+                writer = write_binary_export if format == 'docx' else write_export
+                writer(path,content,private_root=library.root,
+                       cancelled=self.cancel_event.is_set)
 
             def done(result):
                 if format in ('ris','bibtex'):
                     self.report('Bibliography exported. Quotations and research notes are not included.')
+                elif format in ('docx', 'html'):
+                    self.report('Research document exported with navigable headings, source citations, '
+                                'and quotations kept separate from research notes.')
                 else:
                     self.report('Topic exported with quotations and research notes kept separate.')
 
@@ -1032,6 +1061,7 @@ class DesktopFrame(WorkspaceFrame):
             'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
             'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
             'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
+            'In Export topic, choose Word or HTML for a readable research document with heading navigation.\n'
             'The Research menu also opens Library overview, Source metadata and indexing checklist, '
             'and Export source comparison matrix for this library or one of its collections.\n'
             'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
