@@ -4,8 +4,14 @@ These checks exercise forms, scope, selections and exported content. Native wx
 controls and actual focus are exercised separately by windows_academic_smoke.py.
 """
 from dataclasses import replace
+from concurrent.futures import Future, ThreadPoolExecutor
+import ast
+import inspect
 import json
-from types import MappingProxyType
+import sys
+from threading import Event
+from types import MappingProxyType, SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -221,3 +227,278 @@ def test_local_book_choices_explain_editions_and_keep_the_selected_source(contro
     source = controller.prepare_document(reference)
     assert source.path.read_bytes() == app.assets.resolve(second['asset']).read_bytes()
     assert reference.edition_id == selected.edition_id == second['edition']
+
+
+class _Control:
+    """Any attempt to use a destroyed native control fails the regression."""
+    def __init__(self, value=''):
+        self.value, self.dead, self.enabled = value, False, True
+        self.calls = []
+
+    def _touch(self, method, *args):
+        assert not self.dead, 'A completion accessed a destroyed control'
+        self.calls.append((method, args))
+
+    def GetValue(self):
+        self._touch('GetValue')
+        return self.value
+
+    def SetValue(self, value):
+        self._touch('SetValue', value)
+        self.value = value
+
+    def Enable(self, enabled=True):
+        self._touch('Enable', enabled)
+        self.enabled = enabled
+
+    def Disable(self):
+        self.Enable(False)
+
+    def SetLabel(self, value):
+        self.SetValue(value)
+
+    def SetInsertionPoint(self, position):
+        self._touch('SetInsertionPoint', position)
+
+    def SetFocus(self):
+        self._touch('SetFocus')
+
+
+class _Window(_Control):
+    def __init__(self):
+        super().__init__()
+        self.modal, self.return_code = True, None
+
+    def IsModal(self):
+        self._touch('IsModal')
+        return self.modal
+
+    def EndModal(self, result):
+        self._touch('EndModal', result)
+        self.modal, self.return_code = False, result
+
+    def SetReturnCode(self, result):
+        self._touch('SetReturnCode', result)
+        self.return_code = result
+
+    def Hide(self):
+        self._touch('Hide')
+
+
+class _DeferredExecutor:
+    def __init__(self):
+        self.future = Future()
+        self.operation = None
+
+    def submit(self, operation, *args):
+        self.operation = lambda: operation(*args)
+        return self.future
+
+    def finish(self):
+        def worker():
+            try:
+                self.future.set_result(self.operation())
+            except Exception as exc:
+                self.future.set_exception(exc)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(worker).result()
+
+
+@pytest.fixture
+def native_handlers(monkeypatch):
+    """Execute real nested handlers without constructing native windows.
+
+    The AcademicDialog class is local to a factory which immediately builds its
+    controls. Extract that unchanged class definition; constructors and real wx
+    event delivery remain covered only by the separate native smoke.
+    """
+    from carr_library.ui import academic_library_dialog as ui
+    queued = []
+    wx = SimpleNamespace(Dialog=_Window, ID_OK=1, ID_CANCEL=2,
+        CallAfter=lambda callback, *args, **kwargs: queued.append((callback, args, kwargs)))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    _, editor, _, _, report, _ = ui._native_types()
+    factory = ast.parse(inspect.getsource(ui.create_academic_dialog))
+    definition = next(node for node in ast.walk(factory)
+                      if isinstance(node, ast.ClassDef) and node.name == 'AcademicDialog')
+    namespace = {**vars(ui), 'wx': wx, 'report': report}
+    exec(compile(ast.Module(body=[definition], type_ignores=[]), inspect.getfile(ui), 'exec'), namespace)
+
+    def make(kind, controller):
+        cls = editor if kind == 'editor' else namespace['AcademicDialog']
+        window = cls.__new__(cls)
+        _Window.__init__(window)
+        window._window_alive, window.pending = True, False
+        window.status = _Control()
+        window.executor = _DeferredExecutor()
+        if kind == 'editor':
+            window.saved, window.save = None, controller.create
+            window.controls = {key: _Control(value) for key, value in draft().items()}
+            window.choice_values = {}
+            window.save_button, window.cancel_button = _Control(), _Control()
+            window._initial = window.raw_values()
+            window.confirm_discard = lambda: False
+            controls = (*window.controls.values(), window.save_button, window.cancel_button)
+        else:
+            window.cancel_event = Event()
+            window.job_controls = (_Control(), _Control())
+            window.close_button = _Control('&Close')
+            window._buttons = Mock(side_effect=lambda: window._touch('_buttons'))
+            controls = (*window.job_controls, window.close_button)
+        window.all_controls = (window, window.status, *controls)
+        return window
+
+    def destroy(window):
+        event = SimpleNamespace(GetEventObject=lambda: window, Skip=Mock())
+        window.on_destroy(event)
+        event.Skip.assert_called_once()
+        for control in window.all_controls:
+            control.dead = True
+
+    def drain():
+        while queued:
+            callback, args, kwargs = queued.pop(0)
+            callback(*args, **kwargs)
+
+    return SimpleNamespace(make=make, destroy=destroy, drain=drain, queued=queued, wx=wx)
+
+
+@pytest.mark.parametrize('timing', ['before_worker_finishes', 'after_callback_queued'])
+@pytest.mark.parametrize('outcome', ['success', 'error'])
+def test_editor_late_completion_never_touches_destroyed_controls(controller, native_handlers, timing, outcome):
+    ui = native_handlers
+    window = ui.make('editor', controller)
+    error = ValueError('Synthetic save failure')
+    if outcome == 'error':
+        window.save = Mock(side_effect=error)
+    window.on_save()
+    assert window.pending
+    if timing == 'after_callback_queued':
+        window.executor.finish()
+    ui.destroy(window)
+    before = [control.calls[:] for control in window.all_controls]
+    if timing == 'before_worker_finishes':
+        window.executor.finish()
+    if outcome == 'error':
+        assert ui.queued[0][2]['error'] is error
+    ui.drain()
+    assert not window.pending
+    assert [control.calls for control in window.all_controls] == before
+    if outcome == 'success':
+        saved, = controller.list()
+        assert window.saved == saved  # Destruction does not undo an already authorized save.
+    else:
+        assert window.saved is None and controller.list() == ()
+    window.on_save()
+    window.on_cancel()
+    window.on_close(Mock())
+    assert [control.calls for control in window.all_controls] == before
+
+
+@pytest.mark.parametrize('timing', ['before_worker_finishes', 'after_callback_queued'])
+@pytest.mark.parametrize('outcome', ['success', 'error'])
+def test_academic_late_completion_never_runs_ui_callback_after_destroy(controller, native_handlers, timing, outcome):
+    ui = native_handlers
+    window = ui.make('academic', controller)
+    error, done = ValueError('Synthetic read failure'), Mock()
+    operation = controller.statistics if outcome == 'success' else Mock(side_effect=error)
+    window._run('Loading overview', operation, done)
+    assert window.pending
+    if timing == 'after_callback_queued':
+        window.executor.finish()
+    ui.destroy(window)
+    assert window.cancel_event.is_set()
+    before = [control.calls[:] for control in window.all_controls]
+    if timing == 'before_worker_finishes':
+        window.executor.finish()
+    if outcome == 'error':
+        assert ui.queued[0][2]['error'] is error
+    ui.drain()
+    assert not window.pending
+    done.assert_not_called()
+    assert [control.calls for control in window.all_controls] == before
+    forbidden = Mock(side_effect=AssertionError('Destroyed dialog started another operation'))
+    window._run('Late operation', forbidden, done)
+    window.on_cancel()
+    window.on_close(Mock())
+    forbidden.assert_not_called()
+    assert [control.calls for control in window.all_controls] == before
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+@pytest.mark.parametrize('outcome', ['success', 'error'])
+def test_live_completion_and_child_destroy_keep_normal_callbacks(controller, native_handlers, kind, outcome):
+    ui = native_handlers
+    window, done = ui.make(kind, controller), Mock()
+    error = ValueError('Visible worker failure')
+    if kind == 'editor':
+        if outcome == 'error':
+            window.save = Mock(side_effect=error)
+        window.on_save()
+    else:
+        window._run('Loading overview', controller.statistics if outcome == 'success' else Mock(side_effect=error), done)
+    window.on_destroy(SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock()))
+    assert window._window_alive and window.pending
+    if kind == 'academic':
+        assert not window.cancel_event.is_set()
+    window.executor.finish()
+    assert window.pending  # Completion is dispatched on the UI turn.
+    ui.drain()
+    assert not window.pending and all(control.enabled for control in window.all_controls)
+    if outcome == 'error':
+        assert 'Visible worker failure' in window.status.value and window.modal
+        done.assert_not_called()
+    elif kind == 'editor':
+        assert window.saved == controller.list()[0]
+        assert window.return_code == ui.wx.ID_OK and not window.modal
+    else:
+        done.assert_called_once_with(controller.statistics())
+        assert window.modal
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+def test_pending_close_veto_remains_until_worker_completion(controller, native_handlers, kind):
+    ui = native_handlers
+    window, done = ui.make(kind, controller), Mock()
+    if kind == 'editor':
+        window.on_save()
+    else:
+        window._run('Loading overview', controller.statistics, done)
+    event = SimpleNamespace(CanVeto=lambda: True, Veto=Mock(), Skip=Mock())
+    window.on_close(event)
+    event.Veto.assert_called_once()
+    assert window.modal and window.pending and window._window_alive
+    window.executor.finish()
+    ui.drain()
+    assert not window.pending
+    if kind == 'editor':
+        assert window.return_code == ui.wx.ID_OK and window.saved is not None
+    else:
+        assert window.modal and 'cancelled' in window.status.value.casefold()
+        done.assert_not_called()
+        window.on_close(event)
+        assert window.return_code == ui.wx.ID_CANCEL and not window.modal
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+def test_executor_submission_error_restores_live_controls(controller, native_handlers, kind):
+    window, done = native_handlers.make(kind, controller), Mock()
+    window.executor = SimpleNamespace(submit=Mock(side_effect=RuntimeError('Executor stopped')))
+    if kind == 'editor':
+        window.on_save()
+    else:
+        window._run('Loading overview', controller.statistics, done)
+    assert not window.pending and window.modal
+    assert 'Executor stopped' in window.status.value
+    assert all(control.enabled for control in window.all_controls)
+    done.assert_not_called()
+
+
+def test_live_academic_completion_reports_done_callback_error(controller, native_handlers):
+    window = native_handlers.make('academic', controller)
+    window._run('Loading overview', controller.statistics,
+                Mock(side_effect=ValueError('Visible callback failure')))
+    window.executor.finish()
+    native_handlers.drain()
+    assert not window.pending and window.modal
+    assert 'Visible callback failure' in window.status.value
