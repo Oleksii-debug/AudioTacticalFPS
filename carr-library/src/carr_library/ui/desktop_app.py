@@ -35,6 +35,8 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from .audio_studio import install_audio_studio_actions
+from .api_connections import install_api_connection_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -500,6 +502,8 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
+        install_audio_studio_actions(self)
+        install_api_connection_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)

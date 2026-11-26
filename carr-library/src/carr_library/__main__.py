@@ -90,7 +90,10 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
+    add_audio_arguments(parser)
     args = parser.parse_args(argv)
+    validate_audio_arguments(args, parser)
     if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
         parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
@@ -101,6 +104,8 @@ def main(argv=None):
     try:
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        if audio_requested(args):
+            return run_audio(args)
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
