@@ -99,6 +99,12 @@ jobs:
           & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise the installed native OCR catalogue and model manager
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise native academic references and reading controls
         timeout-minutes: 3
         run: |
@@ -156,6 +162,9 @@ jobs:
             'tests/e2e/test_import_batches.py',
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
+            'tests/ui/test_ocr_model_manager.py',
+            'tests/ui/test_ocr_selection.py',
+            'tests/ui/test_ocr_options.py',
             'tests/e2e/test_epub_import.py',
             'tests/extract/test_epub_ordered.py',
             'tests/reader/test_ebook_reader.py',
@@ -252,7 +261,14 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_delivery_archive.py',
-            'tests/packaging/test_windows_bundle.py'
+            'tests/packaging/test_windows_bundle.py',
+            'tests/reader/test_context.py',
+            'tests/reader/test_topic_tree.py',
+            'tests/ui/test_federated_labels.py',
+            'tests/search/test_literal_unicode_memory.py',
+            'tests/e2e/test_search_deadline.py',
+            'tests/ingest/test_txt_replay_registration.py',
+            'tests/ingest/test_terminal_replay_registration.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -468,8 +484,16 @@ jobs:
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
-          contents_suites = ['tests/reader/test_ebook_contents.py',
-                            'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py']
+          contents_suites = [
+              'tests/reader/test_ebook_contents.py',
+              'tests/e2e/test_epub_library.py',
+              'tests/e2e/test_epub_reading_desk.py',
+              'tests/extract/test_ocr_model_cli.py',
+              'tests/extract/test_ocr_model_store.py',
+              'tests/extract/test_managed_ocr.py',
+              'tests/e2e/test_managed_ocr_import.py',
+              'tests/extract/test_ocr_languages.py'
+          ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
