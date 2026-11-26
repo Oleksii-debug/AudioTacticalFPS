@@ -115,9 +115,16 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     params = [workspace]
     where = 'workspace=?'
     if edition_ids is not None:
-        ids = tuple(edition_ids)
-        if len(ids) > 500 or any(not isinstance(x, str) or not x for x in ids):
-            raise ValueError('invalid edition filter')
+        from itertools import islice
+        if isinstance(edition_ids, (str, bytes, bytearray)):
+            raise ValueError('edition filter must be an iterable of IDs, not a scalar')
+        ids = []
+        for item in islice(edition_ids, 501):
+            check()
+            if len(ids) == 500 or not isinstance(item, str) or not item:
+                raise ValueError('invalid edition filter')
+            ids.append(item)
+        check()
         if not ids:
             return []
         where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
