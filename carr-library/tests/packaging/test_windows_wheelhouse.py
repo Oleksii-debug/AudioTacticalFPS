@@ -1,11 +1,13 @@
 """Actual uv subprocess tests, synthetic wheel metadata; no Windows binary execution."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 spec = importlib.util.spec_from_file_location('windows_wheelhouse', Path(__file__).resolve().parents[2] / 'packaging/windows_wheelhouse.py')
@@ -36,10 +38,68 @@ class TargetTest(unittest.TestCase):
         self.req = self.root / 'requirements.in'
         self.req.write_text('carr-root==1.0\n', encoding='utf-8')
         self.out = self.root / 'windows.lock'
+        self.manifest = self.root / 'approved.json'
         wheel(self.wheels, 'carr_root', 'py3-none-any', ["carr_native==1.0; sys_platform == 'win32'", "carr_linux==1.0; sys_platform == 'linux'"])
 
+    def approve_fixture(self):
+        # Synthetic fixtures only. Production approval must be independently sourced.
+        self.manifest.write_text(json.dumps({p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                                            for p in self.wheels.iterdir()}), encoding='utf-8')
+
     def run_resolve(self):
-        mod.resolve(self.req, self.wheels, self.out)
+        if not self.manifest.exists():
+            self.approve_fixture()
+        mod.resolve(self.req, self.wheels, self.out, self.manifest)
+
+    def test_reject_modified_valid_wheel(self):
+        native = wheel(self.wheels, 'carr_native', 'cp311-cp311-win_amd64')
+        self.approve_fixture()
+        with zipfile.ZipFile(native, 'a') as z:
+            z.writestr('modified.txt', 'changed after approval')
+        with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
+            self.run_resolve()
+        self.assertFalse(self.out.exists())
+
+    def test_reject_extra_wheel(self):
+        self.approve_fixture()
+        wheel(self.wheels, 'carr_native', 'cp311-cp311-win_amd64')
+        with self.assertRaisesRegex(ValueError, 'approved inventory'):
+            self.run_resolve()
+        self.assertFalse(self.out.exists())
+
+    def test_reject_missing_wheel(self):
+        native = wheel(self.wheels, 'carr_native', 'cp311-cp311-win_amd64')
+        self.approve_fixture()
+        native.unlink()
+        with self.assertRaisesRegex(ValueError, 'approved inventory'):
+            self.run_resolve()
+        self.assertFalse(self.out.exists())
+
+    def test_reject_invalid_manifest(self):
+        for payload in ('{}', '[]', '{"x-1.0-py3-none-any.whl": "not-a-hash"}',
+                        '{"x": 1, "x": 2}', '{"../x.whl": "' + '0'*64 + '"}',
+                        json.dumps({'x-1.0-py3-none-any.whl': '0'*64,
+                                    'X-1.0-py3-none-any.whl': '1'*64})):
+            with self.subTest(payload=payload):
+                self.manifest.write_text(payload, encoding='utf-8')
+                with self.assertRaises(ValueError):
+                    self.run_resolve()
+                self.assertFalse(self.out.exists())
+
+    def test_reject_mutation_after_dry_run(self):
+        native = wheel(self.wheels, 'carr_native', 'cp311-cp311-win_amd64')
+        self.approve_fixture()
+        real_run = subprocess.run
+        def change_after_run(cmd, *args, **kwargs):
+            result = real_run(cmd, *args, **kwargs)
+            if '--dry-run' in cmd:
+                with zipfile.ZipFile(native, 'a') as z:
+                    z.writestr('modified.txt', 'changed during staging')
+            return result
+        with patch.object(mod.subprocess, 'run', side_effect=change_after_run):
+            with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
+                self.run_resolve()
+        self.assertFalse(self.out.exists())
 
     def test_windows_marker_and_hash(self):
         native = wheel(self.wheels, 'carr_native', 'cp311-cp311-win_amd64')
@@ -85,6 +145,11 @@ class TargetTest(unittest.TestCase):
             self.skipTest('local distro pip wheel not available')
         shutil.copyfile(fixture, self.wheels / fixture.name)
         self.req.write_text('pip==25.1.1\n', encoding='utf-8')
+        self.approve_fixture()
+        # Known prior distro wheel digest, not newly self-approved bytes.
+        approved = json.loads(self.manifest.read_text(encoding='utf-8'))
+        approved[fixture.name] = '20568e5d750393b2a331d6b261886cbe5d62aca3f54d49a39815b7474d34cd9c'
+        self.manifest.write_text(json.dumps(approved), encoding='utf-8')
         self.run_resolve()
         lock = self.out.read_text(encoding='utf-8')
         self.assertIn('pip==25.1.1', lock)
