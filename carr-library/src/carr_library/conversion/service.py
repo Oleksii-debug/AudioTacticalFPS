@@ -53,13 +53,18 @@ class ConversionService:
 
     def capabilities(self):
         pandoc = str(self.pandoc) if self.pandoc else shutil.which('pandoc')
+        from ..extract.ocr_runtime import discover_ocr_runtime, OcrRuntimeError
+        try:
+            ocr = discover_ocr_runtime() is not None
+        except OcrRuntimeError:
+            ocr = False
         values = [{'extension': suffix, 'available': True, 'adapter': 'built-in isolated reader',
                    'limitation': 'Reading derivative only; structural and source-review limitations are reported.'}
                   for suffix in BUILTIN]
         values.append({'extension': '.rtf', 'available': bool(pandoc), 'adapter': 'installed Pandoc --sandbox',
                        'limitation': 'Requires an installed compatible Pandoc; no images, active content or exact layout.'})
         for suffix in IMAGES:
-            values.append({'extension': suffix, 'available': bool(shutil.which('tesseract')),
+            values.append({'extension': suffix, 'available': ocr,
                            'adapter': 'installed Tesseract with explicit languages',
                            'limitation': 'OCR must be explicitly selected; unverified text only, no automatic quotation approval.'})
         for suffix in LEGACY:
@@ -126,12 +131,16 @@ class ConversionService:
         runtime = discover_ocr_runtime('+'.join(languages))
         if runtime is None:
             raise ConversionUnavailable('No local Tesseract OCR engine is installed.')
-        # Pillow reads only the snapshot metadata here; its decompression guard
-        # is active and the explicit pixel/frame cap is checked before OCR.
-        from PIL import Image
-        with Image.open(source) as image:
-            if image.width * image.height > 40_000_000 or getattr(image, 'n_frames', 1) > self.budget.max_pages:
-                raise ConversionError('Raster dimensions or frame count exceed the OCR budget.')
+        request, image_report = stage / 'image-request.json', stage / 'image-details.json'
+        request.write_text(json.dumps({'operation': 'inspect_image', 'source': str(source),
+            'output': str(output), 'report': str(image_report), 'budget': asdict(self.budget)}), encoding='utf-8')
+        run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
+                     'carr_library.conversion.worker', str(request)],
+                    budget=self._process_budget(), cancelled=cancelled,
+                    watch=(image_report,), env=self._env(stage), cwd=stage)
+        if regular(image_report).st_size > 65536:
+            raise ConversionError('Raster metadata exceeded its report budget.')
+        image_metadata = json.loads(image_report.read_text(encoding='utf-8'))
         executable = str(local_path(runtime.executable, exists=True))
         arguments = runtime.command([executable, str(source), str(stage / 'ocr'), '-l', '+'.join(languages), '--psm', '3'])
         generated = stage / 'ocr.txt'
@@ -139,7 +148,8 @@ class ConversionService:
                     env=self._env(stage), cwd=runtime.root or stage)
         runtime.assert_unchanged()
         os.replace(generated, output)
-        return {'engine': 'local-tesseract-ocr', 'sections': [], 'metadata': {'languages': list(languages)},
+        return {'engine': 'local-tesseract-ocr', 'sections': [],
+                'metadata': {'languages': list(languages), **image_metadata},
                 'warnings': ['OCR text is an unverified reading derivative. Compare it with the source before quoting.',
                              'Coordinates, page labels, orientation and document layout are not reconstructed by this text-only export.']}
 
@@ -217,7 +227,7 @@ class ConversionService:
             receipt = stage / 'provenance.json'
             receipt.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), encoding='utf-8')
             for path in (converted, receipt):
-                with path.open('rb') as stream:
+                with path.open('r+b') as stream:
                     os.fsync(stream.fileno())
             self._output(target)  # Repeat local/path/no-overwrite authorization before publication.
             published = False

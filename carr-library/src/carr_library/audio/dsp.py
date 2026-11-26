@@ -292,14 +292,19 @@ class AudioRuntime:
             version = run_process([self.ffmpeg, '-version'], budget=budget).stdout.decode('utf-8', 'replace')
             filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget).stdout.decode('utf-8', 'replace')
             encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget).stdout.decode('utf-8', 'replace')
-            filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{3}\s+(\S+)\s', filters, re.M)}
+            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget).stdout.decode('utf-8', 'replace')
+            # FFmpeg 9 removed the command-support column (three flags -> two).
+            filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{2,3}\s+([a-zA-Z0-9_]+)\s', filters, re.M)}
             encoder_names = {match.group(1) for match in re.finditer(r'^\s*[A-Z.]{6}\s+(\S+)\s', encoders, re.M)}
             filter_names.discard('=')
             encoder_names.discard('=')
+            muxer_names = {name for match in re.finditer(r'^\s*[. ]?E[. d ]*\s+(\S+)\s', muxers, re.M)
+                           for name in match.group(1).split(',') if name != '='}
             self._capabilities = {'version': version.splitlines()[0] if version else 'unknown',
                 'build_configuration': next((line for line in version.splitlines() if line.startswith('configuration:')), ''),
-                'filters': sorted(filter_names), 'encoders': sorted(encoder_names),
-                'formats': [ext for ext, (_, encoder, _) in _ENCODINGS.items() if encoder in encoder_names],
+                'filters': sorted(filter_names), 'encoders': sorted(encoder_names), 'muxers': sorted(muxer_names),
+                'formats': [ext for ext, (muxer, encoder, _) in _ENCODINGS.items()
+                            if encoder in encoder_names and muxer in muxer_names],
                 'effects': [kind for kind, name in _FILTERS.items() if name in filter_names],
                 'local_only': True, 'realtime_preview': False,
                 'reverb_description': 'Four early reflections; no convolution IR or calibrated RT60.',
@@ -367,6 +372,8 @@ class AudioRuntime:
             codec = f'pcm_s{bit_depth}{"le" if muxer == "wav" else "be"}'
         if codec not in self.capabilities()['encoders']:
             raise AudioUnavailable(f'The installed FFmpeg build has no {codec} encoder.')
+        if muxer not in self.capabilities()['muxers']:
+            raise AudioUnavailable(f'The installed FFmpeg build has no {muxer} output container.')
         args = ['-ar', str(sample_rate), '-ac', str(channels), '-c:a', codec]
         if options and options[0] == '-b:a':
             args += ['-b:a', f'{bitrate}k']
@@ -631,6 +638,10 @@ class AudioRuntime:
     def configure_music_model(self, config, *, cancelled=lambda: False):
         from .music import configure_model
         configure_model(self, config, cancelled=cancelled)
+
+    def probe_music_model(self, engine, *, cancelled=lambda: False):
+        from .music import probe_model
+        return probe_model(self, engine, cancelled=cancelled)
 
     def configure_fluidsynth(self, binary, soundfont, *, sha256, license_notice):
         from .music import configure_fluidsynth

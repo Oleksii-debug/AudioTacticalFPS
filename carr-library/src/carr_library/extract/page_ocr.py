@@ -13,7 +13,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
+from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime, NON_READING_MODELS
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -81,6 +81,8 @@ class Config:
             raise ValueError('invalid language selection')
         if len(self.languages) > 2048 or len(set(self.languages.split('+'))) != len(self.languages.split('+')):
             raise ValueError('duplicate or oversized language selection')
+        if NON_READING_MODELS.intersection(self.languages.split('+')):
+            raise ValueError('Choose reading languages or scripts; special detectors are separate.')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_policy == POLICY:

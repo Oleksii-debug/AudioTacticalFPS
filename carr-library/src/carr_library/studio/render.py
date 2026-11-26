@@ -3,7 +3,7 @@
 Every accepted node is content-addressed and checksum-verified before reuse.
 Source text is data. This module never accepts shell commands or provider URLs.
 """
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from hashlib import sha256
 import os
 from pathlib import Path
@@ -16,6 +16,43 @@ from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, loca
 from .project import Project, ProjectStore, parse_script, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
+
+
+def music_installation_identity(runtime, engine):
+    """Bind cached scores to the explicitly installed weights and runtime code."""
+    if engine in ('musicgen', 'ace-step'):
+        from ..audio.music import validate_model
+        if engine not in runtime.music_models:
+            raise ValueError(f'Configure the installed {engine} model before rendering this score.')
+        config, _ = runtime.music_models[engine]
+        manifest = validate_model(config)
+        return {'engine': engine, 'manifest': manifest,
+                'python_sha256': digest_file(config.python),
+                'device': config.device, 'max_chunk_seconds': config.max_chunk_seconds}
+    if engine == 'midi':
+        if not runtime.fluidsynth or not runtime.soundfont:
+            raise ValueError('Configure FluidSynth and a reviewed SoundFont first.')
+        return {'engine': engine, 'fluidsynth_sha256': digest_file(runtime.fluidsynth),
+                'soundfont_sha256': digest_file(runtime.soundfont)}
+    return {'engine': engine, 'composer': 'procedural-motif-v1'}
+
+
+def music_segments(spec, sample_rate, maximum_seconds):
+    """Frame-exact independent variations; no claim of model continuation."""
+    total = round(spec.duration * sample_rate)
+    maximum = max(1, int(maximum_seconds * sample_rate))
+    cursor, index = 0, 0
+    while cursor < total:
+        frames = min(maximum, total - cursor)
+        # Keep the last segment within the engine's minimum duration too.
+        minimum = max(1, round(.01 * sample_rate))
+        if 0 < total - cursor - frames < minimum:
+            frames -= minimum - (total - cursor - frames)
+        duration = frames / sample_rate
+        yield replace(spec, duration=duration, seed=(spec.seed + index) % (2 ** 31),
+                      fade_in=min(spec.fade_in, duration), fade_out=min(spec.fade_out, duration))
+        cursor += frames
+        index += 1
 
 
 def _stamp(seconds, *, comma=False):
@@ -265,9 +302,22 @@ class ProductionService:
                         spec = MusicSpec(duration=voice_info.duration, mood=scene.music.mood,
                                          tempo=scene.music.tempo, seed=scene.music.seed, engine=scene.music.engine,
                                          fade_in=min(.15, voice_info.duration), fade_out=min(.4, voice_info.duration))
-                        music, _ = node('instrumental score', asdict(spec),
-                            lambda target: runtime.render_music(spec, target, sample_rate=project.sample_rate,
-                                                               cancelled=stopping))
+                        identity = music_installation_identity(runtime, spec.engine)
+                        # Chunk scheduling is durable and bounded for optional neural engines.
+                        # Separate variations preserve requested duration, without representing
+                        # independent inference as coherent full-length model continuation.
+                        maximum = (runtime.music_models[spec.engine][0].max_chunk_seconds
+                                   if spec.engine in ('musicgen', 'ace-step') else spec.duration)
+                        score_parts = []
+                        for segment in music_segments(spec, project.sample_rate, maximum):
+                            part, _ = node('instrumental score', {'spec': asdict(segment), 'installation': identity},
+                                lambda target, segment=segment: runtime.render_music(segment, target,
+                                    sample_rate=project.sample_rate, cancelled=stopping))
+                            score_parts.append(part)
+                        music = score_parts[0] if len(score_parts) == 1 else node('score assembly',
+                            [digest_file(path) for path in score_parts],
+                            lambda target: runtime.concatenate(score_parts, target,
+                                sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     for cue in scene.cues:
                         source = local_path(cue.path, exists=True)
@@ -383,6 +433,8 @@ class ProductionService:
                             'mode': project.mode, 'local_only': True,
                             'loudness': meter.to_dict(),
                             'music_kind': 'procedural/MIDI/local-model as explicitly selected per scene',
+                            'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
+                                                'continuous neural composition and perceptually seamless joins are not assumed.',
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),

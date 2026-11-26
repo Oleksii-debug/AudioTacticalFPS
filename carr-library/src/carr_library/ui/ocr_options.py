@@ -36,7 +36,7 @@ def choose_ocr_config(parent, paths):
 def choose_installed_languages(parent):
     import wx
     from ..extract.language_manager import installed_languages, language_selection
-    models = tuple(model for model in installed_languages() if model.kind != 'orientation')
+    models = tuple(model for model in installed_languages() if model.kind in ('language', 'script'))
     dialog = wx.MultiChoiceDialog(parent,
         'Select one or several installed reading models. Use a small set matching the source; '
         'script detection does not identify the language. No models are downloaded.',

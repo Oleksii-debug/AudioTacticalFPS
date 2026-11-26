@@ -84,6 +84,7 @@ packages = [
   "carr_library.assistant",
   "carr_library.conversion",
   "carr_library.integrations",
+  "carr_library.academic_integration",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",
@@ -96,6 +97,7 @@ bootstrap = "bootstrap"
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.extract" = ["ocr-model-catalog.json"]
+"carr_library.academic_integration" = ["styles/*.csl", "locales/*.xml", "vendor/*", "csl_worker.cjs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

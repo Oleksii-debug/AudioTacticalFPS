@@ -186,3 +186,8 @@ def test_configured_model_assets_are_not_claimed_as_verified_inference(tmp_path)
     assert state['runtime_code_verified'] is False
     assert state['inference_tested'] is False
     assert state['available'] is False
+    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
+        runtime.probe_music_model('musicgen')
+    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
+        runtime.render_music(MusicSpec(duration=1, engine='musicgen'), 'never.wav')
+    assert not (tmp_path / 'never.wav').exists()

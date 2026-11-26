@@ -20,6 +20,7 @@ MAX_MANIFEST = 2 * 1024 * 1024
 MAX_FILES = 2048
 MAX_FILE = 256 * 1024 * 1024
 MAX_TOTAL = 512 * 1024 * 1024
+NON_READING_MODELS = frozenset({'osd', 'equ'})
 
 
 class OcrRuntimeError(ValueError):
@@ -116,6 +117,8 @@ class OcrRuntime:
                 'files_sha256': dict(self.files_sha256)}
 
     def require_languages(self, languages, orientation=False):
+        if NON_READING_MODELS.intersection(languages.split('+')):
+            raise OcrRuntimeError('Choose reading languages or scripts; special detectors are separate.')
         if self.portable:
             wanted = set(languages.split('+')) | ({'osd'} if orientation else set())
             if not wanted <= set(self.languages):
