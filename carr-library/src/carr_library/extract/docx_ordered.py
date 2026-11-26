@@ -22,7 +22,7 @@ def extract_docx(data: bytes):
         raise RuntimeError('unreviewed python-docx version')
     doc = Document(BytesIO(data))
     # These constructs can be omitted or transformed by high-level text APIs.
-    if doc.element.xpath('.//w:ins | .//w:del | .//w:sdt | .//w:moveFrom | .//w:moveTo | .//w:altChunk | .//w:drawing | .//w:pict | .//w:object | .//w:fldSimple | .//w:fldChar | .//w:footnoteReference | .//w:endnoteReference | .//w:vanish | .//w:commentRangeStart'):
+    if doc.element.xpath('.//w:ins | .//w:del | .//w:sdt | .//w:moveFrom | .//w:moveTo | .//w:altChunk | .//w:drawing | .//w:pict | .//w:object | .//w:fldSimple | .//w:fldChar | .//w:footnoteReference | .//w:endnoteReference | .//w:vanish | .//w:commentRangeStart | .//w:customXml'):
         raise ValueError('unsupported body structure requires review')
     records = []
     total = 0
