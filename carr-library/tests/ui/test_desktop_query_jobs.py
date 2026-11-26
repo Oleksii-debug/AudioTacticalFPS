@@ -42,6 +42,8 @@ def panel(handlers):
     panel.query.GetValue.return_value = 'history'
     panel.retrieval = Mock()
     panel.retrieval.GetSelection.return_value = 4
+    panel.result_mode = Mock()
+    panel.result_mode.GetSelection.return_value = 0
     panel.collection = Mock()
     panel.collection.GetSelection.return_value = 0
     panel.collection_ids = [None]

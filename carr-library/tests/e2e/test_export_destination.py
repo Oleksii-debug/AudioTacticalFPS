@@ -4,6 +4,7 @@ No window is created. Native wx is imported so this checks the shipped handler,
 while the dialog supplies deterministic synthetic paths without user interaction.
 """
 from types import SimpleNamespace
+from threading import Event
 
 import pytest
 
@@ -47,9 +48,21 @@ def export_using_dialog(research, destination, monkeypatch):
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
     reports = []
+
+    def run_job(title, operation, done=None, failed=None):
+        try:
+            result = operation()
+        except Exception as error:
+            if failed is None:
+                raise
+            failed(error)
+        else:
+            if done is not None:
+                done(result)
+
     frame = SimpleNamespace(library=research.app,
                             _topic=lambda: (research.workspace, research.topic),
-                            report=reports.append)
+                            report=reports.append, cancel_event=Event(), run_job=run_job)
     desktop_app.DesktopFrame.export_topic(frame, None)
     return reports
 
