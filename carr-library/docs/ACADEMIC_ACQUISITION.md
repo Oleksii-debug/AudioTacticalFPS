@@ -82,6 +82,9 @@ an explicitly approved lookup. The cache is local, bounded and not backed up.
 HTTPS hosts are exact allowlisted destinations. Credentials in URLs, non-HTTPS,
 private/loopback/link-local IPs and unapproved redirects are rejected. The actual
 connection is pinned to a validated public address while TLS verifies the host.
+Each metadata request and its redirects remain on that provider's host, including
+inside the isolated worker. Selecting several providers never authorizes one to
+forward a provider-specific contact email to another selected provider.
 No proxy environment, cookies, automatic alternate provider or arbitrary POST is
 used. Rate-limit responses receive at most two short bounded retries. The
 supervising parent can terminate the isolated network process on cancellation
