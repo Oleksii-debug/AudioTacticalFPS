@@ -64,7 +64,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -101,6 +101,9 @@ jobs:
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
             'tests/e2e/test_epub_import.py',
+            'tests/extract/test_document_formats_text.py',
+            'tests/extract/test_document_formats_xml.py',
+            'tests/e2e/test_extended_document_workflows.py',
             'tests/extract/test_epub_ordered.py',
             'tests/reader/test_ebook_reader.py',
             'tests/ui/test_ebook_reader.py',
@@ -179,6 +182,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed document formats and native accessible reading
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native wx startup and source-opening events
@@ -400,7 +409,7 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

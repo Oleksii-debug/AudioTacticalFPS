@@ -74,6 +74,8 @@ def main(argv=None):
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
     research = parser.add_mutually_exclusive_group()
+    research.add_argument('--document-formats', action='store_true',
+                          help='Print supported import formats and fidelity limits without opening a library')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
@@ -91,14 +93,18 @@ def main(argv=None):
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
     args = parser.parse_args(argv)
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
+    if (args.document_formats or args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None:
         parser.error('--workspace is only used with --search.')
     native_handle = None
     try:
+        if args.document_formats:
+            from .extract.document_formats import supported_formats_text
+            print(supported_formats_text())
+            return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
         if args.self_test:

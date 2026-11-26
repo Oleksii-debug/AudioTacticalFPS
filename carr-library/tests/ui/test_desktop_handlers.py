@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -45,6 +46,7 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
@@ -715,3 +717,28 @@ def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, moda
     chooser.Destroy.assert_called_once()
     p.frame.run_job.assert_not_called()
     p.frame.library.save_hit.assert_not_called()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+@pytest.mark.parametrize('index', [0, 1])
+def test_save_presentation_equivalent_topic_labels(classes, names, index):
+    import unicodedata
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = tuple(
+        SimpleNamespace(id=f'topic-{i}', name=name)
+        for i, name in enumerate(names))
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = index
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', x).split())
+                for x in labels}) == 2
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with(
+        'a', f'topic-{index}', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
