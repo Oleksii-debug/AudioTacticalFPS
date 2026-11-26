@@ -81,11 +81,31 @@ your documents. Search and library data remain on the local computer.
 ## Open original sources and export research
 
 After selecting a search result, use **Open original source file** to open a
-copy in the computer's default PDF, text or Word reader. The search status gives
+copy in the computer's default PDF, text, Word or EPUB reader. The search status gives
 the physical PDF page or logical text segment. Use the external reader to reach
 that location; opening the file does not automatically jump to a particular
 page. Changes made in that reader do not alter the retained library original.
 Opening a source does not approve its extracted text for quotation.
+
+## Read EPUB books
+
+**Library, Import books** accepts EPUB alongside PDF, DOCX and TXT. Select the
+imported EPUB in **Books and Collections**, then press **Ctrl+Shift+O** or choose
+**Library, Read electronic book contents**. The reader provides a chapter list,
+the book's table of contents when available, Previous/Next chapter, and an
+extraction report. **Ctrl+F** focuses Find and **F3** finds the next literal
+occurrence in the current chapter. Tab and Shift+Tab move between labelled
+native controls. Image alternative descriptions are displayed separately as
+unverified descriptions supplied by the book.
+
+EPUB chapters follow the declared reading order, including supplementary
+chapters. Chapter and section positions are unpaginated; embedded page labels
+are unverified hints. The extracted text is available for reading and library
+search, while verified quotation copying and saving require independent source
+verification. Embedded title and author values remain metadata hints and do
+not replace your catalog information. Complete library backups include the
+original EPUB and its saved chapter navigation. See [EPUB.md](EPUB.md) for the
+supported reading path and explicit limits.
 
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
@@ -195,7 +215,7 @@ output directory. Each bundle includes an inventory of exact file hashes.
 ## Third-party components
 
 The application uses SQLite/FTS5 from Python, pypdf, PDFium through pypdfium2,
-python-docx, platformdirs, and wxPython. Third-party wheel licenses remain in
+python-docx, lxml, platformdirs, and wxPython. Third-party wheel licenses remain in
 their distributions. Vendored cairnsearch, filetype, rispy, Rifflux and
 wx-accessible-grid license and provenance files are included in the application
 wheel. See each corresponding `UPSTREAM` or `REUSE` file in the source tree.
