@@ -250,7 +250,8 @@ jobs:
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/integrations/test_dordiai_voices.py',
             'tests/integrations/test_dordiai_speech.py',
-            'tests/integrations/test_dordiai_settings.py'
+            'tests/integrations/test_dordiai_settings.py',
+            'tests/storage/test_state_snapshot_identity.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

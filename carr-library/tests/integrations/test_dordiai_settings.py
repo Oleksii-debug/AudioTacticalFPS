@@ -54,6 +54,7 @@ def test_disabled_saved_engine_never_probes_private_paths(tmp_path, monkeypatch,
     {'enabled': True, 'runtime_directory': '//network/share'},
     {'enabled': True, 'runtime_directory': '\\\\host\\share'},
     {'enabled': True, 'runtime_directory': '/tmp/local', 'expected_worker_sha256': 'unreviewed'},
+    {'enabled': True, 'runtime_directory': '/tmp/local', 'expected_worker_sha256': None},
     {'enabled': False, 'remote_url': 'https://invalid.example'},
     {'enabled': True, 'runtime_directory': '/tmp/local', 'python_executable': ''}])
 def test_bad_declaration_preserves_last_saved_configuration(tmp_path, invalid):

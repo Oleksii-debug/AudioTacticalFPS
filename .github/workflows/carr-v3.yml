@@ -53,7 +53,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require reviewed local voice bridge and saved configuration checks
         run: |
-          python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
+          python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/storage/test_state_snapshot_identity.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         run: |
