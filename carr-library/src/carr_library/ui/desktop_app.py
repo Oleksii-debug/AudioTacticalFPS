@@ -28,6 +28,7 @@ from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
 
 
@@ -459,6 +460,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
+                ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
@@ -478,6 +480,8 @@ class DesktopFrame(WorkspaceFrame):
         install_research_actions(self)
         install_source_review_actions(self)
         install_reading_desk_actions(self)
+        from .ebook_reader import install_ebook_reader
+        install_ebook_reader(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -721,7 +725,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx)|*.txt;*.pdf;*.docx',
+            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -1031,12 +1035,16 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
+            'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
+            'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
+            'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
+            'F1 inside the reader explains page navigation and bookmarks.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
@@ -1045,10 +1053,12 @@ class DesktopFrame(WorkspaceFrame):
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'
-            'TXT quotations are checked against original bytes. PDF and DOCX extraction may require independent review.\n'
+            'TXT quotations are checked against original bytes. PDF pages may require independent review.\n'
+            'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
+            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

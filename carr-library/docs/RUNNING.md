@@ -81,11 +81,21 @@ your documents. Search and library data remain on the local computer.
 ## Open original sources and export research
 
 After selecting a search result, use **Open original source file** to open a
-copy in the computer's default PDF, text or Word reader. The search status gives
+copy in the computer's default PDF, text, Word or EPUB reader. The search status gives
 the physical PDF page or logical text segment. Use the external reader to reach
 that location; opening the file does not automatically jump to a particular
 page. Changes made in that reader do not alter the retained library original.
 Opening a source does not approve its extracted text for quotation.
+
+For imported EPUB books, choose **Library, Read EPUB book** or press
+**Ctrl+Shift+R**. Choose a book, then use the **EPUB section** selector or the
+**Previous section** and **Next section** buttons. Section information and text
+use named, read-only controls. Tab moves between them; Escape returns to the
+library. Image descriptions supplied by the book's author have their own field.
+The reader also includes supplementary sections in the book's declared order.
+EPUB section numbers are not printed page numbers. Text remains an unverified
+extraction; the application's verified-quotation and saved-evidence commands
+do not approve it automatically. See [EPUB reading](EPUB_READING.md).
 
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
@@ -181,6 +191,26 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
+
+## Search across saved research topics
+
+Choose **Research, Search saved research** or press **Ctrl+Shift+F**. Search
+quotations, your own notes, or both across the currently open library. An exact
+tag can narrow the search or find tagged material without a text query.
+Archived topics are excluded unless you explicitly include them.
+
+Results identify the topic, source, matching field and archive state. Original
+quotations, citations and your notes have separate readable controls. Choose a
+source part to read another page of a saved excerpt. Copying quotations and
+citations verifies the selected saved source again; opening a topic uses the
+existing protection for unsaved notes. Archived results remain read only.
+
+The dialog has its own **Cancel current operation** and **Close** controls.
+Tab and Shift+Tab move between controls, arrow keys choose a result or source
+part, and Enter starts the search from the query field. Counts disclose a
+result limit; refine the phrase or tag when more matches exist. See
+`docs/RESEARCH_NOTEBOOK.md` in the source distribution for matching rules and
+integrity boundaries.
 
 ## Optional local semantic search
 
