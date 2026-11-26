@@ -1,13 +1,8 @@
-name: CARR Windows integrated desktop
+name: CARR frozen f122 delivery verification
 
 on:
-  pull_request:
-    branches: [carr-library]
-    paths:
-      - carr-library/**
-      - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-document-formats-e021-20261126]
+    branches: [carr/verify-delivery-f1228730-e021]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -39,14 +34,14 @@ jobs:
       HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
-      CARR_EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CARR_EXPECTED_SOURCE_SHA: f1228730cd629671a739af786c5d9688c7ed0b1e
       CARR_EVENT_SHA: ${{ github.sha }}
       CARR_WORKFLOW_SHA: ${{ github.workflow_sha }}
     steps:
       - name: Check out the exact event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: f1228730cd629671a739af786c5d9688c7ed0b1e
           persist-credentials: false
 
       - name: Set up native x64 CPython
