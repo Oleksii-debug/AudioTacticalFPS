@@ -1,6 +1,7 @@
 """SQLite revision storage candidate. Catalog IDs are supplied by the caller."""
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
+from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
 import sqlite3
@@ -41,6 +42,20 @@ PRAGMA user_version=1;
 '''
 
 
+def _schema_signature(db):
+    # Reuse the native schema signature from CARR-10 restore (PR #31).
+    return tuple(tuple(row) for row in db.execute(
+        'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'))
+
+
+@lru_cache(maxsize=1)
+def _expected_v1_signature():
+    # This is the standalone V1 schema, not a catalog/evidence migration.
+    with closing(sqlite3.connect(':memory:')) as reference:
+        reference.executescript(SCHEMA)
+        return _schema_signature(reference)
+
+
 def _sidecars(path):
     # Same namespace guard as the CARR-10 restore candidate (PR #31).
     return any(os.path.lexists(str(path) + suffix)
@@ -78,6 +93,7 @@ class Storage:
                             sql = ''
                 elif version != 1:
                     raise ValueError('unsupported schema version')
+                self._check_schema()
         except BaseException:
             self.db.close()
             raise
@@ -95,12 +111,18 @@ class Storage:
     def close(self):
         self.db.close()
 
+    def _check_schema(self):
+        if (self.db.execute('PRAGMA user_version').fetchone()[0] != 1 or
+                _schema_signature(self.db) != _expected_v1_signature()):
+            raise ValueError('revision storage schema mismatch')
+
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if not all(isinstance(v,str) and v for v in (workspace,edition,revision,config)):
             raise ValueError('missing identity or extraction config')
         if len(asset) != 64 or any(c not in '0123456789abcdef' for c in asset):
             raise ValueError('invalid SHA256')
         with self.transaction():
+            self._check_schema()
             self.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',(revision,workspace,edition,asset,config))
             count = 0
             for count,p in enumerate(pages,1):
@@ -147,6 +169,7 @@ class Storage:
             raise sqlite3.IntegrityError('invalid source locator sequence or label')
 
     def _check(self):
+        self._check_schema()
         if self.db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or self.db.execute('PRAGMA foreign_key_check').fetchone():
             raise ValueError('database integrity failure')
         # Atomic publication never leaves a committed unsealed or empty revision.
@@ -178,6 +201,7 @@ class Storage:
 
     def rebuild(self):
         with self.transaction():
+            self._check_schema()
             self.db.execute("INSERT INTO page_fts(page_fts) VALUES('rebuild')")
             self.db.execute('DELETE FROM indexed')
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
