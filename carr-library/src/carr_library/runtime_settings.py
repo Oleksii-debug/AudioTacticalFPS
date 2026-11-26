@@ -1,6 +1,7 @@
 """Explicit local engine configuration; no installers, remote fallback or secrets."""
 from dataclasses import asdict
 from pathlib import Path
+import re
 
 from .durable_state import atomic_json, local_path, read_json
 
@@ -9,15 +10,48 @@ def settings_path(state_root):
     return Path(state_root) / 'audio' / 'engines.json'
 
 
+def validate_dordiai_configuration(value):
+    """Validate saved declarations without probing a private installation."""
+    if value is None:
+        return None
+    allowed = {'enabled', 'runtime_directory', 'python_executable', 'expected_worker_sha256'}
+    if (not isinstance(value, dict) or not set(value) <= allowed
+            or type(value.get('enabled')) is not bool):
+        raise ValueError('A dordiai-voices configuration needs an explicit enabled boolean.')
+    for name in ('runtime_directory', 'python_executable'):
+        selected = value.get(name)
+        if selected is None and (name == 'python_executable' or not value['enabled']):
+            continue
+        if (not isinstance(selected, str) or not 1 <= len(selected) <= 4096
+                or '\x00' in selected or selected.startswith(('//', '\\\\'))):
+            raise ValueError('Choose a local installed dordiai-voices runtime and interpreter.')
+    expected = value.get('expected_worker_sha256')
+    if expected is not None and (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)):
+        raise ValueError('The reviewed dordiai-voices worker fingerprint must be a lowercase SHA-256.')
+    return dict(value)
+
+
+def _normalize_settings(value):
+    if not isinstance(value, dict):
+        raise ValueError('Unsupported local engine configuration.')
+    value = dict(value)
+    # Existing schema-1 installations remain readable without changing their file.
+    value.setdefault('dordiai', None)
+    if (set(value) != {'schema','ffmpeg','ffprobe','piper','voice_helpers','music_models','fluidsynth','dordiai'}
+            or type(value['schema']) is not int or value['schema'] != 1
+            or any(not isinstance(value[key], list) for key in ('piper','voice_helpers','music_models'))):
+        raise ValueError('Unsupported local engine configuration.')
+    if any(len(value[key]) > 100 for key in ('piper','voice_helpers','music_models')):
+        raise ValueError('Too many local engine configurations.')
+    value['dordiai'] = validate_dordiai_configuration(value['dordiai'])
+    return value
+
+
 def load_settings(state_root):
     path = settings_path(state_root)
     value = read_json(path) if path.exists() else {'schema': 1, 'ffmpeg': None, 'ffprobe': None,
         'piper': [], 'voice_helpers': [], 'music_models': [], 'fluidsynth': None}
-    if (not isinstance(value, dict) or set(value) != {'schema','ffmpeg','ffprobe','piper','voice_helpers','music_models','fluidsynth'}
-            or value['schema'] != 1 or any(not isinstance(value[key], list) for key in ('piper','voice_helpers','music_models'))):
-        raise ValueError('Unsupported local engine configuration.')
-    if any(len(value[key]) > 100 for key in ('piper','voice_helpers','music_models')):
-        raise ValueError('Too many local engine configurations.')
+    value = _normalize_settings(value)
     for key in ('ffmpeg', 'ffprobe'):
         if value[key] is not None:
             local_path(value[key], exists=True)
@@ -26,15 +60,12 @@ def load_settings(state_root):
 
 def save_settings(state_root, value):
     # Validate all declarations before changing the last good configuration.
-    if not isinstance(value, dict) or value.get('schema') != 1:
-        raise ValueError('Local engine schema 1 is required.')
+    value = _normalize_settings(value)
     for key in ('ffmpeg', 'ffprobe'):
         if value.get(key) is not None:
             path = local_path(value[key], exists=True)
             if not path.is_file():
                 raise ValueError('Choose a local executable file.')
-    if set(value) != {'schema','ffmpeg','ffprobe','piper','voice_helpers','music_models','fluidsynth'}:
-        raise ValueError('Unknown local engine setting.')
     from .audio.models import LocalModelConfig
     for model in value['music_models']:
         if not isinstance(model, dict):
@@ -55,14 +86,20 @@ def voice_registry(state_root):
     from .speech import VoiceRegistry, PiperProvider, LocalHelperProvider
     value = load_settings(state_root)
     registry = VoiceRegistry.discover(ffmpeg=value['ffmpeg'])
-    for item in value['piper']:
-        if set(item) != {'executable', 'models'}:
-            raise ValueError('Invalid Piper configuration fields.')
-        registry.add_provider(PiperProvider(item['executable'], item['models']))
-    for item in value['voice_helpers']:
-        if item.get('enabled') is True:
-            registry.add_provider(LocalHelperProvider(**item))
-    return registry
+    try:
+        from .integrations.dordiai_speech import install_dordiai_provider
+        install_dordiai_provider(registry, value['dordiai'])
+        for item in value['piper']:
+            if set(item) != {'executable', 'models'}:
+                raise ValueError('Invalid Piper configuration fields.')
+            registry.add_provider(PiperProvider(item['executable'], item['models']))
+        for item in value['voice_helpers']:
+            if item.get('enabled') is True:
+                registry.add_provider(LocalHelperProvider(**item))
+        return registry
+    except BaseException:
+        registry.close()
+        raise
 
 
 def audio_runtime(directory, *, state_root, input_roots=(), budget=None):

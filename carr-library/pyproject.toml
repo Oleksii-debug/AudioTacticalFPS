@@ -83,6 +83,7 @@ packages = [
   "carr_library.studio",
   "carr_library.assistant",
   "carr_library.conversion",
+  "carr_library.integrations",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",

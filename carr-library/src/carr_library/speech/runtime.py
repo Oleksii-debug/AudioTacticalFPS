@@ -123,7 +123,7 @@ class VoiceRegistry:
         self.reload()
 
     @classmethod
-    def discover(cls, *, include_flite=True, ffmpeg=None):
+    def discover(cls, *, include_flite=True, ffmpeg=None, dordiai=None):
         providers = []
         if os.name == 'nt':
             base = windows_directory()
@@ -137,7 +137,15 @@ class VoiceRegistry:
         flite_executable = ffmpeg or shutil.which('ffmpeg')
         if include_flite and flite_executable:
             providers.append(FliteProvider(flite_executable))
-        return cls(providers)
+        registry = cls(providers)
+        try:
+            if dordiai is not None:
+                from ..integrations.dordiai_speech import install_dordiai_provider
+                install_dordiai_provider(registry, dordiai)
+            return registry
+        except BaseException:
+            registry.close()
+            raise
 
     def reload(self):
         entries, owners, notices = {}, {}, []
@@ -164,6 +172,20 @@ class VoiceRegistry:
 
     def voices(self):
         return tuple(self._voices.values())
+
+    def close(self):
+        """Release every owned local worker, including a provider that failed discovery."""
+        providers, self._providers = self._providers, []
+        self._voices, self._owners = {}, {}
+        errors = []
+        for provider in providers:
+            close = getattr(provider, 'close', None)
+            if callable(close):
+                try:
+                    close()
+                except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                    errors.append(f'{provider.name}: {exc}')
+        self.notices.extend(errors)
 
     def get(self, voice_id):
         try:
@@ -205,6 +227,9 @@ class VoiceRegistry:
                     if actual.is_file():
                         assets[str(actual)] = digest(actual)
             identity['installed_voice_libraries'] = assets
+        provider_fingerprint = getattr(provider, 'fingerprint', None)
+        if callable(provider_fingerprint):
+            identity['provider_fingerprint'] = provider_fingerprint(voice_id)
         return sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
 
     def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False):

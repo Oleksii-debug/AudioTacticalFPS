@@ -21,10 +21,13 @@ def show_engine_settings(frame):
             'FFprobe: ' + str(settings['ffprobe'] or 'Discover installed executable') + '\n'
             f'Piper registrations: {len(settings["piper"])}\n'
             f'Explicit voice helpers: {len(settings["voice_helpers"])}\n'
+            'dordiai-voices: ' + ('Enabled local installation; voice availability is checked in the reader or Studio'
+                if settings['dordiai'] and settings['dordiai']['enabled'] else 'Disabled') + '\n'
             'Neural music configurations: ' + ', '.join(model['engine'] for model in settings['music_models']) + '\n'
             'MusicGen is optional for private noncommercial use with separately reviewed weights. '
             'Configured assets are distinct from tested inference. A missing runtime fails clearly.\n'
-            'Voice helper registrations use our JSON contract; an unknown dordiai-voices/SAPI4 installation is not presumed compatible.')
+            'Generic voice helpers and the reviewed dordiai-voices adapter use separate contracts. '
+            'Resource availability is not a pronunciation or voice-quality assessment.')
 
     def executable(key):
         picker = wx.FileDialog(dialog, 'Choose installed ' + key, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
@@ -65,13 +68,49 @@ def show_engine_settings(frame):
         if wx.MessageBox('Remove local engine overrides? Installed files will remain on disk.', 'Reset configuration',
                          wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
             return
-        settings.update(ffmpeg=None, ffprobe=None, piper=[], voice_helpers=[], music_models=[], fluidsynth=None)
+        settings.update(ffmpeg=None, ffprobe=None, piper=[], voice_helpers=[], music_models=[], fluidsynth=None,
+                        dordiai=None)
         save_settings(state_root, settings)
         describe()
+
+    def connect_dordiai(event):
+        picker = wx.DirDialog(dialog, 'Choose the installed dordiai-voices kx47Runtime directory',
+                              style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+        try:
+            if picker.ShowModal() != wx.ID_OK:
+                return
+            if wx.MessageBox('Enable this installed local voice engine? Its reviewed worker runs with '
+                             'your account permissions when voices are loaded or used. No model is downloaded.',
+                             'Enable dordiai-voices', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+                return
+            # Constructor checks local paths and the reviewed worker identity.
+            # Enumeration and synthesis remain in the reader/Studio background job.
+            from ..integrations.dordiai_voices import DordiaiVoicesAdapter
+            adapter = DordiaiVoicesAdapter(picker.GetPath())
+            adapter.close()
+            candidate = {**settings, 'dordiai': {'enabled': True, 'runtime_directory': picker.GetPath()}}
+            save_settings(state_root, candidate)
+            settings.update(candidate)
+            describe()
+        except Exception as exc:
+            status.ChangeValue(str(exc))
+        finally:
+            picker.Destroy()
+
+    def disconnect_dordiai(event):
+        try:
+            candidate = {**settings, 'dordiai': None}
+            save_settings(state_root, candidate)
+            settings.update(candidate)
+            describe()
+        except Exception as exc:
+            status.ChangeValue(str(exc))
 
     for label, callback in [('Choose FFmpeg executable', lambda event: executable('ffmpeg')),
         ('Choose FFprobe executable', lambda event: executable('ffprobe')),
         ('Register a local Piper voice manifest', lambda event: register('piper')),
+        ('Connect installed &dordiai-voices', connect_dordiai),
+        ('Disable dordiai-voices', disconnect_dordiai),
         ('Register a MusicGen or ACE-Step installation', lambda event: register('music_models')),
         ('Register a reviewed local voice helper', lambda event: register('voice_helpers')),
         ('Reset overrides', reset)]:
