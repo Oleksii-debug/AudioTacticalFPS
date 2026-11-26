@@ -19,15 +19,17 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
-from .scope_bindings import ScopeServices
+from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
 from .catalog_metadata_dialog import edit_selected_book
+from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
 from .academic_tools import install_academic_actions
+from .reading_desk import install_reading_desk_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -384,7 +386,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             hit = self.selected()
             if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
                 raise ValueError('Select one result in the active library.')
-            topics = self.frame.library.topics(hit.workspace)
+            topics = tuple(self.frame.library.topics(hit.workspace))
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
                 self.status.SetFocus()
@@ -392,11 +394,15 @@ class DesktopSearchPanel(PagedSearchPanel):
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', [t.name for t in topics])
+                                              'Save quotation', scope_labels(
+                                                  (hit.workspace, t.id, t.name) for t in topics))
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
-                    selected_topic = topics[dialog.GetSelection()].id
+                    index = dialog.GetSelection()
+                    if not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic first.')
+                    selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
             epoch = self._context_epoch
@@ -454,6 +460,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
+            ('Library tools\tCtrl+Shift+L', lambda e: show_catalog_tools(self)),
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
@@ -476,6 +483,7 @@ class DesktopFrame(WorkspaceFrame):
         install_research_actions(self)
         install_source_review_actions(self)
         install_academic_actions(self)
+        install_reading_desk_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1000,11 +1008,12 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+A for Academic, and Alt+H for Help.\n'
-            'Ctrl+Shift+L compares saved sources in the active topic. Academic also exports outlines with subtopics, reviews RIS metadata, and checks the catalog.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+A for Academic, Alt+D for Reading, and Alt+H for Help.\n'
+            'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports outlines with subtopics, reviews RIS metadata, and checks the catalog.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'

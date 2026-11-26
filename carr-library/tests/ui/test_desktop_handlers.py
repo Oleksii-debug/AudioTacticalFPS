@@ -18,7 +18,7 @@ from carr_library.research.topic_tree import TopicTree
 from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
-from carr_library.ui.scope_bindings import ScopeServices
+from carr_library.ui.scope_bindings import ScopeServices, scope_labels
 
 
 class BaseFrame:
@@ -46,7 +46,7 @@ def classes():
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
-               ScopeServices=ScopeServices,active_collections=active_collections,
+               ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
@@ -579,3 +579,78 @@ def test_cancelled_canonical_config_starts_no_import(classes,monkeypatch):
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
     f.report.assert_called_once_with('Import cancelled.')
+
+
+def test_save_duplicate_topic_labels_route_by_original_id(classes):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (
+        SimpleNamespace(id='one', name='Історія'),
+        SimpleNamespace(id='two', name='Історія'),
+        SimpleNamespace(id='three', name='Історія (library a; topic one)'),
+    )
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len(labels) == len(set(labels)) == 3
+    assert 'topic two' in labels[1]
+    chooser.return_value.Destroy.assert_called_once()
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with('a','two','hit','revision',
+        authorized_topic=None,cancelled=p.frame.cancel_event.is_set)
+
+
+@pytest.mark.parametrize('modal,index', [(0, 0), (1, -1), (1, 2)])
+def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, modal, index):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (SimpleNamespace(id='one', name='Výskum'),)
+    chooser = classes[0]['wx'].SingleChoiceDialog.return_value
+    chooser.ShowModal.return_value = modal
+    chooser.GetSelection.return_value = index
+    p.save_selected(None)
+    chooser.Destroy.assert_called_once()
+    p.frame.run_job.assert_not_called()
+    p.frame.library.save_hit.assert_not_called()
+
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Clinical\u00a0study', 'Clinical study'),
+    ('Research', 'research'), ('Fußnote', 'FUSSNOTE'),
+])
+def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(classes, tmp_path, names):
+    import unicodedata
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Topic choices')
+    with app.topic_transaction(workspace) as service:
+        for number, name in enumerate(names, 1):
+            service.create(f'topic-{number}', name)
+    topics = tuple(app.topics(workspace))
+    assert tuple(topic.name for topic in topics) == names
+    app.add_text(workspace, 'Original source', 'Exact historical railway passage.')
+    source, = app.search(workspace, 'railway passage')
+    hit = Hit(source.workspace, source.ref, source.revision, source.title, source.author,
+              source.edition, source.page, source.quote, source.citation)
+    p = panel(classes)
+    p.frame.library = p.bound_library = app
+    p.frame.active = workspace, None
+    p.bound_workspace = workspace
+    p.model.set_workspace(workspace)
+    p.selected = lambda: hit
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+                for label in labels}) == 2
+    assert all(label.startswith(topic.name) and f'topic {topic.id}' in label
+               for label, topic in zip(labels, topics))
+    saved = p.frame.run_job.call_args.args[1]()
+    assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
+    assert app.evidence(workspace, topics[0].id) == ()
+    assert tuple(app.topics(workspace)) == topics
+    chooser.return_value.Destroy.assert_called_once()

@@ -37,6 +37,10 @@ instructions.
   labels require their own independent approval.
 - Organize nested research topics, immutable saved evidence, editable notes,
   tags and saved searches. Metadata revisions preserve earlier saved citations.
+- Read complete imported source pages or segments without a search phrase;
+  resume the last opened page, keep named bookmarks, navigate back/forward,
+  and hear exact location information through native text controls. See
+  [the reading desk guide](docs/READING_DESK.md).
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
   Back up completed libraries with original files and checksums; restore into a
   new folder without overwriting the existing library.
@@ -44,7 +48,7 @@ instructions.
   matrix or an ordered outline with subtopics. Review selected RIS metadata for
   already imported editions, and inspect catalog quality without automatic
   merges. Open **Academic** with **Alt+A**, or compare a topic with
-  **Ctrl+Shift+L**. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md) for the
+  **Ctrl+Alt+M**. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md) for the
   supported fields, exact-source safeguards and keyboard steps.
 
 TXT quotation text is independently checked against retained original bytes.

@@ -158,6 +158,15 @@ def main():
                     and frame.evidence.displayed.evidence_id == evidence_id)
 
         def begin():
+            menus = [frame.menu_bar.GetMenu(i) for i in range(frame.menu_bar.GetMenuCount())]
+            shortcuts = [item.GetItemLabel().partition('\t')[2].casefold()
+                         for menu in menus for item in menu.GetMenuItems()
+                         if '\t' in item.GetItemLabel()]
+            check('main window shortcuts have no conflicting actions',
+                  len(shortcuts) == len(set(shortcuts)))
+            labels = [frame.menu_bar.GetMenuLabel(i) for i in range(frame.menu_bar.GetMenuCount())]
+            mnemonics = [label.split('&', 1)[1][0].casefold() for label in labels if '&' in label]
+            check('main menu access keys are distinct', len(mnemonics) == len(set(mnemonics)))
             index = frame.menu_bar.FindMenu('Academic')
             check('Academic menu contains all four integrated actions', index >= 0 and
                   frame.menu_bar.GetMenu(index).GetMenuItemCount() == 4)

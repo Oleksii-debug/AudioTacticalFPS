@@ -8,7 +8,7 @@ runtime dependencies or database schema changes.
 
 | Command | Start from | Result |
 | --- | --- | --- |
-| Compare sources in active topic — **Ctrl+Shift+L** | An open research topic with saved evidence | Compare source versions, themes, citations and notes; export CSV or Markdown. |
+| Compare sources in active topic — **Ctrl+Alt+M** | An open research topic with saved evidence | Compare source versions, themes, citations and notes; export CSV or Markdown. |
 | Export research outline with subtopics | An open research topic | An ordered Markdown or plain-text outline. |
 | Import bibliographic metadata from RIS | A library with an already imported edition | Review a local RIS record and apply explicitly selected metadata fields. |
 | Check catalog quality | An open library | Review missing metadata, unfiled editions and possible duplicate records. |
@@ -19,7 +19,7 @@ Save verified search passages into a research topic. Add your interpretation in
 **Evidence and Notes**, and use **Ctrl+Shift+T** to tag selected evidence with
 themes such as `method`, `chronology` or `contradictory evidence`.
 
-Open that topic, then press **Ctrl+Shift+L**. **Include subtopics** is initially
+Open that topic, then press **Ctrl+Alt+M**. **Include subtopics** is initially
 enabled. Choose a source version, then a saved evidence item to read its exact
 quotation slices, citations, topic path, tags and separate research note. The
 theme summary counts source versions and evidence items for each tag. A tag

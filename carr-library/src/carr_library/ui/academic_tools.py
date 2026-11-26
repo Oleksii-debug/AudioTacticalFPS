@@ -205,7 +205,8 @@ class AcademicActions:
             if self.frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled. No file was written.')
             self._require_current(scope)
-            write_export(destination, text, private_root=scope.library.root)
+            write_export(destination, text, private_root=scope.library.root,
+                         cancelled=self.frame.cancel_event.is_set)
             return destination
 
         def done(path):
@@ -258,7 +259,7 @@ def install_academic_actions(frame):
     actions = AcademicActions(frame)
     menu = wx.Menu()
     commands = (
-        ('Compare sources in active topic\tCtrl+Shift+L', actions.compare_sources),
+        ('Compare sources in active topic\tCtrl+Alt+M', actions.compare_sources),
         ('Export research outline with subtopics', actions.outline),
         ('Import bibliographic metadata from RIS', lambda event: open_bibliography_import(frame)),
         ('Check catalog quality', lambda event: open_catalog_quality(frame,

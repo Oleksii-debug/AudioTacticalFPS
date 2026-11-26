@@ -288,6 +288,33 @@ class LibraryApp:
         with self.read(workspace) as db:
             return get_edition(Catalog(db, workspace), edition_id)
 
+    def catalog_report(self, workspace, *, collection=None, cancelled=lambda: False):
+        """Inspect catalog completeness without granting source verification."""
+        from .catalog.catalog_reports import catalog_report
+        with self.read(workspace) as db:
+            return catalog_report(db, workspace, collection=collection,
+                                  cancelled=cancelled, timeout=60.0)
+
+    def export_catalog(self, workspace, *, collection=None, format='csl-json',
+                       cancelled=lambda: False):
+        """Export current source metadata; quotations and private notes stay out."""
+        from .catalog.bibliography import export_bibliography, export_inventory
+        with self._search_read(workspace, 60.0, cancelled) as (db, budget):
+            if format == 'csv':
+                return export_inventory(db, workspace, collection=collection,
+                                        cancelled=budget.stopped)
+            return export_bibliography(db, workspace, collection=collection,
+                                       format=format, cancelled=budget.stopped)
+
+    def export_review_matrix(self, workspace, *, collection=None,
+                             cancelled=lambda: False):
+        """Export source-verified quotations, topic paths, notes and tags to CSV."""
+        from .research.review_matrix import export_review_matrix
+        with self._search_read(workspace, 60.0, cancelled) as (db, budget):
+            load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
+            return export_review_matrix(db, workspace, load, metadata,
+                                        collection=collection, cancelled=budget.stopped)
+
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
                         language=None, edition=None, volume=None, expected_metadata=None,
                         selected_fields=None):
