@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 
 from ..citations.anchors import Locator
 from .research_schema import RESEARCH_SCHEMA
+from .academic_schema import ACADEMIC_SCHEMA
 
 SCHEMA = '''
 CREATE TABLE revision(id TEXT PRIMARY KEY, workspace TEXT NOT NULL, edition TEXT NOT NULL,
@@ -113,7 +114,8 @@ SCHEMA_V2 = CATALOG_V2 + SCHEMA.replace(
     'REFERENCES catalog_edition(workspace,id,asset));',
 ).replace('PRAGMA user_version=1;', 'PRAGMA user_version=2;')
 SCHEMA_V3 = SCHEMA_V2.replace('PRAGMA user_version=2;', '') + RESEARCH_SCHEMA + '\nPRAGMA user_version=3;\n'
-SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3}
+SCHEMA_V4 = SCHEMA_V3.replace('PRAGMA user_version=3;', '') + ACADEMIC_SCHEMA + '\nPRAGMA user_version=4;\n'
+SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4}
 
 
 def _schema_signature(db):
@@ -122,7 +124,7 @@ def _schema_signature(db):
         'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'))
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=4)
 def _expected_signature(version):
     with closing(sqlite3.connect(':memory:')) as reference:
         reference.executescript(SCHEMAS[version])
@@ -165,6 +167,22 @@ class Storage:
                         if sqlite3.complete_statement(sql):
                             self.db.execute(sql)
                             sql = ''
+                elif version == 3 and schema_version == 4:
+                    # Only the exact, valid released V3 layout can be upgraded.
+                    # Run the data checks before adding tables: an unknown layout
+                    # or damaged quotation must never be legitimized by migration.
+                    self.schema_version = 3
+                    self._check()
+                    sql = ''
+                    for line in ACADEMIC_SCHEMA.splitlines():
+                        sql += line + '\n'
+                        if sqlite3.complete_statement(sql):
+                            self.db.execute(sql)
+                            sql = ''
+                    if sql.strip():
+                        raise ValueError('incomplete academic schema migration')
+                    self.db.execute('PRAGMA user_version=4')
+                    version = 4
                 elif version not in SCHEMAS or (schema_version is not None and version != schema_version):
                     raise ValueError('unsupported or mismatched schema version; no live upgrade')
                 self.schema_version = version
@@ -312,8 +330,11 @@ class Storage:
         if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
             raise ValueError('active index content mismatch')
         self.db.execute("INSERT INTO page_fts(page_fts,rank) VALUES('integrity-check',1)")
-        if self.schema_version == 3:
+        if self.schema_version >= 3:
             self._check_research()
+        if self.schema_version >= 4:
+            from ..research.academic_library import validate_academic_database
+            validate_academic_database(self.db)
 
     def _check_research(self):
         """Check persisted research identities and source slices before backup.

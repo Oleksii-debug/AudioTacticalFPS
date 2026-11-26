@@ -45,6 +45,16 @@ def extract_docx(data: bytes):
     hidden = {qn(name) for name in ('w:vanish', 'w:webHidden', 'w:specVanish')}
     if any(element.tag in hidden for element in doc.styles.element.iter()):
         raise ValueError('unsupported hidden text style requires review')
+    # The optional Office 2007 effects-style part can carry alternate styles.
+    # Use the same conservative visibility rule; never follow external targets.
+    from docx.oxml import parse_xml
+    for rel in doc.part.rels.values():
+        if rel.reltype != 'http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects':
+            continue
+        if rel.is_external:
+            raise ValueError('external styles require review')
+        if any(element.tag in hidden for element in parse_xml(rel.target_part.blob).iter()):
+            raise ValueError('unsupported hidden text style requires review')
     records = []
     total = 0
 

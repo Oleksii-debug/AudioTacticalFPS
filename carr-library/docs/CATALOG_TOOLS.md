@@ -31,8 +31,7 @@ provides literal name representation and bibliographic variables. Catalog
 authors are exported as ordered literal names; commas, semicolons and the word
 "and" inside a name do not create extra people. The current source catalog does
 not contain a publication type, date, DOI, ISBN or publisher. Exports use a
-generic type and omit unavailable facts. The separate academic-reference
-workbench can add richer records without changing quotation authority here.
+generic type and omit unavailable facts. Reference-file metadata review preserves the same source-quotation authority.
 
 ## What each export contains
 
