@@ -30,6 +30,7 @@ def extract_docx(data: bytes):
         'w:ins', 'w:del', 'w:sdt', 'w:moveFrom', 'w:moveTo', 'w:altChunk',
         'w:drawing', 'w:pict', 'w:object', 'w:fldSimple', 'w:fldChar',
         'w:footnoteReference', 'w:endnoteReference', 'w:vanish',
+        'w:webHidden', 'w:specVanish',
         'w:commentRangeStart', 'w:customXml', 'w:smartTag', 'w:ruby', 'w:sym',
         'w:softHyphen', 'w:dir', 'w:bdo',
         'm:oMath', 'm:oMathPara',
@@ -38,6 +39,12 @@ def extract_docx(data: bytes):
     unsupported.add('{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent')
     if any(element.tag in unsupported for element in doc.element.iter()):
         raise ValueError('unsupported body structure requires review')
+    # The text API does not resolve visibility inherited through styles.
+    # Reject even unused or explicitly disabled hidden properties rather than
+    # implement Word's style cascade or silently index possibly hidden text.
+    hidden = {qn(name) for name in ('w:vanish', 'w:webHidden', 'w:specVanish')}
+    if any(element.tag in hidden for element in doc.styles.element.iter()):
+        raise ValueError('unsupported hidden text style requires review')
     records = []
     total = 0
 
