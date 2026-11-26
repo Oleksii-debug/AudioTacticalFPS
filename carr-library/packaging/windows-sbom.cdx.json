@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "version": 2,
+  "version": 3,
   "serialNumber": "urn:uuid:9dfca33e-a415-443a-b6be-61e7df1d2ba5",
   "metadata": {
     "timestamp": "2026-11-26T17:54:24.006257631Z",
@@ -181,6 +181,32 @@
           "value": "sys_platform == 'win32'"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "comtypes@1.5.0",
+      "name": "comtypes",
+      "version": "1.5.0",
+      "purl": "pkg:pypi/comtypes@1.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -231,7 +257,8 @@
         "pypdfium2-8@5.13.0",
         "python-docx-9@1.2.0",
         "typing-extensions-10@4.16.0",
-        "wxpython-11@4.2.4"
+        "wxpython-11@4.2.4",
+        "comtypes@1.5.0"
       ]
     },
     {
@@ -239,6 +266,9 @@
       "dependsOn": [
         "numpy-4@2.4.6"
       ]
+    },
+    {
+      "ref": "comtypes@1.5.0"
     }
   ]
 }

@@ -52,6 +52,42 @@ def test_complete_inventory_and_path_free_fingerprint(bundle):
     checked.assert_unchanged()
 
 
+def test_script_inventory_preserves_relative_names_and_hashes_every_pack(bundle):
+    for name in ('Latin', 'script/Latin', 'script/Cyrillic', 'nested/Unsupported'):
+        path = bundle / 'tessdata' / (name + '.traineddata')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(('synthetic inventory: ' + name).encode())
+    write_manifest(bundle)
+    checked = runtime.verify_ocr_bundle(bundle)
+    assert checked.languages == ('Latin', 'eng', 'script/Cyrillic', 'script/Latin')
+    checked.require_languages('eng+script/Latin+script/Cyrillic')
+    hashes = checked.fingerprint()['files_sha256']
+    for name in ('Latin', 'script/Latin', 'script/Cyrillic', 'nested/Unsupported'):
+        relative = 'tessdata/' + name + '.traineddata'
+        assert hashes[relative] == sha256((bundle / relative).read_bytes()).hexdigest()
+    model = bundle / 'tessdata/script/Latin.traineddata'
+    data = bytearray(model.read_bytes())
+    data[-1] ^= 1
+    model.write_bytes(data)
+    with pytest.raises(runtime.OcrRuntimeError, match='checksum'):
+        runtime.verify_ocr_bundle(bundle)
+
+
+def test_missing_script_model_never_falls_back_to_another_runtime(bundle, monkeypatch):
+    monkeypatch.setenv('CARR_OCR_DIR', str(bundle))
+    monkeypatch.setattr(runtime.shutil, 'which', lambda _: pytest.fail('No PATH fallback permitted'))
+    with pytest.raises(runtime.OcrRuntimeError, match='selected language'):
+        runtime.discover_ocr_runtime('script/Latin')
+
+
+@pytest.mark.parametrize('selection', ['../eng', 'script/../eng', 'script/Latin/eng',
+                                      'script\\Latin', '/eng', 'eng+'])
+def test_runtime_discovery_rejects_unsafe_model_identifiers(selection, monkeypatch):
+    monkeypatch.setattr(runtime.shutil, 'which', lambda _: pytest.fail('No executable lookup permitted'))
+    with pytest.raises(runtime.OcrRuntimeError, match='language selection'):
+        runtime.discover_ocr_runtime(selection)
+
+
 @pytest.mark.parametrize('name', ['tesseract.exe', 'dependency.dll', 'tessdata/eng.traineddata'])
 def test_byte_tamper_even_at_same_size_is_rejected(bundle, name):
     path = bundle / name
@@ -175,6 +211,12 @@ def native_bundle(tmp_path, monkeypatch):
     (root / 'tessdata').mkdir(parents=True)
     name = Path(executable).name
     shutil.copy2(executable, root / name)
+    if os.name == 'nt':
+        # The delivered Windows executable needs its private sibling DLLs.
+        # They join the synthetic fixture's complete verified inventory;
+        # PATH remains cleared below, just as in the production bundle check.
+        for dependency in Path(executable).parent.glob('*.dll'):
+            shutil.copy2(dependency, root / dependency.name)
     for language in ('eng', 'osd'):
         if not (source / f'{language}.traineddata').is_file():
             pytest.skip(f'Real local {language} data unavailable')
@@ -233,6 +275,45 @@ def test_real_portable_scan_preserves_candidate_boundary(native_bundle, tmp_path
     rejected = extract_page(pdf, 1, Config())
     assert 'portable_ocr_runtime_unavailable_or_invalid' in rejected['warnings']
     assert not rejected['raw_text'] and not rejected['blocks']
+
+
+@pytest.mark.parametrize('selection', ['script/EnglishFixture', 'eng+script/EnglishFixture'])
+def test_real_script_path_loading_fingerprint_and_review_boundary(native_bundle, tmp_path, selection):
+    # This exercises Tesseract's actual subdirectory loading using renamed
+    # local English bytes; it is not an accuracy test of an unavailable script pack.
+    from PIL import Image, ImageDraw, ImageFont
+    from carr_library.extract.page_ocr import Config, extract_page
+    from carr_library.extract.runtime_identity import runtime_identity
+    script = native_bundle / 'tessdata/script/EnglishFixture.traineddata'
+    script.parent.mkdir()
+    shutil.copyfile(native_bundle / 'tessdata/eng.traineddata', script)
+    executable = json.loads((native_bundle / runtime.MANIFEST).read_text())['executable']
+    write_manifest(native_bundle, target=runtime._native_target(), executable=executable)
+    config = Config(languages=selection)
+    assert 'script/EnglishFixture' in runtime.check_runtime()['languages']
+    before = runtime_identity(config)
+    model_hash = sha256(script.read_bytes()).hexdigest()
+    assert before['ocr']['model_sha256'] == {name: model_hash for name in selection.split('+')}
+    assert before['ocr']['portable']['files_sha256']['tessdata/script/EnglishFixture.traineddata'] == model_hash
+    assert str(native_bundle) not in json.dumps(before)
+    picture = Image.new('RGB', (1400, 400), 'white')
+    ImageDraw.Draw(picture).text((45, 100), 'Script model research', fill='black',
+                                font=ImageFont.load_default(size=70))
+    pdf = tmp_path / 'script-model-scan.pdf'
+    picture.save(pdf, resolution=300)
+    result = extract_page(pdf, 1, config)
+    assert result['raw_text'].strip() == 'Script model research'
+    assert result['physical_index'] == 1 and result['blocks']
+    assert result['status'] == 'review_required' and result['printed_label'] is None
+    assert not result['printed_label_verified'] and 'ocr_not_verified' in result['warnings']
+    assert result['provenance']['config']['languages'] == selection
+    assert result['provenance']['ocr_runtime'] == before['ocr']['portable']
+    with script.open('ab') as stream:
+        stream.write(b'synthetic model byte change')
+    write_manifest(native_bundle, target=runtime._native_target(), executable=executable)
+    after = runtime_identity(config)
+    assert before != after
+    assert before['ocr']['model_sha256']['script/EnglishFixture'] != after['ocr']['model_sha256']['script/EnglishFixture']
 
 
 def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bundle, tmp_path):

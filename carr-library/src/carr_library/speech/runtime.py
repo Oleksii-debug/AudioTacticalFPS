@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
+import sys
 import sysconfig
 from tempfile import TemporaryDirectory
 import wave
@@ -123,14 +125,16 @@ class VoiceRegistry:
         self.reload()
 
     @classmethod
-    def discover(cls, *, include_flite=True, ffmpeg=None):
+    def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False):
         providers = []
         if os.name == 'nt':
-            base = windows_directory()
-            for architecture, folder in (('64', 'System32'), ('32', 'SysWOW64')):
-                executable = base / folder / 'WindowsPowerShell/v1.0/powershell.exe'
-                if executable.is_file():
-                    providers.append(SapiProvider(executable, architecture=architecture))
+            providers.append(NativeSapiProvider())
+            if include_powershell:
+                base = windows_directory()
+                for architecture, folder in (('64', 'System32'), ('32', 'SysWOW64')):
+                    executable = base / folder / 'WindowsPowerShell/v1.0/powershell.exe'
+                    if executable.is_file():
+                        providers.append(SapiProvider(executable, architecture=architecture))
         espeak = shutil.which('espeak-ng') or shutil.which('espeak')
         if espeak:
             providers.append(EspeakProvider(espeak))
@@ -190,6 +194,16 @@ class VoiceRegistry:
         elif isinstance(provider, SapiProvider):
             identity.update(token=provider._tokens[voice_id], architecture=provider.architecture,
                             model_identity='opaque-installed-SAPI-token')
+            if isinstance(provider, NativeSapiProvider):
+                from importlib.metadata import PackageNotFoundError, version
+                try:
+                    client_version = version('comtypes')
+                except PackageNotFoundError:
+                    client_version = 'unavailable'
+                worker = Path(__file__).with_name('sapi_native_worker.py')
+                identity.update(native_worker_sha256=digest(worker) if worker.is_file() else None,
+                                native_protocol='carr.sapi-native.v1',
+                                com_client='comtypes', com_client_version=client_version)
         elif os.name != 'nt' and isinstance(provider, (FliteProvider, EspeakProvider)):
             # Debian/Ubuntu native voice libraries contain the Flite model data;
             # include their actual bytes, not only the thin FFmpeg executable.
@@ -317,6 +331,62 @@ class SapiProvider:
             timeout=settings.timeout_seconds, output=output, budget=settings.max_output_bytes)
         if response.get('status') != 'rendered':
             raise ValueError('SAPI did not report completion.')
+
+
+class NativeSapiProvider(SapiProvider):
+    """Installed SAPI through a bounded local Python COM worker, no .NET host."""
+    name = 'Installed SAPI 5 (native COM)'
+
+    def __init__(self):
+        self.executable = Path(sys.executable).resolve(strict=True)
+        self.architecture = str(struct.calcsize('P') * 8)
+        self._tokens = {}
+
+    def _request(self, data, *, cancelled=lambda: False, timeout=15, output=None, budget=512*1024*1024):
+        if os.name != 'nt':
+            raise RuntimeError('Native SAPI 5 requires a Windows host.')
+        import importlib.util
+        if importlib.util.find_spec('comtypes') is None:
+            raise RuntimeError('Native SAPI requires the packaged comtypes 1.5.0 dependency.')
+        parent = Path(output).parent if output is not None else None
+        with TemporaryDirectory(prefix='research-native-sapi-', dir=parent) as temporary:
+            temporary = Path(temporary)
+            request, reply = temporary / 'request.json', temporary / 'reply.json'
+            payload = {'version': 1, **data}
+            if output is not None:
+                payload['output'] = str(temporary / 'speech.wav')
+            raw = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode('utf-8')
+            if len(raw) > 128_000:
+                raise ValueError('The native speech request exceeds its size budget.')
+            request.write_bytes(raw)
+            helper = Path(__file__).with_name('sapi_native_worker.py')
+            command = ([self.executable, '--carr-sapi-native-worker', request, reply]
+                       if getattr(sys, 'frozen', False) else [self.executable, '-I', helper, request, reply])
+            _, _, returncode = run_process(command, cancelled=cancelled, timeout=timeout,
+                output_file=temporary / 'speech.wav' if output is not None else reply,
+                max_output=budget if output is not None else 2_000_000, allow_failure=True)
+            if not reply.is_file() or reply.stat().st_size > 2_000_000:
+                raise RuntimeError('The native SAPI worker did not return a bounded response.')
+            value = json.loads(reply.read_text(encoding='utf-8'))
+            if not isinstance(value, dict) or value.get('version') != 1:
+                raise ValueError('Invalid native SAPI response.')
+            if returncode or value.get('status') == 'failed':
+                phase = value.get('phase')
+                phases = {'validating-request', 'loading-com-client', 'creating-speaker', 'enumerating-voices',
+                          'selecting-voice', 'creating-audio-stream', 'opening-audio-stream', 'synthesizing', 'closing-audio-stream'}
+                phase = phase if phase in phases else 'native operation'
+                code = value.get('hresult')
+                diagnostic = f' (HRESULT 0x{code:08X})' if type(code) is int and 0 <= code <= 0xffffffff else ''
+                raise RuntimeError('Native SAPI failed during ' + phase + diagnostic + '.')
+            if value.get('architecture') != self.architecture or value.get('adapter') != 'native-comtypes':
+                raise ValueError('Native SAPI replied from an unexpected host architecture or adapter.')
+            if output is not None:
+                check_cancelled(cancelled)
+                _wave_info(temporary / 'speech.wav')
+                # Same-filesystem, no-overwrite publication into the parent's
+                # already private chunk staging area; final WAV stays atomic.
+                os.link(temporary / 'speech.wav', output)
+            return value
 
 
 class EspeakProvider:
