@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "id": "en-alice-full-novel",
+      "title": "Alice's Adventures in Wonderland",
+      "author": "Lewis Carroll",
+      "language": "en",
+      "edition": "Project Gutenberg eBook #11; GITenberg 7f18748e114b994d5d9454d5793581bc0b9cf9d7; 11.txt",
+      "volume": null,
+      "source_sha256": "0f9ea0b148d553177962a25edd2f56d36342c22576a3253a127b4fbeffa5687d",
+      "start": 790,
+      "end": 827,
+      "expected_matches": 1,
+      "query_sha256": "e5705cad5a626e24b8a375af0fe832b5062ad75e021aaff46803653c901f141a",
+      "expected_quote_sha256": "e5705cad5a626e24b8a375af0fe832b5062ad75e021aaff46803653c901f141a"
+    },
+    {
+      "id": "uk-zapovit",
+      "title": "Заповіт",
+      "author": "Тарас Шевченко",
+      "language": "uk",
+      "edition": "Кобзарь, Прага: Книгарня др. Грегра та Фердинанда Даттла, 1876",
+      "volume": "2",
+      "source_sha256": "2d9d59a93fcc5e370d062eab65ca756ce4c50be1c5aa2c3df245b057fd588bc2",
+      "start": 38,
+      "end": 58,
+      "expected_matches": 1,
+      "query_sha256": "0aea244a435051fa7df3c35a1aa29de6fb9709e416c1c57a494545b79afad19a",
+      "expected_quote_sha256": "0aea244a435051fa7df3c35a1aa29de6fb9709e416c1c57a494545b79afad19a"
+    }
+  ]
+}
