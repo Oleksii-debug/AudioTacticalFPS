@@ -63,3 +63,51 @@ jobs:
             if (Test-Path $file) { Get-Content $file }
           }
       # Deliberately no artifact-upload step: executables stay on the ephemeral runner.
+
+  pinned-zig-native-launcher:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up Python for the shared stdlib build and probe
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify the pinned official Zig distribution before extraction
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+          Invoke-WebRequest -Uri 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $archive
+          if ((Get-Item $archive).Length -ne 82229343) { throw 'Unexpected compiler archive length.' }
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') { throw 'Compiler archive digest mismatch.' }
+          Expand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP
+      - name: Build private PE with the exact shared cross-build command
+        shell: pwsh
+        run: |
+          $zig = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1/zig.exe'
+          $archive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+          $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'
+          python carr-library/packaging/native-launcher/build_launcher.py --zig $zig --toolchain-archive $archive --output-dir $private --build-probe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Execute the Zig PE on actual Windows
+        shell: pwsh
+        run: |
+          $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'
+          python carr-library/packaging/native-launcher/probe_windows.py --launcher "$private/ResearchLibrary.exe" --child "$private/windows_child_probe.exe" --report "$private/windows-probe.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record source and native-tested private executable identity
+        if: always()
+        shell: pwsh
+        run: |
+          git rev-parse HEAD
+          $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'
+          foreach ($name in @('build-evidence.json', 'windows-probe.json')) {
+            $file = Join-Path $private $name
+            if (Test-Path $file) { Get-Content $file }
+          }
+      # No binary is uploaded. Compare this native-tested hash to a private cross build.

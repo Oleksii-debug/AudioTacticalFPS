@@ -71,6 +71,9 @@ def main():
         raise FileExistsError("Choose a fresh private output directory")
     zig, archive = args.zig.resolve(strict=True), args.toolchain_archive.resolve(strict=True)
     toolchain = verified_compiler(zig, archive, source)
+    windows_headers = zig.parent / "lib/libc/include/any-windows-any"
+    if not (windows_headers / "windows.h").is_file():
+        raise ValueError("The verified Zig distribution's Windows SDK headers are missing")
     env = dict(os.environ, ZIG_GLOBAL_CACHE_DIR=str(output.parent / "launcher-compiler-cache"),
                ZIG_LOCAL_CACHE_DIR=str(output / "local-cache"), SOURCE_DATE_EPOCH="0")
     resource = output / "launcher.res"
@@ -78,7 +81,7 @@ def main():
                    cwd=source, env=env, check=True, timeout=300)
     flags = ["cc", "-target", "x86_64-windows-gnu", "-std=c11", "-Os", "-ffreestanding", "-fno-builtin",
              "-fno-stack-protector", "-nostdlib", "-Wall", "-Wextra", "-Werror", "-Wl,--entry=launcher_entry",
-             "-Wl,--subsystem,windows", "-s"]
+             "-Wl,--subsystem,windows", "-isystem", str(windows_headers), "-s"]
     subprocess.run([str(zig), *flags, "launcher.c", str(resource), "-lkernel32", "-luser32", "-lshell32",
                     "-o", str(executable)], cwd=source, env=env, check=True, timeout=300)
     report = {"schema": 1, "toolchain": toolchain,
