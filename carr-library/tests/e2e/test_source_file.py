@@ -2,6 +2,7 @@
 from dataclasses import replace
 from hashlib import sha256
 import os
+from threading import Event
 
 import pytest
 
@@ -124,6 +125,63 @@ def test_authority_is_rechecked_between_preparation_and_launch(source, revoke):
     with pytest.raises(ValueError):
         launch_source_file(app, selected, lambda path: launched.append(path) is None)
     assert launched == []
+
+
+def test_archived_bound_topic_is_rechecked_before_native_launch(source,monkeypatch):
+    app,workspace,_,_,_,hit,_ = source
+    topic = app.create_topic(workspace,'Bound research topic')
+    selected = prepare_source_file(app,workspace,hit.ref,hit.revision,authorized_topic=topic)
+    with app.topic_transaction(workspace) as tree:
+        tree.archive(topic)
+    launched = []
+    def forbidden(*args,**kwargs):
+        pytest.fail('An archived topic reached original bytes')
+    monkeypatch.setattr('carr_library.reader.source_file._original',forbidden)
+    with pytest.raises(ValueError,match='archived'):
+        launch_source_file(app,selected,lambda path: launched.append(path) is None,authorized_topic=topic)
+    with pytest.raises(ValueError,match='archived'):
+        prepare_source_file(app,workspace,hit.ref,hit.revision,authorized_topic=topic)
+    assert launched == []
+
+
+def test_cancel_before_preparation_creates_no_viewing_copy(source):
+    app,workspace,_,_,_,hit,_ = source
+    with pytest.raises(InterruptedError,match='cancelled'):
+        prepare_source_file(app,workspace,hit.ref,hit.revision,cancelled=lambda:True)
+    assert not (app.root / 'source-views').exists()
+
+
+def test_cancel_after_copy_verification_removes_only_the_new_copy(source,monkeypatch):
+    from carr_library.reader import source_file
+    app,workspace,_,_,imported,hit,raw = source
+    cancelled = Event()
+    check = source_file._view_matches
+    def cancel_after_check(*args):
+        result = check(*args)
+        cancelled.set()
+        return result
+    monkeypatch.setattr(source_file,'_view_matches',cancel_after_check)
+    with pytest.raises(InterruptedError,match='cancelled'):
+        prepare_source_file(app,workspace,hit.ref,hit.revision,cancelled=cancelled.is_set)
+    assert not tuple((app.root / 'source-views').iterdir())
+    assert app.assets.resolve(imported['asset']).read_bytes() == raw
+
+
+def test_cancellation_is_rechecked_at_the_native_launch_boundary(source,monkeypatch):
+    from carr_library.reader import source_file
+    app,workspace,_,_,_,hit,raw = source
+    selected = prepare_source_file(app,workspace,hit.ref,hit.revision)
+    cancelled = Event()
+    check = source_file._view_matches
+    def cancel_after_check(*args):
+        result = check(*args)
+        cancelled.set()
+        return result
+    monkeypatch.setattr(source_file,'_view_matches',cancel_after_check)
+    launched = []
+    with pytest.raises(InterruptedError,match='cancelled'):
+        launch_source_file(app,selected,lambda path: launched.append(path) is None,cancelled=cancelled.is_set)
+    assert launched == [] and selected.path.read_bytes() == raw
 
 
 def test_metadata_change_preserves_selected_historical_source(source):

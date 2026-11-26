@@ -63,8 +63,8 @@ def test_cancel_during_attestation_publishes_no_partial_result(research, monkeyp
     stopped = Event()
     original = app._loaders
 
-    def loaders(db, scope):
-        load, metadata, attest = original(db, scope)
+    def loaders(db, scope, **options):
+        load, metadata, attest = original(db, scope, **options)
 
         def cancel_after_attestation(*args):
             verified = attest(*args)
@@ -113,8 +113,8 @@ def test_saved_query_cancellation_during_original_verification(research, monkeyp
     stopped = Event()
     original = app._loaders
 
-    def loaders(db, scope):
-        load, metadata, attest = original(db, scope)
+    def loaders(db, scope, **options):
+        load, metadata, attest = original(db, scope, **options)
 
         def cancel_after_source(*args):
             source = load(*args)

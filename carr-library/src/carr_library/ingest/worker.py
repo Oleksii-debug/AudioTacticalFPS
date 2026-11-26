@@ -431,8 +431,10 @@ def _resource_limits(timeout):
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
-def isolated_render_fingerprint(data, physical):
+def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
     """Reuse the citation renderer in the same bounded isolated worker."""
+    if not callable(cancelled):
+        raise ValueError('A review cancellation callback is required.')
     if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
         raise ValueError('Invalid PDF review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
@@ -441,7 +443,9 @@ def isolated_render_fingerprint(data, physical):
         source = Path(temporary) / 'page-source.pdf'
         source.write_bytes(data)
         result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
-                              physical=physical, timeout=30), timeout=30)
+                              physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
+        raise InterruptedError('PDF source verification cancelled.')
     if (not isinstance(result, dict) or set(result) != {'renderer', 'fingerprint'}
             or not isinstance(result['renderer'], str) or not result['renderer']
             or not isinstance(result['fingerprint'], str)

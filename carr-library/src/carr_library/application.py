@@ -210,6 +210,10 @@ class LibraryApp:
                 budget.check()
                 yield db, budget
                 budget.check()
+            except InterruptedError as exc:
+                if budget.stopped():
+                    raise TimeoutError('Search cancelled or timed out.') from exc
+                raise
             except sqlite3.OperationalError as exc:
                 if budget.stopped() or getattr(exc, 'sqlite_errorcode', None) == sqlite3.SQLITE_INTERRUPT:
                     raise TimeoutError('Search cancelled or timed out.') from exc
@@ -535,7 +539,7 @@ class LibraryApp:
             raise ValueError('Source is outside the selected library.')
         return self.assets.resolve(identity.asset_sha256).read_bytes()
 
-    def _loaders(self, db, workspace):
+    def _loaders(self, db, workspace, *, cancelled=lambda: False):
         resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity)
         text = strict_text_attestor(db, workspace, resolve_asset)
 
@@ -546,10 +550,16 @@ class LibraryApp:
             return ReviewedPage(identity, physical, *row) if row else None
 
         from .ingest.worker import isolated_render_fingerprint
-        pdf = pdf_review_attestor(workspace, resolve_asset, review, renderer=isolated_render_fingerprint)
+        pdf = pdf_review_attestor(workspace, resolve_asset, review,
+            renderer=lambda data, physical: isolated_render_fingerprint(data, physical, cancelled=cancelled))
 
         def attest(identity, locator, raw_hash):
-            return text(identity, locator, raw_hash) or pdf(identity, locator, raw_hash)
+            if cancelled():
+                raise InterruptedError('Source verification cancelled.')
+            verified = text(identity, locator, raw_hash) or pdf(identity, locator, raw_hash)
+            if cancelled():
+                raise InterruptedError('Source verification cancelled.')
+            return verified
 
         def metadata(identity, value):
             if identity.workspace != workspace:
@@ -593,9 +603,12 @@ class LibraryApp:
 
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
-               cancelled=lambda: False, authorized_topic=None, on_status=None):
+               cancelled=lambda: False, authorized_topic=None, on_status=None,
+               result_mode=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
             raise ValueError('Unknown search mode.')
+        if result_mode not in (None, 'short', 'thematic'):
+            raise ValueError('Choose Short quotations or Thematic excerpts.')
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError('Invalid search operation budget.')
         if on_status is not None and not callable(on_status):
@@ -630,9 +643,10 @@ class LibraryApp:
                                       mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
-            loader, metadata, attestor = self._loaders(db, workspace)
+            loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
             results = []
             selections = {}
+            shown = set()
             for hit in hits:
                 budget.check()
                 row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
@@ -646,6 +660,17 @@ class LibraryApp:
                     db, workspace, selections[ref], hit['revision_id'])
                 if raw[selected.start:selected.end] != hit['raw_quote']:
                     raise ValueError('Search quotation differs from the original source.')
+                if result_mode is not None:
+                    from .search.presentation import presentation_span
+                    start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
+                    selected = _Selection(workspace, selected.edition, selected.revision,
+                                          selected.ordinal, start, end, collection)
+                    selections[ref] = selected
+                    identity_span = (identity, locator, start, end)
+                    if identity_span in shown:
+                        del selections[ref]
+                        continue
+                    shown.add(identity_span)
                 verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
                 budget.check()
                 if verified:
@@ -659,7 +684,7 @@ class LibraryApp:
                     reason = 'Semantic model unavailable; using lexical thematic search.'
                 results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
                     meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
-                    hit['raw_quote'], citation, verified, reason))
+                    raw[selected.start:selected.end], citation, verified, reason))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
         self._selections.update(selections)
@@ -667,18 +692,18 @@ class LibraryApp:
             del self._selections[next(iter(self._selections))]
         return tuple(results)
 
-    def _anchor(self, db, workspace, ref, revision):
+    def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(db, workspace, ref, revision)
-        load, attest_metadata, _ = self._loaders(db, workspace)
+        load, attest_metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
         _, _, checked, verified = load(identity, locator)
         if checked != raw or not attest_metadata(identity, metadata):
             raise ValueError('Source verification failed.')
         return make_anchor(identity, locator, raw, selected.start, selected.end, metadata,
                            text_verified=verified), load, attest_metadata
 
-    def context(self, workspace, ref, revision):
+    def context(self, workspace, ref, revision, *, cancelled=lambda: False):
         with self.read(workspace) as db:
-            anchor, load, _ = self._anchor(db, workspace, ref, revision)
+            anchor, load, _ = self._anchor(db, workspace, ref, revision, cancelled=cancelled)
             return open_context(workspace, (anchor,), load)
 
     def preview(self, workspace, ref, revision, *, authorized_topic=None):
@@ -689,30 +714,35 @@ class LibraryApp:
             _, _, locator, raw, meta = self._selected(db, workspace, ref, revision)
             return f'{meta.title}\n{locator.display()}\nExtracted text; verification status is shown in the search result.\n\n{raw}'
 
-    def copy(self, workspace, ref, revision, field='both'):
+    def copy(self, workspace, ref, revision, field='both', *, cancelled=lambda: False):
         with self.read(workspace) as db:
-            anchor, load, _ = self._anchor(db, workspace, ref, revision)
+            anchor, load, _ = self._anchor(db, workspace, ref, revision, cancelled=cancelled)
             return open_context(workspace, (anchor,), load).clipboard(workspace, 0, field, load)
 
     @contextmanager
-    def evidence_transaction(self, workspace):
+    def evidence_transaction(self, workspace, *, cancelled=lambda: False):
         with self.write(workspace) as db:
-            load, metadata, _ = self._loaders(db, workspace)
+            load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             yield SavedEvidenceStore(db, workspace, load, metadata)
+            if cancelled():
+                raise InterruptedError('Evidence operation cancelled.')
 
-    def save_hit(self, workspace, topic, ref, revision, note='', *, authorized_topic=None):
+    def save_hit(self, workspace, topic, ref, revision, note='', *, authorized_topic=None,
+                 cancelled=lambda: False):
         evidence = uuid4().hex
         with self.write(workspace) as db:
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            anchor, load, metadata = self._anchor(db, workspace, ref, revision)
+            anchor, load, metadata = self._anchor(db, workspace, ref, revision, cancelled=cancelled)
             SavedEvidenceStore(db, workspace, load, metadata).save(topic, evidence, anchor, note)
+            if cancelled():
+                raise InterruptedError('Saving the quotation was cancelled.')
         return evidence
 
-    def evidence(self, workspace, topic):
+    def evidence(self, workspace, topic, *, cancelled=lambda: False):
         with self.read(workspace) as db:
-            load, metadata, _ = self._loaders(db, workspace)
-            return SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic)
+            load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
+            return SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
 
     def set_evidence_tags(self, workspace, topic, evidence, names):
         names = tuple(dict.fromkeys(_name(name) for name in names))
@@ -753,7 +783,7 @@ class LibraryApp:
                          if row.evidence_id in ids)
 
     def review_pdf_page(self, workspace, ref, revision, reviewer, *, confirmed=False,
-                        authorized_topic=None):
+                        authorized_topic=None, cancelled=lambda: False):
         """Record an explicit independent human comparison to the original page.
 
         This does not approve printed pagination. No parser/model agreement or
@@ -761,6 +791,14 @@ class LibraryApp:
         """
         if confirmed is not True:
             raise ValueError('Independent comparison with the original page must be confirmed.')
+        if not callable(cancelled):
+            raise ValueError('A review cancellation callback is required.')
+
+        def check():
+            if cancelled():
+                raise InterruptedError('Review cancelled; no change was saved.')
+
+        check()
         reviewer = _name(reviewer)
         from .ingest.worker import isolated_render_fingerprint
         with self.read(workspace) as db:
@@ -770,9 +808,11 @@ class LibraryApp:
             if locator.kind != 'physical_page':
                 raise ValueError('This review workflow is for physical PDF pages only.')
             data = self._asset_bytes(db, workspace, identity)
-            renderer, fingerprint = isolated_render_fingerprint(data, locator.index)
+            renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
             raw_hash = sha256(raw.encode('utf-8')).hexdigest()
+        check()
         with self.write(workspace) as db:
+            check()
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
             _, current, current_loc, current_raw, _ = self._selected(db, workspace, ref, revision)
@@ -787,18 +827,30 @@ class LibraryApp:
                 return
             db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
                 (workspace, identity.edition_id, revision, locator.index, raw_hash, fingerprint, renderer, reviewer))
+            check()
 
-    def revoke_pdf_review(self, workspace, edition, revision, physical):
+    def revoke_pdf_review(self, workspace, edition, revision, physical, *,
+                          cancelled=lambda: False, authorized_topic=None):
+        if not callable(cancelled):
+            raise ValueError('A review cancellation callback is required.')
+        if cancelled():
+            raise InterruptedError('Revocation cancelled; no change was saved.')
         with self.write(workspace) as db:
+            if cancelled():
+                raise InterruptedError('Revocation cancelled; no change was saved.')
+            if authorized_topic is not None:
+                TopicTree(db, workspace)._visible(authorized_topic)
             if db.execute('UPDATE source_page_review SET active=0 WHERE workspace=? AND edition=? '
                 'AND revision=? AND physical=? AND active=1',
                 (workspace, edition, revision, physical)).rowcount != 1:
                 raise ValueError('No active review found for this page.')
+            if cancelled():
+                raise InterruptedError('Revocation cancelled; no change was saved.')
 
-    def export_topic(self, workspace, topic, *, format='markdown'):
+    def export_topic(self, workspace, topic, *, format='markdown', cancelled=lambda: False):
         with self.read(workspace) as db:
-            load, metadata, _ = self._loaders(db, workspace)
-            rows = SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic)
+            load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
+            rows = SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
             return export_saved(workspace, topic, rows, load, format=format)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):
@@ -809,7 +861,7 @@ class LibraryApp:
 
     def run_query(self, workspace, topic, identity, *, timeout=60.0, cancelled=lambda: False):
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
-            load, metadata, _ = self._loaders(db, workspace)
+            load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 

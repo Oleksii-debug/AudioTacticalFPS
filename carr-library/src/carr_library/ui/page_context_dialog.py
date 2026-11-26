@@ -14,12 +14,17 @@ class PageSession:
         self.anchors = None
 
     def visit(self, position):
-        from ..reader.context import Context
-
         if self.current_selection() != self.selection:
             raise ValueError('Selection changed')
         workspace, ref, revision = self.selection
         context = self.load_context(workspace, ref, revision)
+        return self.accept(context, position)
+
+    def accept(self, context, position):
+        """Validate a freshly loaded context on the UI thread before displaying it."""
+        from ..reader.context import Context
+
+        workspace, _, revision = self.selection
         if self.current_selection() != self.selection or not isinstance(context, Context):
             raise ValueError('Context unavailable or selection changed')
         anchors = tuple(p.anchor for p in context.pages)
@@ -34,12 +39,15 @@ class PageSession:
         return page, len(anchors)
 
 
-def show_page_context(parent, selection, current_selection, load_context):
+def show_page_context(parent, selection, current_selection, load_context, *,
+                      initial_context=None, run_job=None):
     """Return after modal dismissal; host restores focus only if selection is unchanged."""
     import wx
 
     session = PageSession(selection, current_selection, load_context)
     dialog = wx.Dialog(parent, title='Original source context', size=(760, 550))
+    alive = True
+    loading = False
     try:
         layout = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(dialog, label='Page information')
@@ -60,16 +68,27 @@ def show_page_context(parent, selection, current_selection, load_context):
         layout.Add(buttons, 0, wx.EXPAND)
         dialog.SetSizer(layout)
 
-        def render(position):
+        def unavailable(error=None):
+            nonlocal loading
+            if not alive:
+                return
+            loading = False
+            reader.ChangeValue('')
+            status.ChangeValue('Context unavailable or changed. Return to search and try again.')
+            previous.Enable(False)
+            following.Enable(False)
+            status.SetInsertionPoint(0)
+            status.SetFocus()
+
+        def display(position, context=None):
+            nonlocal loading
+            if not alive:
+                return
+            loading = False
             try:
-                page, count = session.visit(position)
+                page, count = session.accept(context, position) if context is not None else session.visit(position)
             except Exception:
-                reader.ChangeValue('')
-                status.ChangeValue('Context unavailable or changed. Return to search and try again.')
-                previous.Enable(False)
-                following.Enable(False)
-                status.SetInsertionPoint(0)
-                status.SetFocus()
+                unavailable()
                 return
             status.ChangeValue(f'Context page {position + 1} of {count}\n{page.citation}')
             reader.ChangeValue(page.raw_text)
@@ -81,9 +100,32 @@ def show_page_context(parent, selection, current_selection, load_context):
             status.SetInsertionPoint(0)
             status.SetFocus()
 
+        def render(position):
+            nonlocal loading
+            if not alive or loading:
+                return
+            if run_job is None:
+                display(position)
+                return
+            if current_selection() != selection:
+                unavailable()
+                return
+            loading = True
+            previous.Enable(False)
+            following.Enable(False)
+            reader.ChangeValue('')
+            status.ChangeValue('Verifying original page…')
+            status.SetFocus()
+            run_job('Verifying original page',lambda: load_context(*selection),
+                    lambda context: display(position, context),unavailable)
+
         previous.Bind(wx.EVT_BUTTON, lambda event: render(session.position - 1))
         following.Bind(wx.EVT_BUTTON, lambda event: render(session.position + 1))
-        render(0)
+        if initial_context is None:
+            render(0)
+        else:
+            display(0, initial_context)
         dialog.ShowModal()
     finally:
+        alive = False
         dialog.Destroy()

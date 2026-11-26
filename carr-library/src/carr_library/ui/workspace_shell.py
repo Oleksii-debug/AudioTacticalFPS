@@ -129,7 +129,7 @@ class WorkspaceFrame(wx.Frame):
                      (TopicPanel(book, scope[0], services.topic_tx), 'Topics and Sections')]
             evidence = None
             if scope[1] is not None:
-                evidence = EvidencePanel(book, *scope, services.evidence_tx)
+                evidence = self.make_evidence_panel(book, services)
                 pages.append((evidence, 'Evidence and Notes'))
             for page, label in pages:
                 if not book.AddPage(page, label):
@@ -170,3 +170,6 @@ class WorkspaceFrame(wx.Frame):
         """Allow the desktop host to add filters without replacing service boundaries."""
         return PagedSearchPanel(parent, services.search, services.load_context,
                                 verified_copy=services.verified_copy)
+
+    def make_evidence_panel(self,parent,services):
+        return EvidencePanel(parent,services.workspace,services.topic,services.evidence_tx)

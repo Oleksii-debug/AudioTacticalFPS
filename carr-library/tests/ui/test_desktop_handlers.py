@@ -3,6 +3,7 @@ import ast
 from concurrent.futures import Future
 from contextlib import contextmanager
 from pathlib import Path
+import sys
 import threading
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -40,12 +41,13 @@ def classes():
     chooser.GetSelection.return_value = 0
     wx = SimpleNamespace(CallAfter=queued.append,YES=1,ID_OK=1,YES_NO=2,NO_DEFAULT=4,ICON_QUESTION=8,
                          SingleChoiceDialog=Mock(return_value=chooser),
-                         MessageBox=Mock(return_value=0))
+                         MessageBox=Mock(return_value=0),TheClipboard=Mock(),TextDataObject=lambda value:value)
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
+               __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,active_collections=active_collections,
-               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),metadata_dialog=Mock())
+               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
 
@@ -76,6 +78,7 @@ def panel(classes):
     env,_ = classes
     value = object.__new__(env['DesktopSearchPanel'])
     value.frame = SimpleNamespace(working=False,report=Mock(),run_job=Mock(),library=Mock(),cancel_event=threading.Event())
+    value.bound_library = value.frame.library
     value.model = SearchModel()
     value.model.set_workspace('a')
     value.bound_workspace,value.bound_topic = 'a',None
@@ -83,13 +86,16 @@ def panel(classes):
     value.model.replace('a',(hit,))
     value.results = {'hit':hit}
     value._context_epoch = 1
-    value.query,value.retrieval,value.collection = Mock(),Mock(),Mock()
+    value.query,value.retrieval,value.result_mode,value.collection = Mock(),Mock(),Mock(),Mock()
     value.query.GetValue.return_value = 'Exact'
     value.retrieval.GetSelection.return_value = 0
+    value.result_mode.GetSelection.return_value = 0
     value.collection.GetSelection.return_value = 0
     value.collection_ids = [None]
     value.filters = {}
     value.grid,value.details,value.status = Mock(),Mock(),Mock()
+    value._load_context,value._refresh_details = Mock(),Mock()
+    value.verified_copy_service = Mock(return_value=hit.quote)
     value.selected = lambda: hit
     return value
 
@@ -199,23 +205,15 @@ def test_saved_query_results_use_human_readable_source_and_notes(classes):
     assert 'Identity(' not in output and 'Anchor(' not in output and 'raw_sha256' not in output
 
 
-@pytest.mark.parametrize('confirmed,reviewer',[(False,'Person'),(True,None),(True,'Person')])
-def test_pdf_review_needs_explicit_confirmation_and_reviewer(classes,confirmed,reviewer):
+def test_pdf_review_delegates_to_the_source_review_controller(classes):
     p = panel(classes)
-    p.bound_topic = 'research'
-    env,_ = classes
-    env['wx'].MessageBox.return_value = int(confirmed)
-    env['text_dialog'].return_value = reviewer
-    p.review_selected(None)
-    p.frame.library.preview.assert_called_once_with('a','hit','revision',authorized_topic='research')
-    if confirmed and reviewer is not None:
-        operation = p.frame.run_job.call_args.args[1]
-        operation()
-        p.frame.library.review_pdf_page.assert_called_once_with('a','hit','revision','Person',
-                                                               confirmed=True,authorized_topic='research')
-    else:
-        p.frame.run_job.assert_not_called()
-        p.frame.library.review_pdf_page.assert_not_called()
+    p.frame.source_review_actions = SimpleNamespace(review=Mock())
+    event = object()
+    p.review_selected(event)
+    p.frame.source_review_actions.review.assert_called_once_with(event)
+    p.frame.library.preview.assert_not_called()
+    p.frame.library.review_pdf_page.assert_not_called()
+    p.frame.run_job.assert_not_called()
 
 
 def test_unverified_preview_keeps_the_bound_topic_authorization(classes):
@@ -223,6 +221,9 @@ def test_unverified_preview_keeps_the_bound_topic_authorization(classes):
     p.bound_topic = 'research'
     p.results['hit'] = SimpleNamespace(verified=False)
     p.on_more(None)
+    p.frame.library.preview.assert_not_called()
+    _,operation,done = p.frame.run_job.call_args.args
+    done(operation())
     p.frame.library.preview.assert_called_once_with('a','hit','revision',authorized_topic='research')
 
 
@@ -233,8 +234,131 @@ def test_save_quotation_keeps_the_bound_topic_authorization(classes):
     p.frame.evidence = None
     p.frame.library.topics.return_value = (SimpleNamespace(id='research',name='Research'),)
     p.save_selected(None)
+    p.frame.library.save_hit.assert_not_called()
+    p.frame.run_job.call_args.args[1]()
     p.frame.library.save_hit.assert_called_once_with('a','research','hit','revision',
-                                                    authorized_topic='research')
+        authorized_topic='research',cancelled=p.frame.cancel_event.is_set)
+
+
+def test_verified_context_loads_in_job_before_opening_page_dialog(classes):
+    p = panel(classes)
+    p.results['hit'] = SimpleNamespace(verified=True)
+    p.on_more(None)
+    p._load_context.assert_not_called()
+    classes[0]['show_page_context'].assert_not_called()
+    _,load,display = p.frame.run_job.call_args.args
+    context = load()
+    p._load_context.assert_called_once_with('a','hit','revision')
+    classes[0]['show_page_context'].assert_not_called()
+    display(context)
+    call = classes[0]['show_page_context'].call_args
+    assert call.args[1] == ('a','hit','revision')
+    assert call.kwargs['initial_context'] is context
+    assert call.kwargs['run_job'] == p.frame.run_job
+
+
+@pytest.mark.parametrize('changed',['scope','selection','epoch'])
+def test_late_verified_copy_cannot_write_clipboard_after_selection_changes(classes,changed):
+    p = panel(classes)
+    p.copy('quote')
+    p.verified_copy_service.assert_not_called()
+    clipboard = classes[0]['wx'].TheClipboard
+    clipboard.Open.assert_not_called()
+    _,verify,publish = p.frame.run_job.call_args.args
+    value = verify()
+    if changed == 'scope':
+        p.model.set_workspace('b')
+    elif changed == 'epoch':
+        p._context_epoch += 1
+    else:
+        p.selected = lambda: None
+    publish(value)
+    clipboard.Open.assert_not_called()
+
+
+def test_copy_clipboard_work_happens_only_in_ui_completion(classes):
+    p = panel(classes)
+    p.copy('quote')
+    _,verify,publish = p.frame.run_job.call_args.args
+    value = verify()
+    clipboard = classes[0]['wx'].TheClipboard
+    clipboard.Open.assert_not_called()
+    publish(value)
+    clipboard.SetData.assert_called_once_with('Exact')
+    clipboard.Close.assert_called_once()
+
+
+def test_cancelled_copy_does_not_publish_verified_text(classes):
+    p = panel(classes)
+    p.copy('quote')
+    _,verify,_ = p.frame.run_job.call_args.args
+    def verify_and_cancel(*args):
+        p.frame.cancel_event.set()
+        return 'Exact'
+    p.verified_copy_service.side_effect = verify_and_cancel
+    with pytest.raises(TimeoutError,match='Nothing copied'):
+        verify()
+    classes[0]['wx'].TheClipboard.Open.assert_not_called()
+
+
+def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
+    p = panel(classes)
+    p.copy('quote')
+    _,verify,publish = p.frame.run_job.call_args.args
+    value = verify()
+    p.frame.cancel_event.set()
+    publish(value)
+    classes[0]['wx'].TheClipboard.Open.assert_not_called()
+    assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
+
+
+def test_import_uses_the_chosen_recognition_configuration(classes,monkeypatch):
+    config = object()
+    choose = Mock(return_value=config)
+    monkeypatch.setitem(sys.modules,'carr_library.ui.ocr_options',SimpleNamespace(choose_ocr_config=choose))
+    f = frame(classes)
+    f.library = Mock()
+    f._workspace = lambda:'a'
+    f.run_job = Mock()
+    wx = classes[0]['wx']
+    wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
+    file_dialog = Mock()
+    file_dialog.ShowModal.return_value = wx.ID_OK
+    file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
+    wx.FileDialog = Mock(return_value=file_dialog)
+    f.import_books(None)
+    choose.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
+    file_dialog.Destroy.assert_called_once()
+    f.library.import_files.assert_not_called()
+    _,import_files,complete = f.run_job.call_args.args
+    import_files()
+    call = f.library.import_files.call_args
+    assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
+    assert call.kwargs['config'] is config
+    assert call.kwargs['cancelled'] == f.cancel_event.is_set
+    complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
+    assert 'Page 2 needs independent review' in f.report.call_args.args[0]
+    assert 'Review pending imported page' in f.report.call_args.args[0]
+
+
+def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    choose = Mock(return_value=None)
+    monkeypatch.setitem(sys.modules,'carr_library.ui.ocr_options',SimpleNamespace(choose_ocr_config=choose))
+    f = frame(classes)
+    f.library = Mock()
+    f._workspace = lambda:'a'
+    f.run_job = Mock()
+    wx = classes[0]['wx']
+    wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
+    dialog = Mock()
+    dialog.ShowModal.return_value = wx.ID_OK
+    dialog.GetPaths.return_value = ['book.pdf']
+    wx.FileDialog = Mock(return_value=dialog)
+    f.import_books(None)
+    choose.assert_called_once_with(f,['book.pdf'])
+    f.run_job.assert_not_called()
+    f.library.import_files.assert_not_called()
+    f.report.assert_called_once_with('Import cancelled.')
 
 
 def pending_import_frame(classes):

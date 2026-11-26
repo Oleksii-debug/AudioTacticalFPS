@@ -21,8 +21,12 @@ from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
 from .scope_bindings import ScopeServices
 from .paged_search_panel import PagedSearchPanel
+from .page_context_dialog import show_page_context
 from .search_model import Hit
 from .catalog_metadata_dialog import edit_selected_book
+from .desktop_evidence_panel import DesktopEvidencePanel
+from .research_actions import install_research_actions
+from .source_review import install_source_review_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -67,6 +71,7 @@ def format_topic_results(rows):
 class DesktopSearchPanel(PagedSearchPanel):
     def __init__(self, parent, frame, services):
         self.frame = frame
+        self.bound_library = frame.library
         self.bound_workspace,self.bound_topic = services.workspace,services.topic
         self.results = {}
         super().__init__(parent, services.search, services.load_context,
@@ -74,10 +79,8 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.retrieval.SetItems(['Exact phrase', 'Whole word', 'All words on one page',
                                  'Thematic (local keywords)', 'Semantic (local model)'])
         self.retrieval.SetSelection(0)
-        self.result_mode.Hide()
-        self.field_labels['Result mode'].Hide()
-        # The old result-mode control did not change backend behavior. Replace it
-        # with concrete source filters, all applied inside one database snapshot.
+        # Source presentation is independent from retrieval. These offsets also
+        # identify the quotation used by copying, saved evidence and More.
         self.filters = {}
         form = wx.FlexGridSizer(cols=2, hgap=8, vgap=4)
         form.AddGrowableCol(1)
@@ -108,11 +111,26 @@ class DesktopSearchPanel(PagedSearchPanel):
         save.Bind(wx.EVT_BUTTON, self.save_selected)
         self.GetSizer().Add(save, 0, wx.ALL, 4)
         review = wx.Button(self,label='Record independent review of selected PDF page')
-        review.Bind(wx.EVT_BUTTON,self.review_selected)
+        review.Bind(wx.EVT_BUTTON, self.review_selected)
         self.GetSizer().Add(review,0,wx.ALL,4)
         original = wx.Button(self, label='Open &original source file')
         original.Bind(wx.EVT_BUTTON, self.open_original)
         self.GetSizer().Add(original, 0, wx.ALL, 4)
+        for control in (self.retrieval, self.result_mode, self.collection):
+            control.Bind(wx.EVT_CHOICE, self.on_options_changed)
+        for control in (self.query, *self.filters.values()):
+            control.Bind(wx.EVT_TEXT, self.on_options_changed)
+
+    def on_options_changed(self, event=None):
+        """Discard old results when query, filters or presentation change."""
+        self._context_epoch += 1
+        self.model.clear()
+        self.results.clear()
+        self.grid.refresh()
+        self.details.ChangeValue('')
+        self.status.ChangeValue('Search options changed. Choose Search to load matching source excerpts.')
+        if event is not None:
+            event.Skip()
 
     def refresh_collections(self):
         index = self.collection.GetSelection()
@@ -145,6 +163,12 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.retrieval.SetFocus()
             return
         mode = ('phrase', 'word', 'terms', 'thematic', 'semantic')[retrieval]
+        presentation = self.result_mode.GetSelection()
+        if not 0 <= presentation < 2:
+            self.status.ChangeValue('Choose Short quotations or Thematic excerpts first.')
+            self.result_mode.SetFocus()
+            return
+        result_mode = ('short', 'thematic')[presentation]
         options = {key: control.GetValue().strip() or None for key, control in self.filters.items()}
         index = self.collection.GetSelection()
         if not 0 <= index < len(self.collection_ids):
@@ -168,6 +192,10 @@ class DesktopSearchPanel(PagedSearchPanel):
                 r.author, r.edition, r.page, r.quote, r.citation) for r in rows))
             self.grid.refresh()
             info = f'{len(rows)} results.' if rows else 'No results. Change the query or source filters.'
+            if rows:
+                info += (' Short source quotations.' if result_mode == 'short' else
+                         ' Expanded source excerpts from the matching page or text segment.')
+                info += ' Showing excerpts from up to 100 matches. Use source filters to focus the search.'
             if notes:
                 info += ' ' + ' '.join(dict.fromkeys(notes))
             if any(not r.verified for r in rows):
@@ -181,24 +209,103 @@ class DesktopSearchPanel(PagedSearchPanel):
                 self.status.SetFocus()
 
         self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
-            workspace, query, mode=mode, cancelled=self.frame.cancel_event.is_set,
+            workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
             authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
 
     def on_more(self, event):
+        if self.frame.working:
+            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
+            return
         try:
             selected = self.selected()
+            if selected.workspace != self.bound_workspace or selected.workspace != self.model.workspace:
+                raise ValueError('Select one result in the active library.')
             result = self.results.get(selected.ref)
-            if result is not None and not result.verified:
-                preview = self.frame.library.preview(selected.workspace, selected.ref, selected.revision,
-                                                     authorized_topic=self.bound_topic)
-                show_text(self, 'Extracted source text — review required', preview)
-                self.grid.control.SetFocus()
-                return
+            unverified = result is not None and not result.verified
+            epoch = self._context_epoch
+            identity = selected.workspace,selected.ref,selected.revision
+
+            def current_selection():
+                try:
+                    if (self._context_epoch == epoch and self.model.workspace == selected.workspace and
+                            self.selected() == selected):
+                        return identity
+                except Exception:
+                    pass
+                return None
+
+            def load():
+                if self.frame.cancel_event.is_set():
+                    raise TimeoutError('Context cancelled.')
+                value = (self.frame.library.preview(*identity,authorized_topic=self.bound_topic)
+                         if unverified else self._load_context(*identity))
+                if self.frame.cancel_event.is_set():
+                    raise TimeoutError('Context cancelled.')
+                return value
+
+            def done(value):
+                if current_selection() != identity or self.frame.cancel_event.is_set():
+                    return
+                if unverified:
+                    show_text(self,'Extracted source text — review required',value)
+                else:
+                    show_page_context(self,identity,current_selection,self._load_context,
+                                      initial_context=value,run_job=self.frame.run_job)
+                if current_selection() == identity:
+                    self.grid.control.SetFocus()
+                    self._refresh_details()
+
+            self.frame.run_job('Loading original source context',load,done)
         except Exception as exc:
             self.status.ChangeValue(str(exc))
             self.status.SetFocus()
+
+    def copy(self,field):
+        if self.frame.working:
+            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
-        super().on_more(event)
+        try:
+            hit = self.selected()
+            if field not in ('quote','citation') or hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
+                raise ValueError('Select one result in the active library.')
+            epoch = self._context_epoch
+
+            def verify():
+                if self.frame.cancel_event.is_set():
+                    raise TimeoutError('Copy cancelled. Nothing copied.')
+                value = self.verified_copy_service(hit.workspace,hit.ref,hit.revision,field)
+                if self.frame.cancel_event.is_set():
+                    raise TimeoutError('Copy cancelled. Nothing copied.')
+                return value
+
+            def done(value):
+                if self._context_epoch != epoch or self.model.workspace != hit.workspace:
+                    return
+                if self.frame.cancel_event.is_set():
+                    self.status.ChangeValue('Copy cancelled. Nothing copied.')
+                    self.status.SetFocus()
+                    return
+                try:
+                    if self.selected() != hit or not isinstance(value,str) or not value or value != getattr(hit,field):
+                        raise ValueError('Verified source or selection changed. Nothing copied.')
+                    if not wx.TheClipboard.Open():
+                        raise RuntimeError('Clipboard is busy. Nothing copied.')
+                    try:
+                        if not wx.TheClipboard.SetData(wx.TextDataObject(value)):
+                            raise RuntimeError('Clipboard rejected data. Nothing copied.')
+                        persisted = wx.TheClipboard.Flush()
+                    finally:
+                        wx.TheClipboard.Close()
+                    self.status.ChangeValue('Copied ' + field if persisted else
+                        'Copied ' + field + '; paste before closing because availability after exit is not confirmed.')
+                except Exception as exc:
+                    self.status.ChangeValue(f'Copy failed: {exc}')
+                self.status.SetFocus()
+
+            self.frame.run_job('Verifying quotation for copy',verify,done)
+        except Exception as exc:
+            self.status.ChangeValue(f'Nothing copied: {exc}')
+            self.status.SetFocus()
 
     def open_original(self, event):
         if self.frame.working:
@@ -206,20 +313,57 @@ class DesktopSearchPanel(PagedSearchPanel):
             return
         try:
             hit = self.selected()
+            library = self.bound_library
+            topic = self.bound_topic
+            active = (self.bound_workspace, topic)
+            if (self.frame.library is not library or self.frame.active != active or
+                    hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace):
+                raise ValueError('Select one result in the active library and research topic.')
             selection = (hit.workspace, hit.ref, hit.revision)
             epoch = self._context_epoch
+            cancelled = self.frame.cancel_event.is_set
         except Exception as exc:
             self.status.ChangeValue(f'Original not opened: {exc}')
             self.status.SetFocus()
             return
 
+        def check_context():
+            if cancelled():
+                raise InterruptedError('Opening the original was cancelled.')
+            if self.frame.library is not library or self.bound_library is not library:
+                raise ValueError('The library folder changed. Select the source again.')
+            if (self.frame.active != active or self.bound_workspace != selection[0] or
+                    self.bound_topic != topic):
+                raise ValueError('The library or research topic changed. Select the source again.')
+            if self._context_epoch != epoch or self.model.workspace != selection[0]:
+                raise ValueError('The selection changed. Select the source again.')
+
+        def check_selection():
+            check_context()
+            current = self.selected()
+            if (current.workspace, current.ref, current.revision) != selection:
+                raise ValueError('The selection changed. Select the source again.')
+
+        def prepare():
+            # Read only captured scope here; native selection controls belong to
+            # the UI thread. The service rechecks topic access in its transaction.
+            check_context()
+            return prepare_source_file(library, *selection, authorized_topic=topic,
+                                       cancelled=cancelled)
+
+        def launch(path):
+            # Source validation may take time. Check scope again immediately
+            # before handing any path to the user's external viewer.
+            check_selection()
+            return wx.LaunchDefaultApplication(path)
+
         def ready(source):
             try:
-                current = self.selected()
-                if (self._context_epoch != epoch or
-                        (current.workspace, current.ref, current.revision) != selection):
-                    raise ValueError('The selection changed. Select the source again.')
-                launch_source_file(self.frame.library, source, wx.LaunchDefaultApplication)
+                check_selection()
+                if (source.identity.workspace, source.ref, source.identity.revision) != selection:
+                    raise ValueError('The prepared source changed. Select the source again.')
+                launch_source_file(library, source, launch, authorized_topic=topic,
+                                   cancelled=cancelled)
                 self.status.ChangeValue(f'Opened a viewing copy of {source.title}. '
                     f'Source location: {source.locator.display()}. '
                     'Use the external viewer to navigate to this location. '
@@ -228,12 +372,16 @@ class DesktopSearchPanel(PagedSearchPanel):
                 self.status.ChangeValue(f'Original not opened: {exc}')
             self.status.SetFocus()
 
-        self.frame.run_job('Preparing original source file',
-            lambda: prepare_source_file(self.frame.library, *selection), ready)
+        self.frame.run_job('Preparing original source file', prepare, ready)
 
     def save_selected(self, event):
+        if self.frame.working:
+            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
+            return
         try:
             hit = self.selected()
+            if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
+                raise ValueError('Select one result in the active library.')
             topics = self.frame.library.topics(hit.workspace)
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
@@ -249,44 +397,29 @@ class DesktopSearchPanel(PagedSearchPanel):
                     selected_topic = topics[dialog.GetSelection()].id
                 finally:
                     dialog.Destroy()
-            self.frame.library.save_hit(hit.workspace, selected_topic, hit.ref, hit.revision,
-                                        authorized_topic=self.bound_topic)
-            if self.frame.evidence is not None and not self.frame._dirty():
-                self.frame.evidence.refresh()
-            self.status.ChangeValue('Quotation saved. Open its topic to add research notes.')
+            epoch = self._context_epoch
+
+            def save():
+                if self.frame.cancel_event.is_set():
+                    raise TimeoutError('Saving quotation cancelled.')
+                return self.frame.library.save_hit(hit.workspace,selected_topic,hit.ref,hit.revision,
+                    authorized_topic=self.bound_topic,cancelled=self.frame.cancel_event.is_set)
+
+            def done(evidence_id):
+                if self._context_epoch != epoch or self.model.workspace != hit.workspace:
+                    return
+                if self.frame.evidence is not None and not self.frame._dirty():
+                    self.frame.evidence.refresh(evidence_id=evidence_id)
+                self.status.ChangeValue('Quotation saved. Open its topic to add research notes.')
+                self.status.SetFocus()
+
+            self.frame.run_job('Saving verified quotation',save,done)
         except Exception as exc:
             self.status.ChangeValue(f'Quotation not saved: {exc}')
-        self.status.SetFocus()
+            self.status.SetFocus()
 
     def review_selected(self,event):
-        try:
-            hit = self.selected()
-            # Display the whole candidate page before asking for an explicit
-            # human comparison. No import/model/preview action grants approval.
-            show_text(self,'PDF text to compare with the original page',
-                      self.frame.library.preview(hit.workspace,hit.ref,hit.revision,
-                                                 authorized_topic=self.bound_topic))
-            if wx.MessageBox('Have you independently compared all the extracted text on this page with the original PDF page? '
-                    'Confirm only after that comparison. Printed page numbers remain unverified.',
-                    'Confirm independent PDF review',wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,self) != wx.YES:
-                return
-            reviewer = text_dialog(self,'Independent page review','Reviewer name')
-            if reviewer is None:
-                return
-            def done(result):
-                self._context_epoch += 1
-                self.results.clear()
-                self.model.clear()
-                self.grid.refresh()
-                self.details.ChangeValue('')
-                self.status.ChangeValue('PDF page review recorded. Search again to use the verified quotation.')
-                self.status.SetFocus()
-            self.frame.run_job('Recording independent PDF review',lambda: self.frame.library.review_pdf_page(
-                hit.workspace,hit.ref,hit.revision,reviewer,confirmed=True,
-                authorized_topic=self.bound_topic),done)
-        except Exception as exc:
-            self.status.ChangeValue(f'Review not recorded: {exc}')
-            self.status.SetFocus()
+        self.frame.source_review_actions.review(event)
 
 
 class DesktopFrame(WorkspaceFrame):
@@ -338,6 +471,11 @@ class DesktopFrame(WorkspaceFrame):
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)
         self.cancel_button = cancel
         cancel.Disable()
+        install_research_actions(self)
+        install_source_review_actions(self)
+
+    def make_evidence_panel(self,parent,services):
+        return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
 
     def _workspace(self):
         if self.active is None:
@@ -373,7 +511,7 @@ class DesktopFrame(WorkspaceFrame):
 
         @contextmanager
         def evidence_tx():
-            with library.evidence_transaction(workspace) as service:
+            with library.evidence_transaction(workspace,cancelled=self.cancel_event.is_set) as service:
                 service.tree._visible(topic)
                 yield service
 
@@ -381,7 +519,7 @@ class DesktopFrame(WorkspaceFrame):
             if requested != workspace:
                 raise ValueError('Library changed.')
             rows = library.search(workspace, query,mode='thematic' if retrieval == 'thematic' else 'phrase',
-                                  limit=limit,authorized_topic=topic)
+                                  limit=limit,authorized_topic=topic,result_mode=result_mode)
             return tuple(Hit(r.workspace, r.ref, r.revision, r.title, r.author,
                              r.edition, r.page, r.quote, r.citation) for r in rows)
 
@@ -395,14 +533,14 @@ class DesktopFrame(WorkspaceFrame):
 
         def context(requested,ref,revision):
             with reader(requested) as db:
-                anchor,load,_ = library._anchor(db,workspace,ref,revision)
+                anchor,load,_ = library._anchor(db,workspace,ref,revision,cancelled=self.cancel_event.is_set)
                 return open_context(workspace,(anchor,),load)
 
         def copy(requested,ref,revision,field):
             if field not in ('quote','citation'):
                 raise ValueError('Choose quotation or citation.')
             with reader(requested) as db:
-                anchor,load,_ = library._anchor(db,workspace,ref,revision)
+                anchor,load,_ = library._anchor(db,workspace,ref,revision,cancelled=self.cancel_event.is_set)
                 return open_context(workspace,(anchor,),load).clipboard(workspace,0,field,load)
 
         return ScopeServices(workspace, topic, search, context, copy,
@@ -426,7 +564,7 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None):
+    def run_job(self, title, operation, done=None, failed=None):
         if self._closing:
             return
         if self.working:
@@ -446,6 +584,8 @@ class DesktopFrame(WorkspaceFrame):
         except Exception as exc:
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
+            if failed is not None:
+                failed(exc)
             return
 
         def finish(future):
@@ -462,6 +602,8 @@ class DesktopFrame(WorkspaceFrame):
                         done(result)
                 except Exception as exc:
                     self.report(f'{title}: {exc}')
+                    if failed is not None:
+                        failed(exc)
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
@@ -590,13 +732,15 @@ class DesktopFrame(WorkspaceFrame):
         def done(rows):
             completed = sum(r['state'] == 'complete' for r in rows)
             self.report(f'{completed} of {len(rows)} books imported. ' +
-                ' '.join(f'{r["file"]}: {r["state"].replace("_", " ")}.' for r in rows if r['state'] != 'complete') +
+                ' '.join(f'{r["file"]}: {r["state"].replace("_", " ")}. ' +
+                         (r.get('message') or r.get('error') or '')
+                         for r in rows if r['state'] != 'complete') +
                 (' Choose Library, Review pending imported page to check quarantined OCR text.'
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:
                 self.book.GetPage(1).refresh()
         self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set, config=config), done)
+            cancelled=self.cancel_event.is_set,config=config), done)
 
     def add_text(self, event):
         try:
@@ -738,9 +882,21 @@ class DesktopFrame(WorkspaceFrame):
                 format = ('markdown', 'text', 'ris', 'bibtex', 'csv')[dialog.GetFilterIndex()]
             finally:
                 dialog.Destroy()
-            text = self.library.export_topic(workspace, topic, format=format)
-            write_export(path, text, private_root=self.library.root)
-            self.report('Topic exported with quotations and research notes kept separate.')
+            def export():
+                text = self.library.export_topic(workspace,topic,format=format,
+                                                cancelled=self.cancel_event.is_set)
+                if self.cancel_event.is_set():
+                    raise TimeoutError('Export cancelled; the destination was not changed.')
+                write_export(path,text,private_root=self.library.root)
+
+            def done(result):
+                if format in ('ris','bibtex'):
+                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                else:
+                    self.report('Topic exported with quotations and research notes kept separate.')
+
+            self.run_job('Exporting verified topic',export,done,
+                         lambda error: self.report(f'Export not completed: {error}'))
         except Exception as exc:
             self.report(f'Export not completed: {exc}')
 
@@ -837,14 +993,20 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
+            'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
+            'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
             'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
+            'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
+            'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'
             'TXT quotations are checked against original bytes. PDF and DOCX extraction may require independent review.\n'
+            'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')

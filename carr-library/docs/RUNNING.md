@@ -22,6 +22,12 @@ After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
 startup fails, so a screen reader can read the error. `CheckInstallation.cmd`
 runs the synthetic application self-test without changing your research data.
 
+The complete package includes local Tesseract OCR with pinned English,
+Ukrainian and Slovak models and an orientation model. The launcher selects the
+included engine and models automatically. Scanned text remains a review
+candidate until you compare and explicitly approve it against the source page;
+OCR does not establish printed page numbers. No language download is needed.
+
 The default data location is `%LOCALAPPDATA%\Universal Research Library`.
 Program files and research data are separate. To uninstall this portable
 package, close the application and delete only its extracted program folder.
@@ -50,6 +56,56 @@ python -m carr_library --data-dir "D:\Research data"
 
 `--self-test` uses a temporary synthetic library. It does not import or upload
 your documents. Search and library data remain on the local computer.
+
+## Open original sources and export research
+
+After selecting a search result, use **Open original source file** to open a
+copy in the computer's default PDF, text or Word reader. The search status gives
+the physical PDF page or logical text segment. Use the external reader to reach
+that location; opening the file does not automatically jump to a particular
+page. Changes made in that reader do not alter the retained library original.
+Opening a source does not approve its extracted text for quotation.
+
+Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
+source quotations and research notes in separate fields. RIS and BibTeX contain
+only bibliography; they omit quotations and private notes. CSV text columns
+ending in `_json` use reversible quoted text so line breaks and Unicode remain
+exact and spreadsheet programs cannot execute a quotation as a formula.
+
+Choose a folder outside the private library data folder. Existing ordinary export files can be replaced after the
+Save dialog's confirmation. If another program changes the destination during
+export, select it again before replacing it. A failed save keeps the previous
+file intact.
+
+## Research from the keyboard
+
+Choose a library or research topic, then **Open selected scope**. In Search,
+**Search mode** chooses how matches are found. **Result mode** independently
+chooses **Short quotations**, usually a source sentence around the match, or
+**Thematic excerpts**, with more surrounding text on the same page or text
+segment. Neither mode generates or paraphrases the source. Copy, More and Save
+use the same selected source passage. Changing a query or filter clears the
+previous results; choose Search again. Results are limited, so use the source
+filters to focus on a particular book, author or collection.
+
+**Ctrl+Shift+I** resumes an interrupted import in the current library. Use
+**Cancel current operation** to stop it. A page that still requires independent
+review remains explicitly unverified.
+
+Select a book in Books and Collections, then press **Ctrl+Shift+M** to edit its title,
+authors, language, edition or volume. Title and author changes also describe
+other editions of the same work. Saved quotations retain their historical
+citations, and original source files remain unchanged.
+
+In Evidence and Notes, **Ctrl+Shift+T** edits the selected quotation's tags,
+one per line. **Ctrl+Alt+T** finds saved evidence with a tag in the current topic.
+These actions preserve an unsaved research note. View tags is also available in
+the Research menu.
+
+The **Source** menu opens an optional independent PDF page review and can revoke
+an existing review. Reading the extraction or opening the original never grants
+approval. The reviewer must compare the full extracted page with the original;
+Cancel leaves it unchanged. Printed page numbers require separate verification.
 
 ## Optional local semantic search
 
@@ -84,6 +140,12 @@ instead and pass `--model-dir` and `--model-manifest` to the bundler. It applies
 the application's pinned model verifier both before and after copying the
 model; the model's nine original files remain unchanged. Its Apache 2.0 license
 is included beside the model directory.
+To include the portable OCR runtime, pass `--ocr-dir` and
+`--ocr-source-archive`. The bundler verifies the package's
+`ocr/ocr-manifest.json` inventory before and after copying it. The runtime
+contains the required Windows DLLs, four pinned OCR models, and original
+license and build records. Its matching source archive is shipped alongside
+the runtime. See `packaging/OCR_RUNTIME.md` for the exact build command.
 `--sbom` includes a native uv CycloneDX 1.5 runtime dependency inventory after
 checking that every package and version matches the dependency lock. The file
 hash manifest separately covers Python, the application, and optional model
@@ -105,3 +167,8 @@ wheel. See each corresponding `UPSTREAM` or `REUSE` file in the source tree.
 The complete package also contains the Python runtime dependency notices from
 its publisher's exact build metadata, plus source-pinned notices for dependency
 wheels that omit their own license file. These are retained in `notices`.
+The separately licensed OCR tools include GPL/LGPL libraries. Their original
+notices and build records are retained with the runtime. The accompanying
+`ocr-corresponding-source.tar` contains matching source archives, recipes and
+patches. Keep the notices and corresponding-source archive with the package
+when redistributing it.

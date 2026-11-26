@@ -15,6 +15,7 @@ from ..catalog.intake import IntakeError, snapshot
 from ..citations.anchors import Identity, Locator
 from ..ingest.retained_assets import RetainedAssets, SUFFIXES
 from ..ingest.writer_guard import exclusive_writer
+from ..research.topic_tree import TopicTree
 
 
 VIEW_DIRECTORY = 'source-views'
@@ -94,20 +95,29 @@ def _view_matches(directory, path, original):
     return copied.manifest() == original.manifest()
 
 
-def prepare_source_file(app, workspace, ref, revision):
+def prepare_source_file(app, workspace, ref, revision, *, authorized_topic=None,
+                        cancelled=lambda: False):
     """Prepare the selected retained bytes for an explicit Open original action.
 
     A previously unchanged copy is reused. A viewer-edited copy is preserved and
     a new filename is used, so neither the original nor a user's edits are lost.
     Copies live in private source-views and are excluded from research backups.
     """
+    if cancelled():
+        raise InterruptedError('Opening the original was cancelled.')
     with exclusive_writer(app.root):
         with app.read(workspace) as db:
+            if authorized_topic is not None:
+                TopicTree(db,workspace)._visible(authorized_topic)
             identity, locator, title, original = _original(app, db, workspace, ref, revision)
+            if cancelled():
+                raise InterruptedError('Opening the original was cancelled.')
             directory = _views(app, create=True)
             path = directory / (original.digest + SUFFIXES[original.mime])
             if os.path.lexists(path):
                 if _view_matches(directory, path, original):
+                    if cancelled():
+                        raise InterruptedError('Opening the original was cancelled.')
                     return SourceFile(path, identity, locator, ref, title, original.mime)
                 path = directory / (original.digest + '-' + uuid4().hex + SUFFIXES[original.mime])
             # No hard links: an external editor must never gain the original inode.
@@ -120,6 +130,8 @@ def prepare_source_file(app, workspace, ref, revision):
                     os.fsync(stream.fileno())
                 if not _view_matches(directory, path, original):
                     raise ValueError('The source viewing copy could not be verified.')
+                if cancelled():
+                    raise InterruptedError('Opening the original was cancelled.')
                 return SourceFile(path, identity, locator, ref, title, original.mime)
             except BaseException:
                 if created:
@@ -127,7 +139,8 @@ def prepare_source_file(app, workspace, ref, revision):
                 raise
 
 
-def launch_source_file(app, source, opener):
+def launch_source_file(app, source, opener, *, authorized_topic=None,
+                       cancelled=lambda: False):
     """Recheck authorization and bytes at the explicit native-launch boundary.
 
     The host supplies its native file-opening callback. No shell, command line,
@@ -136,7 +149,11 @@ def launch_source_file(app, source, opener):
     """
     if not isinstance(source, SourceFile) or not callable(opener):
         raise ValueError('Select an original source file to open.')
+    if cancelled():
+        raise InterruptedError('Opening the original was cancelled.')
     with app.read(source.identity.workspace) as db:
+        if authorized_topic is not None:
+            TopicTree(db,source.identity.workspace)._visible(authorized_topic)
         identity, locator, _, original = _original(app, db, source.identity.workspace,
             source.ref, source.identity.revision)
         if identity != source.identity or locator != source.locator or original.mime != source.mime:
@@ -144,5 +161,7 @@ def launch_source_file(app, source, opener):
         directory = _views(app)
         if not _view_matches(directory, source.path, original):
             raise ValueError('The source viewing copy changed. Open the source again.')
+        if cancelled():
+            raise InterruptedError('Opening the original was cancelled.')
         if opener(str(source.path)) is not True:
             raise ValueError('No application could open this file. Choose a default viewer for its format in Windows.')

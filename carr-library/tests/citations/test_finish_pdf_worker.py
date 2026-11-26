@@ -103,6 +103,15 @@ def test_real_controlled_child_timeout_is_stopped_and_cannot_verify(pdf_bytes, m
     assert len(processes) == 1 and processes[0].poll() is not None
 
 
+def test_cancelled_pdf_verification_stops_the_native_process(pdf_bytes, monkeypatch):
+    processes = controlled_child(monkeypatch, 'import time; time.sleep(30)')
+    started = monotonic()
+    with pytest.raises(InterruptedError, match='cancelled'):
+        worker.isolated_render_fingerprint(pdf_bytes, 1, cancelled=lambda: bool(processes))
+    assert monotonic() - started < 5
+    assert len(processes) == 1 and processes[0].poll() is not None
+
+
 @pytest.mark.parametrize('reply', [
     {},
     {'result': {}},
