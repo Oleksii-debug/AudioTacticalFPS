@@ -66,3 +66,41 @@ def test_flush_exception_closes_clipboard(panel):
     p.on_quote(None)
     clip.Close.assert_called_once()
     assert 'failed' in p.status.ChangeValue.call_args.args[0].lower()
+
+
+def test_search_details_without_selection_event_and_repeated_search(panel):
+    from dataclasses import replace
+    p, h, _ = panel
+    p.query, p.retrieval, p.result_mode = Mock(), Mock(), Mock()
+    p.query.GetValue.return_value = 'quote'
+    p.retrieval.GetSelection.return_value = p.result_mode.GetSelection.return_value = 0
+    other = replace(h, title='Different title', quote='Новий текст', ref='other')
+    p.search_service = Mock(side_effect=[[h], [other], []])
+    # select_rows/focus_row are mocks: no wx selection event is emitted.
+    for expected in (h, other):
+        p.on_search(None)
+        details = p.details.ChangeValue.call_args.args[0]
+        for value in (expected.title, expected.author, expected.edition, expected.page,
+                      expected.citation, expected.quote):
+            assert value in details
+        p.grid.focus_row.assert_called_with(0)
+    p.on_search(None)
+    assert p.details.ChangeValue.call_args.args[0] == ''
+    p.status.SetFocus.assert_called_once()
+
+
+def test_more_return_refreshes_details_without_selection_event(panel, monkeypatch):
+    p, h, _ = panel
+    wx = p.on_more.__func__.__globals__['wx']
+    dialog, reader = Mock(), Mock()
+    for name, value in dict(Dialog=Mock(return_value=dialog), TextCtrl=Mock(return_value=reader),
+                            BoxSizer=Mock(), Button=Mock(), VERTICAL=1, TE_READONLY=2,
+                            TE_MULTILINE=4, EXPAND=8, ALL=16, ID_CANCEL=32).items():
+        monkeypatch.setattr(wx, name, value, raising=False)
+    p.more_service = Mock(return_value='Original context: ' + h.quote)
+    dialog.ShowModal.side_effect = lambda: p.details.ChangeValue('')
+    p.on_more(None)
+    p.grid.select_rows.assert_called_once_with([0])
+    p.grid.focus_row.assert_called_once_with(0)
+    assert h.quote in p.details.ChangeValue.call_args.args[0]
+    assert h.citation in p.details.ChangeValue.call_args.args[0]
