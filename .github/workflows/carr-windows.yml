@@ -64,7 +64,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -89,13 +89,6 @@ jobs:
           $ocrModels = Join-Path (Split-Path $env:CARR_PYTHON) 'research-library-ocr-models.exe'
           & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise the installed native OCR catalogue and model manager
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
 
       - name: Exercise native academic references and reading controls
         timeout-minutes: 3
@@ -147,10 +140,10 @@ jobs:
             'tests/e2e/test_import_batches.py',
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
-            'tests/ui/test_ocr_model_manager.py',
-            'tests/ui/test_ocr_selection.py',
-            'tests/ui/test_ocr_options.py',
             'tests/e2e/test_epub_import.py',
+            'tests/extract/test_document_formats_text.py',
+            'tests/extract/test_document_formats_xml.py',
+            'tests/e2e/test_extended_document_workflows.py',
             'tests/extract/test_epub_ordered.py',
             'tests/reader/test_ebook_reader.py',
             'tests/ui/test_ebook_reader.py',
@@ -187,6 +180,11 @@ jobs:
             'tests/catalog/test_bibliography.py',
             'tests/catalog/test_catalog_reports.py',
             'tests/e2e/test_catalog_tools.py',
+            'tests/acquisition/test_providers.py',
+            'tests/acquisition/test_acquisition_security.py',
+            'tests/acquisition/test_acquisition_workflow.py',
+            'tests/acquisition/test_acquisition_cli.py',
+            'tests/ui/test_native_acquisition.py',
             'tests/research/test_review_matrix.py',
             'tests/ui/test_catalog_tools_dialog.py',
             'tests/catalog/test_insights_budget.py',
@@ -252,11 +250,16 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-
       - name: Exercise native Import Center and durable batch workflow
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed document formats and native accessible reading
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native wx startup and source-opening events
@@ -382,18 +385,37 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyWheel = @'
+          import importlib.util, json, pathlib, sys
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('source_wheel', project / 'packaging/source_wheel.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          proof = module.verify_application_wheel(sys.argv[1], project.parent, sys.argv[2])
+          print(json.dumps(dict(status='PASS', **proof)))
+          '@
+          $verifyWheel | & $env:CARR_PYTHON -I -B - $applicationWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifySbom = @'
+          import hashlib, json, pathlib, subprocess, sys
+          root, commit = pathlib.Path(sys.argv[1]), sys.argv[2]
+          expected = subprocess.run(['git', 'show', commit + ':carr-library/packaging/windows-semantic-sbom.cdx.json'], check=True, capture_output=True).stdout
+          actual = (root / 'runtime-sbom.cdx.json').read_bytes()
+          manifest = json.loads((root / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          if actual != expected or manifest['source_commit'] != commit:
+              raise ValueError('The completed bundle does not contain the exact committed runtime SBOM/source identity.')
+          digest = hashlib.sha256(actual).hexdigest()
+          if manifest['files'].get('runtime-sbom.cdx.json') != digest:
+              raise ValueError('The completed bundle does not seal the verified runtime SBOM bytes.')
+          print(json.dumps(dict(status='PASS', source_commit=commit, sbom_sha256=digest, after_native_supplement=True)))
+          '@
+          $verifySbom | & $env:CARR_PYTHON -I -B - $bundle $sourceCommit | Tee-Object 'ci-results/full-bundle-sbom-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $manifest = Join-Path $bundle 'bundle-manifest.json'
-          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
-          $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
-          if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
-          $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
-          $sbomManifest = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json
-          if ($actualSbom -ne $expectedSbom -or $sbomManifest.files.'runtime-sbom.cdx.json' -ne $expectedSbom) { throw 'SBOM seal mismatch' }
-          @{ status='PASS'; sha256=$actualSbom } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
           $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
           $bundledPython = Join-Path $bundle 'runtime/python.exe'
           $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
@@ -449,7 +471,7 @@ jobs:
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, os, pathlib, sys
+          import ctypes, json, pathlib, sys
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
@@ -457,24 +479,24 @@ jobs:
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
-          # Test-only command discovery is scoped to this installed-package child.
-          # Production calls bind the verified runtime and never mutate PATH.
-          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
-          os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
+          import carr_library.acquisition.service, carr_library.acquisition.transport
+          import carr_library.acquisition.providers, carr_library.ui.acquisition_dialog
+          for component in (carr_library.acquisition.service, carr_library.acquisition.transport,
+                            carr_library.acquisition.providers, carr_library.ui.acquisition_dialog):
+              assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/reader/test_ebook_contents.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
-                            'tests/extract/test_ocr_model_catalog.py',
-                            'tests/extract/test_ocr_model_cli.py',
-                            'tests/extract/test_ocr_model_store.py',
-                            'tests/extract/test_managed_ocr.py',
-                            'tests/e2e/test_managed_ocr_import.py',
-                            'tests/extract/test_ocr_languages.py']
+                            'tests/acquisition/test_providers.py',
+                            'tests/acquisition/test_acquisition_security.py',
+                            'tests/acquisition/test_acquisition_workflow.py',
+                            'tests/acquisition/test_acquisition_cli.py',
+                            'tests/ui/test_native_acquisition.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
@@ -492,7 +514,7 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

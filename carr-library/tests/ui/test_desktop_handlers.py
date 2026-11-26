@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -45,6 +46,7 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
@@ -123,11 +125,16 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions',
+        'install_audio_studio_actions', 'install_api_connection_actions',
+        'install_assistant_actions', 'install_academic_comparison_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
+    register = Mock()
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
+                        SimpleNamespace(register_menu_command=register))
 
     value._menus()
 
@@ -140,12 +147,18 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
     for installer in (*installers.values(), ebook):
         installer.assert_called_once_with(value)
+    register.assert_called_once()
+    registered_frame, spec, item = register.call_args.args
+    assert registered_frame is value and spec.command_id == 'research.advanced_query'
+    assert spec.default_shortcut == 'Ctrl+Alt+Q'
+    assert item.title == 'Build advanced query\tCtrl+Alt+Q'
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
     assert 'Library, Import Center' in guide
     assert 'Ctrl+Shift+B opens Import Center' not in guide
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
+    assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
 
 
@@ -414,9 +427,8 @@ def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
     assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
 
 
-@pytest.mark.parametrize('profile,languages', [('installed','eng'),('installed','ukr'),
-    ('fast','eng+script/Latin'),('best','ukr+slk')])
-def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,profile,languages):
+@pytest.mark.parametrize('choice,languages',[(0,'eng'),(1,'ukr'),(2,'slk'),(3,'eng+ukr+slk')])
+def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,choice,languages):
     from carr_library.extract.page_ocr import Config
     from carr_library.ui import ocr_options
     f = frame(classes)
@@ -427,13 +439,12 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     monkeypatch.setitem(sys.modules,'wx',wx)
     chooser = Mock(wraps=ocr_options.choose_ocr_config)
     monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
-    selected = Config(languages=languages, model_profile=profile)
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent: selected)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     file_dialog = Mock()
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=Config(languages=languages)))
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -442,13 +453,14 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     call = f.library.import_files.call_args
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     config = call.kwargs['config']
-    assert config is selected
+    assert config == Config(languages=languages)
     complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
     assert 'Page 2 needs independent review' in f.report.call_args.args[0]
     assert 'Review pending imported page' in f.report.call_args.args[0]
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -460,7 +472,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
@@ -741,4 +753,44 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
     p.frame.library.save_hit.assert_called_once_with(
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Clinical\u00a0study', 'Clinical study'),
+    ('Research', 'research'), ('Fußnote', 'FUSSNOTE'),
+])
+def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(classes, tmp_path, names):
+    import unicodedata
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Topic choices')
+    with app.topic_transaction(workspace) as service:
+        for number, name in enumerate(names, 1):
+            service.create(f'topic-{number}', name)
+    topics = tuple(app.topics(workspace))
+    assert tuple(topic.name for topic in topics) == names
+    app.add_text(workspace, 'Original source', 'Exact historical railway passage.')
+    source, = app.search(workspace, 'railway passage')
+    hit = Hit(source.workspace, source.ref, source.revision, source.title, source.author,
+              source.edition, source.page, source.quote, source.citation)
+    p = panel(classes)
+    p.frame.library = p.bound_library = app
+    p.frame.active = workspace, None
+    p.bound_workspace = workspace
+    p.model.set_workspace(workspace)
+    p.selected = lambda: hit
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+                for label in labels}) == 2
+    assert all(label.startswith(topic.name) and f'topic {topic.id}' in label
+               for label, topic in zip(labels, topics))
+    saved = p.frame.run_job.call_args.args[1]()
+    assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
+    assert app.evidence(workspace, topics[0].id) == ()
+    assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()

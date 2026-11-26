@@ -10,6 +10,7 @@ import sys
 import pytest
 
 from carr_library.ui.import_center import ImportCenterActions
+from carr_library.extract.page_ocr import Config
 
 
 class Control:
@@ -81,14 +82,12 @@ def center(monkeypatch, tmp_path):
     view.batch, view.summaries = deepcopy(saved['first']), ()
     view.collection_ids = [None, 'selected-collection']
     view.collection, view.languages = Control(selection=1), Control(selection=3)
-    view.custom_ocr_config = None
-    view.ocr_models_button = Control()
+    view.ocr_config = Config(languages='eng+ukr+slk')
     view.recursive = Control(value=True)
     view.batches, view.rows = Control(), Control(selection=0)
     view.details, view.status, view.cancel = Control(), Control(), Control()
     view.cancel.Disable()
-    view.mutable = [view.collection, view.languages, view.ocr_models_button,
-                    view.recursive, view.batches, Control()]
+    view.mutable = [view.collection, view.languages, view.recursive, view.batches, Control()]
     view.EndModal = Mock()
     view.jobs, view.pending, view.saved = jobs, pending, saved
     return view
@@ -105,7 +104,7 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     assert center.busy and center.cancel.enabled
     assert all(not control.enabled for control in center.mutable)
     center.collection.SetSelection(0)
-    center.languages.SetSelection(0)
+    center.ocr_config = Config(languages='eng')
     center.recursive.SetValue(False)
     center.cancel_operation()
     center.jobs[0].operation()
@@ -116,14 +115,48 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     assert kwargs['recursive'] is True and kwargs['cancelled']()
 
 
-@pytest.mark.parametrize('control,selection', [('collection', -1), ('collection', 2),
-                                             ('languages', -1), ('languages', 4)])
+@pytest.mark.parametrize('control,selection', [('collection', -1), ('collection', 2)])
 def test_invalid_plan_choices_never_start_a_job(center, control, selection):
     getattr(center, control).SetSelection(selection)
     with pytest.raises(ValueError, match='Choose a destination'):
         center.plan(('/selected/folder',))
     center.frame.run_job.assert_not_called()
     center.library.plan_import_batch.assert_not_called()
+
+
+def test_missing_ocr_configuration_never_starts_a_plan(center):
+    center.ocr_config = None
+    with pytest.raises(ValueError, match='recognition languages'):
+        center.plan(('/selected/folder',))
+    center.frame.run_job.assert_not_called()
+
+
+def test_model_choice_updates_new_plans_only_and_cancel_preserves_previous(center, monkeypatch):
+    from carr_library.ui import ocr_options
+    selected = Config(languages='script/Latin+fra', dpi=200, orientation=True)
+    chooser = Mock(return_value=selected)
+    monkeypatch.setattr(ocr_options, 'choose_model_config', chooser)
+    original = deepcopy(center.batch)
+    center.choose_languages()
+    chooser.assert_called_once_with(center, Config(languages='eng+ukr+slk'), preset_root=center.library.root)
+    assert center.ocr_config == selected and center.batch == original
+    assert 'script/Latin' in center.languages.value and 'previous settings' in center.status.value
+    chooser.return_value = None
+    center.choose_languages()
+    assert center.ocr_config == selected and center.batch == original
+    center.plan(('/selected/folder',))
+    center.jobs[-1].operation()
+    assert center.library.plan_import_batch.call_args.kwargs['config'] == selected
+
+
+def test_busy_import_cannot_launch_model_configuration(center, monkeypatch):
+    from carr_library.ui import ocr_options
+    chooser = Mock()
+    monkeypatch.setattr(ocr_options, 'choose_model_config', chooser)
+    center.busy = True
+    center.choose_languages()
+    chooser.assert_not_called()
+    assert 'Wait for the current operation' in center.status.value
 
 
 def test_progress_is_marshaled_and_completion_preserves_quarantine_status(center):
@@ -265,105 +298,16 @@ def test_lost_authorization_clears_visible_batch_data(center):
     assert center.status.value == 'Library unavailable.'
 
 
-def test_custom_fast_script_selection_is_captured_only_for_new_plans(center, monkeypatch):
-    from carr_library.extract.page_ocr import Config
-    chosen = Config(languages='ukr+script/Latin', model_profile='fast',
-                    orientation=True, dpi=150, timeout=60)
+@pytest.mark.parametrize('profile', ['fast', 'best'])
+def test_managed_profile_is_captured_for_new_plan_and_preserves_saved_batch(center, monkeypatch, profile):
+    chosen = Config(languages='ukr+script/Latin', model_profile=profile, dpi=150, timeout=60)
+    old_batch = deepcopy(center.batch)
     chooser = Mock(return_value=chosen)
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    center.choose_ocr_models()
-    chooser.assert_called_once_with(center, initial=Config(languages='eng+ukr+slk'))
-    assert center.custom_ocr_config is chosen
-    assert center.languages.selection == 4 and len(center.languages.items) == 5
-    assert 'Fast' in center.languages.items[4] and 'script/Latin' in center.languages.items[4]
-    assert 'orientation detection: on' in center.status.value
+    monkeypatch.setattr('carr_library.ui.ocr_options.choose_model_config', chooser)
+    center.choose_languages()
+    assert center.ocr_config is chosen and profile in center.languages.value
+    assert center.batch == old_batch
     center.plan(('/selected/scanned.pdf',))
-    assert not center.ocr_models_button.enabled
-    center.custom_ocr_config = Config(languages='eng', model_profile='best')
+    center.ocr_config = Config(languages='eng')
     center.jobs[-1].operation()
-    assert center.library.plan_import_batch.call_args.kwargs['config'] is chosen
-
-
-@pytest.mark.parametrize('with_custom', [False, True])
-def test_cancel_model_chooser_preserves_previous_selection_and_settings(center, monkeypatch, with_custom):
-    from carr_library.extract.page_ocr import Config
-    from carr_library.ui.ocr_options import LANGUAGES
-    center.languages.SetItems([text for text, _ in LANGUAGES])
-    center.languages.SetSelection(3)
-    if with_custom:
-        center.custom_ocr_config = Config(languages='script/Latin', model_profile='best')
-        center.languages.SetItems(center.languages.items + ['Previous custom configuration'])
-        center.languages.SetSelection(4)
-    before = (center.languages.selection, center.languages.items[:], center.custom_ocr_config)
-    chooser = Mock(return_value=None)
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    center.choose_ocr_models()
-    assert (center.languages.selection, center.languages.items, center.custom_ocr_config) == before
-    center.frame.run_job.assert_not_called()
-
-
-def test_reconfiguring_models_replaces_the_single_custom_choice(center, monkeypatch):
-    from carr_library.extract.page_ocr import Config
-    first = Config(languages='ukr', model_profile='fast')
-    second = Config(languages='script/Latin', model_profile='best')
-    chooser = Mock(side_effect=(first, second))
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    center.choose_ocr_models()
-    center.choose_ocr_models()
-    assert len(center.languages.items) == 5 and center.languages.selection == 4
-    assert center.custom_ocr_config is second
-    assert chooser.call_args.kwargs['initial'] is first
-    assert 'Best' in center.languages.items[4]
-
-
-def test_text_folder_plan_never_opens_model_selection_automatically(center, monkeypatch):
-    from carr_library.extract.page_ocr import Config
-    chooser = Mock(side_effect=AssertionError('Text plan must not open OCR selection'))
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    center.plan(('/selected/text-folder',))
-    center.jobs[-1].operation()
-    chooser.assert_not_called()
-    assert center.library.plan_import_batch.call_args.kwargs['config'] == Config(languages='eng+ukr+slk')
-
-
-def test_saved_batch_resume_does_not_replace_recorded_config_with_current_custom_choice(center):
-    from carr_library.extract.page_ocr import Config
-    center.custom_ocr_config = Config(languages='script/Latin', model_profile='fast')
-    center.languages.SetSelection(4)
-    center.batch['config'] = vars(Config(languages='ukr', model_profile='best')).copy()
-    before = deepcopy(center.batch['config'])
-    center.run(retry=True)
-    center.jobs[-1].operation()
-    args, kwargs = center.library.run_import_batch.call_args
-    assert args == ('library', 'first')
-    assert set(kwargs) == {'cancelled', 'retry_failed', 'progress'}
-    assert center.batch['config'] == before
-
-
-def test_unconfigured_or_invalid_custom_choice_cannot_start_plan(center):
-    center.languages.SetSelection(4)
-    center.custom_ocr_config = SimpleNamespace(languages='eng', model_profile='fast')
-    with pytest.raises(ValueError, match='Choose a destination'):
-        center.plan(('/selected/folder',))
-    center.frame.run_job.assert_not_called()
-
-
-def test_model_chooser_does_not_open_during_an_import_job(center, monkeypatch):
-    chooser = Mock()
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    center.run()
-    center.choose_ocr_models()
-    chooser.assert_not_called()
-    assert not center.ocr_models_button.enabled
-    assert 'already running' in center.status.value
-
-
-def test_model_choice_is_not_applied_after_library_folder_changes(center, monkeypatch):
-    from carr_library.extract.page_ocr import Config
-    def choose(*args, **kwargs):
-        center.frame.library = SimpleNamespace()
-        return Config(languages='ukr', model_profile='fast')
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', choose)
-    center.choose_ocr_models()
-    assert center.custom_ocr_config is None and center.languages.selection == 3
-    assert 'library folder changed' in center.status.value
+    assert center.library.plan_import_batch.call_args.kwargs['config'] == chosen

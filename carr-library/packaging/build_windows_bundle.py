@@ -124,13 +124,14 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         sbom_bytes = sbom.read_bytes()
         bom = json.loads(sbom_bytes.decode("utf-8"))
         expected = {(name, version) for name, (version, _hashes) in pins.items()}
+        components = bom.get("components", [])
         actual = {(canonicalize_name(item["name"]), item["version"])
-                  for item in bom.get("components", [])}
+                  for item in components}
         if (bom.get("bomFormat") != "CycloneDX" or bom.get("specVersion") != "1.5"
                 or actual != expected):
             raise ValueError("runtime SBOM does not match the dependency lock")
-        components = bom["components"]
         refs = [item["bom-ref"] for item in components if "bom-ref" in item]
+        # Set equality alone can hide repeated normalized package identities.
         if len(components) != len(expected) or len(refs) != len(set(refs)):
             raise ValueError("duplicate runtime SBOM component or reference")
     selected = {}
@@ -299,6 +300,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         # Reserve a fresh destination; never overwrite an existing installation.

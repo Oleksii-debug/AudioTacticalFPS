@@ -1,0 +1,78 @@
+name: CARR local audio studio
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-audio.yml
+  push:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-audio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-audio-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  windows-audio:
+    name: Windows / actual SAPI / FFmpeg / native Studio
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install pinned desktop and separately verified test audio runtime
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes --no-deps -r packaging/audio-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pytest==9.0.2 --only-binary=:all:
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $binary = python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_FFMPEG=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin = Join-Path $env:RUNNER_TEMP 'carr-audio-tools'
+          New-Item -ItemType Directory -Force $audioBin | Out-Null
+          Copy-Item $binary (Join-Path $audioBin 'ffmpeg.exe')
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          git rev-parse HEAD
+          & $binary -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run provider safety, source integrity and audio recovery regressions
+        run: |
+          python -m pytest -q tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_audio_cli.py --import-mode=importlib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify real offline SAPI output, native controls and OS credential vault
+        run: |
+          python -I scripts/windows_audio_smoke.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify the installed library still works
+        run: |
+          python -I -m carr_library --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

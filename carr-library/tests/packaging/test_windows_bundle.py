@@ -86,6 +86,50 @@ class WindowsBundleTests(unittest.TestCase):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
         self.assertFalse(self.output.exists())
 
+    def test_duplicate_sbom_components_rejected_before_output(self):
+        # Both exact duplicates and case-equivalent package names can otherwise
+        # disappear into the inventory set, even with different component refs.
+        cases = (
+            [{"name": "fixture", "version": "1.0"}] * 2,
+            [{"name": "fixture", "version": "1.0", "bom-ref": "fixture"}] * 2,
+            [{"name": "fixture", "version": "1.0", "bom-ref": "first"},
+             {"name": "FIXTURE", "version": "1.0", "bom-ref": "second"}],
+        )
+        for index, components in enumerate(cases):
+            with self.subTest(components=components):
+                sbom = self.sbom()
+                bom = json.loads(sbom.read_text(encoding="utf-8"))
+                bom["components"] = components
+                sbom.write_text(json.dumps(bom), encoding="utf-8")
+                output = self.root / f"duplicate-component-{index}"
+                with self.assertRaisesRegex(ValueError, "duplicate"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, output, sbom=sbom)
+                self.assertFalse(output.exists())
+
+    def test_duplicate_sbom_refs_rejected_for_distinct_locked_components(self):
+        other = wheel(self.wheels, "second_fixture", version="2.0")
+        self.lock.write_text(self.lock.read_text() +
+                            f"second-fixture==2.0 --hash=sha256:{builder.sha256(other)}\n")
+        sbom = self.sbom()
+        bom = json.loads(sbom.read_text(encoding="utf-8"))
+        bom["components"] = [
+            {"name": "fixture", "version": "1.0", "bom-ref": "shared"},
+            {"name": "second_fixture", "version": "2.0", "bom-ref": "shared"},
+        ]
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+        # A valid two-package inventory with distinct refs still builds and is
+        # accepted by the actual sealed-bundle verifier.
+        bom["components"][1]["bom-ref"] = "second"
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        result = builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual(result["wheels"], 3)
+        self.assertEqual((self.output / "runtime-sbom.cdx.json").read_bytes(), sbom.read_bytes())
+        installer.verify(self.output)
+
     def test_duplicate_sbom_component_rejected(self):
         sbom = self.sbom()
         bom = json.loads(sbom.read_text(encoding="utf-8"))
