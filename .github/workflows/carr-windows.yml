@@ -93,6 +93,7 @@ jobs:
             'tests/e2e/test_search_operation_budget.py',
             'tests/e2e/test_nested_search_clock_budget.py',
             'tests/ingest/test_application_atomic_gate.py',
+            'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
             'tests/e2e/test_source_file.py',
             'tests/e2e/test_export_destination.py',

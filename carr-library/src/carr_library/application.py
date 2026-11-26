@@ -496,6 +496,8 @@ class LibraryApp:
                             raise ValueError('Published DOCX import differs from retained source bytes.')
                         with storage.transaction():
                             register_batch(Catalog(storage.db, workspace), (record,))
+                            # Replays may add memberships; validate before exposing them.
+                            storage._check()
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
