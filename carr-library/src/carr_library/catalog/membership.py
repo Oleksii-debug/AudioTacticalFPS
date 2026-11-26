@@ -11,12 +11,15 @@ import sqlite3
 def _identity(value):
     if not isinstance(value, str) or not value or len(value) > 200 or '\x00' in value:
         raise ValueError('invalid identity')
+    value.encode('utf-8', errors='strict')
     return value
 
 
 def _metadata(value):
     if value is not None and (not isinstance(value, str) or len(value) > 4000 or '\x00' in value):
         raise ValueError('invalid metadata')
+    if value is not None:
+        value.encode('utf-8', errors='strict')
     return value
 
 
@@ -32,6 +35,8 @@ class Catalog:
     def _write(self):
         if not self.db.in_transaction or not self.db.execute('PRAGMA foreign_keys').fetchone()[0]:
             raise ValueError('caller transaction and foreign keys required')
+        if not self.db.execute('PRAGMA recursive_triggers').fetchone()[0]:
+            raise ValueError('recursive triggers required on writable catalog connection')
 
     def add_work(self, work, title=None, authors=()):
         self._write()
@@ -41,9 +46,18 @@ class Catalog:
         authors = tuple(_metadata(a) for a in authors)
         if any(not a or not a.strip() for a in authors):
             raise ValueError('empty author')
-        self.db.execute('INSERT INTO catalog_work VALUES(?,?,?)', (self.workspace, work, title))
-        self.db.executemany('INSERT INTO catalog_author VALUES(?,?,?,?)',
-                            ((self.workspace, work, i, a) for i, a in enumerate(authors)))
+        self.db.execute('SAVEPOINT catalog_register_work')
+        try:
+            self.db.execute('INSERT INTO catalog_work VALUES(?,?,?)', (self.workspace, work, title))
+            self.db.executemany('INSERT INTO catalog_author VALUES(?,?,?,?)',
+                                ((self.workspace, work, i, a) for i, a in enumerate(authors)))
+        except BaseException:
+            # SQLite RAISE(ROLLBACK) may already have ended the outer transaction.
+            if self.db.in_transaction:
+                self.db.execute('ROLLBACK TO catalog_register_work')
+                self.db.execute('RELEASE catalog_register_work')
+            raise
+        self.db.execute('RELEASE catalog_register_work')
 
     def add_edition(self, edition_id, work, manifest, *, language=None, edition=None, volume=None):
         self._write()
@@ -69,8 +83,9 @@ class Catalog:
             self.db.execute('INSERT INTO catalog_edition VALUES(?,?,?,?,?,?,?)',
                             (self.workspace, edition_id, work, digest, language, edition, volume))
         except BaseException:
-            self.db.execute('ROLLBACK TO catalog_register_edition')
-            self.db.execute('RELEASE catalog_register_edition')
+            if self.db.in_transaction:
+                self.db.execute('ROLLBACK TO catalog_register_edition')
+                self.db.execute('RELEASE catalog_register_edition')
             raise
         self.db.execute('RELEASE catalog_register_edition')
 
