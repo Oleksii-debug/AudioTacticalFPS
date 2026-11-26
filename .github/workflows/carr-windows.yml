@@ -391,6 +391,7 @@ jobs:
           if ($archiveHash -ne $runtime.download.sha256) { throw 'Pinned Python archive checksum mismatch.' }
           $ocr = $env:CARR_CI_OCR_DIR
           $ocrSource = $env:CARR_CI_OCR_SOURCE
+          if (!(Test-Path -LiteralPath $ocrSource -PathType Leaf) -or !(Test-Path -LiteralPath $ocr -PathType Container)) { throw 'Verified source-test OCR runtime is missing.' }
           $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
           $nativePackage = Join-Path $bundleWork 'native-runtime.conda'
           Invoke-WebRequest -Uri $nativeLock.package.url -OutFile $nativePackage
@@ -470,7 +471,7 @@ jobs:
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, pathlib, sys
+          import ctypes, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
@@ -478,6 +479,10 @@ jobs:
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
+          # Test-only command discovery is scoped to this installed-package child.
+          # Production calls bind the verified runtime and never mutate PATH.
+          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
+          os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
