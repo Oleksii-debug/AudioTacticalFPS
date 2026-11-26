@@ -193,8 +193,13 @@ class EmbeddingCache:
         result = {}
         try:
             with self._open() as db:
+                # Reject malformed row sizes inside SQLite, before Python
+                # materializes a potentially file-sized vector or checksum.
                 rows = db.execute('SELECT identity,vector,checksum FROM embedding WHERE identity IN ('
-                                  + ','.join('?' for _ in identities) + ')', identities)
+                                  + ','.join('?' for _ in identities) + ') '
+                                  "AND typeof(vector)='blob' AND length(vector)=? "
+                                  "AND typeof(checksum)='text' AND length(checksum)=64",
+                                  (*identities, _PACK.size))
                 for key, packed, checksum in rows:
                     if (not isinstance(packed, bytes) or len(packed) != _PACK.size
                             or sha256((self.model + key).encode('ascii') + packed).hexdigest() != checksum):

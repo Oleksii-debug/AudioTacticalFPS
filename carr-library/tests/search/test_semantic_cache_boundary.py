@@ -7,6 +7,7 @@ import sqlite3
 import struct
 import subprocess
 import sys
+import tracemalloc
 from time import monotonic, sleep
 
 import pytest
@@ -86,6 +87,32 @@ def test_row_checksum_binds_the_model_and_content_identity(tmp_path):
         db.execute('INSERT INTO embedding VALUES(?,?,?,?)', (key(0), *copied))
     assert cache.get_many([key(0), key(1)]) == {key(0): UNIT}
     assert different.get_many([key(0), key(2)]) == {key(2): UNIT}
+
+
+@pytest.mark.parametrize('field', ['vector', 'checksum'])
+def test_oversized_row_is_rejected_before_python_materializes_it(tmp_path, field):
+    cache = populated(tmp_path)
+    oversized = 4 * 1024 * 1024
+    with sqlite3.connect(cache.path) as db:
+        if field == 'vector':
+            db.execute('UPDATE embedding SET vector=zeroblob(?) WHERE identity=?',
+                       (oversized, key(0)))
+        else:
+            db.execute('UPDATE embedding SET checksum=? WHERE identity=?',
+                       ('x' * oversized, key(0)))
+    # The malformed database remains below the supported disk limit. The
+    # lookup must skip its corrupt row without allocating the stored payload
+    # in Python, while still returning another valid requested vector.
+    assert cache.path.stat().st_size < cache.budget.max_bytes
+    tracemalloc.start()
+    try:
+        result = cache.get_many([key(0), key(1)])
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result == {key(1): OTHER_UNIT}
+    assert cache.available
+    assert peak < 1024 * 1024
 
 
 def test_exact_workspace_edition_revision_window_and_text_keys_remain_separate(tmp_path):
