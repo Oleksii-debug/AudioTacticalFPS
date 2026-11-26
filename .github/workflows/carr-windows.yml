@@ -117,10 +117,13 @@ jobs:
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
             'tests/reader/test_topic_search_runtime.py',
+            'tests/reader/test_reading_desk.py',
+            'tests/reader/test_reading_state.py',
             'tests/search/test_literal_long_source.py',
             'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
             'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/test_reading_desk_actions.py',
             'tests/ui/probe_workspace_shell.py',
             'tests/accessibility/test_pr71_catalog_scope_ux.py',
             'tests/ui/test_source_open_handler.py'
@@ -144,6 +147,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native full-source reader and page bookmarks
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the pinned local model through the existing upstream verifier
