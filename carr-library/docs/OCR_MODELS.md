@@ -75,17 +75,13 @@ checksum is a publisher signature.
 
 ## Install and activate
 
-The native language manager can pass the prepared directory, a new installation
-directory and the separately retained manifest checksum to:
-
-```python
-install_offline_pack(pack, destination, expected_manifest_sha256=checksum)
-```
-
 Preparation does not activate or modify the application's sealed OCR runtime.
-Model selection/activation belongs to the language manager and must preserve
-the complete portable-runtime integrity inventory. A standalone Tesseract
-installation can use the installed directory through its explicit
+The current native language manager discovers and selects models already
+installed in the verified portable runtime or standalone Tesseract installation.
+It does not yet install a prepared additional-language pack. Pack activation
+must preserve the complete portable-runtime integrity inventory; adding a model
+directly to that sealed directory is not a supported installation method.
+A standalone Tesseract installation can use a prepared directory through its explicit
 `--tessdata-dir` option. Choose the actual languages/scripts present on the page;
 installing every model is not a reason to run all of them in one OCR pass.
 

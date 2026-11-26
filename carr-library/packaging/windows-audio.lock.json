@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "version": "9.1",
+  "target": "Windows x64",
+  "use_scope": "private-local-installation",
+  "license": "GPL-3.0-or-later",
+  "publisher_release": "https://github.com/GyanD/codexffmpeg/releases/tag/9.1",
+  "upstream_source": "https://github.com/FFmpeg/FFmpeg/commit/74e4393595",
+  "build_information": "https://www.gyan.dev/ffmpeg/builds/",
+  "archive": {
+    "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-essentials_build.zip",
+    "size": 119467219,
+    "sha256": "b9bbbb3acece000cbeec994f856649354e52c773807841e78908374b24d658fd",
+    "root": "ffmpeg-9.1-essentials_build"
+  },
+  "selected_files": {
+    "bin/ffmpeg.exe": {"size": 110590976, "sha256": "ed8f66cb877087a96f5bbb40a2944f0e764f2ad8870d5cb647360d912e62bc07"},
+    "bin/ffprobe.exe": {"size": 110374912, "sha256": "df0199f606faa88e9ad192732a7c3987acfb647663534c297772e17730611a08"},
+    "LICENSE": {"size": 35147, "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"},
+    "README.txt": {"size": 43002, "sha256": "693a04eb542211fceb84169b073578311c0fed751d716ff90806e0818c71e780"}
+  }
+}

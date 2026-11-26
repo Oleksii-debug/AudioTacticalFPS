@@ -11,7 +11,7 @@ from .research_actions import NativeDialogs
 from .scope_bindings import scope_labels
 
 
-MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic')
+MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced')
 PRESENTATIONS = ('short', 'thematic')
 LIMITS = (10, 25, 50, 100)
 
@@ -430,7 +430,8 @@ class NativeSearchCenter:
                            wx.TextCtrl(self.window, style=wx.TE_PROCESS_ENTER))
         self.retrieval = field('Retrieval method', wx.Choice(self.window, choices=[
             'Exact phrase', 'Whole word', 'All words on one page',
-            'Thematic (local keywords)', 'Semantic (local model)']))
+            'Thematic (local keywords)', 'Semantic (local model)',
+            'Advanced (AND, OR, NOT, NEAR)']))
         self.presentation = field('Result presentation', wx.Choice(self.window,
             choices=['Short quotations', 'Thematic excerpts']))
         self.limit = field('Maximum results per library', wx.Choice(self.window,

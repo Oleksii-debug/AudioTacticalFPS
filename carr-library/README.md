@@ -69,6 +69,19 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+- Build grouped Boolean and NEAR source queries with the native advanced query
+  builder, preserving the existing multi-library Search Center and its scope checks.
+- Create saved narration or speaker-labelled dialogue, assign installed local
+  voices, place roles left/center/right, render actual local audio and resume
+  verified chunks. Typed scenes add prepared sounds and optional local music cues.
+  See [Audio Studio](docs/AUDIO_STUDIO.md).
+- Convert audio, mix tracks with typed FFmpeg effects, generate symbolic music
+  through a selected FluidSynth/SoundFont installation, and measure output loudness.
+  The optional MusicGen adapter requires separately reviewed local runtime/weights
+  and the private noncommercial profile; actual inference is a separate gate.
+- Back up audio projects with script history and verified audio, and execute
+  approved local library/audio tool plans with durable receipts. Optional API
+  profiles store keys in the OS vault; LOCAL_ONLY remains the default.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
@@ -79,7 +92,9 @@ score never approves a quotation.
 
 ## Candidate status and verification
 
-This is an integrated development candidate. The assembled services and installed
+Version `0.3.0.dev1` is an integrated development candidate for the expanded V3
+scope, not a declaration that every V3 feature or device/model gate is complete.
+The assembled services and installed
 Python package have real end-to-end tests, including offline local model
 inference, citation preservation, workspace isolation and backup recovery.
 The native Windows workflow also exercises installation, desktop controls, local
@@ -104,6 +119,8 @@ python scripts/ci_check.py tests bootstrap docs/contracts/probes
 The adapters reuse SQLite/FTS5, pypdf, PDFium, Tesseract, python-docx, FastEmbed,
 ONNX Runtime and the already imported licensed components. Exact upstream
 notices and model/dependency pins are preserved with the source and distribution.
-See [scope](docs/UNIVERSAL_SCOPE_V2.md), [acceptance](docs/acceptance.md),
+See [research scope](docs/UNIVERSAL_SCOPE_V2.md),
+[expanded reading/audio/agent scope V3](docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md),
+[acceptance](docs/acceptance.md),
 [packaging](packaging/README.md), and
 [the control issue](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1).

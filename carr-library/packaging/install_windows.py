@@ -92,6 +92,61 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    audio = root / "audio-runtime"
+    included_audio = manifest.get("bundled_audio_runtime", False)
+    expected_audio = {p for p in files if p.startswith("audio-runtime/")}
+    if type(included_audio) is not bool:
+        raise ValueError("invalid audio runtime installation flag")
+    if included_audio:
+        required_audio = {"audio-runtime/audio-runtime.json", "audio-runtime/bin/ffmpeg.exe",
+                          "audio-runtime/bin/ffprobe.exe", "audio-runtime/LICENSE", "audio-runtime/README.txt"}
+        if expected_audio != required_audio or not audio.is_dir():
+            raise ValueError("unexpected or missing audio runtime inventory")
+        for directory, dirs, names in os.walk(audio, followlinks=False):
+            for name in dirs:
+                path = Path(directory) / name
+                info = path.lstat()
+                if (not stat.S_ISDIR(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                        or path.relative_to(audio).as_posix() != "bin"):
+                    raise ValueError("linked or unexpected audio runtime directories are not supported")
+            for name in names:
+                info = (Path(directory) / name).lstat()
+                if (not stat.S_ISREG(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                    raise ValueError("audio runtime requires ordinary local files")
+        actual_audio = {p.relative_to(root).as_posix() for p in audio.rglob("*") if p.is_file()}
+        if actual_audio != required_audio:
+            raise ValueError("unexpected or missing audio runtime file")
+        inner_path = audio / "audio-runtime.json"
+        if not 0 < inner_path.stat().st_size <= 32768:
+            raise ValueError("invalid audio runtime manifest size")
+        def unique_audio(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError("duplicate audio runtime manifest field")
+                result[key] = value
+            return result
+        with inner_path.open("rb") as stream:
+            inner = json.loads(stream.read(32769).decode("utf-8"), object_pairs_hook=unique_audio)
+        if (type(inner) is not dict or set(inner) != {"schema", "version", "target", "use_scope", "archive_sha256", "files"}
+                or type(inner["schema"]) is not int or inner["schema"] != 1
+                or inner["target"] != "Windows x64" or inner["use_scope"] != "private-local-installation"
+                or type(inner["version"]) is not str or not inner["version"]
+                or type(inner["archive_sha256"]) is not str or len(inner["archive_sha256"]) != 64
+                or any(c not in "0123456789abcdef" for c in inner["archive_sha256"])
+                or type(inner["files"]) is not dict
+                or {"audio-runtime/" + name for name in inner["files"]} != required_audio - {"audio-runtime/audio-runtime.json"}):
+            raise ValueError("invalid audio runtime manifest")
+        for name, entry in inner["files"].items():
+            if (type(entry) is not dict or set(entry) != {"size", "sha256"}
+                    or type(entry["size"]) is not int or entry["size"] <= 0
+                    or entry["size"] != (audio / name).stat().st_size
+                    or entry["sha256"] != files["audio-runtime/" + name]):
+                raise ValueError("audio runtime manifest differs from sealed installation inventory")
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError("unannounced audio runtime files")
 
 
 def main():

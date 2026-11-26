@@ -95,3 +95,33 @@ def test_one_shot_cancel_during_fts_sql_stays_cancelled(source_db, monkeypatch):
 def test_direct_search_rejects_invalid_timeout(source_db, timeout):
     with pytest.raises(ValueError, match='budget'):
         literal.search(source_db, 'library', 'quotation', timeout=timeout)
+
+
+@pytest.mark.parametrize('sample', ['Українська історія. Straße\t  архів.\n',
+    'e\u0301lan İSTANBUL Σίσυφος ς Життя\n', '한글 தமிழ் 中文 研究\t\t'])
+def test_compact_unicode_matches_cluster_reference_and_cancels(sample, monkeypatch):
+    raw = sample * 3000
+    with monkeypatch.context() as patch:
+        patch.setattr(literal, '_LONG_ASCII', len(raw) + 1)
+        folded, starts, ends = literal._mapped(raw)
+    compact, actual_starts, actual_ends = literal._mapped(raw)
+    assert compact == folded
+    assert dict(actual_starts.items()) == starts
+    assert dict(actual_ends.items()) == ends
+    calls = []
+    def cancel():
+        calls.append(True)
+        if len(calls) > 4:
+            raise TimeoutError('cancelled')
+    with pytest.raises(TimeoutError):
+        literal._mapped(raw, cancel)
+
+
+def test_long_unicode_native_trigram_source_exact(source_db):
+    raw = 'Українська історія. Straße\t  архів.\n' * 3000 + 'Київський архів.'
+    add_source(source_db, raw)
+    hits = literal.search(source_db, 'library', 'КИЇВСЬКИЙ АРХІВ')
+    assert len(hits) == 1 and hits[0]['raw_quote'] == 'Київський архів'
+    assert raw[hits[0]['start']:hits[0]['end']] == 'Київський архів'
+    hits = literal.search(source_db, 'library', 'STRASSE архів', limit=100)
+    assert len(hits) == 100 and all(hit['raw_quote'] == 'Straße\t  архів' for hit in hits)

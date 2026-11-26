@@ -249,3 +249,20 @@ def test_excerpt_edges_do_not_split_combining_sequences_or_joiner():
         assert not a or raw[a - 1] != '\u200d'
         assert raw[b - 1] != '\u200d'
         assert b == len(raw) or raw[b] not in ('\u0301', '\u200d')
+
+
+@pytest.mark.parametrize('retrieval', ['phrase', 'advanced', 'thematic', 'semantic'])
+@pytest.mark.parametrize('result_mode', ['short', 'thematic'])
+def test_long_unicode_source_search_copy_and_context_exact(library, retrieval, result_mode):
+    app, workspace = library
+    target = 'Київський\t  архів зберігає точні історичні джерела.'
+    page = 'Українська ботаніка. Straße\t інший текст.\n' * 2000 + target + '\nОстанній рядок.'
+    assert len(page) > 65536 and not page.isascii()
+    app.add_text(workspace, 'Дослідження', page + '\fОКРЕМИЙ РОЗДІЛ.')
+    query = 'Київський NEAR/1 архів' if retrieval == 'advanced' else 'Київський архів'
+    hit, = app.search(workspace, query, mode=retrieval, result_mode=result_mode)
+    assert hit.verified and target in hit.quote and 'ОКРЕМИЙ РОЗДІЛ' not in hit.quote
+    context = app.context(workspace, hit.ref, hit.revision)
+    anchor = context.pages[0].anchor
+    assert anchor.start > 65536 and page[anchor.start:anchor.end] == hit.quote
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == hit.quote

@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "bom-ref": "universal-research-library-runtime-1@0.3.0.dev1",
       "name": "universal-research-library-runtime",
-      "version": "0.2.0.dev1",
+      "version": "0.3.0.dev1",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -181,6 +181,84 @@
           "value": "sys_platform == 'win32'"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-academic-bibtexparser@2.1.0",
+      "name": "bibtexparser",
+      "version": "2.1.0",
+      "purl": "pkg:pypi/bibtexparser@2.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:target",
+          "value": "CPython 3.11 Windows x64"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-academic-pylatexenc@2.11",
+      "name": "pylatexenc",
+      "version": "2.11",
+      "purl": "pkg:pypi/pylatexenc@2.11",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:target",
+          "value": "CPython 3.11 Windows x64"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-academic-quickjs-ng@0.18.0.2",
+      "name": "quickjs-ng",
+      "version": "0.18.0.2",
+      "purl": "pkg:pypi/quickjs-ng@0.18.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:target",
+          "value": "CPython 3.11 Windows x64"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -219,7 +297,7 @@
       "ref": "typing-extensions-10@4.16.0"
     },
     {
-      "ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "ref": "universal-research-library-runtime-1@0.3.0.dev1",
       "dependsOn": [
         "defusedxml-12@0.7.1",
         "filelock-2@3.29.0",
@@ -231,7 +309,10 @@
         "pypdfium2-8@5.13.0",
         "python-docx-9@1.2.0",
         "typing-extensions-10@4.16.0",
-        "wxpython-11@4.2.4"
+        "wxpython-11@4.2.4",
+        "carr-academic-bibtexparser@2.1.0",
+        "carr-academic-pylatexenc@2.11",
+        "carr-academic-quickjs-ng@0.18.0.2"
       ]
     },
     {
@@ -239,6 +320,18 @@
       "dependsOn": [
         "numpy-4@2.4.6"
       ]
+    },
+    {
+      "ref": "carr-academic-bibtexparser@2.1.0",
+      "dependsOn": [
+        "carr-academic-pylatexenc@2.11"
+      ]
+    },
+    {
+      "ref": "carr-academic-pylatexenc@2.11"
+    },
+    {
+      "ref": "carr-academic-quickjs-ng@0.18.0.2"
     }
   ]
 }

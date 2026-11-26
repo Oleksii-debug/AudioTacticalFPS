@@ -484,6 +484,72 @@ def test_ris_full_publication_title_precedes_journal_abbreviation_with_warning(l
     assert any('J. Libr. Stud.' in warning for warning in preview.entries[0].warnings)
 
 
+@pytest.mark.parametrize('operation', ['duplicates', 'preview', 'export'])
+def test_reference_byte_preflight_before_decoding(library, db, monkeypatch, operation):
+    library.create(title='First', notes='Ж' * 10000)
+    library.create(title='Second', notes='Ж' * 10000)
+    before = db.total_changes
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000)
+    monkeypatch.setattr(academic, '_row_reference', lambda row: pytest.fail('preflight must reject before decoding'))
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        if operation == 'preview':
+            library.import_preview(b'[{"title":"Incoming"}]', format='csl-json')
+        elif operation == 'export':
+            library.export()
+        else:
+            library.duplicates()
+    assert db.total_changes == before
+
+
+def test_reference_count_preflight_before_decoding(library, db, monkeypatch):
+    library.create(title='First')
+    library.create(title='Second')
+    monkeypatch.setattr(academic, 'MAX_REFERENCES', 1)
+    monkeypatch.setattr(academic, '_row_reference', lambda row: pytest.fail('count must reject before decoding'))
+    with pytest.raises(ValueError, match='100,000 references'):
+        library._all()
+
+
+def test_reference_byte_preflight_scopes_archive_and_exact_boundary(library, db, monkeypatch):
+    active = library.create(title='Active')
+    library.create(title='Archived', archived=True, notes='界' * 10000)
+    AcademicLibrary(db, 'second').create(title='Foreign', notes='界' * 10000)
+    raw = db.execute(f'SELECT {academic._SELECT} FROM academic_reference WHERE id=?', (active.id,)).fetchone()
+    size = sum(len(str(value).encode('utf-8')) for value in raw if value is not None)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', size)
+    assert library._all() == (active,)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', size - 1)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library._all()
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000)
+    assert library._all() == (active,)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library._all(include_archived=True)
+
+
+def test_duplicate_preview_budget_before_fanout_preserves_database(library, db, monkeypatch):
+    for i in range(12):
+        library.create(title=f'Existing {i}', doi='10.1234/shared')
+    data = json.dumps([{'title': f'Incoming {i}', 'DOI': '10.1234/shared'} for i in range(12)]).encode()
+    before = db.total_changes
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 200)
+    with pytest.raises(ValueError, match='Too many duplicate matches'):
+        library.import_preview(data, format='csl-json')
+    assert db.total_changes == before
+    assert len(library.list()) == 12
+
+
+def test_duplicate_preview_budget_keeps_overlap_exact_and_no_duplicates(library, monkeypatch):
+    existing = library.create(title='Existing', doi='10.1234/shared', isbn='0306406152')
+    data = b'[{"title":"A","DOI":"10.1234/shared","ISBN":"0306406152"},{"title":"B","DOI":"10.1234/shared"}]'
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 100)
+    preview = library.import_preview(data, format='csl-json')
+    assert [entry.duplicate_ids for entry in preview.entries] == [(existing.id,), (existing.id,)]
+    assert [entry.duplicate_indices for entry in preview.entries] == [(1,), (0,)]
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 0)
+    assert len(library.import_preview(b'[{"title":"Unique"}]', format='csl-json').entries) == 1
+
+
 @pytest.mark.parametrize('format', ['ris', 'csl-json'])
 def test_duplicate_preview_budget_rejects_fanout_without_writes(library, db, monkeypatch, format):
     original = tuple(library.create(title=f'Existing {number}', doi='10.1234/shared')

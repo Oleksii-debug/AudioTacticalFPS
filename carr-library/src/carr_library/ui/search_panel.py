@@ -45,7 +45,9 @@ class SearchPanel(wx.Panel):
             button.Bind(wx.EVT_BUTTON, handler)
             buttons.Add(button, 0, wx.ALL, 3)
         layout.Add(buttons, 0, wx.EXPAND)
-        self.status = add('Search status', wx.TextCtrl(self, style=wx.TE_READONLY))
+        # Multiline read-only controls remain keyboard reachable on Windows.
+        self.status = add('Search status', wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE))
+        self.status.SetMinSize((-1, 56))
         self.go.Bind(wx.EVT_BUTTON, self.on_search)
         self.query.Bind(wx.EVT_TEXT_ENTER, self.on_search)
         import wx.dataview as dv

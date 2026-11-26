@@ -158,7 +158,7 @@ class FederatedSearch:
                 raise ValueError('A search cancellation callback is required.')
             budget = _SearchBudget(timeout, lambda: invalidation.is_set() or cancelled())
             budget.check()
-            if mode not in ('phrase', 'word', 'terms', 'thematic', 'semantic'):
+            if mode not in ('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'):
                 raise ValueError('Unknown search mode.')
             if result_mode not in (None, 'short', 'thematic'):
                 raise ValueError('Choose Short quotations or Thematic excerpts.')
