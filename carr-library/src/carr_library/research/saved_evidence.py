@@ -5,7 +5,7 @@ import json
 from ..citations.anchors import Anchor, Identity, Locator, Metadata, digest, resolve_span
 from .topic_tree import TopicTree, _id
 from .anchored_export import SavedEvidence
-from .span_snapshot import restore_anchors, seal_span
+from .span_snapshot import MAX_PAYLOAD, restore_anchors, seal_span
 
 
 def _encode(anchor):
@@ -71,6 +71,49 @@ class SavedEvidenceStore:
 
     def list_saved(self, topic, *, cancelled=lambda: False):
         return tuple(self.iter_saved(topic, cancelled=cancelled))
+
+    def get_saved(self, topic, evidence, *, cancelled=lambda: False):
+        """Authenticate one exact record without loading unrelated topic evidence.
+
+        Archive visibility belongs to the caller, as with ``list_saved``. The
+        caller must hold one authorized, consistent transaction throughout.
+        """
+        if not callable(cancelled):
+            raise ValueError('cancellation callback required')
+
+        def check():
+            if cancelled():
+                raise TimeoutError('saved evidence loading cancelled or timed out')
+
+        def guarded(reader):
+            def read(*args):
+                check()
+                result = reader(*args)
+                check()
+                return result
+            return read
+
+        check()
+        self.tree._ready()
+        _id(topic)
+        _id(evidence)
+        scope = (self.workspace, topic, evidence)
+        sizes = self.db.execute('SELECT length(CAST(payload AS BLOB)), length(checksum), '
+            'length(CAST(note AS BLOB)) '
+            'FROM research_evidence WHERE workspace=? AND topic=? AND id=?', scope).fetchone()
+        check()
+        if sizes is None:
+            raise ValueError('unknown evidence in this topic')
+        if not 0 < sizes[0] <= MAX_PAYLOAD or sizes[1] != 64 or sizes[2] > 4 * 100000:
+            raise ValueError('invalid evidence snapshot size')
+        payload, checksum, note = self.db.execute('SELECT payload,checksum,note FROM research_evidence '
+            'WHERE workspace=? AND topic=? AND id=?', scope).fetchone()
+        check()
+        anchors = restore_anchors(self.workspace, payload, checksum, guarded(self.load_page),
+                                  guarded(self.attest_metadata))
+        check()
+        return SavedEvidence(topic, evidence, anchors[0], _note(note),
+                             anchors if len(anchors) > 1 else (), checksum)
 
     def iter_saved(self, topic, *, cancelled=lambda: False):
         """Verify records lazily, checking cancellation around each source read.
