@@ -81,11 +81,21 @@ your documents. Search and library data remain on the local computer.
 ## Open original sources and export research
 
 After selecting a search result, use **Open original source file** to open a
-copy in the computer's default PDF, text or Word reader. The search status gives
+copy in the computer's default PDF, text, Word or EPUB reader. The search status gives
 the physical PDF page or logical text segment. Use the external reader to reach
 that location; opening the file does not automatically jump to a particular
 page. Changes made in that reader do not alter the retained library original.
 Opening a source does not approve its extracted text for quotation.
+
+For imported EPUB books, choose **Library, Read EPUB book** or press
+**Ctrl+Shift+R**. Choose a book, then use the **EPUB section** selector or the
+**Previous section** and **Next section** buttons. Section information and text
+use named, read-only controls. Tab moves between them; Escape returns to the
+library. Image descriptions supplied by the book's author have their own field.
+The reader also includes supplementary sections in the book's declared order.
+EPUB section numbers are not printed page numbers. Text remains an unverified
+extraction; the application's verified-quotation and saved-evidence commands
+do not approve it automatically. See [EPUB reading](EPUB_READING.md).
 
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
@@ -109,7 +119,7 @@ Open a library, then use the **Research** menu:
   author or language data, no active text, an incomplete index, PDF pages without
   a matching recorded review, or no active collection. Missing optional metadata
   is a prompt to check the source, not permission to invent it.
-- **Export literature review matrix** compares your imported sources in CSV,
+- **Export source comparison matrix** compares your imported sources in CSV,
   Markdown or plain text, including collections, topic links, evidence counts
   and tags. Choose the entire library or one active collection.
 
@@ -129,6 +139,40 @@ See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
 interchange details.
 
 ## Research from the keyboard
+
+### Library and collection tools
+
+Press **Ctrl+Shift+L**, or choose **Library, Library tools**. Choose the entire
+library or an active collection, then use the named buttons:
+
+- **Refresh report** shows source totals, missing catalog fields, extraction and
+  index readiness, collection coverage, and editions sharing identical retained
+  bytes. These are review candidates; the program does not merge or delete them.
+  A recorded extraction or review is not a new independent verification of text.
+- **Export bibliography** writes current source-catalog metadata as RIS, BibTeX,
+  or CSL JSON. This includes sources without saved quotations. Author names retain
+  their catalog order. Unknown publication dates, types and identifiers are not
+  invented. The bibliography does not contain quotations or research notes.
+- **Export source inventory** writes a CSV inventory for inspecting the selected
+  collection outside the application.
+- **Export review matrix** writes a CSV table of saved evidence from visible
+  research topics, with topic paths, tags, exact quotations, separate research
+  notes, source locators and immutable revision identifiers. Each page or logical
+  segment remains a separate row. Collection membership is current; citation
+  metadata stays as it was when the quotation was saved. Archived topic subtrees
+  are excluded. Every candidate saved item is authenticated before collection
+  filtering, so a damaged source or saved record stops export with an error.
+
+Report details state when only the first items are displayed; totals remain
+complete for the selected scope. Exports either finish completely or report a
+size, time or cancellation limit. They never silently return a partial table.
+CSV text columns ending in `_json` preserve exact Unicode using JSON encoding;
+array columns such as `topic_path_json` and `tags_json` retain separate values.
+This also prevents spreadsheet formula execution from source text or notes.
+Use **Cancel operation** to stop a long operation before publication. Export destinations
+use the same checked Save workflow as topic exports.
+
+### Search and source actions
 
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently

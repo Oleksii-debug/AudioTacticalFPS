@@ -425,6 +425,31 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertEqual(self.frame.errors, [])
         self.assertIn('file was saved before cancellation', self.frame.messages[-1])
 
+    def test_cancellation_during_file_write_preserves_destination_and_removes_temporary(self):
+        from carr_library.research import export_file
+
+        original_fsync = export_file.os.fsync
+        synced_sizes = []
+
+        def cancel_after_sync(descriptor):
+            original_fsync(descriptor)
+            synced_sizes.append(export_file.os.fstat(descriptor).st_size)
+            self.frame.cancel_event.set()
+
+        self.destination.write_text('Keep existing', encoding='utf-8')
+        actions, _ = self.actions((0, 0))
+        with (patch.object(export_file.os, 'fsync', side_effect=cancel_after_sync),
+              patch.object(export_file.os, 'replace', wraps=export_file.os.replace) as publish,
+              patch.object(ui, 'write_export', wraps=ui.write_export) as write):
+            actions.export_matrix()
+        self.assertEqual(len(synced_sizes), 1)
+        self.assertGreater(synced_sizes[0], 0)
+        self.assertIs(write.call_args.kwargs['cancelled'].__self__, self.frame.cancel_event)
+        publish.assert_not_called()
+        self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
+        self.assertEqual(list(self.root.glob('.research-export-*')), [])
+        self.assertIn('cancelled; the destination was not changed', self.frame.messages[-1])
+
     def test_completed_export_does_not_claim_new_scope_owns_it(self):
         other = self.clone_library()
         self.frame.after_worker = lambda: setattr(self.frame, 'library', other)
@@ -502,6 +527,7 @@ class MenuRegistrationTests(unittest.TestCase):
         self.assertNotIn(duplicate, menu.items)
         self.assertEqual([callback.__name__ for callback, _ in bound],
                          ['overview', 'checklist', 'export_matrix'])
+        self.assertEqual(bound[-1][1].GetItemLabel(), 'Export source comparison &matrix...')
 
 
 if __name__ == '__main__':

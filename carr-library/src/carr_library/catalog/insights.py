@@ -9,13 +9,14 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 
 from .membership import Catalog
-from .read_views import active_collections, browse_editions
+from .read_views import _snapshot, active_collections, browse_editions
 from ..citations.anchors import validate_span
 from ..research.span_snapshot import MAX_PAYLOAD, _decode_snapshot
 from ..research.topic_tree import TopicTree, _VISIBLE
 
 
 MAX_SOURCES = 10_000
+MAX_COLLECTIONS = 10_000
 MAX_TOPICS = 10_000
 MAX_EVIDENCE = 50_000
 MAX_LINKS = 100_000
@@ -82,6 +83,47 @@ class _TextBudget:
                 self.used += len(value.encode('utf-8'))
         if self.used > MAX_METADATA_BYTES:
             raise ValueError('Catalog metadata exceeds the report limit. Choose a smaller collection.')
+
+
+def report_collections(catalog):
+    """Reuse the catalog reader only after bounding names in its same snapshot."""
+    db, workspace = _snapshot(catalog)
+    count, size = db.execute('''SELECT COUNT(*),COALESCE(SUM(length(CAST(name AS BLOB))),0)
+        FROM catalog_collection WHERE workspace=? AND archived=0''', (workspace,)).fetchone()
+    if count > MAX_COLLECTIONS:
+        raise ValueError('Too many active collections for this report.')
+    if size > MAX_METADATA_BYTES:
+        raise ValueError('Active collection names exceed the report metadata limit.')
+    return active_collections(catalog)
+
+
+def _preflight_editions(catalog, collection, available_bytes):
+    """Count selected metadata in SQLite before Python materializes author lists.
+
+    The public catalog page reader returns up to 500 fully grouped sources;
+    each legitimate source can have 100 long author names. A post-read budget
+    alone would permit a large allocation. These sums use UTF-8 byte lengths
+    and the exact selection predicates in the same immutable read snapshot.
+    """
+    db, workspace = _snapshot(catalog)
+    count, size = db.execute('''SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM (
+        SELECT length(CAST(e.id AS BLOB))
+          +COALESCE(length(CAST(w.title AS BLOB)),0)
+          +COALESCE(length(CAST(e.language AS BLOB)),0)
+          +COALESCE(length(CAST(e.edition AS BLOB)),0)
+          +COALESCE(length(CAST(e.volume AS BLOB)),0)
+          +COALESCE((SELECT SUM(length(CAST(a.name AS BLOB))) FROM catalog_author a
+                     WHERE a.workspace=w.workspace AND a.work=w.id),0) AS bytes
+        FROM catalog_edition e JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work
+        WHERE e.workspace=? AND (? IS NULL OR EXISTS (
+            SELECT 1 FROM catalog_membership m WHERE m.workspace=e.workspace
+            AND m.edition=e.id AND m.collection=?))
+        ORDER BY e.id COLLATE BINARY LIMIT ?
+    )''', (workspace, collection, collection, MAX_SOURCES + 1)).fetchone()
+    if count > MAX_SOURCES:
+        raise ValueError('Too many sources for this report. Choose a smaller collection.')
+    if size > available_bytes:
+        raise ValueError('Catalog metadata exceeds the report limit. Choose a smaller collection.')
 
 
 def _rows(cursor, limit, check, name):
@@ -200,13 +242,15 @@ def analyze_catalog(library, workspace, *, collection=None, authorized_topic=Non
         if authorized_topic is not None:
             TopicTree(db, workspace)._visible(authorized_topic)
         catalog = Catalog(db, workspace)
-        collections = dict(active_collections(catalog))
+        collections = dict(report_collections(catalog))
         if collection is not None and collection not in collections:
             raise ValueError('The selected collection is missing or archived.')
         workspace_name = db.execute('SELECT name FROM workspace_meta WHERE workspace=?',
                                     (workspace,)).fetchone()[0]
         text_budget = _TextBudget()
         text_budget.add(workspace_name, *collections.values())
+        _preflight_editions(catalog, collection, MAX_METADATA_BYTES - text_budget.used)
+        check()
         editions, after = [], None
         while True:
             check()

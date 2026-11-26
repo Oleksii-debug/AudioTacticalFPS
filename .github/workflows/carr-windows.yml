@@ -89,6 +89,10 @@ jobs:
             'tests/e2e/test_offline_startup.py',
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',
+            'tests/e2e/test_epub_import.py',
+            'tests/extract/test_epub_ordered.py',
+            'tests/reader/test_ebook_reader.py',
+            'tests/ui/test_ebook_reader.py',
             'tests/e2e/test_retained_source_search_integrity.py',
             'tests/e2e/test_research_workflows.py',
             'tests/e2e/test_catalog_insights_workflow.py',
@@ -108,16 +112,25 @@ jobs:
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
             'tests/catalog/test_catalog_panel_acceptance.py',
+            'tests/catalog/test_bibliography.py',
+            'tests/catalog/test_catalog_reports.py',
+            'tests/e2e/test_catalog_tools.py',
+            'tests/research/test_review_matrix.py',
+            'tests/ui/test_catalog_tools_dialog.py',
+            'tests/catalog/test_insights_budget.py',
             'tests/storage/test_v2_recovery.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
             'tests/reader/test_literature_matrix.py',
             'tests/reader/test_topic_search_runtime.py',
+            'tests/reader/test_reading_desk.py',
+            'tests/reader/test_reading_state.py',
             'tests/search/test_literal_long_source.py',
             'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
             'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/test_reading_desk_actions.py',
             'tests/ui/probe_workspace_shell.py',
             'tests/ui/probe_catalog_insights_actions.py',
             'tests/accessibility/test_pr71_catalog_scope_ux.py',
@@ -138,7 +151,25 @@ jobs:
           & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise native catalog reports and literature matrix export
+      - name: Exercise native EPUB section navigation and image descriptions
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_ebook_reader_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-ebook-reader.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native library reports and academic exports
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native full-source reader and page bookmarks
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native catalog reports and source comparison export
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/probe_catalog_insights_native.py 2>&1 | Tee-Object 'ci-results/native-catalog-insights.txt'
@@ -301,7 +332,7 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_catalog_insights_workflow.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing'}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

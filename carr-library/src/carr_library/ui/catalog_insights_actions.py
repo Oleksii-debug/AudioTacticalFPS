@@ -7,9 +7,8 @@ grant source approval. Exports use the checked publisher outside private data.
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview
+from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
-from ..catalog.read_views import active_collections
 from ..research.export_file import write_export
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
@@ -32,8 +31,8 @@ class InsightsDialogs(NativeDialogs):
         import wx
 
         _, _, extension, wildcard = next(row for row in FORMATS if row[0] == format)
-        dialog = wx.FileDialog(parent, 'Save literature review matrix',
-            defaultFile='literature-review-matrix.' + extension, wildcard=wildcard,
+        dialog = wx.FileDialog(parent, 'Save source comparison matrix',
+            defaultFile='source-comparison-matrix.' + extension, wildcard=wildcard,
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -114,7 +113,7 @@ class CatalogInsightsActions:
         with scope.library.read(scope.workspace) as db:
             if scope.topic is not None:
                 TopicTree(db, scope.workspace)._visible(scope.topic)
-            pairs = active_collections(Catalog(db, scope.workspace))
+            pairs = report_collections(Catalog(db, scope.workspace))
             if collection is not None and collection.identity is not None:
                 if (collection.identity, collection.name) not in pairs:
                     raise ValueError('The selected collection changed or was archived. Choose its scope again.')
@@ -210,13 +209,13 @@ class CatalogInsightsActions:
         self._show_report('Source metadata and indexing checklist', format_checklist)
 
     def export_matrix(self, event=None):
-        title = 'Literature review matrix export'
+        title = 'Source comparison matrix export'
         try:
             scope = self._capture()
             collection = self._choose_scope(scope)
             if collection is None:
                 return
-            index = self.dialogs.choose(self.frame, 'Literature review matrix format',
+            index = self.dialogs.choose(self.frame, 'Source comparison matrix format',
                 'Choose an export format. The matrix includes bibliographic metadata, '
                 'stored counts and visible topic labels. Quotations and notes are excluded.',
                 [row[1] for row in FORMATS])
@@ -245,7 +244,8 @@ class CatalogInsightsActions:
                 # Recheck authorization and cancellation immediately before
                 # atomic publication. No reads of frame.library occur here.
                 self._authorize(scope, collection, cancellable=True)
-                write_export(path, text, private_root=scope.library.root)
+                write_export(path, text, private_root=scope.library.root,
+                             cancelled=scope.cancel_event.is_set)
                 # Once publication succeeds, cancellation cannot undo it. A
                 # receipt lets the callback describe that outcome truthfully.
                 return _ExportReceipt(path, format)
@@ -260,10 +260,10 @@ class CatalogInsightsActions:
                         self.frame.report('The matrix file was saved before cancellation or a library change '
                                           'was detected. Reopen the command to make a current report.')
                     return
-                self.frame.report('Literature review matrix saved to ' + display_value(str(path))
+                self.frame.report('Source comparison matrix saved to ' + display_value(str(path))
                                   + '. Quotations and notes are not included.')
 
-            self.frame.run_job('Exporting literature review matrix', operation, done,
+            self.frame.run_job('Exporting source comparison matrix', operation, done,
                                lambda error: self._failed(title, error))
         except Exception as exc:
             self._failed(title, exc)
@@ -284,7 +284,7 @@ def install_catalog_insights_actions(frame):
     entries = (
         ('Library &overview...', actions.overview),
         ('Source metadata and indexing &checklist...', actions.checklist),
-        ('Export literature review &matrix...', actions.export_matrix),
+        ('Export source comparison &matrix...', actions.export_matrix),
     )
 
     def caption(label):

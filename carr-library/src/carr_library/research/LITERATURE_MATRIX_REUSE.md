@@ -1,4 +1,4 @@
-# Literature review matrix
+# Source comparison matrix
 
 ## Purpose and boundary
 

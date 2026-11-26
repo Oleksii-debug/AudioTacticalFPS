@@ -1,4 +1,11 @@
-# Library overview, catalog checklist and literature review matrix
+# Library overview, catalog checklist and source comparison matrix
+
+The source comparison matrix summarizes imported sources and their research
+coverage without exporting quotations or personal notes. For a verified
+evidence-by-evidence matrix containing quotations and separate notes, use the
+existing **Library tools** dialog and its review-matrix export. Both workflows
+use the same source catalog and saved research; they do not create a second
+library or rewrite quotations.
 
 These tools help you understand an imported source collection, find incomplete
 catalog records and prepare a table for a literature review. They read the
@@ -14,7 +21,7 @@ Open the library you want to work with, then choose one of these commands in the
 | --- | --- |
 | **Library overview…** | Read source totals, available and indexed text counts, language coverage, collection membership and use in visible research topics. |
 | **Source metadata and indexing checklist…** | Find sources with missing catalog information, missing active text, absent search-index rows or missing recorded PDF reviews. |
-| **Export literature review matrix…** | Save a source-by-source comparison as CSV, Markdown or plain text. |
+| **Export source comparison matrix…** | Save a source-by-source comparison as CSV, Markdown or plain text. |
 
 Each command first opens **Report scope**. Choose **All sources in this library**
 or a numbered collection. A collection report includes only the editions
@@ -82,11 +89,11 @@ evidence; the checklist itself grants no approval.
 An empty checklist means these inventory checks found no items. It is not an
 assessment of the source's scholarship, completeness, relevance or reliability.
 
-## Export a literature review matrix
+## Export a source comparison matrix
 
-Choose **Research > Export literature review matrix…**, choose the report scope,
+Choose **Research > Export source comparison matrix…**, choose the report scope,
 then choose **CSV table**, **Markdown table** or **Plain text**. The native Save
-dialog suggests `literature-review-matrix.csv`, `.md` or `.txt` respectively.
+dialog suggests `source-comparison-matrix.csv`, `.md` or `.txt` respectively.
 Choose a destination outside the application's private library data directory.
 
 Every matrix includes the selected library and collection, report limitations,

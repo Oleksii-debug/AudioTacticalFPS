@@ -95,7 +95,7 @@ def main():
         frame.Raise()
         book, evidence = frame.book, frame.evidence
         draft = 'UNSAVED PRIVATE DRAFT — keep this native edit'
-        destination = root / 'literature-review-matrix.csv'
+        destination = root / 'source-comparison-matrix.csv'
         actions = frame.catalog_insights_actions
         destinations = []
         original_destination = actions.dialogs.destination
@@ -176,7 +176,7 @@ def main():
             evidence.note.SetValue(draft)
             evidence.note.SetFocus()
             labels = ('Library overview', 'Source metadata and indexing checklist',
-                      'Export literature review matrix')
+                      'Export source comparison matrix')
             counts_before = {label: sum(not item.IsSeparator() and caption(item.GetItemLabel()) == label
                                        for item in research.GetMenuItems()) for label in labels}
             check('all three Research entries installed exactly once', all(n == 1 for n in counts_before.values()))
@@ -204,7 +204,7 @@ def main():
                         dialog.SetSelection(1)
                         check('matrix: native selected-collection scope', dialog.GetSelection() == 1)
                     else:
-                        assert dialog.GetTitle() == 'Literature review matrix format', dialog.GetTitle()
+                        assert dialog.GetTitle() == 'Source comparison matrix format', dialog.GetTitle()
                         assert state['scope'] and not state['format']
                         state['format'] = True
                         dialog.SetSelection(0)
@@ -233,7 +233,7 @@ def main():
                 cancel_scope()
 
             later(drive)
-            invoke('Export literature review matrix')
+            invoke('Export source comparison matrix')
 
         def cancel_scope():
             evidence.note.SetFocus()

@@ -178,7 +178,7 @@ def _markdown_value(value):
 def _heading(analysis, format, output, include_trace):
     markdown = format == 'markdown'
     encode = _markdown_value if markdown else _display
-    output.write(('# ' if markdown else '') + 'Literature review matrix\n\n')
+    output.write(('# ' if markdown else '') + 'Source comparison matrix\n\n')
     output.write('Library: ' + encode(analysis.workspace_name) + '\n\n')
     output.write(('Scope: all sources in this library.' if analysis.collection_id is None
                   else 'Collection: ' + encode(analysis.collection_name)) + '\n\n')
