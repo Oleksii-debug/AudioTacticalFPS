@@ -15,6 +15,8 @@ import sqlite3
 import tempfile
 
 from carr_library.catalog.intake import snapshot, IntakeError
+from carr_library.catalog.membership import Catalog
+from carr_library.catalog.registration import Registration, register_batch
 from carr_library.extract.page_ocr import Config, extract_page
 from carr_library.storage.revisions import Page
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
@@ -70,6 +72,8 @@ class Ingest:
         row = self.db.execute('SELECT * FROM job WHERE workspace=? AND id=?', (workspace, job)).fetchone()
         if row is None:
             raise IngestError('unknown job in workspace')
+        if digest(canonical([row['workspace'], row['edition'], row['asset'], row['config']])) != job:
+            raise IngestError('job identity mismatch')
         return row
 
     def inspect(self, workspace, job):
@@ -108,11 +112,55 @@ class Ingest:
         count, settings, _ = self._plan(asset, config)
         return dict(asset.manifest(), segments=count, extraction=json.loads(settings))
 
-    def start(self, workspace, edition, root, relative, config=Config()):
+    def _bind_registration(self, workspace, edition, asset, settings, registration):
+        if self.storage.schema_version == 1:
+            if registration is not None:
+                raise IngestError('catalog registration requires storage V2')
+            return settings
+        if self.storage.schema_version != 2:
+            raise IngestError('unsupported ingest storage version')
+        Catalog(self.storage.db, workspace)
+        if (not isinstance(registration, Registration) or registration.edition_id != edition
+                or registration.manifest != asset.manifest()):
+            raise IngestError('matching catalog registration required')
+        plan = json.loads(settings)
+        plan['registration'] = asdict(registration)
+        return canonical(plan)
+
+    def _registration(self, row):
+        data = json.loads(row['config']).get('registration')
+        if data is None:
+            return None
+        try:
+            data['authors'] = tuple(data['authors'])
+            data['collections'] = tuple(data['collections'])
+            return Registration(**data)
+        except (TypeError, KeyError) as exc:
+            raise IngestError('invalid persisted registration') from exc
+
+    def _publish(self, row, records, registration):
+        # PR61/21: one authoritative transaction, compare active under its
+        # write lock, then register + stage + validate before commit. The
+        # separate private checkpoint journal is reconciled by _recover.
+        with self.storage.transaction():
+            if self._active(row['workspace'], row['edition']) != row['expected_active']:
+                return False
+            if registration is not None:
+                register_batch(Catalog(self.storage.db, row['workspace']), (registration,))
+            self.storage.stage_revision(row['workspace'], row['edition'], row['id'],
+                                        row['asset'], row['config'],
+                                        [Page(p['raw_text'], p['physical_index']) for p in records])
+            # Existing Storage.check opens a nested transaction; use its
+            # actual validator within this caller-owned publication unit.
+            self.storage._check()
+        return True
+
+    def start(self, workspace, edition, root, relative, config=Config(), *, registration=None):
         if not all(isinstance(v, str) and v for v in (workspace, edition)):
             raise IngestError('missing scope or edition')
         asset = snapshot(root, relative)
         count, settings, _ = self._plan(asset, config)
+        settings = self._bind_registration(workspace, edition, asset, settings, registration)
         job = digest(canonical([workspace, edition, asset.digest, settings]))
         with self.transaction():
             self.db.execute('INSERT INTO job VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING',
@@ -187,6 +235,8 @@ class Ingest:
         row = self._job(workspace, job)
         asset = snapshot(root, relative)
         count, settings, segments = self._plan(asset, config)
+        registration = self._registration(row)
+        settings = self._bind_registration(workspace, row['edition'], asset, settings, registration)
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
         with tempfile.TemporaryDirectory(prefix='carr-ingest-') as tmp:
@@ -214,12 +264,9 @@ class Ingest:
                                 raise IngestError('unverified checkpoint')
                             if hash_file(staged) != asset.digest:
                                 raise IngestError('staging digest mismatch')
-                            if self._active(workspace, row['edition']) != row['expected_active']:
+                            if not self._publish(row, records, registration):
                                 self._set(job, 'conflict', 'active_revision_changed')
                                 break
-                            self.storage.publish_revision(workspace, row['edition'], job, asset.digest, settings,
-                                                          [Page(p['raw_text'], p['physical_index']) for p in records])
-                            self.storage.check()
                             self._set(job, 'complete')
                             break
                         i = len(records) + 1
