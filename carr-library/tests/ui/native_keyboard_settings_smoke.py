@@ -181,10 +181,16 @@ def run_native(source=None, timeout=120):
             check('extension command uses the production stable-ID registry', manager.available(test_id))
             keymap = manager.store.path
 
-            def host_key(letter):
+            def host_key(letter, *, editable=True):
                 frame.Raise()
-                frame._restore_note_focus()
-                focus(frame.evidence.note)
+                # An intentionally removed/disabled shortcut must fall through
+                # to native control behavior. Ctrl+J/K may insert control text
+                # in an MSW multiline editor, so negative dispatch assertions
+                # use the genuine read-only quotation control. Live commands
+                # continue to be exercised from the editable unsaved note.
+                if editable:
+                    frame._restore_note_focus()
+                focus(frame.evidence.note if editable else frame.evidence.quote)
                 press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
 
             host_key('J')
@@ -240,28 +246,32 @@ def run_native(source=None, timeout=120):
             check('saved native settings persist a semantic command ID and update the menu',
                   KeymapStore(keymap).load()[test_id] == 'Ctrl+Shift+K'
                   and action.GetItemLabel().endswith('\tCtrl+Shift+K'))
-            host_key('J')
+            check('saving keyboard settings preserves the complete unsaved research note', preserved())
+            host_key('J', editable=False)
             check('old native menu accelerator stops after remapping', len(calls) == 1)
             host_key('K')
             check('new native menu accelerator dispatches exactly once', pump(lambda: len(calls) == 2))
 
             action.Enable(False)
-            host_key('K')
+            host_key('K', editable=False)
             check('actual shortcut cannot dispatch a disabled native menu item',
                   len(calls) == 2 and not manager.available(test_id))
             action.Enable(True)
             before = keymap.read_bytes()
 
             def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
+                # The integrated Local assistant owns Ctrl+Alt+J. Keep this
+                # unsaved Cancel fixture distinct from every live command.
+                dialog.shortcut.SetValue('Ctrl+Alt+Shift+J')
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                      dialog.draft[test_id] == 'Ctrl+Alt+Shift+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))
-            check('Cancel preserves saved bindings and the complete unsaved evidence note',
-                  keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K' and preserved())
+            check('Cancel preserves the saved keymap bytes and active binding',
+                  keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+            check('Cancel preserves the complete unsaved evidence note', preserved())
 
             def conflict(dialog):
                 dialog.shortcut.SetValue('Ctrl+N')
@@ -282,7 +292,7 @@ def run_native(source=None, timeout=120):
 
             check('native settings support explicit unassignment', settings_session(unassign)
                   and manager.shortcut(test_id) == '' and '\t' not in action.GetItemLabel())
-            host_key('K')
+            host_key('K', editable=False)
             check('unassigned native accelerator no longer dispatches', len(calls) == 2)
 
             launcher_errors = []
@@ -323,7 +333,7 @@ def run_native(source=None, timeout=120):
 
             check('native settings save the reset shortcut', settings_session(reset)
                   and manager.shortcut(test_id) == 'Ctrl+Shift+J')
-            host_key('K')
+            host_key('K', editable=False)
             check('reset removes the previously custom native accelerator', len(calls) == 3)
             host_key('J')
             check('reset restores the original native accelerator', pump(lambda: len(calls) == 4))

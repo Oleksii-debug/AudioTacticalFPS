@@ -223,6 +223,7 @@ jobs:
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
+            'tests/research/test_csl_author_boundaries.py',
             'tests/e2e/test_academic_workflow.py',
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
