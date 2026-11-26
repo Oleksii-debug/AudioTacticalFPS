@@ -129,3 +129,21 @@ def test_real_ingest_retained_roundtrip(tmp_path):
         assert ingest.storage.get_page('A', a, 1)['raw'] == 'Дослідження railway\r\n'
         assert ingest.storage.get_page('B', a, 1) is None
         assert store.resolve(sha256(data).hexdigest()).read_bytes() == data
+
+
+def test_real_pdf_bytes_survive_source_removal(tmp_path):
+    from pypdf import PdfReader, PdfWriter
+    source = tmp_path / 'original.pdf'
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=300)
+    writer.add_blank_page(width=300, height=400)
+    writer.write(source)
+    data = source.read_bytes()
+    root = tmp_path / 'private'
+    root.mkdir()
+    store = RetainedAssets(root)
+    saved = retain(store, data, 'application/pdf')
+    source.unlink()
+    assert saved == store.resolve(sha256(data).hexdigest())
+    assert saved.read_bytes() == data
+    assert len(PdfReader(saved).pages) == 2
