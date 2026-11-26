@@ -122,3 +122,88 @@ def test_worker_environment_excludes_host_credentials(monkeypatch):
     environment = offline_environment()
     assert not any(name in environment for name in ('PROVIDER_API_KEY', 'HF_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'HTTP_PROXY'))
     assert environment['HF_HUB_OFFLINE'] == '1'
+
+
+def test_complete_torch_sized_runtime_inventory_and_mutation(tmp_path, record_property):
+    """Real regular files and hashes, not weights or a model-inference claim."""
+    import time
+
+    started = time.perf_counter()
+    empty_digest = hashlib.sha256(b'').hexdigest()
+    names = ['state_dict.bin', 'compression_state_dict.bin']
+    prefix = 'runtime/lib/python3.11/site-packages/synthetic_dependency_fixture/modules'
+    names.extend(f'{prefix}/module_{number:05}.py' for number in range(10701))
+    for name in names:
+        asset = tmp_path / name
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        asset.touch()
+    raw = {'schema_version': 1, 'engine': 'musicgen',
+           'model_id': 'synthetic-inventory-only-not-a-model',
+           'revision': 'a' * 40, 'license': 'CC-BY-NC-4.0',
+           'license_accepted': True, 'trusted_weights': True,
+           'personal_noncommercial': True,
+           'files': {name: empty_digest for name in names}}
+    path = tmp_path / 'manifest.json'
+    path.write_text(json.dumps(raw, separators=(',', ':')), encoding='utf-8')
+    assert path.stat().st_size > 1024 * 1024
+    model = LocalModelManifest.load(path, engine='musicgen')
+    before_verify = time.perf_counter()
+    report = model.verify(require_complete=True)
+    verify_seconds = time.perf_counter() - before_verify
+    assert report['files'] == 10703 and report['bytes'] == 0
+    assert model.asset(names[-1]) == tmp_path / names[-1]
+    with pytest.raises(ModelManifestError, match='relative paths'):
+        model.asset('../outside.py')
+    with pytest.raises(ModelManifestError, match='not in the verified manifest'):
+        model.asset('runtime/unlisted.py')
+    # The first sorted checkpoint is checked again rather than trusted from
+    # the preceding inventory pass; no model loader executes these fixtures.
+    (tmp_path / 'compression_state_dict.bin').write_bytes(b'mutated fixture')
+    with pytest.raises(ModelManifestError, match='Checksum mismatch'):
+        model.verify()
+    record_property('synthetic_inventory_files', len(names))
+    record_property('serialized_manifest_bytes', path.stat().st_size)
+    record_property('verification_seconds', round(verify_seconds, 6))
+    record_property('total_fixture_seconds', round(time.perf_counter() - started, 6))
+    record_property('model_inference', 'NOT_RUN')
+
+
+def test_model_inventory_file_count_remains_bounded(tmp_path):
+    from carr_library.audio.model_manifest import MAX_MODEL_FILES
+    files = {f'file_{number}.bin': 'a' * 64 for number in range(MAX_MODEL_FILES + 1)}
+    with pytest.raises(ModelManifestError, match='List every required local asset'):
+        LocalModelManifest.load(manifest(tmp_path, files=files))
+
+
+def test_model_manifest_bytes_remain_bounded_before_json_parse(tmp_path):
+    from carr_library.audio.model_manifest import MAX_MODEL_MANIFEST_BYTES
+    path = tmp_path / 'oversized.json'
+    with path.open('wb') as stream:
+        stream.seek(MAX_MODEL_MANIFEST_BYTES)
+        stream.write(b' ')
+    with pytest.raises(ModelManifestError, match='bounded regular file'):
+        LocalModelManifest.load(path)
+
+
+def test_complete_inventory_directory_budget_remains_enforced(tmp_path, monkeypatch):
+    import carr_library.audio.model_manifest as module
+    model = LocalModelManifest.load(manifest(tmp_path))
+    for index in range(5):
+        (tmp_path / f'empty_{index}').mkdir()
+    monkeypatch.setattr(module, 'MAX_MODEL_DIRECTORY_ENTRIES', 3)
+    with pytest.raises(ModelManifestError, match='directory entry budget'):
+        model.verify(require_complete=True)
+
+
+def test_complete_inventory_can_be_cancelled_before_hashing_assets(tmp_path):
+    model = LocalModelManifest.load(manifest(tmp_path))
+    for index in range(5):
+        (tmp_path / f'empty_{index}').mkdir()
+    calls = 0
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls == 4
+    with pytest.raises(InterruptedError, match='verification cancelled'):
+        model.verify(require_complete=True, cancelled=cancelled)
+    assert calls == 4

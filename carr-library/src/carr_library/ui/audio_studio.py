@@ -1136,12 +1136,20 @@ class AudioStudioActions:
 
 def install_audio_studio_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     actions = AudioStudioActions(frame)
     menu = wx.Menu()
-    for label, handler in (('Open Audio Studio...\tCtrl+Alt+A', actions.open),
-                           ('Prepare selected book for narration...', actions.from_selected_book)):
-        item = menu.Append(wx.ID_ANY, label)
+    commands = []
+    for identity, label, shortcut, handler in (
+            ('audio.studio.open', 'Open Audio Studio...', 'Ctrl+Alt+A', actions.open),
+            ('audio.narration.prepare_selected', 'Prepare selected book for narration...', '', actions.from_selected_book)):
+        caption = label + ('\t' + shortcut if shortcut else '')
+        item = menu.Append(wx.ID_ANY, caption)
         frame.Bind(wx.EVT_MENU, handler, item)
-    frame.menu_bar.Append(menu, '&Audio')
+        commands.append((CommandSpec(identity, label, default_shortcut=shortcut), item))
+    frame.menu_bar.Append(menu, 'A&udio')
+    for spec, item in commands:
+        register_menu_command(frame, spec, item)
     frame.audio_studio_actions = actions
     return actions
