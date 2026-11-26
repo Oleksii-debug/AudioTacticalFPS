@@ -185,6 +185,9 @@ class LibraryApp:
                                      isolation_level=None, timeout=0 if budget is not None else 5)) as db:
             db.row_factory = sqlite3.Row
             if budget is not None:
+                # Schema validation and authorization belong to the same
+                # cancellable operation as retrieval. A SQLite busy handler
+                # would otherwise sleep for five seconds without checking it.
                 db.set_progress_handler(lambda: int(budget.stopped()), 1000)
             try:
                 db.execute('PRAGMA foreign_keys=ON')
@@ -200,7 +203,7 @@ class LibraryApp:
                 yield db
             finally:
                 if budget is not None:
-                    # Rollback must not be interrupted by an expired callback.
+                    # Cleanup must work even when cancellation remains latched.
                     db.set_progress_handler(None, 0)
                 db.rollback()
 
@@ -228,7 +231,9 @@ class LibraryApp:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             raise
         except sqlite3.OperationalError as exc:
-            code = getattr(exc, 'sqlite_errorcode', 0) & 0xff
+            # Include SQLite's extended BUSY/LOCKED codes in the same retry
+            # policy while preserving unrelated database errors.
+            code = (getattr(exc, 'sqlite_errorcode', 0) or 0) & 0xff
             if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             if code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
@@ -636,6 +641,30 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
+                    if result['state'] in ('complete', 'superseded'):
+                        if cancelled():
+                            raise InterruptedError('Import cancelled before catalog registration.')
+                        # Recovery validates the retained asset/configuration and
+                        # checkpoint/page identity, but does not replay catalog
+                        # registration. Apply the same atomic membership and
+                        # metadata-conflict gate as the DOCX/EPUB replay path.
+                        # A journal's terminal state alone is not proof that its
+                        # source was actually published. Never reactivate an old
+                        # revision when current metadata has superseded it.
+                        with storage.transaction():
+                            published = storage.db.execute(
+                                'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
+                                'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
+                                'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
+                                (job,)).fetchone()
+                            if (published is None or tuple(published[:3]) !=
+                                    (workspace, record.edition_id, asset.digest)
+                                    or published[3] is None):
+                                raise ValueError('Completed import is missing its sealed source revision.')
+                            if (published[3] == job) != (result['state'] == 'complete'):
+                                raise ValueError('Completed import active revision changed.')
+                            register_batch(Catalog(storage.db, workspace), (record,))
+                            storage._check()
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
