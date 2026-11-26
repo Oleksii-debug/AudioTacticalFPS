@@ -92,6 +92,7 @@ jobs:
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
+            'tests/packaging/test_install_bytecode.py',
             'tests/e2e/test_offline_startup.py',
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',
@@ -112,6 +113,7 @@ jobs:
             'tests/e2e/test_semantic_fallback_status.py',
             'tests/e2e/test_source_file.py',
             'tests/e2e/test_export_destination.py',
+            'tests/e2e/test_academic_document_export.py',
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
             'tests/storage/test_library_backup.py',
@@ -132,6 +134,9 @@ jobs:
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
+            'tests/reader/test_academic_documents.py',
+            'tests/reader/test_bibliographic_locators.py',
+            'tests/reader/test_binary_file_export.py',
             'tests/reader/test_literature_matrix.py',
             'tests/reader/test_topic_search_runtime.py',
             'tests/research/test_notebook_search.py',
@@ -141,6 +146,7 @@ jobs:
             'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
             'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/test_academic_export_handler.py',
             'tests/ui/test_notebook_search_actions.py',
             'tests/ui/test_reading_desk_actions.py',
             'tests/ui/probe_workspace_shell.py',
@@ -306,6 +312,8 @@ jobs:
           & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # This probe imports wx first: hold the application's verified DLL
           # directory handle before loading that native extension.
