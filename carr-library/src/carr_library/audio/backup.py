@@ -90,12 +90,15 @@ def _member(name):
 
 
 def _studio(payload):
-    if (type(payload) is not dict or set(payload) != _STUDIO_KEYS
+    keys = _STUDIO_KEYS | ({'input_kind'} if isinstance(payload, dict) and payload.get('version') == 2 else set())
+    if (type(payload) is not dict or set(payload) != keys
             or payload['kind'] != 'research-audio-studio' or type(payload['version']) is not int
-            or payload['version'] != 1 or payload['mode'] != 'LOCAL ONLY'
+            or payload['version'] not in (1, 2) or payload['mode'] != 'LOCAL ONLY'
             or not isinstance(payload['project_id'], str)
             or not re.fullmatch('[0-9a-f]{32}', payload['project_id'])):
         raise ValueError('A saved local Audio Studio project is required for this snapshot.')
+    if payload['version'] == 2 and payload['input_kind'] not in ('narration', 'script'):
+        raise ValueError('The saved narration or script mode is invalid.')
     for name in ('title', 'voice', 'language'):
         if not isinstance(payload[name], str) or not payload[name].strip():
             raise ValueError('The saved Audio Studio settings are invalid.')

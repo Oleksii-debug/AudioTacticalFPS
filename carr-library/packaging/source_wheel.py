@@ -291,6 +291,8 @@ def verify_application_wheel(wheel, repository, source_commit):
         if content != _blob(repository, entries, source):
             raise ValueError('Wheel payload differs from committed source: ' + path)
 
-    return {'source_commit': source_commit, 'wheel_sha256': hashlib.sha256(wheel_bytes).hexdigest(),
+    source_tree = _git(repository, 'rev-parse', '--verify', source_commit + '^{tree}').decode('ascii').strip()
+    return {'source_commit': source_commit, 'source_tree': source_tree,
+            'wheel_sha256': hashlib.sha256(wheel_bytes).hexdigest(),
             'project_name': metadata['name'], 'project_version': metadata['version'],
             'payload_files': payload_count, 'required_runtime_files': len(required)}

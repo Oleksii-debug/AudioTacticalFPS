@@ -172,6 +172,36 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
     return ProductionPlan(title, script, tuple(roles.values()), tuple(scenes), **settings)
 
 
+def plan_narration(text, *, title='Narration', voice='sapi5:default', language='en'):
+    """Plan literal reading without interpreting any source text as commands.
+
+    Form-feed represents a source segment boundary only. The exact source string,
+    including every separator, is retained; each text chunk carries checked
+    code-point offsets into it. Empty source segments remain explicit scenes and
+    receive one silent output frame because WAV files cannot contain zero
+    accepted audio frames. No punctuation, role label, heading or bracketed
+    passage is removed or turned into a production instruction.
+    """
+    from .models import text as validate_text
+    source = validate_text(text, 'Narration text', 16 * 1024 * 1024, allow_formfeed=True)
+    if source.count('\f') >= 100000:
+        raise ValueError('The narration contains too many source segments; split it into separate projects.')
+    role = Role('Narrator', voice=voice, language=language)
+    scenes, offset = [], 0
+    for page_number, page in enumerate(source.split('\f'), 1):
+        events, position = [], offset
+        # Empty/whitespace chunks remain source-bound data. The renderer emits
+        # silence without asking a speech engine to interpret an empty request.
+        for part_number, part in enumerate(speech_segments(page) or ('',), 1):
+            end = position + len(part)
+            events.append(Line(f'segment-{page_number:06d}-text-{part_number:06d}',
+                role.name, part, literal=True, source_start=position, source_end=end))
+            position = end
+        scenes.append(Scene(f'segment-{page_number:06d}', f'Source segment {page_number}', tuple(events)))
+        offset += len(page) + 1
+    return ProductionPlan(title, source, (role,), tuple(scenes), input_kind='narration')
+
+
 def _read_json(path, limit=16 * 1024 ** 2):
     if regular_file(path).st_size > limit:
         raise ValueError('Audio project manifest is too large.')
@@ -391,7 +421,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     if isinstance(event, Line):
                         role = roles[event.role]
                         spoken_parts = []
-                        for piece in speech_segments(event.text):
+                        for piece in speech_segments(event.text) or ('',):
                             if not piece.strip():
                                 spoken_parts.append(quiet(1))
                                 continue
@@ -417,6 +447,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                         role_name = role.name
                         subtitles.append({'role': role.name, 'text': event.text, 'start_frame': position + local_position,
                                           'end_frame': position + local_position + info['frames'], 'event_id': event.id,
+                                          'literal_narration': event.literal, 'source_start': event.source_start,
+                                          'source_end': event.source_end,
                                           'timing': 'Measured line boundaries; word timings unavailable.'})
                     elif isinstance(event, Pause):
                         chunk, info = quiet(max(1, round(event.seconds * plan.sample_rate)))
@@ -573,6 +605,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
             files = [{'name': path.name, 'size': regular_file(path).st_size,
                       'sha256': sha256_file(path, cancelled=cancelled)} for path in sorted(staged_output.iterdir())]
             result = {'schema_version': 1, 'status': 'complete', 'run_key': run_key,
+                      'input_kind': plan.input_kind,
                       'source_sha256': plan.source_sha256, 'output_name': output_name,
                       'duration_seconds': position / plan.sample_rate, 'sample_rate': plan.sample_rate,
                       'frames': position, 'chapters': chapters, 'stem_names': stem_names, 'stem_labels': stem_labels,

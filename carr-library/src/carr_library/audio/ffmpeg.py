@@ -22,6 +22,46 @@ from .jobs import checked_directory, check_cancelled, publish_new, regular_file,
 from .models import Effect, FORMATS, SAMPLE_RATES, number
 
 
+_TOOL_SUFFIX = '.exe' if sys.platform == 'win32' else ''
+
+
+def find_local_tool(name):
+    """Find a native tool only in absolute PATH directories, excluding CWD.
+
+    Python 3.11's Windows shutil.which also searches the working directory.
+    Imported books and project folders must never select an executable that
+    way. Ignore relative/empty PATH entries and shell extensions entirely.
+    Explicit executable selections remain separate from this default lookup.
+    """
+    if name not in {'ffmpeg', 'ffprobe', 'ffplay', 'espeak-ng'}:
+        raise ValueError('Unsupported local audio tool.')
+    try:
+        current = Path.cwd().resolve(strict=True)
+    except OSError:
+        return None
+    for entry in os.environ.get('PATH', '').split(os.pathsep):
+        if len(entry) >= 2 and entry[0] == entry[-1] == '"':
+            entry = entry[1:-1]
+        if not entry or entry.startswith(('\\\\', '//')):
+            continue
+        directory = Path(entry)
+        if not directory.is_absolute():
+            continue
+        try:
+            directory = directory.resolve(strict=True)
+            if directory == current or not directory.is_dir():
+                continue
+            candidate = directory / (name + _TOOL_SUFFIX)
+            if not candidate.is_file() or not os.access(candidate, os.X_OK):
+                continue
+            candidate = candidate.resolve(strict=True)
+            if candidate.parent != current:
+                return candidate
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return None
+
+
 @dataclass(frozen=True)
 class WaveInfo:
     rate: int

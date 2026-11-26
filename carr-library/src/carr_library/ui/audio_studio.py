@@ -10,13 +10,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import threading
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export
+from ..audio.ffmpeg import find_local_tool
 
 
 def _plain(value, label, *, limit=2048, empty=False):
@@ -102,9 +102,13 @@ class StudioController:
         self.result = None
         self.new()
 
-    def new(self, script='', *, title='Audio project', source_id='independent-script', source_reference=None):
+    def new(self, script='', *, title='Audio project', source_id='independent-script', source_reference=None,
+            input_kind='narration'):
+        if input_kind not in ('narration', 'script'):
+            raise ValueError('Choose literal narration or a structured production script.')
         self.draft = NarrationDraft(script, source_id=source_id)
         self.title = _plain(title, 'project title', limit=256)
+        self.input_kind = input_kind
         self.voice, self.language = 'sapi5:default', 'en'
         self.project_id = uuid4().hex
         self.source_reference = source_reference
@@ -128,7 +132,7 @@ class StudioController:
             self.result = None
         return changed
 
-    def configure(self, *, title=None, voice=None, language=None, output_dir=None, ffmpeg=None):
+    def configure(self, *, title=None, voice=None, language=None, input_kind=None, output_dir=None, ffmpeg=None):
         # Validate every supplied field before changing any state.
         values = {}
         if title is not None:
@@ -137,6 +141,10 @@ class StudioController:
             values['voice'] = _plain(voice, 'local voice', limit=2048)
         if language is not None:
             values['language'] = _plain(language, 'language code', limit=80)
+        if input_kind is not None:
+            if input_kind not in ('narration', 'script'):
+                raise ValueError('Choose literal narration or a structured production script.')
+            values['input_kind'] = input_kind
         if output_dir is not None:
             values['output_dir'] = self._output_folder(output_dir)
         if ffmpeg is not None:
@@ -145,7 +153,7 @@ class StudioController:
                 raise ValueError('The selected FFmpeg executable does not exist.')
             values['ffmpeg'] = candidate
         for key, value in values.items():
-            if getattr(self, key) != value and key in ('voice', 'language'):
+            if getattr(self, key) != value and key in ('voice', 'language', 'input_kind'):
                 self.result = None
             setattr(self, key, value)
 
@@ -186,8 +194,8 @@ class StudioController:
             raise ValueError('Enter or import a script before previewing or rendering.')
         parser = self.parser
         if parser is None:
-            from ..audio.production import parse_script
-            parser = parse_script
+            from ..audio.production import parse_script, plan_narration
+            parser = plan_narration if self.input_kind == 'narration' else parse_script
         self.draft.assert_source()
         return parser(self.script, title=self.title, voice=self.voice, language=self.language)
 
@@ -197,9 +205,10 @@ class StudioController:
     def to_dict(self):
         # Runtime executable paths and credentials are deliberately not imported
         # from projects. A project cannot choose a helper program on reopening.
-        return {'kind': 'research-audio-studio', 'version': 1, 'mode': 'LOCAL ONLY',
+        return {'kind': 'research-audio-studio', 'version': 2, 'mode': 'LOCAL ONLY',
                 'project_id': self.project_id, 'title': self.title, 'voice': self.voice,
-                'language': self.language, 'output_dir': str(self.output_dir) if self.output_dir else None,
+                'language': self.language, 'input_kind': self.input_kind,
+                'output_dir': str(self.output_dir) if self.output_dir else None,
                 'source_reference': self.source_reference, 'draft': self.draft.to_dict()}
 
     @property
@@ -228,8 +237,10 @@ class StudioController:
     def _validated(self, payload):
         keys = {'kind', 'version', 'mode', 'project_id', 'title', 'voice', 'language',
                 'output_dir', 'source_reference', 'draft'}
+        if isinstance(payload, dict) and payload.get('version') == 2:
+            keys.add('input_kind')
         if (type(payload) is not dict or set(payload) != keys or payload['kind'] != 'research-audio-studio'
-                or type(payload['version']) is not int or payload['version'] != 1
+                or type(payload['version']) is not int or payload['version'] not in (1, 2)
                 or payload['mode'] != 'LOCAL ONLY'):
             raise ValueError('This is not a supported local Audio Studio project.')
         identity = payload['project_id']
@@ -249,6 +260,13 @@ class StudioController:
             if not isinstance(reference, dict) or len(_json_text(reference)) > self.loading_budget:
                 raise ValueError('The source reference is invalid.')
         values['source_reference'] = reference
+        # Legacy independent scripts retain their established interpretation.
+        # Imported sources use literal narration, including legacy page breaks.
+        legacy_kind = 'narration' if reference is not None else 'script'
+        input_kind = payload.get('input_kind', legacy_kind)
+        if input_kind not in ('narration', 'script'):
+            raise ValueError('The saved narration or script mode is invalid.')
+        values['input_kind'] = input_kind
         return values
 
     def open(self, path):
@@ -316,7 +334,7 @@ class StudioController:
             if self.output_dir is None:
                 raise ValueError('Choose the audio output folder first.')
             folder = self._output_folder(self.output_dir)
-            ffmpeg = self.ffmpeg or (Path(shutil.which('ffmpeg')) if shutil.which('ffmpeg') else None)
+            ffmpeg = self.ffmpeg or find_local_tool('ffmpeg')
             if ffmpeg is None or not ffmpeg.is_file():
                 raise ValueError('Install a reviewed local FFmpeg build or choose its executable in Production.')
             renderer = self.renderer
@@ -363,7 +381,7 @@ class LocalPlayback:
             winsound.PlaySound(str(selected), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
             self.windows = True
         else:
-            player = shutil.which('ffplay')
+            player = find_local_tool('ffplay')
             if player is None:
                 raise ValueError('Local playback is unavailable. Open the exported WAV in your audio player.')
             self.process = subprocess.Popen([player, '-nodisp', '-autoexit', '-loglevel', 'error',
@@ -388,13 +406,16 @@ class LocalPlayback:
 
 
 SCRIPT_HELP = (
-    'Type plain narration or a structured script. Plain text uses the selected default voice.\n'
+    'Literal narration reads all entered text using the selected voice. Headings, speaker-like '
+    'labels and bracketed text stay spoken text. Source page separators become chapter boundaries.\n'
+    'Choose Structured production script explicitly to interpret the following directions:\n'
     'Example directives:\n'
     '[role Narrator voice=sapi5:default pan=center language=en]\n'
     '# Chapter one\n'
     'Narrator: The door was closed.\n'
-    '[pause 2]\n'
-    '[music mood=calm tempo=90 gain=0.12 seed=0]\n\n'
+    '[pause 2]\n\n'
+    'Put a music directive before the first spoken line of its chapter, for example '
+    '[music mood=calm tempo=90 gain=0.12 seed=0].\n\n'
     'Use installed voice identifiers from the voice list. Unknown directions are rejected. '
     'Natural language directions are read as text unless represented by a supported directive. '
     'Local music capabilities depend on the configured engine. No models download automatically.\n\n'
@@ -435,6 +456,13 @@ class AudioStudioDialog:
 
         script_layout = wx.BoxSizer(wx.VERTICAL)
         self.title = self._text(script_page, script_layout, 'Project title', controller.title)
+        script_layout.Add(wx.StaticText(script_page, label='Text interpretation'), 0, wx.ALL, 5)
+        self.input_kind = wx.Choice(script_page, choices=['Literal narration — read every line',
+                                                        'Structured production script — interpret directions'])
+        self.input_kind.SetName('Text interpretation: literal narration or structured production script')
+        self.input_kind.SetSelection(0 if controller.input_kind == 'narration' else 1)
+        self.controls.append(self.input_kind)
+        script_layout.Add(self.input_kind, 0, wx.EXPAND | wx.ALL, 5)
         voice_row = wx.BoxSizer(wx.HORIZONTAL)
         voice_row.Add(wx.StaticText(script_page, label='Default local voice'), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.voice = wx.Choice(script_page)
@@ -480,7 +508,7 @@ class AudioStudioDialog:
         self._button(production_page, output_row, 'Choose output folder', self.choose_output)
         self._button(production_page, output_row, 'Choose FFmpeg executable', self.choose_ffmpeg)
         prod_layout.Add(output_row, 0, wx.ALL, 5)
-        self.runtime = wx.StaticText(production_page, label='FFmpeg: ' + str(controller.ffmpeg or shutil.which('ffmpeg') or 'not found'))
+        self.runtime = wx.StaticText(production_page, label='FFmpeg: ' + str(controller.ffmpeg or find_local_tool('ffmpeg') or 'not found'))
         self.runtime.SetName('Local FFmpeg runtime path')
         prod_layout.Add(self.runtime, 0, wx.ALL, 5)
         self.plan_text = wx.TextCtrl(production_page, style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -519,6 +547,7 @@ class AudioStudioDialog:
         for field in (self.title, self.language, self.script, self.output):
             field.Bind(wx.EVT_TEXT, self._changed)
         self.voice.Bind(wx.EVT_CHOICE, self._changed)
+        self.input_kind.Bind(wx.EVT_CHOICE, self._changed)
         self.timer = wx.Timer(self.dialog)
         self.dialog.Bind(wx.EVT_TIMER, self.autosave, self.timer)
         self.timer.Start(30000)
@@ -584,6 +613,7 @@ class AudioStudioDialog:
         voice = self.voice_rows[index]['id'] if 0 <= index < len(self.voice_rows) else self.controller.voice
         output = self.output.GetValue().strip()
         self.controller.configure(title=self.title.GetValue(), voice=voice, language=self.language.GetValue(),
+                                  input_kind='narration' if self.input_kind.GetSelection() == 0 else 'script',
                                   output_dir=output if output else None)
         if not output:
             self.controller.output_dir = None
@@ -598,6 +628,7 @@ class AudioStudioDialog:
         self._loading = True
         self.title.ChangeValue(self.controller.title)
         self.language.ChangeValue(self.controller.language)
+        self.input_kind.SetSelection(0 if self.controller.input_kind == 'narration' else 1)
         self.script.ChangeValue(self.controller.script)
         self.output.ChangeValue(str(self.controller.output_dir or ''))
         self.differences.ChangeValue(self.controller.draft.difference_text())

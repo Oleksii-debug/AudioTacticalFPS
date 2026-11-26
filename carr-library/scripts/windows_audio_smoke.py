@@ -82,8 +82,10 @@ def main():
         library = LibraryApp(root / 'library')
         frame = DesktopFrame(library)
         controller = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
-        controller.new(script, title='Synthetic local production')
-        controller.configure(voice=voice, language='en', output_dir=root / 'desktop-output')
+        controller.new(script, title='Synthetic local production', input_kind='script')
+        desktop_output = root / 'desktop-output'
+        desktop_output.mkdir()
+        controller.configure(voice=voice, language='en', output_dir=desktop_output)
         controller.save(root / 'studio-project.json')
         studio = AudioStudioDialog(frame, controller)
         try:

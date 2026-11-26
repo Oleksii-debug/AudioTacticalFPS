@@ -113,6 +113,8 @@ def main(argv=None):
             return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        from .audio_runtime import activate_bundled_audio_runtime
+        activate_bundled_audio_runtime()
         if audio_requested(args):
             return run_audio(args)
         if args.self_test:
