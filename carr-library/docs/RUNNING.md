@@ -187,6 +187,34 @@ first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
 
+## Full-library backup and reading recovery
+
+Choose **Library, Back up all libraries** to save all libraries, including archived ones,
+their registered originals, immutable source revisions, research evidence,
+notes, topics, tags, saved queries and academic references. Backup format 3 also
+includes the existing page bookmarks and resume positions in `reading-state.json`.
+If no reading state has been saved, the manifest records its absence explicitly.
+
+The database and reading state are captured under the same library writer lock.
+Each included file is bound by size and SHA256, and saved reading places are
+checked against the copied edition, revision, page or segment and source hashes.
+Corrupt, mismatched or linked reading state causes the operation to stop without
+silently leaving bookmarks out. The reader still checks the current source when
+opening a restored place; an old revision is reported as stale instead of being
+redirected to a newer one.
+
+Keep the returned manifest SHA256 separately from the backup folder. Use
+**Library, Restore backup to a new folder** to validate the complete supported
+backup and create a new data directory; it
+does not overwrite or merge an existing library. Formats 1 and 2 remain
+compatible but do not contain reading state. Their separately exported reading
+bookmarks can be imported after restoring the matching library.
+
+This format includes only its documented database, original files and reading
+sidecar. It does not collect arbitrary settings, API credentials, audio projects,
+generated audio, model files or pending import journals. Those V3 recovery
+components require their own implemented and validated formats.
+
 ## Review the source catalog
 
 Open a library, then use the **Research** menu:
@@ -271,6 +299,14 @@ use the same checked Save workflow as topic exports.
 
 ### Search and source actions
 
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ACADEMIC_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
+
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently
 chooses **Short quotations**, usually a source sentence around the match, or
@@ -298,6 +334,26 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
+
+## Academic research tools
+
+Press **Alt+A** to open the **Academic** menu. In an open research topic,
+**Ctrl+Alt+M** compares saved source versions, themes, exact quotations and
+research notes. Include subtopics, filter by an exact tag, open selected evidence
+in its existing editor, or export the comparison as CSV/Markdown. **Export
+research outline with subtopics** writes the ordered topic structure as Markdown
+or plain text, keeping source quotations and your notes separately labelled.
+
+**Import bibliographic metadata from RIS** reviews a local RIS record for an
+already imported edition. Only checked title/author/language/edition/volume
+fields are applied; unchecked fields are preserved. Year, journal, DOI and other
+unsupported metadata are not imported, and no attachment or URL is opened.
+**Check catalog quality** reviews missing fields, unfiled editions and tentative
+duplicate hints in one library or collection. It does not merge records.
+
+See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
+limits and provenance. These commands add no runtime dependency or schema
+migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
 
 ## Search across saved research topics
 
