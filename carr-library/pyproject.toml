@@ -62,6 +62,7 @@ Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/ca
 include-package-data = true
 packages = [
   "carr_library",
+  "carr_library.assistant",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",

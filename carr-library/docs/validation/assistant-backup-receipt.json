@@ -1,0 +1,30 @@
+[
+  {
+    "version": "baseline",
+    "budget_case": {
+      "status": "complete",
+      "message": "All selected operations completed and returned artifacts were verified.",
+      "published": true
+    },
+    "tamper_case": {
+      "initial": "complete",
+      "resumed": "complete",
+      "message": "All selected operations completed and returned artifacts were verified."
+    },
+    "original_libraries_preserved": true
+  },
+  {
+    "version": "patched",
+    "budget_case": {
+      "status": "failed",
+      "message": "complete backup exceeds the requested byte budget",
+      "published": false
+    },
+    "tamper_case": {
+      "initial": "complete",
+      "resumed": "failed",
+      "message": "A completed backup changed; its database and sources must be reviewed before resuming."
+    },
+    "original_libraries_preserved": true
+  }
+]
