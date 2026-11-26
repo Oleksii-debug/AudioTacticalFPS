@@ -24,9 +24,11 @@ from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
 from .catalog_metadata_dialog import edit_selected_book
+from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .reading_desk import install_reading_desk_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -455,6 +457,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
+            ('Library tools\tCtrl+Shift+L', lambda e: show_catalog_tools(self)),
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
@@ -476,6 +479,7 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_reading_desk_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1012,6 +1016,7 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+B opens Import Center for folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
