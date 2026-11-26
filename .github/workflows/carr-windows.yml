@@ -98,6 +98,11 @@ jobs:
             'tests/extract/test_epub_ordered.py',
             'tests/reader/test_ebook_reader.py',
             'tests/ui/test_ebook_reader.py',
+            'tests/extract/test_epub_navigation.py',
+            'tests/reader/test_ebook_contents.py',
+            'tests/e2e/test_epub_library.py',
+            'tests/e2e/test_epub_reading_desk.py',
+            'tests/ui/test_ebook_dialog.py',
             'tests/e2e/test_retained_source_search_integrity.py',
             'tests/e2e/test_research_workflows.py',
             'tests/e2e/test_catalog_insights_workflow.py',
@@ -200,6 +205,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native EPUB contents and exact chapter search
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_ebook_native.py 2>&1 | Tee-Object 'ci-results/native-ebook-contents.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native full-source reader and page bookmarks
@@ -354,7 +365,11 @@ jobs:
           assert runtime_handle is not None
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
-          status = pytest.main(sys.argv[2:])
+          # Keep the shared workflow list intact while exercising the additive
+          # contents reader in this same installed-package/native-runtime process.
+          contents_suites = ['tests/reader/test_ebook_contents.py',
+                            'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py']
+          status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)

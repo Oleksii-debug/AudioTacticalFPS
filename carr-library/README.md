@@ -31,6 +31,9 @@ instructions.
   changes atomically, isolate native parsers and resume interrupted imports.
 - Read EPUB books by their declared section order, with keyboard chapter
   selection, previous/next navigation and separate authored image descriptions.
+- Navigate embedded EPUB contents and headings, find exact text within a chapter,
+  and inspect extraction notes; earlier imports retain their existing identities
+  and remain readable through a chapter-start contents list.
 - Search exact words, phrases or all terms; filter by collection, author, title,
   language and edition. Local thematic BM25 and multilingual MiniLM rank exact
   source slices. Catalog and source lookups share one authorized snapshot.

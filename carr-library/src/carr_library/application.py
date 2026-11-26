@@ -545,15 +545,10 @@ class LibraryApp:
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
+                        from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
-                        settings = canonical({'adapter': 'epub-spine-v1', 'kind': 'logical_segment',
-                            'provenance': extracted['provenance'],
-                            'chapters': [r['logical_locator'] for r in extracted['records']],
-                            'alternatives': [r.get('alternatives', []) for r in extracted['records']],
-                            'warnings': extracted['warnings']})
-                        if len(settings.encode('utf-8')) > 4 * 1024 * 1024:
-                            raise ValueError('The EPUB section index exceeds the supported limit.')
+                        settings = extraction_settings(extracted)
                     else:
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)

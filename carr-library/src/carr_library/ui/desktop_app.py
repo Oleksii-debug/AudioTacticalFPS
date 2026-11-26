@@ -32,6 +32,7 @@ from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
+from .ebook_actions import install_ebook_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -491,6 +492,7 @@ class DesktopFrame(WorkspaceFrame):
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
+        install_ebook_actions(self)
         install_catalog_insights_actions(self)
 
     def make_evidence_panel(self,parent,services):
@@ -1058,6 +1060,7 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+B opens Import Center for folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
+            'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'

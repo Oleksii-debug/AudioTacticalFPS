@@ -108,6 +108,13 @@ EPUB section numbers are not printed page numbers. Text remains an unverified
 extraction; the application's verified-quotation and saved-evidence commands
 do not approve it automatically. See [EPUB reading](EPUB_READING.md).
 
+For embedded contents, chapter headings and literal search inside the chapter,
+select the EPUB in **Books and Collections** and press **Ctrl+Shift+O**
+(**Library, Read electronic book contents**). `F3` finds the next occurrence and
+`Shift+F3` the previous one. An extraction report explains omissions and shows
+authored image descriptions separately. Earlier imports open with their stored
+chapter starts, without rewriting their text or existing research references.
+
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
 only bibliography; they omit quotations and private notes. CSV text columns
