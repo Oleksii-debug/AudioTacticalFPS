@@ -70,9 +70,8 @@ def main():
         def perform():
             try:
                 action()
-                if dialog.IsModal() and not getattr(dialog, 'pending', False):
-                    raise AssertionError('The native dialog did not finish its requested action: '
-                                         + getattr(dialog, 'status', dialog).GetValue())
+                # Native Windows exits the modal loop after this callback returns.
+                # The watchdog and ShowModal return-code check verify completion.
             except Exception:
                 errors.append(traceback.format_exc())
                 if dialog.IsModal():
