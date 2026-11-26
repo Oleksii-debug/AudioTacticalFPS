@@ -91,7 +91,9 @@ def publish_new(source, destination):
     source, destination = Path(source), Path(destination)
     regular_file(source)
     checked_directory(destination.parent)
-    with source.open('rb') as stream:
+    # Windows' CRT rejects fsync on a read-only descriptor. Opening an existing
+    # generated file for update does not truncate or change its contents.
+    with source.open('r+b') as stream:
         os.fsync(stream.fileno())
     os.link(source, destination)
     _sync_directory(destination.parent)

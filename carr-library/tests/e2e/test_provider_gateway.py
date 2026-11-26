@@ -3,6 +3,7 @@
 Every request is synthetic. No credentials or paid services are used.
 """
 from dataclasses import asdict, replace
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -212,7 +213,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(report[0]['state'], 'complete')
         self.assertEqual(report[0]['estimate_micros'], 50)
         self.assertEqual(len(report[0]['output_sha256']), 64)
-        with sqlite3.connect(self.ledger.path) as db:
+        with closing(sqlite3.connect(self.ledger.path)) as db:
             dump = '\n'.join(db.iterdump())
         self.assertNotIn(self.request.text, dump)
         self.assertNotIn('synthetic-test-key', dump)

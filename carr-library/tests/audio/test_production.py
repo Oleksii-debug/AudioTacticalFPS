@@ -10,6 +10,7 @@ import struct
 import math
 import os
 import shutil
+from unittest.mock import patch
 
 from carr_library.audio.production import parse_script, render_project, speech_segments
 from carr_library.audio.models import ProductionPlan, Effect, Role, Line, Scene, Pause
@@ -40,7 +41,7 @@ class ToneEngine:
 
 class ProductionModelTests(unittest.TestCase):
     def test_round_trip_preserves_source_and_typed_directives(self):
-        script = '# One\n[role Alice pan=left voice="local:One"]\n[effect Alice equalizer frequency=500 gain_db=2 q=1]\nAlice: Exact words.\n[pause 2]\n[music mood=calm tempo=90 seed=4]\n# Two\nNarrator: End.'
+        script = '# One\n[role Alice pan=left voice="local:One"]\n[effect Alice equalizer frequency=500 gain_db=2 q=1]\n[music mood=calm tempo=90 seed=4]\nAlice: Exact words.\n[pause 2]\n# Two\nNarrator: End.'
         plan = parse_script(script)
         restored = ProductionPlan.from_dict(json.loads(json.dumps(plan.to_dict())))
         self.assertEqual(plan, restored)
@@ -70,7 +71,8 @@ class ProductionModelTests(unittest.TestCase):
 
     def test_late_role_changes_do_not_rewrite_previous_speech(self):
         for script in ('Alice: First.\n[role Alice pan=left]\nAlice: Second.',
-                       'Narrator: First.\n[effect Narrator highpass frequency=80]'):
+                       'Narrator: First.\n[effect Narrator highpass frequency=80]',
+                       'Narrator: First.\n[music mood=suspense]'):
             with self.assertRaisesRegex(ValueError, 'before'):
                 parse_script(script)
 
@@ -210,6 +212,27 @@ class ProductionRenderTests(unittest.TestCase):
         self.assertIn('music-000001.music.json', names)
         self.assertTrue((self.root / 'music-jobs').is_dir())
         self.assertEqual(self.run_plan(plan)['run_key'], result['run_key'])
+
+    def test_music_cancellation_retains_engine_chunks_for_next_run(self):
+        from carr_library.audio import music
+        plan = parse_script('[output sample_rate=8000 stems=false]\n[music mood=calm tempo=240]\n[pause 10]')
+        stopped = [False]
+        def progress(message):
+            if message.startswith('Music chunk 1 of '):
+                stopped[0] = True
+        with self.assertRaises((InterruptedError, RenderCancelled)):
+            self.run_plan(plan, cancelled=lambda: stopped[0], on_status=progress)
+        states = list((self.root / 'music-jobs').glob('*/cue.music-work/state.json'))
+        self.assertEqual(len(states), 1)
+        state = json.loads(states[0].read_text('utf-8'))
+        self.assertEqual(len(state['chunks']), 1)
+        accepted = states[0].parent / 'part-00000000.wav'
+        checksum = hashlib.sha256(accepted.read_bytes()).hexdigest()
+        with patch.object(music, '_render_procedural_chunk', wraps=music._render_procedural_chunk) as generate:
+            result = self.run_plan(plan)
+        self.assertEqual(generate.call_count, 2)
+        self.assertEqual(hashlib.sha256(accepted.read_bytes()).hexdigest(), checksum)
+        self.assertEqual(result['frames'], 80000)
 
 
 if __name__ == '__main__':

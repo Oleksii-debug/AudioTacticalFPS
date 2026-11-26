@@ -6,6 +6,7 @@ and say that their individual character positions are approximate. Unchanged
 spans keep exact offsets, including CR/LF and combining Unicode characters.
 """
 from dataclasses import asdict, dataclass
+from bisect import bisect_right
 import hashlib
 import json
 from pathlib import Path
@@ -90,6 +91,7 @@ class NarrationEdit:
     before: str
     after: str
     reason: str
+    substitutions: tuple = ()
 
 
 class NarrationDraft:
@@ -237,10 +239,68 @@ class NarrationDraft:
             cursor = at + len(needle)
             if not all_occurrences:
                 break
-        # Descending offsets ensure later edits cannot shift earlier matches.
-        for at in reversed(positions):
+        if len(positions) == 1:
+            at = positions[0]
             self.replace_range(at, at + len(needle), replacement, reason='Literal pronunciation replacement')
+        elif positions:
+            self._replace_many(tuple((at, at + len(needle), needle, replacement) for at in positions),
+                               reason='Literal pronunciation replacement')
         return len(positions)
+
+    def _replace_many(self, substitutions, *, reason):
+        """Apply one Replace-all command in bounded linear-piece storage."""
+        self.assert_source()
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 256:
+            raise ValueError('Describe the reading edit in at most 256 characters.')
+        current = self.text
+        offsets, total = [], 0
+        for piece in self._pieces:
+            offsets.append(total)
+            total += len(piece.text)
+
+        def sliced(first, last):
+            if first == last:
+                return []
+            index = max(0, bisect_right(offsets, first) - 1)
+            result = []
+            while index < len(self._pieces) and offsets[index] < last:
+                piece, at = self._pieces[index], offsets[index]
+                result.append(piece.part(max(0, first - at), min(len(piece.text), last - at)))
+                index += 1
+            return result
+
+        updated, cursor = [], 0
+        for item in substitutions:
+            if not isinstance(item, (tuple, list)) or len(item) != 4:
+                raise ValueError('Invalid literal replacement history.')
+            first, last, before, after = item
+            if (type(first) is not int or type(last) is not int or not cursor <= first < last <= len(current)
+                    or not isinstance(before, str) or current[first:last] != before):
+                raise ValueError('Literal replacement does not match its source history.')
+            text_digest(after)
+            if before == after:
+                raise ValueError('A saved narration edit cannot be empty.')
+            updated.extend(sliced(cursor, first))
+            source = sliced(first, last)
+            if after:
+                updated.append(_Piece(after, min(piece.start for piece in source),
+                                      max(piece.end for piece in source), False))
+            cursor = last
+        if not substitutions:
+            raise ValueError('A replacement batch cannot be empty.')
+        updated.extend(sliced(cursor, len(current)))
+        first, last = substitutions[0][0], substitutions[-1][1]
+        middle, cursor = [], first
+        for begin, end, _, after in substitutions:
+            middle.extend((current[cursor:begin], after))
+            cursor = end
+        edit = NarrationEdit(first, last, current[first:last], ''.join(middle), reason,
+                             tuple(tuple(item) for item in substitutions))
+        self._pieces = tuple(updated)
+        self._edits.append(edit)
+        self._states.append(self._pieces)
+        self._redo.clear()
+        return True
 
     def undo(self):
         if not self._edits:
@@ -257,7 +317,10 @@ class NarrationDraft:
         remaining = list(self._redo)
         if self.text[edit.start:edit.end] != edit.before:
             raise ValueError('The reading history no longer matches this draft.')
-        self.replace_range(edit.start, edit.end, edit.after, reason=edit.reason)
+        if edit.substitutions:
+            self._replace_many(edit.substitutions, reason=edit.reason)
+        else:
+            self.replace_range(edit.start, edit.end, edit.after, reason=edit.reason)
         self._redo = remaining
         return True
 
@@ -290,12 +353,21 @@ class NarrationDraft:
             raise ValueError('The draft belongs to a different source.')
         edit_keys = {'start', 'end', 'before', 'after', 'reason'}
         for item in value['edits']:
-            if type(item) is not dict or set(item) != edit_keys:
+            if type(item) is not dict or set(item) not in (edit_keys, edit_keys | {'substitutions'}):
                 raise ValueError('Invalid narration edit.')
             draft._range(item['start'], item['end'])
             if draft.text[item['start']:item['end']] != item['before']:
                 raise ValueError('Narration edit does not match its source history.')
-            if not draft.replace_range(item['start'], item['end'], item['after'], reason=item['reason']):
+            substitutions = item.get('substitutions', ())
+            if not isinstance(substitutions, (tuple, list)):
+                raise ValueError('Invalid literal replacement history.')
+            if substitutions:
+                draft._replace_many(substitutions, reason=item['reason'])
+                actual = draft.edits[-1]
+                if (actual.start, actual.end, actual.before, actual.after) != (
+                        item['start'], item['end'], item['before'], item['after']):
+                    raise ValueError('Literal replacement summary does not match its history.')
+            elif not draft.replace_range(item['start'], item['end'], item['after'], reason=item['reason']):
                 raise ValueError('A saved narration edit cannot be empty.')
         if text_digest(draft.text) != value['reading_sha256']:
             raise ValueError('The saved reading copy failed its content check.')

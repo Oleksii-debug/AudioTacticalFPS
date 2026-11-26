@@ -11,8 +11,8 @@ import wave
 
 import pytest
 
-from carr_library.audio.engines import (DordiaiVoicesEngine, EngineUnavailable, FliteEngine,
-    SAPI5Engine, VoiceRegistry, _DORDIAI_OFFLINE_BOOTSTRAP, _SAPI_SCRIPT, _run, default_registry)
+from carr_library.audio.engines import (DordiaiVoicesEngine, EngineUnavailable, FliteEngine, ESpeakEngine,
+    SAPI5Engine, Voice, VoiceRegistry, _DORDIAI_OFFLINE_BOOTSTRAP, _SAPI_SCRIPT, _run, default_registry)
 
 
 def wav(path, data=b'\x01\x00' * 240):
@@ -65,6 +65,13 @@ def test_sapi_unavailable_pitch_and_language_fail_closed(tmp_path):
         engine.synthesize('Test', tmp_path / 'v.wav', voice='sapi5:test', pitch=2)
     with pytest.raises(EngineUnavailable, match='language'):
         engine.synthesize('Test', tmp_path / 'v.wav', voice='sapi5:test', language='uk')
+
+
+def test_espeak_does_not_substitute_another_language(tmp_path):
+    engine = ESpeakEngine(Path(sys.executable).resolve())
+    engine._voices = {'espeak-ng:en': Voice('espeak-ng:en','English',('en',),'espeak-ng')}
+    with pytest.raises(EngineUnavailable, match='language'):
+        engine.synthesize('Привіт.',tmp_path/'speech.wav',voice='espeak-ng:en',language='uk')
 
 
 def test_local_process_cancellation_stops_owned_worker():
@@ -126,6 +133,16 @@ def test_dordiai_worker_denies_network_before_external_code(tmp_path):
     worker.write_text('import socket;socket.create_connection(("127.0.0.1",9))', encoding='utf-8')
     with pytest.raises(EngineUnavailable):
         _run([Path(sys.executable).resolve(), '-I', '-c', _DORDIAI_OFFLINE_BOOTSTRAP, worker])
+
+
+def test_dordiai_cancels_worker_that_never_reads_large_unicode_request(tmp_path):
+    worker = tmp_path/'worker.py'
+    worker.write_text('import time;time.sleep(20)',encoding='utf-8')
+    started = time.monotonic()
+    with pytest.raises(InterruptedError):
+        protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', str(worker)],
+            {'text':'\U0001f600'*8000}, tmp_path/'audio.wav', lambda: time.monotonic()-started > .15)
+    assert time.monotonic()-started < 4
 
 
 def local_flite():

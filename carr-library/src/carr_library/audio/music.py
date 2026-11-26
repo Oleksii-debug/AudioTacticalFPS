@@ -452,15 +452,18 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
         if info['frames'] != frames or info['sample_rate'] != sample_rate:
             raise ValueError('Final music duration does not match the requested sample count.')
         midi = None
+        reuse_midi = False
         if engine == 'procedural':
-            midi = target.with_suffix('.mid')
-            if midi.exists() or midi.is_symlink():
-                raise FileExistsError(midi)
+            midi = local_path(target.with_suffix('.mid'), must_exist=False)
             midi_tmp = work / 'score.partial.mid'
             local_path(midi_tmp, must_exist=False)
             midi_tmp.unlink(missing_ok=True)
             _write_midi(midi_tmp, frames=frames, sample_rate=sample_rate, mood=mood, tempo=tempo,
                         seed=seed, cancelled=cancelled)
+            if midi.exists():
+                if not midi.is_file() or digest_file(midi) != digest_file(midi_tmp):
+                    raise FileExistsError(midi)
+                reuse_midi = True
         provenance = {'schema_version': 1, 'engine': engine, 'settings_sha256': settings_hash,
                       'frames': frames, 'sample_rate': sample_rate, 'channels': 1,
                       'sha256': digest_file(assembled, cancelled=cancelled), 'chunks': chunk_count,
@@ -470,21 +473,31 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                                   else '25-second generations with five-second audio context; no full-project waveform in RAM',
                       'model': model.cache_identity() if model else None,
                       'listening_acceptance': 'NOT_RUN', 'rights': model.license if model else 'Original procedural score; no sampled recording or bundled SoundFont'}
-        metadata = target.with_suffix('.music.json')
-        if metadata.exists() or metadata.is_symlink():
-            raise FileExistsError(metadata)
+        metadata = local_path(target.with_suffix('.music.json'), must_exist=False)
+        reuse_metadata = False
+        if metadata.exists():
+            try:
+                previous_metadata = read_json(metadata)
+                comparable = {key: value for key, value in provenance.items() if key != 'reused_chunks'}
+                previous_comparable = {key: value for key, value in previous_metadata.items() if key != 'reused_chunks'}
+                if previous_comparable != comparable:
+                    raise ValueError('Different provenance')
+            except (ValueError, OSError, AttributeError) as exc:
+                raise FileExistsError(metadata) from exc
+            reuse_metadata = True
         if cancelled():
             raise InterruptedError('Music generation cancelled; verified chunks are saved.')
         # Publish companions first and WAV last: the WAV is the completion marker.
         published = []
         try:
-            if midi is not None:
+            if midi is not None and not reuse_midi:
                 os.link(midi_tmp, midi)
                 published.append(midi)
             metadata_tmp = work / 'provenance.partial.json'
             _atomic_json(metadata_tmp, provenance)
-            os.link(metadata_tmp, metadata)
-            published.append(metadata)
+            if not reuse_metadata:
+                os.link(metadata_tmp, metadata)
+                published.append(metadata)
             _publish(assembled, target)
         except BaseException:
             for companion in published:

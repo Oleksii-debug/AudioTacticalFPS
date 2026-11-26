@@ -90,12 +90,15 @@ def _member(name):
 
 
 def _studio(payload):
-    if (type(payload) is not dict or set(payload) != _STUDIO_KEYS
+    keys = _STUDIO_KEYS | ({'input_kind'} if isinstance(payload, dict) and payload.get('version') == 2 else set())
+    if (type(payload) is not dict or set(payload) != keys
             or payload['kind'] != 'research-audio-studio' or type(payload['version']) is not int
-            or payload['version'] != 1 or payload['mode'] != 'LOCAL ONLY'
+            or payload['version'] not in (1, 2) or payload['mode'] != 'LOCAL ONLY'
             or not isinstance(payload['project_id'], str)
             or not re.fullmatch('[0-9a-f]{32}', payload['project_id'])):
         raise ValueError('A saved local Audio Studio project is required for this snapshot.')
+    if payload['version'] == 2 and payload['input_kind'] not in ('narration', 'script'):
+        raise ValueError('The saved narration or script mode is invalid.')
     for name in ('title', 'voice', 'language'):
         if not isinstance(payload[name], str) or not payload[name].strip():
             raise ValueError('The saved Audio Studio settings are invalid.')
@@ -243,7 +246,9 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
             check_cancelled(cancelled)
             if _identity(_safe(target.parent, directory=True))[:2] != parent_identity:
                 raise ValueError('The snapshot destination folder changed.')
-            with stage.open('rb') as stream:
+            # Windows needs a writable descriptor for fsync; r+b preserves the
+            # completed ZIP bytes and still flushes before atomic publication.
+            with stage.open('r+b') as stream:
                 os.fsync(stream.fileno())
             os.link(stage, target)
             return {'snapshot': str(target), 'files': len(records), 'bytes': total,
@@ -373,7 +378,9 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
                              'project_sha256': hashlib.sha256(relocated).hexdigest()}
         (stage / 'restore-manifest.json').write_bytes(_json(restored_manifest))
         for changed in (project_path, recovery if recovery.exists() else project_path, stage / 'restore-manifest.json'):
-            with changed.open('rb') as stream:
+            # These are our newly written staging files, not original inputs.
+            # Use update mode so Windows can durably flush the relocated state.
+            with changed.open('r+b') as stream:
                 os.fsync(stream.fileno())
         check_cancelled(cancelled)
         if _identity(_safe(target.parent, directory=True))[:2] != parent_id:

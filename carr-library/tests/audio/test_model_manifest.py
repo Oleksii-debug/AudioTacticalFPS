@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from carr_library.audio.model_manifest import LocalModelManifest, ModelManifestError, digest_file, local_path, read_json
+from carr_library.audio.model_manifest import LocalModelManifest, ModelManifestError, digest_file, local_path, read_json, offline_environment
 
 
 def manifest(tmp_path, **updates):
@@ -106,3 +106,19 @@ def test_boolean_schema_and_acceptance_strings_are_rejected(tmp_path):
         LocalModelManifest.load(manifest(tmp_path, schema_version=True))
     with pytest.raises(ModelManifestError, match='booleans'):
         LocalModelManifest.load(manifest(tmp_path, license_accepted='yes'))
+
+
+def test_complete_runtime_inventory_rejects_unlisted_python_file(tmp_path):
+    model = LocalModelManifest.load(manifest(tmp_path))
+    assert model.verify(require_complete=True)['files'] == 1
+    (tmp_path/'unexpected_import.py').write_text('raise RuntimeError()', encoding='utf-8')
+    with pytest.raises(ModelManifestError, match='missing from its reviewed manifest'):
+        model.verify(require_complete=True)
+
+
+def test_worker_environment_excludes_host_credentials(monkeypatch):
+    for name in ('PROVIDER_API_KEY', 'HF_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'HTTP_PROXY'):
+        monkeypatch.setenv(name, 'synthetic-secret')
+    environment = offline_environment()
+    assert not any(name in environment for name in ('PROVIDER_API_KEY', 'HF_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'HTTP_PROXY'))
+    assert environment['HF_HUB_OFFLINE'] == '1'

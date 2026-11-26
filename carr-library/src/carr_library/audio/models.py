@@ -20,10 +20,11 @@ def number(value, low, high, name):
     return value
 
 
-def text(value, name, maximum=4096, *, empty=False):
+def text(value, name, maximum=4096, *, empty=False, allow_formfeed=False):
     if not isinstance(value, str) or (not empty and not value.strip()) or len(value) > maximum:
         raise ValueError(f'{name} must be text of at most {maximum} characters.')
-    if any(ord(c) < 32 and c not in '\n\r\t' for c in value):
+    controls = '\n\r\t\f' if allow_formfeed else '\n\r\t'
+    if any(ord(c) < 32 and c not in controls for c in value):
         raise ValueError(f'{name} contains a control character.')
     return value
 
@@ -127,11 +128,23 @@ class Line:
     id: str
     role: str
     text: str
+    literal: bool = False
+    source_start: int | None = None
+    source_end: int | None = None
 
     def __post_init__(self):
         identity(self.id)
         text(self.role, 'Line role', 80)
-        text(self.text, 'Line text', 100000)
+        if type(self.literal) is not bool:
+            raise ValueError('Literal narration selection must be a boolean.')
+        text(self.text, 'Line text', 100000, empty=self.literal)
+        if self.literal:
+            if (type(self.source_start) is not int or type(self.source_end) is not int
+                    or self.source_start < 0 or self.source_end < self.source_start
+                    or self.source_end - self.source_start != len(self.text)):
+                raise ValueError('Literal narration requires an exact source span.')
+        elif self.source_start is not None or self.source_end is not None:
+            raise ValueError('Source spans belong only to literal narration lines.')
 
 
 @dataclass(frozen=True)
@@ -222,10 +235,14 @@ class ProductionPlan:
     export_stems: bool = True
     disk_budget_bytes: int = 32 * 1024 ** 3
     schema_version: int = SCHEMA
+    input_kind: str = 'script'
 
     def __post_init__(self):
         text(self.title, 'Project title', 500)
-        text(self.original_script, 'Original script', 16 * 1024 * 1024, empty=True)
+        if self.input_kind not in ('script', 'narration'):
+            raise ValueError('Choose explicit script or literal narration input.')
+        text(self.original_script, 'Original script', 16 * 1024 * 1024, empty=True,
+             allow_formfeed=self.input_kind == 'narration')
         if type(self.schema_version) is not int or self.schema_version != SCHEMA:
             raise ValueError('Unsupported production project version.')
         if not isinstance(self.roles, tuple) or not 1 <= len(self.roles) <= 64 or not all(isinstance(r, Role) for r in self.roles):
@@ -239,6 +256,24 @@ class ProductionPlan:
         roles = {r.name for r in self.roles}
         if any(e.role not in roles for s in self.scenes for e in s.events if isinstance(e, Line)):
             raise ValueError('Every spoken line needs a declared role.')
+        if self.input_kind == 'narration':
+            cursor = 0
+            for scene in self.scenes:
+                if scene.music is not None:
+                    raise ValueError('Literal narration cannot contain a parsed music directive.')
+                for event in scene.events:
+                    if not isinstance(event, Line) or not event.literal:
+                        raise ValueError('Literal narration contains only source-bound text lines.')
+                    start, end = event.source_start, event.source_end
+                    if (start < cursor or end > len(self.original_script)
+                            or any(c != '\f' for c in self.original_script[cursor:start])
+                            or self.original_script[start:end] != event.text):
+                        raise ValueError('Literal narration changed or omitted source text.')
+                    cursor = end
+            if any(c != '\f' for c in self.original_script[cursor:]):
+                raise ValueError('Literal narration omitted source text at the end.')
+        elif any(event.literal for scene in self.scenes for event in scene.events if isinstance(event, Line)):
+            raise ValueError('Literal narration lines require narration input mode.')
         if self.output_format not in FORMATS or type(self.sample_rate) is not int or self.sample_rate not in SAMPLE_RATES:
             raise ValueError('Unsupported audio output format or sample rate.')
         if type(self.export_stems) is not bool or type(self.disk_budget_bytes) is not int or self.disk_budget_bytes < 1024 ** 2:
@@ -264,7 +299,7 @@ class ProductionPlan:
 
     @classmethod
     def _from_dict(cls, value):
-        value = _strict(value, ('schema_version', 'title', 'original_script', 'roles', 'scenes', 'output_format', 'sample_rate', 'export_stems', 'disk_budget_bytes'), 'project')
+        value = _strict(value, ('schema_version', 'title', 'original_script', 'roles', 'scenes', 'output_format', 'sample_rate', 'export_stems', 'disk_budget_bytes', 'input_kind'), 'project')
         scenes = []
         for item in value['scenes']:
             item = _strict(item, ('id', 'title', 'events', 'music'), 'scene')
@@ -273,7 +308,7 @@ class ProductionPlan:
                 if not isinstance(event, dict) or event.get('kind') not in ('line', 'pause', 'sound'):
                     raise ValueError('Unknown production event.')
                 kind = event['kind']
-                names, constructor = {'line': (('id', 'role', 'text'), Line), 'pause': (('id', 'seconds'), Pause), 'sound': (('id', 'asset', 'gain', 'pan'), Sound)}[kind]
+                names, constructor = {'line': (('id', 'role', 'text', 'literal', 'source_start', 'source_end'), Line), 'pause': (('id', 'seconds'), Pause), 'sound': (('id', 'asset', 'gain', 'pan'), Sound)}[kind]
                 _strict(event, (*names, 'kind'), 'event')
                 events.append(constructor(**{k: v for k, v in event.items() if k != 'kind'}))
             music = item.get('music')

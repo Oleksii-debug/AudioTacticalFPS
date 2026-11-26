@@ -15,6 +15,15 @@ the UI thread; Cancel preserves accepted checkpoints. Status and errors are
 readable text. Ctrl+S saves, Ctrl+Shift+S saves under a new name. Autosave preserves
 a recovery draft; an externally changed project file is not silently replaced.
 
+**Literal narration** is the default interpretation. Every source line remains
+spoken text, including headings, colons and text such as `[pause 2]`. Imported
+book/text copies always start in this mode. Form-feed source separators become
+separate source segments while the immutable original retains its exact text.
+Choose **Structured production script** explicitly to enable role, pause,
+music and output directions. The interpretation is saved in the project and
+snapshot. Legacy independent scripts retain their prior script interpretation;
+legacy imported source copies open in literal narration mode.
+
 Preparation supports explicit literal pronunciation substitutions, editable
 reading text, original/difference views, undo/redo and export of the reading copy.
 These edits never approve an OCR quotation or rewrite stored library evidence.
@@ -28,7 +37,7 @@ assets. API keys, executable runtimes and unrelated private files are excluded.
 
 ## Explicit script directions
 
-Define roles before their first spoken line. No arbitrary code, shell command
+Select Structured production script, then define roles before their first spoken line. No arbitrary code, shell command
 or FFmpeg filter expression is accepted in a script. Unknown directions fail
 with a line number. The current planner is a deterministic script parser;
 general natural-language tool planning is not claimed.

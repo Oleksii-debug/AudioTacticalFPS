@@ -582,6 +582,8 @@ class DordiaiVoicesEngine:
         if cancelled():
             raise InterruptedError('Speech operation cancelled.')
         replies = queue.Queue(maxsize=2)
+        outgoing = queue.Queue(maxsize=2)
+        write_errors = queue.Queue(maxsize=1)
         finished = threading.Event()
         options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
         with tempfile.TemporaryFile() as errors:
@@ -616,9 +618,31 @@ class DordiaiVoicesEngine:
                             pass
             reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
             reader.start()
+            def write_requests():
+                while not finished.is_set():
+                    try:
+                        data = outgoing.get(timeout=.05)
+                    except queue.Empty:
+                        continue
+                    try:
+                        process.stdin.write(data)
+                        process.stdin.flush()
+                    except (OSError, ValueError):
+                        try:
+                            write_errors.put_nowait(EngineUnavailable('dordiai-voices request stream failed.'))
+                        except queue.Full:
+                            pass
+                        return
+            writer = threading.Thread(target=write_requests, daemon=True, name='dordiai-voices request writer')
+            writer.start()
             def send(value):
-                process.stdin.write((json.dumps(value, ensure_ascii=True) + '\n').encode('ascii'))
-                process.stdin.flush()
+                data = (json.dumps(value, ensure_ascii=True) + '\n').encode('ascii')
+                if len(data) > 128 * 1024:
+                    raise ValueError('dordiai-voices request exceeds its byte budget.')
+                try:
+                    outgoing.put_nowait(data)
+                except queue.Full as exc:
+                    raise EngineUnavailable('dordiai-voices is not consuming bounded requests.') from exc
             started = time.monotonic()
             total = 0
             try:
@@ -628,11 +652,17 @@ class DordiaiVoicesEngine:
                     audio.setsampwidth(2)
                     audio.setframerate(24000)
                     while True:
+                        try:
+                            write_error = write_errors.get_nowait()
+                        except queue.Empty:
+                            write_error = None
+                        if write_error is not None:
+                            raise write_error
                         if cancelled():
                             try:
                                 send({'mode': 'cancel'})
                                 send({'mode': 'drop'})
-                            except (OSError, BrokenPipeError):
+                            except (OSError, EngineUnavailable):
                                 pass
                             raise InterruptedError('Speech operation cancelled.')
                         if time.monotonic() - started > self.timeout:
@@ -680,7 +710,8 @@ class DordiaiVoicesEngine:
             finally:
                 finished.set()
                 _stop(process)
-                if process.stdin:
+                writer.join(timeout=1)
+                if process.stdin and not writer.is_alive():
                     process.stdin.close()
                 reader.join(timeout=1)
                 if process.stdout and not reader.is_alive():

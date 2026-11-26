@@ -420,10 +420,15 @@ class DirectTransport:
             connection = http.client.HTTPConnection(address, port, timeout=30)
             connection.connect()
             if parts.scheme == 'https':
-                connection.sock = ssl.create_default_context().wrap_socket(connection.sock, server_hostname=host)
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context.load_default_certs()
+                context.set_alpn_protocols(['http/1.1'])
+                connection.sock = context.wrap_socket(connection.sock, server_hostname=host)
             host_header = f'[{host}]' if ':' in host else host
             if port != (443 if parts.scheme == 'https' else 80):
                 host_header += ':' + str(port)
+            if cancelled():
+                raise ProviderError('Provider operation cancelled before transmission.')
             connection.request('POST', parts.path.rstrip('/') + route, body=payload,
                 headers={**headers, 'Host': host_header, 'Content-Type': 'application/json',
                          'Accept': 'application/json' if route.endswith('/completions') else 'audio/mpeg',

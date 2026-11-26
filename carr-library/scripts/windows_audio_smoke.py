@@ -3,7 +3,6 @@
 Uses genuine installed SAPI voices, FFmpeg and wx controls. This automated
 probe does not claim manual NVDA, native-speaker quality or audio-device tests.
 """
-from dataclasses import replace
 from hashlib import sha256
 import json
 import os
@@ -35,8 +34,8 @@ def main():
     socket.socket.connect_ex = offline
     ffmpeg = Path(os.environ['CARR_FFMPEG'])
     registry = VoiceRegistry((SAPI5Engine(),))
-    voices = registry.voices()
-    assert voices, 'No usable SAPI 5 voice is installed; this is not a successful smoke.'
+    voices = tuple(v for v in registry.voices() if any(lang.lower().split('-')[0] == 'en' for lang in v.languages))
+    assert voices, 'No usable English SAPI 5 voice is installed; this is not a successful smoke.'
     voice = voices[0].id
     script = (f'[role Narrator voice="{voice}" pan=center language=en]\n'
               f'[role Left voice="{voices[min(1,len(voices)-1)].id}" pan=left language=en]\n'
@@ -79,39 +78,56 @@ def main():
         checks.append('actual Windows Credential Manager round-trip and destination isolation')
 
         application = wx.App(False)
+
+        def wait_for(predicate, message, *, timeout=20):
+            deadline = monotonic() + timeout
+            while True:
+                application.Yield()
+                if predicate():
+                    return
+                assert monotonic() < deadline, message
+                sleep(0.01)
+
         library = LibraryApp(root / 'library')
         frame = DesktopFrame(library)
         controller = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
-        controller.new(script, title='Synthetic local production')
-        controller.configure(voice=voice, language='en', output_dir=root / 'desktop-output')
-        controller.save(root / 'studio-project.json')
+        controller.new(script, title='Synthetic local production', input_kind='script')
+        desktop_output = root / 'desktop-output'
+        desktop_output.mkdir()
+        controller.configure(voice=voice, language='en', output_dir=desktop_output)
+        saved_project = controller.save(root / 'studio-project.json')
+        reopened = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
+        reopened.open(saved_project)
+        assert reopened.to_dict() == controller.to_dict(), 'Saved project did not survive readback.'
         studio = AudioStudioDialog(frame, controller)
         try:
             frame.Show()
             studio.dialog.Show()
+            studio.dialog.Raise()
             studio.reload_voices()
-            deadline = monotonic() + 20
-            while studio.busy:
-                assert monotonic() < deadline, 'Voice discovery did not finish.'
-                application.Yield()
-                sleep(0.01)
+            wait_for(lambda: not studio.busy, 'Voice discovery did not finish.')
             assert studio.voice.GetCount() >= 1
             assert studio.script.GetName() == 'Editable narration or dialogue script'
             assert studio.status.GetName() == 'Audio Studio status and render progress'
+            studio.notebook.SetSelection(0)
             studio.script.SetFocus()
-            application.Yield()
-            assert wx.Window.FindFocus() is studio.script
+            wait_for(lambda: wx.Window.FindFocus() is studio.script,
+                     'The editable script did not receive native focus.', timeout=5)
             studio.preview()
             application.Yield()
-            assert studio.plan_text.GetValue()
+            assert studio.plan_text.GetValue() == controller.preview()
+            assert controller.script == script, 'Native preview changed the original script.'
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
                            'native plan preview', 'project save and readback'])
         finally:
+            studio.closed = True
             studio.timer.Stop()
             studio.cancelled.set()
+            studio.playback.stop()
             studio.executor.shutdown(wait=True, cancel_futures=True)
             studio.dialog.Destroy()
             frame._closing = True
+            frame.cancel_event.set()
             frame.executor.shutdown(wait=True, cancel_futures=True)
             frame.Destroy()
             application.Yield()

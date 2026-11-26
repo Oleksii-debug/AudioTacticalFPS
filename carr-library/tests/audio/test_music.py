@@ -106,6 +106,19 @@ def test_actual_output_and_companions_cannot_be_overwritten(tmp_path, ffmpeg):
     assert not (tmp_path/'other.wav').exists()
 
 
+def test_actual_resume_recovers_already_published_identical_companions(tmp_path, ffmpeg):
+    target = generate_music(tmp_path/'recovered.wav', duration=1, ffmpeg=ffmpeg)
+    expected = digest(target)
+    midi = target.with_suffix('.mid').read_bytes()
+    metadata = target.with_suffix('.music.json').read_bytes()
+    target.unlink()  # a completed companion publication with missing final WAV
+    result = render_music(target, duration=1, ffmpeg=ffmpeg)
+    assert digest(result['path']) == expected
+    assert result['provenance']['reused_chunks'] == 1
+    assert target.with_suffix('.mid').read_bytes() == midi
+    assert target.with_suffix('.music.json').read_bytes() == metadata
+
+
 def test_changed_checkpoint_settings_need_new_destination(tmp_path, ffmpeg):
     def stop(message):
         raise InterruptedError('synthetic interruption')

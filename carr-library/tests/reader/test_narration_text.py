@@ -121,3 +121,19 @@ def test_draft_serialization_never_mutates_source_even_after_nested_rewrites():
     assert reopened.source_sha256 == text_digest('Short word.')
     assert reopened.source_range(7, 13) == (0, 5, False)
     assert reopened.text == 'Rather lengthy word.'
+
+
+def test_large_replace_all_is_one_reversible_operation_with_exact_intervening_offsets():
+    source = 'word unchanged\n' * 10000
+    draft = NarrationDraft(source)
+    assert draft.replace_literal('word', 'pronunciation') == 10000
+    assert len(draft.edits) == 1
+    assert draft.text == source.replace('word', 'pronunciation')
+    assert len(draft.spans()) == 20000
+    start = draft.text.index('unchanged')
+    assert draft.source_range(start, start + 9) == (5, 14, True)
+    reopened = NarrationDraft.from_dict(draft.to_dict(), source_text=source)
+    assert reopened.spans() == draft.spans()
+    assert reopened.undo() and reopened.text == source
+    assert reopened.redo() and reopened.text == draft.text
+    assert reopened.source_text == source
