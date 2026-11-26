@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 import threading
 from uuid import uuid4
@@ -1084,12 +1085,16 @@ class AudioStudioActions:
 
     def from_selected_book(self, event=None):
         from ..reader.reading_desk import ReadingDesk
+        from ..research.topic_tree import TopicTree
         frame = self.frame
         try:
             if getattr(frame, '_closing', False) or frame.working or getattr(frame, 'busy', False):
                 raise ValueError('Wait for the library operation or cancel it first.')
             workspace = frame._workspace()
             library = frame.library
+            scope = frame.active
+            if scope is None or scope[0] != workspace:
+                raise ValueError('Select a library or research topic first.')
             panel = frame.book.GetPage(1) if frame.book is not None else None
             if panel is None or panel.workspace != workspace or not panel.ready:
                 raise ValueError('Select a book in Books and Collections first.')
@@ -1100,12 +1105,13 @@ class AudioStudioActions:
 
             def current():
                 return (not getattr(frame, '_closing', False) and frame.library is library
-                        and frame.active is not None and frame.active[0] == workspace
+                        and frame.active == scope and not frame.cancel_event.is_set()
                         and frame.book is not None and frame.book.GetPage(1) is panel
                         and panel._selection() == selection)
 
             def read():
-                desk = ReadingDesk(library, workspace, edition, cancelled=frame.cancel_event.is_set)
+                desk = ReadingDesk(library, workspace, edition, topic=scope[1],
+                                   cancelled=frame.cancel_event.is_set)
                 texts, references, offset = [], [], 0
                 for ordinal in range(1, len(desk.pages) + 1):
                     if frame.cancel_event.is_set():
@@ -1125,8 +1131,19 @@ class AudioStudioActions:
                 return controller
 
             def show(controller):
-                if not current() or frame.cancel_event.is_set():
-                    frame.report('Narration import discarded because the selected source changed or was cancelled.')
+                available = current()
+                if available:
+                    try:
+                        # The worker's snapshot may have been revoked while this
+                        # callback was queued. Bound fresh GUI authorization too.
+                        with library._search_read(workspace, 1.0, frame.cancel_event.is_set) as (db, _):
+                            if scope[1] is not None:
+                                TopicTree(db, workspace)._visible(scope[1])
+                    except (OSError, ValueError, RuntimeError, sqlite3.Error):
+                        available = False
+                if not available or not current():
+                    frame.report('Narration import discarded because the selected source changed, '
+                                 'its research scope is unavailable, or the operation was cancelled.')
                     return
                 self.studio_factory(frame, controller).show()
             frame.run_job('Preparing a separate narration copy of the selected source', read, show)

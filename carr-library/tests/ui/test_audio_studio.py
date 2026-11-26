@@ -272,3 +272,64 @@ def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     controller.draft.replace_literal('Перший', 'Змінений')
     assert controller.draft.source_text == raw
     assert app._selections == {}
+
+
+@pytest.mark.parametrize('change', [
+    'unchanged', 'archive_topic', 'archive_workspace', 'switch_library', 'switch_topic', 'cancel',
+])
+def test_selected_book_completion_rechecks_scope_after_worker_returns(tmp_path, change):
+    from threading import Event
+
+    from carr_library.application import LibraryApp
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('My research')
+    topic = app.create_topic(workspace, 'Current topic')
+    raw = 'Date: 2026-11-26\n[pause 2]\n# Exact heading\fДругий текст.'
+    book = app.add_text(workspace, 'Book', raw, authors=('Author',))
+    panel = SimpleNamespace(workspace=workspace, ready=True,
+        _selection=lambda: (None, None, book['edition']))
+    queued, captured, reports = [], [], []
+    frame = SimpleNamespace(library=app, active=(workspace, topic), working=False, busy=False,
+        _workspace=lambda: workspace, book=SimpleNamespace(GetPage=lambda index: panel),
+        cancel_event=Event(), report=reports.append,
+        run_job=lambda label, action, done: queued.append((action, done)))
+
+    class Studio:
+        def __init__(self, parent, controller):
+            captured.append(controller)
+
+        def show(self):
+            pass
+
+    AudioStudioActions(frame, studio_factory=Studio).from_selected_book()
+    assert len(queued) == 1 and not reports
+    action, done = queued.pop()
+    prepared = action()
+    assert prepared.script == raw
+    if change == 'archive_topic':
+        with app.topic_transaction(workspace) as tree:
+            tree.archive(topic)
+    elif change == 'archive_workspace':
+        app.archive_workspace(workspace)
+    elif change == 'switch_library':
+        frame.library = LibraryApp(tmp_path / 'other-library')
+    elif change == 'switch_topic':
+        frame.active = (workspace, app.create_topic(workspace, 'Other topic'))
+    elif change == 'cancel':
+        frame.cancel_event.set()
+
+    done(prepared)
+
+    if change == 'unchanged':
+        assert captured == [prepared] and not reports
+        assert prepared.input_kind == 'narration'
+        assert prepared.plan().original_script == raw
+        assert prepared.source_reference['workspace'] == workspace
+        assert prepared.source_reference['edition'] == book['edition']
+        assert len(prepared.source_reference['pages']) == 2
+    else:
+        assert captured == []
+        assert len(reports) == 1 and 'discarded' in reports[0]
+    assert prepared.draft.source_text == raw
+    assert app._selections == {}
