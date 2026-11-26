@@ -73,6 +73,23 @@ def main(argv=None):
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    ocr = parser.add_mutually_exclusive_group()
+    ocr.add_argument('--list-ocr-models', action='store_true',
+                     help='List the pinned official OCR catalogue; never downloads models')
+    ocr.add_argument('--install-ocr-models', type=Path, metavar='FOLDER',
+                     help='Verify and install selected OCR models from a local offline folder')
+    ocr.add_argument('--verify-ocr-models', metavar='LANGUAGES',
+                     help='Verify installed selected models, for example eng+ukr+script/Latin')
+    parser.add_argument('--ocr-profile', choices=('fast', 'best'),
+                        help='Pinned Fast or Best model family for OCR model operations')
+    parser.add_argument('--ocr-model-store', type=Path,
+                        help='Absolute local OCR model-store folder')
+    parser.add_argument('--ocr-model', action='append', default=[],
+                        help='Model identifier for offline installation; repeat for mixed languages')
+    parser.add_argument('--ocr-all-models', action='store_true',
+                        help='Explicitly install the complete selected profile from the local folder')
+    parser.add_argument('--ocr-model-search', default='',
+                        help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
     research.add_argument('--document-formats', action='store_true',
                           help='Print supported import formats and fidelity limits without opening a library')
@@ -93,6 +110,22 @@ def main(argv=None):
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
     args = parser.parse_args(argv)
+    ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
+                     or args.verify_ocr_models is not None)
+    if ocr_operation and any((args.document_formats, args.list_libraries,
+                              args.search is not None, args.self_test, args.backup, args.restore)):
+        parser.error('Choose one OCR model, document formats, library, search, self-test, backup or restore operation.')
+    if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
+        parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
+    if args.ocr_all_models and args.ocr_model:
+        parser.error('Choose explicit --ocr-model entries or --ocr-all-models, not both.')
+    if args.ocr_model_search and not args.list_ocr_models:
+        parser.error('--ocr-model-search requires --list-ocr-models.')
+    if args.ocr_model_store and not ocr_operation:
+        parser.error('--ocr-model-store requires an OCR model operation.')
+    if args.ocr_profile and not ocr_operation:
+        parser.error('--ocr-profile requires an OCR model operation.')
+    args.ocr_profile = args.ocr_profile or 'fast'
     if (args.document_formats or args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
         parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, or search.')
     if args.search is not None and not args.workspaces:
@@ -107,6 +140,28 @@ def main(argv=None):
             return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        if ocr_operation:
+            from .extract.model_catalog import models, profile_provenance
+            from .extract.ocr_model_store import OcrModelStore
+            store = OcrModelStore(args.ocr_model_store)
+            if args.list_ocr_models:
+                installed = set(store.available(args.ocr_profile))
+                entries = models(args.ocr_profile, args.ocr_model_search)
+                result = {**profile_provenance(args.ocr_profile),
+                          'network_access': False,
+                          'models': [{**asdict(model), 'installed': model.identifier in installed,
+                                      'source_url': model.download_url} for model in entries],
+                          'total_bytes': sum(model.size for model in entries)}
+            elif args.install_ocr_models:
+                selected = ([m.identifier for m in models(args.ocr_profile)]
+                            if args.ocr_all_models else args.ocr_model)
+                if not selected:
+                    parser.error('Choose one or more --ocr-model entries, or --ocr-all-models.')
+                result = asdict(store.install(args.ocr_profile, args.install_ocr_models, selected))
+            else:
+                result = store.select(args.ocr_profile, args.verify_ocr_models).fingerprint()
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0

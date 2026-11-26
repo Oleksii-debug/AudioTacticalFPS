@@ -500,6 +500,13 @@ class DesktopFrame(WorkspaceFrame):
         if getattr(library,'semantic_notice',None):
             self.report(library.semantic_notice)
 
+    def ocr_language_models(self, event):
+        if self.working:
+            self.report('Wait for the current operation or cancel it before changing OCR models.')
+            return
+        from .ocr_model_manager import show_ocr_model_manager
+        show_ocr_model_manager(self)
+
     def _menus(self):
         self.menu_bar = wx.MenuBar()
         menus = [('&Library', [('New library\tCtrl+N', self.new_library),
@@ -508,6 +515,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Restore archived library', self.unarchive_library),
             ('Import books\tCtrl+I', self.import_books),
             ('Import Center: files, folders and queues', self.import_center),
+            ('OCR language models: Fast and Best...', self.ocr_language_models),
             ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
