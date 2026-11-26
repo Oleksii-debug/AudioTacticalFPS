@@ -128,6 +128,26 @@ an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
 
+## Academic research tools
+
+Press **Alt+A** to open the **Academic** menu. In an open research topic,
+**Ctrl+Shift+L** compares saved source versions, themes, exact quotations and
+research notes. Include subtopics, filter by an exact tag, open selected evidence
+in its existing editor, or export the comparison as CSV/Markdown. **Export
+research outline with subtopics** writes the ordered topic structure as Markdown
+or plain text, keeping source quotations and your notes separately labelled.
+
+**Import bibliographic metadata from RIS** reviews a local RIS record for an
+already imported edition. Only checked title/author/language/edition/volume
+fields are applied; unchecked fields are preserved. Year, journal, DOI and other
+unsupported metadata are not imported, and no attachment or URL is opened.
+**Check catalog quality** reviews missing fields, unfiled editions and tentative
+duplicate hints in one library or collection. It does not merge records.
+
+See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
+limits and provenance. These commands add no runtime dependency or schema
+migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
+
 ## Optional local semantic search
 
 The `semantic` extra supplies the pinned FastEmbed runtime. A separately
@@ -146,7 +166,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.1.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.

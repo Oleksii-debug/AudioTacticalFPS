@@ -40,6 +40,12 @@ instructions.
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
   Back up completed libraries with original files and checksums; restore into a
   new folder without overwriting the existing library.
+- Compare saved source versions and research themes, then export a literature
+  matrix or an ordered outline with subtopics. Review selected RIS metadata for
+  already imported editions, and inspect catalog quality without automatic
+  merges. Open **Academic** with **Alt+A**, or compare a topic with
+  **Ctrl+Shift+L**. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md) for the
+  supported fields, exact-source safeguards and keyboard steps.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
@@ -52,8 +58,11 @@ score never approves a quotation.
 This is an integrated development candidate. The assembled services and installed
 Python package have real end-to-end tests, including offline local model
 inference, citation preservation, workspace isolation and backup recovery.
-Native Windows execution and NVDA acceptance must still be performed on Windows;
-Linux tests and UI handler probes are not substitutes for those checks.
+Native Windows execution and manual NVDA acceptance are separate gates. Use the
+evidence for the exact build; Linux tests and UI handler probes do not replace
+either check.
+Manual Windows/NVDA acceptance of the new academic workflows remains **NOT_RUN**.
+These workflows use the existing dependencies and database schema.
 
 The Windows bundle's hashes and dependency inventory are verified during
 assembly. Only local synthetic or lawfully supplied fixtures may be used in

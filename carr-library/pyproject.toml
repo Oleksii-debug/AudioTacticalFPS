@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "universal-research-library"
-version = "0.1.0.dev1"
+version = "0.2.0.dev1"
 description = "Offline research libraries with exact source quotations and accessible desktop controls"
 readme = "docs/RUNNING.md"
 requires-python = ">=3.11"

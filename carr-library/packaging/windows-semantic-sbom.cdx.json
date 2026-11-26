@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.1.0.dev1",
+      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev1",
       "name": "universal-research-library-runtime",
-      "version": "0.1.0.dev1",
+      "version": "0.2.0.dev1",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -845,7 +845,7 @@
       ]
     },
     {
-      "ref": "universal-research-library-runtime-1@0.1.0.dev1",
+      "ref": "universal-research-library-runtime-1@0.2.0.dev1",
       "dependsOn": [
         "annotated-doc-2@0.0.7",
         "annotated-types-3@0.8.0",

@@ -112,6 +112,14 @@ jobs:
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
             'tests/reader/test_topic_search_runtime.py',
+            'tests/reader/test_literature_matrix.py',
+            'tests/reader/test_outline_export.py',
+            'tests/catalog/test_ris_apply.py',
+            'tests/catalog/test_quality.py',
+            'tests/ui/test_academic_tools.py',
+            'tests/ui/test_literature_matrix.py',
+            'tests/ui/test_bibliography_import.py',
+            'tests/ui/test_catalog_quality.py',
             'tests/search/test_literal_long_source.py',
             'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
@@ -133,6 +141,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native academic comparison, bibliography and catalog review
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the pinned local model through the existing upstream verifier

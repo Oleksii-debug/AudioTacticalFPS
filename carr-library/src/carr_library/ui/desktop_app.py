@@ -27,6 +27,7 @@ from .catalog_metadata_dialog import edit_selected_book
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .academic_tools import install_academic_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -474,6 +475,7 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_academic_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -998,7 +1000,8 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+A for Academic, and Alt+H for Help.\n'
+            'Ctrl+Shift+L compares saved sources in the active topic. Academic also exports outlines with subtopics, reviews RIS metadata, and checks the catalog.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
