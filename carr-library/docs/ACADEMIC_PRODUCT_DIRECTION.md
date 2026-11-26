@@ -20,6 +20,7 @@ implemented functionality.
 | Inspect the source catalog | Completeness reports, retained-file duplicate groups, bibliography and review-matrix exports | Reports do not infer source verification or silently merge records |
 | Find prior research | Search quotations and personal notes across topics, with exact tags and explicit archive scope | Source-backed quotations remain separately authenticated; unsaved drafts are protected |
 | Upgrade and recover | Exact V3-to-V4 migration and V3/V4 backup validation | Transactional migration; schema identity; archived data retained |
+| Preserve reading and preparation state | Checked library backup includes reader bookmarks/resume, narration copies/recovery drafts, keyboard settings and OCR-language presets | Exact historical source bindings; non-destructive restore; no secret or broad folder capture |
 
 These are implemented using the existing SQLite, native wx controls and pinned
 RIS components. No additional required runtime dependency or hosted service is
@@ -61,9 +62,7 @@ Existing pinned vendor notices remain authoritative for code actually bundled.
    provenance and timestamps, rate-limit handling and an offline fallback.
 4. BibTeX/BibLaTeX import through a maintained parser with license/pin review,
    macros and name parsing tested against real interchange cases.
-5. Include the reading desk bookmark/resume sidecar in a single checked library
-   backup; the present reader exposes its own explicit export/import workflow.
-6. User-reviewed duplicate consolidation with relationship and reading-note
+5. User-reviewed duplicate consolidation with relationship and reading-note
    preservation, reversible history and no historical citation retargeting.
 
 Full Word/LibreOffice integration, shared institutional access, automatic

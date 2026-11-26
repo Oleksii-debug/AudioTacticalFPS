@@ -12,6 +12,7 @@ and current verification status as ordinary text.
 Open the Reading menu with **Alt+D**. Select a source in Books and Collections
 and press **Ctrl+R**, or use **Reading,
 Read selected book**. If no source is selected, a named book chooser opens.
+Use **Alt+D** to open the Reading menu from the main window.
 
 - **Ctrl+PageDown / Ctrl+PageUp:** next / previous source location.
 - **Ctrl+G:** jump to a reading-order position.
@@ -60,10 +61,18 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-The existing research-database backup does not yet include this sidecar. Keep the
-reading-state export with that backup when moving to another computer. A restored
-library retains the same source identities; a different library cannot accept
-the export. No cloud account or network retrieval is involved.
+**Library, Back up all libraries** includes the complete reading-state sidecar
+along with the source database and retained originals. It also preserves saved
+reading copies, their recovery drafts, keyboard preferences and OCR-language
+presets when present. The library writer lock covers the database and sidecar
+snapshots. Backup and restore validate each saved place against its exact source
+identities, preserving names, IDs, timestamps and resume locations.
+
+A restored library retains the same source identities, including archived
+libraries and old revisions. A bookmark for an older revision stays attached to
+that revision; the reader reports when a fresh start is necessary. A different
+library cannot accept the individual reading-state export. No cloud account or
+network retrieval is involved.
 
 ## Implementation and primary references
 

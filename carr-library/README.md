@@ -69,6 +69,12 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+- Compare saved source versions and research themes, then export a literature
+  matrix or an ordered outline with subtopics. Review selected RIS metadata for
+  already imported editions, and inspect catalog quality without automatic
+  merges. Open **Academic** with **Alt+A**, or compare a topic with
+  **Ctrl+Alt+M**. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md) for the
+  supported fields, exact-source safeguards and keyboard steps.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated

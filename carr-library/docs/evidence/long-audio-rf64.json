@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "fixture": "Repeated actual local procedural score; not full-length original neural music.",
+  "source_sha256": "799b1ce11e14a661169f7eeec763e0f996c423806a4939080ca374d53595a3ce",
+  "checkpoint_reopen": "PASS",
+  "cancelled_output_not_published": "PASS",
+  "checks": [
+    {
+      "hours": 10,
+      "duration_seconds": 36000.0,
+      "frames": 1728000000,
+      "file_bytes": 6912000080,
+      "container": "RF64",
+      "elapsed_seconds": 4.144512200000008,
+      "python_peak_rss_bytes": 22798336,
+      "sample_rate": 48000,
+      "sha256": "fdee768d00ddbecb8f4ee685dca691ff67590a494340fecc3a9ca60c2678d3ec",
+      "complete_input_blocks": 60
+    }
+  ],
+  "neural_music_inference": "NOT_RUN",
+  "listening_quality": "NOT_RUN",
+  "runtime": "Linux x86_64, CPython 3.12, FFmpeg 7.1.5 Debian installed build",
+  "scope": "Synthetic/repeated fixture; actual local file generation; no neural inference, Windows or NVDA claim."
+}

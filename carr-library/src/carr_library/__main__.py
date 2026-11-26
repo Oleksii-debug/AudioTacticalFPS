@@ -63,6 +63,10 @@ def self_test():
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'sync':
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Offline Universal Research Library')
     parser.add_argument('--version', action='version', version=__version__)
@@ -74,10 +78,14 @@ def main(argv=None):
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
     research = parser.add_mutually_exclusive_group()
+    research.add_argument('--document-formats', action='store_true',
+                          help='Print supported import formats and fidelity limits without opening a library')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
+    from .acquisition.cli import add_arguments, validate_arguments
+    add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
     parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
@@ -90,17 +98,32 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
-    args = parser.parse_args(argv)
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
+    from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
+    add_audio_arguments(parser)
+    args = parser.parse_args(arguments)
+    operations = (args.self_test, bool(args.backup), bool(args.restore), args.document_formats,
+                  args.list_libraries, args.search is not None, args.lookup_doi is not None,
+                  audio_requested(args))
+    if sum(bool(operation) for operation in operations) > 1:
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, or audio.')
+    validate_audio_arguments(args, parser)
+    validate_arguments(parser, args)
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None:
-        parser.error('--workspace is only used with --search.')
-    native_handle = None
+    if args.workspaces and args.search is None and args.lookup_doi is None:
+        parser.error('--workspace is used with --search or --lookup-doi.')
+    native_handle = audio_handle = None
     try:
+        if args.document_formats:
+            from .extract.document_formats import supported_formats_text
+            print(supported_formats_text())
+            return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        from .audio.runtime import activate_bundled_audio_runtime
+        audio_handle = activate_bundled_audio_runtime()
+        if audio_requested(args):
+            return run_audio(args)
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
@@ -138,6 +161,9 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
+        if args.lookup_doi is not None:
+            from .acquisition.cli import run
+            return run(app, args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0
@@ -175,6 +201,8 @@ def main(argv=None):
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
     finally:
+        if audio_handle is not None:
+            audio_handle.close()
         if native_handle is not None:
             native_handle.close()
 

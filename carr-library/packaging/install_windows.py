@@ -71,6 +71,28 @@ def verify(root, *, manifest_bytes=None):
                 or "ocr/tessdata/eng.traineddata" not in actual
                 or actual != {p for p in files if p.startswith("ocr/")}):
             raise ValueError("unexpected or missing OCR runtime file")
+    audio=root/'audio-runtime'
+    has_audio=manifest.get('bundled_audio',False)
+    if (any(name.casefold().startswith('audio-runtime/') and not name.startswith('audio-runtime/') for name in files)
+            or any(path.name.casefold()=='audio-runtime' and path.name!='audio-runtime' for path in root.iterdir())):
+        raise ValueError('ambiguous audio runtime paths')
+    expected_audio={name for name in files if name.startswith('audio-runtime/')}
+    if type(has_audio) is not bool:
+        raise ValueError('invalid audio runtime installation flag')
+    if has_audio:
+        for directory,dirs,_names in os.walk(audio,followlinks=False):
+            for name in dirs:
+                info=(Path(directory)/name).lstat()
+                if not stat.S_ISDIR(info.st_mode) or getattr(info,'st_file_attributes',0)&0x400:
+                    raise ValueError('linked audio runtime directories are not supported')
+        actual={path.relative_to(root).as_posix() for path in audio.rglob('*') if path.is_file()}
+        required={'audio-runtime/audio-runtime-manifest.json','audio-runtime/bin/ffmpeg.exe','audio-runtime/bin/ffprobe.exe',
+                  'audio-runtime/bin/ffplay.exe','audio-runtime/LICENSE',
+                  'audio-runtime/carr-provenance/source-lock.json','audio-runtime/carr-provenance/README.txt'}
+        if not required.issubset(actual) or actual!=expected_audio:
+            raise ValueError('unexpected or missing audio runtime file')
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError('unannounced audio runtime files')
     native = root / "native-runtime"
     included = manifest.get("bundled_native_runtime", False)
     expected_native = {p for p in files if p.startswith("native-runtime/")}
