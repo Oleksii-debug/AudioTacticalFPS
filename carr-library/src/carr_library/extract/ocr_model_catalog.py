@@ -323,7 +323,9 @@ def main(argv=None):
         else:
             result = asdict(prepare_offline_pack(args.source, args.destination, args.models,
                                                profile=args.profile, max_bytes=args.max_bytes))
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        # JSON escapes preserve Unicode paths even when Windows stdout uses an
+        # older console encoding. Do not report failure after creating a pack.
+        print(json.dumps(result, ensure_ascii=True, indent=2))
         return 0
     except (OSError, ValueError) as exc:
         print(f'OCR models: {exc}', file=sys.stderr)

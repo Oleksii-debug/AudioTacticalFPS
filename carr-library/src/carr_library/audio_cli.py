@@ -44,7 +44,7 @@ def run_audio(args):
     from .audio.models import ProductionPlan
     from .audio.production import parse_script, render_project
     from .reader.narration_text import decode_json, read_document
-    registry = default_registry(dordiai_manifest=args.dordiai_manifest,
+    registry = default_registry(ffmpeg=args.ffmpeg, dordiai_manifest=args.dordiai_manifest,
         piper_executable=args.piper_executable, piper_manifest=args.piper_manifest)
     if args.audio_voices:
         print(json.dumps({'voices': [asdict(v) for v in registry.voices()],

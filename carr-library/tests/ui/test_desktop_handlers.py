@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -45,9 +46,11 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
-               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
+               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock(),
+               show_acquisition_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
 
@@ -137,11 +140,21 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
+    assert 'DOI lookup and open-access sources...' in labels
+    assert 'Document formats' in labels
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
     for installer in (*installers.values(), ebook):
         installer.assert_called_once_with(value)
+    env['show_acquisition_dialog'].assert_not_called()
+    handlers = {call.args[2].title: call.args[1] for call in value.Bind.call_args_list
+                if call.args[0] == env['wx'].EVT_MENU}
+    handlers['Document formats'](None)
+    assert env['show_text'].call_args.args == (value, 'Document formats', supported_formats_text())
+    env['show_acquisition_dialog'].assert_not_called()
+    handlers['DOI lookup and open-access sources...'](None)
+    env['show_acquisition_dialog'].assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide

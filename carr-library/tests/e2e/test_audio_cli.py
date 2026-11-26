@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from carr_library.__main__ import main
 
@@ -32,6 +33,19 @@ class AudioCliTests(unittest.TestCase):
     def test_audio_cannot_accidentally_run_with_backup(self):
         with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             main(['--audio-voices', '--backup', 'backup'])
+
+    def test_audio_does_not_combine_with_network_or_format_operations(self):
+        cases = (['--document-formats'],
+                 ['--lookup-doi', '10.1000/synthetic', '--allow-online-doi', '--workspace', 'synthetic'])
+        for arguments in cases:
+            with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()), \
+                    patch('carr_library.application.LibraryApp') as library, \
+                    patch('carr_library.audio_cli.run_audio') as render:
+                with self.assertRaises(SystemExit) as raised:
+                    main(['--audio-voices', *arguments])
+                self.assertEqual(raised.exception.code, 2)
+                library.assert_not_called()
+                render.assert_not_called()
 
 
 if __name__ == '__main__':
