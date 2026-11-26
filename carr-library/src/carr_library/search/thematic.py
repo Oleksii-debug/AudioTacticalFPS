@@ -402,3 +402,88 @@ def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20):
                        'semantic': [tokens[key] for key in semantic]})
     ranked = [(keys[int(token)], score) for token, score in scores.items()]
     return sorted(ranked, key=lambda pair: (-pair[1], pair[0]))[:limit]
+
+
+def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
+                  timeout=5.0, cancelled=lambda: False):
+    """Candidate hybrid handoff over one caller-authorized active snapshot.
+
+    The optional local ranker receives (query, ((locator_key, exact_text), ...))
+    and returns only relevance-filtered locator keys, not text or citations.
+    It must use an independently verified offline model; no model is loaded
+    here. Absence of a ranker preserves the original lexical API. Scores in
+    hybrid mode are RRF ranks, not probabilities of relevance. The bounded
+    synchronous ranker must cooperate with the caller's runtime budget.
+    """
+    if semantic_ranker is None:
+        return search(workspace, passages, query, limit=limit, timeout=timeout,
+                      cancelled=cancelled)
+    if (not callable(semantic_ranker) or not isinstance(workspace, str)
+            or not workspace or type(limit) is not int or not 1 <= limit <= 100
+            or type(timeout) not in (int, float) or not 0 < timeout <= 60
+            or not callable(cancelled)):
+        raise ValueError('invalid hybrid search scope or budget')
+    deadline = monotonic() + timeout
+    latched = False
+
+    def stopped():
+        nonlocal latched
+        latched = latched or cancelled() or monotonic() >= deadline
+        return latched
+
+    def check():
+        if stopped():
+            raise TimeoutError('hybrid search cancelled or timed out')
+
+    check()
+    if not _groups(query):
+        return []
+    refs = []
+    size = 0
+    for p in passages:
+        check()
+        if type(p) is not Passage or not isinstance(p.raw_page, str):
+            raise ValueError('expected immutable Passage')
+        size += len(p.raw_page)
+        if len(refs) >= 500 or size > 10_000_000:
+            raise ValueError('scope exceeds semantic candidate budget')
+        refs.append(p)
+    check()
+    if not refs:
+        return []
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        raise TimeoutError('hybrid search cancelled or timed out')
+    # Native BM25 also verifies every source anchor before the model sees text.
+    lexical = search(workspace, refs, query, limit=100, timeout=remaining,
+                     cancelled=stopped)
+    check()
+    by_key = {(p.workspace, p.edition_id, p.revision_id, p.passage_id): p for p in refs}
+    keys = list(by_key)
+    # Reuse the fusion boundary's validation before invoking the backend.
+    lex_keys = [(workspace, h['edition_id'], h['revision_id'], h['passage_id']) for h in lexical]
+    fuse_scoped_rankings(workspace, keys, lex_keys, [], limit=limit)
+    check()
+    semantic = semantic_ranker(query, tuple((key, p.raw_page[p.start:p.end])
+                                            for key, p in by_key.items()))
+    check()
+    fused = fuse_scoped_rankings(workspace, keys, lex_keys, semantic, limit=limit)
+    if not semantic:
+        return lexical[:limit]
+    by_hit = dict(zip(lex_keys, lexical))
+    results = []
+    for key, score in fused:
+        check()
+        p = by_key[key]
+        hit = dict(by_hit.get(key, {}))
+        hit.update(passage_id=p.passage_id, work_id=p.work_id,
+                   edition_id=p.edition_id, revision_id=p.revision_id,
+                   physical_index=p.physical_index, start=p.start, end=p.end,
+                   page_sha256=p.page_sha256, raw_quote=p.raw_page[p.start:p.end],
+                   score=score, matched_terms=hit.get('matched_terms', ()),
+                   reason='hybrid RRF rank; not semantic verification')
+        if p.physical_index is None:
+            hit.update(locator_kind='logical_segment', segment_index=p.segment_index)
+        results.append(hit)
+    check()
+    return results
