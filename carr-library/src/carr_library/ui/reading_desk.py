@@ -631,6 +631,6 @@ def install_reading_desk_actions(frame):
             ('&Import reading positions and bookmarks...', actions.import_state)):
         item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, handler, item)
-    frame.GetMenuBar().Append(menu, '&Reading')
+    frame.GetMenuBar().Append(menu, 'Rea&ding')
     frame.reading_desk_actions = actions
     return actions
