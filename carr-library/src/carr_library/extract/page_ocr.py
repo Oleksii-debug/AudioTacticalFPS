@@ -35,8 +35,6 @@ class Config:
             selected = self.languages.split('+')
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
-            if self.orientation:
-                raise ValueError('pinned OCR orientation is not yet supported')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 
