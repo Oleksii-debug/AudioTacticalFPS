@@ -304,7 +304,7 @@ def test_report_cancellation_during_actual_sql_returns_no_partial_analysis(sampl
     ('MAX_PAYLOAD_BYTES', 1, 'reading limit'),
     ('MAX_TOPICS', 0, 'research topics'),
     ('MAX_LINKS', 0, 'collection memberships'),
-    ('MAX_METADATA_BYTES', 1, 'metadata exceeds'),
+    ('MAX_METADATA_BYTES', 1, 'Active collection names exceed the report metadata limit'),
 ])
 def test_report_bounds_fail_explicitly_without_truncation_or_mutation(sample, monkeypatch,
                                                                     constant, limit, diagnostic):
