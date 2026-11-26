@@ -100,10 +100,16 @@ class WorkspaceFrame(wx.Frame):
             self.choice.Clear()
             self.scopes = ids
             label_counts = Counter(label for _, _, label in rows)
+            rendered = set()
             for workspace, topic, label in rows:
                 if label_counts[label] > 1:
                     kind = 'library only' if topic is None else f'topic {topic}'
                     label = f'{label} (library {workspace}; {kind})'
+                original, number = label, 1
+                while label in rendered:
+                    number += 1
+                    label = f'{original} (choice {number})'
+                rendered.add(label)
                 self.choice.Append(label)
             if self.active is not None and self.active not in ids:
                 self._drop()

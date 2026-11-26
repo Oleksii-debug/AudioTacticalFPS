@@ -188,6 +188,16 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(set(self.f.choice.items)), 2)
         self.open(1)
         self.assertEqual(self.f.active, ("a", "none"))
+    def test_real_title_cannot_collide_with_generated_scope_label(self):
+        self.scopes = [('a', None, 'Same title'), ('a', 'none', 'Same title')]
+        self.f.refresh_scopes()
+        original_labels = self.f.choice.items[:]
+        self.scopes.append(('b', None, original_labels[0]))
+        self.f.refresh_scopes()
+        self.assertEqual(self.f.choice.items[:2], original_labels)
+        self.assertEqual(len(set(self.f.choice.items)), 3)
+        self.open(2)
+        self.assertEqual(self.f.active, ('b', None))
     def test_duplicate_ids(self):
         self.open(0)
         book = self.f.book
