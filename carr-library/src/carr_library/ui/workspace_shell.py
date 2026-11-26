@@ -47,6 +47,24 @@ class WorkspaceFrame(wx.Frame):
             'Discard the unsaved research note?', 'Unsaved note',
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
 
+    def _restore_note_focus(self):
+        # A dirty note can belong to a hidden notebook page. Activate that
+        # page without a page-changing event before requesting keyboard focus.
+        book, evidence = self.book, self.evidence
+        try:
+            if book is not None and evidence is not None:
+                for index in range(book.GetPageCount()):
+                    if book.GetPage(index) is evidence:
+                        book.ChangeSelection(index)
+                        evidence.note.SetFocus()
+                        return
+        except Exception:
+            # A failed focus request must not trigger scope teardown and
+            # discard the very draft the user chose to preserve.
+            pass
+        self.status.SetValue("Note retained. Open Evidence and Notes to resume editing.")
+        self.choice.SetFocus()
+
     def _drop(self):
         old = self.book
         self.active = self.book = self.evidence = None
@@ -78,7 +96,8 @@ class WorkspaceFrame(wx.Frame):
             self.choice.Clear()
             self.scopes = ids
             for workspace, topic, label in rows:
-                self.choice.Append(f'{label} (library {workspace}; topic {topic or "none"})')
+                kind = "library only" if topic is None else f"topic {topic}"
+                self.choice.Append(f'{label} (library {workspace}; {kind})')
             if self.active is not None and self.active not in ids:
                 self._drop()
                 self.status.SetValue('Access changed. Previous view closed; unsaved edits not saved.')
@@ -114,7 +133,7 @@ class WorkspaceFrame(wx.Frame):
                 raise ValueError('scope no longer authorized')
             if not self._confirm():
                 self.choice.SetSelection(self.scopes.index(self.active))
-                self.evidence.note.SetFocus()
+                self._restore_note_focus()
                 return
             services = self.bind_scope(*scope)
             if not isinstance(services, ScopeServices) or (services.workspace, services.topic) != scope:
@@ -161,7 +180,7 @@ class WorkspaceFrame(wx.Frame):
             try:
                 if not self._confirm():
                     event.Veto()
-                    self.evidence.note.SetFocus()
+                    self._restore_note_focus()
                     return
             finally:
                 self.busy = False
