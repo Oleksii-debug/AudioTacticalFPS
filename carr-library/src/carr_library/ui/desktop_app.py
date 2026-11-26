@@ -35,6 +35,7 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from .acquisition_dialog import show_acquisition_dialog
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -476,6 +477,7 @@ class DesktopFrame(WorkspaceFrame):
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('DOI lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:

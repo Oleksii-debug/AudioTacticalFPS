@@ -78,6 +78,8 @@ def main(argv=None):
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
+    from .acquisition.cli import add_arguments, validate_arguments
+    add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
     parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
@@ -91,12 +93,13 @@ def main(argv=None):
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
     args = parser.parse_args(argv)
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
+    validate_arguments(parser, args)
+    if (args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
         parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None:
-        parser.error('--workspace is only used with --search.')
+    if args.workspaces and args.search is None and args.lookup_doi is None:
+        parser.error('--workspace is used with --search or --lookup-doi.')
     native_handle = None
     try:
         from .native_runtime import activate_bundled_runtime
@@ -138,6 +141,9 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
+        if args.lookup_doi is not None:
+            from .acquisition.cli import run
+            return run(app, args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0
