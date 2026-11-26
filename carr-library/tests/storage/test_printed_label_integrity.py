@@ -67,3 +67,45 @@ def test_corrupt_historical_label_refuses_backup(tmp_path, label, verified):
         with pytest.raises(sqlite3.IntegrityError):
             store.backup(destination)
         assert not destination.exists()
+
+
+@pytest.mark.parametrize('bad', [
+    Page('bad', True), Page('bad', 1.0), Page('bad', '1'),
+    Page('bad', 1, 12), Page('bad', 1, 12, True),
+    Page('bad', 1, 'iv', 1), Page('bad', 1, 'iv', 0),
+    Page('bad', 1, 'iv', 1.0), Page('bad', 1, 'iv', '1'),
+    Page('bad', 1, None, 0.5), Page('bad', None, None, 0),
+    Page('bad', 1, 'iv', None),
+])
+def test_uncoerced_locator_rejected_inside_caller_transaction(tmp_path, bad):
+    s = Storage(tmp_path/'db')
+    try:
+        s.publish_revision('a', 'edition', 'old', 'a'*64, 'fixture', [Page('old needle', 1, 'iv', True)])
+        with s.transaction():
+            # Single-page case exposes affinity coercion without a duplicate
+            # physical index masking the defect; partial case tests savepoint.
+            for pages in ([bad], [Page('partial', 1), bad]):
+                with pytest.raises(sqlite3.IntegrityError, match='invalid source locator'):
+                    s.stage_revision('a', 'edition', 'bad', 'a'*64, 'fixture', pages)
+                assert s.db.in_transaction
+                assert s.db.execute("SELECT count(*) FROM revision WHERE id='bad'").fetchone()[0] == 0
+                assert s.db.execute("SELECT count(*) FROM page WHERE revision='bad'").fetchone()[0] == 0
+                assert s.get_page('a', 'bad', 1) is None
+                assert s.db.execute('SELECT revision FROM active').fetchone()[0] == 'old'
+                assert s.db.execute('SELECT raw FROM indexed').fetchone()[0] == 'old needle'
+            s.stage_revision('a', 'edition', 'good', 'a'*64, 'fixture',
+                             [Page('Точна цитата', 3, '頁十二', True)])
+        s.check()
+        assert s.get_page('a', 'old', 1)['printed'] == 'iv'
+        s.backup(tmp_path/'copy')
+    finally:
+        s.close()
+    c = Storage(tmp_path/'copy')
+    try:
+        c.check()
+        assert c.get_page('a', 'bad', 1) is None
+        assert c.get_page('a', 'good', 1)['raw'] == 'Точна цитата'
+        assert c.get_page('a', 'good', 1)['printed'] == '頁十二'
+        assert c.get_page('a', 'old', 1)['printed'] == 'iv'
+    finally:
+        c.close()
