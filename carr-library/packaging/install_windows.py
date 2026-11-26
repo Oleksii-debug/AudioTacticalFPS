@@ -68,6 +68,27 @@ def verify(root):
                 or "ocr/tessdata/eng.traineddata" not in actual
                 or actual != {p for p in files if p.startswith("ocr/")}):
             raise ValueError("unexpected or missing OCR runtime file")
+    native = root / "native-runtime"
+    included = manifest.get("bundled_native_runtime", False)
+    expected_native = {p for p in files if p.startswith("native-runtime/")}
+    if type(included) is not bool:
+        raise ValueError("invalid native runtime installation flag")
+    if included:
+        if not manifest.get("bundled_python"):
+            raise ValueError("native runtime requires bundled Python")
+        for directory, dirs, _names in os.walk(native, followlinks=False):
+            for name in dirs:
+                info = (Path(directory) / name).lstat()
+                if (not stat.S_ISDIR(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                    raise ValueError("linked native runtime directories are not supported")
+        actual = {p.relative_to(root).as_posix() for p in native.rglob("*") if p.is_file()}
+        required_native = {"native-runtime/native-manifest.json",
+                           "native-runtime/bin/msvcp140.dll", "native-runtime/bin/msvcp140_1.dll"}
+        if not required_native.issubset(actual) or actual != expected_native:
+            raise ValueError("unexpected or missing native runtime file")
+    elif os.path.lexists(native) or expected_native:
+        raise ValueError("unannounced native runtime files")
 
 
 def main():
@@ -113,9 +134,6 @@ def main():
                    check=True, env=environment, cwd=root)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)
-    if (root / "ocr" / "ocr-manifest.json").is_file():
-        subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library.extract.ocr_runtime", "--check"],
-                       check=True, env=environment, cwd=root)
     print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
     return 0
 

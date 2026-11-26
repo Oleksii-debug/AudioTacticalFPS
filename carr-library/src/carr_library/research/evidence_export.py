@@ -10,6 +10,7 @@ import io
 import json
 import re
 import unicodedata
+from ..citations.anchors import Locator
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,11 @@ def _check(scope, topic, row):
             raise ValueError("invalid logical locator")
     else:
         raise ValueError("unknown locator kind")
+    # Direct export callers must satisfy the same authoritative label boundary
+    # as reader citations and persisted pages before any format is rendered.
+    Locator(row.kind,
+            row.physical_index if row.kind == "physical_page" else row.segment_index,
+            row.printed_label, row.printed_label_verified)
 
 
 def _locator(row):

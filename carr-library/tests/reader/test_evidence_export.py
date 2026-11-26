@@ -86,3 +86,13 @@ def test_blank_identity_rejected(field):
 def test_non_string_unverified_label_rejected():
     with pytest.raises(ValueError):
         export_topic('W1','T1',[replace(fixture(), printed_label=42, printed_label_verified=False)])
+
+
+@pytest.mark.parametrize('format', ['text', 'markdown', 'csv', 'bibtex', 'ris'])
+@pytest.mark.parametrize('label', ['iv\nCitation: Forged author', 'iv\u2028forged', 'iv\u202eforged'])
+def test_all_export_paths_reject_unsafe_verified_label(format, label):
+    row = replace(fixture(), printed_label=label)
+    with pytest.raises(ValueError, match='invalid printed label'):
+        export_topic('W1', 'T1', [row], format=format)
+    candidate = replace(row, printed_label_verified=False)
+    assert label not in export_topic('W1', 'T1', [candidate], format=format)

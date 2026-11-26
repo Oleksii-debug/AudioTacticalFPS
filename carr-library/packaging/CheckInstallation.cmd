@@ -16,10 +16,6 @@ set "CHECK_RESULT=%ERRORLEVEL%"
 if not "%CHECK_RESULT%"=="0" goto finished
 "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library --self-test
 set "CHECK_RESULT=%ERRORLEVEL%"
-if not "%CHECK_RESULT%"=="0" goto finished
-if not exist "%~dp0ocr\ocr-manifest.json" goto finished
-"%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library.extract.ocr_runtime --check
-set "CHECK_RESULT=%ERRORLEVEL%"
 :finished
 pause
 exit /b %CHECK_RESULT%

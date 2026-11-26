@@ -43,7 +43,9 @@ def test_verified_ocr_runtime_and_models_are_delivered(inputs):
     assert manifest['bundled_ocr'] is True
     assert (output / 'ocr/tesseract.exe').read_bytes() == (inputs['ocr_dir'] / 'tesseract.exe').read_bytes()
     assert 'CARR_OCR_DIR' in (output / 'ResearchLibrary.cmd').read_text()
-    assert 'carr_library.extract.ocr_runtime --check' in (output / 'CheckInstallation.cmd').read_text()
+    # The combined diagnostic loads native dependencies and delegates bundled
+    # recognition to the same canonical OCR checker; it does not run it twice.
+    assert 'carr_library.native_checks --bundle-root' in (output / 'CheckInstallation.cmd').read_text()
     installer.verify(output)
 
 
