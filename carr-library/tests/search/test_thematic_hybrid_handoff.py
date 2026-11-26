@@ -5,6 +5,7 @@ from hashlib import sha256
 import pytest
 
 from carr_library.search.thematic import Passage, search, search_hybrid
+from carr_library.search import thematic
 
 
 def passage(pid, text, workspace='A', revision='r1', physical=1):
@@ -35,8 +36,12 @@ def test_semantic_only_and_exact_slice():
 
 
 @pytest.mark.parametrize('ranker', [None, lambda q, p: []])
-def test_fallback_is_exact_baseline(ranker):
-    assert search_hybrid('A', [P, Q], 'railway', semantic_ranker=ranker) == search('A', [P, Q], 'railway')
+@pytest.mark.parametrize('clock', [None, 4.001])
+def test_fallback_is_exact_baseline(ranker, clock, monkeypatch):
+    if clock is not None:
+        monkeypatch.setattr(thematic, 'monotonic', lambda: clock)
+    assert search_hybrid('A', [P, Q], 'railway', semantic_ranker=ranker,
+                         timeout=60.0) == search('A', [P, Q], 'railway')
 
 
 @pytest.mark.parametrize('bad', [('B', 'ed-two', 'r1', 'two'),

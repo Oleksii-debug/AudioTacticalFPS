@@ -9,6 +9,7 @@ import sqlite3
 import pytest
 
 from carr_library.search.thematic import search_active, search_catalog
+from carr_library.search import thematic
 
 
 @pytest.fixture
@@ -41,11 +42,14 @@ def library(tmp_path):
         storage.close()
 
 
-def test_collection_scope_and_exact_revision(library):
+@pytest.mark.parametrize('clock', [None, 4.001])
+def test_collection_scope_and_exact_revision(library, clock, monkeypatch):
     storage, _, _ = library
     db = storage.db
+    if clock is not None:
+        monkeypatch.setattr(thematic, 'monotonic', lambda: clock)
     with storage.transaction():
-        hit, = search_catalog(db, 'A', 'railway', collection='c')
+        hit, = search_catalog(db, 'A', 'railway', collection='c', timeout=60.0)
         assert hit['workspace_id'] == 'A' and hit['revision_id'] == 'r2'
         assert hit['asset_sha256'] == 'a'*64 and hit['segment_index'] == 1
         assert hit['physical_index'] is None and hit['printed_label'] is None

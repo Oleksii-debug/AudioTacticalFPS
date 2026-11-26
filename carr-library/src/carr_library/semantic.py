@@ -198,7 +198,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
         if on_status is not None:
             on_status('The local model\'s text limit was reached. Keyword search used. '
                       'Shorten the query or narrow the source filters to use the local model.')
-        remaining = deadline - monotonic()
+        remaining = min(timeout, deadline - monotonic())
         if remaining <= 0:
             raise TimeoutError('Semantic search cancelled or timed out.')
         hits = search_active(db, workspace, allowed, query, limit=limit,
@@ -240,11 +240,13 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
 
     def rank(query, candidates):
         check()
-        return ranker.rank(query, candidates, cancelled=stopped, timeout=deadline - monotonic())
+        return ranker.rank(query, candidates, cancelled=stopped,
+                           timeout=min(timeout, deadline - monotonic()))
 
     try:
         hits = search_windowed(workspace, passages, query, tokenizer=ranker.tokenizer,
-                               semantic_ranker=rank, limit=limit, timeout=deadline - monotonic(),
+                               semantic_ranker=rank, limit=limit,
+                               timeout=min(timeout, deadline - monotonic()),
                                cancelled=stopped)
     except ValueError as exc:
         if 'budget' in str(exc).lower() or 'semantic window' in str(exc).lower():

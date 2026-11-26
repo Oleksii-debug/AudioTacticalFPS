@@ -97,6 +97,44 @@ def test_catalog_time_is_charged_to_the_same_search_deadline(research, monkeypat
     assert app._selections == {}
 
 
+@pytest.mark.parametrize('mode', ['phrase', 'terms'])
+def test_constant_clock_default_timeout_reaches_actual_literal_search(research, monkeypatch, mode):
+    app, workspace = research
+    # A coarse clock can return the same value throughout setup. Binary float
+    # subtraction gives (4.001 + 60) - 4.001 > 60, which search rejects.
+    monkeypatch.setattr(application, 'monotonic', lambda: 4.001)
+    hits = app.search(workspace, 'history', mode=mode, timeout=60.0)
+    assert len(hits) == 1 and hits[0].quote == 'history' and hits[0].verified
+
+
+@pytest.mark.parametrize('initial', [4.001, -4.001])
+def test_budget_cannot_exceed_original_timeout_and_expiry_stays_latched(monkeypatch, initial):
+    current = [initial]
+    monkeypatch.setattr(application, 'monotonic', lambda: current[0])
+    budget = application._SearchBudget(60.0, lambda: False)
+    assert budget.remaining() == 60.0
+    # Even an anomalous backwards reading cannot increase the allowed duration.
+    current[0] -= 1
+    assert budget.remaining() == 60.0
+    current[0] = initial + 10
+    assert budget.remaining() == pytest.approx(50.0)
+    current[0] = budget.deadline
+    with pytest.raises(TimeoutError):
+        budget.remaining()
+    current[0] = initial
+    with pytest.raises(TimeoutError):
+        budget.remaining()
+
+
+def test_budget_expiry_between_check_and_remaining_is_not_clamped_away(monkeypatch):
+    readings = iter((4.001, 4.001, 65.0))
+    monkeypatch.setattr(application, 'monotonic', lambda: next(readings))
+    budget = application._SearchBudget(60.0, lambda: False)
+    with pytest.raises(TimeoutError):
+        budget.remaining()
+    assert budget.latched
+
+
 @pytest.mark.parametrize('timeout', [0, -1, float('nan'), float('inf'), True, '5'])
 def test_invalid_operation_budget_is_rejected(research, timeout):
     app, workspace = research

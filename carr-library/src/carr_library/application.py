@@ -84,6 +84,7 @@ class _SearchBudget:
                 or not callable(cancelled)):
             raise ValueError('Invalid search operation budget.')
         self.deadline = monotonic() + timeout
+        self.timeout = timeout
         self.cancelled = cancelled
         self.latched = False
 
@@ -101,7 +102,7 @@ class _SearchBudget:
         if remaining <= 0:
             self.latched = True
             raise TimeoutError('Search cancelled or timed out.')
-        return remaining
+        return min(self.timeout, remaining)
 
 
 class _CatalogPublisher:

@@ -99,7 +99,7 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
         value = deadline - monotonic()
         if value <= 0:
             raise TimeoutError('semantic windows cancelled or timed out')
-        return value
+        return min(timeout, value)
 
     check()
     if not _groups(query):
