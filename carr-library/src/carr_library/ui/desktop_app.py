@@ -27,6 +27,7 @@ from .catalog_metadata_dialog import edit_selected_book
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .notebook_search import search_saved_research
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -456,6 +457,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
+                ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
@@ -1003,6 +1005,7 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
+            'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
