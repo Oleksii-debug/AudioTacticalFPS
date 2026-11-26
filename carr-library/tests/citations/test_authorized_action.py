@@ -5,8 +5,9 @@ import sqlite3
 
 import pytest
 
-from carr_library.citations.anchors import Identity, Locator, Metadata, digest, make_anchor
+from carr_library.citations.anchors import Identity, LabelCorrection, Locator, Metadata, digest, make_anchor
 from carr_library.citations.historical import historical_loader
+from carr_library.citations.printed_label_attestation import printed_label_guard
 from carr_library.citations.authorized_action import AuthorizedSelection, copy_authorized_span
 from carr_library.research.span_snapshot import seal_span
 
@@ -26,6 +27,7 @@ def library(tmp_path):
         CREATE TABLE page(revision,ordinal,physical,printed,verified,raw,digest);
         CREATE TABLE approval(physical,raw_hash,active);
         CREATE TABLE meta_approval(active);
+        CREATE TABLE label_approval(physical,printed,active);
         CREATE TABLE saved(workspace,topic,evidence,payload,checksum,allowed,note);
         ''')
         db.execute('INSERT INTO revision VALUES(?,?,?,?)', ('w','edition','a'*64,'rev'))
@@ -35,13 +37,21 @@ def library(tmp_path):
             for i,(loc,text) in enumerate(zip(locs,raw),1)])
         db.executemany('INSERT INTO approval VALUES(?,?,1)', [(i,digest(t)) for i,t in enumerate(raw,1)])
         db.execute('INSERT INTO meta_approval VALUES(1)')
+        db.execute('INSERT INTO label_approval VALUES(1,?,1)', ('iv',))
 
     def readers(db, workspace):
         def text_ok(i, loc, h):
             return i == ident and db.execute('SELECT 1 FROM approval WHERE physical=? AND raw_hash=? AND active=1', (loc.index,h)).fetchone() == (1,)
         def meta_ok(i,m):
             return i == ident and m == meta and db.execute('SELECT active FROM meta_approval').fetchone() == (1,)
-        return historical_loader(db, workspace, text_ok), meta_ok
+        def label_ok(i, physical):
+            rows = db.execute('SELECT printed FROM label_approval WHERE physical=? AND active=1', (physical,)).fetchmany(2)
+            if i != ident or len(rows) != 1:
+                return None
+            return LabelCorrection(i, Locator('physical_page', physical),
+                                   Locator('physical_page', physical, rows[0][0], True),
+                                   'synthetic label review', 'fixture reviewer', 'b'*64)
+        return historical_loader(db, workspace, printed_label_guard(workspace, text_ok, label_ok)), meta_ok
 
     with closing(sqlite3.connect(path)) as db, db:
         db.execute('BEGIN')
@@ -75,7 +85,8 @@ def test_exact_and_unknown_page(library):
 
 @pytest.mark.parametrize('sql', ['UPDATE saved SET allowed=0', 'DELETE FROM saved',
     'UPDATE saved SET topic="other"', 'UPDATE meta_approval SET active=0',
-    'UPDATE approval SET active=0 WHERE physical=2'])
+    'UPDATE approval SET active=0 WHERE physical=2',
+    'UPDATE label_approval SET active=0', 'UPDATE label_approval SET printed="999"'])
 def test_fresh_action_denies_revocation(library, sql):
     assert copy(library)
     library[2](sql)
