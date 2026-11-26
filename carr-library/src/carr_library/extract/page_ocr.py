@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 
 
 @dataclass(frozen=True)
@@ -18,8 +19,11 @@ class Config:
     dpi: int = 300
     timeout: int = 30
     max_pixels: int = 20_000_000
+    orientation: bool = False
 
     def __post_init__(self):
+        if type(self.orientation) is not bool:
+            raise ValueError('orientation must be boolean')
         if not re.fullmatch(r'[A-Za-z0-9_]+(?:\+[A-Za-z0-9_]+)*', self.languages):
             raise ValueError('invalid language selection')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
@@ -29,9 +33,11 @@ class Config:
 def extract_page(asset, physical_index, config=Config()):
     """Return a candidate, never a verified printed label or corrected quote.
 
-    OCR TSV coordinates are pixels in the rendered, rotated page image.
+    Baseline OCR TSV coordinates are pixels in the original rendered image.
+    Optional orientation evidence has its own pixel coordinate frame.
     Parser isolation and durable job checkpoints belong to the ingest runner.
     """
+    deadline = time.monotonic() + config.timeout
     from pypdf import PdfReader
     import pypdfium2 as pdfium
     with Path(asset).open('rb') as f:
@@ -95,14 +101,29 @@ def extract_page(asset, physical_index, config=Config()):
                     return result
                 try:
                     with tempfile.TemporaryDirectory() as tmp:
-                        inp, out = Path(tmp) / 'page.png', Path(tmp) / 'ocr'
-                        image.save(inp, dpi=(config.dpi, config.dpi))
-                        opts = dict(check=True, capture_output=True, timeout=config.timeout)
-                        provenance['ocr_engine'] = subprocess.run([exe, '--version'], **opts).stdout.decode('utf-8', 'replace').splitlines()[0]
-                        subprocess.run([exe, str(inp), str(out), '-l', config.languages,
-                                        '--dpi', str(config.dpi), '--psm', '3', 'txt', 'tsv'], **opts)
-                        raw = out.with_suffix('.txt').read_bytes().decode('utf-8')
-                        tsv = out.with_suffix('.tsv').read_bytes().decode('utf-8')
+                        def remaining():
+                            seconds = deadline - time.monotonic()
+                            if seconds <= 0:
+                                raise subprocess.TimeoutExpired(exe, config.timeout)
+                            return seconds
+
+                        def run(args):
+                            return subprocess.run(args, check=True, capture_output=True, timeout=remaining())
+
+                        def recognize(raster, name):
+                            inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
+                            raster.save(inp, dpi=(config.dpi, config.dpi))
+                            run([exe, str(inp), str(out), '-l', config.languages,
+                                 '--dpi', str(config.dpi), '--psm', '3', 'txt', 'tsv'])
+                            return (out.with_suffix('.txt').read_bytes().decode('utf-8'),
+                                    out.with_suffix('.tsv').read_bytes().decode('utf-8'))
+
+                        provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
+                        raw, tsv = recognize(image, 'baseline')
+                        provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
+                        if config.orientation:
+                            from .ocr_orientation_bridge import orientation_candidate
+                            provenance['orientation'] = orientation_candidate(image, config, exe, remaining, run, recognize)
                 except (OSError, subprocess.SubprocessError, UnicodeError):
                     result['status'] = 'review_required'
                     result['warnings'].append('ocr_failed_or_timed_out')
