@@ -24,6 +24,8 @@ DC = '{http://purl.org/dc/elements/1.1/}'
 XHTML = '{http://www.w3.org/1999/xhtml}'
 XML = '{http://www.w3.org/XML/1998/namespace}'
 ENC = '{http://www.w3.org/2001/04/xmlenc#}'
+EPUB_TYPE = '{http://www.idpf.org/2007/ops}type'
+NCX = '{http://www.daisy.org/z3986/2005/ncx/}'
 
 MAX_SOURCE_BYTES = 64 * 1024 * 1024
 MAX_PACKAGE_XML = 1024 * 1024
@@ -36,6 +38,10 @@ MAX_SPINE = 1000
 MAX_TEXT = 10_000_000
 MAX_LOCATORS = 1024 * 1024
 MAX_ALTERNATIVES = 1000
+MAX_NAVIGATION = 2000
+MAX_NAVIGATION_BYTES = 2 * 1024 * 1024
+MAX_ANCHORS = 100_000
+MAX_NAV_LABEL = 1024
 _SPACE = re.compile(r'[ \t\r\n\f]+')
 _BAD_PERCENT = re.compile(r'%(?![0-9A-Fa-f]{2})')
 _ENCODED_SEPARATOR = re.compile(r'%(?:2f|5c)', re.IGNORECASE)
@@ -61,12 +67,27 @@ class EpubError(ValueError):
     """A fixed, non-source-bearing explanation of an unsupported EPUB."""
 
 
+class _NavigationBudgetExceeded(EpubError):
+    """An optional descriptor budget, distinct from XML and text budgets."""
+
+
 @dataclass
 class _Budget:
     xml_bytes: int = 0
     nodes: int = 0
     output_chars: int = 0
     locator_bytes: int = 0
+    navigation_count: int = 0
+    navigation_bytes: int = 0
+    anchors: int = 0
+
+    def navigation(self, rows):
+        self.navigation_count += len(rows)
+        self.navigation_bytes += len(json.dumps(rows, ensure_ascii=False,
+            separators=(',', ':')).encode('utf-8'))
+        if (self.navigation_count > MAX_NAVIGATION
+                or self.navigation_bytes > MAX_NAVIGATION_BYTES):
+            raise _NavigationBudgetExceeded('EPUB navigation budget exceeded.')
 
 
 class _TreeBuilder(ET.TreeBuilder):
@@ -83,6 +104,8 @@ class _TreeBuilder(ET.TreeBuilder):
             raise EpubError('EPUB XML structure budget exceeded.')
         if XML + 'base' in attributes:
             raise EpubError('EPUB xml:base references are not supported.')
+        if tag == XHTML + 'base':
+            raise EpubError('EPUB XHTML base references are not supported.')
         return super().start(tag, attributes)
 
     def end(self, tag):
@@ -242,7 +265,7 @@ def _package(archive, budget, warnings):
             for element in metadata[0].findall(DC + tag)[:100]:
                 if not len(element) and (value := _display(element.text or '')):
                     hints[field].append(value)
-    return package_name, items, order, hints
+    return package_name, items, order, hints, spine.get('toc')
 
 
 def _encryption(archive, package_name, items, order, budget, warnings):
@@ -279,11 +302,30 @@ class _Text:
     def __init__(self):
         self.parts = []
         self.length = 0
+        # ``length`` remains the original conservative safety counter. These
+        # positions describe final output, including generated line breaks.
+        self.rendered_length = 0
+        self.positions = []
+
+    def mark(self):
+        position = [self.rendered_length]
+        self.positions.append(position)
+        return position
+
+    def _removed(self, length):
+        self.rendered_length -= length
+        # Positions are created in order. Only markers in a removed suffix
+        # move; preserving them as references also fixes previously seen IDs.
+        for position in reversed(self.positions):
+            if position[0] <= self.rendered_length:
+                break
+            position[0] = self.rendered_length
 
     def _trim(self):
         while self.parts and self.parts[-1][0] == 'text':
             kind, value = self.parts[-1]
             trimmed = value.rstrip(' ')
+            self._removed(len(value) - len(trimmed))
             if trimmed:
                 self.parts[-1] = (kind, trimmed)
                 return
@@ -301,16 +343,18 @@ class _Text:
             if self.length > MAX_TEXT:
                 raise EpubError('EPUB text budget exceeded.')
             self.parts.append(('pre' if pre else 'text', value))
+            self.rendered_length += len(value)
 
     def line(self, *, explicit=False):
         self._trim()
         if self.parts and (explicit or not self.parts[-1][1].endswith('\n')):
             self.parts.append(('break' if explicit else 'boundary', '\n'))
+            self.rendered_length += 1
 
     def finish(self):
         self._trim()
         while self.parts and self.parts[-1][0] == 'boundary':
-            self.parts.pop()
+            self._removed(len(self.parts.pop()[1]))
         return ''.join(value for _, value in self.parts)
 
 
@@ -348,7 +392,23 @@ def _chapter(archive, path, budget, warnings):
             if element.tag in (XHTML + 'style', XHTML + 'link'):
                 warnings.add('styles_not_rendered')
     output, alternatives, headings = _Text(), [], []
+    heading_locations, anchors = [], {}
     images = 0
+
+    def remember(node, *, heading=False):
+        identifiers = {node.get('id'), node.get(XML + 'id')} - {None}
+        if not identifiers and not heading:
+            return None
+        position = output.mark()
+        for identifier in identifiers:
+            budget.anchors += 1
+            if (budget.anchors > MAX_ANCHORS or not identifier or len(identifier) > MAX_NAV_LABEL
+                    or any(c.isspace() or unicodedata.category(c).startswith('C') for c in identifier)):
+                raise EpubError('EPUB anchor identity or budget is unsupported.')
+            # Retain legacy text extraction of duplicate IDs. A navigation
+            # request for one must never silently choose either occurrence.
+            anchors[identifier] = None if identifier in anchors or len(identifiers) > 1 else position
+        return position
 
     def walk(node, pre=False):
         nonlocal images
@@ -378,6 +438,7 @@ def _chapter(archive, path, budget, warnings):
                 raise EpubError('EPUB void content contains unexpected text.')
             if tag == 'link':
                 warnings.add('styles_not_rendered')
+            remember(node)
             return
         if tag == 'img':
             images += 1
@@ -392,14 +453,18 @@ def _chapter(archive, path, budget, warnings):
             elif 'alt' not in node.attrib:
                 warnings.add('images_without_text_alternatives')
             output.line()
+            remember(node)
             return
         if tag == 'br':
             if len(node) or node.text and node.text.strip():
                 raise EpubError('EPUB line break contains unexpected text.')
             output.line(explicit=True)
+            remember(node)
             return
         if tag in _BLOCKS:
             output.line()
+        is_heading = tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6')
+        position = remember(node, heading=is_heading)
         pre = pre or tag == 'pre'
         heading_start = len(output.parts)
         output.add(node.text, pre=pre)
@@ -410,11 +475,194 @@ def _chapter(archive, path, budget, warnings):
             heading = _display(''.join(value for _, value in output.parts[heading_start:]))
             if heading:
                 headings.append(heading)
+        if is_heading:
+            if len(heading_locations) >= MAX_NAVIGATION:
+                raise EpubError('EPUB navigation budget exceeded.')
+            heading_locations.append((position, output.mark(), int(tag[1])))
         if tag in _BLOCKS:
             output.line()
 
     walk(body)
-    return output.finish(), title or (headings[0] if headings else ''), alternatives
+    raw = output.finish()
+    locations = []
+    for start, end, level in heading_locations:
+        label = _display(raw[start[0]:end[0]], MAX_NAV_LABEL)
+        if label:
+            locations.append(dict(title=label, offset=start[0], level=level))
+    locations.sort(key=lambda row: row['offset'])
+    anchors = {key: None if value is None else value[0] for key, value in anchors.items()}
+    return raw, title or (headings[0] if headings else ''), alternatives, locations, anchors
+
+
+def _navigation_link(base, href):
+    """Resolve a navigation IRI locally; fragments are never resource paths."""
+    if (not isinstance(href, str) or not 0 < len(href) <= 4096 or href != href.strip()
+            or '\\' in href or _BAD_PERCENT.search(href)
+            or any(ord(c) < 32 or ord(c) == 127 for c in href)):
+        raise EpubError('EPUB navigation link is invalid.')
+    uri = urlsplit(href)
+    if uri.scheme or uri.netloc or '?' in href.split('#', 1)[0]:
+        raise EpubError('EPUB navigation must use local resources without queries.')
+    path = _resource(base, uri.path) if uri.path else base
+    try:
+        fragment = unquote(uri.fragment, encoding='utf-8', errors='strict')
+    except UnicodeError:
+        raise EpubError('EPUB navigation fragment encoding is invalid.') from None
+    if (len(path) > MAX_NAV_LABEL or len(fragment) > MAX_NAV_LABEL
+            or any(c.isspace() or unicodedata.category(c).startswith('C') for c in fragment)):
+        raise EpubError('EPUB navigation target is invalid or oversized.')
+    return path, fragment
+
+
+def _navigation_label(node):
+    values = []
+
+    def visit(element):
+        if (not element.tag.startswith(XHTML) or _hidden(element)
+                or element.tag in (XHTML + 'script', XHTML + 'style', XHTML + 'template')):
+            raise EpubError('EPUB navigation label contains unsupported content.')
+        if element.tag == XHTML + 'img':
+            if len(element) or (element.text or '').strip():
+                raise EpubError('EPUB navigation image contains unexpected text.')
+            values.append(element.get('alt', ''))
+        elif element.tag == XHTML + 'br':
+            if len(element) or (element.text or '').strip():
+                raise EpubError('EPUB navigation line break contains unexpected text.')
+            values.append(' ')
+        elif element.text:
+            values.append(element.text)
+        for child in element:
+            visit(child)
+            if child.tail:
+                values.append(child.tail)
+
+    visit(node)
+    label = _display(''.join(values), MAX_NAV_LABEL)
+    if not label:
+        raise EpubError('EPUB navigation label is empty or unsupported.')
+    return label
+
+
+def _navigation(archive, items, ncx_id, order, parsed, budget, warnings, *, navigation_budget):
+    """Build optional contents without choosing between repeated occurrences."""
+    occurrences = {}
+    for ordinal, (_, path, _) in enumerate(order, 1):
+        occurrences.setdefault(path, []).append(ordinal)
+    ambiguous = False
+
+    def target(base, href):
+        nonlocal ambiguous
+        path, fragment = _navigation_link(base, href)
+        if path not in occurrences:
+            raise EpubError('EPUB navigation target is outside the reading order.')
+        anchors = parsed[path][4]
+        if fragment and (fragment not in anchors or anchors[fragment] is None):
+            raise EpubError('EPUB navigation anchor is missing or ambiguous.')
+        if len(occurrences[path]) != 1:
+            ambiguous = True
+            return None, None
+        return occurrences[path][0], anchors.get(fragment, 0)
+
+    def append(output, row):
+        navigation_budget.navigation([row])
+        output.append(row)
+
+    toc, pages = [], []
+    nav_items = [item for item in items.values() if 'nav' in item[2]]
+    if len(nav_items) > 1:
+        raise EpubError('EPUB has ambiguous navigation documents.')
+    if nav_items:
+        member, media, _ = nav_items[0]
+        if member is None or media != 'application/xhtml+xml':
+            raise EpubError('EPUB navigation requires local XHTML.')
+        if archive.getinfo(member).file_size > MAX_PACKAGE_XML:
+            raise EpubError('EPUB navigation XML size limit exceeded.')
+        root = _xml(archive, member, budget, chapter=True)
+        if (root.tag != XHTML + 'html' or (root.text or '').strip()
+                or any(child.tag not in (XHTML + 'head', XHTML + 'body')
+                       or (child.tail or '').strip() for child in root)
+                or len(root.findall(XHTML + 'head')) > 1):
+            raise EpubError('EPUB navigation XHTML structure is unsupported.')
+        body = _one(root, XHTML + 'body', 'EPUB navigation body is missing or ambiguous.')
+        navs = [node for node in body.iter(XHTML + 'nav')
+                if 'toc' in (node.get(EPUB_TYPE) or '').split()]
+        if len(navs) != 1:
+            raise EpubError('EPUB navigation contents are missing or ambiguous.')
+
+        def read_list(ordered, depth, output, *, grouping=True):
+            if depth > 32 or any(child.tag != XHTML + 'li' for child in ordered):
+                raise EpubError('EPUB contents list structure or nesting is unsupported.')
+            for li in ordered:
+                labels = [node for node in li if node.tag in (XHTML + 'a', XHTML + 'span')]
+                if (len(labels) != 1 or (li.text or '').strip()
+                        or any(node.tag not in (XHTML + 'a', XHTML + 'span', XHTML + 'ol')
+                               or (node.tail or '').strip() for node in li)):
+                    raise EpubError('EPUB contents item has an ambiguous label.')
+                label_node = labels[0]
+                label = _navigation_label(label_node)
+                if label_node.tag == XHTML + 'a':
+                    ordinal, offset = target(member, label_node.get('href', ''))
+                    row = dict(title=label, ordinal=ordinal, offset=offset, depth=depth)
+                elif grouping:
+                    row = dict(title=label, ordinal=None, offset=None, depth=depth, heading_only=True)
+                else:
+                    raise EpubError('EPUB page hint must identify a chapter location.')
+                append(output, row)
+                nested = li.findall(XHTML + 'ol')
+                if len(nested) > 1:
+                    raise EpubError('EPUB contents item has ambiguous child lists.')
+                if nested:
+                    read_list(nested[0], depth + 1, output, grouping=grouping)
+
+        read_list(_one(navs[0], XHTML + 'ol', 'EPUB contents list is missing or ambiguous.'), 0, toc)
+        page_lists = [node for node in body.iter(XHTML + 'nav')
+                      if 'page-list' in (node.get(EPUB_TYPE) or '').split()]
+        if len(page_lists) > 1:
+            raise EpubError('EPUB has ambiguous page-hint lists.')
+        if page_lists:
+            read_list(_one(page_lists[0], XHTML + 'ol', 'EPUB page-hint list is missing or ambiguous.'),
+                      0, pages, grouping=False)
+    elif ncx_id:
+        ncx = items.get(ncx_id)
+        if not ncx or ncx[0] is None or ncx[1] != 'application/x-dtbncx+xml':
+            raise EpubError('EPUB NCX navigation is missing or unsupported.')
+        member = ncx[0]
+        root = _xml(archive, member, budget)
+        if root.tag != NCX + 'ncx':
+            raise EpubError('EPUB NCX navigation root is unsupported.')
+
+        def ncx_row(node, depth):
+            label_node = _one(_one(node, NCX + 'navLabel', 'EPUB NCX label is ambiguous.'),
+                              NCX + 'text', 'EPUB NCX label text is ambiguous.')
+            label = _display(''.join(label_node.itertext()), MAX_NAV_LABEL)
+            if not label:
+                raise EpubError('EPUB NCX label is empty or unsupported.')
+            ordinal, offset = target(member, _one(node, NCX + 'content',
+                'EPUB NCX target is ambiguous.').get('src', ''))
+            return dict(title=label, ordinal=ordinal, offset=offset, depth=depth)
+
+        def read_points(parent, depth):
+            if depth > 32:
+                raise EpubError('EPUB NCX contents nesting exceeds the supported limit.')
+            for node in parent.findall(NCX + 'navPoint'):
+                append(toc, ncx_row(node, depth))
+                read_points(node, depth + 1)
+
+        read_points(_one(root, NCX + 'navMap', 'EPUB NCX contents are missing or ambiguous.'), 0)
+        page_lists = root.findall(NCX + 'pageList')
+        if len(page_lists) > 1:
+            raise EpubError('EPUB NCX page-hint lists are ambiguous.')
+        if page_lists:
+            for node in page_lists[0].findall(NCX + 'pageTarget'):
+                append(pages, ncx_row(node, 0))
+    if ambiguous:
+        warnings.add('embedded_contents_ambiguous_spine')
+        return [], []
+    if not any(row.get('ordinal') is not None for row in toc):
+        warnings.add('embedded_contents_unavailable')
+    if pages:
+        warnings.add('page_list_labels_unverified')
+    return toc, pages
 
 
 def extract_epub(data: bytes):
@@ -434,13 +682,26 @@ def extract_epub(data: bytes):
     try:
         validate_office(data, '.epub')
         with ZipFile(BytesIO(data)) as archive:
-            package, items, order, hints = _package(archive, budget, warnings)
+            package, items, order, hints, ncx_id = _package(archive, budget, warnings)
             _encryption(archive, package, items, order, budget, warnings)
             records, parsed = [], {}
+            unique_navigation = _Budget()
+            navigation_disabled = False
             for index, (ident, path, linear) in enumerate(order, 1):
                 if path not in parsed:
-                    parsed[path] = _chapter(archive, path, budget, warnings)
-                raw, title, alternatives = parsed[path]
+                    chapter_warnings = set()
+                    parsed[path] = (*_chapter(archive, path, budget, chapter_warnings), sorted(chapter_warnings))
+                    warnings.update(chapter_warnings)
+                    # Unique source complexity still fails explicitly. Only
+                    # multiplying bounded descriptors across legacy repeated
+                    # spine occurrences may disable the optional navigation.
+                    unique_navigation.navigation(parsed[path][3])
+                raw, title, alternatives, headings, _, chapter_warnings = parsed[path]
+                if not navigation_disabled:
+                    try:
+                        budget.navigation(headings)
+                    except _NavigationBudgetExceeded:
+                        navigation_disabled = True
                 locator = dict(spine_index=index, manifest_id=ident, href=path,
                                linear=linear, title=title)
                 budget.output_chars += len(raw) + sum(len(a['text']) for a in alternatives)
@@ -451,9 +712,27 @@ def extract_epub(data: bytes):
                 records.append(dict(logical_locator=locator, raw_text=raw,
                     text_sha256=sha256(raw.encode('utf-8')).hexdigest(),
                     alternatives=[dict(a) for a in alternatives], physical_index=None,
-                    printed_label=None, printed_label_verified=False))
+                    printed_label=None, printed_label_verified=False,
+                    headings=[] if navigation_disabled else [dict(heading) for heading in headings],
+                    warnings=list(chapter_warnings)))
             if not any(row['raw_text'].strip() for row in records):
                 raise EpubError('EPUB contains no readable XHTML text.')
+            toc, page_hints = [], []
+            if not navigation_disabled:
+                toc, page_hints = _navigation(archive, items, ncx_id, order, parsed, budget, warnings,
+                                              navigation_budget=unique_navigation)
+                try:
+                    if toc:
+                        budget.navigation(toc)
+                    if page_hints:
+                        budget.navigation(page_hints)
+                except _NavigationBudgetExceeded:
+                    navigation_disabled = True
+            if navigation_disabled:
+                warnings.add('embedded_navigation_budget_exceeded')
+                toc, page_hints = [], []
+                for record in records:
+                    record['headings'] = []
     except EpubError:
         raise
     except Exception:
@@ -461,6 +740,7 @@ def extract_epub(data: bytes):
         # logs. The error is an explicit rejection, never a partial publication.
         raise ValueError('EPUB archive or XML is invalid or unsupported.') from None
     return dict(status='review_required', records=records, warnings=sorted(warnings),
+                toc=toc, page_hints=page_hints,
                 metadata_hints=hints, provenance=dict(asset_sha256=sha256(data).hexdigest(),
                 engine='epub-spine', version='1', xml_parser='defusedxml',
                 xml_parser_version='0.7.1'))
