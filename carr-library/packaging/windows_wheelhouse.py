@@ -14,7 +14,7 @@ import tempfile
 from packaging.requirements import Requirement
 from packaging.utils import parse_wheel_filename
 
-UV_VERSION = 'uv 0.10.0'
+UV_VERSION = 'uv 0.13.9'
 TARGET = ['--python-platform', 'x86_64-pc-windows-msvc', '--python-version', '3.11']
 
 

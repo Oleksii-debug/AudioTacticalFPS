@@ -4,7 +4,7 @@ A standalone PR25 checkout cannot satisfy this integration suite; skips are
 not an acceptance result. Assemble the pinned candidate files before running.
 """
 from hashlib import sha256
-from pathlib import Path
+import sqlite3
 
 import pytest
 
@@ -15,14 +15,9 @@ from carr_library.search.thematic import search_active, search_catalog
 def library(tmp_path):
     catalog = pytest.importorskip('carr_library.catalog.membership')
     revisions = pytest.importorskip('carr_library.storage.revisions')
-    schema = Path(__file__).resolve().parents[1] / 'catalog' / 'catalog_membership_candidate.sql'
-    if not schema.is_file():
-        pytest.skip('PR53 catalog schema candidate not assembled')
-    storage = revisions.Storage(tmp_path / 'library.db')
+    storage = revisions.Storage(tmp_path / 'library.db', schema_version=2)
     db = storage.db
     try:
-        db.execute('CREATE TABLE workspace(id TEXT PRIMARY KEY)')
-        db.executescript(schema.read_text(encoding='utf-8'))
         with storage.transaction():
             for ws in ('A', 'B'):
                 db.execute('INSERT INTO workspace VALUES (?)', (ws,))
@@ -80,15 +75,16 @@ def test_membership_remove_and_archive(library):
 def test_asset_mismatch_fails_even_for_nonmatching_text(library):
     storage, _, Page = library
     db = storage.db
-    storage.publish_revision('A', 'e', 'wrong', 'f'*64, 'cfg', [Page('Unrelated topic.')])
+    # Canonical V2 now rejects this mismatch before it can enter the index.
+    # Preserve the regression at the stronger shared-storage publication boundary.
+    with pytest.raises(sqlite3.IntegrityError, match='FOREIGN KEY'):
+        storage.publish_revision('A', 'e', 'wrong', 'f'*64, 'cfg', [Page('Unrelated topic.')])
+    assert storage.get_page('A', 'wrong', 1) is None
     with storage.transaction():
-        # The previous adapter accepts the wrong asset for the authorized ID.
-        hit, = search_active(db, 'A', {'e': 'work'}, 'unrelated')
-        assert hit['asset_sha256'] == 'f'*64
-        with pytest.raises(ValueError, match='asset differs'):
-            search_catalog(db, 'A', 'railway', collection='c')
-        with pytest.raises(ValueError, match='asset differs'):
-            search_catalog(db, 'A', 'unrelated', collection='c')
+        assert search_active(db, 'A', {'e': 'work'}, 'unrelated') == []
+        assert search_catalog(db, 'A', 'unrelated', collection='c') == []
+        hit, = search_catalog(db, 'A', 'railway', collection='c')
+        assert hit['asset_sha256'] == 'a'*64 and hit['revision_id'] == 'r2'
 
 
 def test_snapshot_and_cancellation(library):

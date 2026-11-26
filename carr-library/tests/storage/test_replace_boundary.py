@@ -28,14 +28,16 @@ def test_replace_seal(store):
 
 def test_replace_page_via_unsealed_revision(store):
     original = store.get_page('a', 'old', 1)
-    with store.transaction():
-        store.db.execute("INSERT INTO revision VALUES('pending','a','book',?,'native')", ('a'*64,))
-        with pytest.raises(sqlite3.IntegrityError, match='immutable page'):
-            store.db.execute('INSERT OR REPLACE INTO page VALUES(?,?,?,?,?,?,?,?)',
-                             (original['id'], 'pending', 1, 1, None, 0, 'different', hashlib.sha256(b'different').hexdigest()))
-        # Roll back the deliberately incomplete revision before leaving the test.
-        store.db.rollback()
+    with pytest.raises(RuntimeError, match='publication transaction ended unexpectedly'):
+        with store.transaction():
+            store.db.execute("INSERT INTO revision VALUES('pending','a','book',?,'native')", ('a'*64,))
+            with pytest.raises(sqlite3.IntegrityError, match='immutable page'):
+                store.db.execute('INSERT OR REPLACE INTO page VALUES(?,?,?,?,?,?,?,?)',
+                                 (original['id'], 'pending', 1, 1, None, 0, 'different', hashlib.sha256(b'different').hexdigest()))
+            # An inner rollback must never be reported as a committed publication.
+            store.db.rollback()
     assert store.get_page('a', 'old', 1)['raw'] == 'original'
+    assert store.db.execute("SELECT 1 FROM revision WHERE id='pending'").fetchone() is None
     store.check()
 
 

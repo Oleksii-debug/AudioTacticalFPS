@@ -50,14 +50,15 @@ def render_fingerprint(data, physical):
     return str(pdfium.PYPDFIUM_INFO) + '/' + str(pdfium.PDFIUM_INFO) + '/rgb-scale2-v1', fingerprint
 
 
-def pdf_review_attestor(workspace, resolve_asset, lookup_review):
+def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=render_fingerprint):
     """Callback for historical_loader. No printed-label approval is implied.
 
     lookup_review(identity, physical) returns a trusted ReviewedPage or None.
     Its authority and revocation checks are outside this adapter. Never source
     it from search hits, OCR confidence, or unauthenticated database fields.
     """
-    if not isinstance(workspace, str) or not workspace.strip() or not callable(resolve_asset) or not callable(lookup_review):
+    if (not isinstance(workspace, str) or not workspace.strip() or not callable(resolve_asset)
+            or not callable(lookup_review) or not callable(renderer)):
         raise ValueError('authorized workspace and resolvers required')
 
     def attest(identity, locator, raw_sha256):
@@ -76,8 +77,8 @@ def pdf_review_attestor(workspace, resolve_asset, lookup_review):
             if (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
                     or sha256(data).hexdigest() != identity.asset_sha256):
                 return False
-            renderer, fingerprint = render_fingerprint(data, locator.index)
-            return review.renderer == renderer and review.rendered_sha256 == fingerprint
+            renderer_identity, fingerprint = renderer(data, locator.index)
+            return review.renderer == renderer_identity and review.rendered_sha256 == fingerprint
         except (OSError, LookupError, ValueError, RuntimeError, ImportError):
             return False
 

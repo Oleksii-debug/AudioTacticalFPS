@@ -30,6 +30,8 @@ class TopicPanel(wx.Panel):
                                ('Create child topic', self.create_child),
                                ('Rename selected topic', self.rename),
                                ('Move selected topic', self.move),
+                               ('Move selected topic up', self.move_up),
+                               ('Move selected topic down', self.move_down),
                                ('Archive selected topic', self.archive),
                                ('Refresh topics', self.refresh)]:
             button = wx.Button(self, label=label)
@@ -109,9 +111,10 @@ class TopicPanel(wx.Panel):
         except Exception:
             self.refresh()
             self.status.SetValue('Topic change rejected. Review the selection and try again.')
-            return
+            return False
         self.refresh(selected=target)
         self.tree.SetFocus()
+        return True
 
     @staticmethod
     def _next_position(rows, parent):
@@ -148,6 +151,40 @@ class TopicPanel(wx.Panel):
             service.move(selected, parent, position=self._next_position(rows, parent))
             return selected
         self._change(operation, destination=parent)
+
+    def _reorder(self, direction):
+        message = ''
+
+        def operation(service, selected, rows):
+            nonlocal message
+            parent = rows[selected].parent
+            siblings = sorted((row for row in rows.values() if row.parent == parent),
+                              key=lambda row: (row.position, row.id))
+            index = next(i for i, row in enumerate(siblings) if row.id == selected)
+            destination = index + direction
+            if not 0 <= destination < len(siblings):
+                edge = 'first' if direction < 0 else 'last'
+                message = f'This topic is already {edge} in its section.'
+                return selected
+            siblings[index], siblings[destination] = siblings[destination], siblings[index]
+            # Existing imports may have tied or sparse positions. Renumber only
+            # visible siblings in this authorized transaction, without reparenting.
+            for position, row in enumerate(siblings):
+                if row.position != position:
+                    service.move(row.id, parent, position=position)
+            message = 'Topic moved up.' if direction < 0 else 'Topic moved down.'
+            return selected
+
+        if self._change(operation):
+            self.status.SetValue(message)
+        else:
+            self.tree.SetFocus()
+
+    def move_up(self, event=None):
+        self._reorder(-1)
+
+    def move_down(self, event=None):
+        self._reorder(1)
 
     def archive(self, event=None):
         selected = self._selected()

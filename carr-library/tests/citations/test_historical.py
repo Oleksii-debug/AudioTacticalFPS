@@ -66,12 +66,18 @@ def test_logical_and_unknown_label(store):
 
 
 def test_unsealed(store):
-    with store.transaction():
-        store.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',('draft','A','edition',ASSET,'native'))
-        store.db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) VALUES(?,?,?,?,?,?,?)',('draft',1,7,'iv',1,RAW,digest(RAW)))
-        assert store.get_page('A','draft',1) is not None
-        with pytest.raises(ValueError):
-            historical_loader(store.db,'A',lambda *_: True)(Identity('A','edition',ASSET,'draft'),LOC)
+    with pytest.raises(RuntimeError, match='discard synthetic draft'):
+        with store.transaction():
+            store.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',('draft','A','edition',ASSET,'native'))
+            store.db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) VALUES(?,?,?,?,?,?,?)',('draft',1,7,'iv',1,RAW,digest(RAW)))
+            assert store.db.execute("SELECT 1 FROM page WHERE revision='draft'").fetchone() is not None
+            # Both storage and citation reads hide an unpublished source.
+            assert store.get_page('A','draft',1) is None
+            with pytest.raises(ValueError):
+                historical_loader(store.db,'A',lambda *_: True)(Identity('A','edition',ASSET,'draft'),LOC)
+            raise RuntimeError('discard synthetic draft')
+    assert store.db.execute("SELECT 1 FROM revision WHERE id='draft'").fetchone() is None
+    store.check()
 
 
 def test_label_does_not_verify_text(store):

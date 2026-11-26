@@ -16,13 +16,27 @@ def extract_docx(data: bytes):
         raise ValueError('invalid source snapshot')
     validate_office(data, '.docx')
     from docx import Document
+    from docx.oxml.ns import qn
     from docx.text.paragraph import Paragraph
     from docx.table import Table
     if version('python-docx') != '1.2.0':
         raise RuntimeError('unreviewed python-docx version')
     doc = Document(BytesIO(data))
-    # These constructs can be omitted or transformed by high-level text APIs.
-    if doc.element.xpath('.//w:ins | .//w:del | .//w:sdt | .//w:moveFrom | .//w:moveTo | .//w:altChunk | .//w:drawing | .//w:pict | .//w:object | .//w:fldSimple | .//w:fldChar | .//w:footnoteReference | .//w:endnoteReference | .//w:vanish | .//w:commentRangeStart | .//w:customXml'):
+    # The upstream paragraph/run iterators intentionally skip these constructs.
+    # They must not turn a sentence containing an equation, symbol or wrapped
+    # text into a shorter accepted preview. Match namespace URIs, since the
+    # source document is free to choose its own XML prefixes.
+    unsupported = {qn(name) for name in (
+        'w:ins', 'w:del', 'w:sdt', 'w:moveFrom', 'w:moveTo', 'w:altChunk',
+        'w:drawing', 'w:pict', 'w:object', 'w:fldSimple', 'w:fldChar',
+        'w:footnoteReference', 'w:endnoteReference', 'w:vanish',
+        'w:commentRangeStart', 'w:customXml', 'w:smartTag', 'w:ruby', 'w:sym',
+        'w:softHyphen', 'w:dir', 'w:bdo',
+        'm:oMath', 'm:oMathPara',
+    )}
+    # python-docx does not select an mc:Choice or mc:Fallback for us.
+    unsupported.add('{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent')
+    if any(element.tag in unsupported for element in doc.element.iter()):
         raise ValueError('unsupported body structure requires review')
     records = []
     total = 0

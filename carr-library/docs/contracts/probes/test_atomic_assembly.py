@@ -13,11 +13,10 @@ class Assembly(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.path = Path(tmp.name)/'library.db'
-        self.s = Storage(self.path); self.addCleanup(self.s.close)
+        self.s = Storage(self.path, schema_version=2); self.addCleanup(self.s.close)
         self.db = self.s.db
-        # Baseline candidates have no combined schema; patched candidate initializes both.
-        if not self.db.execute("SELECT 1 FROM sqlite_master WHERE name='workspace'").fetchone():
-            self.db.executescript('CREATE TABLE workspace(id TEXT PRIMARY KEY);'+Path(__file__).with_name('catalog_membership_candidate.sql').read_text())
+        # Exercise the registered production V2 schema, not the obsolete scratch
+        # DDL that the original design probe required beside this file.
         with self.s.transaction():
             for ws in ('a','b'):
                 self.db.execute('INSERT INTO workspace VALUES(?)',(ws,))
@@ -67,7 +66,11 @@ class Assembly(unittest.TestCase):
         finally: copy.close()
     def test_corruption_rejected_at_backup(self):
         self.db.execute('PRAGMA foreign_keys=OFF')
-        self.s.publish_revision('a','edition','wrong','b'*64,'synthetic',[Page('wrong')])
+        with self.assertRaisesRegex(ValueError,'foreign keys required'):
+            self.s.publish_revision('a','edition','wrong','b'*64,'synthetic',[Page('wrong')])
+        # Simulate external corruption through raw SQLite; the supported write
+        # API correctly refuses to operate with foreign-key protection disabled.
+        self.db.execute("INSERT INTO revision VALUES('wrong','a','edition',?,'synthetic')", ('b'*64,))
         self.db.execute('PRAGMA foreign_keys=ON')
         out=self.path.with_name('bad.db')
         with self.assertRaisesRegex(ValueError,'database integrity failure'): self.s.backup(out)

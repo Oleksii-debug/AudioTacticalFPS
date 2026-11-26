@@ -123,6 +123,11 @@ class Ingest:
     def _set(self, job, state, error=None):
         self.db.execute('UPDATE job SET state=?, error=? WHERE id=?', (state, error, job))
 
+    def _eligible(self, record):
+        """Base publication policy; an application may supply authenticated review."""
+        return (record['status'] in ('candidate', 'blank') and
+                record['provenance'].get('method') in ('native', 'render_blank', 'strict_utf8'))
+
     def _validated(self, row):
         records = []
         for i, rec in enumerate(self.db.execute('SELECT * FROM checkpoint WHERE job=? ORDER BY ordinal',
@@ -210,7 +215,7 @@ class Ingest:
                             if not any(p['raw_text'].strip() for p in records):
                                 self._set(job, 'failed', 'empty_source')
                                 break
-                            if any(p['status'] not in ('candidate', 'blank') or p['provenance']['method'] not in ('native', 'render_blank', 'strict_utf8') for p in records):
+                            if any(not self._eligible(p) for p in records):
                                 raise IngestError('unverified checkpoint')
                             if hash_file(staged) != asset.digest:
                                 raise IngestError('staging digest mismatch')
@@ -234,7 +239,7 @@ class Ingest:
                             raise IngestError('checkpoint resource limit')
                         self.db.execute('INSERT INTO checkpoint VALUES(?,?,?,?)', (job, i, payload, digest(payload)))
                         self._validated(row)
-                        if p['status'] not in ('candidate', 'blank') or p['provenance'].get('method') not in ('native', 'render_blank', 'strict_utf8'):
+                        if not self._eligible(p):
                             self._set(job, 'quarantined', 'extraction_review_required')
                             break
                 except Exception:

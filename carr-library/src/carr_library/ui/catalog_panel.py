@@ -7,6 +7,14 @@ source deletion, raw SQL or implicit global search is performed by this panel.
 from uuid import uuid4
 
 import wx
+from carr_library.catalog.read_views import browse_editions
+
+
+class _ViewTooLarge(ValueError):
+    """A bounded view failed, but its authorized collection choices remain valid."""
+    def __init__(self, collections):
+        super().__init__('Choose a smaller collection for this view.')
+        self.collections = collections
 
 
 class CatalogPanel(wx.Panel):
@@ -67,8 +75,17 @@ class CatalogPanel(wx.Panel):
             raise ValueError('invalid collection identities')
         if collection is not None and collection not in groups:
             raise ValueError('collection no longer active')
-        editions = service.editions(collection)
-        rows = {r[0]: r for r in editions}
+        editions = []
+        after = None
+        while True:
+            page = browse_editions(service, collection=collection, after=after, limit=500)
+            editions.extend(page)
+            if len(editions) > 10000:
+                raise _ViewTooLarge(groups)
+            if len(page) < 500:
+                break
+            after = page[-1].edition_id
+        rows = {r.edition_id: r for r in editions}
         if len(rows) != len(editions):
             raise ValueError('duplicate edition identity')
         return groups, rows
@@ -80,34 +97,51 @@ class CatalogPanel(wx.Panel):
         for control in (self.filter, self.target, self.books):
             control.Clear()
 
+    def _show_collections(self, groups, collection, target):
+        self.groups = groups
+        self.filter_ids = [None, *groups]
+        self.target_ids = list(groups)
+        self.filter.Append('All books in this library')
+        for name in groups.values():
+            self.filter.Append(name)
+            self.target.Append(name)
+        self.filter.SetSelection(self.filter_ids.index(collection))
+        if target in self.target_ids:
+            self.target.SetSelection(self.target_ids.index(target))
+        elif self.target_ids:
+            self.target.SetSelection(self.target_ids.index(collection) if collection in self.target_ids else 0)
+
     def refresh(self, event=None, *, selection=None):
         collection, target, edition = self._selection() if selection is None else selection
         try:
             with self.transaction() as service:
                 groups, rows = self._snapshot(service, collection)
             self._clear()
-            self.groups, self.rows = groups, rows
-            self.filter_ids = [None, *groups]
-            self.target_ids = list(groups)
+            self._show_collections(groups, collection, target)
+            self.rows = rows
             self.book_ids = list(rows)
-            self.filter.Append('All books in this library')
-            for key, name in groups.items():
-                label = f'{name} (ID: {key})'
-                self.filter.Append(label)
-                self.target.Append(label)
-            for key, row in rows.items():
-                _, _, _, title, language, version, volume = row
-                self.books.Append(f'{title or "Untitled"}; language {language or "unknown"}; '
-                                  f'edition {version or "unknown"}; volume {volume or "unknown"}; ID {key}')
-            self.filter.SetSelection(self.filter_ids.index(collection))
-            if target in self.target_ids:
-                self.target.SetSelection(self.target_ids.index(target))
+            for number, row in enumerate(rows.values(),1):
+                self.books.Append(f'{number}. {row.title or "Untitled"}; '
+                    f'author {"; ".join(row.authors) or "unknown"}; language {row.language or "unknown"}; '
+                    f'edition {row.edition or "unknown"}; volume {row.volume or "unknown"}')
             if edition in self.book_ids:
                 self.books.SetSelection(self.book_ids.index(edition))
+            elif self.book_ids:
+                self.books.SetSelection(0)
             self.ready = True
             self.status.SetValue(f'{len(rows)} editions in this view.' if rows else
-                                 'No books in this view. Import books or choose another collection.')
+                ('This collection is empty. Add an existing book or import one.' if collection is not None else
+                 'This library has no books. Import a file or add original text.'))
             return True
+        except _ViewTooLarge as exc:
+            # Do not show a partial list as the complete catalogue. Keep the
+            # authorized selectors so the user can actually choose another view.
+            self._clear()
+            self._show_collections(exc.collections, collection, target)
+            self.status.SetValue('This view has more than 10,000 editions. '
+                                 'Use Browse collection to choose a smaller collection.')
+            self.filter.SetFocus()
+            return False
         except Exception:
             self._clear()
             self.status.SetValue('Catalog unavailable. Refresh after checking the active library.')
@@ -116,6 +150,7 @@ class CatalogPanel(wx.Panel):
     def _change(self, action, selection, *, needs_target=False, needs_book=False):
         if not self.ready or selection != self._selection():
             self.status.SetValue('Selection changed. Refresh and try again.')
+            self.status.SetFocus()
             return
         collection, target, edition = selection
         try:
@@ -129,12 +164,14 @@ class CatalogPanel(wx.Panel):
         except Exception:
             self.refresh()
             self.status.SetValue('Catalog change rejected. Review the selection and try again.')
+            self.status.SetFocus()
             return
         if self.refresh(selection=next_selection):
-            self.status.SetValue('Catalog updated.')
+            self.status.SetValue('Catalog updated.' + (' This collection is now empty.' if not self.rows and next_selection[0] is not None else ''))
             self.books.SetFocus()
         else:
             self.status.SetValue('Catalog change committed; refresh failed. Refresh before another change.')
+            self.status.SetFocus()
 
     def create(self, event=None):
         def action(service, selected):
@@ -160,8 +197,9 @@ class CatalogPanel(wx.Panel):
         selected = self._selection()
         if not self.ready or selected[1] not in self.groups:
             self.status.SetValue('Choose a collection to archive.')
+            self.status.SetFocus()
             return
-        if wx.MessageBox('Archive the selected collection? Books will not be deleted.',
+        if wx.MessageBox(f'Archive collection "{self.groups[selected[1]]}"? Books will remain in the library.',
                          'Confirm collection archive', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
                          self) != wx.YES:
             return

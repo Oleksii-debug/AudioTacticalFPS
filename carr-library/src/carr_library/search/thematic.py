@@ -36,8 +36,19 @@ def _groups(query):
     if (not isinstance(query, str) or len(query) > 500 or any(
             category(c) in ('Cc', 'Cs') and c not in '\t\n\r' for c in query)):
         raise ValueError("invalid thematic query")
+    normalized = normalize("NFC", query)
+    terms = extract_query_terms(normalized)
+    # The reused parser recognizes content:/filename: fields and drops every
+    # other colon token. In this plain-language adapter a time (10:30), ratio
+    # (1:2), or heading (railway:) is still a required search concept. Preserve
+    # those tokens as quoted FTS text, excluding already extracted phrases.
+    # Keep the upstream parser itself unchanged and retain its known prefixes.
+    unquoted = re.sub(r'"([^"]+)"', '', normalized)
+    terms.extend(word for word in unquoted.split()
+                 if ':' in word and word.split(':', 1)[0].lower()
+                 not in ('filename', 'content'))
     groups = []
-    for term in extract_query_terms(normalize("NFC", query)):
+    for term in terms:
         # The upstream splitter is not a security boundary. Every token is quoted
         # independently below, never interpreted as FTS5 operators or columns.
         phrase = term.strip()
