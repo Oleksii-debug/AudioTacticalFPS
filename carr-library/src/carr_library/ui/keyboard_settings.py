@@ -13,6 +13,7 @@ from ..keyboard_preferences import KeymapStore
 from ..research.export_file import write_export
 from .builtin_keyboard_commands import MAIN_COMMANDS, builtin_commands, plain_caption
 from .command_registry import CommandRegistry, normalize_shortcut
+from .context_shortcuts import CommandBinding, bind_context_shortcuts
 
 
 CONTEXT_NAMES = {'main': 'Main window', 'reader': 'Reading Desk'}
@@ -57,6 +58,20 @@ class KeyboardManager:
         self._unmanaged = {}
         self._pending_saved = None
         self._load()
+
+    @property
+    def notice(self):
+        return self.load_notice
+
+    def retarget(self, root):
+        return self.change_root(root)
+
+    def show_settings(self):
+        return show_keyboard_settings(self.frame, self)
+
+    def bind_window(self, window, context, bindings):
+        from .context_shortcuts import bind_window
+        return bind_window(self, window, context, bindings, accelerator_tuple)
 
     def _load(self):
         self.overrides = {}
@@ -557,6 +572,7 @@ def install_keyboard_settings(frame):
     import wx
     existing = getattr(frame, 'keyboard_commands', None)
     if existing is not None:
+        frame.keyboard = existing
         existing.refresh()
         return existing
     menu = wx.Menu()
@@ -572,6 +588,7 @@ def install_keyboard_settings(frame):
             item, item.GetItemLabel().split('\t', 1)[0], manager._top_index(item))
     frame._pending_keyboard_commands = []
     frame.keyboard_commands = manager
+    frame.keyboard = manager
     frame.Bind(wx.EVT_MENU, lambda event: show_command_launcher(frame, manager), commands)
     frame.Bind(wx.EVT_MENU, lambda event: show_keyboard_settings(frame, manager), settings)
     manager.activate_loaded()

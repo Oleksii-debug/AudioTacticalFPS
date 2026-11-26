@@ -5,11 +5,13 @@ persisted identities. New modules should register their explicit CommandSpec
 and menu item with KeyboardManager.register_menu_command instead.
 """
 from .command_registry import CommandSpec
+from .context_shortcuts import CONTEXT_SPECS
 
 
 # id, menu caption, existing command caption, default application shortcut
 MAIN_COMMANDS = (
     ('library.new', 'Library', 'New library', 'Ctrl+N'),
+    ('library.save_all', 'Library', 'Save All', 'Ctrl+S'),
     ('library.open', 'Library', 'Open existing library folder', ''),
     ('library.rename', 'Library', 'Rename or describe library', ''),
     ('library.archive', 'Library', 'Archive library', ''),
@@ -72,7 +74,7 @@ READER_COMMANDS = (
 
 def builtin_commands():
     return tuple(CommandSpec(identity, caption, 'main', shortcut)
-                 for identity, _, caption, shortcut in MAIN_COMMANDS) + READER_COMMANDS
+                 for identity, _, caption, shortcut in MAIN_COMMANDS) + READER_COMMANDS + CONTEXT_SPECS
 
 
 def plain_caption(label):

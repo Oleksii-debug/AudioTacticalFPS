@@ -1,0 +1,16 @@
+--- a/carr-library/src/carr_library/ui/desktop_app.py
++++ b/carr-library/src/carr_library/ui/desktop_app.py
+@@ -532,3 +532,2 @@
+                 ('Add selected book to academic library', self.add_selected_book_reference)]),
+-            ('&Options', [('Settings — Keyboard shortcuts...\tCtrl+Alt+K', self.keyboard_settings)]),
+             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+@@ -571,3 +570,3 @@
+     def _install_desktop_commands(self):
+-        from .keyboard_settings import KeyboardManager
++        from .keyboard_settings import install_keyboard_settings
+         index = self.menu_bar.FindMenu('Reading')
+@@ -592,3 +591,3 @@
+         self.menu_bar.Append(tools, '&Tools')
+-        self.keyboard = KeyboardManager(self)
++        self.keyboard = install_keyboard_settings(self)
+         self.register_save_participant('research_note', 'Research note', dirty=self._dirty,
