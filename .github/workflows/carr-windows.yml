@@ -220,6 +220,12 @@ jobs:
             'tests/storage/test_keyboard_preferences.py',
             'tests/storage/test_evidence_drafts.py',
             'tests/ui/test_evidence_draft_recovery.py',
+            'tests/progress/test_progress_contract.py',
+            'tests/progress/test_progress_feedback.py',
+            'tests/progress/test_progress_preferences.py',
+            'tests/progress/test_progress_reporting_failure.py',
+            'tests/ui/test_progress_job_results.py',
+            'tests/ui/test_progress_panel_state.py',
             'tests/ui/probe_workspace_shell.py',
             'tests/ui/probe_catalog_insights_actions.py',
             'tests/ui/test_academic_library_dialog.py',
@@ -571,7 +577,7 @@ jobs:
       - name: Require contextual commands and recovery regressions
         id: keyboard-regressions
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py tests/progress/test_progress_contract.py tests/progress/test_progress_feedback.py tests/progress/test_progress_preferences.py tests/progress/test_progress_reporting_failure.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual native Main keyboard settings and command dispatch
@@ -595,7 +601,14 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Preserve actual keyboard and recovery evidence
+      - name: Exercise actual native progress, cancellation, focus and feedback settings
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_progress_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve actual keyboard, progress and recovery evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

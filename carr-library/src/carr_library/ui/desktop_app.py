@@ -494,7 +494,7 @@ class DesktopFrame(WorkspaceFrame):
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
         cancel = wx.Button(self.host, label='Cancel current operation')
-        cancel.Bind(wx.EVT_BUTTON, lambda e: self.cancel_event.set())
+        cancel.Bind(wx.EVT_BUTTON, self.cancel_current_operation)
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)
         self.cancel_button = cancel
         cancel.Disable()
@@ -510,6 +510,8 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
+        from .progress_panel import install_progress_panel
+        install_progress_panel(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -601,25 +603,87 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None):
+    def cancel_current_operation(self, event=None):
+        self.cancel_event.set()
+        progress = getattr(self, 'progress_panel', None)
+        if progress is not None:
+            progress.request_cancel()
+
+    def run_job(self, title, operation, done=None, failed=None, *, progress_total=None,
+                progress_unit='units'):
         if self._closing:
             return
         if self.working:
             self.report('An operation is already running. Wait or choose Cancel current operation.')
             return
+        progress = getattr(self, 'progress_panel', None)
+        task = None
+        if progress is not None:
+            try:
+                task = progress.begin(title, total=progress_total, unit=progress_unit)
+            except Exception as exc:
+                self.report(f'{title}: could not start: {exc}')
+                if failed is not None:
+                    failed(exc)
+                return
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
         self.choice.Disable()
         if self.book is not None:
             self.book.Disable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+        if progress is not None:
+            progress.set_busy(True)
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, False)
         self.report(title + '…')
+
+        def finish_progress(state, message=''):
+            if progress is None:
+                return
+            try:
+                progress.finish(task, state, message)
+            except Exception as error:
+                # Optional observation cannot reverse an already committed
+                # operation or invoke its failure handler after successful done.
+                result = {'succeeded': 'completed', 'failed': 'failed', 'cancelled': 'cancelled'}[state]
+                warning = f'{title}: {result}. Progress reporting is unavailable: {error}'
+                if task is not None:
+                    try:
+                        if not task.snapshot().terminal:
+                            message = ''.join(character if (ord(character) >= 32 and ord(character) != 127)
+                                              or character == '\n' else ' ' for character in warning)[:1000]
+                            task.unavailable(message)
+                    except Exception:
+                        pass  # An already lost observer cannot alter the job result.
+                try:
+                    unavailable = getattr(progress, 'reporting_unavailable', None)
+                    if callable(unavailable):
+                        unavailable(task, state, warning)
+                    else:
+                        progress.notice = warning
+                        progress.refresh()
+                except Exception:
+                    # Keep result-selected focus even when a native observer
+                    # was destroyed or its notification provider failed.
+                    try:
+                        self.status.SetValue(warning)
+                    except Exception:
+                        pass
+
+        def work():
+            if task is None:
+                return operation()
+            from ..progress import bind_progress
+            with bind_progress(task):
+                return operation()
+
         try:
-            future = self.executor.submit(operation)
+            future = self.executor.submit(work)
         except Exception as exc:
             self._finish_job_controls()
+            finish_progress('failed', str(exc))
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
                 failed(exc)
@@ -634,13 +698,20 @@ class DesktopFrame(WorkspaceFrame):
                 self._finish_job_controls()
                 try:
                     result = future.result()
+                    cancellation_arrived = self.cancel_event.is_set()
                     self.report(title + ': complete.')
                     if done is not None:
                         done(result)
                 except Exception as exc:
+                    from concurrent.futures import CancelledError
+                    cancelled = isinstance(exc, (InterruptedError, CancelledError))
+                    finish_progress('cancelled' if cancelled else 'failed', str(exc))
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
+                else:
+                    finish_progress('succeeded',
+                        'Work completed before cancellation could stop it.' if cancellation_arrived else '')
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
@@ -650,8 +721,12 @@ class DesktopFrame(WorkspaceFrame):
         self.choice.Enable()
         if self.book is not None:
             self.book.Enable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, True)
+        progress = getattr(self, 'progress_panel', None)
+        if progress is not None:
+            progress.set_busy(False)
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, True)
 
     def _open_workspace(self, workspace, topic=None):
         self.refresh_scopes()
@@ -660,6 +735,8 @@ class DesktopFrame(WorkspaceFrame):
             self.open_selected()
 
     def _open_data_root(self,path):
+        if self.working:
+            raise ValueError('Wait for the current operation before opening another library folder.')
         path = Path(path)
         if not (path / 'library.sqlite').is_file():
             raise ValueError('Choose an existing research-library data folder containing library.sqlite.')
@@ -672,6 +749,8 @@ class DesktopFrame(WorkspaceFrame):
         self.library = candidate
         if getattr(self, 'keyboard_commands', None) is not None:
             self.keyboard_commands.change_root(candidate.root)
+        if getattr(self, 'progress_panel', None) is not None:
+            self.progress_panel.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:
@@ -1138,4 +1217,6 @@ class DesktopFrame(WorkspaceFrame):
             self._closing = True
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
+            if getattr(self, 'progress_panel', None) is not None:
+                self.progress_panel.close()
 
