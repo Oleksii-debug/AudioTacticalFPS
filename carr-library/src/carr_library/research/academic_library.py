@@ -14,7 +14,7 @@ import json
 import re
 from types import MappingProxyType
 import unicodedata
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 from uuid import uuid4
 
 from ..catalog.membership import _identity
@@ -131,11 +131,26 @@ def normalize_doi(value):
     value = _text(value, 'DOI', 2000).strip()
     if not value:
         return ''
-    value = re.sub(r'^https?://(?:dx\.)?doi\.org/', '', value, flags=re.I)
-    value = re.sub(r'^doi:\s*', '', value, flags=re.I)
-    if not re.fullmatch(r'10\.[0-9]{4,9}/\S+', value):
+    if re.match(r'^https?://', value, flags=re.I | re.ASCII):
+        url = urlsplit(value)
+        if (url.netloc.lower() not in ('doi.org', 'dx.doi.org')
+                or not url.path.startswith('/') or url.query or url.fragment
+                or re.search(r'%(?![0-9A-Fa-f]{2})', url.path)):
+            raise ValueError('Use a DOI resolver URL without credentials, query or fragment, or a bare DOI.')
+        try:
+            value = unquote(url.path[1:], encoding='utf-8', errors='strict')
+        except UnicodeError as exc:
+            raise ValueError('The DOI URL has invalid UTF-8 percent encoding.') from exc
+        _text(value, 'DOI', 2000)
+    else:
+        # A printed DOI label is not an instruction to URL-decode its suffix.
+        # Literal percent signs in a bare name must remain literal characters.
+        value = re.sub(r'^doi:\s*', '', value, flags=re.I | re.ASCII)
+    if not re.fullmatch(r'10\.[0-9]+(?:\.[0-9]+)*/\S+', value):
         raise ValueError('Enter a DOI such as 10.1234/example, or leave it empty.')
-    return value.casefold()
+    # DOI Handbook equivalence folds Basic Latin A-Z only. Unicode casefold
+    # would conflate distinct registered names, e.g. suffixes Ä and ä.
+    return value.translate(str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'))
 
 
 def normalize_isbn(value):
@@ -678,9 +693,14 @@ def _parse_ris(text):
                 warnings.append('Only the first URL is imported; other URLs: ' + '; '.join(urls[1:]))
             first, last = _one(record, 'start_page'), _one(record, 'end_page')
             pages = first + '-' + last if first and last and first != last else first or last
+            publications = tuple(dict.fromkeys(_values(record, 'secondary_title',
+                                                       'alternate_title3', 'journal_name')))
+            if len(publications) > 1:
+                warnings.append('Alternative publication titles not imported: '
+                                + '; '.join(publications[1:]) + '.')
             result.append((dict(title=_one(record, 'title', 'primary_title'),
                 authors=tuple(_values(record, 'authors')), item_type=item_type, year=year,
-                container_title=_one(record, 'secondary_title', 'alternate_title3', 'journal_name'),
+                container_title=publications[0] if publications else '',
                 publisher=_one(record, 'publisher'), volume=_one(record, 'volume'),
                 issue=_one(record, 'number'), pages=pages, doi=_one(record, 'doi'), isbn=isbn,
                 url=urls[0] if urls else '', abstract=_one(record, 'abstract', 'notes_abstract'),
