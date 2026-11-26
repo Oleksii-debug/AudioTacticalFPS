@@ -142,3 +142,75 @@ def test_query_builder_cannot_apply_after_library_changes(panel, monkeypatch):
     panel.on_build_query()
     panel.query.ChangeValue.assert_not_called()
     panel.frame.report.assert_called_once_with('The library changed. Open its Search section again.')
+
+
+@pytest.mark.parametrize('change', ['options', 'query', 'topic', 'busy'])
+def test_query_builder_cannot_overwrite_changed_form(panel, monkeypatch, change):
+    import sys
+    panel.frame.active = (panel.bound_workspace, None)
+    def changed(*args, **kwargs):
+        if change == 'options':
+            panel.on_options_changed()
+        elif change == 'query':
+            panel.query.GetValue.return_value = 'another query'
+        elif change == 'topic':
+            panel.frame.active = (panel.bound_workspace, 'another topic')
+        else:
+            panel.frame.working = True
+        return '"railway"'
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.advanced_search',
+                        SimpleNamespace(show_query_builder=changed))
+    panel.on_build_query()
+    panel.query.ChangeValue.assert_not_called()
+    panel.retrieval.SetSelection.assert_not_called()
+    assert 'changed' in panel.frame.report.call_args.args[0]
+
+
+def test_builder_and_search_center_shortcuts_are_distinct():
+    """The two visible menu commands must retain independent accelerators."""
+    root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    main = ast.parse((root / 'desktop_app.py').read_text(encoding='utf-8'))
+    center = ast.parse((root / 'federated_search.py').read_text(encoding='utf-8'))
+    main_labels = [node.value for node in ast.walk(main) if isinstance(node, ast.Constant)
+                   and isinstance(node.value, str) and '\tCtrl+' in node.value]
+    center_labels = [node.value for node in ast.walk(center) if isinstance(node, ast.Constant)
+                    and isinstance(node.value, str) and '\tCtrl+' in node.value]
+    assert 'Build advanced query\tCtrl+Alt+Q' in main_labels
+    assert not any(label.endswith('\tCtrl+Alt+F') for label in main_labels)
+    assert 'Research Search &Center...\tCtrl+Alt+F' in center_labels
+
+
+@pytest.mark.parametrize('stage', ['before_worker', 'after_worker'])
+@pytest.mark.parametrize('change', ['folder', 'topic', 'data_path', 'cancel'])
+def test_main_search_cannot_publish_after_scope_or_cancel_changes(panel, tmp_path, stage, change):
+    panel.frame.active = (panel.bound_workspace, None)
+    panel.on_search(None)
+    _, operation, done = panel.frame.run_job.call_args.args
+    rows = operation() if stage == 'after_worker' else None
+    if change == 'folder':
+        panel.frame.library = LibraryApp(tmp_path / 'replacement')
+    elif change == 'topic':
+        panel.frame.active = (panel.bound_workspace, 'other-topic')
+    elif change == 'data_path':
+        panel.frame.library.root = tmp_path / 'another-data-path'
+    else:
+        panel.frame.cancel_event.is_set = lambda: True
+    if stage == 'before_worker':
+        with pytest.raises(InterruptedError, match='changed before searching'):
+            operation()
+    else:
+        done(rows)
+    assert not panel.model.hits and not panel.results
+
+
+def test_builder_cancel_after_scope_change_never_focuses_old_query(panel, monkeypatch):
+    import sys
+    def changed(*args, **kwargs):
+        panel.frame.library = object()
+        return None
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.advanced_search',
+                        SimpleNamespace(show_query_builder=changed))
+    panel.on_build_query()
+    panel.query.ChangeValue.assert_not_called()
+    panel.query.SetFocus.assert_not_called()
+    panel.frame.report.assert_called_once()

@@ -13,13 +13,13 @@ import wx
 from ..application import LibraryApp
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export
+from ..research.export_file import write_export, write_binary_export
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
-from .scope_bindings import ScopeServices
+from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
@@ -28,8 +28,13 @@ from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
+from .catalog_insights_actions import install_catalog_insights_actions
+from .ebook_actions import install_ebook_actions
+from .federated_search import install_federated_search_actions
+from .query_manager import install_query_manager_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -133,6 +138,8 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
 
     def on_build_query(self, event=None):
+        if getattr(self.frame, '_closing', False):
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -142,16 +149,25 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.query.SetFocus()
             return
         from carr_library.ui.advanced_search import show_query_builder
-        query = show_query_builder(self, current_query=self.query.GetValue())
+        current, epoch = self.query.GetValue(), self._context_epoch
+        active = getattr(self.frame, 'active', None)
+        query = show_query_builder(self, current_query=current)
+        if getattr(self.frame, '_closing', False):
+            return
+        if (self.model.workspace != workspace or self.frame.library is not self.bound_library
+                or getattr(self.frame, 'active', None) != active):
+            self.frame.report('The library changed. Open its Search section again.')
+            return
         if query is None:
             self.query.SetFocus()
             return
-        if self.model.workspace != workspace or self.frame.library is not self.bound_library:
-            self.frame.report('The library changed. Open its Search section again.')
+        if (self._context_epoch != epoch or self.query.GetValue() != current
+                or self.frame.working or getattr(self.frame, '_closing', False)):
+            self.frame.report('Search options changed while the query builder was open. Open it again.')
             return
+        self.on_options_changed()
         self.retrieval.SetSelection(self.MODES.index('advanced'))
         self.query.ChangeValue(query)
-        self.on_options_changed()
         self.status.ChangeValue('Advanced query ready. Press Enter in the query field to search the selected library.')
         self.query.SetFocus()
 
@@ -183,6 +199,8 @@ class DesktopSearchPanel(PagedSearchPanel):
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
     def on_search(self, event):
+        if getattr(self.frame, '_closing', False):
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -192,6 +210,12 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.status.ChangeValue('Select a library and enter a query.')
             self.query.SetFocus()
             return
+        library, active = self.frame.library, getattr(self.frame, 'active', None)
+        if library is not self.bound_library or (active is not None
+                and active != (workspace, self.bound_topic)):
+            self.frame.report('The library changed. Open its Search section again.')
+            return
+        data_identity = library.root, library.database, library.assets_dir, library.assets.root
         retrieval = self.retrieval.GetSelection()
         if not 0 <= retrieval < len(self.MODES):
             self.status.ChangeValue('Choose a search mode first.')
@@ -228,8 +252,17 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.details.ChangeValue('')
         notes = []
 
+        def current_scope():
+            return (self._context_epoch == epoch and self.model.workspace == workspace
+                    and self.frame.library is library and getattr(self.frame, 'active', None) == active
+                    and not getattr(self.frame, '_closing', False)
+                    and (library.root, library.database, library.assets_dir, library.assets.root) == data_identity)
+
+        def stopped():
+            return self.frame.cancel_event.is_set() or not current_scope()
+
         def done(rows):
-            if self._context_epoch != epoch or self.model.workspace != workspace:
+            if stopped():
                 return
             self.results = {r.ref: r for r in rows}
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
@@ -255,9 +288,13 @@ class DesktopSearchPanel(PagedSearchPanel):
             else:
                 self.status.SetFocus()
 
-        self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
-            workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
-            authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
+        def load():
+            if stopped():
+                raise InterruptedError('The search query, library, or data folder changed before searching.')
+            return library.search(workspace, query, mode=mode, result_mode=result_mode,
+                cancelled=stopped, authorized_topic=self.bound_topic, on_status=notes.append, **options)
+
+        self.frame.run_job('Searching the selected library', load, done)
 
     def on_more(self, event):
         if self.frame.working:
@@ -429,19 +466,23 @@ class DesktopSearchPanel(PagedSearchPanel):
             hit = self.selected()
             if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
                 raise ValueError('Select one result in the active library.')
-            topics = self.frame.library.topics(hit.workspace)
+            topics = tuple(self.frame.library.topics(hit.workspace))
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
                 self.status.SetFocus()
                 return
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
+                labels = scope_labels((hit.workspace, t.id, t.name) for t in topics)
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', [t.name for t in topics])
+                                              'Save quotation', labels)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
-                    selected_topic = topics[dialog.GetSelection()].id
+                    index = dialog.GetSelection()
+                    if type(index) is not int or not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic for this quotation.')
+                    selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
             epoch = self._context_epoch
@@ -495,7 +536,9 @@ class DesktopFrame(WorkspaceFrame):
             ('Open existing library folder',self.open_library_folder),
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
-            ('Import books\tCtrl+I', self.import_books), ('Resume interrupted import',self.resume_import),
+            ('Import books\tCtrl+I', self.import_books),
+            ('Import Center: files, folders and queues', self.import_center),
+            ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
@@ -504,10 +547,12 @@ class DesktopFrame(WorkspaceFrame):
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
                 ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
-                ('Build advanced query\tCtrl+Alt+F', self.build_advanced_query),
+                ('Build advanced query\tCtrl+Alt+Q', self.build_advanced_query),
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
+            ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
@@ -523,9 +568,14 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_academic_actions(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
+        install_ebook_actions(self)
+        install_catalog_insights_actions(self)
+        install_federated_search_actions(self)
+        install_query_manager_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -776,6 +826,13 @@ class DesktopFrame(WorkspaceFrame):
         finally:
             dialog.Destroy()
 
+    def import_center(self, event=None):
+        try:
+            from .import_center import show_import_center
+            show_import_center(self, self._workspace())
+        except Exception as exc:
+            self.report(str(exc))
+
     def import_books(self, event):
         try:
             workspace = self._workspace()
@@ -943,26 +1000,55 @@ class DesktopFrame(WorkspaceFrame):
     def export_topic(self, event):
         try:
             workspace, topic = self._topic()
-            dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic.md',
-                wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv',
+            library = self.library
+            formats = ('markdown', 'text', 'ris', 'bibtex', 'csv', 'docx', 'html')
+            extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
+            dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
+                wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
                 style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
                 path = Path(dialog.GetPath())
-                format = ('markdown', 'text', 'ris', 'bibtex', 'csv')[dialog.GetFilterIndex()]
+                selected = dialog.GetFilterIndex()
+                if not 0 <= selected < len(formats):
+                    raise ValueError('Choose an export format.')
+                format, extension = formats[selected], extensions[selected]
             finally:
                 dialog.Destroy()
+            if not path.suffix:
+                # Some native save dialogs append the filter's extension and
+                # others do not. Confirm the actual target if we append it.
+                path = path.with_suffix(extension)
+                if path.exists() and wx.MessageBox(
+                    f'Replace the existing export {path.name}?', 'Replace export',
+                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
+                    return
+            elif format in ('docx', 'html') and path.suffix.lower() != extension:
+                raise ValueError(f'The selected format needs a {extension} filename. '
+                                 'Export again with the matching filename or file type.')
+
+            def selected_scope():
+                if self.library is not library or self.active != (workspace, topic):
+                    raise ValueError('The selected library or topic changed. Export again from the intended topic.')
+
             def export():
-                text = self.library.export_topic(workspace,topic,format=format,
-                                                cancelled=self.cancel_event.is_set)
+                selected_scope()
+                content = library.export_topic(workspace,topic,format=format,
+                                               cancelled=self.cancel_event.is_set)
+                selected_scope()
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
-                write_export(path,text,private_root=self.library.root)
+                writer = write_binary_export if format == 'docx' else write_export
+                writer(path,content,private_root=library.root,
+                       cancelled=self.cancel_event.is_set)
 
             def done(result):
                 if format in ('ris','bibtex'):
                     self.report('Bibliography exported. Quotations and research notes are not included.')
+                elif format in ('docx', 'html'):
+                    self.report('Research document exported with navigable headings, source citations, '
+                                'and quotations kept separate from research notes.')
                 else:
                     self.report('Topic exported with quotations and research notes kept separate.')
 
@@ -1062,23 +1148,52 @@ class DesktopFrame(WorkspaceFrame):
         self.run_job('Checking this installation', self_test,
             lambda result: show_text(self, 'Installation check', '\n'.join(result['checks']) + '\n\nAll checks passed.'))
 
+    def open_academic_library(self, event):
+        from .academic_library_dialog import open_academic_library
+        open_academic_library(self)
+
+    def add_selected_book_reference(self, event):
+        from .academic_library_dialog import add_selected_book_reference
+        add_selected_book_reference(self)
+
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
+            'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
+            'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
-            'Ctrl+Alt+F opens the advanced query builder with All, Any, Exclude and Nearby conditions.\n'
+            'Ctrl+Alt+Q opens the advanced query builder with All, Any, Exclude and Nearby conditions.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+B opens the academic bibliography and reading list for the current library.\n'
+            'Inside the Reading Desk dialog, Ctrl+Shift+B manages page bookmarks instead.\n'
+            'Academic, Add selected book links an imported book to an editable bibliographic reference.\n'
+            'Academic references have reading status, priority, rating, progress, tags and personal notes.\n'
+            'Use Apply filters, Next page and Previous page to browse every matching reference.\n'
+            'Academic library imports are reviewed before saving. Its exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
+            'Ctrl+Alt+F opens Research Search Center for explicitly selected libraries and source metadata filters.\n'
+            'Research, Manage saved topic searches creates, edits, archives or restores searches of quotations and notes in the active topic.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
             'F1 inside the reader explains page navigation and bookmarks.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
-            'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
+            'Ctrl+Shift+E exports the active topic together with its nonarchived subtopics.\n'
+            'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
+            'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
+            'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
+            'In Export topic, choose Word or HTML for a readable research document with heading navigation.\n'
+            'The Research menu also opens Library overview, Source metadata and indexing checklist, '
+            'and Export source comparison matrix for this library or one of its collections.\n'
+            'Choose a library or topic, then Open selected scope. The Search tab stays inside that library.\n'
+            'Research Search Center searches only the libraries explicitly checked in its dialog.\n'
+            'Its Build advanced query command also uses Ctrl+Alt+Q and keeps checked libraries and filters.\n'
+            'All words and Advanced searches offer Previous and Next result pages; changing options starts a new search.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Advanced mode supports uppercase AND, OR, NOT, parentheses, quoted phrases and NEAR/5.\n'
             'NEAR/5 means at most five intervening words, in either order, within one page or text segment.\n'

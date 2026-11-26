@@ -7,6 +7,7 @@ change source text, or grant quotation approval.
 from dataclasses import dataclass
 
 from ..citations.anchors import format_citation
+from .scope_bindings import scope_labels
 
 
 class NativeDialogs:
@@ -249,7 +250,7 @@ class ResearchActions:
                 self._same_scope(scope)
                 if scope.ids not in ids:
                     raise ValueError('The active topic changed. Open the library again after saving your note.')
-                self.frame.choice.SetItems([label for _, _, label in rows])
+                self.frame.choice.SetItems(scope_labels(rows))
                 self.frame.scopes = ids
                 self.frame.choice.SetSelection(ids.index(scope.ids))
             self.frame.report('Library name and description saved.' if include_name else 'Library description saved.')

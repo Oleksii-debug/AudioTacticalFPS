@@ -113,6 +113,20 @@ def test_unicode_casefold_canonical_clusters_and_raw_offsets(pages):
     assert near['match_spans'] == ((0, 4), (9, 14))
 
 
+def test_long_multilingual_near_search_preserves_compact_source_boundaries(pages):
+    db, add = pages
+    prefix = 'Незмінний оригінальний текст. ' * 2500
+    left, right = 'Cafe\u0301\t  archive', 'ІСТОРІЯ'
+    raw = prefix + left + ' правдива ' + right + '.'
+    assert len(raw) > literal._LONG_ASCII and not raw.isascii()
+    add('a', raw)
+    hit, = run(db, '"café archive" NEAR/1 історія')
+    assert hit['match_spans'] == ((len(prefix), len(prefix) + len(left)),
+                                  (raw.index(right), raw.index(right) + len(right)))
+    assert hit['raw_quote'] == left
+    assert '1 intervening words' in hit['reason']
+
+
 @pytest.mark.parametrize('raw,query,distance', [
     ('red blue', 'red NEAR/0 blue', 0),
     ('blue,\r\nred', 'red NEAR/0 blue', 0),

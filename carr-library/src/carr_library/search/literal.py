@@ -5,6 +5,7 @@ NFD/full casefold and whitespace folding are search-only; returned offsets are
 half-open Python code-point offsets into the original immutable page. No raw
 FTS syntax, stemming, cross-page stitching, or generated quotation.
 """
+from array import array
 from bisect import bisect_right
 from hashlib import sha256
 import re
@@ -60,6 +61,26 @@ def _ascii_mapped(text, check):
     return folded, offsets, offsets
 
 
+class _CompactOffsets:
+    """Dense source boundaries; -1 marks a position inside a folded cluster."""
+    def __init__(self, length):
+        self.values = array('i', [-1]) * (length + 1)
+
+    def __contains__(self, position):
+        return 0 <= position < len(self.values) and self.values[position] >= 0
+
+    def __getitem__(self, position):
+        if position not in self:
+            raise KeyError(position)
+        return self.values[position]
+
+    def __setitem__(self, position, value):
+        self.values[position] = value
+
+    def items(self):
+        return ((position, value) for position, value in enumerate(self.values) if value >= 0)
+
+
 def _mapped(text, check=lambda: None):
     """Map whole canonical clusters/whitespace runs, not partial casefold expansions."""
     # TXT books need not contain form-feed page boundaries. Mapping millions of
@@ -69,7 +90,18 @@ def _mapped(text, check=lambda: None):
     # segments need only the sparse whitespace map above.
     if len(text) >= _LONG_ASCII and text.isascii():
         return _ascii_mapped(text, check)
-    parts, starts, ends = [], {}, {}
+    # Long multilingual segments use the same canonical-cluster algorithm but
+    # compact integer boundaries instead of millions of dict entries and small
+    # strings. Keep whole-fold equivalence checks and forbidden inner boundaries.
+    compact = len(text) >= _LONG_ASCII
+    if compact:
+        check()
+        folded = _fold(text)
+        check()
+        starts, ends = _CompactOffsets(len(folded)), _CompactOffsets(len(folded))
+        parts = None
+    else:
+        parts, starts, ends = [], {}, {}
     i = pos = next_check = 0
     while i < len(text):
         if i >= next_check:
@@ -87,15 +119,22 @@ def _mapped(text, check=lambda: None):
                 if j % 1024 == 0:
                     check()
         part = _fold(text[i:j])
+        if compact and not folded.startswith(part, pos):
+            raise ValueError('unsupported normalization mapping')
         starts[pos] = i
         pos += len(part)
         ends[pos] = j
-        parts.append(part)
+        if not compact:
+            parts.append(part)
         i = j
     check()
-    folded = ''.join(parts)
-    if folded != _fold(text):
-        raise ValueError('unsupported normalization mapping')
+    if compact:
+        if pos != len(folded):
+            raise ValueError('unsupported normalization mapping')
+    else:
+        folded = ''.join(parts)
+        if folded != _fold(text):
+            raise ValueError('unsupported normalization mapping')
     return folded, starts, ends
 
 
@@ -129,7 +168,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     Other modes have no wildcard/operator syntax. Exact matches share score 1; tie-break is
     edition, segment ordinal, page id, raw offset. Results never cross pages.
     Only active_page rows from PR #21 are accepted; no persistent second index.
-    Scope/offset caps fail explicitly, not silently with incomplete results.
+    Scope caps fail explicitly, not silently with incomplete results. Offset
+    only skips matches in this bounded scope; it never sizes an allocation.
     """
     if not isinstance(workspace, str) or not workspace:
         raise ValueError('explicit workspace required')
@@ -141,7 +181,7 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid query')
     if not (type(limit) is int and type(offset) is int and type(timeout) in (int, float)
             and 1 <= limit <= 100
-            and 0 <= offset <= 10000 and 0 < timeout <= 60):
+            and offset >= 0 and 0 < timeout <= 60):
         raise ValueError('invalid search budget')
     q = _fold(query).strip()
     if not q:

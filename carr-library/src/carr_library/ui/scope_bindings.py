@@ -5,9 +5,32 @@ rechecks permission on each entry and owns commit/rollback. Search/context/copy
 and historical attestors must use that same connection, not a separate snapshot.
 No production schema, source attestation or retrieval algorithm is defined here.
 """
+from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable
+import unicodedata
+
+
+def scope_labels(rows):
+    """Render distinct spoken labels without changing the authorized row order."""
+    rows = tuple(rows)
+    def key(label):
+        return ' '.join(unicodedata.normalize('NFC', label).split())
+    label_counts = Counter(key(label) for _, _, label in rows)
+    rendered = set()
+    labels = []
+    for workspace, topic, label in rows:
+        if label_counts[key(label)] > 1:
+            kind = 'library only' if topic is None else f'topic {topic}'
+            label = f'{label} (library {workspace}; {kind})'
+        original, number = label, 1
+        while key(label) in rendered:
+            number += 1
+            label = f'{original} (choice {number})'
+        rendered.add(key(label))
+        labels.append(label)
+    return labels
 
 
 @dataclass(frozen=True)

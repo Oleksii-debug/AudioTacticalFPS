@@ -163,7 +163,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
 
     def _check_database_paths(self):
@@ -180,28 +180,38 @@ class LibraryApp:
             raise ValueError('The selected library is missing or archived.')
 
     @contextmanager
-    def read(self, workspace=None):
+    def read(self, workspace=None, *, budget=None):
         with closing(sqlite3.connect(self.database.as_uri() + '?mode=ro', uri=True,
-                                     isolation_level=None, timeout=5)) as db:
+                                     isolation_level=None, timeout=0 if budget is not None else 5)) as db:
             db.row_factory = sqlite3.Row
-            db.execute('PRAGMA foreign_keys=ON')
-            db.execute('PRAGMA recursive_triggers=ON')
-            db.execute('PRAGMA query_only=ON')
-            db.execute('BEGIN')
+            if budget is not None:
+                # Opening/authorizing a snapshot is part of the search too.
+                # SQLite's busy wait cannot consult its progress callback;
+                # searches report contention promptly instead of waiting 5s.
+                db.set_progress_handler(lambda: int(budget.stopped()), 1000)
             try:
-                if db.execute('PRAGMA user_version').fetchone()[0] != 3 or _schema_signature(db) != _expected_signature(3):
+                db.execute('PRAGMA foreign_keys=ON')
+                db.execute('PRAGMA recursive_triggers=ON')
+                db.execute('PRAGMA query_only=ON')
+                db.execute('BEGIN')
+                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
+                if budget is not None:
+                    budget.check()
                 yield db
             finally:
+                # Remove the callback before rolling back the read snapshot.
+                if budget is not None:
+                    db.set_progress_handler(None, 0)
                 db.rollback()
 
     @contextmanager
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -211,23 +221,23 @@ class LibraryApp:
     def _search_read(self, workspace, timeout, cancelled):
         budget = _SearchBudget(timeout, cancelled)
         budget.check()
-        with self.read(workspace) as db:
-            db.set_progress_handler(lambda: int(budget.stopped()), 1000)
-            try:
+        try:
+            with self.read(workspace, budget=budget) as db:
                 budget.check()
                 yield db, budget
                 budget.check()
-            except InterruptedError as exc:
-                if budget.stopped():
-                    raise TimeoutError('Search cancelled or timed out.') from exc
-                raise
-            except sqlite3.OperationalError as exc:
-                if budget.stopped() or getattr(exc, 'sqlite_errorcode', None) == sqlite3.SQLITE_INTERRUPT:
-                    raise TimeoutError('Search cancelled or timed out.') from exc
-                raise
-            finally:
-                # Remove the callback before the reader rolls back its snapshot.
-                db.set_progress_handler(None, 0)
+        except InterruptedError as exc:
+            if budget.stopped():
+                raise TimeoutError('Search cancelled or timed out.') from exc
+            raise
+        except sqlite3.OperationalError as exc:
+            # Extended SQLite errors retain the primary result in the low byte.
+            code = getattr(exc, 'sqlite_errorcode', 0) & 0xff
+            if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
+                raise TimeoutError('Search cancelled or timed out.') from exc
+            if code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                raise RuntimeError('The library is busy. Retry the search after the writer finishes.') from exc
+            raise
 
     def workspaces(self, *, include_archived=False):
         with self.read() as db:
@@ -283,6 +293,40 @@ class LibraryApp:
         with self.read(workspace) as db:
             return browse_editions(Catalog(db, workspace), **filters)
 
+    def prepare_edition_file(self, workspace, edition_id, *, cancelled=lambda: False):
+        """Open a catalog-linked original without inventing a quotation.
+
+        A zero-width, view-only selection reuses the original-file authorization
+        and byte-verification boundary. It cannot be copied as source evidence.
+        Existing search selections and unsaved research notes remain available.
+        """
+        if cancelled():
+            raise InterruptedError('Opening the linked document was cancelled.')
+        with self.read(workspace) as db:
+            get_edition(Catalog(db, workspace), edition_id)
+            row = db.execute('SELECT revision,ordinal FROM active_page '
+                'WHERE workspace=? AND edition=? ORDER BY ordinal LIMIT 1',
+                (workspace, edition_id)).fetchone()
+            if row is None:
+                raise ValueError('The linked document has no completed source revision.')
+            revision, ordinal = row
+            selection = _Selection(workspace, edition_id, revision, ordinal, 0, 0, None)
+            self._resolve_selection(db, workspace, selection, revision, cancelled=cancelled)
+            ref = uuid4().hex
+            self._selections[ref] = selection
+        from .reader.source_file import prepare_source_file
+        try:
+            return prepare_source_file(self, workspace, ref, revision, cancelled=cancelled)
+        except BaseException:
+            self._selections.pop(ref, None)
+            raise
+
+    def export_bibliography(self, workspace, *, collection=None, format='csl-json',
+                            cancelled=lambda: False):
+        """Use the shared catalog exporter for the Bibliography desktop command."""
+        return self.export_catalog(workspace, collection=collection, format=format,
+                                   cancelled=cancelled)
+
     def edition_metadata(self, workspace, edition_id):
         """Read one exact edition in a fresh authorized catalog snapshot."""
         with self.read(workspace) as db:
@@ -334,7 +378,7 @@ class LibraryApp:
         revision = uuid4().hex
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
@@ -459,6 +503,31 @@ class LibraryApp:
                                      result=request.get('result')))
             return tuple(rows)
 
+    def plan_import_batch(self, workspace, paths, *, collections=(), recursive=True,
+                          config=None, cancelled=lambda: False):
+        """Inspect selected files and persist a resumable private import queue."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).plan(workspace, paths, collections=collections,
+            recursive=recursive, config=config, cancelled=cancelled)
+
+    def import_batches(self, workspace):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).list(workspace)
+
+    def import_batch(self, workspace, batch_id):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).get(workspace, batch_id)
+
+    def run_import_batch(self, workspace, batch_id, *, cancelled=lambda: False,
+                         timeout=120.0, retry_failed=False, progress=None):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).run(workspace, batch_id, cancelled=cancelled,
+            timeout=timeout, retry_failed=retry_failed, progress=progress)
+
+    def set_import_batch_row(self, workspace, batch_id, row_id, *, included):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).set_row(workspace, batch_id, row_id, included=included)
+
     def pending_review(self, workspace, request_id):
         """Return the exact quarantined page for an explicit human comparison."""
         from .ingest.worker import pending_review
@@ -476,7 +545,7 @@ class LibraryApp:
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
-                     _request_id=None, _resume_job=None):
+                     _request_id=None, _resume_job=None, _expected_manifest=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -485,14 +554,27 @@ class LibraryApp:
         """
         from .extract.page_ocr import Config
         path = Path(path).absolute()
-        asset = snapshot(path.parent, path.name)
+        collections = tuple(collections)
+        with self.read(workspace) as db:
+            catalog = Catalog(db, workspace)
+            for collection in collections:
+                catalog._active_collection(collection)
+        if _expected_manifest is None:
+            asset = snapshot(path.parent, path.name)
+        else:
+            from .ingest.batch_scan import planned_snapshot
+            asset = planned_snapshot(path)
+        if _expected_manifest is not None and asset.manifest() != _expected_manifest:
+            raise ValueError('Source changed after import planning; plan this file again.')
         record = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,
             asset.manifest(), _metadata(title) or path.stem, tuple(authors), language,
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 self._authorize(storage.db, workspace)
+                for collection in collections:
+                    Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
@@ -501,15 +583,10 @@ class LibraryApp:
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
+                        from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
-                        settings = canonical({'adapter': 'epub-spine-v1', 'kind': 'logical_segment',
-                            'provenance': extracted['provenance'],
-                            'chapters': [r['logical_locator'] for r in extracted['records']],
-                            'alternatives': [r.get('alternatives', []) for r in extracted['records']],
-                            'warnings': extracted['warnings']})
-                        if len(settings.encode('utf-8')) > 4 * 1024 * 1024:
-                            raise ValueError('The EPUB section index exceeds the supported limit.')
+                        settings = extraction_settings(extracted)
                     else:
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
@@ -705,13 +782,17 @@ class LibraryApp:
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None):
+               result_mode=None, offset=0):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError('Invalid search operation budget.')
+        if type(offset) is not int or offset < 0:
+            raise ValueError('Invalid search page offset.')
+        if offset and mode not in ('terms', 'advanced'):
+            raise ValueError('Result pages are available for All words and Advanced searches.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
@@ -741,7 +822,8 @@ class LibraryApp:
                                                   timeout=budget.remaining(), cancelled=budget.stopped)
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                                      mode=mode, limit=limit, offset=offset,
+                                      timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -983,7 +1065,19 @@ class LibraryApp:
         with self.read(workspace) as db:
             load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             rows = SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
+            if format in ('docx', 'html'):
+                name, = db.execute('SELECT name FROM research_topic WHERE workspace=? AND id=?',
+                                   (workspace, topic)).fetchone()
+                return export_saved(workspace, topic, rows, load, format=format, title=name)
             return export_saved(workspace, topic, rows, load, format=format)
+
+    def export_outline(self, workspace, topic, *, cancelled=lambda: False):
+        """Export this topic and its visible descendants with freshly verified evidence."""
+        from .research.outline_export import export_outline
+        with self.read(workspace) as db:
+            load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
+            return export_outline(db, workspace, topic, load_page=load,
+                                  attest_metadata=metadata, cancelled=cancelled)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):
         identity = uuid4().hex

@@ -80,7 +80,7 @@ def test_bibtex_escapes_unbalanced_braces_commands_and_metadata_line_breaks():
     assert 'edition = {first line}' in result
     assert 'represented as spaces' in result
     assert row.quote not in result and row.note not in result
-    assert 'pages = {ix}' in result and 'PDF page 2; printed page ix' in result
+    assert 'pages = ' not in result and 'PDF page 2; printed page ix' in result
 
 
 def test_bibtex_uses_scoped_stable_keys_and_never_fabricates_logical_pages():

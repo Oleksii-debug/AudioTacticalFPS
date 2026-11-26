@@ -18,7 +18,7 @@ from carr_library.research.topic_tree import TopicTree
 from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
-from carr_library.ui.scope_bindings import ScopeServices
+from carr_library.ui.scope_bindings import ScopeServices, scope_labels
 
 
 class BaseFrame:
@@ -46,7 +46,7 @@ def classes():
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
-               ScopeServices=ScopeServices,active_collections=active_collections,
+               ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
@@ -98,6 +98,55 @@ def panel(classes):
     value.verified_copy_service = Mock(return_value=hit.quote)
     value.selected = lambda: hit
     return value
+
+
+def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collision(classes, monkeypatch):
+    env, _ = classes
+    value = frame(classes)
+    value.host, value.layout, value.Bind, value.SetMenuBar = Mock(), Mock(), Mock(), Mock()
+    menus = {}
+
+    class Menu:
+        def __init__(self):
+            self.items = []
+
+        def Append(self, identity, title):
+            item = SimpleNamespace(title=title)
+            self.items.append(item)
+            return item
+
+    env['wx'].Menu = Menu
+    env['wx'].MenuBar = lambda: SimpleNamespace(Append=lambda menu, label: menus.update({label: menu}))
+    env['wx'].Button = Mock(return_value=Mock())
+    env['wx'].ID_ANY, env['wx'].ALL = -1, 1
+    env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
+    installers = {name: Mock() for name in (
+        'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
+        'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
+        'install_federated_search_actions', 'install_query_manager_actions')}
+    env.update(installers)
+    ebook = Mock()
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
+                        SimpleNamespace(install_ebook_reader=ebook))
+
+    value._menus()
+
+    labels = [item.title for menu in menus.values() for item in menu.items]
+    shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
+    assert len(shortcuts) == len(set(shortcuts))
+    assert 'Academic library...\tCtrl+Shift+B' in labels
+    assert 'Import Center: files, folders and queues' in labels
+    for handler in (value.import_center, value.open_academic_library, value.export_topic):
+        assert any(call.args[1] == handler for call in value.Bind.call_args_list)
+    for installer in (*installers.values(), ebook):
+        installer.assert_called_once_with(value)
+    value.help(None)
+    guide = env['show_text'].call_args.args[2]
+    assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
+    assert 'Library, Import Center' in guide
+    assert 'Ctrl+Shift+B opens Import Center' not in guide
+    assert 'Ctrl+Alt+F opens Research Search Center' in guide
+    assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
 
 
 def test_repeated_enter_does_not_clear_an_active_search(classes):
@@ -238,6 +287,59 @@ def test_save_quotation_keeps_the_bound_topic_authorization(classes):
     p.frame.run_job.call_args.args[1]()
     p.frame.library.save_hit.assert_called_once_with('a','research','hit','revision',
         authorized_topic='research',cancelled=p.frame.cancel_event.is_set)
+
+
+@pytest.mark.parametrize('generated_name_collision', [False, True])
+def test_save_quotation_distinguishes_same_name_topics_without_retargeting(classes, generated_name_collision):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.evidence = None
+    topics = [SimpleNamespace(id='first', name='History'), SimpleNamespace(id='second', name='History')]
+    if generated_name_collision:
+        topics.append(SimpleNamespace(id='third', name='History (library a; topic first)'))
+    p.frame.library.topics.return_value = tuple(topics)
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+
+    labels = chooser.call_args.args[3]
+    assert len(labels) == len(set(labels)) == len(topics)
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with('a', 'second', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
+
+
+def test_save_quotation_cancel_does_not_save_or_start_job(classes):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (SimpleNamespace(id='first', name='History'),)
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.ShowModal.return_value = 0
+
+    p.save_selected(None)
+
+    p.frame.run_job.assert_not_called()
+    p.frame.library.save_hit.assert_not_called()
+    chooser.return_value.Destroy.assert_called_once()
+
+
+@pytest.mark.parametrize('selection', [-1, 2])
+def test_save_quotation_rejects_missing_or_invalid_topic_choice(classes, selection):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (SimpleNamespace(id='first', name='History'),)
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = selection
+
+    p.save_selected(None)
+
+    p.frame.run_job.assert_not_called()
+    p.frame.library.save_hit.assert_not_called()
+    assert 'Quotation not saved' in p.status.ChangeValue.call_args.args[0]
+    p.status.SetFocus.assert_called_once()
+    chooser.return_value.Destroy.assert_called_once()
 
 
 def test_verified_context_loads_in_job_before_opening_page_dialog(classes):
@@ -579,3 +681,62 @@ def test_cancelled_canonical_config_starts_no_import(classes,monkeypatch):
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
     f.report.assert_called_once_with('Import cancelled.')
+
+
+def test_save_duplicate_topic_labels_route_by_original_id(classes):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (
+        SimpleNamespace(id='one', name='Історія'),
+        SimpleNamespace(id='two', name='Історія'),
+        SimpleNamespace(id='three', name='Історія (library a; topic one)'),
+    )
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len(labels) == len(set(labels)) == 3
+    assert 'topic two' in labels[1]
+    chooser.return_value.Destroy.assert_called_once()
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with('a','two','hit','revision',
+        authorized_topic=None,cancelled=p.frame.cancel_event.is_set)
+
+
+@pytest.mark.parametrize('modal,index', [(0, 0), (1, -1), (1, 2)])
+def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, modal, index):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (SimpleNamespace(id='one', name='Výskum'),)
+    chooser = classes[0]['wx'].SingleChoiceDialog.return_value
+    chooser.ShowModal.return_value = modal
+    chooser.GetSelection.return_value = index
+    p.save_selected(None)
+    chooser.Destroy.assert_called_once()
+    p.frame.run_job.assert_not_called()
+    p.frame.library.save_hit.assert_not_called()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+@pytest.mark.parametrize('index', [0, 1])
+def test_save_presentation_equivalent_topic_labels(classes, names, index):
+    import unicodedata
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = tuple(
+        SimpleNamespace(id=f'topic-{i}', name=name)
+        for i, name in enumerate(names))
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = index
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', x).split())
+                for x in labels}) == 2
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with(
+        'a', f'topic-{index}', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
