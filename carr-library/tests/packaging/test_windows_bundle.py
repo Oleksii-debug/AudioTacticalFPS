@@ -58,6 +58,59 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+
+    def test_native_launcher_is_sealed_and_tampering_is_rejected(self):
+        # Synthetic bytes test packaging boundaries only; native execution is
+        # independently required by the Windows launcher's real process probe.
+        launcher = self.root / "ResearchLibrary.exe"
+        approved = b"synthetic native launcher packaging fixture"
+        launcher.write_bytes(approved)
+        digest = hashlib.sha256(approved).hexdigest()
+        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher)
+        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), approved)
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
+        self.assertEqual(manifest["files"]["ResearchLibrary.exe"], digest)
+        installer.verify(self.output)
+        (self.output / "ResearchLibrary.exe").write_bytes(b"changed executable")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
+    def test_native_launcher_wrong_identity_fails_before_output(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.write_bytes(b"an unapproved executable")
+        with self.assertRaisesRegex(ValueError, "Windows-tested"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher)
+        self.assertFalse(self.output.exists())
+
+    def test_native_launcher_replaced_during_copy_is_rejected(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.write_bytes(b"approved synthetic bytes")
+        digest = builder.sha256(launcher)
+        original_copy = builder.shutil.copyfile
+
+        def replace_before_copy(source, destination, *args, **kwargs):
+            if Path(source) == launcher:
+                launcher.write_bytes(b"replacement after verification")
+            return original_copy(source, destination, *args, **kwargs)
+
+        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
+            with patch.object(builder.shutil, "copyfile", side_effect=replace_before_copy):
+                with self.assertRaisesRegex(ValueError, "changed during bundle assembly"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                         native_launcher=launcher)
+        self.assertFalse(self.output.exists())
+
+    def test_native_launcher_directory_is_rejected(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.mkdir()
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher)
+        self.assertFalse(self.output.exists())
+
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
         path.write_text(json.dumps({
