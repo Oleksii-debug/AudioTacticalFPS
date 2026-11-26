@@ -66,6 +66,11 @@ def run_native(source=None, timeout=120):
         application = ProbeApp(False)
     except (Exception, SystemExit) as exc:
         return not_run('Native wx application could not open: ' + str(exc))
+    # A manually pumped native probe still needs an active event loop. On MSW,
+    # App.Yield without one processes pending Python work but cannot dispatch
+    # the actual OS keyboard messages through wxApp::Dispatch.
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
     simulator = wx.UIActionSimulator()
     watchdog = wx.CallLater(int(timeout * 1000), abort, 'Native keyboard probe exceeded its bounded timeout.')
 

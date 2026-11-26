@@ -548,23 +548,27 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require contextual commands and recovery regressions
+        id: keyboard-regressions
         run: |
           & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual native Main keyboard settings and command dispatch
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-keyboard-settings.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual contextual Reader key remapping
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-reader-keymap.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native research-note draft recovery and explicit save
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
