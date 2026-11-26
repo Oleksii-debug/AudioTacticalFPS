@@ -29,6 +29,8 @@ from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
 from .reading_desk import install_reading_desk_actions
+from .federated_search import install_federated_search_actions
+from .query_manager import install_query_manager_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -480,6 +482,8 @@ class DesktopFrame(WorkspaceFrame):
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
+        install_federated_search_actions(self)
+        install_query_manager_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1011,11 +1015,14 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
+            'Ctrl+Shift+F opens Research Search Center for explicitly selected libraries and source metadata filters.\n'
+            'Research, Manage saved topic searches creates, edits, archives or restores searches of quotations and notes in the active topic.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
-            'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
+            'Choose a library or topic, then Open selected scope. The Search tab stays inside that library.\n'
+            'Research Search Center searches only the libraries explicitly checked in its dialog.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'

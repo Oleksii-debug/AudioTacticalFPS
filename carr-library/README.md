@@ -39,6 +39,10 @@ instructions.
   labels require their own independent approval.
 - Organize nested research topics, immutable saved evidence, editable notes,
   tags and saved searches. Metadata revisions preserve earlier saved citations.
+- Search explicitly selected libraries together with source metadata filters,
+  grouped results and freshly verified context, copy and save actions. Manage
+  saved topic searches with edit, duplicate, archive and restore; use JSON search
+  commands without the desktop. See [academic search](docs/ACADEMIC_SEARCH.md).
 - Read complete imported source pages or segments without a search phrase;
   resume the last opened page, keep named bookmarks, navigate back/forward,
   and hear exact location information through native text controls. See
