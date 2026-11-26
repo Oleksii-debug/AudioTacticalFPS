@@ -150,6 +150,11 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
             if _linked(info):
                 raise ValueError('Links and reparse points are not imported.')
             if stat.S_ISDIR(info.st_mode):
+                # A separately selected folder has its own recursion/depth budget.
+                # Defer it to the root loop, without marking it visited.
+                if depth and identity in selected:
+                    seen_paths.remove(identity)
+                    return
                 if depth and not recursive:
                     reject(path, root, 'Subfolder skipped because recursive scanning is off.')
                     return

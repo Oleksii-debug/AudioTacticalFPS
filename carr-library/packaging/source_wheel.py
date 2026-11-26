@@ -153,6 +153,7 @@ def _record(files, record):
         for row in csv.reader(io.StringIO(files[record].decode('utf-8')), strict=True):
             if len(row) != 3 or row[0] in rows:
                 raise ValueError('Invalid or duplicate wheel RECORD row.')
+            _wheel_path(row[0])
             rows[row[0]] = row[1:]
     except (UnicodeError, csv.Error) as exc:
         raise ValueError('Invalid wheel RECORD.') from exc

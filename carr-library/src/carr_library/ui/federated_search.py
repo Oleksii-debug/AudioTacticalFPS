@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from ..search.federated import FederatedSearch
 from .research_actions import NativeDialogs
+from .scope_bindings import scope_labels
 
 
 MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic')
@@ -46,12 +47,13 @@ def default_libraries(libraries, active):
     return tuple(row.id for row in libraries if row.id == current)
 
 
-def result_label(hit):
+def result_label(hit, library_label=None):
     row = hit.result
     status = 'Verified source' if row.verified is True else 'Unverified extraction'
     # Native list rows stay one line; the details preserve the complete values.
     return ' | '.join(' '.join(str(value).split()) for value in
-                      (hit.library_name, row.title, row.author, row.page, status))
+                      (hit.library_name if library_label is None else library_label,
+                       row.title, row.author, row.edition or 'Unknown edition', row.page, status))
 
 
 def result_details(hit):
@@ -66,7 +68,7 @@ def result_details(hit):
         'Citation:\n' + row.citation, 'Retrieval information:\n' + (row.reason or 'Source match')))
 
 
-def _topic_labels(topics):
+def _topic_labels(topics, workspace):
     by_id = {topic.id: topic for topic in topics}
     labels = []
     for topic in topics:
@@ -78,8 +80,8 @@ def _topic_labels(topics):
             names.append(current.name)
             current = by_id.get(current.parent)
         labels.append(' / '.join(reversed(names)))
-    return tuple(label if labels.count(label) == 1 else f'{label} [{topic.id}]'
-                 for topic, label in zip(topics, labels))
+    return tuple(scope_labels((workspace, topic.id, label)
+                              for topic, label in zip(topics, labels)))
 
 
 class SearchCenter:
@@ -235,8 +237,13 @@ class SearchCenter:
                 if session.workspaces != options.workspaces:
                     raise ValueError('The completed search differs from the selected libraries')
                 self.rows = session.hits
-                self.view.show_results(tuple(result_label(hit) for hit in self.rows))
-                counts = '; '.join(f'{group.library_name}: {len(group.hits)}'
+                labels = scope_labels((group.workspace, None, group.library_name)
+                                      for group in session.groups)
+                names = dict(zip(session.workspaces, labels))
+                self.view.show_results(tuple(
+                    f'{number}. {result_label(hit, names[hit.workspace])}'
+                    for number, hit in enumerate(self.rows, 1)))
+                counts = '; '.join(f'{names[group.workspace]}: {len(group.hits)}'
                                    for group in session.groups)
                 text = (f'{len(self.rows)} results. {counts}. '
                         f'Up to {options.limit_per_library} results per library. '
@@ -322,7 +329,8 @@ class SearchCenter:
                                      'Create a topic in that library before saving.', focus=True)
                     return
                 index = self.dialogs.choose(self.view.parent, 'Save quotation to a topic',
-                    f'Choose a topic in the source library: {hit.library_name}', _topic_labels(topics))
+                    f'Choose a topic in the source library: {hit.library_name}',
+                    _topic_labels(topics, hit.workspace))
                 if index is None:
                     self.view.report('Saving the quotation was cancelled.')
                     self.view.focus_results()
@@ -412,9 +420,7 @@ class NativeSearchCenter:
             form.Add(control, 0, wx.EXPAND)
             return control
 
-        names = [row.name for row in self.libraries]
-        choices = [row.name if names.count(row.name) == 1 else f'{row.name} [{row.id}]'
-                   for row in self.libraries]
+        choices = scope_labels((row.id, None, row.name) for row in self.libraries)
         self.libraries_control = field('Libraries to search (Space selects)',
             wx.CheckListBox(self.window, choices=choices, size=(-1, 95)))
         selected = default_libraries(self.libraries, frame.active)
