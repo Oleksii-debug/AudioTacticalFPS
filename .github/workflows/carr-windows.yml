@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -108,6 +108,11 @@ jobs:
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
             'tests/catalog/test_catalog_panel_acceptance.py',
+            'tests/catalog/test_bibliography.py',
+            'tests/catalog/test_catalog_reports.py',
+            'tests/e2e/test_catalog_tools.py',
+            'tests/research/test_review_matrix.py',
+            'tests/ui/test_catalog_tools_dialog.py',
             'tests/storage/test_v2_recovery.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
@@ -145,6 +150,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_notebook_search_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-notebook-search.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native library reports and academic exports
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native full-source reader and page bookmarks
