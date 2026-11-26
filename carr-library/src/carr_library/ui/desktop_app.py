@@ -88,7 +88,7 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.collection = wx.Choice(self, choices=['All books in this library'])
         for identity, name in frame.library.collections(services.workspace):
             self.collection_ids.append(identity)
-            self.collection.Append(name)
+            self.collection.Append(f'Collection: {name}')
         self.collection.SetSelection(0)
         self.collection.SetName('Search collection')
         form.Add(wx.StaticText(self, label='Search collection'))
@@ -137,7 +137,8 @@ class DesktopSearchPanel(PagedSearchPanel):
         selected = self.collection_ids[index] if 0 <= index < len(self.collection_ids) else None
         pairs = tuple(self.frame.library.collections(self.model.workspace))
         self.collection_ids = [None] + [identity for identity, name in pairs]
-        self.collection.SetItems(['All books in this library'] + [name for identity, name in pairs])
+        self.collection.SetItems(['All books in this library'] +
+                                 [f'Collection: {name}' for identity, name in pairs])
         self.collection.SetSelection(self.collection_ids.index(selected) if selected in self.collection_ids else 0)
         self._context_epoch += 1
         self.model.clear()

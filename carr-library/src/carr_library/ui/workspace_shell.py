@@ -5,6 +5,8 @@ bind_scope(workspace, topic) returns ScopeServices after fresh authorization.
 Every bound service must independently enforce authorization on each operation.
 No global search, database access, or new persistence contract here.
 """
+from collections import Counter
+
 import wx
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
@@ -47,6 +49,26 @@ class WorkspaceFrame(wx.Frame):
             'Discard the unsaved research note?', 'Unsaved note',
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
 
+    def _restore_note_focus(self):
+        # A dirty note can belong to a hidden page. Reveal that exact page
+        # without page-changing events before requesting keyboard focus.
+        book, evidence = self.book, self.evidence
+        try:
+            if book is not None and evidence is not None:
+                for index in range(book.GetPageCount()):
+                    if book.GetPage(index) is evidence:
+                        book.ChangeSelection(index)
+                        evidence.note.SetFocus()
+                        return
+        except Exception:
+            pass
+        # Focus failure must not reach scope teardown and discard the draft.
+        try:
+            self.status.SetValue('Note retained. Open Evidence and Notes to resume editing.')
+            self.status.SetFocus()
+        except Exception:
+            pass
+
     def _drop(self):
         old = self.book
         self.active = self.book = self.evidence = None
@@ -77,7 +99,11 @@ class WorkspaceFrame(wx.Frame):
             rows, ids = self._load_scopes()
             self.choice.Clear()
             self.scopes = ids
+            label_counts = Counter(label for _, _, label in rows)
             for workspace, topic, label in rows:
+                if label_counts[label] > 1:
+                    kind = 'library only' if topic is None else f'topic {topic}'
+                    label = f'{label} (library {workspace}; {kind})'
                 self.choice.Append(label)
             if self.active is not None and self.active not in ids:
                 self._drop()
@@ -114,7 +140,7 @@ class WorkspaceFrame(wx.Frame):
                 raise ValueError('scope no longer authorized')
             if not self._confirm():
                 self.choice.SetSelection(self.scopes.index(self.active))
-                self.evidence.note.SetFocus()
+                self._restore_note_focus()
                 return
             services = self.bind_scope(*scope)
             if not isinstance(services, ScopeServices) or (services.workspace, services.topic) != scope:
@@ -160,7 +186,7 @@ class WorkspaceFrame(wx.Frame):
             try:
                 if not self._confirm():
                     event.Veto()
-                    self.evidence.note.SetFocus()
+                    self._restore_note_focus()
                     return
             finally:
                 self.busy = False

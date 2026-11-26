@@ -181,7 +181,8 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
             best_semantic_window[parent] = p
     # Deduplication precedes the result limit, so a long page with many relevant
     # windows cannot consume all slots before a second page is considered.
-    ranked = (fuse_scoped_rankings(workspace, parent_keys, lexical_keys, semantic_parents, limit=limit)
+    ranked = (fuse_scoped_rankings(workspace, parent_keys, lexical_keys, semantic_parents,
+                                   limit=limit, work_ids=dict(zip(parent_keys, (p.work_id for p in refs))))
               if semantic else [(key, lexical_by_parent[key]['score']) for key in lexical_keys[:limit]])
     result = []
     for parent, score in ranked:

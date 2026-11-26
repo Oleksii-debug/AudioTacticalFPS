@@ -47,6 +47,7 @@ def run_native(source):
     from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor
     from carr_library.research.saved_evidence import SavedEvidenceStore
     from carr_library.ui.evidence_panel import EvidencePanel
+    from carr_library.ui.workspace_shell import WorkspaceFrame
 
     results = []
 
@@ -105,11 +106,16 @@ def run_native(source):
                 service.tree.create('topic', 'Synthetic topic')
                 service.save('topic', 'span', (first, second), 'Saved note')
 
-            frame = wx.Frame(None, title='Synthetic evidence smoke', size=(700, 720))
-            panel = EvidencePanel(frame, 'a', 'topic', transaction)
-            layout = wx.BoxSizer(wx.VERTICAL)
-            layout.Add(panel, 1, wx.EXPAND)
-            frame.SetSizer(layout)
+            frame = WorkspaceFrame(None, lambda: (), lambda *args: None)
+            frame.SetTitle('Synthetic evidence smoke')
+            book = wx.Notebook(frame.host)
+            other = wx.Panel(book)
+            panel = EvidencePanel(book, 'a', 'topic', transaction)
+            book.AddPage(other, 'Other section')
+            book.AddPage(panel, 'Evidence and Notes', select=True)
+            frame.layout.Add(book, 1, wx.EXPAND)
+            frame.book, frame.evidence = book, panel
+            frame.host.Layout()
             app.SetTopWindow(frame)
             frame.Show()
             frame.Raise()
@@ -124,6 +130,15 @@ def run_native(source):
                   and 'PDF page 4' in panel.page_choice.GetString(1))
             draft = 'Unsaved research note — зберегти дослівно.'
             panel.note.SetValue(draft)
+            book.ChangeSelection(0)
+            other.SetFocus()
+            app.Yield()
+            check('native notebook has a different page selected', book.GetPage(book.GetSelection()) is other)
+            frame._restore_note_focus()
+            app.Yield()
+            check('draft recovery selects the exact native evidence page', book.GetPage(book.GetSelection()) is panel)
+            check('draft recovery focuses the actual note control', focused(panel.note))
+            check('revealing the hidden evidence page retains draft', panel.note.GetValue() == draft)
             panel.page_choice.SetFocus()
             app.Yield()
             check('native selector accepts keyboard focus', focused(panel.page_choice))
@@ -163,9 +178,19 @@ def run_native(source):
                   panel.status.Navigate(flags=wx.NavigationKeyEvent.IsBackward))
             app.Yield()
             check('backward navigation returns to draft control', focused(panel.note))
+            # Removing a page keeps its real controls alive but makes it
+            # unavailable to the shell's reveal helper. Exercise recovery
+            # without replacing a native control or mocking focus methods.
+            check('native notebook can detach evidence without destroying its draft', book.RemovePage(1))
+            frame._restore_note_focus()
+            app.Yield()
+            check('unavailable evidence page reports retained note', 'Note retained' in frame.status.GetValue())
+            check('unavailable evidence page focuses native recovery status', focused(frame.status))
+            check('unavailable evidence page preserves the draft control', panel.note.GetValue() == draft)
             print(json.dumps({'result': 'PASS', 'checks': len(results),
                               'wx': wx.version(), 'sqlite': sqlite3.sqlite_version,
                               'source_sha256': sha256((source / 'src/carr_library/ui/evidence_panel.py').read_bytes()).hexdigest(),
+                              'workspace_shell_sha256': sha256((source / 'src/carr_library/ui/workspace_shell.py').read_bytes()).hexdigest(),
                               'native_platform': platform.system(),
                               'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
         finally:

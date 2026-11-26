@@ -86,6 +86,7 @@ jobs:
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
+            'tests/e2e/test_offline_startup.py',
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',
             'tests/e2e/test_retained_source_search_integrity.py',
@@ -94,19 +95,26 @@ jobs:
             'tests/e2e/test_search_operation_budget.py',
             'tests/e2e/test_nested_search_clock_budget.py',
             'tests/ingest/test_application_atomic_gate.py',
+            'tests/ingest/test_worker_isolated_launch.py',
             'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
             'tests/e2e/test_source_file.py',
             'tests/e2e/test_export_destination.py',
             'tests/storage/test_library_backup.py',
+            'tests/storage/test_backup_schema_identity.py',
+            'tests/citations/test_finish_label_integrity.py',
+            'tests/storage/test_printed_label_integrity.py',
             'tests/catalog/test_catalog_panel_acceptance.py',
             'tests/storage/test_v2_recovery.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_topic_search_runtime.py',
             'tests/search/test_literal_long_source.py',
+            'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
             'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/probe_workspace_shell.py',
+            'tests/accessibility/test_pr71_catalog_scope_ux.py',
             'tests/ui/test_source_open_handler.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'

@@ -8,6 +8,7 @@ import sqlite3
 import os
 from tempfile import TemporaryDirectory
 
+from ..citations.anchors import Locator
 from .research_schema import RESEARCH_SCHEMA
 
 SCHEMA = '''
@@ -267,6 +268,15 @@ class Storage:
         """, (revision, revision)).fetchone()
         if invalid:
             raise sqlite3.IntegrityError('invalid source locator sequence or label')
+        # Apply the citation boundary to every authoritative label, including
+        # inactive historical revisions checked before backup or recovery.
+        for physical, printed in self.db.execute(
+                'SELECT physical,printed FROM page WHERE verified=1 AND (? IS NULL OR revision=?)',
+                (revision, revision)):
+            try:
+                Locator('physical_page', physical, printed, True)
+            except ValueError as exc:
+                raise sqlite3.IntegrityError('invalid verified printed label') from exc
 
     def _check(self):
         self._check_schema()

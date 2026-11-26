@@ -77,6 +77,21 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     assert cancelled()
 
 
+def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(panel):
+    panel.collection_ids = [None, 'selected']
+    panel.collection.GetSelection.return_value = 1
+    panel.frame.library.collections = Mock(return_value=(
+        ('other', 'Research'), ('selected', 'All books in this library')))
+    panel.refresh_collections()
+    labels = panel.collection.SetItems.call_args.args[0]
+    assert labels == ['All books in this library', 'Collection: Research',
+                      'Collection: All books in this library']
+    assert len(set(labels)) == len(labels)
+    assert panel.collection_ids == [None, 'other', 'selected']
+    panel.collection.SetSelection.assert_called_once_with(2)
+    panel.frame.library.collections.assert_called_once_with('library')
+
+
 def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(panel):
     def first(*args, on_status, **kwargs):
         on_status('Old fallback notice.')

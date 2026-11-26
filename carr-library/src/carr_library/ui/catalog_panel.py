@@ -109,7 +109,7 @@ class CatalogPanel(wx.Panel):
         self.target_ids = list(groups)
         self.filter.Append('All books in this library')
         for name in groups.values():
-            self.filter.Append(name)
+            self.filter.Append(f'Collection: {name}')
             self.target.Append(name)
         self.filter.SetSelection(self.filter_ids.index(collection))
         if target in self.target_ids:
@@ -179,6 +179,7 @@ class CatalogPanel(wx.Panel):
         if self.refresh(selection=(collection, target, None)):
             (self.books if self.book_ids else self.status).SetFocus()
             return True
+        self.status.SetFocus()
         return False
 
     def previous_page(self, event=None):
@@ -193,6 +194,7 @@ class CatalogPanel(wx.Panel):
         if self.refresh(selection=(collection, target, edition)):
             (self.books if self.book_ids else self.status).SetFocus()
             return True
+        self.status.SetFocus()
         return False
 
     def _change(self, action, selection, *, needs_target=False, needs_book=False):
@@ -219,7 +221,7 @@ class CatalogPanel(wx.Panel):
             self.status.SetValue('Catalog updated. ' +
                 ('This collection is now empty.' if not self.rows and next_selection[0] is not None
                  else self._page_status()))
-            self.books.SetFocus()
+            (self.books if self.book_ids else self.status).SetFocus()
         else:
             self.status.SetValue('Catalog change committed; refresh failed. Refresh before another change.')
             self.status.SetFocus()

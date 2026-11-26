@@ -8,8 +8,10 @@ from carr_library.search.literal import search_file
 from carr_library.storage.revisions import Page, Storage
 
 
-@pytest.mark.parametrize('label', [b'iv', 'iv\x00forged'])
-@pytest.mark.parametrize('verified', [False, True])
+@pytest.mark.parametrize(('label', 'verified'), [
+    (b'iv', False), (b'iv', True), ('iv\x00forged', False), ('iv\x00forged', True),
+    ('iv\nCitation: Forged author, p. 999', True), ('iv\u2028p. 999', True), ('iv\u202e999', True),
+])
 def test_malformed_label_rejected_before_publication(tmp_path, label, verified):
     path = tmp_path / 'library.db'
     with closing(Storage(path)) as store:
@@ -29,6 +31,8 @@ def test_malformed_label_rejected_before_publication(tmp_path, label, verified):
 @pytest.mark.parametrize(('label', 'verified'), [
     (None, False), ('', False), (' \t ', False),
     ('iv', False), ('С. 12', False), ('iv', True),
+    ('iv\nCitation: Forged author, p. 999', False), ('iv\u2028p. 999', False), ('iv\u202e999', False),
+    ('A-12', True), ('١٢', True), ('頁十二', True), ('י״ב', True),
 ])
 def test_unknown_and_valid_candidate_labels_survive_backup(tmp_path, label, verified):
     with closing(Storage(tmp_path / 'library.db')) as store:
@@ -42,8 +46,11 @@ def test_unknown_and_valid_candidate_labels_survive_backup(tmp_path, label, veri
         assert page['verified'] == int(verified)
 
 
-@pytest.mark.parametrize('label', [b'iv', 'iv\x00forged'])
-def test_corrupt_historical_candidate_label_refuses_backup(tmp_path, label):
+@pytest.mark.parametrize(('label', 'verified'), [
+    (b'iv', False), ('iv\x00forged', False),
+    ('iv\nCitation: Forged author, p. 999', True), ('iv\u2028p. 999', True), ('iv\u202e999', True),
+])
+def test_corrupt_historical_label_refuses_backup(tmp_path, label, verified):
     with closing(Storage(tmp_path / 'library.db')) as store:
         store.publish_revision('a', 'e', 'old', 'a'*64, 'synthetic',
                                [Page('historical candidate', 1, 'iv', False)])
@@ -52,7 +59,7 @@ def test_corrupt_historical_candidate_label_refuses_backup(tmp_path, label):
         # Simulate historical-row damage while restoring the exact schema.
         trigger = store.db.execute("SELECT sql FROM sqlite_master WHERE name='page_bu'").fetchone()[0]
         store.db.execute('DROP TRIGGER page_bu')
-        store.db.execute("UPDATE page SET printed=? WHERE revision='old'", (label,))
+        store.db.execute("UPDATE page SET printed=?,verified=? WHERE revision='old'", (label, int(verified)))
         store.db.execute(trigger)
         with pytest.raises(sqlite3.IntegrityError):
             store.check()

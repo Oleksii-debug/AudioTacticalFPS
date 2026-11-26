@@ -374,13 +374,15 @@ def extract_query_terms(query: str) -> list[str]:
 # SOFTWARE.
 
 
-def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20):
+def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20, work_ids=None):
     """Fuse already-authorized locator keys; never construct or resolve quotes.
 
     Each key is (workspace, edition, revision, passage). The trusted caller
     must authorize active source spans in one storage snapshot before fusion
     and re-resolve selected keys from that same snapshot. A missing semantic
     backend is represented by an empty ranking, not synthetic vectors.
+    Optional trusted work_ids diversify the entire fused ranking before the
+    result cap: one per work, then one per unused edition, then repeats.
     """
     from ._vendor.rifflux.rrf import rrf_fuse
 
@@ -412,7 +414,32 @@ def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20):
     scores = rrf_fuse({'lexical': [tokens[key] for key in lexical],
                        'semantic': [tokens[key] for key in semantic]})
     ranked = [(keys[int(token)], score) for token, score in scores.items()]
-    return sorted(ranked, key=lambda pair: (-pair[1], pair[0]))[:limit]
+    ranked.sort(key=lambda pair: (-pair[1], pair[0]))
+    if work_ids is None:
+        return ranked[:limit]
+    if (not isinstance(work_ids, dict) or set(work_ids) != allowed
+            or any(not isinstance(work, str) or not work or len(work) > 256
+                   or '\x00' in work for work in work_ids.values())):
+        raise ValueError('invalid trusted work identities')
+    first, deferred, second, rest = [], [], [], []
+    works, editions = set(), set()
+    for pair in ranked:
+        key = pair[0]
+        work = work_ids[key]
+        if work in works:
+            deferred.append(pair)
+        else:
+            works.add(work)
+            editions.add(key[1])
+            first.append(pair)
+    for pair in deferred:
+        edition = pair[0][1]
+        if edition in editions:
+            rest.append(pair)
+        else:
+            editions.add(edition)
+            second.append(pair)
+    return (first + second + rest)[:limit]
 
 
 def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
@@ -478,7 +505,8 @@ def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
     semantic = semantic_ranker(query, tuple((key, p.raw_page[p.start:p.end])
                                             for key, p in by_key.items()))
     check()
-    fused = fuse_scoped_rankings(workspace, keys, lex_keys, semantic, limit=limit)
+    fused = fuse_scoped_rankings(workspace, keys, lex_keys, semantic, limit=limit,
+                                  work_ids={key: p.work_id for key, p in by_key.items()})
     if not semantic:
         return lexical[:limit]
     by_hit = dict(zip(lex_keys, lexical))

@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from hashlib import sha256
 import re
+import unicodedata
 
 
 def digest(text):
@@ -27,6 +28,11 @@ class Locator:
                 self.printed.encode('utf-8', errors='strict')
             except UnicodeError as exc:
                 raise ValueError('invalid printed label') from exc
+        if self.verified and self.printed is not None and any(
+                unicodedata.category(ch) in ('Cc', 'Zl', 'Zp') or
+                ch in '\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069'
+                for ch in self.printed):
+            raise ValueError('invalid printed label')
         if self.kind == 'logical_segment' and (self.printed is not None or self.verified):
             raise ValueError('unpaginated source cannot have printed page')
         if self.verified and not (isinstance(self.printed, str) and self.printed.strip()):
