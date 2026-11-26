@@ -6,7 +6,13 @@ import importlib.util
 import io
 import os
 from pathlib import Path
+import shutil
+import stat
 import subprocess
+import sys
+import tarfile
+from tempfile import TemporaryDirectory
+import tomllib
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import pytest
@@ -196,3 +202,90 @@ def test_metadata_identity_and_entry_points_are_bound_to_committed_project(sourc
     payload['fixture_application-1.0.dist-info/entry_points.txt'] = b'[console_scripts]\nfixture-app = wrong:main\n'
     with pytest.raises(ValueError, match='entry points'):
         verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+
+
+def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_path):
+    # Copy only tracked public sources. Never build alongside a user's models,
+    # books, recordings or a previous egg-info manifest in their checkout.
+    tracked = subprocess.check_output(
+        ['git', 'ls-files', '-z', '--', '.'], cwd=ROOT, timeout=30,
+    ).decode('utf-8').split('\0')[:-1]
+    assert 0 < len(tracked) < 10000
+    with TemporaryDirectory(prefix='carr-sdist-', dir=tmp_path) as directory:
+        project = Path(directory) / 'source'
+        project.mkdir()
+        total = 0
+        for name in tracked:
+            relative = Path(name)
+            assert not relative.is_absolute() and '..' not in relative.parts
+            source_path = ROOT / relative
+            info = source_path.lstat()
+            assert stat.S_ISREG(info.st_mode), name
+            total += info.st_size
+            assert total <= 64 * 1024 * 1024
+            destination = project / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, destination)
+
+        configuration = tomllib.loads((project / 'pyproject.toml').read_text('utf-8'))
+        admitted, _ = verifier._inventory(
+            configuration, {f'carr-library/{name}': None for name in tracked},
+        )
+        required = {name.removeprefix('carr-library/') for name in admitted.values()}
+        required.update(configuration['project']['license-files'])
+        required.update({
+            'scripts/ci_check.py',
+            'scripts/ocr_catalog_smoke.py',
+            'scripts/windows_academic_smoke.py',
+            'scripts/windows_audio_smoke.py',
+            'scripts/windows_installer_launchers_smoke.py',
+            'scripts/windows_ocr_languages_smoke.py',
+            'scripts/windows_v3_reading_smoke.py',
+            'bootstrap/semantic_compat/test_probe.py',
+            'bootstrap/semantic_compat/probe.py',
+            'src/carr_library/extract/ocr-model-catalog.json',
+        })
+        required.update(name for name in tracked
+                        if name.startswith('scripts/') and name.endswith('.py'))
+        assert required <= set(tracked)
+
+        # Synthetic untracked payloads exercise the real manifest exclusion;
+        # they contain no user data and are removed with this temporary tree.
+        excluded = {
+            'private-books/synthetic-private.txt',
+            'models/synthetic-model.safetensors',
+            'audio-renders/synthetic-output.wav',
+            'scripts/synthetic-recording.wav',
+            'scripts/__pycache__/synthetic.pyc',
+            'bootstrap/semantic_compat/synthetic-model.onnx',
+            'src/carr_library/audio/synthetic-recording.wav',
+        }
+        for name in excluded:
+            destination = project / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(b'Synthetic exclusion fixture.\n')
+        environment = dict(os.environ, PIP_NO_INDEX='1', PYTHONNOUSERSITE='1')
+        with (project / 'build.log').open('wb+') as log:
+            result = subprocess.run(
+                [sys.executable, '-I', '-c',
+                 'from setuptools.build_meta import build_sdist; build_sdist("dist")'],
+                cwd=project, env=environment, stdout=log, stderr=subprocess.STDOUT,
+                timeout=90, check=False,
+            )
+            log.seek(max(0, log.tell() - 8000))
+            assert result.returncode == 0, log.read().decode('utf-8', errors='replace')
+        archives = list((project / 'dist').glob('*.tar.gz'))
+        assert len(archives) == 1
+        assert archives[0].stat().st_size <= 16 * 1024 * 1024
+        with tarfile.open(archives[0], 'r:gz') as archive:
+            members = archive.getmembers()
+            assert len(members) < 10000
+            assert sum(member.size for member in members) <= 64 * 1024 * 1024
+            assert all(member.isdir() or member.isfile() for member in members)
+            names = {member.name.partition('/')[2] for member in members if member.isfile()}
+            assert required <= names, sorted(required - names)
+            assert not excluded.intersection(names)
+            for member in members:
+                name = member.name.partition('/')[2]
+                if name in required:
+                    assert archive.extractfile(member).read() == (project / name).read_bytes(), name

@@ -2,8 +2,9 @@
 from dataclasses import asdict
 import json
 from pathlib import Path
-import shutil
+import signal
 import sys
+from threading import Event
 
 
 def add_audio_arguments(parser):
@@ -68,7 +69,20 @@ def run_audio(args):
         return 0
     if not ffmpeg:
         raise RuntimeError('Select an installed local FFmpeg executable with --ffmpeg.')
-    result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
-                            on_status=lambda text: print(text, file=sys.stderr, flush=True))
+    from .audio.jobs import RenderCancelled
+    stopped = Event()
+    previous = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, lambda *_: stopped.set())
+    try:
+        result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
+            cancelled=stopped.is_set,
+            on_status=lambda text: print(text, file=sys.stderr, flush=True))
+    except (RenderCancelled, InterruptedError) as exc:
+        print(json.dumps({'status': 'cancelled', 'message': str(exc),
+            'resume': 'Run the same command; verified completed chunks will be reused.'},
+            ensure_ascii=False, indent=2))
+        return 130
+    finally:
+        signal.signal(signal.SIGINT, previous)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

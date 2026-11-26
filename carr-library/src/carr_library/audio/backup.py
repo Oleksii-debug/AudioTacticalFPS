@@ -18,7 +18,8 @@ import zipfile
 
 from ..reader.narration_text import NarrationDraft, decode_json
 from ..research.export_file import _filename
-from .jobs import check_cancelled, project_lock
+from .jobs import (check_cancelled, checked_directory, project_lock,
+                   publish_noreplace, _sync_directory)
 
 
 DEFAULT_BYTE_BUDGET = 1024 ** 4
@@ -50,6 +51,7 @@ def _local(path):
 
 
 def _safe(path, *, directory=False):
+    checked_directory(path if directory else path.parent)
     for parent in (*reversed(path.parents), path):
         info = parent.lstat()
         if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -59,6 +61,8 @@ def _safe(path, *, directory=False):
     info = path.lstat()
     if not (stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)):
         raise ValueError('Choose a regular snapshot file or directory.')
+    if not directory and info.st_nlink != 1:
+        raise ValueError('Snapshot files must not have hard links to other locations.')
     return info
 
 
@@ -252,11 +256,7 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
             check_cancelled(cancelled)
             if _identity(_safe(target.parent, directory=True))[:2] != parent_identity:
                 raise ValueError('The snapshot destination folder changed.')
-            # Windows needs a writable descriptor for fsync; r+b preserves the
-            # completed ZIP bytes and still flushes before atomic publication.
-            with stage.open('r+b') as stream:
-                os.fsync(stream.fileno())
-            os.link(stage, target)
+            publish_noreplace(stage, target)
             return {'snapshot': str(target), 'files': len(records), 'bytes': total,
                     'project_id': project['project_id'], 'limitations': manifest['limitations']}
         finally:
@@ -388,17 +388,17 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
             # Use update mode so Windows can durably flush the relocated state.
             with changed.open('r+b') as stream:
                 os.fsync(stream.fileno())
+        # Flush nested directory entries before publishing the complete tree.
+        for directory, _, _ in os.walk(stage, topdown=False):
+            check_cancelled(cancelled)
+            _sync_directory(Path(directory))
         check_cancelled(cancelled)
         if _identity(_safe(target.parent, directory=True))[:2] != parent_id:
             raise ValueError('The restore destination parent changed.')
-        # Claim the new parent without overwriting even an empty pre-existing
-        # directory, then atomically move the verified private staging tree.
-        target.mkdir(mode=0o700)
-        try:
-            stage.rename(target / 'project')
-        except BaseException:
-            target.rmdir()
-            raise
+        # The private temporary directory already contains the complete
+        # project tree. Publish it in one no-replace move, avoiding an empty
+        # destination left by a crash between reservation and publication.
+        publish_noreplace(Path(temporary), target)
     return {'directory': str(target / 'project'), 'project_file': str(target / 'project' / 'studio' / 'project.json'),
             'project_dir': str(output_root), 'files': len(records), 'bytes': manifest['total_bytes'],
             'recovery_relocated': recovery_relocated, 'limitations': manifest['limitations']}

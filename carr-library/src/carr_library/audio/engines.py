@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 import hashlib
+import inspect
 import json
 import math
 import os
@@ -26,9 +27,10 @@ import wave
 
 from .model_manifest import (LocalModelManifest, ModelManifestError, digest_file,
                              local_path, offline_environment, read_json)
+from .dordiai_discovery import DISCOVERY_PROTOCOL, REQUIRED_HELPERS, parse_discovery
 
 
-ADAPTER_VERSION = 'local-speech-1'
+ADAPTER_VERSION = 'local-speech-2'
 MAX_TEXT = 8000  # per worker request; long books are scheduled as many requests
 MAX_LOG_BYTES = 1024 * 1024
 MAX_PCM_BYTES = 256 * 1024 * 1024  # per request, not total project duration
@@ -52,9 +54,55 @@ class Voice:
 
 
 def _number(value, minimum, maximum, label):
-    if type(value) not in (int, float) or not math.isfinite(value) or not minimum <= value <= maximum:
+    if type(value) not in (int, float) or not minimum <= value <= maximum or not math.isfinite(value):
         raise ValueError(f'{label} must be between {minimum} and {maximum}.')
     return float(value)
+
+
+def _cancelled(cancelled):
+    if not callable(cancelled):
+        raise ValueError('A speech cancellation callback is required.')
+    if cancelled():
+        raise InterruptedError('Speech operation cancelled.')
+
+
+def _timeout(value):
+    try:
+        valid = type(value) in (int, float) and value > 0 and math.isfinite(value)
+    except OverflowError:
+        valid = False
+    if not valid:
+        raise ValueError('The local engine timeout must be a positive finite number.')
+    return float(value)
+
+
+def _invoke(method, *args, cancelled):
+    """Forward cooperative cancellation while retaining old custom adapters."""
+    _cancelled(cancelled)
+    try:
+        inspect.signature(method).bind(*args, cancelled=cancelled)
+    except (TypeError, ValueError):
+        result = method(*args)
+    else:
+        result = method(*args, cancelled=cancelled)
+    _cancelled(cancelled)
+    return result
+
+
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate speech response field.')
+        result[key] = value
+    return result
+
+
+def _sapi_json(data):
+    try:
+        return json.loads(data.decode('utf-8-sig'), object_pairs_hook=_unique_object)
+    except (UnicodeError, ValueError) as exc:
+        raise EngineUnavailable('SAPI 5 returned an invalid response.') from exc
 
 
 def _request(text, language, rate, pitch, volume):
@@ -65,6 +113,10 @@ def _request(text, language, rate, pitch, volume):
     _number(rate, -10, 10, 'Speech rate')
     _number(pitch, -12, 12, 'Speech pitch')
     _number(volume, 0, 1, 'Speech volume')
+    try:
+        text.encode('utf-8')
+    except UnicodeEncodeError as exc:
+        raise ValueError('Speech text must contain valid Unicode.') from exc
     return text
 
 
@@ -84,9 +136,13 @@ def _output(path):
     return path
 
 
-def _wave_info(path):
+def _wave_info(path, *, cancelled=lambda: False):
+    _cancelled(cancelled)
     path = local_path(path)
-    if path.stat().st_size > MAX_PCM_BYTES + 4096:
+    info = path.stat()
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError('A speech engine did not return a regular WAV file.')
+    if info.st_size > MAX_PCM_BYTES + 4096:
         raise ValueError('A speech segment exceeds the configured PCM budget.')
     with wave.open(str(path), 'rb') as audio:
         if (audio.getnchannels() not in (1, 2) or audio.getsampwidth() != 2 or
@@ -95,47 +151,55 @@ def _wave_info(path):
             raise ValueError('A speech engine did not return valid PCM16 audio.')
         frames = audio.getnframes()
         remaining = frames * audio.getnchannels() * 2
+        if remaining > MAX_PCM_BYTES:
+            raise ValueError('A speech segment exceeds the configured PCM budget.')
         while remaining:
+            _cancelled(cancelled)
             block = audio.readframes(min(65536, math.ceil(remaining / (2 * audio.getnchannels()))))
-            if not block:
+            if not block or len(block) > remaining or len(block) % (2 * audio.getnchannels()):
                 raise ValueError('A speech engine returned a truncated WAV file.')
             remaining -= len(block)
+        _cancelled(cancelled)
         return {'frames': frames, 'sample_rate': audio.getframerate(),
                 'channels': audio.getnchannels(), 'sample_width': 2}
 
 
-def _publish(source, target):
+def _publish(source, target, *, cancelled=lambda: False):
     """Same-filesystem atomic publication that cannot replace another file."""
+    from .jobs import publish_noreplace
     target = _output(target)
-    with Path(source).open('r+b') as stream:
-        os.fsync(stream.fileno())
-    os.link(source, target)
-    try:
-        descriptor = os.open(target.parent, os.O_RDONLY)
-    except OSError:
-        return
-    try:
-        os.fsync(descriptor)
-    except OSError:
-        pass  # directory fsync is not exposed by every Windows filesystem
-    finally:
-        os.close(descriptor)
+    _cancelled(cancelled)
+    # The voice worker owns this private stage; moving it also avoids a
+    # hardlink alias if the application exits before temporary cleanup.
+    publish_noreplace(source, target)
 
 
 def _stop(process):
-    if process.poll() is not None:
-        return
     if os.name == 'nt':
+        if process.poll() is not None:
+            return
         taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/taskkill.exe'
         try:
             subprocess.run([str(taskkill), '/PID', str(process.pid), '/T', '/F'],
                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, timeout=5, check=False)
+                           stderr=subprocess.DEVNULL, timeout=5, check=False,
+                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except (OSError, subprocess.TimeoutExpired):
             pass
     else:
+        # Every worker is started in its own session. The group can still own
+        # live descendants after its leader has exited; poll() alone is not a
+        # cleanup boundary for that group.
         try:
             os.killpg(process.pid, signal.SIGTERM)
+        except (OSError, ProcessLookupError):
+            pass
+        try:
+            process.wait(timeout=.1)
+        except subprocess.TimeoutExpired:
+            pass
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
         except (OSError, ProcessLookupError):
             pass
     if process.poll() is None:
@@ -147,37 +211,53 @@ def _stop(process):
 
 
 def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, cwd=None,
-         return_stderr=False):
+         return_stderr=False, output=None):
     """Bound both logs and lifetime; text is stdin data, never shell source."""
-    if cancelled():
-        raise InterruptedError('Speech operation cancelled.')
+    timeout = _timeout(timeout)
+    _cancelled(cancelled)
+    started = time.monotonic()
+
+    def check():
+        _cancelled(cancelled)
+        if time.monotonic() - started >= timeout:
+            raise TimeoutError('The local engine exceeded its selected per-segment time budget.')
+
     options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
+    # Local workers must not create report or TLS-key files through inherited
+    # diagnostic settings. Copy explicit mappings as well; never change callers.
+    environment = {key: value for key, value in (os.environ if env is None else env).items()
+                   if key.upper() not in {'FFREPORT', 'SSLKEYLOGFILE'}}
     with tempfile.TemporaryFile() as incoming, tempfile.TemporaryFile() as outgoing, tempfile.TemporaryFile() as errors:
         incoming.write(data)
         incoming.seek(0)
         process = subprocess.Popen([str(item) for item in command], stdin=incoming, stdout=outgoing,
-                                   stderr=errors, shell=False, env=env, cwd=cwd, **options)
-        started = time.monotonic()
+                                   stderr=errors, shell=False, env=environment, cwd=cwd, **options)
         try:
-            while process.poll() is None:
-                if cancelled():
-                    raise InterruptedError('Local engine operation cancelled.')
-                if time.monotonic() - started > timeout:
-                    raise TimeoutError('The local engine exceeded its selected per-segment time budget.')
+            while True:
+                check()
+                status = process.poll()
                 if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_LOG_BYTES:
                     raise RuntimeError('The local engine exceeded its diagnostic byte budget.')
+                if output is not None:
+                    try:
+                        info = Path(output).lstat()
+                    except FileNotFoundError:
+                        info = None
+                    if info is not None and (not stat.S_ISREG(info.st_mode)
+                            or info.st_size > MAX_PCM_BYTES + 4096):
+                        raise ValueError('A speech segment exceeds the configured PCM budget or is not a regular file.')
+                if status is not None:
+                    break
                 time.sleep(.03)
-            if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_LOG_BYTES:
-                raise RuntimeError('The local engine exceeded its diagnostic byte budget.')
-            if cancelled():
-                raise InterruptedError('Local engine operation cancelled.')
             if process.returncode:
                 # Engine diagnostics can contain book text, local paths or keys.
                 # The normal application error carries only a bounded exit status.
                 raise EngineUnavailable(f'Local engine failed with exit code {process.returncode}.')
             stream = errors if return_stderr else outgoing
             stream.seek(0)
-            return stream.read(MAX_LOG_BYTES + 1)
+            result = stream.read(MAX_LOG_BYTES + 1)
+            check()
+            return result
         finally:
             _stop(process)
 
@@ -199,7 +279,13 @@ try {
     })
     [Console]::Write((ConvertTo-Json -InputObject $rows -Compress -Depth 4))
   } elseif ($request.operation -eq 'speak') {
-    if ($request.voice -ne '') { $synth.SelectVoice([string]$request.voice) }
+    $selectedVoices = @($synth.GetInstalledVoices() | Where-Object {
+      $_.Enabled -and $_.VoiceInfo.Id -ceq $request.voice_id -and
+      $_.VoiceInfo.Name -ceq $request.voice
+    })
+    if ($selectedVoices.Count -ne 1) { throw 'Requested installed voice is unavailable' }
+    $synth.SelectVoice($selectedVoices[0].VoiceInfo.Name)
+    if ($synth.Voice.Id -cne $request.voice_id) { throw 'Selected installed voice changed' }
     $synth.Rate = [int]$request.rate
     $synth.Volume = [int]$request.volume
     $format = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(
@@ -208,7 +294,9 @@ try {
     $synth.SetOutputToWaveFile([string]$request.output,$format)
     $synth.Speak([string]$request.text)
     $synth.SetOutputToNull()
-    [Console]::Write('{"complete":true}')
+    [Console]::Write((ConvertTo-Json -InputObject ([ordered]@{
+      complete=$true; voice_id=$synth.Voice.Id
+    }) -Compress))
   } else { throw 'Unsupported speech operation' }
 } finally { $synth.Dispose() }
 '''
@@ -222,55 +310,69 @@ class SAPI5Engine:
             powershell = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
         self.binary = _binary(powershell)
         self.id = engine_id
-        self.timeout = timeout
+        self.timeout = _timeout(timeout)
         self._records = {}
         self._default = None
 
     def _call(self, request, *, cancelled=lambda: False):
-        command = [self.binary, '-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand',
+        command = [self.binary, '-NoLogo', '-NoProfile', '-NonInteractive', '-Sta', '-EncodedCommand',
                    base64.b64encode(_SAPI_SCRIPT.encode('utf-16-le')).decode('ascii')]
         return _run(command, data=json.dumps(request, ensure_ascii=True).encode('utf-8'),
-                    cancelled=cancelled, timeout=self.timeout, env=offline_environment())
+                    cancelled=cancelled, timeout=self.timeout, env=offline_environment(),
+                    output=request.get('output'))
 
-    def voices(self):
-        try:
-            result = json.loads(self._call({'operation': 'voices'}).decode('utf-8-sig'))
-        except (UnicodeError, json.JSONDecodeError) as exc:
-            raise EngineUnavailable('SAPI 5 returned an invalid voice catalogue.') from exc
+    def voices(self, *, cancelled=lambda: False):
+        _cancelled(cancelled)
+        result = _sapi_json(self._call({'operation': 'voices'}, cancelled=cancelled))
         if not isinstance(result, list) or len(result) > 4096:
             raise EngineUnavailable('SAPI 5 returned an invalid voice catalogue.')
         voices = []
         records = {}
         default = None
         for row in result:
-            if not isinstance(row, dict) or any(not isinstance(row.get(k), str) or len(row[k]) > 2048
+            _cancelled(cancelled)
+            if not isinstance(row, dict) or any(not isinstance(row.get(k), str) or not row[k].strip()
+                                               or len(row[k]) > 2048
                                                for k in ('id', 'name', 'language', 'version')):
                 raise EngineUnavailable('SAPI 5 returned an invalid voice record.')
+            if (type(row.get('default', False)) is not bool
+                    or not re.fullmatch('[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', row['language'])
+                    or any(ord(c) < 32 or 127 <= ord(c) < 160
+                           for field in ('id', 'name', 'version') for c in row[field])):
+                raise EngineUnavailable('SAPI 5 returned an invalid voice record.')
+            try:
+                for field in ('id', 'name', 'version'):
+                    row[field].encode('utf-8')
+            except UnicodeEncodeError as exc:
+                raise EngineUnavailable('SAPI 5 returned an invalid voice record.') from exc
             key = self.id + ':' + hashlib.sha256(row['id'].encode('utf-8')).hexdigest()[:24]
             if key in records:
                 raise EngineUnavailable('SAPI 5 returned duplicate voice identities.')
             records[key] = row
             if row.get('default') is True:
+                if default is not None:
+                    raise EngineUnavailable('SAPI 5 returned ambiguous default voices.')
                 default = key
             voices.append(Voice(key, row['name'], (row['language'],), self.id,
                                 revision=row['version']))
         self._records, self._default = records, default
         return tuple(voices)
 
-    def _record(self, voice):
+    def _record(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
         if not self._records:
-            self.voices()
+            self.voices(cancelled=cancelled)
         if voice == self.id + ':default':
             voice = self._default
         if voice not in self._records:
             raise EngineUnavailable('Choose an installed SAPI 5 voice from the voice list.')
         return self._records[voice]
 
-    def cache_identity(self, voice):
-        row = self._record(voice)
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        row = self._record(voice, cancelled=cancelled)
         return {'adapter': ADAPTER_VERSION, 'engine': self.id,
                 'voice': hashlib.sha256(row['id'].encode('utf-8')).hexdigest(),
-                'version': row['version'], 'binary_sha256': digest_file(self.binary)}
+                'version': row['version'], 'binary_sha256': digest_file(self.binary, cancelled=cancelled)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
@@ -279,20 +381,22 @@ class SAPI5Engine:
             raise EngineUnavailable('This SAPI 5 adapter has no native pitch control; use an audio effect.')
         if rate != int(rate):
             raise ValueError('SAPI 5 speech rate is an integer from -10 to 10.')
-        row, target = self._record(voice), _output(output)
+        row, target = self._record(voice, cancelled=cancelled), _output(output)
         if language.lower().replace('_', '-').split('-')[0] != row['language'].lower().split('-')[0]:
             raise EngineUnavailable('The selected SAPI 5 voice does not advertise this language; select a matching voice.')
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
-            result = self._call({'operation': 'speak', 'voice': row['name'], 'text': text,
+            result = self._call({'operation': 'speak', 'voice': row['name'], 'voice_id': row['id'], 'text': text,
                                  'output': str(temporary), 'rate': int(rate),
                                  'volume': round(volume * 100)}, cancelled=cancelled)
-            if json.loads(result.decode('utf-8-sig')) != {'complete': True}:
+            response = _sapi_json(result)
+            if (not isinstance(response, dict) or set(response) != {'complete', 'voice_id'}
+                    or response.get('complete') is not True or response.get('voice_id') != row['id']):
                 raise EngineUnavailable('SAPI 5 did not confirm a completed render.')
-            _wave_info(temporary)
+            _wave_info(temporary, cancelled=cancelled)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
-            _publish(temporary, target)
+            _publish(temporary, target, cancelled=cancelled)
         return target
 
 
@@ -301,12 +405,12 @@ class ESpeakEngine:
     id = 'espeak-ng'
 
     def __init__(self, executable, *, timeout=300):
-        self.binary, self.timeout = _binary(executable), timeout
+        self.binary, self.timeout = _binary(executable), _timeout(timeout)
         self._voices = {}
 
-    def voices(self):
-        result = _run([self.binary, '--voices'], timeout=30).decode('utf-8', errors='strict')
-        voices = []
+    def voices(self, *, cancelled=lambda: False):
+        result = _run([self.binary, '--voices'], timeout=30, cancelled=cancelled).decode('utf-8', errors='strict')
+        voices = {}
         for line in result.splitlines()[1:]:
             fields = line.split()
             if len(fields) < 5:
@@ -315,28 +419,30 @@ class ESpeakEngine:
             if not re.fullmatch('[A-Za-z0-9_+./-]+', token) or token.startswith('-'):
                 continue
             key = self.id + ':' + token
-            if key in self._voices:
+            if key in voices:
                 continue
             record = Voice(key, name.replace('_', ' '), (language,), self.id,
                            controls=('rate', 'pitch', 'volume'), license='Installed eSpeak NG; GPL-3.0-or-later')
-            self._voices[key] = record
-            voices.append(record)
-        if not voices and not self._voices:
+            voices[key] = record
+        _cancelled(cancelled)
+        self._voices = voices
+        if not voices:
             raise EngineUnavailable('eSpeak NG has no installed voices.')
         return tuple(self._voices.values())
 
-    def cache_identity(self, voice):
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
         if voice not in self._voices:
-            self.voices()
+            self.voices(cancelled=cancelled)
         if voice not in self._voices:
             raise EngineUnavailable('Choose an installed eSpeak NG voice.')
         return {'adapter': ADAPTER_VERSION, 'engine': self.id, 'voice': voice,
-                'binary_sha256': digest_file(self.binary)}
+                'binary_sha256': digest_file(self.binary, cancelled=cancelled)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
-        self.cache_identity(voice)
+        self.cache_identity(voice, cancelled=cancelled)
         if language.lower().replace('_', '-').split('-')[0] not in {
                 value.lower().replace('_', '-').split('-')[0] for value in self._voices[voice].languages}:
             raise EngineUnavailable('The selected eSpeak NG voice does not advertise this language.')
@@ -347,11 +453,11 @@ class ESpeakEngine:
                        '-p', str(round(50 + pitch * 3)), '-a', str(round(100 * volume)),
                        '-b', '1', '-w', str(temporary), '--stdin']
             _run(command, data=text.encode('utf-8'), timeout=self.timeout,
-                 cancelled=cancelled, env=offline_environment())
-            _wave_info(temporary)
+                 cancelled=cancelled, env=offline_environment(), output=temporary)
+            _wave_info(temporary, cancelled=cancelled)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
-            _publish(temporary, target)
+            _publish(temporary, target, cancelled=cancelled)
         return target
 
 
@@ -364,13 +470,14 @@ class FliteEngine:
     id = 'flite'
 
     def __init__(self, ffmpeg, *, timeout=300):
-        self.binary, self.timeout = _binary(ffmpeg), timeout
+        self.binary, self.timeout = _binary(ffmpeg), _timeout(timeout)
         self._voices = {}
 
-    def voices(self):
+    def voices(self, *, cancelled=lambda: False):
         message = _run([self.binary, '-hide_banner', '-nostdin', '-f', 'lavfi',
                         '-i', 'flite=list_voices=1', '-f', 'null', '-'], timeout=15,
-                       env=offline_environment(), return_stderr=True).decode('utf-8', errors='replace')
+                       env=offline_environment(), return_stderr=True,
+                       cancelled=cancelled).decode('utf-8', errors='replace')
         names = re.findall(r'^\[Parsed_flite_\d+ @ [^\]]+\]\s+([A-Za-z0-9_-]{1,80})\s*$',
                            message, re.MULTILINE)
         self._voices = {self.id + ':' + name: Voice(self.id + ':' + name, 'Flite ' + name, ('en',),
@@ -380,14 +487,16 @@ class FliteEngine:
             raise EngineUnavailable('This FFmpeg build has no usable libflite voices.')
         return tuple(self._voices.values())
 
-    def cache_identity(self, voice):
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
         if not self._voices:
-            self.voices()
+            self.voices(cancelled=cancelled)
         if voice not in self._voices:
             raise EngineUnavailable('Choose an installed Flite voice.')
         return {'adapter': ADAPTER_VERSION, 'engine': self.id, 'voice': voice,
-                'binary_sha256': digest_file(self.binary),
-                'build_sha256': hashlib.sha256(_run([self.binary, '-version'], timeout=15)).hexdigest()}
+                'binary_sha256': digest_file(self.binary, cancelled=cancelled),
+                'build_sha256': hashlib.sha256(_run([self.binary, '-version'], timeout=15,
+                                                    cancelled=cancelled)).hexdigest()}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
@@ -396,7 +505,7 @@ class FliteEngine:
             raise EngineUnavailable('These Flite voices support English only; select another local engine for this language.')
         if rate or pitch:
             raise EngineUnavailable('This Flite adapter has no native rate or pitch control; use an audio effect.')
-        self.cache_identity(voice)
+        self.cache_identity(voice, cancelled=cancelled)
         target = _output(output)
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
@@ -405,11 +514,12 @@ class FliteEngine:
                        '-i', 'flite=textfile=input.txt:voice=' + voice.split(':', 1)[1],
                        '-af', 'volume=' + format(volume, '.8g'), '-ar', '24000', '-ac', '1',
                        '-c:a', 'pcm_s16le', '-f', 'wav', '-n', str(temporary)]
-            _run(command, timeout=self.timeout, cancelled=cancelled, env=offline_environment(), cwd=staging)
-            _wave_info(temporary)
+            _run(command, timeout=self.timeout, cancelled=cancelled, env=offline_environment(),
+                 cwd=staging, output=temporary)
+            _wave_info(temporary, cancelled=cancelled)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
-            _publish(temporary, target)
+            _publish(temporary, target, cancelled=cancelled)
         return target
 
 
@@ -420,7 +530,7 @@ class PiperEngine:
     def __init__(self, executable, manifest, *, timeout=300):
         self.binary = _binary(executable)
         self.manifest = LocalModelManifest.load(manifest, engine='piper')
-        self.timeout = timeout
+        self.timeout = _timeout(timeout)
         self.model = self.manifest.settings.get('model')
         self.config = self.manifest.settings.get('config')
         self.language = self.manifest.settings.get('language', 'en')
@@ -433,22 +543,24 @@ class PiperEngine:
         self.manifest.asset(self.config)
         self.voice_id = 'piper:' + self.manifest.manifest_sha256[:24]
 
-    def voices(self):
-        self.manifest.verify()
+    def voices(self, *, cancelled=lambda: False):
+        _cancelled(cancelled)
+        self.manifest.verify(cancelled=cancelled)
         return (Voice(self.voice_id, self.name, (self.language,), self.id,
                       license=self.manifest.license, revision=self.manifest.revision),)
 
-    def cache_identity(self, voice):
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
         if voice != self.voice_id:
             raise EngineUnavailable('Choose the configured local Piper voice.')
-        self.manifest.verify()
+        self.manifest.verify(cancelled=cancelled)
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION,
-                'binary_sha256': digest_file(self.binary)}
+                'binary_sha256': digest_file(self.binary, cancelled=cancelled)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
-        self.cache_identity(voice)
+        self.cache_identity(voice, cancelled=cancelled)
         if pitch:
             raise EngineUnavailable('Piper native pitch is not exposed; use a separate audio effect.')
         if language.lower().replace('_', '-').split('-')[0] != self.language.lower().replace('_', '-').split('-')[0]:
@@ -461,11 +573,11 @@ class PiperEngine:
                        '--config', self.manifest.asset(self.config), '--output_file', temporary,
                        '--length_scale', format(2 ** (-rate / 10), '.8g'), '--volume', format(volume, '.8g')]
             _run(command, data=text.encode('utf-8'), timeout=self.timeout, cancelled=cancelled,
-                 env=offline_environment(), cwd=self.manifest.root)
-            _wave_info(temporary)
+                 env=offline_environment(), cwd=self.manifest.root, output=temporary)
+            _wave_info(temporary, cancelled=cancelled)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
-            _publish(temporary, target)
+            _publish(temporary, target, cancelled=cancelled)
         return target
 
 
@@ -501,64 +613,74 @@ class DordiaiVoicesEngine:
         self.binary = _binary(self.manifest.asset(settings.get('python', 'python/python.exe')))
         self.worker = self.manifest.asset(settings.get('worker', 'nvda_worker.py'))
         self.catalog_path = self.manifest.asset(settings.get('catalog', 'models/voices/catalog.json'))
-        self.timeout = timeout
+        self.runtime_root = self.worker.parent
+        self.models = local_path(self.runtime_root / 'models')
+        self.references = local_path(self.models / 'voices')
+        if self.catalog_path != self.references / 'catalog.json':
+            raise ModelManifestError('The selected catalogue does not belong to this worker model directory.')
+        for filename in REQUIRED_HELPERS:
+            relative = (self.runtime_root / filename).relative_to(self.manifest.root).as_posix()
+            self.manifest.asset(relative)
+        self.timeout = _number(timeout, .01, 86400, 'Speech timeout')
         self._profiles = {}
+        self._voice_languages = {}
         self._languages = ()
 
-    def voices(self):
-        self.manifest.verify(require_complete=True)
-        catalog = read_json(self.catalog_path)
-        profiles = catalog.get('voices') if isinstance(catalog, dict) else None
-        languages = catalog.get('languages') if isinstance(catalog, dict) else None
-        if not isinstance(profiles, dict) or not isinstance(languages, dict) or len(profiles) > 4096:
-            raise ModelManifestError('Invalid dordiai-voices catalogue.')
-        language_codes = []
-        for code in languages:
-            if isinstance(code, str) and re.fullmatch('[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*', code):
-                language_codes.append(code)
+    def voices(self, *, cancelled=lambda: False):
+        _cancelled(cancelled)
+        self.manifest.verify(cancelled=cancelled, require_complete=True)
+        bridge = Path(__file__).with_name('dordiai_discovery.py')
+        command = [self.binary, '-I', '-B', '-u', bridge,
+                   self.runtime_root, self.models, self.references]
+        raw = _run(command, cancelled=cancelled, timeout=min(self.timeout, 30),
+                   env=offline_environment(), cwd=self.runtime_root)
+        try:
+            discovered = parse_discovery(raw)
+        except (ValueError, UnicodeError) as exc:
+            raise ModelManifestError('Invalid installed dordiai-voices discovery response.') from exc
+        if not discovered:
+            raise EngineUnavailable('No installed dordiai-voices profile has compatible language resources. '
+                                    'Install and verify the required engine and voice packs first.')
         rows = []
-        records = {}
-        for key, info in profiles.items():
-            if not isinstance(key, str) or not re.fullmatch('[A-Za-z0-9_-]{1,128}', key) or not isinstance(info, dict):
-                raise ModelManifestError('Invalid dordiai-voices profile.')
-            if info.get('disabled') is True or info.get('enabled') is False:
-                continue
-            name = info.get('name')
-            if not isinstance(name, str) or not name or len(name) > 256:
-                raise ModelManifestError('Invalid dordiai-voices profile label.')
+        records, voice_languages = {}, {}
+        for key, name, language_codes in discovered:
             identity = self.id + ':' + key
             records[identity] = key
-            rows.append(Voice(identity, name, tuple(language_codes), self.id,
+            voice_languages[identity] = language_codes
+            rows.append(Voice(identity, name, language_codes, self.id,
                               controls=('rate', 'pitch', 'volume'), license=self.manifest.license,
                               revision=self.manifest.revision))
-        self._profiles, self._languages = records, tuple(language_codes)
+        self.manifest.verify(cancelled=cancelled, require_complete=True)
+        self._profiles, self._voice_languages = records, voice_languages
+        self._languages = tuple(dict.fromkeys(code for row in rows for code in row.languages))
         return tuple(rows)
 
-    def cache_identity(self, voice):
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
         if not self._profiles:
-            self.voices()
+            self.voices(cancelled=cancelled)
         if voice not in self._profiles:
             raise EngineUnavailable('Choose an enabled profile from the installed dordiai-voices catalogue.')
-        self.manifest.verify(require_complete=True)
+        self.manifest.verify(require_complete=True, cancelled=cancelled)
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION, 'voice': voice,
-                'protocol': 'nvda-worker-jsonl-pcm24k-v1'}
+                'protocol': 'nvda-worker-jsonl-pcm24k-v1', 'discovery': DISCOVERY_PROTOCOL}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
-        self.cache_identity(voice)
+        self.cache_identity(voice, cancelled=cancelled)
         code = language.lower().replace('_', '-').split('-')[0]
-        if code not in self._languages:
-            raise EngineUnavailable('This language is absent from the installed dordiai-voices catalogue.')
+        if code not in self._voice_languages[voice]:
+            raise EngineUnavailable('This dordiai-voices profile has no compatible installed resources '
+                                    'for the selected language.')
         self.manifest.verify(cancelled=cancelled, require_complete=True)
         target = _output(output)
-        root = self.manifest.root
         # Arguments are the versioned installed worker's fixed interface, not a
         # command supplied by a script, book, scene or model response.
         command = [str(self.binary), '-I', '-B', '-u', '-c', _DORDIAI_OFFLINE_BOOTSTRAP,
-                   str(self.worker), str(root / 'models'),
-                   '--reference-model', str(root / 'models/Holos'),
-                   '--references', str(root / 'models/voices'), '--reference-engine', 'holos',
+                   str(self.worker), str(self.models),
+                   '--reference-model', str(self.models / 'Holos'),
+                   '--references', str(self.references), '--reference-engine', 'holos',
                    '--preload-language', 'mixed']
         request = {'mode': 'reference', 'profile': self._profiles[voice], 'language': code,
                    'text': text, 'speed': 2 ** (rate / 10), 'stream': True,
@@ -572,15 +694,15 @@ class DordiaiVoicesEngine:
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
             self._stream(command, request, temporary, cancelled)
-            _wave_info(temporary)
+            _wave_info(temporary, cancelled=cancelled)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
-            _publish(temporary, target)
+            _publish(temporary, target, cancelled=cancelled)
         return target
 
     def _stream(self, command, request, target, cancelled):
-        if cancelled():
-            raise InterruptedError('Speech operation cancelled.')
+        _cancelled(cancelled)
+        _timeout(self.timeout)
         replies = queue.Queue(maxsize=2)
         outgoing = queue.Queue(maxsize=2)
         write_errors = queue.Queue(maxsize=1)
@@ -588,7 +710,8 @@ class DordiaiVoicesEngine:
         options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
         with tempfile.TemporaryFile() as errors:
             process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
-                                       cwd=self.manifest.root, env=offline_environment(), shell=False, **options)
+                                       cwd=getattr(self, 'runtime_root', self.manifest.root),
+                                       env=offline_environment(), shell=False, **options)
             def read_replies():
                 try:
                     while not finished.is_set():
@@ -599,7 +722,7 @@ class DordiaiVoicesEngine:
                             item = ValueError('dordiai-voices response exceeded its byte budget.')
                         else:
                             try:
-                                item = json.loads(line)
+                                item = json.loads(line, object_pairs_hook=_unique_object)
                             except (ValueError, UnicodeError):
                                 item = ValueError('dordiai-voices returned invalid JSON.')
                         while not finished.is_set():
@@ -728,13 +851,16 @@ class VoiceRegistry:
         self.notices = list(notices)
         self._voices = None
 
-    def voices(self, *, refresh=False):
+    def voices(self, *, refresh=False, cancelled=lambda: False):
+        _cancelled(cancelled)
         if self._voices is not None and not refresh:
             return self._voices
         result = []
         for engine in self.engines.values():
             try:
-                result.extend(engine.voices())
+                result.extend(_invoke(engine.voices, cancelled=cancelled))
+            except InterruptedError:
+                raise
             except (OSError, ValueError, RuntimeError, TimeoutError):
                 self.notices.append({'engine': engine.id, 'available': False,
                                      'reason': 'The configured local engine could not enumerate usable voices.'})
@@ -754,11 +880,12 @@ class VoiceRegistry:
             raise EngineUnavailable(f'The local {key} engine is not installed or configured. No substitute was used.')
         return self.engines[key]
 
-    def cache_identity(self, voice):
-        return self._engine(voice).cache_identity(voice)
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        return _invoke(self._engine(voice).cache_identity, voice, cancelled=cancelled)
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
+        _cancelled(cancelled)
         _request(text, language, rate, pitch, volume)
         return self._engine(voice).synthesize(text, output, voice=voice, language=language, rate=rate,
                                              pitch=pitch, volume=volume, cancelled=cancelled)

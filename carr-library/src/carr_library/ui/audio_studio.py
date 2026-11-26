@@ -13,10 +13,12 @@ from pathlib import Path
 import shutil
 import subprocess
 import threading
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
-from ..research.export_file import write_export
+from ..research.export_file import write_export, _destination, _filename
+from ..audio.jobs import checked_directory, publish_noreplace
 from ..audio.runtime import resolve_ffmpeg
 from ..audio.managed import ManagedProjects
 
@@ -92,6 +94,7 @@ class StudioController:
                  ffmpeg=None, loading_budget=64 * 1024 * 1024):
         self.private_root = Path(private_root).absolute()
         self.registry = registry
+        self._owns_registry = registry is None
         self.parser, self.renderer = parser, renderer
         self.ffmpeg = Path(ffmpeg) if ffmpeg else None
         self.loading_budget = loading_budget
@@ -108,8 +111,9 @@ class StudioController:
             input_kind='narration'):
         if input_kind not in ('narration', 'script'):
             raise ValueError('Choose literal narration or a structured production script.')
-        self.draft = NarrationDraft(script, source_id=source_id)
-        self.title = _plain(title, 'project title', limit=256)
+        draft = NarrationDraft(script, source_id=source_id)
+        title = _plain(title, 'project title', limit=256)
+        self.draft, self.title = draft, title
         self.input_kind = input_kind
         self.voice, self.language = 'sapi5:default', 'en'
         self.project_id = uuid4().hex
@@ -168,12 +172,15 @@ class StudioController:
         for key, value in values.items():
             if getattr(self, key) != value and key in ('voice', 'language', 'input_kind'):
                 self.result = None
+            if key == 'ffmpeg' and self.ffmpeg != value and self._owns_registry:
+                # Installed Flite capabilities belong to the selected runtime.
+                # An earlier discovery must not retain the previous binary.
+                self.registry = None
             setattr(self, key, value)
 
     def _output_folder(self, path):
         candidate = _local_path(path, 'output folder')
-        if not candidate.is_dir():
-            raise ValueError('Choose an existing output folder.')
+        checked_directory(candidate)
         if candidate.resolve().is_relative_to(self.private_root.resolve()):
             managed = (ManagedProjects(self.private_root).locate(self.project_path, self.project_id)
                        if self.project_path is not None else None)
@@ -193,11 +200,14 @@ class StudioController:
             self.registry = default_registry(ffmpeg=resolve_ffmpeg(self.ffmpeg))
         return self.registry
 
-    def voices(self, *, reload=False):
+    def voices(self, *, reload=False, cancelled=None):
         if reload:
             from ..audio.engines import default_registry
             self.registry = default_registry(ffmpeg=resolve_ffmpeg(self.ffmpeg))
-        return tuple(_voice_dict(voice) for voice in self._registry().voices())
+            self._owns_registry = True
+        registry = self._registry()
+        voices = registry.voices() if cancelled is None else registry.voices(cancelled=cancelled)
+        return tuple(_voice_dict(voice) for voice in voices)
 
     def voice_status(self):
         registry = self._registry()
@@ -233,13 +243,48 @@ class StudioController:
     def dirty(self):
         return self._saved_value != _json_text(self.to_dict())
 
+    def _write_checked(self, selected, value, expected, *, cancelled=lambda: False):
+        def unchanged():
+            if cancelled():
+                return True
+            if expected is None:
+                if os.path.lexists(selected):
+                    raise FileExistsError('The destination appeared while saving. Choose another filename.')
+            elif not os.path.lexists(selected) or _path_digest(selected, budget=self.loading_budget) != expected:
+                raise ValueError('The saved destination changed while saving. Reopen it or use Save As.')
+            return False
+        if expected is not None:
+            # Keep the expected bytes across write_export's preflight and its
+            # final existing-file replacement checks.
+            write_export(selected, value, private_root=self.private_root, cancelled=unchanged)
+            return
+        # A new project/recovery/export must never replace a file that appears
+        # after the last preflight check. Validate the real filename and route,
+        # then stage through the existing text-export safeguards and publish
+        # with the OS's atomic no-replace operation.
+        _filename(selected.name)
+        target, parent_identity, previous = _destination(selected, self.private_root)
+        if previous is not None:
+            raise FileExistsError('The destination appeared while saving. Choose another filename.')
+        with TemporaryDirectory(prefix='.audio-save-', dir=target.parent) as folder:
+            stage = Path(folder) / 'document.json'
+            write_export(stage, value, private_root=self.private_root, cancelled=unchanged)
+            if unchanged():
+                raise TimeoutError('Export cancelled; the destination was not changed.')
+            checked, parent, current = _destination(selected, self.private_root)
+            if checked != target or parent != parent_identity or current is not None:
+                raise ValueError('The save destination changed. Choose another filename.')
+            publish_noreplace(stage, target)
+
     def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
         selected = _local_path(path or self.project_path or '', 'project file')
         self._protect_original(selected)
         same = self.project_path is not None and selected == self.project_path
+        expected = None
         if selected.exists():
+            expected = _path_digest(selected, budget=self.loading_budget)
             if same:
-                if self._file_hash != _path_digest(selected, budget=self.loading_budget):
+                if self._file_hash != expected:
                     raise ValueError('The saved project changed outside Audio Studio. Use Save As to preserve both versions.')
             elif not overwrite:
                 raise FileExistsError('Choose a new project filename or confirm replacement.')
@@ -255,9 +300,9 @@ class StudioController:
         value = _json_text(value_data)
         if selected_root is not None:
             managed.write(self.project_id, selected, value,
-                          expected_sha256=self._file_hash if same else None, cancelled=cancelled)
+                          expected_sha256=expected, cancelled=cancelled)
         else:
-            write_export(selected, value, private_root=self.private_root, cancelled=cancelled)
+            self._write_checked(selected, value, expected, cancelled=cancelled)
         if detach_output:
             self.output_dir = None
         self.project_path = selected
@@ -346,13 +391,12 @@ class StudioController:
         if self.project_path is None or self._file_hash is None:
             return None
         path = self.project_path.with_name(self.project_path.name + '.recovery.json')
-        previous_sha = None
-
         self._protect_original(path)
+        expected = None
         if path.exists():
             raw = read_document(path, byte_budget=self.loading_budget)
             actual = hashlib.sha256(raw).hexdigest()
-            previous_sha = actual
+            expected = actual
             if self._recovery_hash is None:
                 previous = decode_json(raw.decode('utf-8'))
                 if (not isinstance(previous, dict) or previous.get('kind') != 'audio-studio-recovery'
@@ -366,10 +410,10 @@ class StudioController:
         managed = ManagedProjects(self.private_root)
         if managed.locate(path, self.project_id) is not None:
             managed.write(self.project_id, path, text,
-                expected_sha256=previous_sha,
+                expected_sha256=expected,
                 cancelled=cancelled)
         else:
-            write_export(path, text, private_root=self.private_root, cancelled=cancelled)
+            self._write_checked(path, text, expected, cancelled=cancelled)
         self._recovery_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
         return path
 
@@ -427,8 +471,9 @@ class StudioController:
         self._protect_original(selected)
         if selected.exists() and not overwrite:
             raise FileExistsError('Choose a new reading-copy filename or confirm replacement.')
+        expected = _path_digest(selected, budget=self.loading_budget) if selected.exists() else None
         self.draft.assert_source()
-        write_export(selected, self.script, private_root=self.private_root)
+        self._write_checked(selected, self.script, expected)
 
 
 class LocalPlayback:
@@ -762,7 +807,8 @@ class AudioStudioDialog:
                            'No local voice is available. Install/configure a supported local voice and reload.') +
                           ('\n' + details if details else ''), focus=True)
         self._run('Discovering installed local voices',
-                  lambda: (self.controller.voices(reload=event is not None), self.controller.voice_status()), loaded)
+                  lambda: (self.controller.voices(reload=event is not None,
+                      cancelled=self.cancelled.is_set), self.controller.voice_status()), loaded)
 
     def _file(self, title, *, save=False, text=False):
         wx = self.wx

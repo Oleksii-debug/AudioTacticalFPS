@@ -18,7 +18,8 @@ import sys
 import tempfile
 import time
 
-from .jobs import checked_directory, check_cancelled, publish_new, regular_file, sha256_file
+from .jobs import (checked_directory, check_cancelled, file_identity, publish_noreplace,
+                   regular_file, sha256_file, verified_reader)
 from .models import Effect, FORMATS, SAMPLE_RATES, number
 from .paths import filename_component
 
@@ -42,62 +43,76 @@ class WaveInfo:
 
 
 def wav_info(path):
-    """Read PCM16 RIFF or RF64 without loading the waveform into memory."""
-    total = regular_file(path).st_size
-    with open(path, 'rb') as stream:
+    """Validate a complete PCM16 RIFF/RF64 container with bounded header reads.
+
+    Inspect trailing chunks too: FFmpeg can select a later data/fmt chunk,
+    which must never disagree with the duration accepted during preflight.
+    """
+    with verified_reader(path) as stream:
+        total = os.fstat(stream.fileno()).st_size
         head = stream.read(12)
         if len(head) != 12 or head[:4] not in (b'RIFF', b'RF64') or head[8:] != b'WAVE':
             raise ValueError('Audio must be a PCM WAV file.')
         rf64 = head[:4] == b'RF64'
-        declared_size = struct.unpack('<I', head[4:8])[0]
-        if (rf64 and declared_size != 0xffffffff) or (not rf64 and declared_size != total - 8):
-            raise ValueError('WAV container size metadata is inconsistent with the file.')
-        data64, frames64 = None, None
-        format_info = None
+        declared = struct.unpack('<I', head[4:8])[0]
+        if (rf64 and declared != 0xffffffff) or (not rf64 and declared + 8 != total):
+            raise ValueError('WAV size declaration does not match the file.')
+        data64, frames64, format_info, result = None, None, None, None
         # An attacker cannot make us traverse millions of tiny metadata chunks.
         for _ in range(1024):
+            if stream.tell() == total:
+                break
             header = stream.read(8)
             if len(header) != 8:
-                break
+                raise ValueError('Truncated WAV chunk header.')
             name, size = struct.unpack('<4sI', header)
+            declared_chunk_size = size
             at = stream.tell()
+            if size == 0xffffffff:
+                if name != b'data' or not rf64 or data64 is None:
+                    raise ValueError('Invalid RF64 size reference.')
+                size = data64
+            if at + size + (size & 1) > total:
+                raise ValueError('Truncated WAV chunk.')
             if name == b'ds64':
-                if not rf64 or data64 is not None or size < 28 or size > 65536 or at + size > total:
+                if not rf64 or data64 is not None or not 28 <= size <= 65536:
                     raise ValueError('Invalid RF64 size table.')
-                riff64, data64, frames64, table = struct.unpack('<QQQI', stream.read(28))
-                if riff64 + 8 > total:
-                    raise ValueError('RF64 audio is truncated before its declared end.')
-                if riff64 + 8 != total:
-                    raise ValueError('RF64 container size metadata is inconsistent with the file.')
-                if table:
-                    raise ValueError('Unsupported RF64 table.')
+                riff_size, data64, frames64, table = struct.unpack('<QQQI', stream.read(28))
+                if not table and riff_size + 8 > total:
+                    raise ValueError('RF64 audio is truncated.')
+                if table or riff_size + 8 != total:
+                    raise ValueError('Unsupported or inconsistent RF64 size table.')
             elif name == b'fmt ':
-                if not 16 <= size <= 65536 or at + size > total:
-                    raise ValueError('Invalid WAV format.')
+                if format_info is not None or not 16 <= size <= 65536:
+                    raise ValueError('Duplicate or invalid WAV format.')
                 encoding, channels, rate, byte_rate, align, bits = struct.unpack('<HHIIHH', stream.read(16))
                 if encoding == 65534 and size >= 40:
                     extended = stream.read(24)
-                    if extended[8:] != bytes.fromhex('0100000000001000800000aa00389b71'):
+                    extension_size, valid_bits = struct.unpack('<HH', extended[:4])
+                    if extension_size < 22 or valid_bits not in (0, 16) or extended[8:] != bytes.fromhex('0100000000001000800000aa00389b71'):
                         raise ValueError('Expected uncompressed integer PCM.')
                     encoding = 1
                 if encoding != 1 or channels not in (1, 2) or bits != 16 or not 8000 <= rate <= 192000 or align != channels * 2 or byte_rate != rate * align:
                     raise ValueError('Expected mono or stereo PCM16 WAV.')
                 format_info = (rate, channels, align)
             elif name == b'data':
-                if rf64 and (data64 is None or size != 0xffffffff):
-                    raise ValueError('RF64 data requires an explicit 64-bit size table and sentinel.')
-                size = data64 if size == 0xffffffff and head[:4] == b'RF64' else size
-                if format_info is None or size is None or size <= 0 or at + size > total:
-                    raise ValueError('Truncated or empty WAV audio.')
+                if rf64 and declared_chunk_size != 0xffffffff:
+                    raise ValueError('RF64 data requires its 64-bit size sentinel.')
+                if result is not None or format_info is None or size <= 0 or (rf64 and data64 is None):
+                    raise ValueError('Duplicate, empty or invalid WAV audio data.')
                 rate, channels, align = format_info
                 if size % align:
                     raise ValueError('Incomplete audio frame.')
                 if frames64 not in (None, 0, size // align):
-                    raise ValueError('RF64 sample count disagrees with the PCM data length.')
-                return WaveInfo(rate, channels, size // align, at, size)
-            if at + size > total:
-                raise ValueError('Truncated WAV metadata.')
+                    raise ValueError('RF64 frame count does not match its PCM data.')
+                if rf64 and size != data64:
+                    raise ValueError('RF64 data size does not match its size table.')
+                result = WaveInfo(rate, channels, size // align, at, size)
             stream.seek(at + size + (size & 1))
+        if stream.tell() != total:
+            raise ValueError('Too many WAV metadata chunks.')
+        if result is not None:
+            return result
     raise ValueError('No valid PCM audio data found.')
 
 
@@ -108,6 +123,14 @@ def trusted_ffmpeg(path):
     return str(path)
 
 
+def _ffmpeg_environment():
+    environment = os.environ.copy()
+    # FFREPORT can otherwise write an arbitrary inherited report filename even
+    # when all explicit argv use only the selected local inputs and outputs.
+    environment.pop('FFREPORT', None)
+    return environment
+
+
 def run_ffmpeg(ffmpeg, arguments, *, cancelled=lambda: False, loglevel='error'):
     """No shell, no network input protocols, bounded diagnostic output."""
     binary = trusted_ffmpeg(ffmpeg)
@@ -115,6 +138,7 @@ def run_ffmpeg(ffmpeg, arguments, *, cancelled=lambda: False, loglevel='error'):
     with tempfile.TemporaryFile() as log:
         process = subprocess.Popen([binary, '-hide_banner', '-nostdin', '-loglevel', loglevel, *arguments],
                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=log,
+                                   env=_ffmpeg_environment(),
                                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
             while process.poll() is None:
@@ -138,13 +162,19 @@ def run_ffmpeg(ffmpeg, arguments, *, cancelled=lambda: False, loglevel='error'):
                     process.wait(timeout=5)
 
 
-def ffmpeg_identity(path):
+def ffmpeg_identity(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     binary = trusted_ffmpeg(path)
     process = subprocess.run([binary, '-version'], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, timeout=10, check=True,
+                             env=_ffmpeg_environment(),
                              creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    first = process.stdout[:16384].decode('utf-8', 'replace').splitlines()[0]
-    return {'binary_sha256': sha256_file(path), 'version': first}
+    lines = process.stdout[:16384].decode('utf-8', 'replace').splitlines()
+    if not lines:
+        raise RuntimeError('The selected FFmpeg executable returned no version information.')
+    import hashlib
+    return {'binary_sha256': sha256_file(path, cancelled=cancelled), 'version': lines[0],
+            'version_sha256': hashlib.sha256(process.stdout).hexdigest()}
 
 
 def effect_filters(effects):
@@ -188,9 +218,12 @@ def _wav_arguments(output, rate):
 
 
 def process_voice(source, output, *, ffmpeg, sample_rate=48000, pan=0.0, gain=1.0,
-                  effects=(), cancelled=lambda: False):
+                  effects=(), cancelled=lambda: False, expected_identity=None):
     source, output = Path(source).absolute(), _destination(output)
-    original = wav_info(source)
+    identity = file_identity(regular_file(source))
+    if expected_identity is not None and identity != expected_identity:
+        raise RuntimeError('An audio input changed after it was validated. Restart the production.')
+    wav_info(source)
     if sample_rate not in SAMPLE_RATES:
         raise ValueError('Unsupported sample rate.')
     number(pan, -1, 1, 'Pan')
@@ -206,7 +239,10 @@ def process_voice(source, output, *, ffmpeg, sample_rate=48000, pan=0.0, gain=1.
         result = wav_info(target)
         if result.channels != 2 or result.rate != sample_rate or result.frames <= 0:
             raise RuntimeError('The voice processor returned an invalid waveform.')
-        publish_new(target, output)
+        if file_identity(regular_file(source)) != identity:
+            raise RuntimeError('An audio input changed during processing. Restart the production.')
+        check_cancelled(cancelled)
+        publish_noreplace(target, output)
     return output
 
 
@@ -237,7 +273,8 @@ def silence(output, frames, *, sample_rate=48000, channels=2, cancelled=lambda: 
                 remaining -= size
             stream.flush()
             os.fsync(stream.fileno())
-        publish_new(target, output)
+        check_cancelled(cancelled)
+        publish_noreplace(target, output)
     return output
 
 
@@ -251,6 +288,7 @@ def concatenate(inputs, output, *, cancelled=lambda: False, on_status=lambda mes
     inputs = tuple(Path(p) for p in inputs)
     if not inputs:
         raise ValueError('Choose at least one audio segment.')
+    identities = [file_identity(regular_file(p)) for p in inputs]
     descriptions = [wav_info(p) for p in inputs]
     rate, channels = descriptions[0].rate, descriptions[0].channels
     if any((i.rate, i.channels) != (rate, channels) for i in descriptions):
@@ -260,10 +298,10 @@ def concatenate(inputs, output, *, cancelled=lambda: False, on_status=lambda mes
         target = Path(temp) / 'assembled.wav'
         with target.open('wb') as dest:
             _write_header(dest, frames, rate, channels)
-            for index, (path, info) in enumerate(zip(inputs, descriptions)):
+            for index, (path, info, identity) in enumerate(zip(inputs, descriptions, identities)):
                 check_cancelled(cancelled)
                 on_status(f'Assembling segment {index + 1} of {len(inputs)}')
-                with path.open('rb') as source:
+                with verified_reader(path, expected_identity=identity) as source:
                     source.seek(info.data_offset)
                     remaining = info.data_size
                     while remaining:
@@ -277,13 +315,15 @@ def concatenate(inputs, output, *, cancelled=lambda: False, on_status=lambda mes
             os.fsync(dest.fileno())
         if wav_info(target).frames != frames:
             raise RuntimeError('The assembled duration is incorrect.')
-        publish_new(target, output)
+        check_cancelled(cancelled)
+        publish_noreplace(target, output)
     return output
 
 
 def mix_scene(voices, music, output, *, ffmpeg, music_gain=0.15, cancelled=lambda: False):
     """Duck a music bed beneath an already timed stereo narration stem."""
     voices, output = Path(voices).absolute(), _destination(output)
+    identities = [(voices, file_identity(regular_file(voices)))]
     info = wav_info(voices)
     if info.channels != 2:
         raise ValueError('A scene needs a stereo narration stem.')
@@ -293,6 +333,7 @@ def mix_scene(voices, music, output, *, ffmpeg, music_gain=0.15, cancelled=lambd
         graph = f'[0:a]alimiter=limit=0.95:level=0:latency=1,atrim=end_sample={info.frames}[out]'
     else:
         music = Path(music).absolute()
+        identities.append((music, file_identity(regular_file(music))))
         background = wav_info(music)
         if background.rate != info.rate or background.frames != info.frames:
             raise ValueError('Music and narration timing must match exactly.')
@@ -317,14 +358,18 @@ def mix_scene(voices, music, output, *, ffmpeg, music_gain=0.15, cancelled=lambd
         result = wav_info(target)
         if (result.frames, result.rate, result.channels) != (info.frames, info.rate, 2):
             raise RuntimeError('Mix duration or format changed unexpectedly.')
-        publish_new(target, output)
+        if any(file_identity(regular_file(path)) != identity for path, identity in identities):
+            raise RuntimeError('An audio input changed during mixing. Restart the production.')
+        check_cancelled(cancelled)
+        publish_noreplace(target, output)
     return output
 
 
 def measure_peak(path, *, cancelled=lambda: False):
     """Integer peak measurement in 1 MiB blocks, independent of project length."""
+    identity = file_identity(regular_file(path))
     info, peak = wav_info(path), 0
-    with open(path, 'rb') as source:
+    with verified_reader(path, expected_identity=identity) as source:
         source.seek(info.data_offset)
         remaining = info.data_size
         while remaining:
@@ -344,10 +389,13 @@ def measure_peak(path, *, cancelled=lambda: False):
 
 
 def measure_loudness(path, *, ffmpeg, cancelled=lambda: False):
+    identity = file_identity(regular_file(path))
     wav_info(path)
     log = run_ffmpeg(ffmpeg, ['-protocol_whitelist', 'file', '-f', 'wav', '-i', str(Path(path).absolute()),
                              '-af', 'loudnorm=I=-18:TP=-1:LRA=11:print_format=json', '-f', 'null', '-'],
                      cancelled=cancelled, loglevel='info')
+    if file_identity(regular_file(path)) != identity:
+        raise RuntimeError('An audio input changed during loudness measurement.')
     match = re.search(r'\{\s*"input_i".*?\}', log, re.DOTALL)
     if not match:
         raise RuntimeError('FFmpeg did not return a loudness measurement.')
@@ -362,7 +410,8 @@ def measure_loudness(path, *, ffmpeg, cancelled=lambda: False):
 
 def transcode(source, output, *, ffmpeg, format, metadata=None, cancelled=lambda: False):
     source, output = Path(source).absolute(), _destination(output)
-    info = wav_info(source)
+    identities = [(source, file_identity(regular_file(source)))]
+    wav_info(source)
     if format not in FORMATS or format == 'wav':
         raise ValueError('Choose a supported compressed audio format.')
     codecs = {'flac': ('flac', 'flac'), 'mp3': ('libmp3lame', 'mp3'),
@@ -371,7 +420,7 @@ def transcode(source, output, *, ffmpeg, format, metadata=None, cancelled=lambda
     codec, container = codecs[format]
     args = ['-protocol_whitelist', 'file', '-f', 'wav', '-i', str(source)]
     if metadata is not None:
-        regular_file(metadata)
+        identities.append((metadata, file_identity(regular_file(metadata))))
         args += ['-protocol_whitelist', 'file', '-f', 'ffmetadata', '-i', str(Path(metadata).absolute()), '-map_metadata', '1', '-map_chapters', '1']
     args += ['-map', '0:a:0', '-c:a', codec]
     if format in ('mp3', 'm4a', 'm4b'):
@@ -383,5 +432,8 @@ def transcode(source, output, *, ffmpeg, format, metadata=None, cancelled=lambda
         run_ffmpeg(ffmpeg, [*args, '-f', container, '-n', str(target)], cancelled=cancelled)
         if regular_file(target).st_size == 0:
             raise RuntimeError('The encoder produced no audio.')
-        publish_new(target, output)
+        if any(file_identity(regular_file(path)) != identity for path, identity in identities):
+            raise RuntimeError('An audio input changed during encoding. Restart the production.')
+        check_cancelled(cancelled)
+        publish_noreplace(target, output)
     return output

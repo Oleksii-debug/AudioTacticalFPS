@@ -18,6 +18,14 @@ from typing import Any
 from .paths import filename_component
 
 
+# A normal reviewed CPU Torch wheel already contains more than 10,000 files.
+# Keep explicit byte, file and traversal budgets while permitting its complete
+# inventory together with the interpreter and other inference dependencies.
+MAX_MODEL_MANIFEST_BYTES = 16 * 1024 * 1024
+MAX_MODEL_FILES = 32768
+MAX_MODEL_DIRECTORY_ENTRIES = 65536
+
+
 class ModelManifestError(ValueError):
     """An optional local model has not passed the installation boundary."""
 
@@ -51,22 +59,45 @@ def local_path(path: Path | str, *, must_exist: bool = True) -> Path:
     return path.resolve(strict=must_exist)
 
 
-def digest_file(path: Path | str, *, cancelled=lambda: False) -> str:
+def _identity(info):
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _digest_snapshot(path, *, cancelled=lambda: False, max_bytes=None):
+    if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 0):
+        raise ModelManifestError('Invalid local asset verification budget.')
+    if cancelled():
+        raise InterruptedError('Local asset verification cancelled.')
     path = local_path(path)
     before = path.stat()
     if not stat.S_ISREG(before.st_mode):
         raise ModelManifestError('Expected a regular file.')
+    if max_bytes is not None and before.st_size > max_bytes:
+        raise ModelManifestError('Local assets exceed the selected verification budget.')
     result = hashlib.sha256()
+    count = 0
     with path.open('rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ModelManifestError('A local asset changed before verification.')
         for block in iter(lambda: stream.read(1024 * 1024), b''):
             if cancelled():
                 raise InterruptedError('Local asset verification cancelled.')
+            count += len(block)
+            if max_bytes is not None and count > max_bytes:
+                raise ModelManifestError('Local assets exceed the selected verification budget.')
             result.update(block)
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ModelManifestError('A local asset changed during verification.')
     after = path.stat()
-    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
+    if count != before.st_size or _identity(before) != _identity(after):
         raise ModelManifestError('A local asset changed during verification.')
-    return result.hexdigest()
+    if cancelled():
+        raise InterruptedError('Local asset verification cancelled.')
+    return result.hexdigest(), count
+
+
+def digest_file(path: Path | str, *, cancelled=lambda: False, max_bytes=None) -> str:
+    return _digest_snapshot(path, cancelled=cancelled, max_bytes=max_bytes)[0]
 
 
 def _unique_object(items):
@@ -78,18 +109,32 @@ def _unique_object(items):
     return result
 
 
-def read_json(path: Path | str, *, max_bytes: int = 1024 * 1024):
+def _read_json_snapshot(path, *, max_bytes=1024 * 1024):
+    if type(max_bytes) is not int or max_bytes < 1:
+        raise ModelManifestError('Invalid local manifest byte budget.')
     path = local_path(path)
-    if not path.is_file() or path.stat().st_size > max_bytes:
+    before = path.stat()
+    if not stat.S_ISREG(before.st_mode) or before.st_size > max_bytes:
         raise ModelManifestError('The local manifest is not a bounded regular file.')
     with path.open('rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ModelManifestError('The local manifest changed before reading.')
         data = stream.read(max_bytes + 1)
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ModelManifestError('The local manifest changed while reading its snapshot.')
     if len(data) > max_bytes:
         raise ModelManifestError('The local manifest exceeds the byte budget.')
+    if len(data) != before.st_size or _identity(path.stat()) != _identity(before):
+        raise ModelManifestError('The local manifest changed while reading its snapshot.')
     def reject_constant(value):
         raise ModelManifestError('Nonfinite numbers are not permitted in a manifest.')
-    return json.loads(data.decode('utf-8-sig'), object_pairs_hook=_unique_object,
-                      parse_constant=reject_constant)
+    value = json.loads(data.decode('utf-8-sig'), object_pairs_hook=_unique_object,
+                       parse_constant=reject_constant)
+    return value, hashlib.sha256(data).hexdigest()
+
+
+def read_json(path: Path | str, *, max_bytes: int = 1024 * 1024):
+    return _read_json_snapshot(path, max_bytes=max_bytes)[0]
 
 
 def _text(value, label, *, maximum=512):
@@ -130,7 +175,7 @@ class LocalModelManifest:
     @classmethod
     def load(cls, path, *, engine=None, expected_sha256=None):
         path = local_path(path)
-        raw = read_json(path)
+        raw, manifest_sha256 = _read_json_snapshot(path, max_bytes=MAX_MODEL_MANIFEST_BYTES)
         if not isinstance(raw, dict) or type(raw.get('schema_version')) is not int or raw.get('schema_version') != 1:
             raise ModelManifestError('Expected local-model manifest schema version 1.')
         known = {'schema_version', 'engine', 'model_id', 'revision', 'license', 'files',
@@ -147,7 +192,7 @@ class LocalModelManifest:
             raise ModelManifestError('Pin an exact model revision or SHA256, not a moving branch.')
         license_name = _text(raw.get('license'), 'model license')
         files = raw.get('files')
-        if not isinstance(files, dict) or not 1 <= len(files) <= 8192:
+        if not isinstance(files, dict) or not 1 <= len(files) <= MAX_MODEL_FILES:
             raise ModelManifestError('List every required local asset and its SHA256.')
         for name, digest in files.items():
             _relative(name)
@@ -159,7 +204,6 @@ class LocalModelManifest:
         settings = raw.get('settings', {})
         if not isinstance(settings, dict):
             raise ModelManifestError('Model settings must be an object.')
-        manifest_sha256 = digest_file(path)
         if expected_sha256 is not None and manifest_sha256 != expected_sha256:
             raise ModelManifestError('The local model manifest has changed.')
         return cls(path, actual_engine, _text(raw.get('model_id'), 'model identity'),
@@ -172,8 +216,11 @@ class LocalModelManifest:
         return self.path.parent
 
     def asset(self, name: str) -> Path:
+        return self._asset(name, dict(self.files))
+
+    def _asset(self, name: str, inventory: dict[str, str]) -> Path:
         _relative(name)
-        if name not in dict(self.files):
+        if name not in inventory:
             raise ModelManifestError('The requested asset is not in the verified manifest.')
         path = local_path(self.root.joinpath(*PurePosixPath(name).parts))
         if not path.is_relative_to(self.root):
@@ -194,25 +241,25 @@ class LocalModelManifest:
                     raise ModelManifestError('Both MusicGen checkpoints must be installed and pinned.')
         if type(max_asset_bytes) is not int or max_asset_bytes < 1:
             raise ModelManifestError('Invalid local asset verification budget.')
-        if digest_file(self.path, cancelled=cancelled) != self.manifest_sha256:
+        if digest_file(self.path, cancelled=cancelled, max_bytes=MAX_MODEL_MANIFEST_BYTES) != self.manifest_sha256:
             raise ModelManifestError('The model manifest changed after it was loaded.')
+        listed = dict(self.files)
         if require_complete:
-            listed = dict(self.files)
             for count, entry in enumerate(self.root.rglob('*'), 1):
                 if cancelled():
                     raise InterruptedError('Local asset verification cancelled.')
-                if count > 32768:
+                if count > MAX_MODEL_DIRECTORY_ENTRIES:
                     raise ModelManifestError('The model installation exceeds the directory entry budget.')
                 entry = local_path(entry)
                 if entry.is_file() and entry != self.path and entry.relative_to(self.root).as_posix() not in listed:
                     raise ModelManifestError('The local runtime contains a file missing from its reviewed manifest.')
         total = 0
         for name, expected in self.files:
-            path = self.asset(name)
-            total += path.stat().st_size
-            if total > max_asset_bytes:
-                raise ModelManifestError('Local assets exceed the selected verification budget.')
-            if digest_file(path, cancelled=cancelled) != expected:
+            path = self._asset(name, listed)
+            actual, size = _digest_snapshot(path, cancelled=cancelled,
+                                           max_bytes=max_asset_bytes - total)
+            total += size
+            if actual != expected:
                 raise ModelManifestError(f'Checksum mismatch for local asset: {name}')
         return {'files': len(self.files), 'bytes': total, 'manifest_sha256': self.manifest_sha256}
 
@@ -226,7 +273,7 @@ def offline_environment():
     """Offline flags complement the fixed worker's socket audit restrictions."""
     result = dict(os.environ)
     for key in list(result):
-        if (key.upper() in {'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY'} or
+        if (key.upper() in {'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'FFREPORT', 'SSLKEYLOGFILE'} or
                 any(part in key.upper() for part in ('TOKEN', 'API_KEY', 'ACCESS_KEY', 'SECRET', 'PASSWORD', 'CREDENTIAL'))):
             result.pop(key, None)
     result.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_DATASETS_OFFLINE='1',

@@ -83,14 +83,14 @@ def test_txt_replay_rejects_conflicting_identity(imported):
     assert src.read_bytes() == raw
 
 
-def test_superseded_replay_never_reactivates_or_adds_membership(imported):
+def test_superseded_replay_with_stale_metadata_rejects_without_reactivation_or_membership(imported):
     app, ws, _, first, requested, src, _, meta, initial = imported
     app.update_metadata(ws, meta['edition_id'], title='Reviewed description')
     current, = app.search(ws, 'railway history', collection=first)
     assert current.revision != initial['id']
-    # A stale identity must be rejected before adding collection membership.
-    # This is the same metadata-conflict contract as other completed replays.
-    with pytest.raises(ValueError, match='identity conflict'):
+    # An old request must not silently ignore reviewed metadata. A replay with
+    # matching CURRENT metadata may add a collection; that is tested separately.
+    with pytest.raises(ValueError, match='work identity conflict'):
         app.import_file(ws, src, collections=(requested,), **meta)
     assert app.browse(ws, collection=requested) == ()
     after, = app.search(ws, 'railway history', collection=first)

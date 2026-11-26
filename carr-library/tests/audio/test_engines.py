@@ -45,7 +45,7 @@ def test_sapi_command_is_constant_and_text_remains_json_data(tmp_path):
             return json.dumps([{'id':'test-id','name':'Test Voice','language':'en-US',
                                 'default':True,'version':'fixture'}]).encode()
         wav(request['output'])
-        return b'{"complete":true}'
+        return b'{"complete":true,"voice_id":"test-id"}'
     hostile = '$(Remove-Item C:\\sample); <speak>not executable SSML</speak> "quotes"'
     with patch('carr_library.audio.engines._run', fake):
         engine.synthesize(hostile, tmp_path / 'voice.wav', voice='sapi5:default')
@@ -186,11 +186,21 @@ def test_actual_flite_treats_filter_metacharacters_as_text(tmp_path):
 def test_actual_installed_windows_sapi_voice(tmp_path):
     engine = SAPI5Engine()
     voices = engine.voices()
-    if not voices:
-        pytest.skip('No Windows SAPI 5 voices installed.')
+    assert voices, 'No usable installed Windows SAPI 5 voice is available.'
     selected = voices[0]
     target = engine.synthesize('This is a local Windows speech test.', tmp_path/'sapi.wav',
                               voice=selected.id, language=selected.languages[0])
     with wave.open(str(target),'rb') as source:
         assert source.getnframes() > 0
         assert any(source.readframes(source.getnframes()))
+    # SelectVoice itself accepts substrings. Our actual helper must reject a
+    # request that differs from the full installed name or its opaque ID.
+    record = engine._records[selected.id]
+    for name, identity in ((record['name'][:-1], record['id']),
+                           (record['name'], record['id'] + '-not-installed')):
+        rejected = tmp_path / 'wrong-voice.wav'
+        with pytest.raises(EngineUnavailable):
+            engine._call({'operation': 'speak', 'voice': name, 'voice_id': identity,
+                          'text': 'Synthetic rejection probe.', 'output': str(rejected),
+                          'rate': 0, 'volume': 100})
+        assert not rejected.exists()
