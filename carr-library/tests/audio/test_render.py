@@ -4,6 +4,7 @@ import math
 import os
 from pathlib import Path
 import shutil
+import stat
 import sys
 import threading
 import time
@@ -108,6 +109,29 @@ def test_output_and_input_files_are_not_overwritten(tmp_path):
     with pytest.raises(FileExistsError):
         convert_audio(source, target)
     assert target.read_bytes() == b'private keep'
+
+
+def test_generated_audio_publication_sync_accepts_windows_file_handles(tmp_path, monkeypatch):
+    source = tone(tmp_path/'source.wav', 440, .25)
+    original = source.read_bytes()
+    sync = os.fsync
+    synced_files = []
+
+    def writable_file_sync(descriptor):
+        if stat.S_ISREG(os.fstat(descriptor).st_mode):
+            # Windows fsync rejects read-only file descriptors. A zero-byte
+            # write enforces that same contract on POSIX without changing data.
+            os.write(descriptor, b'')
+            synced_files.append(descriptor)
+        return sync(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', writable_file_sync)
+    result = convert_audio(source, tmp_path/'published.wav', channels=1)
+    (samples,), rate = read_pcm(result.path)
+    assert synced_files
+    assert result.frames == round(.25 * RATE) and rate == RATE
+    assert any(samples) and result.sha256 == file_sha256(result.path)
+    assert source.read_bytes() == original
 
 
 @pytest.mark.parametrize('option', [dict(pan=math.nan), dict(gain_db=math.inf), dict(start_seconds=-1),

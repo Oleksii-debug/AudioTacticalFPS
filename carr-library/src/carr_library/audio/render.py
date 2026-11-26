@@ -403,7 +403,9 @@ def publish_audio(staged, target, *, cancelled=None, ffprobe=None, ffmpeg=None,
     details = dict(metadata or {})
     details.update(measured)
     digest = file_sha256(staged, cancelled)
-    with staged.open('rb') as stream:
+    # Windows FlushFileBuffers requires a writable handle; keep the durable
+    # flush before exclusive publication without changing the rendered bytes.
+    with staged.open('r+b') as stream:
         os.fsync(stream.fileno())
     check_cancelled(cancelled)
     os.link(staged, target)  # same output folder/volume; fails if another file won
