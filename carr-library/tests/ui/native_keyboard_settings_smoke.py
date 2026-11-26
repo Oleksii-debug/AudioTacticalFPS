@@ -206,10 +206,16 @@ def run_native(source=None, timeout=120):
                                     and settings.rows[0].command_id == test_id):
                             raise AssertionError('Native command filter did not find the stable test command.')
                         operation(settings)
+                        if settings.dialog.IsShown():
+                            raise AssertionError('Native settings operation did not close the dialog: '
+                                                 + settings.status.GetValue())
                     except BaseException as exc:
                         errors.append(exc)
                     finally:
-                        if settings.dialog.IsModal():
+                        # IsModal stays true until ShowModal unwinds on MSW,
+                        # even after native Save has called EndModal(ID_OK).
+                        # Do not overwrite that real result during cleanup.
+                        if settings.dialog.IsModal() and settings.dialog.IsShown():
                             settings.dialog.EndModal(wx.ID_CANCEL)
 
                 wx.CallAfter(edit)
@@ -295,10 +301,12 @@ def run_native(source=None, timeout=120):
                           pump(lambda: results.GetCount() == 1)
                           and 'Not assigned' in results.GetString(0))
                     activate(button(dialog, identifier=wx.ID_OK))
+                    if dialog.IsShown():
+                        raise AssertionError('Native Run command did not close the launcher.')
                 except BaseException as exc:
                     launcher_errors.append(exc)
                 finally:
-                    if dialog is not None and dialog.IsModal():
+                    if dialog is not None and dialog.IsModal() and dialog.IsShown():
                         dialog.EndModal(wx.ID_CANCEL)
 
             wx.CallAfter(choose_command)
