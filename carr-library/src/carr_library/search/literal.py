@@ -20,24 +20,32 @@ def _fold(text):
     return re.sub(r'\s+', ' ', ud.normalize('NFD', ud.normalize('NFD', text).casefold()))
 
 
-def _mapped(text):
+def _mapped(text, check=lambda: None):
     """Map whole canonical clusters/whitespace runs, not partial casefold expansions."""
     parts, starts, ends = [], {}, {}
-    i = pos = 0
+    i = pos = next_check = 0
     while i < len(text):
+        if i >= next_check:
+            check()
+            next_check = i + 1024
         j = i + 1
         if text[i].isspace():
             while j < len(text) and text[j].isspace():
                 j += 1
+                if j % 1024 == 0:
+                    check()
         else:
             while j < len(text) and ud.category(text[j]).startswith('M'):
                 j += 1
+                if j % 1024 == 0:
+                    check()
         part = _fold(text[i:j])
         starts[pos] = i
         pos += len(part)
         ends[pos] = j
         parts.append(part)
         i = j
+    check()
     folded = ''.join(parts)
     if folded != _fold(text):
         raise ValueError('unsupported normalization mapping')
@@ -48,9 +56,10 @@ def _word(char):
     return ud.category(char)[0] in 'LNM' or ud.category(char) == 'Pc'
 
 
-def _spans(folded, starts, ends, needle):
+def _spans(folded, starts, ends, needle, check=lambda: None):
     pos = 0
     while (i := folded.find(needle, pos)) != -1:
+        check()
         j = i + len(needle)
         pos = i + 1
         if i not in starts or j not in ends:
@@ -132,6 +141,7 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                 raise ValueError('scope exceeds literal search budget')
             rows.append(tuple(row))
             index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
+        check()
         # Trigram cannot match strings shorter than three code points. Fall back
         # to the scoped row list, then verify all literal needles against raw.
         candidate = next((n for n in needles if len(n) >= 3), None)
@@ -145,12 +155,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
             if sha256(raw.encode('utf-8')).hexdigest() != digest:
                 raise ValueError('raw page digest mismatch')
-            folded, starts, ends = _mapped(raw)
+            folded, starts, ends = _mapped(raw, check)
+            check()
             if mode == 'terms':
-                spans = [next(_spans(folded, starts, ends, n), None) for n in needles]
+                spans = [next(_spans(folded, starts, ends, n, check), None) for n in needles]
                 groups = [tuple(sorted(set(spans)))] if all(s is not None for s in spans) else []
             else:
-                groups = ((s,) for s in _spans(folded, starts, ends, needles[0]))
+                groups = ((s,) for s in _spans(folded, starts, ends, needles[0], check))
             for spans in groups:
                 check()
                 if seen < offset:
@@ -165,7 +176,9 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                     raw_text_sha256=digest, start=start, end=end, raw_quote=raw[start:end],
                     match_spans=spans, score=1.0))
                 if len(result) == limit:
+                    check()
                     return result
+        check()
         return result
     except sqlite3.OperationalError as exc:
         if stopped():
