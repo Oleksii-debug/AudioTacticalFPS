@@ -75,3 +75,51 @@ def test_invalid_budget_and_drift(db):
     with pytest.raises(TimeoutError): search(c,'A','Marx',cancelled=lambda: True)
     c.execute("UPDATE active_page SET digest='wrong' WHERE workspace='A' AND edition='a'")
     with pytest.raises(ValueError,match='digest'): search(c,'A','Marx')
+
+
+def test_cancel_when_storage_returns_no_rows(db):
+    c,_=db
+    cancelled = False
+    def reject():
+        nonlocal cancelled
+        cancelled = True
+        return 0
+    c.create_function('reject', 0, reject)
+    c.execute('ALTER TABLE active_page RENAME TO pages')
+    c.execute('CREATE VIEW active_page AS SELECT * FROM pages WHERE reject()')
+    with pytest.raises(TimeoutError):
+        search(c,'A','Marx',cancelled=lambda: cancelled)
+
+
+def test_cancel_during_mapping_rejected_substring(db, monkeypatch):
+    from carr_library.search import literal
+    c,add=db
+    add('C','c','xneedle '*4000)
+    real_fold = literal._fold
+    calls = 0
+    def fold(value):
+        nonlocal calls
+        if len(value)==1:
+            calls += 1
+        return real_fold(value)
+    monkeypatch.setattr(literal,'_fold',fold)
+    with pytest.raises(TimeoutError):
+        search(c,'C','needle',cancelled=lambda: calls>=1)
+    assert 1 <= calls <= 1024
+
+
+@pytest.mark.parametrize('mode', ['phrase','terms'])
+def test_cancel_during_rejected_matches(db, monkeypatch, mode):
+    from carr_library.search import literal
+    c,add=db
+    add('C','c','xneedle '*3000)
+    real_word = literal._word
+    calls = 0
+    def word(value):
+        nonlocal calls
+        calls += 1
+        return real_word(value)
+    monkeypatch.setattr(literal,'_word',word)
+    with pytest.raises(TimeoutError):
+        search(c,'C','needle',mode=mode,cancelled=lambda: calls>=1)
+    assert 1 <= calls <= 4
