@@ -32,7 +32,7 @@ MAX_ROWS = 10_000
 MAX_BATCHES = 1_000
 STATES = ('queued', 'running', 'complete', 'duplicate', 'rejected', 'failed', 'quarantined', 'excluded')
 _ID = re.compile('[0-9a-f]{32}')
-_MIMES = {'text/plain', 'application/pdf',
+_MIMES = {'text/plain', 'application/pdf', 'application/epub+zip',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
 _BATCH_KEYS = {'version', 'batch_id', 'data_dir', 'workspace', 'created', 'updated',
                'state', 'collections', 'recursive', 'config', 'rows', 'counts', 'total'}

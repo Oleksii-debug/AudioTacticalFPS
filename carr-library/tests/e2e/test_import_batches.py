@@ -379,3 +379,49 @@ def test_batch_native_formats_keep_existing_unverified_authority(app, tmp_path, 
         app.copy(workspace, hit.ref, hit.revision, 'quote')
 
 
+def test_folder_epub_batch_keeps_planned_bytes_stable_identity_and_unverified_authority(app, tmp_path):
+    from tests.e2e.test_epub_import import FIRST_TEXT, SECOND_TEXT, write_epub
+    selected = tmp_path / 'selected-books'
+    selected.mkdir()
+    original = selected / 'Academic source.epub'
+    original_bytes = write_epub(original)
+    digest = sha256(original_bytes).hexdigest()
+    workspace = app.create_workspace('EPUB batch library')
+    collection = app.create_collection(workspace, 'Selected books')
+    planned = app.plan_import_batch(workspace, [selected], collections=(collection,))
+    assert planned['total'] == planned['counts']['queued'] == 1
+    planned_row, = planned['rows']
+    assert planned_row['file'] == 'Academic source.epub'
+    assert planned_row['manifest'] == {
+        'sha256': digest, 'mime': 'application/epub+zip', 'size': len(original_bytes)}
+    final = app.run_import_batch(workspace, planned['batch_id'])
+    assert final['state'] == 'complete' and final['counts']['complete'] == 1
+    assert identities(final) == identities(planned)
+    row, = final['rows']
+    assert row['result']['isolated'] is True and row['result']['verified'] is False
+    assert row['result']['completed'] == 2
+    request = worker.load_request(app.root, row['request_id'])
+    assert request['expected_manifest'] == planned_row['manifest']
+    assert request['metadata']['title'] == 'Academic source'
+    book, = app.browse(workspace, collection=collection)
+    assert book.edition_id == row['edition_id'] and book.asset == digest
+    assert book.title == 'Academic source'
+    retained = app.assets.resolve(digest)
+    assert retained.suffix == '.epub' and retained.read_bytes() == original_bytes
+    hits = app.search(workspace, 'Railway', collection=collection)
+    assert len(hits) == 2
+    assert all(not hit.verified and 'Segment' in hit.page and 'PDF page' not in hit.page
+               for hit in hits)
+    first, = app.search(workspace, 'Originmarker', collection=collection)
+    preview = app.preview(workspace, first.ref, first.revision)
+    assert FIRST_TEXT in preview and SECOND_TEXT not in preview
+    with pytest.raises(ValueError, match='unverified'):
+        app.copy(workspace, first.ref, first.revision, 'quote')
+    original.unlink()
+    reopened = LibraryApp(app.root)
+    resumed = reopened.run_import_batch(workspace, planned['batch_id'])
+    assert resumed['state'] == 'complete' and resumed['rows'] == final['rows']
+    assert len(reopened.browse(workspace, collection=collection)) == 1
+    assert reopened.assets.resolve(digest).read_bytes() == original_bytes
+
+

@@ -12,7 +12,7 @@ import stat
 from ..catalog.intake import snapshot
 
 
-SUPPORTED = frozenset(('.txt', '.pdf', '.docx'))
+SUPPORTED = frozenset(('.txt', '.pdf', '.docx', '.epub'))
 MAX_FILES = 5000
 MAX_SCAN_ENTRIES = 20000
 MAX_ROOTS = 256
@@ -68,7 +68,7 @@ def planned_snapshot(path):
     """
     path = Path(path).absolute()
     if '..' in path.parts or '\x00' in str(path) or path.suffix.casefold() not in SUPPORTED:
-        raise ValueError('Choose a direct TXT, PDF or DOCX source path.')
+        raise ValueError('Choose a direct TXT, PDF, DOCX or EPUB source path.')
     _parents(path)
     before = path.lstat()
     if _linked(before) or not stat.S_ISREG(before.st_mode):
@@ -176,7 +176,7 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
             if not stat.S_ISREG(info.st_mode):
                 raise ValueError('Only regular files are imported.')
             if path.suffix.casefold() not in SUPPORTED:
-                reject(path, root, 'Unsupported file skipped; choose TXT, PDF or DOCX.')
+                reject(path, root, 'Unsupported file skipped; choose TXT, PDF, DOCX or EPUB.')
                 return
             if attempts >= MAX_FILES:
                 raise _ScanLimit(path, root,

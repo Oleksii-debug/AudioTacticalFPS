@@ -172,7 +172,7 @@ class ImportCenterActions:
     def add_files(self, event=None):
         import wx
         dialog = wx.FileDialog(self, 'Select books for an import plan',
-            wildcard='Supported books (*.txt;*.pdf;*.docx)|*.txt;*.pdf;*.docx',
+            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             paths = tuple(dialog.GetPaths()) if dialog.ShowModal() == wx.ID_OK else ()
