@@ -19,7 +19,9 @@ def producer_files(reading):
     narration = import_module('carr_library.reader.narration')
     copies = import_module('carr_library.reader.reading_copy')
     keys = import_module('carr_library.keybindings')
-    keyboard = import_module('carr_library.ui.keyboard_commands')
+    keyboard = import_module('carr_library.keyboard_preferences')
+    commands = import_module('carr_library.ui.command_registry')
+    builtins = import_module('carr_library.ui.builtin_keyboard_commands')
     ocr = import_module('carr_library.extract.ocr_languages')
     app, workspace, page, _ = reading
     project = narration.new_project(page.text, title='Narration', source_location=page.location)
@@ -32,7 +34,9 @@ def producer_files(reading):
     path.parent.mkdir()
     path.write_bytes(copies.project_bytes(copy))
     (app.root / 'keybindings.json').write_bytes(keys.encode_preferences({'File/Save': 'Ctrl+Alt+S'}))
-    (app.root / 'keyboard-shortcuts.json').write_bytes(keyboard.keymap_bytes({'main.save': 'Ctrl+Alt+S'}))
+    registry = commands.CommandRegistry(builtins.builtin_commands())
+    keyboard.KeymapStore(app.root / 'keyboard-shortcuts.json').save(
+        {'library.new': 'Ctrl+Alt+N'}, registry)
     raw = json.dumps({'version': 1, 'presets': [{'name': 'Українська', 'languages': 'ukr',
                     'model_policy': 'default', 'orientation': True}]}).encode()
     ocr.validate_presets_bytes(raw)
