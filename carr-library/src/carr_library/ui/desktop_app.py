@@ -396,15 +396,15 @@ class DesktopSearchPanel(PagedSearchPanel):
                 return
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
+                labels = scope_labels((hit.workspace, t.id, t.name) for t in topics)
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', scope_labels(
-                                                  (hit.workspace, t.id, t.name) for t in topics))
+                                              'Save quotation', labels)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
                     index = dialog.GetSelection()
-                    if not 0 <= index < len(topics):
-                        raise ValueError('Choose a research topic first.')
+                    if type(index) is not int or not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic for this quotation.')
                     selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
@@ -460,7 +460,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
             ('Import books\tCtrl+I', self.import_books),
-            ('Import Center: files, folders and queues\tCtrl+Shift+B', self.import_center),
+            ('Import Center: files, folders and queues', self.import_center),
             ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
@@ -473,6 +473,8 @@ class DesktopFrame(WorkspaceFrame):
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
+            ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
@@ -1052,17 +1054,31 @@ class DesktopFrame(WorkspaceFrame):
         self.run_job('Checking this installation', self_test,
             lambda result: show_text(self, 'Installation check', '\n'.join(result['checks']) + '\n\nAll checks passed.'))
 
+    def open_academic_library(self, event):
+        from .academic_library_dialog import open_academic_library
+        open_academic_library(self)
+
+    def add_selected_book_reference(self, event):
+        from .academic_library_dialog import add_selected_book_reference
+        add_selected_book_reference(self)
+
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+B for Bibliography, '
+            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
-            'Ctrl+Shift+B opens Import Center for folder scans, duplicate checks and saved import queues.\n'
+            'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+B opens the academic bibliography and reading list for the current library.\n'
+            'Inside the Reading Desk dialog, Ctrl+Shift+B manages page bookmarks instead.\n'
+            'Academic, Add selected book links an imported book to an editable bibliographic reference.\n'
+            'Academic references have reading status, priority, rating, progress, tags and personal notes.\n'
+            'Use Apply filters, Next page and Previous page to browse every matching reference.\n'
+            'Academic library imports are reviewed before saving. Its exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'

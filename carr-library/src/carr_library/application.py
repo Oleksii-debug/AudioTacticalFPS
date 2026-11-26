@@ -163,7 +163,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
 
     def _check_database_paths(self):
@@ -189,7 +189,7 @@ class LibraryApp:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
             try:
-                if db.execute('PRAGMA user_version').fetchone()[0] != 3 or _schema_signature(db) != _expected_signature(3):
+                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
@@ -201,7 +201,7 @@ class LibraryApp:
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -283,6 +283,34 @@ class LibraryApp:
         with self.read(workspace) as db:
             return browse_editions(Catalog(db, workspace), **filters)
 
+    def prepare_edition_file(self, workspace, edition_id, *, cancelled=lambda: False):
+        """Open a catalog-linked original without inventing a quotation.
+
+        A zero-width, view-only selection reuses the original-file authorization
+        and byte-verification boundary. It cannot be copied as source evidence.
+        Existing search selections and unsaved research notes remain available.
+        """
+        if cancelled():
+            raise InterruptedError('Opening the linked document was cancelled.')
+        with self.read(workspace) as db:
+            get_edition(Catalog(db, workspace), edition_id)
+            row = db.execute('SELECT revision,ordinal FROM active_page '
+                'WHERE workspace=? AND edition=? ORDER BY ordinal LIMIT 1',
+                (workspace, edition_id)).fetchone()
+            if row is None:
+                raise ValueError('The linked document has no completed source revision.')
+            revision, ordinal = row
+            selection = _Selection(workspace, edition_id, revision, ordinal, 0, 0, None)
+            self._resolve_selection(db, workspace, selection, revision, cancelled=cancelled)
+            ref = uuid4().hex
+            self._selections[ref] = selection
+        from .reader.source_file import prepare_source_file
+        try:
+            return prepare_source_file(self, workspace, ref, revision, cancelled=cancelled)
+        except BaseException:
+            self._selections.pop(ref, None)
+            raise
+
     def export_bibliography(self, workspace, *, collection=None, format='csl-json',
                             cancelled=lambda: False):
         """Use the shared catalog exporter for the Bibliography desktop command."""
@@ -340,7 +368,7 @@ class LibraryApp:
         revision = uuid4().hex
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
@@ -533,7 +561,7 @@ class LibraryApp:
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
