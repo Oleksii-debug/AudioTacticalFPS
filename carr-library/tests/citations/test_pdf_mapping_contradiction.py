@@ -3,13 +3,13 @@ from contextlib import closing
 from hashlib import sha256
 from io import BytesIO
 import subprocess
+import os
+from carr_library.extract.ocr_runtime import discover_ocr_runtime, verify_ocr_bundle
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, NameObject
 import pypdfium2 as pdfium
 from reportlab.pdfgen.canvas import Canvas
-
-from carr_library.extract.ocr_runtime import discover_ocr_runtime
 
 
 def fixture(tampered):
@@ -66,15 +66,17 @@ def test_changed_mapping_does_not_change_rendered_pixels():
 
 
 def test_real_ocr_detects_contradiction(tmp_path):
-    runtime = discover_ocr_runtime('eng')
-    assert runtime is not None, 'The required actual OCR runtime was not prepared.'
     path = tmp_path / 'page.png'
     with pdfium.PdfDocument(fixture(True)) as doc:
         with closing(doc[0]) as page, closing(page.render(scale=4)) as bitmap:
             bitmap.to_pil().save(path)
-    result = subprocess.run(runtime.command([
-        runtime.executable, str(path), 'stdout', '-l', 'eng', '--psm', '7']),
-        capture_output=True, check=True, timeout=20)
+    # Installed acceptance selects the sealed bundle rather than the earlier
+    # source-test runtime retained in CARR_CI_OCR_DIR.
+    runtime_root = os.environ.get('CARR_OCR_DIR') or os.environ.get('CARR_CI_OCR_DIR')
+    runtime = verify_ocr_bundle(runtime_root) if runtime_root else discover_ocr_runtime('eng')
+    assert runtime is not None, 'Install the verified local OCR runtime before required source tests.'
+    result = subprocess.run(runtime.command([runtime.executable, str(path), 'stdout', '-l', 'eng', '--psm', '7']),
+                            capture_output=True, check=True, timeout=20, cwd=runtime.root)
     runtime.assert_unchanged()
     assert result.stdout.decode('utf-8').strip() == 'AAAA'
     assert inspect(fixture(True))[0].strip() != result.stdout.decode('utf-8').strip()

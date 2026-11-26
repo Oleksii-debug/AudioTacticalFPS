@@ -363,6 +363,33 @@ def native_handlers(monkeypatch):
     return SimpleNamespace(make=make, destroy=destroy, drain=drain, queued=queued, wx=wx)
 
 
+def test_preview_budget_error_preserves_native_selection_and_imports_nothing(
+        controller, native_handlers, monkeypatch, tmp_path):
+    from carr_library.research import academic_library as academic
+    original = controller.create(form_values(draft(doi='10.1234/shared')))
+    target = tmp_path / 'duplicates.json'
+    target.write_text(json.dumps([{'title': 'Incoming', 'DOI': '10.1234/shared'}] * 10))
+    ui = native_handlers
+    chooser = Mock()
+    chooser.ShowModal.return_value = ui.wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=chooser)
+    ui.wx.FD_OPEN, ui.wx.FD_FILE_MUST_EXIST = 1, 2
+    window = ui.make('academic', controller)
+    window.controller = controller
+    window.references = Mock()
+    window.references.GetSelection.return_value = 0
+    window.rows = (original,)
+    window.refresh = Mock()
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 10)
+    window.on_import()
+    assert 'Too many duplicate matches' in window.status.value
+    assert window.rows == (original,) and window.references.GetSelection() == 0
+    window.refresh.assert_not_called()
+    assert controller.list() == (original,)
+    chooser.Destroy.assert_called_once()
+
+
 @pytest.mark.parametrize('timing', ['before_worker_finishes', 'after_callback_queued'])
 @pytest.mark.parametrize('outcome', ['success', 'error'])
 def test_editor_late_completion_never_touches_destroyed_controls(controller, native_handlers, timing, outcome):

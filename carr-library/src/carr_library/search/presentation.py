@@ -11,7 +11,7 @@ import re
 import sqlite3
 from unicodedata import category, normalize
 
-from .literal import _mapped
+from .literal import _CompactOffsets, _mapped
 from .thematic import _groups, _quote
 
 
@@ -38,6 +38,19 @@ def _cluster_end(raw, position):
     return position
 
 
+def _reverse_offsets(offsets, length, check):
+    """Invert cluster boundaries without recreating long-source dictionaries."""
+    if not isinstance(offsets, _CompactOffsets):
+        return {original: folded for folded, original in offsets.items()}
+    result = _CompactOffsets(length)
+    for index, (folded, original) in enumerate(offsets.items()):
+        if index % 1024 == 0:
+            check()
+        result[original] = folded
+    check()
+    return result
+
+
 def _lexical_focus(raw, start, end, query, budget, check):
     """Smallest observed source interval covering query concepts, when possible.
 
@@ -55,8 +68,8 @@ def _lexical_focus(raw, start, end, query, budget, check):
         normalized_folded, normalized_starts, normalized_ends = _mapped(normalized, check)
         if folded != normalized_folded:
             raise ValueError('Unsupported source normalization for excerpts.')
-        normalized_starts = {original: folded for folded, original in normalized_starts.items()}
-        normalized_ends = {original: folded for folded, original in normalized_ends.items()}
+        normalized_starts = _reverse_offsets(normalized_starts, len(normalized), check)
+        normalized_ends = _reverse_offsets(normalized_ends, len(normalized), check)
     groups = _groups(query)
     marker = '\x1eCARR-' + sha256(normalized.encode('utf-8')).hexdigest()
     while marker in normalized:

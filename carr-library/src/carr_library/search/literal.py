@@ -86,13 +86,11 @@ def _mapped(text, check=lambda: None):
     # TXT books need not contain form-feed page boundaries. Mapping millions of
     # ordinary ASCII letters into two dictionaries exhausted the search deadline
     # and hundreds of megabytes even when the source was within MAX_CHARS.
-    # Keep the cluster-aware path for Unicode and small pages; long ASCII source
-    # segments need only the sparse whitespace map above.
+    # Long ASCII segments need only sparse whitespace offsets. Long Unicode
+    # segments keep the same cluster rules in compact integer arrays, avoiding
+    # two per-character dictionaries and millions of retained small strings.
     if len(text) >= _LONG_ASCII and text.isascii():
         return _ascii_mapped(text, check)
-    # Long multilingual segments use the same canonical-cluster algorithm but
-    # compact integer boundaries instead of millions of dict entries and small
-    # strings. Keep whole-fold equivalence checks and forbidden inner boundaries.
     compact = len(text) >= _LONG_ASCII
     if compact:
         check()
