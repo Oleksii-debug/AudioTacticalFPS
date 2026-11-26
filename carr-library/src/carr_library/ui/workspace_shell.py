@@ -10,8 +10,7 @@ from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
 from .evidence_panel import EvidencePanel
-from .scope_bindings import ScopeServices, bind_scope_services
-from .scope_labels import scope_labels
+from .scope_bindings import ScopeServices, bind_scope_services, scope_labels
 
 
 class WorkspaceFrame(wx.Frame):

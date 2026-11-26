@@ -7,7 +7,7 @@ change source text, or grant quotation approval.
 from dataclasses import dataclass
 
 from ..citations.anchors import format_citation
-from .scope_labels import scope_labels
+from .scope_bindings import scope_labels
 
 
 class NativeDialogs:

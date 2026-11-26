@@ -54,6 +54,14 @@ instructions.
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
   Back up completed libraries with original files and checksums; restore into a
   new folder without overwriting the existing library.
+- Review RIS or CSL-JSON reference metadata before applying selected fields to
+  an existing book. Export a whole library or collection bibliography in
+  CSL-JSON, RIS or BibTeX, and export a complete research topic branch with its
+  verified evidence, notes and tags. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md).
+- Review catalog details, export a source inventory, and build a literature-review
+  matrix with exact quotations and separate notes through **Library tools**.
+  Its bibliography exports use the same catalog service as the Bibliography
+  menu. See [catalog tools](docs/CATALOG_TOOLS.md).
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
@@ -67,9 +75,9 @@ score never approves a quotation.
 This is an integrated development candidate. The assembled services and installed
 Python package have real end-to-end tests, including offline local model
 inference, citation preservation, workspace isolation and backup recovery.
-The Windows workflow separately runs the installed package and native desktop
-probes. Manual Windows 11/NVDA acceptance remains a distinct check; Linux tests
-and native GUI automation do not certify screen-reader speech.
+The native Windows workflow also exercises installation, desktop controls, local
+model inference and scanned-source review. Manual NVDA acceptance remains a
+separate check; automated native UI tests do not establish its spoken behavior.
 
 The Windows bundle's hashes and dependency inventory are verified during
 assembly. Only local synthetic or lawfully supplied fixtures may be used in

@@ -19,8 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
-from .scope_bindings import ScopeServices
-from .scope_labels import scope_labels
+from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
@@ -29,6 +28,7 @@ from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
@@ -388,7 +388,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             hit = self.selected()
             if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
                 raise ValueError('Select one result in the active library.')
-            topics = self.frame.library.topics(hit.workspace)
+            topics = tuple(self.frame.library.topics(hit.workspace))
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
                 self.status.SetFocus()
@@ -458,7 +458,9 @@ class DesktopFrame(WorkspaceFrame):
             ('Open existing library folder',self.open_library_folder),
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
-            ('Import books\tCtrl+I', self.import_books), ('Resume interrupted import',self.resume_import),
+            ('Import books\tCtrl+I', self.import_books),
+            ('Import Center: files, folders and queues', self.import_center),
+            ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
@@ -487,6 +489,7 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_academic_actions(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
@@ -726,6 +729,13 @@ class DesktopFrame(WorkspaceFrame):
                 self._open_workspace(workspace)
         finally:
             dialog.Destroy()
+
+    def import_center(self, event=None):
+        try:
+            from .import_center import show_import_center
+            show_import_center(self, self._workspace())
+        except Exception as exc:
+            self.report(str(exc))
 
     def import_books(self, event):
         try:
@@ -1052,8 +1062,10 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
+            'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
@@ -1063,7 +1075,7 @@ class DesktopFrame(WorkspaceFrame):
             'Academic, Add selected book links an imported book to an editable bibliographic reference.\n'
             'Academic references have reading status, priority, rating, progress, tags and personal notes.\n'
             'Use Apply filters, Next page and Previous page to browse every matching reference.\n'
-            'Bibliography imports are reviewed before saving. Exports ask for all active references or selected only; notes are excluded by default.\n'
+            'Academic library imports are reviewed before saving. Its exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
@@ -1071,6 +1083,10 @@ class DesktopFrame(WorkspaceFrame):
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
+            'Ctrl+Shift+E exports the active topic together with its nonarchived subtopics.\n'
+            'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
+            'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
+            'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
             'In Export topic, choose Word or HTML for a readable research document with heading navigation.\n'
             'The Research menu also opens Library overview, Source metadata and indexing checklist, '
             'and Export source comparison matrix for this library or one of its collections.\n'
