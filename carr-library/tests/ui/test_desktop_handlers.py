@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -47,6 +48,7 @@ def classes():
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
@@ -128,6 +130,16 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
+    additional = []
+    for module, installer in (
+            ('academic_tools', 'install_source_comparison_actions'),
+            ('audio_studio', 'install_audio_studio'),
+            ('local_assistant', 'install_local_assistant'),
+            ('provider_settings', 'install_provider_settings')):
+        callback = Mock()
+        additional.append(callback)
+        monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
+                            SimpleNamespace(**{installer: callback}))
 
     value._menus()
 
@@ -138,7 +150,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook):
+    for installer in (*installers.values(), ebook, *additional):
         installer.assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
@@ -414,8 +426,9 @@ def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
     assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
 
 
-@pytest.mark.parametrize('choice,languages',[(0,'eng'),(1,'ukr'),(2,'slk'),(3,'eng+ukr+slk')])
-def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,choice,languages):
+@pytest.mark.parametrize('profile,languages', [('installed','eng'),('installed','ukr'),
+    ('fast','eng+script/Latin'),('best','ukr+slk')])
+def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,profile,languages):
     from carr_library.extract.page_ocr import Config
     from carr_library.ui import ocr_options
     f = frame(classes)
@@ -431,7 +444,8 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
-    wx.SingleChoiceDialog.return_value.GetSelection.return_value = choice
+    selected = Config(languages=languages, model_profile=profile)
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=selected))
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -440,13 +454,14 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     call = f.library.import_files.call_args
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     config = call.kwargs['config']
-    assert config == Config(languages=languages)
+    assert config is selected
     complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
     assert 'Page 2 needs independent review' in f.report.call_args.args[0]
     assert 'Review pending imported page' in f.report.call_args.args[0]
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -458,7 +473,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()

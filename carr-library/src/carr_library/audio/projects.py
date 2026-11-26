@@ -361,21 +361,30 @@ def parse_script(script, voices, *, title='Audio project', language='en', projec
     Voice strings are discovered registry IDs, never executable commands.
     """
     text(script, 'script', MAX_PROJECT_BYTES)
+    if isinstance(voices, (str, bytes)):
+        raise ValueError('Provide an explicit list of local voices.')
+    voices = tuple(voices)
     if not voices:
         raise ValueError('Install or select at least one local voice before creating a production.')
     voice_ids = tuple(getattr(voice, 'id', voice) for voice in voices)
     for voice_id in voice_ids:
         text(voice_id, 'voice identity', 2000)
+    from .voices import supports_language
+    default_voice_ids = tuple(getattr(voice, 'id', voice) for voice in voices
+        if isinstance(voice, str) or supports_language(voice, language))
     prior = {role.name.casefold(): role for role in previous.roles} if previous else {}
     roles, scenes, cues = {}, [], []
     scene_title, music, offset = title, None, 0
+    music_prompt_allowed = False
 
     def role_for(name):
         key = name.casefold()
         if key not in roles:
             known = prior.get(key)
+            if known is None and not default_voice_ids:
+                raise ValueError('No configured local voice declares the requested language. Select a matching voice before adding a role.')
             roles[key] = known or Role('role-' + sha256(key.encode('utf-8')).hexdigest()[:16],
-                name, voice_ids[len(roles) % len(voice_ids)], language)
+                name, default_voice_ids[len(roles) % len(default_voice_ids)], language)
         return roles[key]
 
     def finish():
@@ -391,6 +400,8 @@ def parse_script(script, voices, *, title='Audio project', language='en', projec
         if not stripped:
             offset += len(raw)
             continue
+        following_music = music_prompt_allowed
+        music_prompt_allowed = False
         if directives and stripped.startswith('# '):
             finish()
             scene_title = stripped[2:].strip()
@@ -403,15 +414,21 @@ def parse_script(script, voices, *, title='Audio project', language='en', projec
             cues.append(Cue(f'cue-{offset}', 'pause', seconds=seconds))
         elif directives and stripped.startswith('@music '):
             parts = stripped[7:].split()
+            engine = parts.pop(0) if parts and parts[0] in ('procedural','fluidsynth','musicgen') else 'procedural'
             if not 1 <= len(parts) <= 2:
-                raise ValueError('Use @music calm 80 or @music suspense 100; tempo is optional.')
+                raise ValueError('Use @music calm 80 or @music musicgen calm 80; engine and tempo are optional.')
             try:
                 bpm = int(parts[1]) if len(parts) == 2 else 80
             except ValueError as exc:
                 raise ValueError('Music tempo must be a whole number.') from exc
-            music = Music(mood=parts[0], tempo_bpm=bpm)
+            music = Music(engine=engine,mood=parts[0], tempo_bpm=bpm)
+            music_prompt_allowed = True
+        elif directives and stripped.startswith('@music-prompt '):
+            if not following_music or music is None:
+                raise ValueError('Place one @music-prompt immediately after its @music directive.')
+            music = replace(music,prompt=stripped[len('@music-prompt '):])
         elif directives and stripped.startswith('@'):
-            raise ValueError('Unknown script directive. Supported: # chapter, @pause seconds, @music mood tempo.')
+            raise ValueError('Unknown script directive. Supported: # chapter, @pause seconds, @music [engine] mood tempo, @music-prompt text.')
         else:
             name = 'Narrator'
             start = len(line) - len(line.lstrip())
@@ -603,4 +620,11 @@ class ProjectStore:
     def import_project(self, path):
         project = Project.from_dict(read_json(path))
         # Import as a distinct editable project. Source identities remain unchanged.
-        return self.create(replace(project, id=uuid4().hex, revision=1, created_at=now()))
+        identity = uuid4().hex
+        # Cue reading copies are bound to the project as well as the original
+        # text. Rebind only that local identity after full import validation;
+        # keep source text, hashes, offsets, accepted edits and history exact.
+        narration = {cue: {**snapshot, 'source_id': f'{identity}:{cue}'}
+                     for cue, snapshot in project.narration.items()}
+        return self.create(replace(project, id=identity, narration=narration,
+                                   revision=1, created_at=now()))

@@ -8,6 +8,7 @@ One call renders one bounded utterance; the project scheduler owns long books.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from copy import copy
 from hashlib import sha256
 import json
 import math
@@ -42,6 +43,7 @@ class Voice:
     capabilities: tuple[str, ...]
     vendor: str = ''
     license_note: str = 'User-installed runtime and voice; their terms apply.'
+    candidate_languages: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,39 @@ class SynthesisResult:
     text_sha256: str
     timing: str = 'utterance'
     rate_control: str = 'engine_relative'
+
+
+def supports_language(voice, language):
+    """Match declared language support, without inventing native accent quality."""
+    if not isinstance(language, str) or not _LANGUAGE.fullmatch(language):
+        raise ValueError('Use a valid language code such as en, uk or sk.')
+    requested = language.casefold()
+    for declared in voice.languages:
+        declared = declared.replace('_', '-').casefold()
+        if (declared == requested
+                or ('-' not in requested and declared.split('-')[0] == requested)
+                or ('-' not in declared and requested.split('-')[0] == declared)):
+            return True
+    return False
+
+
+def load_voice_config(path):
+    """Read an explicitly selected local configuration, never book instructions.
+
+    Schema: version=1, kind='local-voice-engines', config={...}. Optional model
+    manifests and executables are absolute local paths. No assets are copied.
+    """
+    from .voice_manifest import read_json
+    selected = Path(path)
+    if not selected.is_absolute():
+        raise ValueError('Choose an absolute local voice configuration path.')
+    value = read_json(selected, max_bytes=16 * 1024)
+    if (type(value) is not dict or set(value) != {'version', 'kind', 'config'}
+            or type(value['version']) is not int or value['version'] != 1
+            or value['kind'] != 'local-voice-engines' or type(value['config']) is not dict):
+        raise ValueError('Unsupported local voice configuration.')
+    from .voice_settings import validate_voice_config
+    return validate_voice_config(value['config'])
 
 
 def _number(value, minimum, maximum, label):
@@ -191,7 +226,8 @@ class VoiceRegistry:
     """Discover only usable local voices, with a stable identity per engine.
 
     config accepts ``ffmpeg``/``espeak_ng`` absolute executable paths (False
-    disables discovery), and ``include_sapi`` (default True). Programs are
+    disables discovery), ``include_sapi`` (default True), ``piper`` containing
+    executable/manifest absolute paths, and ``dordiai_manifest``. Programs are
     trusted, explicitly installed runtimes, not executable paths from a script.
     ``rate`` is a relative request: Flite uses FFmpeg time stretch, SAPI uses its
     native -10..10 scale, and eSpeak uses words/minute. It is not a native-accent
@@ -199,8 +235,10 @@ class VoiceRegistry:
     """
 
     def __init__(self, config=None):
+        if config is not None and type(config) is not dict:
+            raise ValueError('Provide an explicit local voice configuration object.')
         config = dict(config or {})
-        if set(config) - {'ffmpeg', 'espeak_ng', 'include_sapi'}:
+        if set(config) - {'ffmpeg', 'espeak_ng', 'include_sapi', 'piper', 'dordiai_manifest'}:
             raise ValueError('Unknown local voice configuration option.')
         if type(config.get('include_sapi', True)) is not bool:
             raise ValueError('include_sapi must be true or false.')
@@ -211,8 +249,61 @@ class VoiceRegistry:
         self._routes = {}
         self._status = []
         self._sapi_metadata = {}
+        self._model_engines = {}
+        self._registered_settings = None
+        if 'piper' in config:
+            from .model_voices import PiperEngine
+            selected = config['piper']
+            if type(selected) is not dict or set(selected) != {'executable', 'manifest'}:
+                raise ValueError('A Piper profile needs an executable and reviewed manifest.')
+            self._model_engines['piper'] = PiperEngine(
+                self._manifest_path(selected['executable']), self._manifest_path(selected['manifest']))
+        if 'dordiai_manifest' in config:
+            from .model_voices import DordiaiVoicesEngine
+            self._model_engines['dordiai-voices'] = DordiaiVoicesEngine(self._manifest_path(config['dordiai_manifest']))
+
+    @staticmethod
+    def _manifest_path(value):
+        from .voice_manifest import local_path
+        if not isinstance(value, (str, os.PathLike)) or not Path(value).is_absolute():
+            raise ValueError('Select an absolute local model manifest path.')
+        return local_path(value)
+
+    @classmethod
+    def from_config_file(cls, path):
+        return cls(load_voice_config(path))
+
+    @classmethod
+    def for_library(cls, root):
+        """Use the library's explicitly reviewed registration, if present."""
+        from .voice_settings import VoiceSettingsStore, verify_voice_settings_bindings
+        value = verify_voice_settings_bindings(VoiceSettingsStore(root).read())
+        registry = cls(value['config'])
+        registry._registered_settings = value
+        return registry
+
+    def voices_for_language(self, language):
+        if not isinstance(language, str) or not _LANGUAGE.fullmatch(language):
+            raise ValueError('Use a valid language code such as en, uk or sk.')
+        return tuple(voice for voice in self.list_voices() if supports_language(voice, language))
+
+    def choose_voice(self, language, preferred=None):
+        available = self.voices_for_language(language)
+        if preferred is not None:
+            for voice in available:
+                if voice.id == preferred:
+                    return voice
+            raise ValueError('The selected voice is unavailable or does not declare this language. No substitute was used.')
+        if not available:
+            raise ValueError('No installed, verified local voice declares this language. Configure a matching engine first.')
+        exact = [voice for voice in available if language.casefold() in
+                 {value.replace('_', '-').casefold() for value in voice.languages}]
+        return (exact or list(available))[0]
 
     def list_voices(self, refresh=False):
+        if self._registered_settings is not None:
+            from .voice_settings import verify_voice_settings_bindings
+            verify_voice_settings_bindings(self._registered_settings)
         if self._voices is not None and not refresh:
             return self._voices
         rows, routes, statuses = [], {}, []
@@ -290,11 +381,43 @@ class VoiceRegistry:
                 statuses.append({'engine': 'espeak-ng', 'status': 'available', 'voices': len(seen)})
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 statuses.append({'engine': 'espeak-ng', 'status': 'unavailable', 'reason': type(exc).__name__})
-        statuses.extend((
-            {'engine': 'sapi4', 'status': 'unavailable', 'reason': 'Legacy compatibility is not verified.'},
-            {'engine': 'dordiai-voices', 'status': 'unavailable',
-             'reason': 'The actual project interface must be supplied and reviewed before connecting.'},
-        ))
+        for name in ('piper', 'dordiai-voices'):
+            model = self._model_engines.get(name)
+            if model is None:
+                statuses.append({'engine': name, 'status': 'unavailable',
+                    'reason': 'Select a reviewed local model/runtime manifest; assets are not bundled or downloaded.'})
+                continue
+            try:
+                found = model.voices()
+                model_rows, model_routes, profiles = [], {}, []
+                for item in found:
+                    languages = tuple(value.replace('_', '-') for value in item.languages)
+                    candidates = tuple(value.replace('_', '-') for value in item.candidate_languages)
+                    if (not isinstance(item.id, str) or not item.id.startswith(name + ':')
+                            or item.id in routes or item.id in model_routes
+                            or not isinstance(item.name, str) or not item.name.strip() or len(item.name) > 256
+                            or any(not _LANGUAGE.fullmatch(value) for value in (*languages, *candidates))):
+                        raise ValueError('The configured engine declared invalid voice identities or languages.')
+                    profiles.append({'id': item.id, 'name': item.name,
+                        'supported_languages': list(languages), 'candidate_languages': list(candidates),
+                        'available': item.available, 'reason': item.reason})
+                    if not item.available:
+                        continue
+                    if not languages:
+                        raise ValueError('An available profile must declare its own supported languages.')
+                    model_rows.append(Voice(item.id, name, item.name, languages,
+                        ('pcm', 'rate', 'volume', 'local'), name,
+                        'User-reviewed manifest license: ' + item.license, candidates))
+                    model_routes[item.id] = (name, model.binary, item.id)
+                rows.extend(model_rows)
+                routes.update(model_routes)
+                statuses.append({'engine': name, 'status': 'available' if model_rows else 'configured',
+                                 'voices': len(model_rows), 'profiles': profiles,
+                                 'inference': 'not verified by enumeration'})
+            except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                statuses.append({'engine': name, 'status': 'unavailable',
+                                 'reason': 'Configured assets did not pass voice enumeration: ' + type(exc).__name__})
+        statuses.append({'engine': 'sapi4', 'status': 'unavailable', 'reason': 'Legacy compatibility is not verified.'})
         if not any(row['engine'].startswith('sapi5-') for row in statuses):
             statuses.append({'engine': 'sapi5', 'status': 'unavailable',
                              'reason': 'SAPI5 requires enabled installed Windows voices.'})
@@ -333,10 +456,18 @@ class VoiceRegistry:
                 item['version_sha256'] = sha256(log.encode('utf-8')).hexdigest()
             executables[key] = item
         helper = Path(__file__).with_name('sapi_helper.ps1')
-        return {'version': 1, 'voices': [asdict(voice) for voice in voices],
+        model_identities = []
+        for engine, model in self._model_engines.items():
+            for voice in voices:
+                if voice.engine == engine:
+                    model_identities.append(model.cache_identity(voice.id))
+        return {'version': 2, 'voices': [asdict(voice) for voice in voices],
                 'executables': sorted(executables.values(), key=lambda row: (row['engine'], row['executable_sha256'])),
                 'sapi_helper_sha256': _digest(helper), 'sapi_runtime': self._sapi_metadata,
-                'fingerprint_scope': 'executables, reported versions, helper, installed voice identities'}
+                'model_manifests': model_identities,
+                'model_adapter_sha256': _digest(Path(__file__).with_name('model_voices.py')),
+                'model_validator_sha256': _digest(Path(__file__).with_name('voice_manifest.py')),
+                'fingerprint_scope': 'executables, versions, helpers, installed identities, configured model manifests and verified assets'}
 
     def fingerprint(self):
         return sha256(json.dumps(self.runtime_identity(), ensure_ascii=False,
@@ -375,12 +506,7 @@ class VoiceRegistry:
             raise ValueError('Select an available installed voice; reload voices after installing one.')
         voice = voices[voice_id]
         if language is not None:
-            if not isinstance(language, str) or not _LANGUAGE.fullmatch(language):
-                raise ValueError('Use a valid language code such as en, uk or sk.')
-            language_key = language.casefold()
-            if not any(language_key == lang.casefold() or (
-                    '-' not in language_key and language_key == lang.casefold().split('-')[0])
-                    for lang in voice.languages):
+            if not supports_language(voice, language):
                 raise ValueError('The selected voice does not declare support for this language.')
         engine, executable, key = self._routes[voice_id]
         with TemporaryDirectory(prefix='.carr-speech-', dir=destination.parent) as temp:
@@ -391,6 +517,14 @@ class VoiceRegistry:
                     'text': text, 'rate': int(round(5 * math.log2(rate))),
                     'volume': int(round(volume * 100)), 'sample_rate': SAMPLE_RATE},
                     timeout_seconds, cancelled)
+            elif engine in self._model_engines:
+                # The engine protocol uses a logarithmic rate scale. The public
+                # registry keeps one relative-rate API for every engine.
+                model = copy(self._model_engines[engine])
+                model.timeout = timeout_seconds
+                model.synthesize(text, rendered, voice=key, language=language or voice.languages[0],
+                    rate=10 * math.log2(rate), pitch=0, volume=volume,
+                    cancelled=lambda: bool(_cancel(cancelled)))
             else:
                 # Only a fixed basename enters the filter. Authored text is file
                 # content, never a command, SSML, shell expansion or filtergraph.

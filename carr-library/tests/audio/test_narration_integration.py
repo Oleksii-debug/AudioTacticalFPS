@@ -93,6 +93,32 @@ def test_original_script_edits_keep_only_matching_derivatives():
     assert retained_narration(revised, (cue,), 'new-project-identity') == {}
 
 
+def test_project_export_import_rebinds_reading_copies_without_changing_original_or_history(tmp_path):
+    store = ProjectStore(tmp_path / 'library')
+    original = project()
+    store.create(original)
+    cue = original.scenes[0].cues[0]
+    derivative = cue_derivative(original, cue.id).apply(0, 5, 'Al-iss')
+    derivative = derivative.apply(12, 17, 'Al-iss').undo()
+    edited = set_cue_derivative(original, cue.id, derivative)
+    store.save(edited)
+    exported = tmp_path / 'project.json'
+    store.export(edited.id, exported)
+    exported_bytes = exported.read_bytes()
+    imported = store.import_project(exported)
+    assert imported.id != edited.id and imported.revision == 1
+    assert imported.script == edited.script and imported.scenes == edited.scenes
+    assert imported.source == edited.source
+    rebound = cue_derivative(imported, cue.id)
+    assert rebound.source_id == f'{imported.id}:{cue.id}'
+    assert replace(rebound, source_id=derivative.source_id) == derivative
+    assert rebound.redo().text == derivative.redo().text == 'Al-iss meets Al-iss.'
+    assert spoken_cue(imported, cue)['mapping'] == spoken_cue(edited, cue)['mapping']
+    assert store.load(edited.id) == edited
+    assert store.load(imported.id) == imported
+    assert exported.read_bytes() == exported_bytes
+
+
 def test_cancelled_literal_preview_does_not_change_source_or_draft():
     original = project()
     model = NarrationEditorModel(original)

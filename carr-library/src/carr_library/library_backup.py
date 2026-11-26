@@ -100,11 +100,12 @@ def create_backup(app, destination):
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
+                sidecars = backup_sidecars.snapshot(app, stage, {entry.digest for entry in entries},
+                                                   db=snapshot_storage.db)
             manifest = dict(version=2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
-            sidecars = backup_sidecars.snapshot(app, stage, {entry.digest for entry in entries})
             if sidecars is not None:
                 manifest.update(version=3, sidecars=sidecars)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
@@ -256,10 +257,10 @@ def restore_backup(source, destination, expected_manifest_sha256):
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
-        sidecars = None
-        if manifest['version'] == 3:
-            sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
-                                               stage, manifest['sidecars'], destination)
+            sidecars = None
+            if manifest['version'] == 3:
+                sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
+                    stage, manifest['sidecars'], destination, db=storage.db)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)

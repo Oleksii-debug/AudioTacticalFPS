@@ -4,6 +4,15 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.assistant.workflows import Scope,Step,WorkflowPlan,LocalAssistant,guided_goal
 
+
+@pytest.mark.parametrize('value',[r'\\server\share', '//server/share', r'\\?\C:\device',
+                                  'https://example.invalid/path',r'C:\file:stream','bad\x00path'])
+def test_remote_device_and_stream_scope_rejected_before_filesystem_access(value,monkeypatch):
+    from pathlib import Path
+    monkeypatch.setattr(Path,'lstat',lambda *a,**k:pytest.fail('Unapproved path reached filesystem inspection.'))
+    with pytest.raises(ValueError):
+        Scope(output_root=value)
+
 @pytest.fixture
 def fixture(tmp_path):
     app=LibraryApp(tmp_path/'data')

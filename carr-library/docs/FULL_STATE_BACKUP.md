@@ -16,8 +16,11 @@ Manifest version 3 adds checksummed application state when it exists:
 | State | Backup and restore behavior |
 | --- | --- |
 | Reading positions and bookmarks | Preserve exact workspace, edition, revision, location and source digests. Reading still revalidates these identities before displaying a page. |
+| Keyboard and OCR preferences | Preserve validated command overrides and named, ordered recognition presets. Restoring preferences does not install a voice or OCR model. |
 | Audio projects and history | Preserve current project JSON, historical revisions, narration derivatives, voice settings, accepted cached chunks and imported audio assets. |
 | Audio drafts | Preserve unsaved new scripts and existing-project drafts, including title, language, output format and base revision. Drafts may contain unfinished or invalid script syntax. |
+| Local music registrations | Preserve nonsecret model/SoundFont paths, exact hashes and rights metadata. External assets remain separate and must pass validation before later use. |
+| Local voice registrations | Preserve strict executable/manifest paths and reviewed hashes. Restored registrations are inactive until explicitly revalidated; external voice assets are not copied. |
 | Production jobs | Preserve project snapshots, progress and accepted cache records. Restore pauses the job and requires a new output destination and a new render job. |
 | Assistant workflows | Preserve typed plans and durable results. Restored plans require a new review and current folder selections before execution. |
 | Provider profiles | Validate the strict nonsecret profile schema. Restore clears Credential Manager references and requires reconnecting remote accounts. |
@@ -61,6 +64,10 @@ SHA-256 digest. The implementation rejects traversal, symbolic links, reparse
 points, multiple hard links, unexpected files, duplicate manifest paths and
 unknown secret fields in provider profiles. It validates reading, project,
 draft, workflow and connection schemas before publishing the backup or restore.
+Reading positions, bookmarks and Studio source links must also match an exact
+sealed page in the copied database. Historical revisions and archived libraries
+remain valid; an unrelated source cannot be accepted merely by recalculating the
+sidecar checksum.
 
 Copying streams in 1 MiB blocks. Explicit limits are 100,000 sidecar files,
 64 GiB of sidecar bytes, 32 GiB per ordinary sidecar file, 32 MiB per JSON

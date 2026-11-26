@@ -11,6 +11,7 @@ import threading
 import wx
 
 from ..application import LibraryApp
+from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
@@ -35,6 +36,7 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from .acquisition_dialog import show_acquisition_dialog
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -490,6 +492,8 @@ class DesktopFrame(WorkspaceFrame):
         self.SetTitle('Universal Research Library')
         self.SetMinSize((760, 650))
         self._menus()
+        from .productivity import install_productivity_actions
+        keyboard = install_productivity_actions(self)
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
@@ -497,6 +501,15 @@ class DesktopFrame(WorkspaceFrame):
             self.status.SetValue('Welcome. Choose Library, New library to begin. All books stay on this computer.')
         if getattr(library,'semantic_notice',None):
             self.report(library.semantic_notice)
+        if keyboard.notice:
+            self.report(keyboard.notice)
+
+    def ocr_language_models(self, event):
+        if self.working or self.busy or self._closing:
+            self.report('Wait for the current operation or cancel it before changing OCR models.')
+            return
+        from .ocr_model_manager import show_ocr_model_manager
+        show_ocr_model_manager(self)
 
     def _menus(self):
         self.menu_bar = wx.MenuBar()
@@ -506,6 +519,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Restore archived library', self.unarchive_library),
             ('Import books\tCtrl+I', self.import_books),
             ('Import Center: files, folders and queues', self.import_center),
+            ('OCR language models: Fast and Best...', self.ocr_language_models),
             ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
@@ -520,8 +534,11 @@ class DesktopFrame(WorkspaceFrame):
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('DOI lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
-            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help),
+                ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
+                ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -727,11 +744,13 @@ class DesktopFrame(WorkspaceFrame):
         self._drop()
         self.library = candidate
         self.list_scopes = candidate.list_scopes
+        keyboard = getattr(self, 'keyboard_actions', None)
+        keyboard_notice = keyboard.reload() if keyboard is not None else ''
         self.refresh_scopes()
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
-        self.report(f'Opened library folder: {candidate.root}')
+        self.report(f'Opened library folder: {candidate.root}' + ('\n' + keyboard_notice if keyboard_notice else ''))
         return True
 
     def open_library_folder(self,event):
@@ -816,7 +835,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
+            wildcard=file_dialog_wildcard(),
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -843,6 +862,11 @@ class DesktopFrame(WorkspaceFrame):
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:
                 self.book.GetPage(1).refresh()
+            if any(row.get('warnings') for row in rows):
+                from .import_center import row_details
+                report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
+                    message=row.get('message', ''), result=row)) for row in rows)
+                show_text(self, 'Import details', report)
         self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
             cancelled=self.cancel_event.is_set,config=config), done)
 
@@ -1134,10 +1158,15 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Use Alt+F for File, Alt+O for Options, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Ctrl+S saves the current research note; Ctrl+Shift+S saves all main-window changes. '
+            'Modal editors have their own Save and Save As commands.\n'
+            'Options, Keyboard shortcuts changes main-window keys and checks conflicts. '
+            'Options, List current keyboard shortcuts shows the active assignments; the keys below are defaults.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
+            'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'

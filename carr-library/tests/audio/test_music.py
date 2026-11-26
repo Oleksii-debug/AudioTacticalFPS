@@ -8,7 +8,7 @@ import sys
 import pytest
 
 from carr_library.audio.music import (MusicGenConfig, MusicSpec, generate_music,
-                                      music_runtime_identity, validate_musicgen_config)
+                                      music_runtime_identity, validate_musicgen_config, export_midi, render_sfx)
 from carr_library.audio.render import RenderCancelled, file_sha256, run_process
 
 
@@ -145,3 +145,40 @@ def test_ambiguous_model_manifest_is_rejected(tmp_path, payload):
     config.manifest.write_bytes(raw)
     with pytest.raises(ValueError, match='manifest'):
         validate_musicgen_config(replace(config, manifest_sha256=sha256(raw).hexdigest()))
+
+
+@pytest.mark.parametrize('name',['door','click','chime','noise'])
+def test_named_sfx_are_actual_local_samples(tmp_path,name):
+    result = render_sfx(name,tmp_path/(name+'.wav'),duration_seconds=.5,seed=3)
+    assert result.frames == 12000 and result.channels == 2
+    assert -60 < result.peak_dbfs < 0
+    assert result.metadata['sound'] == name
+    assert result.metadata['original_neural_generation'] is False
+    with pytest.raises(FileExistsError):
+        render_sfx(name,result.path)
+
+
+def test_midi_export_streams_exact_standard_score(tmp_path):
+    spec = MusicSpec(3,tempo_bpm=120,seed=7)
+    result = export_midi(spec,tmp_path/'score.mid')
+    data = result.path.read_bytes()
+    assert data[:14] == b'MThd\0\0\0\6\0\0\0\1\1\xe0'
+    assert data[14:18] == b'MTrk'
+    assert int.from_bytes(data[18:22],'big') == len(data)-22
+    assert b'\xff\x51\x03\x07\xa1\x20' in data
+    assert data.endswith(b'\xff\x2f\0')
+    assert result.duration_seconds == 3 and result.sha256 == file_sha256(result.path)
+    assert export_midi(spec,tmp_path/'repeat.mid').sha256 == result.sha256
+    assert export_midi(replace(spec,seed=8),tmp_path/'variation.mid').sha256 != result.sha256
+    with pytest.raises(FileExistsError):
+        export_midi(spec,result.path)
+
+
+def test_sfx_and_midi_reject_commands_cancel_and_resource_overflow(tmp_path):
+    with pytest.raises(ValueError,match='Supported'):
+        render_sfx('amovie=http://invalid',tmp_path/'never.wav')
+    with pytest.raises(RenderCancelled):
+        export_midi(MusicSpec(3),tmp_path/'cancel.mid',cancelled=lambda:True)
+    with pytest.raises(ValueError,match='budget'):
+        export_midi(MusicSpec(36000),tmp_path/'budget.mid',max_output_bytes=128)
+    assert not list(tmp_path.iterdir())

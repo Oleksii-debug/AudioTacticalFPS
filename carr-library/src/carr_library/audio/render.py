@@ -147,12 +147,15 @@ def tool_path(name, value=None):
     candidate = bundled or (os.fspath(value) if value is not None else shutil.which(name))
     if not candidate:
         raise RuntimeError(f'{name} is not installed. Configure a reviewed local runtime.')
-    path = Path(candidate).absolute()
+    path = Path(os.path.abspath(candidate))
     # A system-managed executable symlink is legitimate; user content is never
     # passed here by a script plan. Resolve only the configured runtime binary.
     if not path.is_file():
         raise RuntimeError(f'The configured {name} executable is unavailable.')
-    return str(path.resolve(strict=True))
+    # A virtual environment may use a symlink to its base interpreter. Python
+    # needs that lexical executable path to locate pyvenv.cfg and installed
+    # local model packages; resolving it would silently select another runtime.
+    return str(path if name.casefold() == 'python' else path.resolve(strict=True))
 
 
 def file_sha256(path, cancelled=None):
@@ -185,7 +188,8 @@ def _stop(process):
 
 
 def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=None,
-                maximum_log_bytes=2 * 1024 * 1024):
+                maximum_log_bytes=2 * 1024 * 1024, watched_paths=(), max_output_bytes=None,
+                reserve_disk_bytes=0, maximum_staging_files=10000):
     """Run a trusted argv without a shell, with bounded logs and cancellation.
 
     This low-level helper is for reviewed adapters only; it is not an agent tool.
@@ -195,9 +199,47 @@ def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=Non
     check_cancelled(cancelled)
     if timeout_seconds is not None:
         number(timeout_seconds, 'worker timeout', .01, 365 * 86400)
+    if type(maximum_log_bytes) is not int or not 1 <= maximum_log_bytes <= 128*1024**2:
+        raise ValueError('Worker diagnostic allowance must be positive bounded bytes.')
+    if max_output_bytes is not None and (type(max_output_bytes) is not int or max_output_bytes <= 0):
+        raise ValueError('Worker output allowance must be positive bytes.')
+    if type(reserve_disk_bytes) is not int or reserve_disk_bytes < 0:
+        raise ValueError('Worker free-disk reserve must be nonnegative bytes.')
+    if type(maximum_staging_files) is not int or not 1 <= maximum_staging_files <= 1_000_000:
+        raise ValueError('Worker staging file allowance is invalid.')
+    watched = tuple(Path(path) for path in watched_paths)
+    if any(not path.is_absolute() for path in watched):
+        raise ValueError('Watched worker outputs must be absolute local paths.')
+    def check_storage():
+        total, count = 0, 0
+        pending = list(watched)
+        while pending:
+            path = pending.pop()
+            try:
+                info = path.lstat()
+            except FileNotFoundError:
+                continue
+            if stat.S_ISLNK(info.st_mode) or getattr(info,'st_file_attributes',0)&stat.FILE_ATTRIBUTE_REPARSE_POINT:
+                raise RuntimeError('Audio worker output contains a link or reparse point.')
+            if stat.S_ISDIR(info.st_mode):
+                with os.scandir(path) as entries:
+                    for entry in entries:
+                        count += 1
+                        if count > maximum_staging_files:
+                            raise RuntimeError('Audio worker exceeded its staging file budget.')
+                        pending.append(Path(entry.path))
+            elif stat.S_ISREG(info.st_mode):
+                total += info.st_size
+                if max_output_bytes is not None and total > max_output_bytes:
+                    raise RuntimeError('Audio worker exceeded the selected output disk budget.')
+            else:
+                raise RuntimeError('Audio worker output must be an ordinary local file.')
+        if watched and reserve_disk_bytes and shutil.disk_usage(watched[0].parent).free < reserve_disk_bytes:
+            raise OSError('Audio worker stopped to preserve the selected free-disk reserve.')
     if not isinstance(args, (list, tuple)) or not args or any(not isinstance(x, str) or '\x00' in x for x in args):
         raise ValueError('Worker arguments must be an explicit string list.')
     started = time.monotonic()
+    check_storage()
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         options = dict(stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
                        cwd=cwd, env=env, shell=False)
@@ -209,12 +251,14 @@ def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=Non
         try:
             while process.poll() is None:
                 check_cancelled(cancelled)
+                check_storage()
                 if timeout_seconds is not None and time.monotonic() - started > timeout_seconds:
                     raise RuntimeError('Audio worker exceeded the selected time budget.')
                 if any(os.fstat(stream.fileno()).st_size > maximum_log_bytes for stream in (stdout, stderr)):
                     raise RuntimeError('Audio worker exceeded its diagnostic output budget.')
                 time.sleep(.04)
             check_cancelled(cancelled)
+            check_storage()
             if any(os.fstat(stream.fileno()).st_size > maximum_log_bytes for stream in (stdout, stderr)):
                 raise RuntimeError('Audio worker exceeded its diagnostic output budget.')
             stdout.seek(0)
@@ -318,6 +362,7 @@ def _encoder_options(target, *, sample_rate, channels, bitrate_kbps=128):
 def _ffmpeg_base(binary=None, *, informational=False):
     return [tool_path('ffmpeg', binary), '-hide_banner', '-loglevel',
             'info' if informational else 'error', '-nostdin', '-nostats',
+            '-max_alloc', str(256*1024**2),
             '-threads', '2', '-filter_threads', '1', '-filter_complex_threads', '1']
 
 
@@ -403,7 +448,9 @@ def publish_audio(staged, target, *, cancelled=None, ffprobe=None, ffmpeg=None,
     details = dict(metadata or {})
     details.update(measured)
     digest = file_sha256(staged, cancelled)
-    with staged.open('rb') as stream:
+    # Windows CRT _commit/FlushFileBuffers requires a writable handle. This
+    # is our generated staging file; r+b preserves all measured audio bytes.
+    with staged.open('r+b') as stream:
         os.fsync(stream.fileno())
     check_cancelled(cancelled)
     os.link(staged, target)  # same output folder/volume; fails if another file won
@@ -559,7 +606,8 @@ def mix_tracks(tracks, output, *, duration_seconds=None, sample_rate=24000, chan
             args += ['-map_chapters', str(len(prepared))]
         args += [*_encoder_options(target, sample_rate=sample_rate, channels=channels,
                                    bitrate_kbps=bitrate_kbps), '-n', str(staged)]
-        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds)
+        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds,
+                    watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
         _sources_unchanged(sources, cancelled)
         exact = frames if target.suffix.lower() in ('.wav', '.flac', '.aif', '.aiff') else None
         return publish_audio(staged, target, cancelled=cancelled, ffmpeg=ffmpeg, ffprobe=ffprobe,
@@ -609,7 +657,8 @@ def convert_audio(source, output, *, sample_rate=24000, channels=2, effects=(),
             args += ['-map_chapters', '1']
         args += [*_encoder_options(target, sample_rate=sample_rate, channels=channels,
                                    bitrate_kbps=bitrate_kbps), '-n', str(staged)]
-        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds)
+        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds,
+                    watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
         _sources_unchanged({info.path: digest}, cancelled)
         return publish_audio(staged, target, cancelled=cancelled, ffprobe=ffprobe, ffmpeg=ffmpeg,
                              expected_rate=sample_rate, expected_channels=channels,
@@ -679,7 +728,8 @@ def concatenate_audio(paths, output, *, sample_rate=None, channels=None, repeat=
             args += ['-map_chapters', '1']
         args += [*_encoder_options(target, sample_rate=rate, channels=count, bitrate_kbps=bitrate_kbps),
                  '-n', str(staged)]
-        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds)
+        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds,
+                    watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
         _sources_unchanged(sources, cancelled)
         exact = frames if target.suffix.lower() in ('.wav', '.flac', '.aif', '.aiff') else None
         return publish_audio(staged, target, cancelled=cancelled, ffprobe=ffprobe, ffmpeg=ffmpeg,

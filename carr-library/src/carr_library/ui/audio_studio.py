@@ -33,7 +33,7 @@ def prepare_reading_studio(root,page,registry=None):
 class StudioController:
     def __init__(self, root, registry=None, project_id=None, draft_id=None):
         self.store = ProjectStore(root)
-        self.registry = registry or VoiceRegistry()
+        self.registry = registry or VoiceRegistry.for_library(root)
         self.voices = self.registry.list_voices()
         self.project = self.store.load(project_id) if project_id else None
         self.source = self.project.source if self.project else {}
@@ -517,6 +517,22 @@ def install_audio_studio(frame):
     frame.Bind(wx.EVT_MENU,lambda event:choose_project(frame,event),opened)
     drafts=menu.Append(wx.ID_ANY,'Recover an unsaved &draft...')
     frame.Bind(wx.EVT_MENU,lambda event:choose_draft(frame),drafts)
+    voices=menu.Append(wx.ID_ANY,'Local &voice engines...')
+    def configure_voices(event):
+        from .voice_settings import show_voice_settings
+        try:
+            show_voice_settings(frame,frame.library.root)
+        except Exception as exc:
+            frame.report('Local voice settings could not be opened: '+str(exc))
+    frame.Bind(wx.EVT_MENU,configure_voices,voices)
+    music=menu.Append(wx.ID_ANY,'Local &music engines and sample...')
+    def configure_music(event):
+        from .music_settings import show_music_settings
+        try:
+            show_music_settings(frame,frame.library.root)
+        except Exception as exc:
+            frame.report('Local music settings could not be opened: '+str(exc))
+    frame.Bind(wx.EVT_MENU,configure_music,music)
     frame.menu_bar.Insert(max(0,frame.menu_bar.GetMenuCount()-1),menu,'Audio &Studio')
 
 

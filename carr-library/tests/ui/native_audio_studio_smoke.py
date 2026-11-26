@@ -99,8 +99,17 @@ def main():
                         form.apply_voice()
                     assert len(controller.project.roles)==3
                     director=ProductionDirector(library.root,registry=controller.registry)
-                    form.start(lambda:director.render(controller.project.id,root/'actual output',
-                        cancelled=form.cancelled.is_set,progress=form.progress))
+                    def render_with_diagnostic():
+                        try:
+                            return director.render(controller.project.id,root/'actual output',
+                                cancelled=form.cancelled.is_set,progress=form.progress)
+                        except Exception:
+                            # The production UI reports a short user-facing
+                            # error; this synthetic CI probe retains its real
+                            # worker traceback to identify the failing layer.
+                            print('NATIVE_AUDIO_RENDER_TRACEBACK\n'+traceback.format_exc(),flush=True)
+                            raise
+                    form.start(render_with_diagnostic)
                     assert form.busy and not form.script.IsEnabled() and form.stop.IsEnabled()
                     pump(lambda:not form.busy)
                     assert form.result and form.result['state']=='complete',form.status.GetValue()

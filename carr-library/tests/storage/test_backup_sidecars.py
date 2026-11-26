@@ -1,5 +1,5 @@
 """Real full-library recovery of reading, audio and durable import sidecars."""
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from hashlib import sha256
 import json
 import os
@@ -17,6 +17,7 @@ from carr_library.audio.director import ProductionDirector
 from carr_library.reader.reading_state import ReadingLocation, ReadingState
 from carr_library.assistant.providers import ConnectionStore, ProviderProfile
 from carr_library.assistant.workflows import LocalAssistant, Scope, Step, WorkflowPlan
+from carr_library.ingest.restore import RestoreError
 
 
 @pytest.fixture
@@ -162,6 +163,41 @@ def test_pending_import_retained_original_and_root_binding_survive_restore(libra
     assert hit.edition_id == row['edition_id']
 
 
+@pytest.mark.parametrize('extension,payload', [
+    ('.html', b'<!doctype html><html><body><p>Pending restored manuscript.</p></body></html>'),
+    ('.md', b'# Pending restored manuscript.\r\nExact notation **kept**.\r\n'),
+])
+def test_pending_extended_source_resumes_from_backed_up_original(library, tmp_path, extension, payload):
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest.worker import prepare_request
+
+    app, workspace = library
+    original = tmp_path / ('queued' + extension)
+    original.write_bytes(payload)
+    batch = app.plan_import_batch(workspace, [original])
+    row, = batch['rows']
+    metadata = dict(title=row['title'], authors=[], language=None, edition=None,
+        volume=None, collections=[], work_id=row['work_id'], edition_id=row['edition_id'])
+    request = prepare_request(app.root, workspace, original, metadata, Config(),
+        request_id=row['request_id'], expected_manifest=row['manifest'])
+    with pytest.raises(InterruptedError, match='cancelled'):
+        app._import_file(workspace, original, **metadata, _request_id=request['request_id'],
+            _expected_manifest=row['manifest'], cancelled=lambda: True)
+    digest = sha256(payload).hexdigest()
+    assert app.assets.resolve(digest).read_bytes() == payload
+    assert not app.search(workspace, 'manuscript')
+    checksum = create_backup(app, tmp_path / 'backup')
+    original.unlink()
+    restored = LibraryApp(restore_backup(tmp_path / 'backup', tmp_path / 'restored', checksum))
+    assert restored.assets.resolve(digest).read_bytes() == payload
+    result = restored.resume_import(workspace, request['request_id'])
+    assert result['state'] == 'complete' and result['isolated'] is True and result['verified'] is False
+    hit, = restored.search(workspace, 'manuscript')
+    assert hit.edition_id == row['edition_id']
+    with pytest.raises(ValueError, match='unverified'):
+        restored.copy(workspace, hit.ref, hit.revision, 'quote')
+
+
 @pytest.mark.parametrize('damage', ('bytes', 'extra', 'missing', 'symlink', 'traversal', 'secret'))
 def test_invalid_sidecar_bundle_never_publishes_a_restore(library, tmp_path, damage):
     app, workspace = library
@@ -292,3 +328,100 @@ def test_unsaved_studio_draft_and_invalid_script_metadata_survive_backup(library
     assert copies.new_drafts() == (draft,)
     assert copies.new_drafts()[0]['language'] == 'uk'
     assert copies.new_drafts()[0]['format'] == 'flac'
+
+
+def test_keyboard_and_ordered_ocr_presets_survive_full_restore(library, tmp_path):
+    from carr_library.keybindings import Command, KeybindingStore
+    from carr_library.extract.ocr_languages import store_preset, load_presets
+    from carr_library.extract.page_ocr import Config
+
+    app, _ = library
+    KeybindingStore(app.root).save((Command('File/Save', 'Save', 'Ctrl+S'),),
+                                   {'File/Save': 'Ctrl+Alt+S'})
+    config = Config(languages='ukr+eng+script/Latin', orientation=True)
+    store_preset(app.root, 'Manuscripts', config)
+    checksum = create_backup(app, tmp_path / 'backup')
+    restored = restore_backup(tmp_path / 'backup', tmp_path / 'restored', checksum)
+    assert KeybindingStore(restored).load() == {'File/Save': 'Ctrl+Alt+S'}
+    assert load_presets(restored) == load_presets(app.root)
+    assert load_presets(restored)[0]['languages'] == 'ukr+eng+script/Latin'
+
+
+def test_music_registration_restores_without_touching_external_assets(library, tmp_path):
+    from carr_library.audio.music_settings import MusicSettingsStore, load_music_options
+
+    app, _ = library
+    store = MusicSettingsStore(app.root)
+    record = store.read()
+    record['fluidsynth'] = dict(soundfont=str(tmp_path / 'absent.sf2'), soundfont_sha256='a' * 64,
+        soundfont_license='Synthetic registration fixture; no distributed SoundFont.',
+        fluidsynth_library=str(tmp_path / 'absent.dll'), fluidsynth_sha256='b' * 64)
+    # This fixture exercises state transfer, not engine or asset registration.
+    saved = store.save(record, expected_revision=0, check_files=False)
+    checksum = create_backup(app, tmp_path / 'backup')
+    restored = restore_backup(tmp_path / 'backup', tmp_path / 'restored', checksum)
+    assert MusicSettingsStore(restored).read() == saved
+    with pytest.raises((ValueError, OSError)):
+        load_music_options(restored)
+    assert not (tmp_path / 'absent.sf2').exists()
+
+
+@pytest.mark.parametrize('field,value', [('revision', 'missing'), ('edition', 'other-edition'),
+    ('asset_sha256', 'b' * 64), ('text_sha256', 'b' * 64), ('index', 999)])
+def test_forged_reading_binding_cannot_be_backed_up(library, tmp_path, field, value):
+    app, workspace = library
+    location, _ = reading(app, workspace)
+    ReadingState(app.root).remember(replace(location, **{field: value}))
+    with pytest.raises(RestoreError, match='exact saved source'):
+        create_backup(app, tmp_path / 'backup')
+    assert not (tmp_path / 'backup').exists()
+
+
+def test_rehashed_reading_sidecar_forgery_fails_before_restore_publication(library, tmp_path):
+    app, workspace = library
+    reading(app, workspace)
+    backup = tmp_path / 'backup'
+    create_backup(app, backup)
+    path = backup / 'sidecars' / 'reading-state.json'
+    value = json.loads(path.read_text())
+    value['positions'][0]['location']['revision'] = 'missing-revision'
+    raw = json.dumps(value).encode('utf-8')
+    path.write_bytes(raw)
+    manifest_path = backup / 'manifest.json'
+    manifest = json.loads(manifest_path.read_text())
+    row = next(row for row in manifest['sidecars']['files'] if row['path'] == 'reading-state.json')
+    row.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    sealed = json.dumps(manifest).encode('utf-8')
+    manifest_path.write_bytes(sealed)
+    with pytest.raises(RestoreError, match='exact saved source'):
+        restore_backup(backup, tmp_path / 'restored', sha256(sealed).hexdigest())
+    assert not (tmp_path / 'restored').exists()
+
+
+def test_historical_archived_reading_and_studio_sources_keep_exact_binding(library, tmp_path):
+    app, workspace = library
+    location, _ = reading(app, workspace)
+    source = asdict(location)
+    source.pop('asset_sha256')
+    saved = ProjectStore(app.root).create(parse_script('Original railway quotation.',
+        ['local-voice'], directives=False, source=source))
+    current = app.update_metadata(workspace, location.edition, title='New metadata revision')
+    assert current != location.revision
+    app.archive_workspace(workspace)
+    checksum = create_backup(app, tmp_path / 'backup')
+    root = restore_backup(tmp_path / 'backup', tmp_path / 'restored', checksum)
+    assert ReadingState(root).resume(workspace, location.edition) == location
+    assert ProjectStore(root).load(saved.id).source == source
+
+
+def test_studio_source_must_belong_to_its_exact_saved_revision(library, tmp_path):
+    app, workspace = library
+    location, _ = reading(app, workspace)
+    source = asdict(location)
+    source.pop('asset_sha256')
+    source['workspace'] = app.create_workspace('Different library')
+    ProjectStore(app.root).create(parse_script('Original railway quotation.',
+        ['local-voice'], directives=False, source=source))
+    with pytest.raises(RestoreError, match='exact saved source'):
+        create_backup(app, tmp_path / 'backup')
+    assert not (tmp_path / 'backup').exists()

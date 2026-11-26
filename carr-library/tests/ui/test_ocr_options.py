@@ -5,34 +5,34 @@ from types import SimpleNamespace
 import pytest
 
 from carr_library.ui.ocr_options import choose_ocr_config
+from carr_library.ui import ocr_language_dialog
+from carr_library.extract.page_ocr import Config
 
 
-@pytest.mark.parametrize('choice,expected', [(0, 'eng'), (1, 'ukr'), (2, 'slk'), (3, 'eng+ukr+slk')])
-def test_native_dialog_preserves_language_selection(monkeypatch, choice, expected):
+@pytest.mark.parametrize('expected', ['eng', 'ukr', 'slk', 'eng+ukr+slk', 'script/Latin+fra'])
+def test_dialog_adapter_preserves_complete_model_selection(monkeypatch, expected):
     observed = {}
     class Dialog:
-        def __init__(self, parent, message, title, labels):
-            observed.update(message=message, title=title, labels=labels)
-        def SetSelection(self, index):
-            observed['initial'] = index
+        result = Config(languages=expected, dpi=200, timeout=45, orientation=True)
         def ShowModal(self):
             return 1
-        def GetSelection(self):
-            return choice
         def Destroy(self):
             observed['destroyed'] = True
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(SingleChoiceDialog=Dialog, ID_OK=1))
+    def create(parent, initial, *, preset_root):
+        observed.update(parent=parent, initial=initial, root=preset_root)
+        return Dialog()
+    monkeypatch.setattr(ocr_language_dialog, 'create_ocr_dialog', create)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1))
     result = choose_ocr_config(None, ['book.PDF'])
-    assert result.languages == expected
-    assert observed['title'] == 'Text recognition languages'
-    assert observed['destroyed'] and observed['initial'] == 0
+    assert result == Dialog.result
+    assert observed['destroyed'] and observed['initial'] is None
 
 
 def test_cancel_prevents_import_and_closes_dialog(monkeypatch):
     observed = []
-    dialog = SimpleNamespace(SetSelection=lambda index: None, ShowModal=lambda: 0,
-                             Destroy=lambda: observed.append('closed'))
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(SingleChoiceDialog=lambda *args: dialog, ID_OK=1))
+    dialog = SimpleNamespace(ShowModal=lambda: 0, result=Config(), Destroy=lambda: observed.append('closed'))
+    monkeypatch.setattr(ocr_language_dialog, 'create_ocr_dialog', lambda *args, **kwargs: dialog)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1))
     assert choose_ocr_config(None, ['scan.pdf']) is None
     assert observed == ['closed']
 

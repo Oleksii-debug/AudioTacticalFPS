@@ -63,10 +63,13 @@ class ProductionDirector:
         self.store = ProjectStore(root)
         if registry is None:
             from .voices import VoiceRegistry
-            registry = VoiceRegistry()
+            registry = VoiceRegistry.for_library(root)
         self.registry = registry
         # Trusted application configuration, never read from an imported script.
-        self.music_options = dict(music_options or {})
+        if music_options is None:
+            from .music_settings import load_music_options
+            music_options = load_music_options(root)
+        self.music_options = dict(music_options)
 
     def _job_path(self, project_id, job_id):
         identity(job_id, 'job identity')

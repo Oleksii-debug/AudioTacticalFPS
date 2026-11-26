@@ -20,6 +20,7 @@ from filelock import FileLock, Timeout
 
 from .ingest.bundle import _unique_object
 from .ingest.restore import RestoreError
+from .extract.document_formats import MIME_SUFFIXES
 
 
 DIRECTORY = 'sidecars'
@@ -31,11 +32,15 @@ MAX_JOURNAL_BYTES = 512 * 1024**2
 _ID = r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}'
 _HASH = r'[0-9a-f]{64}'
 _REQUEST = r'[0-9a-f]{32}'
+_ORIGINAL_EXTENSIONS = '|'.join(sorted(re.escape(value[1:]) for value in set(MIME_SUFFIXES.values())))
 _PATHS = (
     r'reading-state\.json', r'connections\.json', r'imports\.sqlite',
+    r'keybindings\.json', r'ocr-language-presets\.json',
     rf'import-batches/{_REQUEST}\.json',
     rf'import-requests/(?:reviews/)?{_REQUEST}\.json',
-    rf'pending-originals/{_HASH}\.(?:txt|pdf|epub|docx)',
+    rf'pending-originals/{_HASH}\.(?:{_ORIGINAL_EXTENSIONS})',
+    r'studio/music-settings\.json',
+    r'studio/voice-settings\.json',
     rf'studio/projects/{_ID}/(?:project|draft)\.json',
     rf'studio/projects/{_ID}/revisions/[0-9]{{8,}}\.json',
     rf'studio/projects/{_ID}/cache/{_HASH}\.(?:json|wav)',
@@ -246,9 +251,21 @@ def _validate_json(relative, value, source_root):
     if relative == 'reading-state.json':
         from .reader.reading_state import _decode
         _decode(json.dumps(value, ensure_ascii=False))
+    elif relative == 'keybindings.json':
+        from .keybindings import decode_preferences
+        decode_preferences(json.dumps(value, ensure_ascii=False).encode('utf-8'))
+    elif relative == 'ocr-language-presets.json':
+        from .extract.ocr_languages import validate_presets_bytes
+        validate_presets_bytes(json.dumps(value, ensure_ascii=False).encode('utf-8'))
     elif relative == 'connections.json':
         from .assistant.providers import validate_profiles_document
         validate_profiles_document(value)
+    elif relative == 'studio/music-settings.json':
+        from .audio.music_settings import validate_music_settings
+        validate_music_settings(value, check_files=False)
+    elif relative == 'studio/voice-settings.json':
+        from .audio.voice_settings import validate_voice_settings_document
+        validate_voice_settings_document(value)
     elif relative.startswith('import-batches/'):
         from .ingest.batches import ImportBatchStore
         # _validate uses only the string binding. Preserve the original path
@@ -308,7 +325,50 @@ def _validate_json(relative, value, source_root):
         validate_ledger_document(value, plan_id=PurePosixPath(relative).stem)
 
 
-def _verify_tree(stage, manifest):
+def _validate_source(db, source, *, asset=None):
+    """Bind exact saved locations to the sealed database snapshot.
+
+    Adopted from PR98's checked backup without consulting current revisions:
+    an archived workspace or historical revision remains valid backup content.
+    Studio links predate an explicit asset field; their sealed revision binds
+    the immutable catalog asset before its independent inventory is checked.
+    """
+    keys = {'workspace', 'edition', 'revision', 'kind', 'index', 'text_sha256'}
+    if (type(source) is not dict or set(source) != keys
+            or source['kind'] not in ('physical_page', 'logical_segment')
+            or type(source['index']) is not int or source['index'] < 1):
+        raise RestoreError('invalid exact source link in backup')
+    row = db.execute('''SELECT r.asset FROM revision r
+        JOIN sealed s ON s.revision=r.id
+        JOIN page p ON p.revision=r.id
+        JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition
+            AND e.asset=r.asset
+        WHERE r.workspace=? AND r.edition=? AND r.id=? AND p.digest=?
+            AND ((?='physical_page' AND p.physical=?) OR
+                 (?='logical_segment' AND p.physical IS NULL AND p.ordinal=?))''',
+        (source['workspace'], source['edition'], source['revision'], source['text_sha256'],
+         source['kind'], source['index'], source['kind'], source['index'])).fetchone()
+    if row is None or (asset is not None and row[0] != asset):
+        raise RestoreError('reading state or studio source does not match its exact saved source')
+
+
+def _verify_sources(db, relative, value):
+    if relative == 'reading-state.json':
+        from dataclasses import asdict
+        from .reader.reading_state import snapshot_locations
+        for location in snapshot_locations(json.dumps(value, ensure_ascii=False).encode('utf-8')):
+            source = asdict(location)
+            asset = source.pop('asset_sha256')
+            _validate_source(db, source, asset=asset)
+    elif relative.startswith('studio/'):
+        source = value.get('source', {})
+        if '/jobs/' in relative:
+            source = value.get('project', {}).get('source', {})
+        if source:
+            _validate_source(db, source)
+
+
+def _verify_tree(stage, manifest, *, db):
     validate_manifest(manifest)
     actual = dict(_walk(stage))
     if set(actual) != {row['path'] for row in manifest['files']}:
@@ -320,6 +380,7 @@ def _verify_tree(stage, manifest):
         if path.suffix == '.json':
             value = _read_json(path)
             _validate_json(row['path'], value, manifest['source_root'])
+            _verify_sources(db, row['path'], value)
             if '/cache/' in row['path']:
                 paired = row['path'][:-5] + '.wav'
                 if paired in actual and value['sha256'] != _file_record(actual[paired], paired)['sha256']:
@@ -337,11 +398,11 @@ def _verify_tree(stage, manifest):
         raise RestoreError('import review has no matching request')
 
 
-def snapshot(app, stage, registered_assets):
+def snapshot(app, stage, registered_assets, *, db):
     """Return None for a legacy-shaped library; otherwise seal all accepted state."""
     root, target = app.root, stage / DIRECTORY
     selected = []
-    for name in ('reading-state.json', 'connections.json'):
+    for name in ('reading-state.json', 'connections.json', 'keybindings.json', 'ocr-language-presets.json'):
         path = root / name
         if os.path.lexists(path):
             selected.append((name, path))
@@ -393,11 +454,11 @@ def snapshot(app, stage, registered_assets):
         size, checksum = _copy(source, target / relative)
         records.append(dict(path=relative, size_bytes=size, sha256=checksum))
     manifest = dict(version=1, source_root=str(root), files=sorted(records, key=lambda row: row['path']))
-    _verify_tree(target, manifest)
+    _verify_tree(target, manifest, db=db)
     return manifest
 
 
-def restore(source, stage, manifest, destination):
+def restore(source, stage, manifest, destination, *, db):
     """Verify source bytes, then apply only explicit restore-safe state changes."""
     validate_manifest(manifest)
     if dict(_walk(source)).keys() != {row['path'] for row in manifest['files']}:
@@ -406,7 +467,7 @@ def restore(source, stage, manifest, destination):
     target.mkdir(mode=0o700)
     for row in manifest['files']:
         _copy(source / row['path'], target / row['path'], expected=row)
-    _verify_tree(target, manifest)
+    _verify_tree(target, manifest, db=db)
     rebound = []
     for row in manifest['files']:
         relative, path = row['path'], target / row['path']
@@ -420,6 +481,9 @@ def restore(source, stage, manifest, destination):
             elif relative == 'connections.json':
                 for profile in value['profiles']:
                     profile['credential_ref'] = None
+                changed = True
+            elif relative == 'studio/voice-settings.json':
+                value['restored'] = True
                 changed = True
             elif relative.startswith('studio/') and '/jobs/' in relative:
                 value.update(restore_requires_new_output=True,
@@ -437,7 +501,7 @@ def restore(source, stage, manifest, destination):
                 _write_json(path, value)
         rebound.append(_file_record(path, relative) if changed else row)
     updated = dict(version=1, source_root=str(destination), files=rebound)
-    _verify_tree(target, updated)
+    _verify_tree(target, updated, db=db)
     return updated
 
 

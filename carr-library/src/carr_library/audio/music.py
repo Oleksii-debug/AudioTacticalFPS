@@ -15,6 +15,7 @@ from pathlib import Path
 import random
 import re
 import stat
+import struct
 import sys
 import tempfile
 
@@ -116,7 +117,8 @@ def _procedural(spec, target, *, sample_rate, channels, cancelled, ffmpeg, ffpro
                 '-af', filters, '-map_metadata', '-1',
                 *_encoder_options(target, sample_rate=sample_rate, channels=channels),
                 '-n', str(staged)]
-        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds)
+        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds,
+                    watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
         return publish_audio(staged, target, cancelled=cancelled, ffmpeg=ffmpeg, ffprobe=ffprobe,
                              expected_rate=sample_rate, expected_channels=channels,
                              expected_frames=frames if target.suffix.lower() in ('.wav', '.flac') else None,
@@ -271,7 +273,8 @@ def _musicgen(spec, target, *, config, sample_rate, channels, cancelled, ffmpeg,
         run_process([python, '-I', str(Path(__file__).with_name('musicgen_worker.py')),
                      str(request_file)], cancelled=cancelled,
                     timeout_seconds=timeout_seconds if timeout_seconds is not None else config.timeout_seconds,
-                    env=_worker_environment())
+                    env=_worker_environment(),watched_paths=(stage,),max_output_bytes=max_output_bytes,
+                    reserve_disk_bytes=1024**2)
         if not response.is_file() or response.stat().st_size > 65536:
             raise RuntimeError('MusicGen worker did not provide a valid output report.')
         report = json.loads(response.read_text(encoding='utf-8'))
@@ -320,7 +323,8 @@ def _fluidsynth(spec, target, *, soundfont, soundfont_license, fluidsynth_librar
         request_file.write_text(json.dumps(request, ensure_ascii=False), encoding='utf-8')
         run_process([sys.executable, '-I', str(Path(__file__).with_name('musicgen_worker.py')),
                      str(request_file)], cancelled=cancelled, timeout_seconds=timeout_seconds,
-                    env=_worker_environment())
+                    env=_worker_environment(),watched_paths=(stage,),max_output_bytes=max_output_bytes,
+                    reserve_disk_bytes=1024**2)
         if not raw.is_file() or raw.stat().st_size != frames * 4 or file_sha256(sf2, cancelled) != digest:
             raise RuntimeError('FluidSynth output length or SoundFont identity failed verification.')
         report = json.loads(response.read_text(encoding='utf-8'))
@@ -330,7 +334,8 @@ def _fluidsynth(spec, target, *, soundfont, soundfont_license, fluidsynth_librar
                      '-ar', str(sample_rate), '-ac', '2', '-i', str(raw),
                      '-af', f'afade=t=in:d={fade:.9f},afade=t=out:st={spec.duration_seconds-fade:.9f}:d={fade:.9f},alimiter=limit=0.95:level=0:latency=1',
                      *_encoder_options(target, sample_rate=sample_rate, channels=channels),
-                     '-n', str(staged)], cancelled=cancelled, timeout_seconds=timeout_seconds)
+                     '-n', str(staged)], cancelled=cancelled, timeout_seconds=timeout_seconds,
+                    watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
         return publish_audio(staged, target, cancelled=cancelled, ffprobe=ffprobe, ffmpeg=ffmpeg,
                              expected_frames=frames if target.suffix.lower() in ('.wav', '.flac') else None,
                              expected_rate=sample_rate, expected_channels=channels,
@@ -361,3 +366,119 @@ def generate_music(spec, output, *, sample_rate=24000, channels=2, cancelled=Non
         return _fluidsynth(spec, target, soundfont=soundfont, soundfont_license=soundfont_license,
                           fluidsynth_library=fluidsynth_library, **common)
     return _musicgen(spec, target, config=musicgen_config, **common)
+
+
+@dataclass(frozen=True)
+class MidiResult:
+    path: Path
+    sha256: str
+    size_bytes: int
+    duration_seconds: float
+    tempo_bpm: float
+
+    def as_dict(self):
+        return dict(path=str(self.path), sha256=self.sha256, size_bytes=self.size_bytes,
+                    duration_seconds=self.duration_seconds, tempo_bpm=self.tempo_bpm,
+                    operation='symbolic_midi_export', original_neural_generation=False)
+
+
+def _midi_delta(value):
+    if type(value) is not int or not 0 <= value <= 0x0FFFFFFF:
+        raise ValueError('MIDI event spacing exceeds the standard variable-length range.')
+    result = [value & 0x7f]
+    while value >> 7:
+        value >>= 7
+        result.insert(0, (value & 0x7f) | 0x80)
+    return bytes(result)
+
+
+def export_midi(spec, output, *, cancelled=None, max_output_bytes=32*1024**2):
+    """Stream a symbolic motif as standard MIDI, keeping one beat in memory.
+
+    Adapted from the bounded MIDI writer reviewed in project PR103 at fc84a791.
+    This exports notes, not a neural soundtrack or a FluidSynth audio recording.
+    """
+    if not isinstance(spec, MusicSpec):
+        raise ValueError('MIDI export requires a typed MusicSpec.')
+    if type(max_output_bytes) is not int or not 128 <= max_output_bytes <= 0xFFFFFFFF:
+        raise ValueError('Select an explicit MIDI file budget between 128 bytes and 4 GiB.')
+    target = output_path(output)
+    if target.suffix.lower() not in ('.mid', '.midi'):
+        raise ValueError('Choose a new .mid or .midi file for symbolic music.')
+    check_cancelled(cancelled)
+    root, melody, minor = _note_sequence(spec)
+    bass = [root+step-12 for step in (0, 5, 3 if minor else 4, 7)]
+    ticks = 480
+    total_ticks = round(spec.duration_seconds * spec.tempo_bpm/60*ticks)
+    beats = math.ceil(total_ticks/ticks)
+    if beats*18 + 64 > max_output_bytes:
+        raise ValueError('Symbolic composition exceeds the selected MIDI storage budget.')
+    with tempfile.TemporaryDirectory(prefix='.carr-midi-export-', dir=target.parent) as directory:
+        staged = Path(directory)/'score.mid'
+        with staged.open('xb') as stream:
+            stream.write(b'MThd'+struct.pack('>IHHH',6,0,1,ticks))
+            stream.write(b'MTrk\0\0\0\0')
+            start = stream.tell()
+            stream.write(b'\0\xff\x51\x03'+round(60_000_000/spec.tempo_bpm).to_bytes(3,'big'))
+            stream.write(b'\0\xff\x58\x04\x04\x02\x18\x08\0\xc0\x0b\0\xc1\x20')
+            previous = 0
+            for index in range(beats):
+                check_cancelled(cancelled)
+                begin, end = index*ticks, min(total_ticks,(index+1)*ticks)
+                notes = ((0,melody[index % len(melody)],72),(1,bass[(index//4)%len(bass)],55))
+                for channel, pitch, velocity in notes:
+                    stream.write(_midi_delta(begin-previous)+bytes((0x90+channel,pitch,velocity)))
+                    previous = begin
+                release = min(end,begin+round(ticks*.85))
+                for channel,pitch,_ in notes:
+                    stream.write(_midi_delta(release-previous)+bytes((0x80+channel,pitch,0)))
+                    previous = release
+                if stream.tell() > max_output_bytes:
+                    raise ValueError('Symbolic composition exceeded its MIDI file budget.')
+            stream.write(_midi_delta(total_ticks-previous)+b'\xff\x2f\0')
+            length = stream.tell()-start
+            stream.seek(start-4)
+            stream.write(struct.pack('>I',length))
+            stream.flush()
+            os.fsync(stream.fileno())
+        checksum = file_sha256(staged,cancelled)
+        check_cancelled(cancelled)
+        os.link(staged,target)
+    return MidiResult(target,checksum,target.stat().st_size,total_ticks/ticks*60/spec.tempo_bpm,spec.tempo_bpm)
+
+
+def render_sfx(name, output, *, duration_seconds=1, seed=0, sample_rate=24000, channels=2,
+               cancelled=None, ffmpeg=None, ffprobe=None, max_output_bytes=None, timeout_seconds=None):
+    """Generate a named procedural cue, clearly labelled as synthesized audio."""
+    if name not in ('door','click','chime','noise'):
+        raise ValueError('Supported procedural sound cues: door, click, chime and noise.')
+    if type(seed) is not int or not 0 <= seed <= 2**32-1:
+        raise ValueError('Sound cue seed must be a nonnegative 32-bit integer.')
+    _settings(sample_rate,channels)
+    frames = _frames(duration_seconds,sample_rate)
+    duration = frames/sample_rate
+    target = output_path(output)
+    estimate = _disk_budget(target,frames,sample_rate,channels,max_output_bytes)
+    if name in ('noise','door'):
+        color, amplitude = ('pink',.2) if name == 'noise' else ('brown',.6)
+        source = f'anoisesrc=c={color}:r={sample_rate}:a={amplitude}:d={duration:.9f}:s={seed}'
+        if name == 'door':
+            source += f',lowpass=f=500,afade=t=out:st=0:d={min(duration,.4):.9f}'
+    else:
+        frequency, envelope = (1700,50) if name == 'click' else (880,5)
+        expression = f'.35*sin(2*PI*{frequency}*t)*exp(-{envelope}*t)'
+        if name == 'chime':
+            expression += '+.12*sin(2*PI*1320*t)*exp(-4*t)'
+        source = f"aevalsrc=exprs='{expression}':s={sample_rate}:d={duration:.9f}"
+    source += f',aformat=channel_layouts=stereo,alimiter=limit=.9:level=0:latency=1,apad=whole_len={frames},atrim=end_sample={frames}[out]'
+    with tempfile.TemporaryDirectory(prefix='.carr-sfx-',dir=target.parent) as directory:
+        staged = Path(directory)/('cue'+target.suffix.lower())
+        run_process([*_ffmpeg_base(ffmpeg),'-filter_complex',source,'-map','[out]',
+                     *_encoder_options(target,sample_rate=sample_rate,channels=channels),'-n',str(staged)],
+                    cancelled=cancelled,timeout_seconds=timeout_seconds,
+                    watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
+        return publish_audio(staged,target,cancelled=cancelled,ffmpeg=ffmpeg,ffprobe=ffprobe,
+                             expected_rate=sample_rate,expected_channels=channels,
+                             expected_frames=frames if target.suffix.lower() in ('.wav','.flac') else None,
+                             metadata=dict(operation='procedural_sfx',sound=name,seed=seed,
+                                           original_neural_generation=False,estimated_pcm_bytes=estimate))

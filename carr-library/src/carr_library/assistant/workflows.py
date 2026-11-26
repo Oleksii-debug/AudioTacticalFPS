@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 from uuid import uuid4
 
@@ -29,6 +29,21 @@ TOOLS = {
     'audio.render': ({'project_id':str,'output':str}, False),
     'audio.jobs': ({'project_id':str}, True),
 }
+
+
+def _local_path(value):
+    """Reject remote/device/stream syntax before any filesystem access."""
+    try:
+        raw=os.fspath(value)
+    except TypeError as exc:
+        raise ValueError('Select an explicit local filesystem path.') from exc
+    if (not isinstance(raw,str) or not raw or '\x00' in raw or '://' in raw
+            or raw.startswith(('\\\\','//'))):
+        raise ValueError('Assistant paths must be local; network and device paths are not permitted.')
+    drive=PureWindowsPath(raw).drive
+    if ':' in raw[len(drive):]:
+        raise ValueError('Assistant paths cannot name alternate data streams.')
+    return Path(raw)
 
 
 @dataclass(frozen=True)
@@ -111,7 +126,7 @@ class Scope:
         if len(self.audio_projects)>10000 or len(set(self.audio_projects))!=len(self.audio_projects):
             raise ValueError('Select a bounded set of distinct audio projects.')
         for path in (*self.input_roots,*((self.output_root,) if self.output_root is not None else ())):
-            path=Path(path)
+            path=_local_path(path)
             if not path.is_absolute():
                 raise ValueError('Assistant directories must be explicit absolute selections.')
             plain(path,directory=True)
@@ -174,7 +189,7 @@ class LocalAssistant:
             pass
 
     def _input(self,value):
-        path=Path(value)
+        path=_local_path(value)
         if not path.is_absolute():
             raise ValueError('Select an absolute local input folder.')
         plain(path,directory=True)
@@ -188,7 +203,7 @@ class LocalAssistant:
     def _output(self,value):
         if self.scope.output_root is None:
             raise ValueError('Select an output folder before allowing file creation.')
-        path=Path(value)
+        path=_local_path(value)
         if not path.is_absolute() or path.name in ('','.','..'):
             raise ValueError('Output must be a named absolute local destination.')
         plain(path.parent,directory=True)
@@ -347,7 +362,7 @@ class LocalAssistant:
             return {'jobs':jobs}
         if self.registry is None:
             from ..audio.voices import VoiceRegistry
-            self.registry=VoiceRegistry()
+            self.registry=VoiceRegistry.for_library(self.library.root)
         if tool=='voices.list':
             return {'voices':[asdict(voice) for voice in self.registry.list_voices()]}
         if tool=='audio.create_project':

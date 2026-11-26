@@ -7,6 +7,8 @@ import threading
 from uuid import uuid4
 
 from ..assistant.workflows import LocalAssistant, Scope, guided_goal, WorkflowPlan
+from ..assistant.planner import available_local_planners, propose_local_plan
+from .provider_settings import profile_label
 
 
 class AssistantDialog:
@@ -14,6 +16,12 @@ class AssistantDialog:
         import wx
         self.wx,self.frame=wx,frame
         self.library=frame.library
+        self.planner_load_error=None
+        try:
+            self.planner_profiles=available_local_planners(self.library.root)
+        except Exception:
+            self.planner_profiles=()
+            self.planner_load_error='Connection settings could not be read. The deterministic guide remains available.'
         try:
             self.workspace=frame._workspace()
         except ValueError:
@@ -33,6 +41,17 @@ class AssistantDialog:
         intro.SetName('Assistant capabilities and local processing scope')
         intro.SetMinSize((-1,75))
         layout.Add(intro,0,wx.EXPAND|wx.ALL,8)
+        layout.Add(wx.StaticText(self.dialog,label='Plan preparation'),0,wx.LEFT|wx.RIGHT,8)
+        self.planner_choice=wx.Choice(self.dialog,choices=['Deterministic guide — no model connection']+
+                                      [profile_label(profile) for profile in self.planner_profiles])
+        self.planner_choice.SetName('Plan preparation: deterministic guide or explicitly selected local chat profile')
+        self.planner_choice.SetSelection(0)
+        self.planner_choice.Bind(wx.EVT_CHOICE,self.planner_changed)
+        layout.Add(self.planner_choice,0,wx.EXPAND|wx.ALL,8)
+        self.planner_details=wx.TextCtrl(self.dialog,style=wx.TE_MULTILINE|wx.TE_READONLY)
+        self.planner_details.SetName('Selected local planner destination and transmitted data scope')
+        self.planner_details.SetMinSize((-1,65))
+        layout.Add(self.planner_details,0,wx.EXPAND|wx.LEFT|wx.RIGHT,8)
         layout.Add(wx.StaticText(self.dialog,label='Goal, for example: озвуч сценарій; or find railway'),0,wx.ALL,6)
         self.goal=wx.TextCtrl(self.dialog)
         self.goal.SetName('Goal for local assistant')
@@ -73,10 +92,31 @@ class AssistantDialog:
         layout.Add(self.status,0,wx.EXPAND|wx.ALL,8)
         self.dialog.SetSizer(layout)
         self.dialog.Bind(wx.EVT_CLOSE,self.close)
-        self.controls=(build,choose,self.goal,self.script,self.language)
+        self.controls=(build,choose,self.goal,self.script,self.language,self.planner_choice)
         for control in (self.goal,self.script,self.language):
             control.Bind(wx.EVT_TEXT,self.changed)
+        self.planner_changed()
+        if self.planner_load_error:
+            self.say(self.planner_load_error)
         self.goal.SetFocus()
+
+    def planner_changed(self,event=None):
+        self.changed()
+        index=self.planner_choice.GetSelection()
+        if index==0:
+            details='Deterministic guide selected. Preview prepares local typed steps without contacting a model. '
+            details+='Optional loopback profiles can be added under Tools > API and local model connections.'
+        elif 1<=index<=len(self.planner_profiles):
+            profile=self.planner_profiles[index-1]
+            details=f'LOCAL_ONLY configured endpoint: {profile.endpoint}\nModel: {profile.model}; account ID: {profile.id}. '
+            details+='Preview sends your goal and selected workspace/folder identifiers to this local server. '
+            details+='The authored script is represented by its length and hash, not uploaded to the planner. '
+            details+='No tool runs before the separate Run action. The server is user-managed; its own network behavior is not an OS sandbox.'
+        else:
+            details='Select the deterministic guide or a saved local chat profile.'
+        self.planner_details.ChangeValue(details)
+        if event:
+            self.planner_details.SetFocus()
 
     def changed(self,event=None):
         self.plan=None
@@ -102,27 +142,86 @@ class AssistantDialog:
             dialog.Destroy()
 
     def prepare(self,event=None):
+        if self.busy:
+            return
         try:
             if self.frame.library is not self.library:
                 raise ValueError('The library folder changed. Reopen the assistant.')
             scope=Scope(workspaces=(self.workspace,) if self.workspace else (),output_root=self.output_root)
             self.assistant=LocalAssistant(self.library,scope)
             output=self.output_root/('assistant-audio-'+uuid4().hex[:8]) if self.output_root else None
+            index=self.planner_choice.GetSelection()
+            if index!=0:
+                if not 1<=index<=len(self.planner_profiles):
+                    raise ValueError('Select a saved local chat profile or the deterministic guide.')
+                self._prepare_model(self.assistant,self.planner_profiles[index-1],output)
+                return
             self.plan=guided_goal(self.goal.GetValue(),script=self.script.GetValue(),output=output,
                                   workspace=self.workspace,language=self.language.GetValue())
             self.assistant.prepare(self.plan)
-            details=['Local-only workflow: '+self.plan.title,
-                'The selected library and output folder are the only authorized scope.']
-            for index,step in enumerate(self.plan.steps,1):
-                args={key:(f'{len(value)} script characters' if key=='script' else value) for key,value in step.arguments.items()}
-                details.append(f'{index}. {step.tool}\n'+json.dumps(args,ensure_ascii=False,indent=2))
-            self.preview.ChangeValue('\n\n'.join(details))
-            self.run_button.Enable()
-            self.say('Plan saved for review. Run executes these actual local tools.',True)
+            self._display_plan()
         except Exception as exc:
             self.plan=None
             self.run_button.Disable()
             self.say('Plan not ready: '+str(exc),True)
+
+    def _display_plan(self,*,from_model=False):
+        details=[('Validated local-model proposal: ' if from_model else 'Local-only workflow: ')+self.plan.title,
+            'The selected library and output folder are the only authorized scope. No tool has run.']
+        for index,step in enumerate(self.plan.steps,1):
+            args={key:(f'{len(value)} authored script characters; original text remains visible in the script field'
+                if key=='script' and (not from_model or value==self.script.GetValue()) else value)
+                for key,value in step.arguments.items()}
+            details.append(f'{index}. {step.tool}\n'+json.dumps(args,ensure_ascii=False,indent=2))
+        self.preview.ChangeValue('\n\n'.join(details))
+        self.run_button.Enable()
+        self.say('Proposal saved for review. Read the exact typed actions, then Run to execute them. '
+                 'Model text is a proposal, not evidence that work is complete.' if from_model else
+                 'Plan saved for review. Run executes these actual local tools.',True)
+
+    def _prepare_model(self,assistant,profile,output):
+        goal,script,language=self.goal.GetValue(),self.script.GetValue(),self.language.GetValue()
+        self.plan=None
+        self.busy=True
+        self.cancelled.clear()
+        for control in (*self.controls,self.run_button):
+            control.Disable()
+        self.cancel_button.SetLabel('Cancel plan request')
+        self.cancel_button.Enable()
+        self.preview.ChangeValue('Waiting for the explicitly selected local planner. No tool operations have run.')
+        self.say('Requesting one plan from the configured loopback endpoint; scope and tools will be validated before review.',True)
+        try:
+            future=self.executor.submit(lambda:propose_local_plan(assistant,profile,goal,script=script,
+                language=language,output=output,cancelled=self.cancelled.is_set))
+        except Exception:
+            self.busy=False
+            for control in self.controls:
+                control.Enable()
+            self.cancel_button.Disable()
+            self.cancel_button.SetLabel('&Pause workflow')
+            raise
+        def finish(future):
+            if self.closed:
+                return
+            self.busy=False
+            for control in self.controls:
+                control.Enable()
+            self.cancel_button.Disable()
+            self.cancel_button.SetLabel('&Pause workflow')
+            try:
+                plan=future.result()
+                if self.cancelled.is_set():
+                    raise InterruptedError('Local planning was cancelled; no workflow was authorized.')
+                if self.frame.library is not self.library:
+                    raise ValueError('The library folder changed. Prepare a new plan.')
+                assistant.prepare(plan)
+                self.plan,self.assistant=plan,assistant
+                self._display_plan(from_model=True)
+            except Exception as exc:
+                self.plan=None
+                self.run_button.Disable()
+                self.say('Local model plan not ready: '+str(exc),True)
+        future.add_done_callback(lambda done:self.wx.CallAfter(finish,done) if not self.closed else None)
 
     def run(self,event=None):
         if self.busy or self.plan is None:

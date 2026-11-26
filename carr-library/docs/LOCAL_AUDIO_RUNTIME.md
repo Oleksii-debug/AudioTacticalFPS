@@ -41,7 +41,11 @@ Windows reparse points and alternate data streams. It supplies argv directly
 without a shell, constrains input demuxers/protocols, and compiles filter graphs
 from numeric controls rather than accepting arbitrary filter expressions.
 Cancellation and deadlines stop the child process; diagnostics have a bounded
-size. A private staging file is probed and measured before exclusive publication.
+size. Active workers monitor staged output bytes, the staging-file count and
+available disk space, including a final check after fast child processes exit.
+FFmpeg is given a 256 MiB limit for each individual allocation and bounded
+thread settings. That allocation limit is not a whole-process memory sandbox.
+A private staging file is probed and measured before exclusive publication.
 Existing destinations are never replaced. Input hashes are checked again before
 publication. These checks assume the user's local workspace is not concurrently
 modified by an adversarial process; they are not an operating-system sandbox.
@@ -159,6 +163,83 @@ outputs. Primary references: [Transformers MusicGen interface](https://huggingfa
 [AudioCraft weights license](https://github.com/facebookresearch/audiocraft/blob/896ec7c47f5e5d1e5aa1e4b260c4405328bf009d/LICENSE_weights),
 and [FluidSynth rendering API](https://www.fluidsynth.org/api/group__audio__rendering.html).
 
+## Local engine settings and samples
+
+The native Audio Studio menu includes **Local music engines and sample**. Its
+keyboard-accessible dialog selects existing local files, verifies their hashes,
+and saves a registration. File verification runs away from the UI thread and
+can be cancelled. **Generate and play a three-second sample** invokes the
+selected engine, saves a new WAV, reports its actual frame count and SHA256,
+and starts local playback when an audio device is available. A missing model or
+runtime produces an explicit error; selecting MusicGen never substitutes the
+procedural engine.
+
+MusicGen registration requires the installed model directory, the separately
+reviewed manifest and its approved SHA256, the Python executable in the model's
+environment, a CPU/CUDA device and the private noncommercial profile. The
+virtual-environment executable path is retained. FluidSynth registration
+requires a local SF2 file and its reviewed SHA256, its license/attribution, and
+the installed FluidSynth shared library. The runtime executable or library hash
+is captured during registration and verified when loading. These registrations
+do not acquire models, execute inference during verification, or certify an
+engine merely because its files are present.
+
+Registrations live in `studio/music-settings.json` beneath the library's data
+directory. Writes share the studio state lock and check the revision to prevent
+two windows overwriting each other's changes. Full-state backup includes this
+validated settings file but does not copy external models, Python environments,
+shared libraries or SoundFonts. Restoring a registration from another operating
+system retains its paths for review; actual use requires selecting local paths
+and verifying the corresponding assets again.
+
+The same controls are available from the CLI:
+
+```text
+python -m carr_library --data-dir /chosen/library --music-status
+python -m carr_library --data-dir /chosen/library --music-config /reviewed/music-settings.json
+python -m carr_library --data-dir /chosen/library --music-engine procedural --music-sample /chosen/new-sample.wav
+python -m carr_library --data-dir /chosen/library --music-engine fluidsynth --music-sample /chosen/new-fluid-sample.wav
+python -m carr_library --data-dir /chosen/library --music-engine musicgen --music-sample /chosen/new-neural-sample.wav
+```
+
+The import file uses version 1, a nonnegative `revision`, and `musicgen` and
+`fluidsynth` records (either can be `null`). The precise accepted fields are
+defined by `audio.music_settings.MUSICGEN_FIELDS` and `FLUIDSYNTH_FIELDS`;
+unknown fields, relative paths, URLs and malformed seals are rejected. Import
+verifies actual installed assets before publishing a new saved revision.
+
+Authored production scripts can select an engine for a scene:
+
+```text
+@music musicgen calm 80
+@music-prompt Quiet instrumental strings and piano, without vocals.
+Narrator: The original narration text follows here.
+```
+
+`@music fluidsynth calm 80` selects the registered SoundFont engine. Existing
+`@music calm 80` scripts retain their procedural behavior. One `@music-prompt`
+can immediately follow an authored `@music` directive; plain-text imports
+continue to treat all such text as narration rather than executing directives.
+
+## Symbolic MIDI and synthesized cues
+
+`export_midi(MusicSpec(...), new_mid_path)` streams a standard format-0 MIDI
+file with tempo, melody and bass events while retaining only one beat in memory.
+It returns a file hash, exact symbolic duration and byte count, supports
+cancellation and an explicit file budget, and never replaces an existing file.
+The MIDI score describes the procedural motif; it is not a transcription or
+export of neural audio. The bounded writer was adapted from the reviewed
+project implementation in PR103 at `fc84a791`.
+
+`render_sfx(name, new_audio_path, duration_seconds=..., seed=...)` supports
+`door`, `click`, `chime` and `noise`. These are explicitly synthesized cues,
+with deterministic oscillators or seeded noise, using the same verified FFmpeg
+process and publication path as the main renderer. They are not recordings or
+neural effects. Both APIs return auditable hashes; generated audio also has
+actual frames, sample geometry and peak measurement. These low-level helpers
+are available to production integrations; the native settings dialog and its
+CLI commands configure music engines and samples, not a separate SFX editor.
+
 ## Private Windows FFmpeg runtime
 
 The reviewed Windows x64 runtime is Gyan's **FFmpeg 9.1 full build**, ZIP size
@@ -220,6 +301,17 @@ copyright notice and was not copied into the product. This confirms that local
 Linux combination; Windows FluidSynth and subjective musical quality remain
 separate checks.
 
+A further real registration-to-sample check used `MusicSettingsModel.save()`
+and `.sample('fluidsynth', ...)` with the installed library and that SoundFont.
+It produced 72,000 frames per channel at 24 kHz stereo (three seconds), measured
+−28.4 dBFS peak, SHA256
+`fc934d0509312c8e9b9e8443664093088fda07eed09c5d53df0e06cc4630b54d`.
+The registered FluidSynth library SHA256 was
+`86a8abaa8069b83b1026cdabf75229948b7ad0d750d5444dffaabc9af24bd63a`.
+This exercised the same registration and sample model used by the native
+dialog. Native Windows interaction and real MusicGen inference remain
+`NOT_RUN` in this local check.
+
 The opt-in `tests/audio/run_long_assembly.py` generated a ten-second procedural
 instrumental and explicitly repeated it into 8 kHz mono FLAC. The full outputs
 were decoded for peak measurement. The committed report
@@ -244,7 +336,7 @@ only reproducible source and synthetic evidence remain in the repository.
 Run the bounded standard checks with:
 
 ```text
-python scripts/ci_check.py tests/audio/test_render.py tests/audio/test_effects.py tests/audio/test_music.py tests/packaging/test_windows_audio.py
+python scripts/ci_check.py tests/audio/test_render.py tests/audio/test_effects.py tests/audio/test_music.py tests/audio/test_music_settings.py tests/packaging/test_windows_audio.py
 ```
 
 Run the opt-in long proof with a new report filename:

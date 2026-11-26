@@ -4,6 +4,7 @@ import math
 import os
 from pathlib import Path
 import shutil
+import stat
 import sys
 import threading
 import time
@@ -95,6 +96,26 @@ def test_empty_track_stem_is_exact_silence(tmp_path):
     channels, rate = read_pcm(result.path)
     assert result.frames == round(3.125 * rate)
     assert all(not any(channel) for channel in channels)
+
+
+def test_audio_publication_flushes_a_writable_windows_compatible_handle(tmp_path, monkeypatch):
+    # Windows CRT _commit rejects a read-only file descriptor. A zero-byte
+    # write enforces the same access-mode contract on every test platform,
+    # while the actual file synchronization and FFmpeg render still run.
+    original_fsync = os.fsync
+    flushed = []
+    def windows_commit(descriptor):
+        if stat.S_ISREG(os.fstat(descriptor).st_mode):
+            os.write(descriptor, b'')
+            flushed.append(descriptor)
+        return original_fsync(descriptor)
+    monkeypatch.setattr(os, 'fsync', windows_commit)
+    source = tone(tmp_path/'source.wav', 330, .25)
+    before = file_sha256(source)
+    result = mix_tracks([Track(source)], tmp_path/'published.wav')
+    assert flushed and result.frames == RATE//4
+    assert result.sha256 == file_sha256(result.path)
+    assert file_sha256(source) == before
 
 
 def test_output_and_input_files_are_not_overwritten(tmp_path):
@@ -243,3 +264,20 @@ def test_runtime_identity_is_real_and_json_safe():
     assert 'ffmpeg version' in identity['ffmpeg']['version_and_build']
     assert len(identity['render_sha256']) == len(identity['effects_sha256']) == 64
     assert json.loads(json.dumps(identity)) == identity
+
+
+def test_fast_child_cannot_exceed_watched_output_budget(tmp_path):
+    output = tmp_path/'worker.bin'
+    code = 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"x"*100000)'
+    with pytest.raises(RuntimeError,match='disk budget'):
+        run_process([sys.executable,'-I','-c',code,str(output)],
+                    watched_paths=(output,),max_output_bytes=1024)
+
+
+def test_worker_staging_file_count_is_bounded(tmp_path):
+    directory = tmp_path/'stage'
+    directory.mkdir()
+    code = 'from pathlib import Path; import sys; [(Path(sys.argv[1])/str(i)).write_text("x") for i in range(20)]'
+    with pytest.raises(RuntimeError,match='staging file budget'):
+        run_process([sys.executable,'-I','-c',code,str(directory)],
+                    watched_paths=(directory,),maximum_staging_files=5)
