@@ -10,7 +10,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
-from . import ocr_runtime
+from . import ocr_languages, ocr_runtime
 
 
 class IdentityError(ValueError):
@@ -38,7 +38,8 @@ def _source_hashes():
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py')
     return {**{name: _hash(root / name) for name in names},
-            'ocr_runtime.py': _hash(ocr_runtime.__file__)}
+            'ocr_runtime.py': _hash(ocr_runtime.__file__),
+            'ocr_languages.py': _hash(ocr_languages.__file__)}
 
 
 def runtime_identity(config):
@@ -91,7 +92,7 @@ def runtime_identity(config):
             models = {}
             for lang in selected:
                 remaining()
-                if not re.fullmatch(r'[A-Za-z0-9_]+', lang):
+                if not ocr_languages.valid_model_code(lang):
                     raise IdentityError('invalid model name')
                 models[lang] = _hash(Path(match[1]) / (lang + '.traineddata'), remaining=remaining)
         if before != _hash(exe, remaining=remaining):

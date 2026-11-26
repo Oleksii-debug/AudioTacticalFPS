@@ -149,15 +149,16 @@ class ImportCenterActions:
             finish(error=exc)
 
     def plan(self, paths):
+        from dataclasses import replace
         from ..extract.page_ocr import Config
-        from .ocr_options import LANGUAGES
         self._bound()
         index = self.collection.GetSelection()
-        language = self.languages.GetSelection()
-        if not 0 <= index < len(self.collection_ids) or not 0 <= language < len(LANGUAGES):
+        if not 0 <= index < len(self.collection_ids) or not isinstance(self.ocr_config, Config):
             raise ValueError('Choose a destination collection and text recognition languages.')
         collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
-        config = Config(languages=LANGUAGES[language][1])
+        # Capture a complete immutable choice. Later model-dialog changes affect
+        # new plans only; durable existing plans keep their original settings.
+        config = replace(self.ocr_config)
         recursive = self.recursive.GetValue()
 
         def done(batch):
@@ -168,6 +169,23 @@ class ImportCenterActions:
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
             cancelled=self.frame.cancel_event.is_set), done, planning=True)
+
+    def choose_languages(self, event=None):
+        from .ocr_options import choose_model_config, config_summary
+        try:
+            self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait for the current operation before changing recognition models.')
+            config = choose_model_config(self, self.ocr_config, preset_root=self.library.root)
+            if config is None:
+                return
+            self._bound()
+            self.ocr_config = config
+            self.languages.SetValue(config_summary(config))
+            self.report('New plans will use ' + config_summary(config) +
+                        '. Existing saved plans keep their previous settings.')
+        except Exception as exc:
+            self.report(str(exc))
 
     def add_files(self, event=None):
         import wx
@@ -284,7 +302,8 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
-    from .ocr_options import LANGUAGES
+    from ..extract.page_ocr import Config
+    from .ocr_options import config_summary
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
@@ -307,15 +326,21 @@ def show_import_center(frame, workspace):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
             self.collection = wx.Choice(self, choices=collection_labels)
-            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
+            self.collection.SetSelection(0)
+            self.ocr_config = Config()
+            self.languages = wx.TextCtrl(self, value=config_summary(self.ocr_config),
+                                         style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 40))
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
-                control.SetSelection(0)
                 options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
-                self.mutable.append(control)
+            self.mutable.append(self.collection)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
+            models = wx.Button(self, label='Recognition &models...')
+            models.Bind(wx.EVT_BUTTON, self.choose_languages)
+            self.mutable.append(models)
+            layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
