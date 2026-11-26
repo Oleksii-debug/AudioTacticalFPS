@@ -19,11 +19,12 @@ class Passage:
     edition_id: str
     revision_id: str
     passage_id: str
-    physical_index: int
+    physical_index: int | None
     start: int
     end: int
     raw_page: str
     page_sha256: str
+    segment_index: int | None = None
 
 
 # Conservative transliterations, not inferred identities or translations.
@@ -101,7 +102,11 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
             if p.workspace != workspace:
                 raise ValueError("foreign workspace passage")
             if (not all((p.work_id, p.edition_id, p.revision_id, p.passage_id))
-                    or p.physical_index < 1 or not 0 <= p.start < p.end <= len(p.raw_page)
+                    or not ((type(p.physical_index) is int and p.physical_index >= 1 and p.segment_index is None)
+                            or (p.physical_index is None and type(p.segment_index) is int and p.segment_index >= 1))
+                    or type(p.start) is not int or type(p.end) is not int
+                    or not isinstance(p.raw_page, str) or '\x00' in p.raw_page
+                    or not 0 <= p.start < p.end <= len(p.raw_page)
                     or sha256(p.raw_page.encode('utf-8')).hexdigest() != p.page_sha256):
                 raise ValueError("unverified passage anchor")
             identity = (p.edition_id, p.revision_id, p.passage_id)
@@ -141,6 +146,8 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
                 "page_sha256": p.page_sha256, "raw_quote": p.raw_page[p.start:p.end],
                 "score": -rank, "matched_terms": matched,
                 "reason": "lexical BM25 with controlled variants; not semantic verification"})
+            if p.physical_index is None:
+                result[-1].update(locator_kind="logical_segment", segment_index=p.segment_index)
         check()
         return result
     except sqlite3.OperationalError as exc:
@@ -149,6 +156,90 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
         raise
     finally:
         db.close()
+
+
+def search_active(db, workspace, edition_to_work, query, *, limit=20,
+                  timeout=5.0, cancelled=lambda: False):
+    """Candidate handoff for the PR21 active_page view and PR23 locator V2.
+
+    The caller supplies a catalog-authorized edition-to-work mapping for this
+    workspace/collection/topic; no implicit global scope. Use a dedicated trusted
+    storage reader; its own native SQL timeout/interrupt remains caller-owned.
+    This additive candidate does not change the legacy physical search response.
+    Full contiguous pages/segments are ranked; no inferred printed page labels.
+    """
+    if (not isinstance(workspace, str) or not workspace or
+            not isinstance(edition_to_work, dict) or len(edition_to_work) > 500 or
+            any(not isinstance(v, str) or not v for pair in edition_to_work.items() for v in pair) or
+            type(limit) is not int or not 1 <= limit <= 100 or
+            type(timeout) not in (int, float) or not 0 < timeout <= 60 or
+            not callable(cancelled)):
+        raise ValueError('invalid active thematic scope or budget')
+    allowed = dict(edition_to_work)
+    deadline = monotonic() + timeout
+    latched = False
+
+    def stopped():
+        nonlocal latched
+        latched = latched or cancelled() or monotonic() >= deadline
+        return latched
+
+    metadata = {}
+
+    def passages():
+        if not allowed:
+            return
+        placeholders = ','.join('?' for _ in allowed)
+        sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
+               'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
+               + placeholders + ') ORDER BY edition,ordinal,id')
+        cursor = db.execute(sql, (workspace, *allowed))
+        try:
+            for count, row in enumerate(cursor, 1):
+                if count > 20000:
+                    raise ValueError('scope exceeds temporary ranking budget')
+                if stopped():
+                    raise TimeoutError('active thematic search cancelled or timed out')
+                page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = row
+                if (ws != workspace or edition not in allowed or type(page_id) is not int or page_id < 1
+                        or type(ordinal) is not int or ordinal < 1
+                        or (physical is not None and (type(physical) is not int or physical < 1))
+                        or not isinstance(asset, str) or not re.fullmatch('[0-9a-f]{64}', asset)
+                        or type(verified) is not int or verified not in (0, 1)
+                        or (physical is None and (printed is not None or verified))
+                        or (verified and (not isinstance(printed, str) or not printed.strip()))
+                        or not isinstance(raw, str) or '\x00' in raw
+                        or sha256(raw.encode('utf-8')).hexdigest() != digest):
+                    raise ValueError('invalid active source locator or digest')
+                if not raw:
+                    continue
+                key = str(page_id)
+                if key in metadata:
+                    raise ValueError('duplicate active page')
+                metadata[key] = (page_id, asset, printed if verified else None, bool(verified))
+                yield Passage(ws, allowed[edition], edition, revision, key, physical,
+                              0, len(raw), raw, digest, ordinal if physical is None else None)
+        finally:
+            cursor.close()
+
+    source = passages()
+    try:
+        hits = search(workspace, source, query, limit=limit, timeout=timeout, cancelled=stopped)
+    except sqlite3.OperationalError as exc:
+        if stopped():
+            raise TimeoutError('active thematic search cancelled or timed out') from exc
+        raise
+    finally:
+        source.close()
+    for hit in hits:
+        page_id, asset, printed, verified = metadata[hit['passage_id']]
+        hit.update(workspace_id=workspace, page_id=page_id, asset_sha256=asset,
+                   locator_kind='logical_segment' if hit['physical_index'] is None else 'physical_page',
+                   segment_index=hit.get('segment_index'), printed_label=printed,
+                   printed_label_verified=verified, raw_text_sha256=hit['page_sha256'])
+    if stopped():
+        raise TimeoutError('active thematic search cancelled or timed out')
+    return hits
 
 
 def extract_query_terms(query: str) -> list[str]:
