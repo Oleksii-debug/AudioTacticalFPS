@@ -278,8 +278,8 @@ def test_report_cancellation_during_actual_sql_returns_no_partial_analysis(sampl
     original_read = app.read
 
     @contextmanager
-    def monitored_read(scope=None):
-        with original_read(scope) as db:
+    def monitored_read(scope=None, **options):
+        with original_read(scope, **options) as db:
             def seen(statement):
                 if 'FROM RESEARCH_EVIDENCE E' in statement.upper():
                     event.set()

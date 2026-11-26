@@ -1,0 +1,3686 @@
+{
+  "schema": "carr.ocr-model-catalog.v1",
+  "reviewed_at": "2026-11-26",
+  "provenance": "Official tesseract-ocr GitHub recursive Git tree metadata and exact upstream license text; traineddata payloads are not embedded or byte-verified by this catalogue.",
+  "git_blob_hash_format": "SHA-1 of ASCII('blob ' + decimal_size) + NUL + exact file bytes",
+  "model_sha256_policy": "Compute SHA-256 only from selected model bytes after exact size and Git blob SHA-1 verification; write the result into the existing offline-pack manifest.",
+  "compatibility_evidence": [
+    "https://tesseract-ocr.github.io/tessdoc/Home.html",
+    "https://tesseract-ocr.github.io/tessdoc/Data-Files.html"
+  ],
+  "sources": {
+    "fast": {
+      "profile": "fast",
+      "repository": "tesseract-ocr/tessdata_fast",
+      "repository_url": "https://github.com/tesseract-ocr/tessdata_fast",
+      "revision": "87416418657359cb625c412a48b6e1d6d41c29bd",
+      "tree": "c4f8a9213d56a853074161b93fe39422d399fe52",
+      "tree_api_url": "https://api.github.com/repos/tesseract-ocr/tessdata_fast/git/trees/c4f8a9213d56a853074161b93fe39422d399fe52?recursive=1",
+      "tree_truncated": false,
+      "raw_base_url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/",
+      "license": {
+        "spdx_id": "Apache-2.0",
+        "path": "LICENSE",
+        "url": "https://github.com/tesseract-ocr/tessdata_fast/blob/87416418657359cb625c412a48b6e1d6d41c29bd/LICENSE",
+        "git_blob_sha1": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+        "size": 11358,
+        "text": "\n                                 Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n"
+      },
+      "readme": {
+        "path": "README.md",
+        "url": "https://github.com/tesseract-ocr/tessdata_fast/blob/87416418657359cb625c412a48b6e1d6d41c29bd/README.md",
+        "git_blob_sha1": "2b07ea0c9e16c155bb293548b25de18d63703bdf",
+        "size": 4353
+      },
+      "compatibility": {
+        "tesseract_major_versions": [
+          4,
+          5
+        ],
+        "language_script_engine": "LSTM",
+        "language_script_oem": 1,
+        "unsupported_language_script_oem": [
+          0,
+          2
+        ],
+        "special_models_have_separate_purpose": true
+      },
+      "counts": {
+        "model_files": 162,
+        "language_models": 123,
+        "script_models": 37,
+        "special_models": 2,
+        "aliases": 1,
+        "total_model_bytes": 700353173
+      },
+      "models": {
+        "afr": {
+          "path": "afr.traineddata",
+          "git_blob_sha1": "09e69cf5478cd6a0fb3ec5e7e7fa95a04f5cafb3",
+          "size": 2652786,
+          "kind": "language",
+          "name": "Afrikaans",
+          "labels": {
+            "en": "Afrikaans"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "amh": {
+          "path": "amh.traineddata",
+          "git_blob_sha1": "7a302b2bf6306c34177f594e0824eafc48906965",
+          "size": 5470094,
+          "kind": "language",
+          "name": "Amharic",
+          "labels": {
+            "en": "Amharic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ara": {
+          "path": "ara.traineddata",
+          "git_blob_sha1": "c8d129c67821c1592cac46836686b057ecc203dc",
+          "size": 1432056,
+          "kind": "language",
+          "name": "Arabic",
+          "labels": {
+            "en": "Arabic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "asm": {
+          "path": "asm.traineddata",
+          "git_blob_sha1": "086035c6eacd5788c1f06d58c250023cee2aeb28",
+          "size": 2045427,
+          "kind": "language",
+          "name": "Assamese",
+          "labels": {
+            "en": "Assamese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "aze": {
+          "path": "aze.traineddata",
+          "git_blob_sha1": "27bc73edf08e5e5f0c3e43c315c5c6d965c2f075",
+          "size": 3524799,
+          "kind": "language",
+          "name": "Azerbaijani",
+          "labels": {
+            "en": "Azerbaijani"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "aze_cyrl": {
+          "path": "aze_cyrl.traineddata",
+          "git_blob_sha1": "e2b1b953a5b8db9247c6ddfcb58f062dc0b3b574",
+          "size": 1943672,
+          "kind": "language",
+          "name": "Azerbaijani - Cyrillic",
+          "labels": {
+            "en": "Azerbaijani - Cyrillic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bel": {
+          "path": "bel.traineddata",
+          "git_blob_sha1": "65d83dad535f876de31847f5fa2ff1bdd57c7bab",
+          "size": 3692098,
+          "kind": "language",
+          "name": "Belarusian",
+          "labels": {
+            "en": "Belarusian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ben": {
+          "path": "ben.traineddata",
+          "git_blob_sha1": "7e9054d1de309714009a85555f5276168d41af9c",
+          "size": 855841,
+          "kind": "language",
+          "name": "Bengali",
+          "labels": {
+            "en": "Bengali"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bod": {
+          "path": "bod.traineddata",
+          "git_blob_sha1": "7bb5029466eaef46aad59fc23b96648df0e4f176",
+          "size": 1966440,
+          "kind": "language",
+          "name": "Tibetan",
+          "labels": {
+            "en": "Tibetan"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bos": {
+          "path": "bos.traineddata",
+          "git_blob_sha1": "95bed5c32e3759347db0471569303f06e3485f42",
+          "size": 2498242,
+          "kind": "language",
+          "name": "Bosnian",
+          "labels": {
+            "en": "Bosnian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bre": {
+          "path": "bre.traineddata",
+          "git_blob_sha1": "c01691329561938fb7d491ea7611c591202952dd",
+          "size": 6335007,
+          "kind": "language",
+          "name": "Breton",
+          "labels": {
+            "en": "Breton"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bul": {
+          "path": "bul.traineddata",
+          "git_blob_sha1": "1e65588d127d918ef3ba95b785b446f15827d60f",
+          "size": 1675212,
+          "kind": "language",
+          "name": "Bulgarian",
+          "labels": {
+            "en": "Bulgarian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "cat": {
+          "path": "cat.traineddata",
+          "git_blob_sha1": "3fcd350dd2bb76503de90249111fff4e3c6aa0f0",
+          "size": 1146012,
+          "kind": "language",
+          "name": "Catalan; Valencian",
+          "labels": {
+            "en": "Catalan; Valencian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ceb": {
+          "path": "ceb.traineddata",
+          "git_blob_sha1": "5a1b96928e54b175db96f00d2aa84b5878d301b9",
+          "size": 716214,
+          "kind": "language",
+          "name": "Cebuano",
+          "labels": {
+            "en": "Cebuano"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ces": {
+          "path": "ces.traineddata",
+          "git_blob_sha1": "dd6fc79a62f9fcd1c7c6da06b31bb4fdb10dc173",
+          "size": 3795684,
+          "kind": "language",
+          "name": "Czech",
+          "labels": {
+            "en": "Czech"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "chi_sim": {
+          "path": "chi_sim.traineddata",
+          "git_blob_sha1": "388bac276d033d06e5ed5ba7a7ad14ae58f97dab",
+          "size": 2469156,
+          "kind": "language",
+          "name": "Chinese simplified",
+          "labels": {
+            "en": "Chinese simplified"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "chi_sim_vert": {
+          "path": "chi_sim_vert.traineddata",
+          "git_blob_sha1": "f9898e91068a9d04bcacf6d2a244da40e9f30c0c",
+          "size": 1927902,
+          "kind": "language",
+          "name": "chi_sim_vert",
+          "labels": {},
+          "name_source": "code"
+        },
+        "chi_tra": {
+          "path": "chi_tra.traineddata",
+          "git_blob_sha1": "1955cd8b8d076b898616e9c2c1ace65b43105356",
+          "size": 2366642,
+          "kind": "language",
+          "name": "Chinese traditional",
+          "labels": {
+            "en": "Chinese traditional"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "chi_tra_vert": {
+          "path": "chi_tra_vert.traineddata",
+          "git_blob_sha1": "94bc5dbd7fa25dd89ac9c5bd18f3fc6d8409aa0e",
+          "size": 1824756,
+          "kind": "language",
+          "name": "chi_tra_vert",
+          "labels": {},
+          "name_source": "code"
+        },
+        "chr": {
+          "path": "chr.traineddata",
+          "git_blob_sha1": "e0799a2b888466e5bc2ca60f1f2fb4a7ff4c6990",
+          "size": 374944,
+          "kind": "language",
+          "name": "Cherokee",
+          "labels": {
+            "en": "Cherokee"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "cos": {
+          "path": "cos.traineddata",
+          "git_blob_sha1": "3105b7fb0cd6c26f4fb144ec5d594430e88927cb",
+          "size": 2299099,
+          "kind": "language",
+          "name": "Corsican",
+          "labels": {
+            "en": "Corsican"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "cym": {
+          "path": "cym.traineddata",
+          "git_blob_sha1": "900cf17f74514934f87e9a8df3b29cb16b5606fe",
+          "size": 2208919,
+          "kind": "language",
+          "name": "Welsh",
+          "labels": {
+            "en": "Welsh"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "dan": {
+          "path": "dan.traineddata",
+          "git_blob_sha1": "85501b582937493f9ae6a64ccd0a6bb0a2ea33d5",
+          "size": 2580059,
+          "kind": "language",
+          "name": "Danish",
+          "labels": {
+            "en": "Danish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "deu": {
+          "path": "deu.traineddata",
+          "git_blob_sha1": "97ed7b2b60f2771c07040660ef0f6daf596dc7bf",
+          "size": 1525436,
+          "kind": "language",
+          "name": "German",
+          "labels": {
+            "en": "German"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "deu_latf": {
+          "path": "deu_latf.traineddata",
+          "git_blob_sha1": "11a641044a93413454f75fbb8e05b085bd0b9d8d",
+          "size": 6423052,
+          "kind": "language",
+          "name": "German Fraktur Latin",
+          "labels": {
+            "en": "German Fraktur Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "div": {
+          "path": "div.traineddata",
+          "git_blob_sha1": "53b46df7d6ae94f75913d6377182867ea09d950b",
+          "size": 1774535,
+          "kind": "language",
+          "name": "Dhivehi",
+          "labels": {
+            "en": "Dhivehi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "dzo": {
+          "path": "dzo.traineddata",
+          "git_blob_sha1": "3c31175be56ab4db42af614f384ea52ce949082c",
+          "size": 449596,
+          "kind": "language",
+          "name": "Dzongkha",
+          "labels": {
+            "en": "Dzongkha"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ell": {
+          "path": "ell.traineddata",
+          "git_blob_sha1": "ed98ae1a88d84414da316e6eeab3232f2c68639b",
+          "size": 1419514,
+          "kind": "language",
+          "name": "Greek, Modern, 1453-",
+          "labels": {
+            "en": "Greek, Modern, 1453-"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "eng": {
+          "path": "eng.traineddata",
+          "git_blob_sha1": "bbef4675053b5b468cdb477053e28b1c698ba08e",
+          "size": 4113088,
+          "kind": "language",
+          "name": "English",
+          "labels": {
+            "en": "English"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "enm": {
+          "path": "enm.traineddata",
+          "git_blob_sha1": "e49b5b86da60f2e728ff2b7f4357692ac32b6a6d",
+          "size": 3101551,
+          "kind": "language",
+          "name": "English, Middle, 1100-1500",
+          "labels": {
+            "en": "English, Middle, 1100-1500"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "epo": {
+          "path": "epo.traineddata",
+          "git_blob_sha1": "235fc67adf52f43d34b409d44d426d560aefc8e3",
+          "size": 4728393,
+          "kind": "language",
+          "name": "Esperanto",
+          "labels": {
+            "en": "Esperanto"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "equ": {
+          "path": "equ.traineddata",
+          "git_blob_sha1": "27b470378dc8718f1dc5a93931fefa3340336e4d",
+          "size": 2251950,
+          "kind": "special",
+          "role": "equation_detection",
+          "name": "Math / equation detection module",
+          "labels": {
+            "en": "Math / equation detection module"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "est": {
+          "path": "est.traineddata",
+          "git_blob_sha1": "a2b52c3388358e6dfc4eb8d64d8fc6afbb3630ea",
+          "size": 4458101,
+          "kind": "language",
+          "name": "Estonian",
+          "labels": {
+            "en": "Estonian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "eus": {
+          "path": "eus.traineddata",
+          "git_blob_sha1": "6247f975443ec82c219c39e0b5ea76b4833c82fe",
+          "size": 5175921,
+          "kind": "language",
+          "name": "Basque",
+          "labels": {
+            "en": "Basque"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fao": {
+          "path": "fao.traineddata",
+          "git_blob_sha1": "1b845e73759785908aef57161ae4c86a70cce622",
+          "size": 3439772,
+          "kind": "language",
+          "name": "Faroese",
+          "labels": {
+            "en": "Faroese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fas": {
+          "path": "fas.traineddata",
+          "git_blob_sha1": "1a17ee02076107e73abd15d2038389150c8f824f",
+          "size": 431500,
+          "kind": "language",
+          "name": "Persian",
+          "labels": {
+            "en": "Persian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fil": {
+          "path": "fil.traineddata",
+          "git_blob_sha1": "785f80decce6ddb6b50bd99f4840414359c806ff",
+          "size": 1841715,
+          "kind": "language",
+          "name": "Filipino",
+          "labels": {
+            "en": "Filipino"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fin": {
+          "path": "fin.traineddata",
+          "git_blob_sha1": "73f92402f1891b9066e0e145f245145a2402105c",
+          "size": 7865732,
+          "kind": "language",
+          "name": "Finnish",
+          "labels": {
+            "en": "Finnish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fra": {
+          "path": "fra.traineddata",
+          "git_blob_sha1": "d9e2b2160be0d1ca3b8f1bf2730fae476ef3b4a6",
+          "size": 1130365,
+          "kind": "language",
+          "name": "French",
+          "labels": {
+            "en": "French"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "frm": {
+          "path": "frm.traineddata",
+          "git_blob_sha1": "ed06039efef821b78f22c86abb6c5aea7f02461e",
+          "size": 2024948,
+          "kind": "language",
+          "name": "French, Middle, ca.1400-1600",
+          "labels": {
+            "en": "French, Middle, ca.1400-1600"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fry": {
+          "path": "fry.traineddata",
+          "git_blob_sha1": "17199d2c33e201d6ad4003a6c86db5f8f273ddc1",
+          "size": 1906018,
+          "kind": "language",
+          "name": "West Frisian",
+          "labels": {
+            "en": "West Frisian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "gla": {
+          "path": "gla.traineddata",
+          "git_blob_sha1": "e8bae7f1863dd1872ab7d2b2e7f319874c480e60",
+          "size": 3068307,
+          "kind": "language",
+          "name": "Scottish Gaelic",
+          "labels": {
+            "en": "Scottish Gaelic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "gle": {
+          "path": "gle.traineddata",
+          "git_blob_sha1": "a7abc7be9aadc862b31ab7c7bc672051cd0245fb",
+          "size": 1181824,
+          "kind": "language",
+          "name": "Irish",
+          "labels": {
+            "en": "Irish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "glg": {
+          "path": "glg.traineddata",
+          "git_blob_sha1": "7bc00b38f40f8de1575397f7d05387e5fbbacca4",
+          "size": 2554555,
+          "kind": "language",
+          "name": "Galician",
+          "labels": {
+            "en": "Galician"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "grc": {
+          "path": "grc.traineddata",
+          "git_blob_sha1": "e94990006fc18e88ab120e7ca6681cc3b290269b",
+          "size": 2246328,
+          "kind": "language",
+          "name": "Greek, Ancient, to 1453",
+          "labels": {
+            "en": "Greek, Ancient, to 1453"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "guj": {
+          "path": "guj.traineddata",
+          "git_blob_sha1": "151b9aad2945e3103118e5d36eee288f631d985a",
+          "size": 1418394,
+          "kind": "language",
+          "name": "Gujarati",
+          "labels": {
+            "en": "Gujarati"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hat": {
+          "path": "hat.traineddata",
+          "git_blob_sha1": "30d3baeaeef791781d782e58feb415b25921df3f",
+          "size": 1976902,
+          "kind": "language",
+          "name": "Haitian; Haitian Creole",
+          "labels": {
+            "en": "Haitian; Haitian Creole"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "heb": {
+          "path": "heb.traineddata",
+          "git_blob_sha1": "7356caf3cddc9c867fe6727e17726727b8284608",
+          "size": 961404,
+          "kind": "language",
+          "name": "Hebrew",
+          "labels": {
+            "en": "Hebrew"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hin": {
+          "path": "hin.traineddata",
+          "git_blob_sha1": "a8f0aaec09378115b12a2c6287c57695d082aea2",
+          "size": 1122751,
+          "kind": "language",
+          "name": "Hindi",
+          "labels": {
+            "en": "Hindi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hrv": {
+          "path": "hrv.traineddata",
+          "git_blob_sha1": "6dd4f8638a58eb0663e8f9a80a355c505dcf01a6",
+          "size": 4103348,
+          "kind": "language",
+          "name": "Croatian",
+          "labels": {
+            "en": "Croatian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hun": {
+          "path": "hun.traineddata",
+          "git_blob_sha1": "5d24fa8e922d6b57853dcb0cc490060c76643cab",
+          "size": 5296273,
+          "kind": "language",
+          "name": "Hungarian",
+          "labels": {
+            "en": "Hungarian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hye": {
+          "path": "hye.traineddata",
+          "git_blob_sha1": "ec2e2f3adea785e8964b9771871c44349a6e1b40",
+          "size": 3463717,
+          "kind": "language",
+          "name": "Armenian",
+          "labels": {
+            "en": "Armenian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "iku": {
+          "path": "iku.traineddata",
+          "git_blob_sha1": "6eab87ffe818b5f89baa869c458cb0a6dbed6b2d",
+          "size": 2802266,
+          "kind": "language",
+          "name": "Inuktitut",
+          "labels": {
+            "en": "Inuktitut"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ind": {
+          "path": "ind.traineddata",
+          "git_blob_sha1": "3013f50cd2af9aceca00e865ed889144865f0848",
+          "size": 1122661,
+          "kind": "language",
+          "name": "Indonesian",
+          "labels": {
+            "en": "Indonesian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "isl": {
+          "path": "isl.traineddata",
+          "git_blob_sha1": "20d3bdf8cb8f2289a1f45aa9cdf4ddf2a22e7462",
+          "size": 2278973,
+          "kind": "language",
+          "name": "Icelandic",
+          "labels": {
+            "en": "Icelandic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ita": {
+          "path": "ita.traineddata",
+          "git_blob_sha1": "edbffbe0e51892b240630b5eeabededa7e7c9c4f",
+          "size": 2701314,
+          "kind": "language",
+          "name": "Italian",
+          "labels": {
+            "en": "Italian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ita_old": {
+          "path": "ita_old.traineddata",
+          "git_blob_sha1": "c8a2c3c3d8c82a2d953b0fc64b949c1aa0918c09",
+          "size": 3286123,
+          "kind": "language",
+          "name": "Italian - Old",
+          "labels": {
+            "en": "Italian - Old"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "jav": {
+          "path": "jav.traineddata",
+          "git_blob_sha1": "3155b8184d50af28dbf8dcbd972e26b388ab1581",
+          "size": 2982741,
+          "kind": "language",
+          "name": "Javanese",
+          "labels": {
+            "en": "Javanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "jpn": {
+          "path": "jpn.traineddata",
+          "git_blob_sha1": "c4178f89991bde90b7fdc647e3e1901868423bd0",
+          "size": 2471260,
+          "kind": "language",
+          "name": "Japanese",
+          "labels": {
+            "en": "Japanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "jpn_vert": {
+          "path": "jpn_vert.traineddata",
+          "git_blob_sha1": "43f38defe4b83588876d0d7a6dee928be1b73af0",
+          "size": 3037480,
+          "kind": "language",
+          "name": "jpn_vert",
+          "labels": {},
+          "name_source": "code"
+        },
+        "kan": {
+          "path": "kan.traineddata",
+          "git_blob_sha1": "78252baeed24bcf327e62226c321c60242108a24",
+          "size": 3608331,
+          "kind": "language",
+          "name": "Kannada",
+          "labels": {
+            "en": "Kannada"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kat": {
+          "path": "kat.traineddata",
+          "git_blob_sha1": "1a3ae11fdd248891dd3fc74f156a0ce246ec1a15",
+          "size": 2524769,
+          "kind": "language",
+          "name": "Georgian",
+          "labels": {
+            "en": "Georgian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kat_old": {
+          "path": "kat_old.traineddata",
+          "git_blob_sha1": "f4ae5ab4b3fe4bb3226639d9b23fa71513a40ec8",
+          "size": 423167,
+          "kind": "language",
+          "name": "Georgian - Old",
+          "labels": {
+            "en": "Georgian - Old"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kaz": {
+          "path": "kaz.traineddata",
+          "git_blob_sha1": "f889e2b8ffd093d4f2dff8ffca2fa0b73296c028",
+          "size": 4734644,
+          "kind": "language",
+          "name": "Kazakh",
+          "labels": {
+            "en": "Kazakh"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "khm": {
+          "path": "khm.traineddata",
+          "git_blob_sha1": "d466dc2a7e35bf90cb7b54364985703728398687",
+          "size": 1446926,
+          "kind": "language",
+          "name": "Central Khmer",
+          "labels": {
+            "en": "Central Khmer"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kir": {
+          "path": "kir.traineddata",
+          "git_blob_sha1": "3e04f2954f33dd021b95de4befffb68904d9e142",
+          "size": 9928497,
+          "kind": "language",
+          "name": "Kirghiz; Kyrgyz",
+          "labels": {
+            "en": "Kirghiz; Kyrgyz"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kmr": {
+          "path": "kmr.traineddata",
+          "git_blob_sha1": "d1afefb7c5a67e273c6612aba77753021506b557",
+          "size": 3568615,
+          "kind": "language",
+          "name": "Kurdish Kurmanji",
+          "labels": {
+            "en": "Kurdish Kurmanji"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kor": {
+          "path": "kor.traineddata",
+          "git_blob_sha1": "60986d44497689f3abace0b148199476d93292e1",
+          "size": 1677415,
+          "kind": "language",
+          "name": "Korean",
+          "labels": {
+            "en": "Korean"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kor_vert": {
+          "path": "kor_vert.traineddata",
+          "git_blob_sha1": "ea0a4963591f153a21c8f237de2a1c644b57f2b9",
+          "size": 1113715,
+          "kind": "language",
+          "name": "Korean vertical",
+          "labels": {
+            "en": "Korean vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lao": {
+          "path": "lao.traineddata",
+          "git_blob_sha1": "10bd41ae9352889f85a489eb3183eb0cbebc2516",
+          "size": 6386744,
+          "kind": "language",
+          "name": "Lao",
+          "labels": {
+            "en": "Lao"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lat": {
+          "path": "lat.traineddata",
+          "git_blob_sha1": "30dab6a24339f262d1eb21a3ee272d16c46aeba3",
+          "size": 3187463,
+          "kind": "language",
+          "name": "Latin",
+          "labels": {
+            "en": "Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lav": {
+          "path": "lav.traineddata",
+          "git_blob_sha1": "71d925c8b6c73980157fd0128412b46e6e8396b5",
+          "size": 2717247,
+          "kind": "language",
+          "name": "Latvian",
+          "labels": {
+            "en": "Latvian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lit": {
+          "path": "lit.traineddata",
+          "git_blob_sha1": "af9e2b3cd6a65650206b7d89f1b93b51683b9692",
+          "size": 3154896,
+          "kind": "language",
+          "name": "Lithuanian",
+          "labels": {
+            "en": "Lithuanian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ltz": {
+          "path": "ltz.traineddata",
+          "git_blob_sha1": "c1ac5b922bbcad34b2654ba471c0a752c0397404",
+          "size": 2606426,
+          "kind": "language",
+          "name": "Luxembourgish",
+          "labels": {
+            "en": "Luxembourgish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mal": {
+          "path": "mal.traineddata",
+          "git_blob_sha1": "70e96f02cbc2f26630225112cd323a7f0b6ccdf3",
+          "size": 5275996,
+          "kind": "language",
+          "name": "Malayalam",
+          "labels": {
+            "en": "Malayalam"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mar": {
+          "path": "mar.traineddata",
+          "git_blob_sha1": "79138fadcdb256ec7b59e3bf9df18bd5fb492bee",
+          "size": 2118233,
+          "kind": "language",
+          "name": "Marathi",
+          "labels": {
+            "en": "Marathi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mkd": {
+          "path": "mkd.traineddata",
+          "git_blob_sha1": "fb0b245fb9ec61696e818887a70d8413b2914905",
+          "size": 1600188,
+          "kind": "language",
+          "name": "Macedonian",
+          "labels": {
+            "en": "Macedonian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mlt": {
+          "path": "mlt.traineddata",
+          "git_blob_sha1": "4242f9cd016987f16feb06973e988eced9604787",
+          "size": 2308796,
+          "kind": "language",
+          "name": "Maltese",
+          "labels": {
+            "en": "Maltese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mon": {
+          "path": "mon.traineddata",
+          "git_blob_sha1": "2ef212c519edc66ff2508f48dbe1bb836a4ea274",
+          "size": 2137042,
+          "kind": "language",
+          "name": "Mongolian",
+          "labels": {
+            "en": "Mongolian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mri": {
+          "path": "mri.traineddata",
+          "git_blob_sha1": "eab6b1a98e4b6ed510d6443a5e3d14519da3b338",
+          "size": 862973,
+          "kind": "language",
+          "name": "Maori",
+          "labels": {
+            "en": "Maori"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "msa": {
+          "path": "msa.traineddata",
+          "git_blob_sha1": "f0e2b8bef0a681f09baac99a418529205ee80201",
+          "size": 1747801,
+          "kind": "language",
+          "name": "Malay",
+          "labels": {
+            "en": "Malay"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mya": {
+          "path": "mya.traineddata",
+          "git_blob_sha1": "cf28ddca604dc7f46bc34f2f4c6a193a0706c03b",
+          "size": 4640561,
+          "kind": "language",
+          "name": "Burmese",
+          "labels": {
+            "en": "Burmese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "nep": {
+          "path": "nep.traineddata",
+          "git_blob_sha1": "948e365b55f9fe8179dde2ff0134feffb210496e",
+          "size": 1002911,
+          "kind": "language",
+          "name": "Nepali",
+          "labels": {
+            "en": "Nepali"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "nld": {
+          "path": "nld.traineddata",
+          "git_blob_sha1": "53ce95a9c2488a9a0228939944a184157373d0ae",
+          "size": 6050296,
+          "kind": "language",
+          "name": "Dutch; Flemish",
+          "labels": {
+            "en": "Dutch; Flemish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "nor": {
+          "path": "nor.traineddata",
+          "git_blob_sha1": "9209df2c9904c127437c07e16c287cdefd024e7c",
+          "size": 3610079,
+          "kind": "language",
+          "name": "Norwegian",
+          "labels": {
+            "en": "Norwegian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "oci": {
+          "path": "oci.traineddata",
+          "git_blob_sha1": "4017d4405b09333f22a3de2a4d30cf009bdb4a9b",
+          "size": 6322087,
+          "kind": "language",
+          "name": "Occitan post 1500",
+          "labels": {
+            "en": "Occitan post 1500"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ori": {
+          "path": "ori.traineddata",
+          "git_blob_sha1": "ae0f9ed13d5c9ad4a4de57c7266c434b83a9f583",
+          "size": 1480066,
+          "kind": "language",
+          "name": "Oriya",
+          "labels": {
+            "en": "Oriya"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "osd": {
+          "path": "osd.traineddata",
+          "git_blob_sha1": "527457ca8f8fe1fda7c2f88bce3c0e4be12be9d0",
+          "size": 10562727,
+          "kind": "special",
+          "role": "orientation_script_detection",
+          "name": "Orientation and script detection module",
+          "labels": {
+            "en": "Orientation and script detection module"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "pan": {
+          "path": "pan.traineddata",
+          "git_blob_sha1": "d4f00533a6c76ce4045aa6ad40b39f47eeaa333f",
+          "size": 497721,
+          "kind": "language",
+          "name": "Panjabi; Punjabi",
+          "labels": {
+            "en": "Panjabi; Punjabi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "pol": {
+          "path": "pol.traineddata",
+          "git_blob_sha1": "2382f568f0ce0c4c0a7f4380a291255514e5e97f",
+          "size": 4765518,
+          "kind": "language",
+          "name": "Polish",
+          "labels": {
+            "en": "Polish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "por": {
+          "path": "por.traineddata",
+          "git_blob_sha1": "e9f373e95c66b4bf557c263721ef31f78e5bc301",
+          "size": 1982756,
+          "kind": "language",
+          "name": "Portuguese",
+          "labels": {
+            "en": "Portuguese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "pus": {
+          "path": "pus.traineddata",
+          "git_blob_sha1": "220cdf92efdc76a227439c0b8734196af9743b98",
+          "size": 1772087,
+          "kind": "language",
+          "name": "Pushto; Pashto",
+          "labels": {
+            "en": "Pushto; Pashto"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "que": {
+          "path": "que.traineddata",
+          "git_blob_sha1": "d80c1f308973b3129183843759f23fdcb1c5c2be",
+          "size": 5026336,
+          "kind": "language",
+          "name": "Quechua",
+          "labels": {
+            "en": "Quechua"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ron": {
+          "path": "ron.traineddata",
+          "git_blob_sha1": "04cd2bc7b471431354e9446e973f3472f442e189",
+          "size": 2376323,
+          "kind": "language",
+          "name": "Romanian; Moldavian; Moldovan",
+          "labels": {
+            "en": "Romanian; Moldavian; Moldovan"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "rus": {
+          "path": "rus.traineddata",
+          "git_blob_sha1": "b146cb2263acbc6383f8e92ea0ce759537687bb8",
+          "size": 3861738,
+          "kind": "language",
+          "name": "Russian",
+          "labels": {
+            "en": "Russian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "san": {
+          "path": "san.traineddata",
+          "git_blob_sha1": "3df043f3247fd41a21ac47c3b199bc87643e984b",
+          "size": 12404677,
+          "kind": "language",
+          "name": "Sanskrit",
+          "labels": {
+            "en": "Sanskrit"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Arabic": {
+          "path": "script/Arabic.traineddata",
+          "git_blob_sha1": "4d4bac05b8be69aafb537d3a753efec6be473953",
+          "size": 9311038,
+          "kind": "script",
+          "name": "Arabic",
+          "labels": {
+            "en": "Arabic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Armenian": {
+          "path": "script/Armenian.traineddata",
+          "git_blob_sha1": "7e4cf10f1fb571dbce0afea837db15cd11b44f39",
+          "size": 7879909,
+          "kind": "script",
+          "name": "Armenian",
+          "labels": {
+            "en": "Armenian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Bengali": {
+          "path": "script/Bengali.traineddata",
+          "git_blob_sha1": "a1b888e492320fb9b941dbf0d7fe9d767e5f6a42",
+          "size": 5712242,
+          "kind": "script",
+          "name": "Bengali",
+          "labels": {
+            "en": "Bengali"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Canadian_Aboriginal": {
+          "path": "script/Canadian_Aboriginal.traineddata",
+          "git_blob_sha1": "9ba41b35b6b06892657a61dd33003bc8a0a9483a",
+          "size": 7180795,
+          "kind": "script",
+          "name": "Canadian Aboriginal",
+          "labels": {
+            "en": "Canadian Aboriginal"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Cherokee": {
+          "path": "script/Cherokee.traineddata",
+          "git_blob_sha1": "94834e6e395e97209c59846dc78320e830f67a12",
+          "size": 4231619,
+          "kind": "script",
+          "name": "Cherokee",
+          "labels": {
+            "en": "Cherokee"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Cyrillic": {
+          "path": "script/Cyrillic.traineddata",
+          "git_blob_sha1": "1901a7483cccad6c43d1052bb40d754ae53694b4",
+          "size": 29252466,
+          "kind": "script",
+          "name": "Cyrillic",
+          "labels": {
+            "en": "Cyrillic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Devanagari": {
+          "path": "script/Devanagari.traineddata",
+          "git_blob_sha1": "3c33bd676b0ae7a480ec1c1f5ebdd13513aa5433",
+          "size": 17943870,
+          "kind": "script",
+          "name": "Devanagari",
+          "labels": {
+            "en": "Devanagari"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Ethiopic": {
+          "path": "script/Ethiopic.traineddata",
+          "git_blob_sha1": "e6c0944e630c580f4a9d6d4a8ebeaeaca3583164",
+          "size": 9074416,
+          "kind": "script",
+          "name": "Ethiopic",
+          "labels": {
+            "en": "Ethiopic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Fraktur": {
+          "path": "script/Fraktur.traineddata",
+          "git_blob_sha1": "28262227524b894a1f283e8edd2245f11d9e3e9f",
+          "size": 10915632,
+          "kind": "script",
+          "name": "Fraktur",
+          "labels": {
+            "en": "Fraktur"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Georgian": {
+          "path": "script/Georgian.traineddata",
+          "git_blob_sha1": "77511502fa8dd8d1aec6700b697bdd3cc501a78d",
+          "size": 6949865,
+          "kind": "script",
+          "name": "Georgian",
+          "labels": {
+            "en": "Georgian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Greek": {
+          "path": "script/Greek.traineddata",
+          "git_blob_sha1": "0fdbf7f0eb07e1c4a72f580afba84cd85cafc177",
+          "size": 3041556,
+          "kind": "script",
+          "name": "Greek",
+          "labels": {
+            "en": "Greek"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Gujarati": {
+          "path": "script/Gujarati.traineddata",
+          "git_blob_sha1": "9f203b6620b479149fe022553278a48032c87f21",
+          "size": 5017100,
+          "kind": "script",
+          "name": "Gujarati",
+          "labels": {
+            "en": "Gujarati"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Gurmukhi": {
+          "path": "script/Gurmukhi.traineddata",
+          "git_blob_sha1": "36e1161b20dac2826f80c7e27f753670177116a2",
+          "size": 4213597,
+          "kind": "script",
+          "name": "Gurmukhi",
+          "labels": {
+            "en": "Gurmukhi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanS": {
+          "path": "script/HanS.traineddata",
+          "git_blob_sha1": "41d7386cacc0faf19b381f9bba035cb3bcc7f8f9",
+          "size": 5972903,
+          "kind": "script",
+          "name": "Han simplified",
+          "labels": {
+            "en": "Han simplified"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanS_vert": {
+          "path": "script/HanS_vert.traineddata",
+          "git_blob_sha1": "a0464cb0478f089f00cbfa715a15ba5aba5d0e37",
+          "size": 5429738,
+          "kind": "script",
+          "name": "Han simplified, vertical",
+          "labels": {
+            "en": "Han simplified, vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanT": {
+          "path": "script/HanT.traineddata",
+          "git_blob_sha1": "ac8c8e97a2e75db8afd1a843527f350737973435",
+          "size": 5448070,
+          "kind": "script",
+          "name": "Han traditional",
+          "labels": {
+            "en": "Han traditional"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanT_vert": {
+          "path": "script/HanT_vert.traineddata",
+          "git_blob_sha1": "99757fde125138e5d889784d0d9f2edd659defac",
+          "size": 5448267,
+          "kind": "script",
+          "name": "Han traditional, vertical",
+          "labels": {
+            "en": "Han traditional, vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Hangul": {
+          "path": "script/Hangul.traineddata",
+          "git_blob_sha1": "977fd63d7430853e04f49c43400dc576144cfe0e",
+          "size": 4845849,
+          "kind": "script",
+          "name": "Hangul",
+          "labels": {
+            "en": "Hangul"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Hangul_vert": {
+          "path": "script/Hangul_vert.traineddata",
+          "git_blob_sha1": "4e421ca8baa936ffad67b6bd78df848bbfb4fa03",
+          "size": 4725034,
+          "kind": "script",
+          "name": "Hangul vertical",
+          "labels": {
+            "en": "Hangul vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Hebrew": {
+          "path": "script/Hebrew.traineddata",
+          "git_blob_sha1": "590055a3db20484eb90e6bd1a9223f36b69ea907",
+          "size": 4866337,
+          "kind": "script",
+          "name": "Hebrew",
+          "labels": {
+            "en": "Hebrew"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Japanese": {
+          "path": "script/Japanese.traineddata",
+          "git_blob_sha1": "89481f2c257019f1ea58c82b7daaac9688f7b172",
+          "size": 5877645,
+          "kind": "script",
+          "name": "Japanese",
+          "labels": {
+            "en": "Japanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Japanese_vert": {
+          "path": "script/Japanese_vert.traineddata",
+          "git_blob_sha1": "5c211c42046ada01847b1628a6f1766826c2a371",
+          "size": 6445356,
+          "kind": "script",
+          "name": "Japanese vertical",
+          "labels": {
+            "en": "Japanese vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Kannada": {
+          "path": "script/Kannada.traineddata",
+          "git_blob_sha1": "238f7a104e604a27b14ca956df2f346f7750099b",
+          "size": 6777791,
+          "kind": "script",
+          "name": "Kannada",
+          "labels": {
+            "en": "Kannada"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Khmer": {
+          "path": "script/Khmer.traineddata",
+          "git_blob_sha1": "635b310e6a79c3aac2fe5aa12dd5bcb7718c2e15",
+          "size": 4476365,
+          "kind": "script",
+          "name": "Khmer",
+          "labels": {
+            "en": "Khmer"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Lao": {
+          "path": "script/Lao.traineddata",
+          "git_blob_sha1": "0bdf44f32650e6f15ef0491f88dee430994dca62",
+          "size": 10103937,
+          "kind": "script",
+          "name": "Lao",
+          "labels": {
+            "en": "Lao"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Latin": {
+          "path": "script/Latin.traineddata",
+          "git_blob_sha1": "8b6e3a3ae06e6b623b587e9f87c988e169fa1c6b",
+          "size": 89384811,
+          "kind": "script",
+          "name": "Latin",
+          "labels": {
+            "en": "Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Malayalam": {
+          "path": "script/Malayalam.traineddata",
+          "git_blob_sha1": "9e639ea78e5040c75bce36e1231755901448e4ef",
+          "size": 9007302,
+          "kind": "script",
+          "name": "Malayalam",
+          "labels": {
+            "en": "Malayalam"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Myanmar": {
+          "path": "script/Myanmar.traineddata",
+          "git_blob_sha1": "733ebd14f67a5a52211abfc6f66b485a23a8b955",
+          "size": 7840489,
+          "kind": "script",
+          "name": "Myanmar",
+          "labels": {
+            "en": "Myanmar"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Oriya": {
+          "path": "script/Oriya.traineddata",
+          "git_blob_sha1": "d9ef97617c0914028360f703d810564013542421",
+          "size": 5744929,
+          "kind": "script",
+          "name": "Odia",
+          "labels": {
+            "en": "Odia"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Sinhala": {
+          "path": "script/Sinhala.traineddata",
+          "git_blob_sha1": "98d26bd5f71305d96f947e29d3fcb455ff26bc9f",
+          "size": 4782577,
+          "kind": "script",
+          "name": "Sinhala",
+          "labels": {
+            "en": "Sinhala"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Syriac": {
+          "path": "script/Syriac.traineddata",
+          "git_blob_sha1": "b97923946987070b6ee69ab41d4bc4c87b739001",
+          "size": 5803220,
+          "kind": "script",
+          "name": "Syriac",
+          "labels": {
+            "en": "Syriac"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Tamil": {
+          "path": "script/Tamil.traineddata",
+          "git_blob_sha1": "48fede126ba6e563a69ca10eae3604e42143039f",
+          "size": 7089032,
+          "kind": "script",
+          "name": "Tamil",
+          "labels": {
+            "en": "Tamil"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Telugu": {
+          "path": "script/Telugu.traineddata",
+          "git_blob_sha1": "0468e5dc1eee3059191b4ac2d7109a9431ce42c1",
+          "size": 6485174,
+          "kind": "script",
+          "name": "Telugu",
+          "labels": {
+            "en": "Telugu"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Thaana": {
+          "path": "script/Thaana.traineddata",
+          "git_blob_sha1": "b13feb9f2af4762a80431e93de11e2e61ae40068",
+          "size": 6048323,
+          "kind": "script",
+          "name": "Thaana",
+          "labels": {
+            "en": "Thaana"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Thai": {
+          "path": "script/Thai.traineddata",
+          "git_blob_sha1": "62acc3de815e28c43f764dc7e10e5c8afdfefb20",
+          "size": 4249016,
+          "kind": "script",
+          "name": "Thai",
+          "labels": {
+            "en": "Thai"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Tibetan": {
+          "path": "script/Tibetan.traineddata",
+          "git_blob_sha1": "223459ad4ee20b85075e423975aa44edbed190dd",
+          "size": 5699531,
+          "kind": "script",
+          "name": "Tibetan",
+          "labels": {
+            "en": "Tibetan"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Vietnamese": {
+          "path": "script/Vietnamese.traineddata",
+          "git_blob_sha1": "92c69d17eab37670c3ffc0efce3f7918ef1d9468",
+          "size": 1667794,
+          "kind": "script",
+          "name": "Vietnamese",
+          "labels": {
+            "en": "Vietnamese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "sin": {
+          "path": "sin.traineddata",
+          "git_blob_sha1": "d0c8584e78c44666efcd7fbd47940a8a1121550d",
+          "size": 1727413,
+          "kind": "language",
+          "name": "Sinhala; Sinhalese",
+          "labels": {
+            "en": "Sinhala; Sinhalese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "slk": {
+          "path": "slk.traineddata",
+          "git_blob_sha1": "ca99e3e82f69a0e16b48cdfec3c4e706758269f2",
+          "size": 4427661,
+          "kind": "language",
+          "name": "Slovak",
+          "labels": {
+            "en": "Slovak"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "slv": {
+          "path": "slv.traineddata",
+          "git_blob_sha1": "835954e891897d3c8b63db48cb5c2712ef2e6b11",
+          "size": 3003829,
+          "kind": "language",
+          "name": "Slovenian",
+          "labels": {
+            "en": "Slovenian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "snd": {
+          "path": "snd.traineddata",
+          "git_blob_sha1": "1ef6548d22977dc1f236be879dce3a62ac6a47ed",
+          "size": 1694035,
+          "kind": "language",
+          "name": "Sindhi",
+          "labels": {
+            "en": "Sindhi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "spa": {
+          "path": "spa.traineddata",
+          "git_blob_sha1": "72e901f13ca52cfe34cf239a368b9ed3c0ddaf26",
+          "size": 2294433,
+          "kind": "language",
+          "name": "Spanish; Castilian",
+          "labels": {
+            "en": "Spanish; Castilian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "spa_old": {
+          "path": "spa_old.traineddata",
+          "git_blob_sha1": "42b281f55736b2f714598accfc2a78f409db1f0c",
+          "size": 2894755,
+          "kind": "language",
+          "name": "Spanish; Castilian - Old",
+          "labels": {
+            "en": "Spanish; Castilian - Old"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "sqi": {
+          "path": "sqi.traineddata",
+          "git_blob_sha1": "9624fbf33452a95dd5a0a3a93fe9876108104895",
+          "size": 1874705,
+          "kind": "language",
+          "name": "Albanian",
+          "labels": {
+            "en": "Albanian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "srp": {
+          "path": "srp.traineddata",
+          "git_blob_sha1": "530fb4b1cb27f369bbee7eb0add89bfd73d6f15c",
+          "size": 2149931,
+          "kind": "language",
+          "name": "Serbian",
+          "labels": {
+            "en": "Serbian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "srp_latn": {
+          "path": "srp_latn.traineddata",
+          "git_blob_sha1": "5f81e591adad58a179a2d371aacccaf0801f93a2",
+          "size": 3281787,
+          "kind": "language",
+          "name": "Serbian - Latin",
+          "labels": {
+            "en": "Serbian - Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "sun": {
+          "path": "sun.traineddata",
+          "git_blob_sha1": "894891425c1fe302ce1d8f115a3c00967c6c2832",
+          "size": 1369500,
+          "kind": "language",
+          "name": "Sundanese",
+          "labels": {
+            "en": "Sundanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "swa": {
+          "path": "swa.traineddata",
+          "git_blob_sha1": "633d73b35869600452eec58dcd9036cc702c3e48",
+          "size": 2167651,
+          "kind": "language",
+          "name": "Swahili",
+          "labels": {
+            "en": "Swahili"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "swe": {
+          "path": "swe.traineddata",
+          "git_blob_sha1": "684e1fa66e4a55b983febf5f9ed04f26ad946e59",
+          "size": 4167034,
+          "kind": "language",
+          "name": "Swedish",
+          "labels": {
+            "en": "Swedish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "syr": {
+          "path": "syr.traineddata",
+          "git_blob_sha1": "462aefc8a1485ae4c38db82f7f50fd105bf30195",
+          "size": 2207208,
+          "kind": "language",
+          "name": "Syriac",
+          "labels": {
+            "en": "Syriac"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tam": {
+          "path": "tam.traineddata",
+          "git_blob_sha1": "fa1793d68f9aba8bf191e8ff1036e2271d288e44",
+          "size": 3237963,
+          "kind": "language",
+          "name": "Tamil",
+          "labels": {
+            "en": "Tamil"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tat": {
+          "path": "tat.traineddata",
+          "git_blob_sha1": "9485ca27d48bb161a47584f8381420462ef6fa27",
+          "size": 1072896,
+          "kind": "language",
+          "name": "Tatar",
+          "labels": {
+            "en": "Tatar"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tel": {
+          "path": "tel.traineddata",
+          "git_blob_sha1": "ee8a33b0f658fc75b8cbfe8c10413eac4f41e6ad",
+          "size": 2769654,
+          "kind": "language",
+          "name": "Telugu",
+          "labels": {
+            "en": "Telugu"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tgk": {
+          "path": "tgk.traineddata",
+          "git_blob_sha1": "044766728ce9cb2cc73976175b970a4cea9a870a",
+          "size": 2602685,
+          "kind": "language",
+          "name": "Tajik",
+          "labels": {
+            "en": "Tajik"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tha": {
+          "path": "tha.traineddata",
+          "git_blob_sha1": "ea28de3985668cac00d261c5b91f023ea66e19cd",
+          "size": 1072600,
+          "kind": "language",
+          "name": "Thai",
+          "labels": {
+            "en": "Thai"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tir": {
+          "path": "tir.traineddata",
+          "git_blob_sha1": "55e62eb0297e07360db5e9dc5dd86aab8e0a1e9c",
+          "size": 378822,
+          "kind": "language",
+          "name": "Tigrinya",
+          "labels": {
+            "en": "Tigrinya"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ton": {
+          "path": "ton.traineddata",
+          "git_blob_sha1": "9eff0fd002798089f5f7d8307be968a36f1ce433",
+          "size": 947249,
+          "kind": "language",
+          "name": "Tonga",
+          "labels": {
+            "en": "Tonga"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tur": {
+          "path": "tur.traineddata",
+          "git_blob_sha1": "1f0b331ef29f50ceb7c44da58e38c7ec42314d0a",
+          "size": 4550554,
+          "kind": "language",
+          "name": "Turkish",
+          "labels": {
+            "en": "Turkish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "uig": {
+          "path": "uig.traineddata",
+          "git_blob_sha1": "36124d6b0ed1c2654a13551203c25b44b4013978",
+          "size": 2794272,
+          "kind": "language",
+          "name": "Uighur; Uyghur",
+          "labels": {
+            "en": "Uighur; Uyghur"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ukr": {
+          "path": "ukr.traineddata",
+          "git_blob_sha1": "d02cf90b2911a3da66dac6ae380bcefb18dd7663",
+          "size": 3825102,
+          "kind": "language",
+          "name": "Ukrainian",
+          "labels": {
+            "en": "Ukrainian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "urd": {
+          "path": "urd.traineddata",
+          "git_blob_sha1": "715a159d4abea25294c82971be28be215b3d1c4a",
+          "size": 1398718,
+          "kind": "language",
+          "name": "Urdu",
+          "labels": {
+            "en": "Urdu"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "uzb": {
+          "path": "uzb.traineddata",
+          "git_blob_sha1": "109abc765273b2c9eabd55781f0a619320c80007",
+          "size": 6470703,
+          "kind": "language",
+          "name": "Uzbek",
+          "labels": {
+            "en": "Uzbek"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "uzb_cyrl": {
+          "path": "uzb_cyrl.traineddata",
+          "git_blob_sha1": "c2ff8b9c282a9712b5f24970927377bc18dea7cf",
+          "size": 1563501,
+          "kind": "language",
+          "name": "Uzbek - Cyrillic",
+          "labels": {
+            "en": "Uzbek - Cyrillic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "vie": {
+          "path": "vie.traineddata",
+          "git_blob_sha1": "e54a5912fb634c581c4a45ae9f37cbc021ec7140",
+          "size": 531275,
+          "kind": "language",
+          "name": "Vietnamese",
+          "labels": {
+            "en": "Vietnamese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "yid": {
+          "path": "yid.traineddata",
+          "git_blob_sha1": "6349588bbabf99f8a812e8231c98c015ea7b60c6",
+          "size": 545606,
+          "kind": "language",
+          "name": "Yiddish",
+          "labels": {
+            "en": "Yiddish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "yor": {
+          "path": "yor.traineddata",
+          "git_blob_sha1": "3e0cd582f65f17844039173057dfc015bf19f61d",
+          "size": 963400,
+          "kind": "language",
+          "name": "Yoruba",
+          "labels": {
+            "en": "Yoruba"
+          },
+          "name_source": "tesseract_manual"
+        }
+      },
+      "aliases": {
+        "frk": {
+          "path": "frk.traineddata",
+          "git_mode": "120000",
+          "git_blob_sha1": "d473893bcabcef536ed36480f976fcce482bd87c",
+          "size": 20,
+          "target_code": "deu_latf",
+          "target_path": "deu_latf.traineddata",
+          "deprecated": true,
+          "target_text": "deu_latf.traineddata"
+        }
+      }
+    },
+    "best": {
+      "profile": "best",
+      "repository": "tesseract-ocr/tessdata_best",
+      "repository_url": "https://github.com/tesseract-ocr/tessdata_best",
+      "revision": "e12c65a915945e4c28e237a9b52bc4a8f39a0cec",
+      "tree": "27af2938bbbe8fe12bc5aa024e05722d1cf72807",
+      "tree_api_url": "https://api.github.com/repos/tesseract-ocr/tessdata_best/git/trees/27af2938bbbe8fe12bc5aa024e05722d1cf72807?recursive=1",
+      "tree_truncated": false,
+      "raw_base_url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/",
+      "license": {
+        "spdx_id": "Apache-2.0",
+        "path": "LICENSE",
+        "url": "https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/LICENSE",
+        "git_blob_sha1": "d9a10c0d8e868ebf8da0b3dc95bb0be634c34bfe",
+        "size": 10173,
+        "text": "                                 Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n"
+      },
+      "readme": {
+        "path": "README.md",
+        "url": "https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/README.md",
+        "git_blob_sha1": "4b1345ed197d9d62b7cd9e5ac9043c1ed7df1a58",
+        "size": 470
+      },
+      "compatibility": {
+        "tesseract_major_versions": [
+          4,
+          5
+        ],
+        "language_script_engine": "LSTM",
+        "language_script_oem": 1,
+        "unsupported_language_script_oem": [
+          0,
+          2
+        ],
+        "special_models_have_separate_purpose": true
+      },
+      "counts": {
+        "model_files": 162,
+        "language_models": 123,
+        "script_models": 37,
+        "special_models": 2,
+        "aliases": 0,
+        "total_model_bytes": 1774547803
+      },
+      "models": {
+        "afr": {
+          "path": "afr.traineddata",
+          "git_blob_sha1": "40ac7eabfe869e4d48d8410c1b5cdc7b88a7b39a",
+          "size": 12800552,
+          "kind": "language",
+          "name": "Afrikaans",
+          "labels": {
+            "en": "Afrikaans"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "amh": {
+          "path": "amh.traineddata",
+          "git_blob_sha1": "a25f63e65b0023d95516356d5ab4158feee4fba5",
+          "size": 8389639,
+          "kind": "language",
+          "name": "Amharic",
+          "labels": {
+            "en": "Amharic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ara": {
+          "path": "ara.traineddata",
+          "git_blob_sha1": "4b687c7d54c86cf6219aebe781b47284fd5d41f0",
+          "size": 12603724,
+          "kind": "language",
+          "name": "Arabic",
+          "labels": {
+            "en": "Arabic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "asm": {
+          "path": "asm.traineddata",
+          "git_blob_sha1": "c2638071e3f0f8f195a59d4c27073da349a9f662",
+          "size": 11315350,
+          "kind": "language",
+          "name": "Assamese",
+          "labels": {
+            "en": "Assamese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "aze": {
+          "path": "aze.traineddata",
+          "git_blob_sha1": "f18d1e9a95b3df16b6229ab99afa010cef718c6e",
+          "size": 6281404,
+          "kind": "language",
+          "name": "Azerbaijani",
+          "labels": {
+            "en": "Azerbaijani"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "aze_cyrl": {
+          "path": "aze_cyrl.traineddata",
+          "git_blob_sha1": "5c671e0342f24e065096406b48437c226133ff31",
+          "size": 4700277,
+          "kind": "language",
+          "name": "Azerbaijani - Cyrillic",
+          "labels": {
+            "en": "Azerbaijani - Cyrillic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bel": {
+          "path": "bel.traineddata",
+          "git_blob_sha1": "4421405ac619b62d53bb3a226ed6f1069953566e",
+          "size": 10870278,
+          "kind": "language",
+          "name": "Belarusian",
+          "labels": {
+            "en": "Belarusian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ben": {
+          "path": "ben.traineddata",
+          "git_blob_sha1": "b16a79b0bf5a66e70a0f73165ed0eb92c688ee20",
+          "size": 11045427,
+          "kind": "language",
+          "name": "Bengali",
+          "labels": {
+            "en": "Bengali"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bod": {
+          "path": "bod.traineddata",
+          "git_blob_sha1": "e6309bdc3ebfac9d7163a0de4da978c52ca23e38",
+          "size": 8623846,
+          "kind": "language",
+          "name": "Tibetan",
+          "labels": {
+            "en": "Tibetan"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bos": {
+          "path": "bos.traineddata",
+          "git_blob_sha1": "b217d3c2fda11ac8366104679bba533602c76b70",
+          "size": 5264248,
+          "kind": "language",
+          "name": "Bosnian",
+          "labels": {
+            "en": "Bosnian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bre": {
+          "path": "bre.traineddata",
+          "git_blob_sha1": "d92118421479211ddae32474795f257134f72499",
+          "size": 15640760,
+          "kind": "language",
+          "name": "Breton",
+          "labels": {
+            "en": "Breton"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "bul": {
+          "path": "bul.traineddata",
+          "git_blob_sha1": "72f4f79f886f1ee4af0fb432f1b39e57cc361ee1",
+          "size": 8844613,
+          "kind": "language",
+          "name": "Bulgarian",
+          "labels": {
+            "en": "Bulgarian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "cat": {
+          "path": "cat.traineddata",
+          "git_blob_sha1": "f68513407b07255f7b3a53215e9bc1fa55686e75",
+          "size": 3802329,
+          "kind": "language",
+          "name": "Catalan; Valencian",
+          "labels": {
+            "en": "Catalan; Valencian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ceb": {
+          "path": "ceb.traineddata",
+          "git_blob_sha1": "afa487092c3a865ca6090d6097a7adbbdbe80a96",
+          "size": 3452674,
+          "kind": "language",
+          "name": "Cebuano",
+          "labels": {
+            "en": "Cebuano"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ces": {
+          "path": "ces.traineddata",
+          "git_blob_sha1": "d762752614325b5b60733804b70b8281ab9c8543",
+          "size": 10918912,
+          "kind": "language",
+          "name": "Czech",
+          "labels": {
+            "en": "Czech"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "chi_sim": {
+          "path": "chi_sim.traineddata",
+          "git_blob_sha1": "da7fa49ded2895ebe974c6ea3a6cc1af8595f1af",
+          "size": 13077423,
+          "kind": "language",
+          "name": "Chinese simplified",
+          "labels": {
+            "en": "Chinese simplified"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "chi_sim_vert": {
+          "path": "chi_sim_vert.traineddata",
+          "git_blob_sha1": "2284498de65d8ba930bc2ff71495dccbb5e69832",
+          "size": 13077507,
+          "kind": "language",
+          "name": "chi_sim_vert",
+          "labels": {},
+          "name_source": "code"
+        },
+        "chi_tra": {
+          "path": "chi_tra.traineddata",
+          "git_blob_sha1": "c1dd109cd5bbec27381f578e9a425cef88466244",
+          "size": 12985735,
+          "kind": "language",
+          "name": "Chinese traditional",
+          "labels": {
+            "en": "Chinese traditional"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "chi_tra_vert": {
+          "path": "chi_tra_vert.traineddata",
+          "git_blob_sha1": "930343b23e1a4fa13fd2c666e0655bfaaeba8ec1",
+          "size": 12985521,
+          "kind": "language",
+          "name": "chi_tra_vert",
+          "labels": {},
+          "name_source": "code"
+        },
+        "chr": {
+          "path": "chr.traineddata",
+          "git_blob_sha1": "87337066d1f6e85eefe33058d5a69b1988e4fa6d",
+          "size": 2258703,
+          "kind": "language",
+          "name": "Cherokee",
+          "labels": {
+            "en": "Cherokee"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "cos": {
+          "path": "cos.traineddata",
+          "git_blob_sha1": "a9c0fec80af495e94a5d1400beea6fe97b8a0652",
+          "size": 8830216,
+          "kind": "language",
+          "name": "Corsican",
+          "labels": {
+            "en": "Corsican"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "cym": {
+          "path": "cym.traineddata",
+          "git_blob_sha1": "ded660f6f9f1917be5c3e97e7a790da055975906",
+          "size": 8750784,
+          "kind": "language",
+          "name": "Welsh",
+          "labels": {
+            "en": "Welsh"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "dan": {
+          "path": "dan.traineddata",
+          "git_blob_sha1": "c790ec5c7ae4b0134fce9daa4699334c27bac8fd",
+          "size": 9758142,
+          "kind": "language",
+          "name": "Danish",
+          "labels": {
+            "en": "Danish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "deu": {
+          "path": "deu.traineddata",
+          "git_blob_sha1": "6dd654880db617f3edfa00bc2ed9c9e3107b8fd0",
+          "size": 8628461,
+          "kind": "language",
+          "name": "German",
+          "labels": {
+            "en": "German"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "deu_latf": {
+          "path": "deu_latf.traineddata",
+          "git_blob_sha1": "cc64c41d469dd0d2791e26d6da8c0fa5d4ef94c0",
+          "size": 12938047,
+          "kind": "language",
+          "name": "German Fraktur Latin",
+          "labels": {
+            "en": "German Fraktur Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "div": {
+          "path": "div.traineddata",
+          "git_blob_sha1": "f1c2794521c8b430f1f29878485b197a6a0d9001",
+          "size": 4574116,
+          "kind": "language",
+          "name": "Dhivehi",
+          "labels": {
+            "en": "Dhivehi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "dzo": {
+          "path": "dzo.traineddata",
+          "git_blob_sha1": "b24a17af8b1354e6947b327fcf5a8fc783932d2b",
+          "size": 3243805,
+          "kind": "language",
+          "name": "Dzongkha",
+          "labels": {
+            "en": "Dzongkha"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ell": {
+          "path": "ell.traineddata",
+          "git_blob_sha1": "f6f73870885f4fd6e63371244c7f3d5904e1b276",
+          "size": 8945021,
+          "kind": "language",
+          "name": "Greek, Modern, 1453-",
+          "labels": {
+            "en": "Greek, Modern, 1453-"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "eng": {
+          "path": "eng.traineddata",
+          "git_blob_sha1": "176dc3220de7db34d3b3aecbfa42043a6038348b",
+          "size": 15400601,
+          "kind": "language",
+          "name": "English",
+          "labels": {
+            "en": "English"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "enm": {
+          "path": "enm.traineddata",
+          "git_blob_sha1": "95c4bcce8e0325c81cba03351a322608e0330dff",
+          "size": 13281564,
+          "kind": "language",
+          "name": "English, Middle, 1100-1500",
+          "labels": {
+            "en": "English, Middle, 1100-1500"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "epo": {
+          "path": "epo.traineddata",
+          "git_blob_sha1": "90aefd6d452e144ba48b5770341be7592cdda76a",
+          "size": 7402169,
+          "kind": "language",
+          "name": "Esperanto",
+          "labels": {
+            "en": "Esperanto"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "equ": {
+          "path": "equ.traineddata",
+          "git_blob_sha1": "27b470378dc8718f1dc5a93931fefa3340336e4d",
+          "size": 2251950,
+          "kind": "special",
+          "role": "equation_detection",
+          "name": "Math / equation detection module",
+          "labels": {
+            "en": "Math / equation detection module"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "est": {
+          "path": "est.traineddata",
+          "git_blob_sha1": "0a5bc369b103b9486f0fc364262dccf2348d3871",
+          "size": 15833749,
+          "kind": "language",
+          "name": "Estonian",
+          "labels": {
+            "en": "Estonian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "eus": {
+          "path": "eus.traineddata",
+          "git_blob_sha1": "1ad03ea7fee8bf4fb144b34568db3cf8cfd57096",
+          "size": 7933869,
+          "kind": "language",
+          "name": "Basque",
+          "labels": {
+            "en": "Basque"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fao": {
+          "path": "fao.traineddata",
+          "git_blob_sha1": "53ded67d0be8744a32327a8da92ee7b3b20bdcb4",
+          "size": 10030003,
+          "kind": "language",
+          "name": "Faroese",
+          "labels": {
+            "en": "Faroese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fas": {
+          "path": "fas.traineddata",
+          "git_blob_sha1": "326a26e8522dce12596fc0de314710c5cc7055d0",
+          "size": 3325955,
+          "kind": "language",
+          "name": "Persian",
+          "labels": {
+            "en": "Persian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fil": {
+          "path": "fil.traineddata",
+          "git_blob_sha1": "7fa2c5af5bdd9c9f308a0429727cb55c0dd41ccf",
+          "size": 8978743,
+          "kind": "language",
+          "name": "Filipino",
+          "labels": {
+            "en": "Filipino"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fin": {
+          "path": "fin.traineddata",
+          "git_blob_sha1": "5896d6214ad70a02b8ce4ef969d9d369398324f7",
+          "size": 14369979,
+          "kind": "language",
+          "name": "Finnish",
+          "labels": {
+            "en": "Finnish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fra": {
+          "path": "fra.traineddata",
+          "git_blob_sha1": "f73e7dec0669dbac6443d8f83054b8b2a3146729",
+          "size": 3972885,
+          "kind": "language",
+          "name": "French",
+          "labels": {
+            "en": "French"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "frm": {
+          "path": "frm.traineddata",
+          "git_blob_sha1": "b1cf37686d494bcdacd177417ffc3c8ccee1b3e9",
+          "size": 4043005,
+          "kind": "language",
+          "name": "French, Middle, ca.1400-1600",
+          "labels": {
+            "en": "French, Middle, ca.1400-1600"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "fry": {
+          "path": "fry.traineddata",
+          "git_blob_sha1": "e085d033be5d871d74a9244ae3dc629c5bdb8bf3",
+          "size": 8442509,
+          "kind": "language",
+          "name": "West Frisian",
+          "labels": {
+            "en": "West Frisian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "gla": {
+          "path": "gla.traineddata",
+          "git_blob_sha1": "cef7956da4065d023625e759ff9e84a21598b9f5",
+          "size": 9599424,
+          "kind": "language",
+          "name": "Scottish Gaelic",
+          "labels": {
+            "en": "Scottish Gaelic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "gle": {
+          "path": "gle.traineddata",
+          "git_blob_sha1": "32f0536d856fa407650e819e31c7a16978bf971e",
+          "size": 3942458,
+          "kind": "language",
+          "name": "Irish",
+          "labels": {
+            "en": "Irish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "glg": {
+          "path": "glg.traineddata",
+          "git_blob_sha1": "ed95a43108559b215a43ffce9f58108326028d3c",
+          "size": 12709487,
+          "kind": "language",
+          "name": "Galician",
+          "labels": {
+            "en": "Galician"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "grc": {
+          "path": "grc.traineddata",
+          "git_blob_sha1": "d556abf33b3347f0b7a50c55072fc59619f900aa",
+          "size": 5168122,
+          "kind": "language",
+          "name": "Greek, Ancient, to 1453",
+          "labels": {
+            "en": "Greek, Ancient, to 1453"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "guj": {
+          "path": "guj.traineddata",
+          "git_blob_sha1": "2284f7e1c8aeecd01cc1a4c01315b1d739ba762a",
+          "size": 8515761,
+          "kind": "language",
+          "name": "Gujarati",
+          "labels": {
+            "en": "Gujarati"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hat": {
+          "path": "hat.traineddata",
+          "git_blob_sha1": "0f3d42574c4233a7c67ecda0b0d6329b2271e4f6",
+          "size": 12128251,
+          "kind": "language",
+          "name": "Haitian; Haitian Creole",
+          "labels": {
+            "en": "Haitian; Haitian Creole"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "heb": {
+          "path": "heb.traineddata",
+          "git_blob_sha1": "0fc27335b628e0e7992c58804c0437662ec54b06",
+          "size": 3704077,
+          "kind": "language",
+          "name": "Hebrew",
+          "labels": {
+            "en": "Hebrew"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hin": {
+          "path": "hin.traineddata",
+          "git_blob_sha1": "bb1e1c2da68a2b56d74fdf49a9dd53e7198b3302",
+          "size": 11895564,
+          "kind": "language",
+          "name": "Hindi",
+          "labels": {
+            "en": "Hindi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hrv": {
+          "path": "hrv.traineddata",
+          "git_blob_sha1": "0c81abc72092231abdd0221279b9f5d963ef649d",
+          "size": 11195424,
+          "kind": "language",
+          "name": "Croatian",
+          "labels": {
+            "en": "Croatian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hun": {
+          "path": "hun.traineddata",
+          "git_blob_sha1": "d2cd8ec070f4341f4cf75bdc7da08755c272ffc1",
+          "size": 12350405,
+          "kind": "language",
+          "name": "Hungarian",
+          "labels": {
+            "en": "Hungarian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "hye": {
+          "path": "hye.traineddata",
+          "git_blob_sha1": "33938b0d9c2e1befec0e485c75a4e2059c022b0b",
+          "size": 6372242,
+          "kind": "language",
+          "name": "Armenian",
+          "labels": {
+            "en": "Armenian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "iku": {
+          "path": "iku.traineddata",
+          "git_blob_sha1": "b964752686f526da8bbac7f10b78ff069539bd5f",
+          "size": 6139484,
+          "kind": "language",
+          "name": "Inuktitut",
+          "labels": {
+            "en": "Inuktitut"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ind": {
+          "path": "ind.traineddata",
+          "git_blob_sha1": "8df4926187c806b35607519eee0c5a6e970a630a",
+          "size": 8253606,
+          "kind": "language",
+          "name": "Indonesian",
+          "labels": {
+            "en": "Indonesian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "isl": {
+          "path": "isl.traineddata",
+          "git_blob_sha1": "bbcd030b8113176ab168f8fcc3df66258a5c4b78",
+          "size": 9486436,
+          "kind": "language",
+          "name": "Icelandic",
+          "labels": {
+            "en": "Icelandic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ita": {
+          "path": "ita.traineddata",
+          "git_blob_sha1": "8a09dcab553d22307b8110af0848ed71e5560cc8",
+          "size": 8863635,
+          "kind": "language",
+          "name": "Italian",
+          "labels": {
+            "en": "Italian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ita_old": {
+          "path": "ita_old.traineddata",
+          "git_blob_sha1": "25ead0d26f2f0d81b7e7f3864247a75c88820ed3",
+          "size": 9852171,
+          "kind": "language",
+          "name": "Italian - Old",
+          "labels": {
+            "en": "Italian - Old"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "jav": {
+          "path": "jav.traineddata",
+          "git_blob_sha1": "81e409548f90e43f4bf6fd50a32463553f743ffd",
+          "size": 8650382,
+          "kind": "language",
+          "name": "Javanese",
+          "labels": {
+            "en": "Javanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "jpn": {
+          "path": "jpn.traineddata",
+          "git_blob_sha1": "d2a8eab80ba3aba7654ac789b82f70b64d1cf051",
+          "size": 14330109,
+          "kind": "language",
+          "name": "Japanese",
+          "labels": {
+            "en": "Japanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "jpn_vert": {
+          "path": "jpn_vert.traineddata",
+          "git_blob_sha1": "ea8e1ab655d629e7865f289f3a8ea6daeb50bb89",
+          "size": 14330809,
+          "kind": "language",
+          "name": "jpn_vert",
+          "labels": {},
+          "name_source": "code"
+        },
+        "kan": {
+          "path": "kan.traineddata",
+          "git_blob_sha1": "8f2e98e1d36ee516a1638522e569d2c4d11ac86d",
+          "size": 10233763,
+          "kind": "language",
+          "name": "Kannada",
+          "labels": {
+            "en": "Kannada"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kat": {
+          "path": "kat.traineddata",
+          "git_blob_sha1": "8abab366b817b7f39a6330cfb6d90205cd32086e",
+          "size": 4487336,
+          "kind": "language",
+          "name": "Georgian",
+          "labels": {
+            "en": "Georgian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kat_old": {
+          "path": "kat_old.traineddata",
+          "git_blob_sha1": "ec7fe2afe5bca3c257d3a692f606ba0bff4b24f9",
+          "size": 3174400,
+          "kind": "language",
+          "name": "Georgian - Old",
+          "labels": {
+            "en": "Georgian - Old"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kaz": {
+          "path": "kaz.traineddata",
+          "git_blob_sha1": "ef5f6c521b066935bf8a8d5c4d4c7e3436ee3315",
+          "size": 7528853,
+          "kind": "language",
+          "name": "Kazakh",
+          "labels": {
+            "en": "Kazakh"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "khm": {
+          "path": "khm.traineddata",
+          "git_blob_sha1": "4b5ab11f50df8205657f407f027a2a25edcbe6f1",
+          "size": 8104332,
+          "kind": "language",
+          "name": "Central Khmer",
+          "labels": {
+            "en": "Central Khmer"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kir": {
+          "path": "kir.traineddata",
+          "git_blob_sha1": "77c0efe7dfe613507717dad6a26172f7e5bb5733",
+          "size": 11948344,
+          "kind": "language",
+          "name": "Kirghiz; Kyrgyz",
+          "labels": {
+            "en": "Kirghiz; Kyrgyz"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kmr": {
+          "path": "kmr.traineddata",
+          "git_blob_sha1": "fa1780bb1b0c31eab4f17de9d3ee23f6a4cb6e42",
+          "size": 10196464,
+          "kind": "language",
+          "name": "Kurdish Kurmanji",
+          "labels": {
+            "en": "Kurdish Kurmanji"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kor": {
+          "path": "kor.traineddata",
+          "git_blob_sha1": "c82615b5228c9981c33a0985b32224d97b7fb43a",
+          "size": 12528128,
+          "kind": "language",
+          "name": "Korean",
+          "labels": {
+            "en": "Korean"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "kor_vert": {
+          "path": "kor_vert.traineddata",
+          "git_blob_sha1": "8d5ee900d7cb7b874cb46d615b7873969e783cd1",
+          "size": 3964469,
+          "kind": "language",
+          "name": "Korean vertical",
+          "labels": {
+            "en": "Korean vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lao": {
+          "path": "lao.traineddata",
+          "git_blob_sha1": "bdd2715bd1f76852b9430997eef890495e8637ef",
+          "size": 13532551,
+          "kind": "language",
+          "name": "Lao",
+          "labels": {
+            "en": "Lao"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lat": {
+          "path": "lat.traineddata",
+          "git_blob_sha1": "02b4059d9a5e53d110b072729183d63472d47ec9",
+          "size": 9705145,
+          "kind": "language",
+          "name": "Latin",
+          "labels": {
+            "en": "Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lav": {
+          "path": "lav.traineddata",
+          "git_blob_sha1": "bb98786317620461b8253ee5c3f498f4ff9da6ef",
+          "size": 5623473,
+          "kind": "language",
+          "name": "Latvian",
+          "labels": {
+            "en": "Latvian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "lit": {
+          "path": "lit.traineddata",
+          "git_blob_sha1": "1f0b242ee68123ffbfe9eb63e90b2f6e4803c230",
+          "size": 10252680,
+          "kind": "language",
+          "name": "Lithuanian",
+          "labels": {
+            "en": "Lithuanian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ltz": {
+          "path": "ltz.traineddata",
+          "git_blob_sha1": "8f4b19a1c6e84cae7255cdc74cb2377724816d68",
+          "size": 12721945,
+          "kind": "language",
+          "name": "Luxembourgish",
+          "labels": {
+            "en": "Luxembourgish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mal": {
+          "path": "mal.traineddata",
+          "git_blob_sha1": "349b089a477374a6d3bc535f99c0c734b9275a71",
+          "size": 12524967,
+          "kind": "language",
+          "name": "Malayalam",
+          "labels": {
+            "en": "Malayalam"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mar": {
+          "path": "mar.traineddata",
+          "git_blob_sha1": "93d5e21d8c2eeeff34f7865bdef3c87fe472f26a",
+          "size": 13437670,
+          "kind": "language",
+          "name": "Marathi",
+          "labels": {
+            "en": "Marathi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mkd": {
+          "path": "mkd.traineddata",
+          "git_blob_sha1": "24be6b1287c8675b747a512c3f71e6609f813a36",
+          "size": 3453054,
+          "kind": "language",
+          "name": "Macedonian",
+          "labels": {
+            "en": "Macedonian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mlt": {
+          "path": "mlt.traineddata",
+          "git_blob_sha1": "c53d788d276525896ee79609b97a94da06e33b4a",
+          "size": 5060029,
+          "kind": "language",
+          "name": "Maltese",
+          "labels": {
+            "en": "Maltese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mon": {
+          "path": "mon.traineddata",
+          "git_blob_sha1": "d56f13ede00ec99bda944c87cb62e5b6306be7d3",
+          "size": 8646663,
+          "kind": "language",
+          "name": "Mongolian",
+          "labels": {
+            "en": "Mongolian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mri": {
+          "path": "mri.traineddata",
+          "git_blob_sha1": "55e52377e078992701d91d36790b21c6731c5514",
+          "size": 3610177,
+          "kind": "language",
+          "name": "Maori",
+          "labels": {
+            "en": "Maori"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "msa": {
+          "path": "msa.traineddata",
+          "git_blob_sha1": "c4816abcc62dab52fe2bb74518b3927fb664e2c8",
+          "size": 8230552,
+          "kind": "language",
+          "name": "Malay",
+          "labels": {
+            "en": "Malay"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "mya": {
+          "path": "mya.traineddata",
+          "git_blob_sha1": "4adbb96ab500fb339f988de33eb8bb5717e8e6a6",
+          "size": 14971060,
+          "kind": "language",
+          "name": "Burmese",
+          "labels": {
+            "en": "Burmese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "nep": {
+          "path": "nep.traineddata",
+          "git_blob_sha1": "2e552631af6d03efb9700819c2302481e31f27d3",
+          "size": 12387399,
+          "kind": "language",
+          "name": "Nepali",
+          "labels": {
+            "en": "Nepali"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "nld": {
+          "path": "nld.traineddata",
+          "git_blob_sha1": "e4d30d0e558bab61d618b60722764a1a30596a04",
+          "size": 8903736,
+          "kind": "language",
+          "name": "Dutch; Flemish",
+          "labels": {
+            "en": "Dutch; Flemish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "nor": {
+          "path": "nor.traineddata",
+          "git_blob_sha1": "8913672c357f44d44b40540dfce7d0469fb7f991",
+          "size": 14312333,
+          "kind": "language",
+          "name": "Norwegian",
+          "labels": {
+            "en": "Norwegian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "oci": {
+          "path": "oci.traineddata",
+          "git_blob_sha1": "59da8803d1842ac8a2377d70cc47752fc25f0e17",
+          "size": 12917692,
+          "kind": "language",
+          "name": "Occitan post 1500",
+          "labels": {
+            "en": "Occitan post 1500"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ori": {
+          "path": "ori.traineddata",
+          "git_blob_sha1": "7cf73f62541de3eac181453614983e13d1dea0a6",
+          "size": 8110602,
+          "kind": "language",
+          "name": "Oriya",
+          "labels": {
+            "en": "Oriya"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "osd": {
+          "path": "osd.traineddata",
+          "git_blob_sha1": "527457ca8f8fe1fda7c2f88bce3c0e4be12be9d0",
+          "size": 10562727,
+          "kind": "special",
+          "role": "orientation_script_detection",
+          "name": "Orientation and script detection module",
+          "labels": {
+            "en": "Orientation and script detection module"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "pan": {
+          "path": "pan.traineddata",
+          "git_blob_sha1": "bb8e64abf7cb56938dce621c149bdc20a9bbee03",
+          "size": 11893154,
+          "kind": "language",
+          "name": "Panjabi; Punjabi",
+          "labels": {
+            "en": "Panjabi; Punjabi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "pol": {
+          "path": "pol.traineddata",
+          "git_blob_sha1": "6c149bd1f9bc6da3948ebc81be1a0d9de0a597f4",
+          "size": 11978867,
+          "kind": "language",
+          "name": "Polish",
+          "labels": {
+            "en": "Polish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "por": {
+          "path": "por.traineddata",
+          "git_blob_sha1": "01743fdba931e706f79d86620ce18424036220f2",
+          "size": 8159939,
+          "kind": "language",
+          "name": "Portuguese",
+          "labels": {
+            "en": "Portuguese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "pus": {
+          "path": "pus.traineddata",
+          "git_blob_sha1": "18c502919b3c031cca8cc219ac54cbea90a12bdf",
+          "size": 11987930,
+          "kind": "language",
+          "name": "Pushto; Pashto",
+          "labels": {
+            "en": "Pushto; Pashto"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "que": {
+          "path": "que.traineddata",
+          "git_blob_sha1": "8f10669b361bdfc1924938c361ba7b6db90f9e51",
+          "size": 10774587,
+          "kind": "language",
+          "name": "Quechua",
+          "labels": {
+            "en": "Quechua"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ron": {
+          "path": "ron.traineddata",
+          "git_blob_sha1": "cafc0e00a05a68175c46c56f6ef3d717231878c2",
+          "size": 9595755,
+          "kind": "language",
+          "name": "Romanian; Moldavian; Moldovan",
+          "labels": {
+            "en": "Romanian; Moldavian; Moldovan"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "rus": {
+          "path": "rus.traineddata",
+          "git_blob_sha1": "702e3c43c863cf3325002c9d2cc38045e01314a9",
+          "size": 15301764,
+          "kind": "language",
+          "name": "Russian",
+          "labels": {
+            "en": "Russian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "san": {
+          "path": "san.traineddata",
+          "git_blob_sha1": "41a7c21605b0b8e2fd636a38e2969cb606162f06",
+          "size": 15136202,
+          "kind": "language",
+          "name": "Sanskrit",
+          "labels": {
+            "en": "Sanskrit"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Arabic": {
+          "path": "script/Arabic.traineddata",
+          "git_blob_sha1": "54a6fd7e612bf839169eca536c7680bd5069331a",
+          "size": 17095279,
+          "kind": "script",
+          "name": "Arabic",
+          "labels": {
+            "en": "Arabic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Armenian": {
+          "path": "script/Armenian.traineddata",
+          "git_blob_sha1": "fbc3aa2e54701a7f5d096cdd85c4ede5c955d4c6",
+          "size": 18908681,
+          "kind": "script",
+          "name": "Armenian",
+          "labels": {
+            "en": "Armenian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Bengali": {
+          "path": "script/Bengali.traineddata",
+          "git_blob_sha1": "8b0d80bd54d57bf4b762f9706e33cc50de0ce81d",
+          "size": 16711376,
+          "kind": "script",
+          "name": "Bengali",
+          "labels": {
+            "en": "Bengali"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Canadian_Aboriginal": {
+          "path": "script/Canadian_Aboriginal.traineddata",
+          "git_blob_sha1": "283e8f8f8a15e7a19a92e31113a4b2a534f7ad88",
+          "size": 15184388,
+          "kind": "script",
+          "name": "Canadian Aboriginal",
+          "labels": {
+            "en": "Canadian Aboriginal"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Cherokee": {
+          "path": "script/Cherokee.traineddata",
+          "git_blob_sha1": "aa926b34c60bfd65947369c10280d15563612c2c",
+          "size": 7126553,
+          "kind": "script",
+          "name": "Cherokee",
+          "labels": {
+            "en": "Cherokee"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Cyrillic": {
+          "path": "script/Cyrillic.traineddata",
+          "git_blob_sha1": "e59e62b1cfe708339004436d8af2a965684e5250",
+          "size": 36730735,
+          "kind": "script",
+          "name": "Cyrillic",
+          "labels": {
+            "en": "Cyrillic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Devanagari": {
+          "path": "script/Devanagari.traineddata",
+          "git_blob_sha1": "ccc9f09fee2bfa35fd0c0a781c02e1f185d24af5",
+          "size": 28561664,
+          "kind": "script",
+          "name": "Devanagari",
+          "labels": {
+            "en": "Devanagari"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Ethiopic": {
+          "path": "script/Ethiopic.traineddata",
+          "git_blob_sha1": "36183266417bd95eaa790d4fe443fd49d95d1ff9",
+          "size": 11211460,
+          "kind": "script",
+          "name": "Ethiopic",
+          "labels": {
+            "en": "Ethiopic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Fraktur": {
+          "path": "script/Fraktur.traineddata",
+          "git_blob_sha1": "9b477389c81768dc95f82bbb6de2e5ff39be278e",
+          "size": 17613343,
+          "kind": "script",
+          "name": "Fraktur",
+          "labels": {
+            "en": "Fraktur"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Georgian": {
+          "path": "script/Georgian.traineddata",
+          "git_blob_sha1": "f08c67da97d487d583a5df8e81ee2f63577acc20",
+          "size": 13806109,
+          "kind": "script",
+          "name": "Georgian",
+          "labels": {
+            "en": "Georgian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Greek": {
+          "path": "script/Greek.traineddata",
+          "git_blob_sha1": "618ca5f0528510996a4e5c3711253299ad1938d3",
+          "size": 10634749,
+          "kind": "script",
+          "name": "Greek",
+          "labels": {
+            "en": "Greek"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Gujarati": {
+          "path": "script/Gujarati.traineddata",
+          "git_blob_sha1": "071dbf3233ee9dd58b1daf725123b41e3c268903",
+          "size": 7074537,
+          "kind": "script",
+          "name": "Gujarati",
+          "labels": {
+            "en": "Gujarati"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Gurmukhi": {
+          "path": "script/Gurmukhi.traineddata",
+          "git_blob_sha1": "9e9a6dc8823e4c09b414a196e2284af712031183",
+          "size": 11642032,
+          "kind": "script",
+          "name": "Gurmukhi",
+          "labels": {
+            "en": "Gurmukhi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanS": {
+          "path": "script/HanS.traineddata",
+          "git_blob_sha1": "06ae4a541a1547848967be63c1db53f342437bb5",
+          "size": 16633038,
+          "kind": "script",
+          "name": "Han simplified",
+          "labels": {
+            "en": "Han simplified"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanS_vert": {
+          "path": "script/HanS_vert.traineddata",
+          "git_blob_sha1": "efe174f4800b5d5e9c40cb98938bec754283176c",
+          "size": 12320913,
+          "kind": "script",
+          "name": "Han simplified, vertical",
+          "labels": {
+            "en": "Han simplified, vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanT": {
+          "path": "script/HanT.traineddata",
+          "git_blob_sha1": "2f777647f54355c1c6168ea78de9e272f7674cb4",
+          "size": 12344619,
+          "kind": "script",
+          "name": "Han traditional",
+          "labels": {
+            "en": "Han traditional"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/HanT_vert": {
+          "path": "script/HanT_vert.traineddata",
+          "git_blob_sha1": "428a4dd7a1f27771aeedbed2f843572d33d8dece",
+          "size": 12344866,
+          "kind": "script",
+          "name": "Han traditional, vertical",
+          "labels": {
+            "en": "Han traditional, vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Hangul": {
+          "path": "script/Hangul.traineddata",
+          "git_blob_sha1": "bc2e54a701d482acb5629da4691fc28f7da2d2f2",
+          "size": 12225308,
+          "kind": "script",
+          "name": "Hangul",
+          "labels": {
+            "en": "Hangul"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Hangul_vert": {
+          "path": "script/Hangul_vert.traineddata",
+          "git_blob_sha1": "e61781f030e54166d2a5c27e539aa8ac3376268f",
+          "size": 16522140,
+          "kind": "script",
+          "name": "Hangul vertical",
+          "labels": {
+            "en": "Hangul vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Hebrew": {
+          "path": "script/Hebrew.traineddata",
+          "git_blob_sha1": "b4af29b97663460cac508f7fc6d7264813eba0ed",
+          "size": 12218204,
+          "kind": "script",
+          "name": "Hebrew",
+          "labels": {
+            "en": "Hebrew"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Japanese": {
+          "path": "script/Japanese.traineddata",
+          "git_blob_sha1": "d4822548f0751c1da02ebe84d783c309f90fc059",
+          "size": 17789735,
+          "kind": "script",
+          "name": "Japanese",
+          "labels": {
+            "en": "Japanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Japanese_vert": {
+          "path": "script/Japanese_vert.traineddata",
+          "git_blob_sha1": "54935e8b44752cc14e3d794a035bf315e1e33164",
+          "size": 17789844,
+          "kind": "script",
+          "name": "Japanese vertical",
+          "labels": {
+            "en": "Japanese vertical"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Kannada": {
+          "path": "script/Kannada.traineddata",
+          "git_blob_sha1": "19ffb69e077e2d4a218c60c05f5a5ee0efa28706",
+          "size": 14163058,
+          "kind": "script",
+          "name": "Kannada",
+          "labels": {
+            "en": "Kannada"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Khmer": {
+          "path": "script/Khmer.traineddata",
+          "git_blob_sha1": "91c99f923b45f457dc78e0625e6d11ef7a3508fd",
+          "size": 12025463,
+          "kind": "script",
+          "name": "Khmer",
+          "labels": {
+            "en": "Khmer"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Lao": {
+          "path": "script/Lao.traineddata",
+          "git_blob_sha1": "188c92ef8a421d4d30f327ecb4db6e1c251155e7",
+          "size": 17479398,
+          "kind": "script",
+          "name": "Lao",
+          "labels": {
+            "en": "Lao"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Latin": {
+          "path": "script/Latin.traineddata",
+          "git_blob_sha1": "e78c193f637e0bcbeeb9ed2919f2e4ac68cb972d",
+          "size": 101402885,
+          "kind": "script",
+          "name": "Latin",
+          "labels": {
+            "en": "Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Malayalam": {
+          "path": "script/Malayalam.traineddata",
+          "git_blob_sha1": "640dbe320c0112ed90ab383230e002bceefa398b",
+          "size": 11073689,
+          "kind": "script",
+          "name": "Malayalam",
+          "labels": {
+            "en": "Malayalam"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Myanmar": {
+          "path": "script/Myanmar.traineddata",
+          "git_blob_sha1": "f438c67ea6f1a400459110c2d054ca3dcf823387",
+          "size": 14664489,
+          "kind": "script",
+          "name": "Myanmar",
+          "labels": {
+            "en": "Myanmar"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Oriya": {
+          "path": "script/Oriya.traineddata",
+          "git_blob_sha1": "55de12dfbb17aa3803722a6668189791ab74430d",
+          "size": 16265327,
+          "kind": "script",
+          "name": "Odia",
+          "labels": {
+            "en": "Odia"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Sinhala": {
+          "path": "script/Sinhala.traineddata",
+          "git_blob_sha1": "58df92b859ba35716a829520d4393a3d03607906",
+          "size": 6842699,
+          "kind": "script",
+          "name": "Sinhala",
+          "labels": {
+            "en": "Sinhala"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Syriac": {
+          "path": "script/Syriac.traineddata",
+          "git_blob_sha1": "aadc879f6dadcb3efcf784e27e969db7d90ffa01",
+          "size": 15352617,
+          "kind": "script",
+          "name": "Syriac",
+          "labels": {
+            "en": "Syriac"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Tamil": {
+          "path": "script/Tamil.traineddata",
+          "git_blob_sha1": "a6af841d13248d50058158090daa143960b054be",
+          "size": 18607472,
+          "kind": "script",
+          "name": "Tamil",
+          "labels": {
+            "en": "Tamil"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Telugu": {
+          "path": "script/Telugu.traineddata",
+          "git_blob_sha1": "3dc34024e5b5d55e85e0239bad20c4b7a3e93bdb",
+          "size": 13981001,
+          "kind": "script",
+          "name": "Telugu",
+          "labels": {
+            "en": "Telugu"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Thaana": {
+          "path": "script/Thaana.traineddata",
+          "git_blob_sha1": "2f94712918af7bc8788c91b6a3a323a9ea590c9f",
+          "size": 12783652,
+          "kind": "script",
+          "name": "Thaana",
+          "labels": {
+            "en": "Thaana"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Thai": {
+          "path": "script/Thai.traineddata",
+          "git_blob_sha1": "b412c35a60e3f3f3a1b494abc26586019b4a6967",
+          "size": 11544984,
+          "kind": "script",
+          "name": "Thai",
+          "labels": {
+            "en": "Thai"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Tibetan": {
+          "path": "script/Tibetan.traineddata",
+          "git_blob_sha1": "e54acf72efbb8003f74a6b4b66026c96cd294ba7",
+          "size": 12523531,
+          "kind": "script",
+          "name": "Tibetan",
+          "labels": {
+            "en": "Tibetan"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "script/Vietnamese": {
+          "path": "script/Vietnamese.traineddata",
+          "git_blob_sha1": "de1e001a41da77311765715ab38c4f9bf9661890",
+          "size": 12435419,
+          "kind": "script",
+          "name": "Vietnamese",
+          "labels": {
+            "en": "Vietnamese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "sin": {
+          "path": "sin.traineddata",
+          "git_blob_sha1": "96c1864bea3a622997887f041761e3a3a84f6490",
+          "size": 8282713,
+          "kind": "language",
+          "name": "Sinhala; Sinhalese",
+          "labels": {
+            "en": "Sinhala; Sinhalese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "slk": {
+          "path": "slk.traineddata",
+          "git_blob_sha1": "09b2dbe22141bd9973d91507f6ed261392527a29",
+          "size": 11542252,
+          "kind": "language",
+          "name": "Slovak",
+          "labels": {
+            "en": "Slovak"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "slv": {
+          "path": "slv.traineddata",
+          "git_blob_sha1": "28da1ff38ea817481cb38616c9afd26dcafbf6d6",
+          "size": 5879151,
+          "kind": "language",
+          "name": "Slovenian",
+          "labels": {
+            "en": "Slovenian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "snd": {
+          "path": "snd.traineddata",
+          "git_blob_sha1": "66c2b387b4b0596d9869d88ea68d146950b0d4d2",
+          "size": 11981538,
+          "kind": "language",
+          "name": "Sindhi",
+          "labels": {
+            "en": "Sindhi"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "spa": {
+          "path": "spa.traineddata",
+          "git_blob_sha1": "18ceb5679049d25f9e5486a1571359829530e7e0",
+          "size": 13570187,
+          "kind": "language",
+          "name": "Spanish; Castilian",
+          "labels": {
+            "en": "Spanish; Castilian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "spa_old": {
+          "path": "spa_old.traineddata",
+          "git_blob_sha1": "344d09416d0344be4709f7b5b330a5874dfd28b4",
+          "size": 9476925,
+          "kind": "language",
+          "name": "Spanish; Castilian - Old",
+          "labels": {
+            "en": "Spanish; Castilian - Old"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "sqi": {
+          "path": "sqi.traineddata",
+          "git_blob_sha1": "45c642b46a964c3b69348bca741978ac2bb998ce",
+          "size": 4631498,
+          "kind": "language",
+          "name": "Albanian",
+          "labels": {
+            "en": "Albanian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "srp": {
+          "path": "srp.traineddata",
+          "git_blob_sha1": "f353b2ec90eb6ffc1343a469c04b967bfa440b40",
+          "size": 9345851,
+          "kind": "language",
+          "name": "Serbian",
+          "labels": {
+            "en": "Serbian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "srp_latn": {
+          "path": "srp_latn.traineddata",
+          "git_blob_sha1": "76c5c17f14fa9b73cf9a9db6f5961492ce74f72d",
+          "size": 9831713,
+          "kind": "language",
+          "name": "Serbian - Latin",
+          "labels": {
+            "en": "Serbian - Latin"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "sun": {
+          "path": "sun.traineddata",
+          "git_blob_sha1": "d8551203bc8b87163e5862b6d40bef14c4d73bd0",
+          "size": 4132820,
+          "kind": "language",
+          "name": "Sundanese",
+          "labels": {
+            "en": "Sundanese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "swa": {
+          "path": "swa.traineddata",
+          "git_blob_sha1": "af6272eaa471eb63ee69c86ab66083f648c9622d",
+          "size": 4914855,
+          "kind": "language",
+          "name": "Swahili",
+          "labels": {
+            "en": "Swahili"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "swe": {
+          "path": "swe.traineddata",
+          "git_blob_sha1": "3d8beb8153194cda278c055a45cf4d808bc37469",
+          "size": 14325549,
+          "kind": "language",
+          "name": "Swedish",
+          "labels": {
+            "en": "Swedish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "syr": {
+          "path": "syr.traineddata",
+          "git_blob_sha1": "e53e8855703092fae154376c6fe90427c3d2db91",
+          "size": 12498294,
+          "kind": "language",
+          "name": "Syriac",
+          "labels": {
+            "en": "Syriac"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tam": {
+          "path": "tam.traineddata",
+          "git_blob_sha1": "8fbaab122ac77d816de3cc8b58ec314db64ca96e",
+          "size": 6023201,
+          "kind": "language",
+          "name": "Tamil",
+          "labels": {
+            "en": "Tamil"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tat": {
+          "path": "tat.traineddata",
+          "git_blob_sha1": "ac08e8f9bf5b0ee999ec6e379146e738942c7529",
+          "size": 7585204,
+          "kind": "language",
+          "name": "Tatar",
+          "labels": {
+            "en": "Tatar"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tel": {
+          "path": "tel.traineddata",
+          "git_blob_sha1": "1c413574a26db896ba3baa4e33f4d17e55f290bd",
+          "size": 9098795,
+          "kind": "language",
+          "name": "Telugu",
+          "labels": {
+            "en": "Telugu"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tgk": {
+          "path": "tgk.traineddata",
+          "git_blob_sha1": "f2fe50409726f24eec78653f54da85e7e13af263",
+          "size": 4602842,
+          "kind": "language",
+          "name": "Tajik",
+          "labels": {
+            "en": "Tajik"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tha": {
+          "path": "tha.traineddata",
+          "git_blob_sha1": "b975c85f60f82febe6f8c5a52a3eb74f3ceb01b9",
+          "size": 7614571,
+          "kind": "language",
+          "name": "Thai",
+          "labels": {
+            "en": "Thai"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tir": {
+          "path": "tir.traineddata",
+          "git_blob_sha1": "1001e49c7aa955aa868cdbf13270d4ae36010d64",
+          "size": 2410256,
+          "kind": "language",
+          "name": "Tigrinya",
+          "labels": {
+            "en": "Tigrinya"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ton": {
+          "path": "ton.traineddata",
+          "git_blob_sha1": "234fef71961a2f354c98f1ddfd35b648f30aaad8",
+          "size": 3729371,
+          "kind": "language",
+          "name": "Tonga",
+          "labels": {
+            "en": "Tonga"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "tur": {
+          "path": "tur.traineddata",
+          "git_blob_sha1": "297ecddbccd5e597037d2be34043bb0a0c53f3be",
+          "size": 7456265,
+          "kind": "language",
+          "name": "Turkish",
+          "labels": {
+            "en": "Turkish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "uig": {
+          "path": "uig.traineddata",
+          "git_blob_sha1": "9a6b9bf3fd0642c19b8918d93d0c20761ffe7ce3",
+          "size": 13074609,
+          "kind": "language",
+          "name": "Uighur; Uyghur",
+          "labels": {
+            "en": "Uighur; Uyghur"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "ukr": {
+          "path": "ukr.traineddata",
+          "git_blob_sha1": "be88f63252a3d9e81cdac161e11e4e8498129cfa",
+          "size": 10859081,
+          "kind": "language",
+          "name": "Ukrainian",
+          "labels": {
+            "en": "Ukrainian"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "urd": {
+          "path": "urd.traineddata",
+          "git_blob_sha1": "3815f0640b06255391f69e5b184052c442ee3d34",
+          "size": 7994323,
+          "kind": "language",
+          "name": "Urdu",
+          "labels": {
+            "en": "Urdu"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "uzb": {
+          "path": "uzb.traineddata",
+          "git_blob_sha1": "5b240340e79802aed87f57cdff0a35ad6a7c10f7",
+          "size": 12953454,
+          "kind": "language",
+          "name": "Uzbek",
+          "labels": {
+            "en": "Uzbek"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "uzb_cyrl": {
+          "path": "uzb_cyrl.traineddata",
+          "git_blob_sha1": "6826c8a36371683d0b29cf2d5b6a717b92f46e7e",
+          "size": 4325478,
+          "kind": "language",
+          "name": "Uzbek - Cyrillic",
+          "labels": {
+            "en": "Uzbek - Cyrillic"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "vie": {
+          "path": "vie.traineddata",
+          "git_blob_sha1": "28bc301dc848861eb6ba734b866152b2a04732fc",
+          "size": 12435550,
+          "kind": "language",
+          "name": "Vietnamese",
+          "labels": {
+            "en": "Vietnamese"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "yid": {
+          "path": "yid.traineddata",
+          "git_blob_sha1": "875531660a3b205f3a01519e0aae82186ec8c6ce",
+          "size": 3278995,
+          "kind": "language",
+          "name": "Yiddish",
+          "labels": {
+            "en": "Yiddish"
+          },
+          "name_source": "tesseract_manual"
+        },
+        "yor": {
+          "path": "yor.traineddata",
+          "git_blob_sha1": "d3c5893d8ca442a6a1e2e05c012f34d9419068d8",
+          "size": 3736121,
+          "kind": "language",
+          "name": "Yoruba",
+          "labels": {
+            "en": "Yoruba"
+          },
+          "name_source": "tesseract_manual"
+        }
+      },
+      "aliases": {}
+    }
+  },
+  "name_sources": {
+    "tesseract_manual": {
+      "repository": "tesseract-ocr/tesseract",
+      "revision": "4292f6890aa86ef64eba32090358f40f69dd6d28",
+      "path": "doc/tesseract.1.asc",
+      "url": "https://github.com/tesseract-ocr/tesseract/blob/4292f6890aa86ef64eba32090358f40f69dd6d28/doc/tesseract.1.asc",
+      "locale": "en",
+      "mapping": "Explicit language-code/name pairs and script names from the official command-line manual."
+    }
+  }
+}
