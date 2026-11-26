@@ -222,7 +222,11 @@ def run_probe(wx, native_active):
             assert 'distinct, nonoverlapping occurrences' in reader.GetValue()
             assert 'page or logical text segment' in reader.GetValue()
             focus(reader)
-            click(dialog.FindWindowById(wx.ID_CANCEL))
+            close_buttons = [child for child in dialog.GetChildren()
+                             if isinstance(child, wx.Button) and child.GetId() == wx.ID_CANCEL]
+            assert len(close_buttons) == 1, 'Help must have exactly one local Close button.'
+            assert close_buttons[0].GetName() == 'Close advanced query help'
+            click(close_buttons[0])
 
         def invalid_build(form):
             click(form.build_button)
