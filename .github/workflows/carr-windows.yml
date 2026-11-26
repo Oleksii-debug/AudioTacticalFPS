@@ -102,6 +102,26 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Retain core-only fallback and offline startup coverage
+        timeout-minutes: 5
+        run: |
+          $coreEnvironment = Join-Path $env:RUNNER_TEMP 'carr-windows-core-python'
+          python -m venv $coreEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $corePython = Join-Path $coreEnvironment 'Scripts/python.exe'
+          & $corePython -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $corePython -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $corePython -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $corePython -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $corePython -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $corePython scripts/ci_check.py tests/e2e/test_semantic_fallback_status.py tests/e2e/test_offline_startup.py 2>&1 | Tee-Object 'ci-results/core-fallback.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Verify pinned production source dependencies
         timeout-minutes: 3
         run: |
@@ -260,6 +280,7 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_delivery_archive.py',
             'tests/library_assistant/test_library_workflow.py',
             'tests/library_assistant/test_library_workflow_ui.py',
             'tests/ingest/test_txt_replay_registration.py',
@@ -267,6 +288,7 @@ jobs:
             'tests/search/test_literal_unicode_memory.py',
             'tests/e2e/test_search_deadline.py',
             'tests/ingest/test_terminal_replay_registration.py',
+            'tests/ingest/test_import_publication_point.py',
             'tests/e2e/test_provider_transport_boundaries.py',
             'tests/e2e/test_audio_cli.py'
           )
