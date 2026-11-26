@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 35
+    timeout-minutes: 45
     defaults:
       run:
         shell: pwsh
@@ -62,7 +62,7 @@ jobs:
           New-Item -ItemType Directory -Force 'ci-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -71,8 +71,6 @@ jobs:
           & $python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={name:m.version(name) for name in pins}; assert actual==pins; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); normalize=lambda name:re.sub(r'[-_.]+','-',name).lower(); assert {(normalize(c['name']),c['version']) for c in bom['components']}=={(normalize(n),v) for n,v in pins.items()}; assert bom['metadata']['component']['version']==m.version('universal-research-library'); print(json.dumps(dict(status='PASS',runtime_dependencies=actual,sbom='MATCHES_FULL_LOCK')))" | Tee-Object 'ci-results/source-runtime-parity.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -104,8 +102,28 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_academic_tools_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic-tools.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Retain core-only fallback and offline startup coverage
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_semantic_fallback_status.py tests/e2e/test_offline_startup.py 2>&1 | Tee-Object 'ci-results/core-fallback.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Match production dependencies before required source suites
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==47 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={name:m.version(name) for name in pins}; assert actual==pins; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); normalize=lambda name:re.sub(r'[-_.]+','-',name).lower(); assert {(normalize(c['name']),c['version']) for c in bom['components']}=={(normalize(n),v) for n,v in pins.items()}; assert bom['metadata']['component']['version']==m.version('universal-research-library'); print(json.dumps(dict(status='PASS',runtime_dependencies=actual,sbom='MATCHES_FULL_LOCK')))" | Tee-Object 'ci-results/source-runtime-parity.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
-        timeout-minutes: 18
+        timeout-minutes: 20
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
@@ -216,7 +234,14 @@ jobs:
             'tests/catalog/test_reference_exchange.py',
             'tests/research/test_outline_export.py',
             'tests/e2e/test_academic_workflows.py',
-            'tests/ui/test_academic_actions.py'
+            'tests/ui/test_academic_actions.py',
+            'tests/reader/test_context.py',
+            'tests/reader/test_topic_tree.py',
+            'tests/ui/test_federated_labels.py',
+            'tests/search/test_literal_unicode_memory.py',
+            'tests/e2e/test_search_deadline.py',
+            'tests/ingest/test_txt_replay_registration.py',
+            'tests/ingest/test_terminal_replay_registration.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -284,8 +309,6 @@ jobs:
       - name: Prepare the pinned local model through the existing upstream verifier
         timeout-minutes: 10
         run: |
-          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
           $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-model-ci/model-manifest.json'
           $acquire = @'

@@ -86,6 +86,17 @@ class WindowsBundleTests(unittest.TestCase):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
         self.assertFalse(self.output.exists())
 
+    def test_duplicate_sbom_component_rejected(self):
+        sbom = self.sbom()
+        bom = json.loads(sbom.read_text(encoding="utf-8"))
+        bom["components"][0]["bom-ref"] = "pkg:pypi/fixture@1.0"
+        bom["components"].append(dict(bom["components"][0]))
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            builder.build_bundle(self.app, self.wheels, self.lock,
+                                 self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
     def test_sbom_replaced_after_validation_cannot_change_sealed_bytes(self):
         sbom = self.sbom()
         expected = sbom.read_bytes()
