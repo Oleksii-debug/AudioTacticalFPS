@@ -98,6 +98,14 @@ def _regular(path, max_bytes):
         raise ValueError('Embedding cache files must be bounded regular files without links.')
 
 
+def _next_touched(db):
+    row = db.execute('SELECT touched FROM embedding ORDER BY touched DESC LIMIT 1').fetchone()
+    previous = row[0] if row else 0
+    if type(previous) is not int or not 0 <= previous < (1 << 63) - MAX_BATCH - 1:
+        raise ValueError('Invalid embedding cache access sequence.')
+    return max(time_ns(), previous + 1)
+
+
 class EmbeddingCache:
     """Independent SQLite transactions with finite disk, memory and lock budgets.
 
@@ -197,8 +205,9 @@ class EmbeddingCache:
                         continue
                 if result:
                     db.execute('BEGIN IMMEDIATE')
+                    stamp = _next_touched(db)
                     db.executemany('UPDATE embedding SET touched=? WHERE identity=?',
-                                   ((time_ns(), key) for key in result))
+                                   ((stamp + index, key) for index, key in enumerate(result)))
                     db.commit()
         except (OSError, ValueError, sqlite3.Error) as exc:
             self._disable(exc)
@@ -215,7 +224,7 @@ class EmbeddingCache:
             _digest(identity)
             packed = _PACK.pack(*_vector(vector))
             checksum = sha256((self.model + identity).encode('ascii') + packed).hexdigest()
-            rows.append((identity, packed, checksum, time_ns()))
+            rows.append((identity, packed, checksum))
         # A small configured cache still accepts the most recent part of a batch.
         rows = rows[-self.budget.max_entries:]
         try:
@@ -236,7 +245,9 @@ class EmbeddingCache:
                             db.execute('DELETE FROM embedding WHERE identity IN (SELECT identity FROM embedding '
                                        'WHERE identity NOT IN (' + ','.join('?' for _ in keys) + ') '
                                        'ORDER BY touched,identity LIMIT ?)', (*keys, remove))
-                        db.executemany('INSERT OR REPLACE INTO embedding VALUES(?,?,?,?)', rows)
+                        stamp = _next_touched(db)
+                        db.executemany('INSERT OR REPLACE INTO embedding VALUES(?,?,?,?)',
+                                       ((*row, stamp + index) for index, row in enumerate(rows)))
                         db.commit()
                         return True
                     except sqlite3.OperationalError as exc:

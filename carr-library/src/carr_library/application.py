@@ -160,6 +160,7 @@ class LibraryApp:
         self.assets_dir.mkdir(mode=0o700, exist_ok=True)
         self.assets = RetainedAssets(self.assets_dir)
         self.semantic_ranker = semantic_ranker
+        self.semantic_cache = None
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
@@ -168,7 +169,7 @@ class LibraryApp:
         if semantic_ranker is not None:
             from .semantic import OfflineSemanticRanker
             if isinstance(semantic_ranker, OfflineSemanticRanker):
-                semantic_ranker.bind_cache(self.root)
+                self.semantic_cache = semantic_ranker.cache_for(self.root)
 
     def _check_database_paths(self):
         for path in (self.database, self.root / 'imports.sqlite'):
@@ -804,7 +805,7 @@ class LibraryApp:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
                                            limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status)
+                                           on_status=on_status, cache=self.semantic_cache)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')

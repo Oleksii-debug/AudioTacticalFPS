@@ -111,19 +111,23 @@ class OfflineSemanticRanker:
         self.cache_statistics = {}
 
     def bind_cache(self, library_directory, *, budget=None):
-        """Use disposable private vectors after normal library path validation.
+        """Bind a cache for a dedicated direct ranker, outside LibraryApp."""
+        self.cache = self.cache_for(library_directory, budget=budget)
+
+    def cache_for(self, library_directory, *, budget=None):
+        """Create a private per-library cache without mutating a shared engine.
 
         Binding creates no files and changes no source authorization. Each rank
         still checks the current token coverage and only returns supplied keys.
         """
         from .semantic_cache import EmbeddingCache, model_identity
-        self.cache = EmbeddingCache(Path(library_directory) / 'semantic-cache',
-                                    model_identity(APPROVED_MANIFEST), budget=budget)
+        return EmbeddingCache(Path(library_directory) / 'semantic-cache',
+                              model_identity(APPROVED_MANIFEST), budget=budget)
 
     def __call__(self, query, candidates):
         return self.rank(query, candidates)
 
-    def rank(self, query, candidates, *, cancelled=lambda: False, timeout=60.0):
+    def rank(self, query, candidates, *, cancelled=lambda: False, timeout=60.0, cache=None):
         if not callable(cancelled) or type(timeout) not in (int, float) or not 0 < timeout <= 60:
             raise ValueError('Invalid semantic runtime budget.')
         deadline = monotonic() + timeout
@@ -162,7 +166,7 @@ class OfflineSemanticRanker:
         # Cache keys include the exact model/preprocessor, current source text
         # and workspace/revision/window. Authorization and complete token checks
         # above are never replaced by cache membership.
-        cache = getattr(self, 'cache', None)
+        cache = cache if cache is not None else getattr(self, 'cache', None)
         identities = []
         cached = {}
         if cache is not None:
@@ -204,7 +208,7 @@ class OfflineSemanticRanker:
 
 
 def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
-                    timeout=60.0, cancelled=lambda: False, on_status=None):
+                    timeout=60.0, cancelled=lambda: False, on_status=None, cache=None):
     """Read active pages and rank windows inside the caller's authorized snapshot."""
     if (not db.in_transaction or db.execute('PRAGMA read_uncommitted').fetchone()[0]
             or not isinstance(workspace, str) or not workspace
@@ -281,7 +285,8 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
 
     def rank(query, candidates):
         check()
-        return ranker.rank(query, candidates, cancelled=stopped, timeout=remaining())
+        options = {'cache': cache} if cache is not None else {}
+        return ranker.rank(query, candidates, cancelled=stopped, timeout=remaining(), **options)
 
     try:
         hits = search_windowed(workspace, passages, query, tokenizer=ranker.tokenizer,

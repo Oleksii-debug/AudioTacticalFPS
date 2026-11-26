@@ -5,6 +5,7 @@ Actual MiniLM persistence is tested separately in e2e/test_semantic_runtime.py.
 """
 from hashlib import sha256
 from pathlib import Path
+import re
 import sqlite3
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -20,8 +21,11 @@ class CoverageTokenizer:
     padding = None
 
     def encode(self, text, add_special_tokens=True):
-        ids = [1, *range(3, len(text.split()) + 3), 2]
-        return SimpleNamespace(ids=ids, overflowing=[], attention_mask=[1] * len(ids))
+        spans = [match.span() for match in re.finditer(r'\S+', text)]
+        ids = [1, *range(3, len(spans) + 3), 2]
+        return SimpleNamespace(ids=ids, overflowing=[], attention_mask=[1] * len(ids),
+                               offsets=[(0, 0), *spans, (0, 0)],
+                               special_tokens_mask=[1, *([0] * len(spans)), 1])
 
 
 class DeterministicTestEngine:
@@ -173,6 +177,18 @@ def test_byte_budget_evicts_and_keeps_cache_available(tmp_path):
         assert cache.get_many([next(reversed(values))])
 
 
+def test_eviction_order_survives_coarse_or_backward_wall_clock(tmp_path):
+    cache = EmbeddingCache(tmp_path / 'cache', 'e' * 64, budget=CacheBudget(max_entries=2))
+    vector = (1.0,) + (0.0,) * 383
+    with patch('carr_library.semantic_cache.time_ns', return_value=100):
+        assert cache.put_many({'a' * 64: vector, 'b' * 64: vector})
+        assert cache.get_many(['a' * 64])
+    with patch('carr_library.semantic_cache.time_ns', return_value=50):
+        assert cache.put_many({'c' * 64: vector})
+        assert cache.get_many(['a' * 64, 'b' * 64, 'c' * 64]) == {
+            'a' * 64: vector, 'c' * 64: vector}
+
+
 def test_cache_batch_failure_never_publishes_partial_embeddings(tmp_path, candidates):
     ranker = fixture_ranker(tmp_path)
     with patch.object(ranker.engine, 'embed', return_value=[(1.0,) + (0.0,) * 383]):
@@ -186,6 +202,32 @@ def test_library_automatically_binds_derived_cache_after_validating_storage(tmp_
     from carr_library.application import LibraryApp
     ranker = fixture_ranker(tmp_path)
     app = LibraryApp(tmp_path / 'library', semantic_ranker=ranker)
-    assert ranker.cache.directory == app.root / 'semantic-cache'
+    assert app.semantic_cache.directory == app.root / 'semantic-cache'
+    assert not app.semantic_cache.directory.exists()
+    assert ranker.cache.directory == tmp_path / 'semantic-cache'
+
+
+def test_shared_model_keeps_two_live_libraries_caches_separate(tmp_path):
+    from carr_library.application import LibraryApp
+    ranker = fixture_ranker(tmp_path)
+    first = LibraryApp(tmp_path / 'first', semantic_ranker=ranker)
+    second = LibraryApp(tmp_path / 'second', semantic_ranker=ranker)
+    workspace = first.create_workspace('First private library')
+    first.add_text(workspace, 'First source', 'Railway transport connected cities.')
+    hits = first.search(workspace, 'transport', mode='semantic')
+    assert len(hits) == 1 and hits[0].verified
+    assert first.semantic_cache.path.is_file()
+    assert not second.semantic_cache.directory.exists()
     assert not ranker.cache.directory.exists()
+    other = second.create_workspace('Second private library')
+    second.add_text(other, 'Second source', 'Botanists studied flowers.')
+    second.search(other, 'flowers', mode='semantic')
+    assert second.semantic_cache.path.is_file()
+    with sqlite3.connect(first.semantic_cache.path) as db:
+        assert db.execute('SELECT COUNT(*) FROM embedding').fetchone()[0] == 2
+    with sqlite3.connect(second.semantic_cache.path) as db:
+        assert db.execute('SELECT COUNT(*) FROM embedding').fetchone()[0] == 2
+    ranker.engine.calls.clear()
+    assert first.search(workspace, 'transport', mode='semantic')[0].quote == hits[0].quote
+    assert ranker.engine.calls == []
 

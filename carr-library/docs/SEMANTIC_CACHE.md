@@ -63,7 +63,7 @@ from running. It revokes collection membership and checks fresh access again.
 The recorded [scale evidence](evidence/semantic-cache-scale.json) uses real
 SQLite files and deterministic synthetic vectors. All 1,000, 10,000, and 50,000
 records survived reopening and were returned exactly. At 50,000 records the
-file occupied 239,153,152 bytes; measured child peak RSS was 37,425,152 bytes.
+file occupied 239,153,152 bytes; measured child peak RSS was 37,478,400 bytes.
 The measurements describe storage behavior on the recorded Linux host, with
 the operating system page cache in use. They do not measure neural inference,
 search quality, cold-disk speed, or a 50,000-source end-to-end search.
@@ -71,3 +71,9 @@ search quality, cold-disk speed, or a 50,000-source end-to-end search.
 The current semantic source-window and search-result budgets remain separate
 constraints. This feature removes repeated embedding work; it does not by
 itself satisfy every V3 requirement for large-library pagination or indexing.
+
+The portable `scripts/benchmark_semantic_cache.py --output-dir NEW_DIRECTORY`
+repeats the three storage sizes in isolated child processes, records source and
+harness identities, and fails if counts, bytes, integrity, or exact values do
+not match. `--installed` selects the installed implementation. An existing
+output directory is never overwritten.
