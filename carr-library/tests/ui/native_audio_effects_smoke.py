@@ -145,7 +145,11 @@ def main():
                 return
             assert ui.controller.state == "complete", ui.status.GetValue()
             result = ui.controller.result
-            assert result.path == destination and result.sample_rate == 24000 and result.channels == 2
+            # Windows temp roots may arrive with an 8.3 spelling. Rendering
+            # canonicalizes the parent; compare the actual published file.
+            assert Path(result.path).samefile(destination), (result.path, destination)
+            assert result.sample_rate == 24000 and result.channels == 2, (
+                result.sample_rate, result.channels)
             assert result.frames > 0 and destination.is_file()
             assert file_sha256(source) == original_audio
             assert wx.Window.FindFocus() is ui.status and "Saved and verified" in ui.status.GetValue()
