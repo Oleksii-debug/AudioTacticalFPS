@@ -281,6 +281,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
         if sbom is not None:
             shutil.copyfile(sbom, staged / "runtime-sbom.cdx.json")
         files = {p.relative_to(staged).as_posix(): sha256(p)
