@@ -24,6 +24,8 @@ license-files = [
   "src/carr_library/research/_vendor_rispy/LICENSE",
   "src/carr_library/search/_vendor/rifflux/LICENSE",
   "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+  "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+  "src/carr_library/extract/TESSDATA_BEST_LICENSE",
 ]
 
 [project.optional-dependencies]
@@ -91,7 +93,7 @@ bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
-"carr_library.extract" = ["ocr-model-catalog.json"]
+"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
