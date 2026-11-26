@@ -372,3 +372,50 @@ def test_explicit_equals_model_directory_is_not_overridden(tmp_path):
     runtime = OcrRuntime('tesseract', tessdata=tmp_path / 'base')
     command = ['tesseract', 'scan.png', 'stdout', '--tessdata-dir=' + str(tmp_path / 'selected')]
     assert runtime.command(command) == command
+
+
+
+def test_relative_unicode_model_directory_uses_the_original_child_cwd(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    root = tmp_path / 'engine'
+    models = root / 'моделі'
+    models.mkdir(parents=True)
+    runtime = OcrRuntime('tesseract', root=root)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    command, cwd, report_directory = ocr_process.prepare_ocr_query(runtime,
+        ['tesseract', '--list-langs', '--tessdata-dir', 'моделі'])
+    assert cwd == report_directory == models
+    assert command == ['tesseract', '--list-langs', '--tessdata-dir', '.']
+    source = root / 'input.png'
+    source.write_bytes(b'path-binding fixture; native inference is separate')
+    calls = []
+    def execute(command, cwd, remaining):
+        calls.append((command, cwd))
+        return subprocess.CompletedProcess(command, 0, b'', b'')
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    ocr_process.run_ocr(runtime,
+        ['tesseract', 'input.png', 'stdout', '--tessdata-dir', 'моделі'],
+        remaining=lambda: 1)
+    assert len(calls) == 1 and calls[0][1] == models
+    assert (models / calls[0][0][1]).samefile(source)
+
+
+def test_unbound_runtime_never_reinterprets_relative_models_after_cwd_change(tmp_path, monkeypatch):
+    import tempfile
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    source = tmp_path / 'Зображення.png'
+    source.write_bytes(b'path-binding fixture; native process must not run')
+    temporary = tmp_path / 'Інша тимчасова папка'
+    temporary.mkdir()
+    monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    monkeypatch.setenv('TESSDATA_PREFIX', './tessdata')
+    monkeypatch.setattr(ocr_process, '_execute',
+        lambda *args: pytest.fail('An unbound engine must not run under a different cwd.'))
+    with pytest.raises(OcrRuntimeError, match='explicitly bound'):
+        run_ocr(OcrRuntime('tesseract', root=tmp_path),
+                ['tesseract', str(source), 'stdout'], remaining=lambda: 1)
+    assert source.read_bytes() == b'path-binding fixture; native process must not run'
+    assert list(temporary.iterdir()) == []
