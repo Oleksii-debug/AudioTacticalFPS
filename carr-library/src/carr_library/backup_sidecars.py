@@ -164,9 +164,21 @@ def _validate_engine_settings(value):
             raise ValueError('Invalid or excessive local engine registrations.')
         return value
 
-    fields(value, {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'})
+    fields(value, {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'},
+           {'dordiai'})
     if type(value['schema']) is not int or value['schema'] != 1:
         raise ValueError('Unsupported local engine settings schema.')
+    # The primary speech provider has its own optional top-level declaration.
+    # Resolve only its pure settings validator, never a provider or installation.
+    dordiai = value.get('dordiai')
+    if dordiai is not None:
+        validator = getattr(_model('runtime_settings'), 'validate_dordiai_configuration', None)
+        if not callable(validator):
+            raise ValueError('The installed settings validator does not support dordiai-voices.')
+        dordiai = validator(dordiai)
+        for name in ('runtime_directory', 'python_executable'):
+            if dordiai.get(name) is not None:
+                path(dordiai[name])
     for name in ('ffmpeg', 'ffprobe'):
         if value[name] is not None:
             path(value[name])
