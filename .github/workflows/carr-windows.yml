@@ -33,8 +33,10 @@ jobs:
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
       HF_HUB_OFFLINE: '1'
       HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
     steps:
       - name: Check out the exact event commit
@@ -82,6 +84,7 @@ jobs:
         timeout-minutes: 12
         run: |
           $suites = @(
+            'tests/packaging/test_offline_runtime_policy.py',
             'tests/e2e/test_application.py',
             'tests/e2e/test_research_workflows.py',
             'tests/e2e/test_current_topic_scope.py',
@@ -90,9 +93,13 @@ jobs:
             'tests/e2e/test_source_file.py',
             'tests/e2e/test_export_destination.py',
             'tests/storage/test_library_backup.py',
+            'tests/catalog/test_catalog_panel_acceptance.py',
+            'tests/storage/test_v2_recovery.py',
+            'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_topic_search_runtime.py',
             'tests/search/test_literal_long_source.py',
+            'tests/search/test_literal_v2_composition.py',
             'tests/ui/test_desktop_query_jobs.py',
             'tests/ui/test_source_open_handler.py'
           )
@@ -103,6 +110,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native saved-evidence page selection and note recovery
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build and install the core bundle with its pinned Python runtime

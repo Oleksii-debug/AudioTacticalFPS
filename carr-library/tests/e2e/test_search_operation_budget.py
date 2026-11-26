@@ -97,6 +97,17 @@ def test_catalog_time_is_charged_to_the_same_search_deadline(research, monkeypat
     assert app._selections == {}
 
 
+def test_coarse_clock_does_not_expand_valid_search_timeout(research, monkeypatch):
+    app, workspace = research
+    # On a coarse clock, successive reads can be equal. Adding a deadline and
+    # subtracting this representable value produces 60.00000000000001, which
+    # the underlying literal search correctly rejects as above its limit.
+    monkeypatch.setattr(application, 'monotonic', lambda: 61.001)
+    hit, = app.search(workspace, 'history')
+    assert hit.quote == 'history'
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'history'
+
+
 @pytest.mark.parametrize('timeout', [0, -1, float('nan'), float('inf'), True, '5'])
 def test_invalid_operation_budget_is_rejected(research, timeout):
     app, workspace = research

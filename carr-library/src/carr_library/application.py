@@ -83,6 +83,7 @@ class _SearchBudget:
         if (type(timeout) not in (int, float) or not 0 < timeout <= 60
                 or not callable(cancelled)):
             raise ValueError('Invalid search operation budget.')
+        self.timeout = timeout
         self.deadline = monotonic() + timeout
         self.cancelled = cancelled
         self.latched = False
@@ -101,7 +102,9 @@ class _SearchBudget:
         if remaining <= 0:
             self.latched = True
             raise TimeoutError('Search cancelled or timed out.')
-        return remaining
+        # A coarse clock can return the same value twice; floating-point
+        # subtraction must not expand the caller's validated time allowance.
+        return min(remaining, self.timeout)
 
 
 class _CatalogPublisher:
