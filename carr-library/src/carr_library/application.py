@@ -163,7 +163,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
 
     def _check_database_paths(self):
@@ -189,7 +189,7 @@ class LibraryApp:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
             try:
-                if db.execute('PRAGMA user_version').fetchone()[0] != 3 or _schema_signature(db) != _expected_signature(3):
+                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
@@ -201,7 +201,7 @@ class LibraryApp:
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -307,7 +307,7 @@ class LibraryApp:
         revision = uuid4().hex
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
@@ -464,7 +464,7 @@ class LibraryApp:
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=3)) as storage:
+            with closing(Storage(self.database, schema_version=4)) as storage:
                 self._authorize(storage.db, workspace)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
