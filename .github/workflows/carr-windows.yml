@@ -111,6 +111,7 @@ jobs:
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_delivery_archive.py',
             'tests/packaging/test_source_wheel.py',
             'tests/packaging/test_ci_check.py',
             'tests/e2e/test_offline_startup.py',
