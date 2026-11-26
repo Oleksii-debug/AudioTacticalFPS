@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 55
     defaults:
       run:
         shell: pwsh
@@ -94,7 +94,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run required integrated source workflows
-        timeout-minutes: 12
+        timeout-minutes: 25
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
@@ -147,6 +147,11 @@ jobs:
             'tests/catalog/test_bibliography.py',
             'tests/catalog/test_catalog_reports.py',
             'tests/e2e/test_catalog_tools.py',
+            'tests/acquisition/test_providers.py',
+            'tests/acquisition/test_acquisition_security.py',
+            'tests/acquisition/test_acquisition_workflow.py',
+            'tests/acquisition/test_acquisition_cli.py',
+            'tests/ui/test_native_acquisition.py',
             'tests/research/test_review_matrix.py',
             'tests/ui/test_catalog_tools_dialog.py',
             'tests/catalog/test_insights_budget.py',
@@ -211,7 +216,12 @@ jobs:
             'tests/catalog/test_application_metadata_integrity.py',
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
+            'tests/extract/test_ocr_model_catalog.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/library_assistant/test_library_workflow.py',
+            'tests/library_assistant/test_library_workflow_ui.py',
+            'tests/e2e/test_provider_transport_boundaries.py',
+            'tests/e2e/test_audio_cli.py',
             'tests/ingest/test_txt_replay_registration.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
@@ -245,6 +255,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native reviewed library workflows and checkpoint recovery
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_library_workflow_smoke.py 2>&1 | Tee-Object 'ci-results/native-library-workflow.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native research-notebook search and keyboard actions
@@ -427,12 +443,22 @@ jobs:
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
+          import carr_library.acquisition.service, carr_library.acquisition.transport
+          import carr_library.acquisition.providers, carr_library.ui.acquisition_dialog
+          for component in (carr_library.acquisition.service, carr_library.acquisition.transport,
+                            carr_library.acquisition.providers, carr_library.ui.acquisition_dialog):
+              assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/reader/test_ebook_contents.py',
-                            'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py']
+                            'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
+                            'tests/acquisition/test_providers.py',
+                            'tests/acquisition/test_acquisition_security.py',
+                            'tests/acquisition/test_acquisition_workflow.py',
+                            'tests/acquisition/test_acquisition_cli.py',
+                            'tests/ui/test_native_acquisition.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)

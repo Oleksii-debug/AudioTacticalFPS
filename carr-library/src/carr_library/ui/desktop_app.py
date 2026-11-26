@@ -36,6 +36,10 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from .library_assistant import install_library_assistant_actions
+from .acquisition_dialog import show_acquisition_dialog
+from .audio_studio import install_audio_studio_actions
+from .api_connections import install_api_connection_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -521,6 +525,7 @@ class DesktopFrame(WorkspaceFrame):
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('DOI lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
@@ -546,6 +551,9 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
+        install_library_assistant_actions(self)
+        install_audio_studio_actions(self)
+        install_api_connection_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -1130,7 +1138,8 @@ class DesktopFrame(WorkspaceFrame):
     def help(self, event):
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
-            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Alt+S for Source, Alt+D for Reading, Alt+T for Tools, and Alt+H for Help.\n'
+            'Tools, Local library workflow assistant previews and runs selected local library operations with saved recovery checkpoints.\n'
             'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS metadata and checks the catalog.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'

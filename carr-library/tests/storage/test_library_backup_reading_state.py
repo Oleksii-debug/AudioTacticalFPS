@@ -11,7 +11,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library import library_backup
 from carr_library.ingest.writer_guard import WriterBusy, exclusive_writer
-from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
+from carr_library.library_backup import create_backup, restore_backup, verify_backup, INCOMPLETE
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import FILENAME, MAX_BYTES, ReadingState
 
@@ -143,7 +143,7 @@ def test_absent_state_is_explicit_and_unrelated_sidecars_are_not_copied(tmp_path
                for name in ('providers.json', 'api-keys.json', 'reading-state.json.old'))
 
 
-@pytest.mark.parametrize('phase', ['backup', 'restore'])
+@pytest.mark.parametrize('phase', ['backup', 'restore', 'verify'])
 @pytest.mark.parametrize('field,value', [
     ('workspace', 'another-workspace'), ('edition', 'another-edition'),
     ('revision', 'another-revision'), ('kind', 'physical_page'), ('index', 999),
@@ -153,7 +153,7 @@ def test_saved_location_must_match_the_exact_copied_database(
         reading_library, tmp_path, phase, field, value):
     app, _, _, pages, _ = reading_library
     folder = tmp_path / 'backup'
-    if phase == 'restore':
+    if phase in ('restore', 'verify'):
         create_backup(app, folder)
         path = folder / FILENAME
     else:
@@ -168,9 +168,10 @@ def test_saved_location_must_match_the_exact_copied_database(
     document['positions'][0]['location'][field] = value
     raw = json.dumps(document, ensure_ascii=False).encode('utf-8')
     destination = tmp_path / 'rejected'
-    if phase == 'restore':
+    if phase in ('restore', 'verify'):
         digest = seal_reading_bytes(folder, raw)
-        operation = lambda: restore_backup(folder, destination, digest)
+        operation = (lambda: restore_backup(folder, destination, digest)) if phase == 'restore' else (
+            lambda: verify_backup(folder, digest))
     else:
         path.write_bytes(raw)
         operation = lambda: create_backup(app, destination)
@@ -178,6 +179,53 @@ def test_saved_location_must_match_the_exact_copied_database(
         operation()
     assert not destination.exists()
     assert path.read_bytes() == raw
+
+
+def test_public_verification_checks_real_backup_without_changing_original_files(
+        reading_library, tmp_path):
+    app, *_ = reading_library
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    before = {str(path.relative_to(folder)): (path.read_bytes(), path.stat().st_mtime_ns)
+              for path in folder.rglob('*') if path.is_file()}
+    assert verify_backup(folder, digest) == read_manifest(folder)
+    assert {str(path.relative_to(folder)): (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in folder.rglob('*') if path.is_file()} == before
+    assert {path.name for path in tmp_path.iterdir()} == {'data', 'backup'}
+
+
+@pytest.mark.parametrize('damage', [
+    'database', 'asset', 'extra_asset', 'missing_asset', 'extra_file',
+    'reading_bytes', 'missing_reading',
+])
+def test_public_verification_rejects_corruption_and_unexpected_files_without_mutation(
+        reading_library, tmp_path, damage):
+    app, *_ = reading_library
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    if damage == 'database':
+        path = folder / 'library.sqlite'
+        raw = bytearray(path.read_bytes())
+        raw[-1] ^= 1
+        path.write_bytes(raw)
+    elif damage in ('asset', 'missing_asset'):
+        path = next((folder / 'originals').iterdir())
+        path.write_bytes(b'x' * path.stat().st_size) if damage == 'asset' else path.unlink()
+    elif damage == 'extra_asset':
+        (folder / 'originals' / 'unregistered.txt').write_bytes(b'Unexpected original')
+    elif damage == 'extra_file':
+        (folder / 'unregistered.txt').write_bytes(b'Unexpected sidecar')
+    elif damage == 'reading_bytes':
+        path = folder / FILENAME
+        path.write_bytes(path.read_bytes().replace(b'Caf', b'New', 1))
+    else:
+        (folder / FILENAME).unlink()
+    before = {str(path.relative_to(folder)): path.read_bytes()
+              for path in folder.rglob('*') if path.is_file()}
+    with pytest.raises(ValueError):
+        verify_backup(folder, digest)
+    assert {str(path.relative_to(folder)): path.read_bytes()
+            for path in folder.rglob('*') if path.is_file()} == before
 
 
 @pytest.mark.parametrize('damage', ['empty', 'truncated', 'invalid_utf8', 'unknown_field'])

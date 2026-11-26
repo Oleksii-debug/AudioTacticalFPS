@@ -275,6 +275,55 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
+def _verify_contents(source, stage, manifest, *, copy_originals=False):
+    """Authenticate every component using a private database copy.
+
+    Verification and restore share this path so new supported sidecars cannot
+    accidentally be omitted by callers that only need a completeness check.
+    Opening Storage may write SQLite metadata; only the private copy is opened.
+    """
+    _plain(source / ORIGINALS, directory=True)
+    reading_raw = None
+    if manifest.get('reading_state') is not None:
+        reading_raw = ReadingState(source).snapshot_bytes()
+        if _reading_manifest(reading_raw) != manifest['reading_state']:
+            raise RestoreError('reading-state size or digest mismatch')
+    snapshot = stage / DATABASE
+    _copy_database(source / DATABASE, snapshot, manifest)
+    with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
+        storage.check()
+        _check_reading_bindings(reading_raw, storage.db)
+        original_store = RetainedAssets(source / ORIGINALS)
+        entries = verify_catalog_assets(storage.db, original_store,
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        if _asset_manifest(entries) != manifest['assets']:
+            raise RestoreError('asset manifest disagrees with the database')
+        if copy_originals:
+            copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+    return reading_raw, entries
+
+
+def verify_backup(source, expected_manifest_sha256):
+    """Return the fully authenticated manifest without changing the backup.
+
+    This checks the exact file namespace, manifest digest, database digest and
+    supported schema, database invariants, catalog-bound original bytes and
+    saved reading-state bytes and source bindings. It creates no restored
+    library. SQLite checks use a temporary database outside the source.
+    Keep the expected manifest digest independently of the backup, as for
+    restore_backup. A trusted journal recovering its first publication can
+    authenticate internal consistency against the completion manifest digest.
+    """
+    source = Path(source).absolute()
+    _plain(source, directory=True)
+    source = source.resolve(strict=True)
+    manifest = _read_manifest(source, expected_manifest_sha256)
+    with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
+        _verify_contents(source, Path(tmp), manifest)
+    return manifest
+
+
 def restore_backup(source, destination, expected_manifest_sha256):
     """Restore a trusted backup into a new data root; return that root's Path.
 
@@ -287,26 +336,10 @@ def restore_backup(source, destination, expected_manifest_sha256):
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256)
-    _plain(source / ORIGINALS, directory=True)
-    reading_raw = None
-    if manifest.get('reading_state') is not None:
-        reading_raw = ReadingState(source).snapshot_bytes()
-        if _reading_manifest(reading_raw) != manifest['reading_state']:
-            raise RestoreError('reading-state size or digest mismatch')
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        _copy_database(source / DATABASE, snapshot, manifest)
-        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
-            storage.check()
-            _check_reading_bindings(reading_raw, storage.db)
-            original_store = RetainedAssets(source / ORIGINALS)
-            entries = verify_catalog_assets(storage.db, original_store,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
-            if _asset_manifest(entries) != manifest['assets']:
-                raise RestoreError('asset manifest disagrees with the database')
-            copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        reading_raw, entries = _verify_contents(source, stage, manifest, copy_originals=True)
         if reading_raw is not None:
             _sync_file(stage / READING_STATE, reading_raw)
         destination.mkdir(mode=0o700)
