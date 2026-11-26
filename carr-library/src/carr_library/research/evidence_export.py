@@ -200,7 +200,8 @@ def _bibtex(workspace, topic, items):
     """Bibliography only: no source quotation or private research note.
 
     Entry keys derive from scoped IDs; no source string becomes BibTeX syntax.
-    Page labels are enumerated, never compressed into an invented page range.
+    Cite-specific page labels belong in the source-locator note, not in the
+    publication's pages field. Enumerate them without inventing a page range.
     """
     grouped = {}
     for row in items:
@@ -216,8 +217,6 @@ def _bibtex(workspace, topic, items):
             value = getattr(first, name)
             if value:
                 fields.append((name, value))
-        if all(row.printed_label_verified for row in slices):
-            fields.append(('pages', ', '.join(row.printed_label for row in slices)))
         fields.append(('note', 'Source locator: ' + '; '.join(_locator(row) for row in slices)))
         entry = [f'@misc{{evidence_{key},']
         for name, value in fields:
@@ -233,27 +232,34 @@ def _bibtex(workspace, topic, items):
     return '\n\n'.join(chunks) + '\n'
 
 
-def export_topic(workspace_id, topic_id, rows, *, format="text"):
-    """Return a local string; caller selects destination, never from source metadata.
+def export_topic(workspace_id, topic_id, rows, *, format="text", title="Research dossier"):
+    """Render local research; caller selects destination, never from source metadata.
 
     Text/Markdown and CSV use reversible JSON string encoding for untrusted
     text. CSV identifies those cells using *_json headers. RIS and BibTeX are
     bibliography only; no private notes or quotations are included. BibTeX
     metadata line breaks/tabs become spaces, as disclosed in its fixed header.
+    DOCX returns immutable document bytes; HTML returns a self-contained string.
+    Their title is descriptive text and never a filename or executable markup.
     """
     items = list(_records(workspace_id, topic_id, rows))
+    if format in ('docx', 'html'):
+        from .academic_documents import export_document
+        return export_document(workspace_id, topic_id, items, format=format, title=title)
     if format == 'csv':
         return _csv(items)
     if format == 'bibtex':
         return _bibtex(workspace_id, topic_id, items)
     if format == "ris":
         from ._vendor_rispy.writer import dumps
-        refs = []
+        grouped = {}
         for row in items:
+            grouped.setdefault(row.evidence_id, []).append(row)
+        refs = []
+        for slices in grouped.values():
             # A span is one bibliographic reference; each source quote remains
             # a separate slice in text/Markdown, never a fabricated joined quote.
-            if row.span_index != 1:
-                continue
+            row = slices[0]
             def single(value):
                 if any(unicodedata.category(c).startswith('C') or c in '\u2028\u2029' for c in value):
                     raise ValueError("unsafe multiline RIS metadata")
@@ -261,8 +267,9 @@ def export_topic(workspace_id, topic_id, rows, *, format="text"):
             ref = dict(type_of_reference="GEN", id=single(row.evidence_id),
                        title=single(row.title), authors=[single(row.author)] if row.author else [],
                        edition=single(row.edition), volume=single(row.volume))
-            if row.printed_label_verified:
-                ref['start_page'] = single(row.printed_label)
+            # Pinpoint locators are not the publication's start/end pages.
+            # Only this generated locator note is exported, never row.note.
+            ref['notes'] = [single('Source locator: ' + '; '.join(_locator(part) for part in slices))]
             refs.append(ref)
         return dumps(refs)
     if format not in ("text", "markdown"):

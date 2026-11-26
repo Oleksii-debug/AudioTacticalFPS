@@ -21,29 +21,16 @@ class EpubHints:
     verification: str = field(default='unverified', init=False)
 
 
-def _read_xml(archive, name, *, max_bytes=MAX_XML):
-    """Read bounded XML with the lxml runtime already supplied by python-docx.
-
-    Do not resolve DTDs or entities, including local-file entities. Inspect the
-    parsed document declaration as well so alternate XML encodings cannot hide
-    a DTD from a byte-pattern check. EPUB parsing belongs in the parser worker.
-    """
-    from lxml import etree
-    if type(max_bytes) is not int or not 0 < max_bytes <= 8 * 1024 * 1024:
-        raise ValueError('invalid XML resource limit')
+def _read_xml(archive, name):
+    from defusedxml.ElementTree import fromstring
     info = archive.getinfo(name)
-    if info.is_dir() or info.file_size > max_bytes:
+    if info.is_dir() or info.file_size > MAX_XML:
         raise ValueError('invalid metadata member')
     with archive.open(info) as stream:
-        data = stream.read(max_bytes + 1)
-    if len(data) > max_bytes or len(data) != info.file_size:
+        data = stream.read(MAX_XML + 1)
+    if len(data) > MAX_XML or len(data) != info.file_size:
         raise ValueError('metadata size mismatch')
-    parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True,
-                             recover=False, huge_tree=False)
-    root = etree.fromstring(data, parser=parser)
-    if root.getroottree().docinfo.doctype:
-        raise ValueError('DTD content is unsupported')
-    return root
+    return fromstring(data, forbid_dtd=True, forbid_entities=True, forbid_external=True)
 
 
 def _values(metadata, tag):

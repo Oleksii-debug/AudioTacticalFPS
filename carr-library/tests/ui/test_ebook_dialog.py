@@ -155,6 +155,26 @@ def test_session_binds_chapter_descriptors_and_reports_unverified_metadata():
     assert loads == [2]
 
 
+def test_canonical_extraction_warnings_are_readable_and_keep_unknown_explanations():
+    data, texts = book_data()
+    data['warnings'] = ['embedded_contents_ambiguous_spine', 'source_quotations_unverified',
+                        'An additional source-specific warning.']
+    data['chapters'][0]['warnings'] = ['images_omitted_from_text', 'images_without_text_alternatives']
+    contents, chapter, _ = callbacks(data, texts)
+    session = EbookSession(contents, chapter).open()
+    session.visit(1)
+    report = session.report()
+    information = session.chapter_status()
+    assert 'resource repeated in the reading order' in report
+    assert 'Use the chapter selector.' in report
+    assert 'Quotations from this extraction have not been independently verified.' in report
+    assert 'An additional source-specific warning.' in report
+    assert 'Images were omitted from the text.' in information
+    assert 'Some images have no text alternative' in information
+    assert 'embedded_contents_ambiguous_spine' not in report
+    assert 'images_omitted_from_text' not in information
+
+
 @pytest.mark.parametrize('which,value', [('ordinal', True), ('characters', -1), ('linear', 1)])
 def test_invalid_chapter_descriptors_are_rejected(which, value):
     data, texts = book_data()
@@ -394,7 +414,14 @@ def frame_double():
     return frame, panel
 
 
-def test_action_captures_scope_for_async_service_and_restores_catalog_focus(monkeypatch):
+@pytest.fixture
+def authorized_scope(monkeypatch):
+    # Synthetic frame/service tests exercise selection binding. Separate tests
+    # below use the real LibraryApp and canonical scope authorization helper.
+    monkeypatch.setattr('carr_library.ui.ebook_actions._authorized_scope', lambda *_: True)
+
+
+def test_action_captures_scope_for_async_service_and_restores_catalog_focus(monkeypatch, authorized_scope):
     frame, panel = frame_double()
     original_library = frame.library
     data, texts = book_data()
@@ -419,7 +446,7 @@ def test_action_captures_scope_for_async_service_and_restores_catalog_focus(monk
 
 
 @pytest.mark.parametrize('changed', ['topic', 'library', 'edition', 'panel'])
-def test_action_does_not_open_delayed_result_after_selection_changed(monkeypatch, changed):
+def test_action_does_not_open_delayed_result_after_selection_changed(monkeypatch, changed, authorized_scope):
     frame, panel = frame_double()
     data, _ = book_data()
     opened, reader = Mock(return_value=data), Mock()
@@ -444,7 +471,7 @@ def test_action_does_not_open_delayed_result_after_selection_changed(monkeypatch
     panel.books.SetFocus.assert_not_called()
 
 
-def test_action_does_not_read_new_scope_or_focus_old_controls_after_modal_switch(monkeypatch):
+def test_action_does_not_read_new_scope_or_focus_old_controls_after_modal_switch(monkeypatch, authorized_scope):
     frame, panel = frame_double()
     data, _ = book_data()
     monkeypatch.setattr('carr_library.ui.ebook_actions.open_ebook', Mock(return_value=data))
@@ -470,6 +497,78 @@ def test_action_no_selection_gives_actionable_error_without_background_job():
     EbookActions(frame, reader=Mock()).open()
     frame.run_job.assert_not_called()
     assert 'Select an imported EPUB' in frame.report.call_args.args[0]
+
+
+@pytest.mark.parametrize('archived', ['workspace', 'topic'])
+def test_action_reauthorizes_scope_after_worker_finished(monkeypatch, tmp_path, archived):
+    from carr_library.application import LibraryApp
+
+    library = LibraryApp(tmp_path / 'library')
+    workspace = library.create_workspace('Scope authorization test')
+    topic = library.create_topic(workspace, 'Topic')
+    frame, panel = frame_double()
+    frame.library = library
+    frame.active = workspace, topic
+    panel.workspace = workspace
+    data, _ = book_data()
+    monkeypatch.setattr('carr_library.ui.ebook_actions.open_ebook', Mock(return_value=data))
+    reader = Mock()
+    actions = EbookActions(frame, reader=reader)
+    actions.open()
+    _, load, ready = frame.run_job.call_args.args
+    contents = load()
+    if archived == 'workspace':
+        library.archive_workspace(workspace)
+    else:
+        with library.topic_transaction(workspace) as tree:
+            tree.archive(topic)
+    # Frame IDs and the selected catalog row still match, but authorization no
+    # longer does. A finished worker must not reopen the old scope.
+    assert frame.active == (workspace, topic)
+    with pytest.raises(ValueError, match='changed'):
+        ready(contents)
+    reader.assert_not_called()
+    panel.books.SetFocus.assert_not_called()
+
+
+def test_dialog_reauthorizes_scope_after_chapter_callback_before_render(monkeypatch, tmp_path):
+    from carr_library.application import LibraryApp
+
+    library = LibraryApp(tmp_path / 'library')
+    workspace = library.create_workspace('Render authorization test')
+    topic = library.create_topic(workspace, 'Topic')
+    frame, panel = frame_double()
+    frame.library = library
+    frame.active = workspace, topic
+    panel.workspace = workspace
+    data, texts = book_data()
+    monkeypatch.setattr('carr_library.ui.ebook_actions.open_ebook', Mock(return_value=data))
+
+    def chapter(*args, **kwargs):
+        result = dict(data['chapters'][0], revision=data['revision'], raw_text=texts[0])
+        with library.topic_transaction(workspace) as tree:
+            tree.archive(topic)
+        return result
+
+    read = Mock(side_effect=chapter)
+    monkeypatch.setattr('carr_library.ui.ebook_actions.read_chapter', read)
+
+    def interaction(wx):
+        assert wx.named(NOTICE).GetValue() == ''
+        assert wx.named('EPUB extraction report').GetValue() == ''
+        assert not wx.named('Chapter (unpaginated)').enabled
+        status = wx.named('Chapter and navigation status')
+        assert 'changed' in status.GetValue()
+        assert status.focused
+
+    wx = WxDouble(interaction)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    EbookActions(frame, reader=show_ebook).open()
+    _, load, ready = frame.run_job.call_args.args
+    ready(load())
+    assert wx.controls[0].destroyed
+    read.assert_called_once()
+    panel.books.SetFocus.assert_not_called()
 
 
 def test_menu_installation_is_idempotent_and_binds_keyboard_command(monkeypatch):

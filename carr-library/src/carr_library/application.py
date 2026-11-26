@@ -501,16 +501,17 @@ class LibraryApp:
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
-                        from .reader.ebook import extraction_settings
-                        extracted = extract_epub(asset.data, cancelled=cancelled)
-                        settings = extraction_settings(extracted)
+                        from .reader.ebook_contents import extraction_settings
+                        extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
+                        settings = extraction_settings(extracted)
                     else:
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
+                        source_format = 'DOCX'
+                        # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
-                        source_format = 'DOCX'
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
@@ -537,10 +538,8 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
-                            'message': (f'{source_format} imported as unverified logical segments; '
-                                        'printed pages are unknown.' +
-                                        (' Open electronic book contents to read chapters and the extraction report.'
-                                         if source_format == 'EPUB' else ''))}
+                            'message': f'{source_format} imported as unverified logical segments; '
+                                       'printed pages are unknown.'}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -812,9 +811,14 @@ class LibraryApp:
         with self.read(workspace) as db:
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            _, _, locator, raw, meta = self._selected(
+            selected, identity, locator, raw, meta = self._selected(
                 db, workspace, ref, revision, cancelled=cancelled)
-            return f'{meta.title}\n{locator.display()}\nExtracted text; verification status is shown in the search result.\n\n{raw}'
+            section = ''
+            if locator.kind == 'logical_segment':
+                from .reader.ebook import section_description
+                section = section_description(db, identity, selected.ordinal)
+            return (f'{meta.title}\n{locator.display()}\n' + (section + '\n' if section else '') +
+                    'Extracted text; verification status is shown in the search result.\n\n' + raw)
 
     def copy(self, workspace, ref, revision, field='both', *, cancelled=lambda: False):
         with self.read(workspace) as db:
@@ -845,6 +849,25 @@ class LibraryApp:
         with self.read(workspace) as db:
             load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             return SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
+
+    def search_notebook(self, workspace, query, *, field='both', tag=None,
+                        include_archived=False, limit=50, timeout=60.0,
+                        cancelled=lambda: False):
+        from .research.notebook_search import search_notebook
+        with self._search_read(workspace, timeout, cancelled) as (db, budget):
+            load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
+            return search_notebook(SavedEvidenceStore(db, workspace, load, metadata), workspace, query,
+                field=field, tag=tag, include_archived=include_archived, limit=limit,
+                timeout=budget.remaining(), cancelled=budget.stopped)
+
+    def get_notebook_hit(self, workspace, topic, evidence, *, include_archived=False,
+                         timeout=60.0, cancelled=lambda: False):
+        from .research.notebook_search import get_notebook_hit
+        with self._search_read(workspace, timeout, cancelled) as (db, budget):
+            load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
+            return get_notebook_hit(SavedEvidenceStore(db, workspace, load, metadata), workspace,
+                topic, evidence, include_archived=include_archived,
+                timeout=budget.remaining(), cancelled=budget.stopped)
 
     def set_evidence_tags(self, workspace, topic, evidence, names):
         names = tuple(dict.fromkeys(_name(name) for name in names))
@@ -955,6 +978,10 @@ class LibraryApp:
         with self.read(workspace) as db:
             load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
             rows = SavedEvidenceStore(db, workspace, load, metadata).list_saved(topic, cancelled=cancelled)
+            if format in ('docx', 'html'):
+                name, = db.execute('SELECT name FROM research_topic WHERE workspace=? AND id=?',
+                                   (workspace, topic)).fetchone()
+                return export_saved(workspace, topic, rows, load, format=format, title=name)
             return export_saved(workspace, topic, rows, load, format=format)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):

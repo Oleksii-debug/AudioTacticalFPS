@@ -28,7 +28,7 @@ def main():
     assert len(texts[1]) > 65536
     chapters = [dict(ordinal=i, title=f'Chapter title {i}', member=f'chapter-{i}.xhtml',
                      linear=i == 1, characters=len(raw),
-                     warnings=['images_not_transcribed'] if i == 2 else [],
+                     warnings=['images_omitted_from_text'] if i == 2 else [],
                      image_descriptions=['Author-supplied chart description.'] if i == 2 else [])
                 for i, raw in enumerate(texts, 1)]
     contents = dict(title='Synthetic EPUB reader probe', revision='native-probe-revision',
@@ -36,7 +36,7 @@ def main():
                     toc=[dict(title='Part one', ordinal=None, offset=None, depth=0, heading_only=True),
                          dict(title='Exact target', ordinal=1, offset=texts[0].index('Alpha'), depth=1),
                          dict(title='Supplement', ordinal=2, offset=0, depth=0)],
-                    metadata_hints={}, warnings=['logical_locator_not_page', 'extracted_text_unverified'])
+                    metadata_hints={}, warnings=['logical_locator_not_page', 'source_quotations_unverified'])
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):

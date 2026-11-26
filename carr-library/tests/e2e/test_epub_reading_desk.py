@@ -10,7 +10,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.citations.anchors import Locator
 from carr_library.library_backup import create_backup, restore_backup
-from carr_library.reader.ebook import open_ebook, read_chapter
+from carr_library.reader.ebook_contents import open_ebook, read_chapter
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState
 

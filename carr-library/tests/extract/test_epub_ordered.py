@@ -1,347 +1,307 @@
-"""Synthetic real EPUB archives; no installed books or remote services required."""
+"""Synthetic EPUB package, ordering, text fidelity and rejection regressions."""
 from hashlib import sha256
 from io import BytesIO
 import json
-import posixpath
-from urllib.parse import unquote
-from xml.sax.saxutils import escape, quoteattr
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_STORED
 
 import pytest
 
-from carr_library.extract.epub_ordered import EpubError, extract_epub
+from carr_library.extract import epub_ordered
+from carr_library.extract.epub_ordered import extract_epub
 
 
 OCF = 'urn:oasis:names:tc:opendocument:xmlns:container'
 OPF = 'http://www.idpf.org/2007/opf'
-DC = 'http://purl.org/dc/elements/1.1/'
 XHTML = 'http://www.w3.org/1999/xhtml'
-EPUB = 'http://www.idpf.org/2007/ops'
-NCX = 'http://www.daisy.org/z3986/2005/ncx/'
+ENC = 'http://www.w3.org/2001/04/xmlenc#'
 
 
-def xhtml(body, *, title='Synthetic chapter', head=''):
-    return (f'<html xmlns="{XHTML}" xmlns:epub="{EPUB}"><head>'
-            f'<title>{escape(title)}</title>{head}</head><body>{body}</body></html>')
+def chapter(text, *, title='Chapter', doctype='', attrs=''):
+    return (f'{doctype}<html xmlns="{XHTML}" {attrs}><head><title>{title}</title></head>'
+            f'<body>{text}</body></html>')
 
 
-def navigation(items, pages=''):
-    return xhtml(f'<nav epub:type="toc"><ol>{items}</ol></nav>' + (
-        f'<nav epub:type="page-list"><ol>{pages}</ol></nav>' if pages else ''))
-
-
-def build_epub(chapters=None, *, spine=None, nav=None, ncx=None, extra=None,
-               manifest_extra='', version='3.0', metadata=None, spine_attrs='',
-               package_member='EPUB/content.opf', package=None):
-    """Build an EPUB byte snapshot reusable by application/integration tests.
-
-    ``chapters`` contains (manifest id, relative href, complete XHTML str/bytes).
-    ``spine`` contains ids or (id, linear) pairs. Omitted inputs build two short
-    chapters with anchors ``one`` and ``two``. Extra ZIP entries use full paths.
-    ``nav`` is a complete navigation XHTML; ``ncx`` is a complete NCX document.
-    """
-    if chapters is None:
-        chapters = [('one', 'one.xhtml', xhtml('<h1 id="one">One</h1><p>Alpha beta.</p>')),
-                    ('two', 'two.xhtml', xhtml('<h1 id="two">Two</h1><p>Gamma delta.</p>'))]
-    if spine is None:
-        spine = [row[0] for row in chapters]
-    manifest = ''.join(f'<item id={quoteattr(ident)} href={quoteattr(href)} '
-                       'media-type="application/xhtml+xml"/>' for ident, href, _ in chapters)
-    resources = [(posixpath.normpath(posixpath.join(posixpath.dirname(package_member),
-                         unquote(href))), source) for _, href, source in chapters]
-    if nav is not None:
-        manifest += '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>'
-        resources.append((posixpath.join(posixpath.dirname(package_member), 'nav.xhtml'), nav))
-    if ncx is not None:
-        manifest += '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>'
-        resources.append((posixpath.join(posixpath.dirname(package_member), 'toc.ncx'), ncx))
-        spine_attrs += ' toc="ncx"'
-    references = ''.join(f'<itemref idref={quoteattr(row if isinstance(row, str) else row[0])}'
-        + ('' if isinstance(row, str) else f' linear={quoteattr(row[1])}') + '/>' for row in spine)
-    if metadata is None:
-        metadata = '<dc:title>Навчальна книга</dc:title><dc:creator>Test author</dc:creator><dc:language>uk</dc:language>'
-    if package is None:
-        package = (f'<package xmlns="{OPF}" xmlns:dc="{DC}" version={quoteattr(version)}>'
-            f'<metadata>{metadata}</metadata><manifest>{manifest}{manifest_extra}</manifest>'
-            f'<spine {spine_attrs}>{references}</spine></package>')
+def epub(*, documents=None, manifest=None, spine=None, package=None,
+         container=None, extra=(), version='3.0'):
+    """Documents are ordered ZIP members, intentionally independent of spine."""
+    documents = documents if documents is not None else [('EPUB/one.xhtml', chapter('<p>First text.</p>'))]
+    manifest = manifest if manifest is not None else '<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>'
+    spine = spine if spine is not None else '<itemref idref="one"/>'
+    package = package if package is not None else (
+        f'<package xmlns="{OPF}" version="{version}"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        '<dc:title>Synthetic book</dc:title><dc:creator>Test author</dc:creator><dc:language>uk</dc:language>'
+        f'</metadata><manifest>{manifest}</manifest><spine>{spine}</spine></package>')
+    container = container if container is not None else (
+        f'<container xmlns="{OCF}"><rootfiles><rootfile full-path="EPUB/content.opf" '
+        'media-type="application/oebps-package+xml"/></rootfiles></container>')
     stream = BytesIO()
-    with ZipFile(stream, 'w') as archive:
+    with ZipFile(stream, 'w', compression=ZIP_STORED) as archive:
         archive.writestr('mimetype', 'application/epub+zip')
-        archive.writestr('META-INF/container.xml', f'<container xmlns="{OCF}"><rootfiles>'
-            f'<rootfile full-path={quoteattr(package_member)} media-type="application/oebps-package+xml"/>'
-            '</rootfiles></container>')
-        archive.writestr(package_member, package)
-        for member, content in resources:
-            archive.writestr(member, content)
-        for member, content in (extra or {}).items():
-            archive.writestr(member, content)
+        archive.writestr('META-INF/container.xml', container)
+        archive.writestr('EPUB/content.opf', package)
+        for path, text in (*documents, *extra):
+            archive.writestr(path, text)
     return stream.getvalue()
 
 
-def replace_member(data, member, transform):
-    stream = BytesIO()
-    with ZipFile(BytesIO(data)) as source, ZipFile(stream, 'w') as target:
-        for info in source.infolist():
-            content = source.read(info)
-            target.writestr(info, transform(content) if info.filename == member else content)
-    return stream.getvalue()
+def encryption(path, algorithm='http://www.idpf.org/2008/embedding'):
+    return (f'<encryption xmlns="{OCF}" xmlns:enc="{ENC}"><enc:EncryptedData>'
+            f'<enc:EncryptionMethod Algorithm="{algorithm}"/><enc:CipherData>'
+            f'<enc:CipherReference URI="{path}"/></enc:CipherData>'
+            '</enc:EncryptedData></encryption>')
 
 
-def encryption(uri, algorithm='http://www.idpf.org/2008/embedding'):
-    return ('<encryption xmlns="urn:oasis:names:tc:opendocument:xmlns:container" '
-        'xmlns:enc="http://www.w3.org/2001/04/xmlenc#"><enc:EncryptedData>'
-        f'<enc:EncryptionMethod Algorithm={quoteattr(algorithm)}/><enc:CipherData>'
-        f'<enc:CipherReference URI={quoteattr(uri)}/></enc:CipherData></enc:EncryptedData></encryption>')
-
-
-def test_spine_order_unicode_inline_boundaries_and_original_identity():
-    chapters = [('second', 'second.xhtml', xhtml('<h1>Second</h1><p>After.</p>')),
-                ('first', '%D0%BF%D0%B5%D1%80%D1%88%D0%B8%D0%B9.xhtml',
-                 xhtml('<h1 id="початок">Перший</h1><p>Це <em>цілісний</em> текст.</p>'))]
-    data = build_epub(chapters, spine=['first', 'second'])
-    original_digest = sha256(data).hexdigest()
+def test_spine_order_repeated_occurrences_supplementary_and_no_fake_pages():
+    data = epub(documents=[('EPUB/two.xhtml', chapter('<p>Second Žilina</p>', title='Second')),
+                           ('EPUB/one.xhtml', chapter('<p>Перша книжка</p>', title='First'))],
+        manifest='<item id="two" href="two.xhtml" media-type="application/xhtml+xml"/>'
+                 '<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>',
+        spine='<itemref idref="one"/><itemref idref="two" linear="no"/><itemref idref="one"/>')
     result = extract_epub(data)
-    assert [r['title'] for r in result['records']] == ['Перший', 'Second']
-    assert result['records'][0]['member'] == 'EPUB/перший.xhtml'
-    assert result['records'][0]['raw_text'] == 'Перший\nЦе цілісний текст.\n'
     assert result['status'] == 'review_required'
-    assert result['metadata']['titles'] == ('Навчальна книга',)
-    assert result['metadata']['verification'] == 'unverified'
-    assert result['provenance']['asset_sha256'] == original_digest == sha256(data).hexdigest()
-    assert result['provenance']['adapter'] == 'epub-spine-v1'
-    assert result['provenance']['engine'] == 'lxml'
-    assert json.loads(json.dumps(result))['records'][0]['logical_locator'] == [1]
-    for ordinal, record in enumerate(result['records'], 1):
-        assert record['logical_locator'] == [ordinal]
-        assert record['physical_index'] is None and record['printed_label'] is None
-        assert record['printed_label_verified'] is False
-        assert record['text_sha256'] == sha256(record['raw_text'].encode()).hexdigest()
+    assert result['provenance']['asset_sha256'] == sha256(data).hexdigest()
+    assert [r['raw_text'] for r in result['records']] == ['Перша книжка', 'Second Žilina', 'Перша книжка']
+    assert [r['logical_locator']['spine_index'] for r in result['records']] == [1, 2, 3]
+    assert [r['logical_locator']['linear'] for r in result['records']] == [True, False, True]
+    assert [r['logical_locator']['href'] for r in result['records']] == ['EPUB/one.xhtml', 'EPUB/two.xhtml', 'EPUB/one.xhtml']
+    assert 'supplementary_spine_items_included' in result['warnings']
+    for row in result['records']:
+        assert row['physical_index'] is row['printed_label'] is None
+        assert row['printed_label_verified'] is False
+        assert row['text_sha256'] == sha256(row['raw_text'].encode()).hexdigest()
+    assert json.loads(json.dumps(result, ensure_ascii=False)) == result
 
 
-def test_navigation_outside_spine_offsets_grouping_and_nested_inline_labels():
-    label = 'A<b>B<em>C</em>D</b>E'
-    chapter = xhtml(f'<p>Before</p><h2 id="anchor">{label}</h2><p>After.</p>')
-    nav = navigation('<li><span>Part <em>one</em></span><ol>'
-        f'<li><a href="one.xhtml#anchor">{label}</a></li></ol></li>',
-        '<li><a href="one.xhtml#anchor">xiv</a></li>')
-    result = extract_epub(build_epub([('one', 'one.xhtml', chapter)], nav=nav))
-    record = result['records'][0]
-    assert record['headings'] == [dict(title='ABCDE', level=2, offset=7)]
-    assert record['raw_text'][7:].startswith('ABCDE\n')
-    assert result['toc'] == [dict(title='Part one', ordinal=None, offset=None,
-                                  depth=0, heading_only=True),
-                             dict(title='ABCDE', ordinal=1, offset=7, depth=1)]
-    assert result['page_hints'] == [dict(title='xiv', ordinal=1, offset=7, depth=0)]
-    assert 'page_list_labels_unverified' in result['warnings']
-    assert record['printed_label'] is None and record['physical_index'] is None
-    assert len(result['records']) == 1
+def test_inline_tails_paragraphs_lists_tables_and_preformatted_text():
+    data = epub(documents=[('EPUB/one.xhtml', chapter('''
+      <h1>Heading</h1>
+      <p>Inter<em>nation</em>al <strong>research</strong> &amp; Česko.</p>
+      <ul><li>One</li><li>Two</li></ul>
+      <table><colgroup><col/><col/></colgroup><tr><td>A</td><td>B</td></tr><tr><td>C</td><td>D</td></tr></table>
+      <pre>  keep  spaces\nnext\tfield  </pre>
+      <p>Last<br/>line</p>
+    '''))])
+    result = extract_epub(data)
+    assert result['records'][0]['raw_text'] == (
+        'Heading\nInternational research & Česko.\nOne\nTwo\nA\nB\nC\nD\n'
+        '  keep  spaces\nnext\tfield  \nLast\nline')
+    assert 'table_layout_not_rendered' in result['warnings']
 
 
-def test_navigation_parent_path_within_archive_and_unicode_fragment():
-    nav = navigation('<li><a href="../Text/розділ.xhtml#%D0%BF%D0%BE%D1%87%D0%B0%D1%82%D0%BE%D0%BA">Початок</a></li>')
-    result = extract_epub(build_epub([('one', '../Text/розділ.xhtml',
-                xhtml('<p id="початок">Текст</p>'))], nav=nav))
-    assert result['toc'] == [dict(title='Початок', ordinal=1, offset=0, depth=0)]
-
-
-def test_html_base_cannot_silently_redirect_a_valid_contents_target():
-    # Both paths and fragments exist, so ignoring <base> would silently pick
-    # the wrong chapter instead of producing a simple missing-resource error.
-    chapters = [('first', 'chapter.xhtml', xhtml('<p id="start">First</p>')),
-                ('second', '../other/chapter.xhtml', xhtml('<p id="start">Second</p>'))]
-    nav = xhtml('<nav epub:type="toc"><ol><li><a href="chapter.xhtml#start">Second chapter</a>'
-                '</li></ol></nav>', head='<base href="../other/"/>')
-    with pytest.raises(EpubError, match='document base overrides'):
-        extract_epub(build_epub(chapters, nav=nav, package_member='OPS/nav/content.opf'))
-
-
-def test_auxiliary_image_cover_retained_and_descriptions_are_separate():
-    chapters = [('cover', 'cover.xhtml', xhtml('<img src="cover.png" alt="Cover description"/>')),
-                ('main', 'main.xhtml', xhtml('<p>Main text.</p>')),
-                ('note', 'note.xhtml', xhtml('<p>Auxiliary note.</p>'))]
-    result = extract_epub(build_epub(chapters, spine=['cover', 'main', ('note', 'no')],
-                                    extra={'EPUB/cover.png': b'synthetic image'}))
-    cover = result['records'][0]
-    assert cover['raw_text'] == ''
-    assert cover['image_descriptions'] == ['Cover description']
-    assert {'chapter_has_no_readable_text', 'images_not_transcribed'} <= set(cover['warnings'])
-    assert result['records'][2]['linear'] is False
-    assert result['records'][2]['logical_locator'] == [3]
-
-
-def test_styles_and_scripts_never_execute_or_claim_rendered_text():
-    chapter = xhtml('<p>Visible<script>secret payload()</script> tail</p><style>p{display:none}</style>',
-        head='<script src="https://example.invalid/unused.js"/><link rel="stylesheet" href="style.css"/>')
-    result = extract_epub(build_epub([('one', 'one.xhtml', chapter)]))
-    assert result['records'][0]['raw_text'] == 'Visible tail\n'
-    assert {'scripts_not_executed', 'styles_not_rendered'} <= set(result['records'][0]['warnings'])
-    assert 'layout_not_verified' in result['warnings']
-
-
-def test_epub2_ncx_nested_contents_spine_order():
-    ncx = (f'<ncx xmlns="{NCX}" version="2005-1"><navMap><navPoint id="a" playOrder="9">'
-        '<navLabel><text>Second first</text></navLabel><content src="two.xhtml#two"/>'
-        '<navPoint id="b" playOrder="1"><navLabel><text>First second</text></navLabel>'
-        '<content src="one.xhtml#one"/></navPoint></navPoint></navMap></ncx>')
-    result = extract_epub(build_epub(version='2.0', spine=['two', 'one'], ncx=ncx))
-    assert [r['title'] for r in result['records']] == ['Two', 'One']
-    assert result['toc'] == [dict(title='Second first', ordinal=1, offset=0, depth=0),
-                             dict(title='First second', ordinal=2, offset=0, depth=1)]
-
-
-def test_xml_declared_utf16_is_decoded_by_xml_parser():
-    chapter = ('<?xml version="1.0" encoding="UTF-16"?>' + xhtml('<p>Київ — 東京</p>')).encode('utf-16')
-    result = extract_epub(build_epub([('one', 'one.xhtml', chapter)]))
-    assert result['records'][0]['raw_text'] == 'Київ — 東京\n'
-
-
-@pytest.mark.parametrize('chapter', [
-    '<!DOCTYPE html [<!ENTITY x "expanded">]>' + xhtml('<p>&x;</p>'),
-    '<!DOCTYPE html SYSTEM "https://example.invalid/private.dtd">' + xhtml('<p>Text</p>'),
-    '<!DOCTYPE html [<!ENTITY x SYSTEM "file:///private/sensitive.txt">]>' + xhtml('<p>&x;</p>'),
-    ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE html [<!ENTITY x "expanded">]>'
-        + xhtml('<p>&x;</p>')).encode('utf-16'),
-    xhtml('<p>unclosed'),
-])
-def test_dtd_entities_malformed_xml_rejected_without_source_details(chapter):
-    with pytest.raises(EpubError) as caught:
-        extract_epub(build_epub([('one', 'one.xhtml', chapter)]))
-    assert all(secret not in str(caught.value) for secret in ('private', 'sensitive', 'example.invalid', 'expanded'))
-
-
-@pytest.mark.parametrize('href', ['https://example.invalid/book', '//example.invalid/book',
-    '../../secret.xhtml', '%2e%2e/%2e%2e/secret.xhtml', '%2Fsecret.xhtml',
-    '%5Csecret.xhtml', 'one.xhtml?query=private', 'file:///private',
-    'one%00.xhtml', 'one%ZZ.xhtml', 'one.xhtml#missing', 'missing.xhtml', 'nav.xhtml', ''])
-def test_unsafe_or_dangling_navigation_targets_rejected(href):
-    nav = navigation(f'<li><a href={quoteattr(href)}>Title</a></li>')
-    with pytest.raises(EpubError):
-        extract_epub(build_epub(nav=nav))
-
-
-@pytest.mark.parametrize('mutation', [
-    lambda s: s.replace('id="two"', 'id="one"'),
-    lambda s: s.replace('<itemref idref="two"/>', '<itemref idref="one"/>'),
-    lambda s: s.replace('<itemref idref="two"/>', '<itemref idref="missing"/>'),
-    lambda s: s.replace('href="two.xhtml"', 'href="one.xhtml"'),
-    lambda s: s.replace('href="one.xhtml"', 'href=""'),
-    lambda s: s.replace('href="one.xhtml"', 'href="https://example.invalid/remote.xhtml"'),
-    lambda s: s.replace('<manifest>', '<manifest xml:base="https://example.invalid/">'),
-])
-def test_ambiguous_or_unsafe_package_rejected(mutation):
-    data = replace_member(build_epub(), 'EPUB/content.opf', lambda b: mutation(b.decode()).encode())
-    with pytest.raises(EpubError):
-        extract_epub(data)
-
-
-@pytest.mark.parametrize('body', [
-    '<h1 id="duplicate">A</h1><p id="duplicate">B</p>',
-    '<p xml:base="../">Text</p>',
-    '<p>Text <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>x</mi></math></p>',
-    '<svg xmlns="http://www.w3.org/2000/svg"><text>Hidden passage</text></svg>',
-    '<p><ruby>字<rt>zì</rt></ruby></p>',
-    '<object data="unknown.dat">Fallback text</object>',
-])
-def test_ambiguous_anchors_and_unsupported_text_shapes_rejected(body):
-    with pytest.raises(EpubError):
-        extract_epub(build_epub([('one', 'one.xhtml', xhtml(body))]))
-
-
-def test_font_obfuscation_allowed_but_encrypted_text_rejected():
-    data = build_epub(manifest_extra='<item id="font" href="font.otf" media-type="font/otf"/>',
-        extra={'EPUB/font.otf': b'synthetic obfuscated font',
-               'META-INF/encryption.xml': encryption('EPUB/font.otf')})
-    assert extract_epub(data)['records'][0]['raw_text'].startswith('One\n')
-    data = build_epub(extra={'META-INF/encryption.xml': encryption('EPUB/one.xhtml',
-                           'http://www.w3.org/2001/04/xmlenc#aes256-cbc')})
-    with pytest.raises(EpubError, match='Encrypted EPUB textual'):
-        extract_epub(data)
-
-
-@pytest.mark.parametrize('kwargs', [
-    dict(chapters=[('one', 'one.xhtml', xhtml('<img alt="Text is in image"/>'))]),
-    dict(spine=[('one', 'no'), ('two', 'no')]),
-    dict(version='4.0'),
-    dict(metadata='<meta property="rendition:layout">pre-paginated</meta>'),
-])
-def test_empty_and_unsupported_books_fail_explicitly(kwargs):
-    with pytest.raises(EpubError):
-        extract_epub(build_epub(**kwargs))
-
-
-def test_navigation_and_text_budgets_are_global(monkeypatch):
-    import carr_library.extract.epub_ordered as adapter
-    data = build_epub(nav=navigation('<li><a href="one.xhtml#one">One</a></li>'))
-    monkeypatch.setattr(adapter, 'MAX_NAVIGATION', 2)
-    with pytest.raises(EpubError, match='navigation exceeds'):
-        extract_epub(data)
-    monkeypatch.setattr(adapter, 'MAX_NAVIGATION', 2000)
-    monkeypatch.setattr(adapter, 'MAX_TEXT', 24)
-    with pytest.raises(EpubError, match='text exceeds'):
-        extract_epub(data)
-
-
-def test_cancellation_stays_distinct_from_invalid_source():
-    with pytest.raises(InterruptedError, match='cancelled'):
-        extract_epub(build_epub(), cancelled=lambda: True)
-
-
-def test_identical_snapshots_have_identical_extraction():
-    data = build_epub(nav=navigation('<li><a href="two.xhtml#two">Two</a></li>'))
-    assert extract_epub(data) == extract_epub(data)
-
-
-def test_no_test_only_defusedxml_dependency(monkeypatch):
-    import sys
-    monkeypatch.setitem(sys.modules, 'defusedxml', None)
-    monkeypatch.setitem(sys.modules, 'defusedxml.ElementTree', None)
-    result = extract_epub(build_epub())
-    assert result['metadata']['verification'] == 'unverified'
-    assert result['provenance']['engine'] == 'lxml'
-
-
-@pytest.mark.parametrize('mutation', [
-    lambda s: s.replace('</body>', '</body><p>Lost passage</p>'),
-    lambda s: s.replace('<head>', 'Lost passage<head>'),
-    lambda s: s.replace('</head>', '</head>Lost passage'),
-    lambda s: s.replace('</head>', '</head><head><title>Other title</title></head>'),
-    lambda s: s.replace('</title>', '</title><title>Other title</title>'),
-    lambda s: s.replace('</head>', '<p>Lost passage</p></head>'),
-    lambda s: s.replace('</title>', '<b>Illegal title markup</b></title>'),
-])
-def test_prose_outside_body_and_ambiguous_titles_are_not_silently_lost(mutation):
-    chapter = mutation(xhtml('<p>Readable text</p>'))
-    with pytest.raises(EpubError):
-        extract_epub(build_epub([('one', 'one.xhtml', chapter)]))
+def test_script_style_template_hidden_omitted_with_tails_and_until_found_retained():
+    data = epub(documents=[('EPUB/one.xhtml', chapter('''<p>Before <script>bad()</script>after.
+      <span hidden="">Secret</span> Visible <span hidden="until-found">Discoverable</span>.</p>
+      <style>body{color:red}</style><template>Template text</template>
+      <p style="DISPLAY: none !important">Hidden CSS</p><p>End.</p>'''))])
+    result = extract_epub(data)
+    assert result['records'][0]['raw_text'] == 'Before after. Visible Discoverable.\nHidden CSS\nEnd.'
+    assert {'script_content_omitted', 'style_content_omitted', 'template_content_omitted',
+            'hidden_content_omitted', 'styles_not_rendered'} <= set(result['warnings'])
 
 
 @pytest.mark.parametrize('markup', [
-    '<img>Lost passage</img>', '<img><p>Lost passage</p></img>',
-    '<br>Lost passage</br>', '<link>Lost passage</link>',
-    '<meta>Lost passage</meta>', '<source>Lost passage</source>',
-    '<col>Lost passage</col>', '<wbr>Lost passage</wbr>',
-    '<form><input value="Lost passage"/></form>', '<input value="Lost passage"/>',
-    '<widget>Unknown representation</widget>', '<body>Nested body</body>',
+    '<p style="display:none;display:block">Visible content</p>',
+    '<p style="visibility:hidden;visibility:visible">Visible content</p>',
+    '<div style="visibility:hidden"><p style="visibility:visible">Visible content</p></div>',
+    '<p style="display:block!important;display:none">Visible content</p>',
 ])
-def test_void_and_unknown_xhtml_cannot_silently_drop_source(markup):
-    with pytest.raises(EpubError, match='unsupported'):
-        extract_epub(build_epub([('one', 'one.xhtml', xhtml('<p>Start</p>' + markup))]))
+def test_css_dependent_text_is_retained_without_guessing_rendered_visibility(markup):
+    result = extract_epub(epub(documents=[('EPUB/one.xhtml', chapter('<p>Anchor</p>' + markup))]))
+    assert result['records'][0]['raw_text'] == 'Anchor\nVisible content'
+    assert 'styles_not_rendered' in result['warnings']
 
 
-def test_static_formatting_warnings_keep_text_and_offsets_deterministic():
-    body = ('<h1 id="start">Heading</h1><p style="display:none;display:block">'
-        'Old <del>removed</del><ins>added</ins></p><table><colgroup><col/></colgroup>'
-        '<tbody><tr><td>A</td><td>B</td></tr></tbody></table><noscript>Fallback</noscript>'
-        '<template>Not in the reading flow</template><p>Final</p>')
-    result = extract_epub(build_epub([('one', 'one.xhtml', xhtml(body))]))
-    record = result['records'][0]
-    assert record['raw_text'] == 'Heading\nOld removedadded\nA\nB\nFallback\nFinal\n'
-    assert record['headings'] == [dict(title='Heading', offset=0, level=1)]
-    assert {'styles_not_rendered', 'revision_markup_not_rendered', 'table_layout_not_rendered',
-            'noscript_fallback_included', 'template_content_omitted'} <= set(record['warnings'])
+def test_images_have_separate_authored_alternatives_never_quotation_text():
+    data = epub(documents=[('EPUB/one.xhtml', chapter('<p>Before<img src="https://example.invalid/a.png" '
+           'alt="A map of Slovakia"/>After</p><img src="missing.png"/>'))])
+    result = extract_epub(data)
+    row = result['records'][0]
+    assert row['raw_text'] == 'Before\nAfter'
+    assert row['alternatives'] == [{'kind': 'image_alt', 'image_index': 1, 'text': 'A map of Slovakia'}]
+    assert 'images_omitted_from_text' in result['warnings']
+    assert 'images_without_text_alternatives' in result['warnings']
 
 
-def test_navigation_document_requires_xhtml_structure():
-    nav = navigation('<li><a href="one.xhtml">One</a></li>').replace('</body>', '</body><p>Lost</p>')
-    with pytest.raises(EpubError, match='document structure'):
-        extract_epub(build_epub(nav=nav))
+def test_decorative_empty_alt_is_not_falsely_reported_missing():
+    result = extract_epub(epub(documents=[('EPUB/one.xhtml', chapter('<p>Body</p><img src="line.png" alt=""/>'))]))
+    assert result['records'][0]['alternatives'] == []
+    assert 'images_without_text_alternatives' not in result['warnings']
+
+
+def test_image_cover_and_text_chapter_keep_original_spine_occurrences():
+    data = epub(documents=[('EPUB/cover.xhtml', chapter('<img src="cover.png" alt="Cover"/>')),
+                           ('EPUB/one.xhtml', chapter('<p>Body</p>'))],
+        manifest='<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>'
+                 '<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>',
+        spine='<itemref idref="cover"/><itemref idref="one"/>')
+    assert [r['raw_text'] for r in extract_epub(data)['records']] == ['', 'Body']
+
+
+def test_harmless_html_doctype_and_epub2_are_supported():
+    data = epub(version='2.0', documents=[('EPUB/one.xhtml', chapter('<p>Body</p>', doctype='<!DOCTYPE html>'))])
+    assert extract_epub(data)['records'][0]['raw_text'] == 'Body'
+
+
+@pytest.mark.parametrize('doctype', [
+    '<!DOCTYPE html SYSTEM "https://example.invalid/book.dtd">',
+    '<!DOCTYPE html PUBLIC "bad" "file:///synthetic-private-path">',
+    '<!DOCTYPE html [<!ENTITY sneaky "secret">]>',
+    '<!DOCTYPE html [<!ATTLIST p hidden CDATA "hidden">]>',
+])
+def test_external_and_internal_dtd_are_rejected_without_source_disclosure(doctype):
+    data = epub(documents=[('EPUB/one.xhtml', chapter('<p>Body</p>', doctype=doctype))])
+    with pytest.raises(ValueError, match='DTD|XML') as error:
+        extract_epub(data)
+    assert 'synthetic-private-path' not in str(error.value)
+
+
+def test_percent_encoded_unicode_space_and_safe_parent_resolution():
+    data = epub(documents=[('Text/číslo one.xhtml', chapter('<p>Číslo</p>'))],
+        manifest='<item id="one" href="../Text/%C4%8D%C3%ADslo%20one.xhtml" media-type="application/xhtml+xml"/>')
+    result = extract_epub(data)
+    assert result['records'][0]['logical_locator']['href'] == 'Text/číslo one.xhtml'
+
+
+@pytest.mark.parametrize('href', ['../../outside.xhtml', '%2e%2e/%2e%2e/private.xhtml',
+    '/absolute.xhtml', 'https://example.invalid/chapter.xhtml', '//example.invalid/chapter.xhtml',
+    'one.xhtml#fragment', 'one.xhtml?q=1', 'one%2Ftwo.xhtml', 'one%5ctwo.xhtml', '%00.xhtml', '%ZZ.xhtml'])
+def test_unsafe_or_remote_primary_resource_rejected(href):
+    data = epub(manifest=f'<item id="one" href="{href}" media-type="application/xhtml+xml"/>')
+    with pytest.raises(ValueError):
+        extract_epub(data)
+
+
+def test_unused_remote_manifest_resource_is_not_fetched():
+    data = epub(manifest='<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>'
+                        '<item id="remote" href="https://example.invalid/font.ttf" media-type="font/ttf"/>')
+    assert 'remote_resources_not_loaded' in extract_epub(data)['warnings']
+
+
+@pytest.mark.parametrize('markup', [
+    '<svg xmlns="http://www.w3.org/2000/svg"><text>Math</text></svg>',
+    '<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>x</mi></math>',
+    '<form><input value="Text"/></form>', '<object>Object text</object>',
+    '<iframe>Frame text</iframe>', '<ruby>Base<rt>Annotation</rt></ruby>',
+])
+def test_unsupported_content_cannot_silently_shorten_a_sentence(markup):
+    data = epub(documents=[('EPUB/one.xhtml', chapter('<p>Before ' + markup + ' after.</p>'))])
+    with pytest.raises(ValueError, match='adapter|unsupported'):
+        extract_epub(data)
+
+
+def test_svg_spine_requires_separate_adapter():
+    data = epub(manifest='<item id="one" href="one.xhtml" media-type="image/svg+xml"/>')
+    with pytest.raises(ValueError, match='XHTML'):
+        extract_epub(data)
+
+
+@pytest.mark.parametrize('where', ['html', 'manifest'])
+def test_xml_base_is_rejected(where):
+    if where == 'html':
+        data = epub(documents=[('EPUB/one.xhtml', chapter('<p>Text</p>', attrs='xml:base="https://example.invalid/"'))])
+    else:
+        data = epub(manifest='<item id="one" href="one.xhtml" xml:base="../" media-type="application/xhtml+xml"/>')
+    with pytest.raises(ValueError, match='xml:base'):
+        extract_epub(data)
+
+
+def test_obfuscated_unused_fonts_are_allowed_but_never_rendered():
+    data = epub(manifest='<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>'
+                        '<item id="font" href="font.ttf" media-type="font/ttf"/>',
+        extra=(('EPUB/font.ttf', b'obfuscated synthetic font'),
+               ('META-INF/encryption.xml', encryption('EPUB/font.ttf'))))
+    assert 'obfuscated_fonts_not_rendered' in extract_epub(data)['warnings']
+
+
+def test_encrypted_primary_content_is_rejected_even_with_obfuscation_algorithm():
+    data = epub(extra=(('META-INF/encryption.xml', encryption('EPUB/one.xhtml')),))
+    with pytest.raises(ValueError, match='Encrypted EPUB content'):
+        extract_epub(data)
+
+
+def test_unknown_encryption_is_rejected_for_non_content_resource():
+    data = epub(manifest='<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>'
+                        '<item id="font" href="font.ttf" media-type="font/ttf"/>',
+        extra=(('EPUB/font.ttf', b'font'), ('META-INF/encryption.xml', encryption('EPUB/font.ttf', 'unknown'))))
+    with pytest.raises(ValueError, match='obfuscated'):
+        extract_epub(data)
+
+
+def test_invalid_missing_and_duplicate_manifest_ids_are_rejected():
+    for manifest in ('<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>' * 2,
+                     '<item id="other" href="one.xhtml" media-type="application/xhtml+xml"/>',
+                     '<item id="" href="one.xhtml" media-type="application/xhtml+xml"/>'):
+        with pytest.raises(ValueError):
+            extract_epub(epub(manifest=manifest))
+
+
+def test_missing_chapter_and_malformed_xml_fail_explicitly():
+    with pytest.raises(ValueError, match='missing'):
+        extract_epub(epub(documents=[]))
+    with pytest.raises(ValueError, match='XML'):
+        extract_epub(epub(documents=[('EPUB/one.xhtml', '<html>broken')]))
+
+
+def test_multiple_renditions_are_not_implicitly_selected():
+    roots = '<rootfile full-path="EPUB/content.opf" media-type="application/oebps-package+xml"/>'
+    data = epub(container=f'<container xmlns="{OCF}"><rootfiles>{roots}{roots}</rootfiles></container>')
+    with pytest.raises(ValueError, match='renditions'):
+        extract_epub(data)
+
+
+@pytest.mark.parametrize('limit,value', [('MAX_XML_DEPTH', 4), ('MAX_XML_NODES', 5),
+    ('MAX_TOTAL_NODES', 5), ('MAX_CHAPTER_XML', 30), ('MAX_TOTAL_XML', 30),
+    ('MAX_TEXT', 3), ('MAX_LOCATORS', 10)])
+def test_parser_and_text_resource_budgets(limit, value, monkeypatch):
+    monkeypatch.setattr(epub_ordered, limit, value)
+    data = epub(documents=[('EPUB/one.xhtml', chapter('<section><div><p>Bounded text</p></div></section>'))])
+    with pytest.raises(ValueError, match='budget|limit'):
+        extract_epub(data)
+
+
+def test_spine_occurrences_are_bounded_even_when_xml_is_cached(monkeypatch):
+    monkeypatch.setattr(epub_ordered, 'MAX_SPINE', 2)
+    with pytest.raises(ValueError, match='spine'):
+        extract_epub(epub(spine='<itemref idref="one"/>' * 3))
+    monkeypatch.setattr(epub_ordered, 'MAX_SPINE', 10)
+    monkeypatch.setattr(epub_ordered, 'MAX_TEXT', 15)
+    with pytest.raises(ValueError, match='budget'):
+        extract_epub(epub(spine='<itemref idref="one"/>' * 3))
+
+
+def test_real_spine_boundary_matches_reader_limit():
+    result = extract_epub(epub(spine='<itemref idref="one"/>' * 1000))
+    assert len(result['records']) == 1000
+    assert result['records'][-1]['logical_locator']['spine_index'] == 1000
+    with pytest.raises(ValueError, match='spine'):
+        extract_epub(epub(spine='<itemref idref="one"/>' * 1001))
+
+
+def test_text_outside_xhtml_body_is_not_silently_ignored():
+    invalid = chapter('<p>Body</p>').replace('</body>', '</body><p>Omitted prose</p>')
+    with pytest.raises(ValueError, match='structure'):
+        extract_epub(epub(documents=[('EPUB/one.xhtml', invalid)]))
+
+
+def test_archive_traversal_and_duplicate_entries_are_rejected():
+    with pytest.raises(ValueError, match='archive'):
+        extract_epub(epub(extra=(('../private.txt', 'data'),)))
+    with pytest.warns(UserWarning, match='Duplicate name'):
+        data = epub(extra=(('EPUB/one.xhtml', chapter('<p>Different</p>')),))
+    with pytest.raises(ValueError, match='archive'):
+        extract_epub(data)
+
+
+def test_title_falls_back_to_heading_and_metadata_is_only_unverified_hints():
+    result = extract_epub(epub(documents=[('EPUB/one.xhtml', chapter('<h1>  A <em>clear</em> heading </h1><p>Body</p>', title=''))]))
+    assert result['records'][0]['logical_locator']['title'] == 'A clear heading'
+    assert result['metadata_hints'] == {'verification': 'unverified', 'titles': ['Synthetic book'],
+                                        'creators': ['Test author'], 'languages': ['uk']}
+
+
+def test_source_snapshot_type_and_empty_text():
+    for data in (b'', bytearray(epub()), b'not a zip'):
+        with pytest.raises(ValueError):
+            extract_epub(data)
+    with pytest.raises(ValueError, match='no readable'):
+        extract_epub(epub(documents=[('EPUB/one.xhtml', chapter('<p> </p>'))]))

@@ -87,25 +87,22 @@ that location; opening the file does not automatically jump to a particular
 page. Changes made in that reader do not alter the retained library original.
 Opening a source does not approve its extracted text for quotation.
 
-## Read EPUB books
+For imported EPUB books, choose **Library, Read EPUB book** or press
+**Ctrl+Shift+R**. Choose a book, then use the **EPUB section** selector or the
+**Previous section** and **Next section** buttons. Section information and text
+use named, read-only controls. Tab moves between them; Escape returns to the
+library. Image descriptions supplied by the book's author have their own field.
+The reader also includes supplementary sections in the book's declared order.
+EPUB section numbers are not printed page numbers. Text remains an unverified
+extraction; the application's verified-quotation and saved-evidence commands
+do not approve it automatically. See [EPUB reading](EPUB_READING.md).
 
-**Library, Import books** accepts EPUB alongside PDF, DOCX and TXT. Select the
-imported EPUB in **Books and Collections**, then press **Ctrl+Shift+O** or choose
-**Library, Read electronic book contents**. The reader provides a chapter list,
-the book's table of contents when available, Previous/Next chapter, and an
-extraction report. **Ctrl+F** focuses Find and **F3** finds the next literal
-occurrence in the current chapter. Tab and Shift+Tab move between labelled
-native controls. Image alternative descriptions are displayed separately as
-unverified descriptions supplied by the book.
-
-EPUB chapters follow the declared reading order, including supplementary
-chapters. Chapter and section positions are unpaginated; embedded page labels
-are unverified hints. The extracted text is available for reading and library
-search, while verified quotation copying and saving require independent source
-verification. Embedded title and author values remain metadata hints and do
-not replace your catalog information. Complete library backups include the
-original EPUB and its saved chapter navigation. See [EPUB.md](EPUB.md) for the
-supported reading path and explicit limits.
+For embedded contents, chapter headings and literal search inside the chapter,
+select the EPUB in **Books and Collections** and press **Ctrl+Shift+O**
+(**Library, Read electronic book contents**). `F3` finds the next occurrence and
+`Shift+F3` the previous one. An extraction report explains omissions and shows
+authored image descriptions separately. Earlier imports open with their stored
+chapter starts, without rewriting their text or existing research references.
 
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
@@ -113,10 +110,60 @@ only bibliography; they omit quotations and private notes. CSV text columns
 ending in `_json` use reversible quoted text so line breaks and Unicode remain
 exact and spreadsheet programs cannot execute a quotation as a formula.
 
+Word (`.docx`) and HTML (`.html`) produce a readable research document titled
+with the current topic name. Heading navigation separates evidence, source citations,
+research notes and the source bibliography. A quotation spanning several source
+pages keeps its separate slices and locators. Unusual control characters and
+original line endings that a document reader cannot preserve are shown with
+explicit reversible text encoding; they are never silently rewritten as a
+different quotation. The document includes source identities for later checking.
+These documents contain the topic's research notes as well as quotations.
+
+In the Save dialog, choose the file type and use its matching extension. The
+Word document uses native paragraph styles and can be edited in a word processor;
+it is a static export and changes do not update the library. HTML is one local
+file with headings for screen-reader navigation. Neither export loads remote
+content or requires an internet connection. Source descriptions are not a
+claim of conformity to APA, Chicago or another journal's citation style.
+
+RIS and BibTeX preserve citation pinpoint locations as a labelled **Source
+locator** note. They do not infer a publication's page extent from the pages
+selected for a quotation. Research notes remain excluded from those formats.
+
 Choose a folder outside the private library data folder. Existing ordinary export files can be replaced after the
 Save dialog's confirmation. If another program changes the destination during
 export, select it again before replacing it. A failed save keeps the previous
 file intact.
+
+## Review the source catalog
+
+Open a library, then use the **Research** menu:
+
+- **Library overview** summarizes sources, languages, active collections,
+  searchable text units, recorded PDF reviews and links to visible research
+  topics.
+- **Source metadata and indexing checklist** lists sources with missing title,
+  author or language data, no active text, an incomplete index, PDF pages without
+  a matching recorded review, or no active collection. Missing optional metadata
+  is a prompt to check the source, not permission to invent it.
+- **Export source comparison matrix** compares your imported sources in CSV,
+  Markdown or plain text, including collections, topic links, evidence counts
+  and tags. Choose the entire library or one active collection.
+
+These reports contain catalog metadata and stored link counts. They do not
+include source text or research notes, approve an extraction, establish printed
+pagination, or recheck the original files. Physical PDF pages and unpaginated
+logical segments have separate counts. Archived topics and their descendants
+are excluded from the research links. A multi-page saved quotation counts as
+one evidence record, and historical source revisions keep their edition link.
+
+Use **Tab**, **Shift+Tab** and the arrow keys in the scope and format choices.
+Reports open in named, read-only text fields; **Escape** closes the report.
+**Cancel current operation** stops analysis. Opening a report does not refresh
+the evidence panel or discard an unsaved note.
+
+See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
+interchange details.
 
 ## Research from the keyboard
 
@@ -181,6 +228,26 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
+
+## Search across saved research topics
+
+Choose **Research, Search saved research** or press **Ctrl+Shift+F**. Search
+quotations, your own notes, or both across the currently open library. An exact
+tag can narrow the search or find tagged material without a text query.
+Archived topics are excluded unless you explicitly include them.
+
+Results identify the topic, source, matching field and archive state. Original
+quotations, citations and your notes have separate readable controls. Choose a
+source part to read another page of a saved excerpt. Copying quotations and
+citations verifies the selected saved source again; opening a topic uses the
+existing protection for unsaved notes. Archived results remain read only.
+
+The dialog has its own **Cancel current operation** and **Close** controls.
+Tab and Shift+Tab move between controls, arrow keys choose a result or source
+part, and Enter starts the search from the query field. Counts disclose a
+result limit; refine the phrase or tag when more matches exist. See
+`docs/RESEARCH_NOTEBOOK.md` in the source distribution for matching rules and
+integrity boundaries.
 
 ## Optional local semantic search
 
@@ -249,7 +316,7 @@ output directory. Each bundle includes an inventory of exact file hashes.
 ## Third-party components
 
 The application uses SQLite/FTS5 from Python, pypdf, PDFium through pypdfium2,
-python-docx, lxml, platformdirs, and wxPython. Third-party wheel licenses remain in
+python-docx, platformdirs, and wxPython. Third-party wheel licenses remain in
 their distributions. Vendored cairnsearch, filetype, rispy, Rifflux and
 wx-accessible-grid license and provenance files are included in the application
 wheel. See each corresponding `UPSTREAM` or `REUSE` file in the source tree.

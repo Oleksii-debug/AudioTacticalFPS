@@ -1,8 +1,9 @@
 """Bind the native EPUB reader to the current catalog selection and scope."""
 from dataclasses import dataclass
 
-from ..reader.ebook import open_ebook, read_chapter
+from ..reader.ebook_contents import open_ebook, read_chapter
 from .ebook_dialog import show_ebook
+from .ebook_reader import _authorized_scope
 
 
 @dataclass(frozen=True)
@@ -55,7 +56,11 @@ class EbookActions:
                     and frame.book.GetPage(1) is selected.panel
                     and selected.panel.workspace == selected.workspace and selected.panel.ready
                     and selected.panel._selection() == selected.selection
-                    and selected.panel.rows.get(selected.edition) == selected.row)
+                    and selected.panel.rows.get(selected.edition) == selected.row
+                    # A worker may finish just before another operation archives
+                    # the library/topic. Reauthorize before accepting its result
+                    # or rendering already loaded text, even if frame IDs match.
+                    and _authorized_scope(selected.library, selected.workspace, selected.topic))
         except (AttributeError, RuntimeError, IndexError):
             return False
 

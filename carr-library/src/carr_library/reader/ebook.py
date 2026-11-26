@@ -1,226 +1,209 @@
-"""Authorized navigation through sealed, explicitly unverified EPUB extraction.
+"""Freshly authorized, unverified EPUB section reading without parsing markup.
 
-Chapter positions describe the extracted text, not rendered or printed pages.
-The EPUB stays in the existing original-byte store and backup namespace. Every
-operation rechecks the library/topic, active revision and retained source hash.
+Section numbers describe the package spine, never physical or printed pages.
+The retained EPUB, extraction settings and source revision remain separate from
+mutable catalog metadata. This service cannot grant quotation approval.
 """
+from dataclasses import dataclass, field
 from hashlib import sha256
 import json
-import re
 
-from ..catalog.membership import Catalog
-from ..catalog.read_views import get_edition
 from ..citations.anchors import Identity
 from ..ingest.pipeline import canonical
 from ..research.topic_tree import TopicTree
 
 
-ADAPTER = 'epub-spine-v1'
-MAX_NAVIGATION = 2 * 1024 * 1024
-MAX_ITEMS = 2000
-MAX_TEXT = 10_000_000
+@dataclass(frozen=True)
+class EbookBook:
+    workspace: str
+    edition_id: str
+    revision: str
+    title: str
+    author: str
+    edition: str
+    section_count: int
 
 
-def _label(value, *, empty=False, limit=1024):
-    if (not isinstance(value, str) or len(value) > limit
-            or (not empty and not value.strip()) or '\x00' in value):
-        raise ValueError('Invalid electronic-book contents label.')
-    return value
+@dataclass(frozen=True)
+class EbookChapter:
+    position: int
+    title: str
+    resource: str
+    linear: bool
 
 
-def _warnings(value):
-    if not isinstance(value, list) or len(value) > 100:
-        raise ValueError('Invalid electronic-book extraction warnings.')
-    return [_label(item, limit=256) for item in value]
+@dataclass(frozen=True)
+class EbookSection:
+    identity: Identity
+    book_title: str
+    title: str
+    resource: str
+    position: int
+    count: int
+    linear: bool
+    raw_text: str
+    chapters: tuple[EbookChapter, ...]
+    warnings: tuple[str, ...]
+    alternatives: tuple[tuple[int, str], ...]
+    verified: bool = field(default=False, init=False)
 
 
-def _navigation(value):
-    """Check bounded persisted descriptors before exposing native controls."""
-    if (not isinstance(value, dict) or type(value.get('version')) is not int
-            or value['version'] != 1):
-        raise ValueError('Unsupported electronic-book contents version.')
-    records = value.get('chapters')
-    if not isinstance(records, list) or not 1 <= len(records) <= 1000:
-        raise ValueError('Invalid electronic-book chapter count.')
-    total_characters = 0
-    navigation_count = 0
-    chapters = []
-    for ordinal, record in enumerate(records, 1):
-        if (not isinstance(record, dict) or type(record.get('ordinal')) is not int
-                or record['ordinal'] != ordinal or type(record.get('linear')) is not bool
-                or type(record.get('characters')) is not int or record['characters'] < 0
-                or not isinstance(record.get('text_sha256'), str)
-                or not re.fullmatch('[0-9a-f]{64}', record['text_sha256'])):
-            raise ValueError('Invalid electronic-book chapter descriptor.')
-        total_characters += record['characters']
-        if total_characters > MAX_TEXT:
-            raise ValueError('Electronic-book text exceeds its budget.')
-        headings = record.get('headings', [])
-        if not isinstance(headings, list):
-            raise ValueError('Invalid electronic-book heading list.')
-        checked_headings = []
-        for heading in headings:
-            if (not isinstance(heading, dict) or type(heading.get('offset')) is not int
-                    or not 0 <= heading['offset'] <= record['characters']
-                    or type(heading.get('level')) is not int or not 1 <= heading['level'] <= 6):
-                raise ValueError('Invalid electronic-book heading location.')
-            checked_headings.append(dict(title=_label(heading.get('title')),
-                                         offset=heading['offset'], level=heading['level']))
-        navigation_count += len(checked_headings)
-        descriptions = record.get('image_descriptions', [])
-        if not isinstance(descriptions, list) or len(descriptions) > 100:
-            raise ValueError('Invalid electronic-book image descriptions.')
-        descriptions = [_label(item) for item in descriptions]
-        chapters.append(dict(ordinal=ordinal, title=_label(record.get('title')),
-            member=_label(record.get('member')), linear=record['linear'],
-            characters=record['characters'], text_sha256=record['text_sha256'],
-            headings=checked_headings, warnings=_warnings(record.get('warnings', [])),
-            image_descriptions=descriptions))
-
-    def links(rows, *, grouping=False):
-        nonlocal navigation_count
-        if not isinstance(rows, list):
-            raise ValueError('Invalid electronic-book navigation list.')
-        navigation_count += len(rows)
-        checked = []
-        for row in rows:
-            if (not isinstance(row, dict) or type(row.get('depth', 0)) is not int
-                    or not 0 <= row.get('depth', 0) <= 64):
-                raise ValueError('Invalid electronic-book navigation depth.')
-            title = _label(row.get('title'))
-            if grouping and row.get('heading_only') is True:
-                if row.get('ordinal') is not None or row.get('offset') is not None:
-                    raise ValueError('A contents heading cannot supply a chapter location.')
-                checked.append(dict(title=title, ordinal=None, offset=None,
-                                    depth=row.get('depth', 0), heading_only=True))
-                continue
-            ordinal, offset = row.get('ordinal'), row.get('offset')
-            if (type(ordinal) is not int or not 1 <= ordinal <= len(chapters)
-                    or type(offset) is not int
-                    or not 0 <= offset <= chapters[ordinal - 1]['characters']):
-                raise ValueError('Electronic-book contents point outside their chapter.')
-            checked.append(dict(title=title, ordinal=ordinal, offset=offset,
-                                depth=row.get('depth', 0)))
-        return checked
-
-    toc = links(value.get('toc', []), grouping=True)
-    page_hints = links(value.get('page_hints', []))
-    if navigation_count > MAX_ITEMS:
-        raise ValueError('Electronic-book navigation exceeds its budget.')
-    hints = value.get('metadata_hints', {})
-    if not isinstance(hints, dict):
-        raise ValueError('Invalid electronic-book metadata hints.')
-    # Only the existing EPUB hint fields are exposed. They do not replace the
-    # independently supplied catalog title/authors or establish attribution.
-    metadata = {}
-    for key in ('titles', 'creators', 'languages', 'identifiers', 'publishers'):
-        items = hints.get(key, [])
-        if not isinstance(items, (list, tuple)) or len(items) > 100:
-            raise ValueError('Invalid electronic-book metadata hint values.')
-        metadata[key] = [_label(item, limit=4096) for item in items]
-    return dict(version=1, chapters=chapters, toc=toc, page_hints=page_hints,
-                metadata_hints=metadata, warnings=_warnings(value.get('warnings', [])))
-
-
-def extraction_settings(extracted):
-    """Bind imported navigation and text digests into the existing revision ID."""
-    chapters = []
-    for ordinal, record in enumerate(extracted['records'], 1):
-        raw = record['raw_text']
-        if (not isinstance(raw, str) or sha256(raw.encode('utf-8')).hexdigest()
-                != record['text_sha256']):
-            raise ValueError('Electronic-book extraction text digest changed.')
-        chapters.append(dict(ordinal=ordinal, title=record['title'], member=record['member'],
-            linear=record['linear'], characters=len(raw), text_sha256=record['text_sha256'],
-            headings=record.get('headings', []), warnings=record.get('warnings', []),
-            image_descriptions=record.get('image_descriptions', [])))
-    ebook = _navigation(dict(version=1, chapters=chapters, toc=extracted.get('toc', []),
-        page_hints=extracted.get('page_hints', []), metadata_hints=extracted.get('metadata', {}),
-        warnings=extracted.get('warnings', [])))
-    settings = canonical(dict(adapter=ADAPTER, kind='logical_segment',
-                              provenance=extracted['provenance'], ebook=ebook))
-    if len(settings.encode('utf-8')) > MAX_NAVIGATION:
-        raise ValueError('Electronic-book contents exceed the storage budget.')
-    return settings
-
-
-def _selected(app, db, workspace, edition, revision, *, authorized_topic, cancelled):
+def _cancelled(cancelled):
+    if not callable(cancelled):
+        raise ValueError('A cancellation callback is required.')
     if cancelled():
-        raise InterruptedError('Reading the electronic book was cancelled.')
+        raise InterruptedError('EPUB reading cancelled.')
+
+
+def _topic(db, workspace, authorized_topic):
     if authorized_topic is not None:
         TopicTree(db, workspace)._visible(authorized_topic)
-    view = get_edition(Catalog(db, workspace), edition)
-    row = db.execute('SELECT r.id,r.asset,r.config,a.mime FROM active x '
-        'JOIN revision r ON r.id=x.revision AND r.workspace=x.workspace AND r.edition=x.edition '
-        'JOIN sealed s ON s.revision=r.id JOIN catalog_asset a ON a.digest=r.asset '
-        'WHERE x.workspace=? AND x.edition=?', (workspace, edition)).fetchone()
-    if row is None or row['mime'] != 'application/epub+zip':
-        raise ValueError('Select an imported EPUB book in Books and Collections first.')
-    if revision is not None and revision != row['id']:
-        raise ValueError('The electronic-book revision changed. Open its contents again.')
-    config = row['config']
-    if not isinstance(config, str) or len(config.encode('utf-8')) > MAX_NAVIGATION:
-        raise ValueError('Electronic-book extraction settings have changed.')
-    # Catalog edits legitimately create a new UUID revision while carrying the
-    # same immutable extraction configuration and chapter text. Authenticate
-    # that configuration against its original deterministic sealed extraction,
-    # then validate the active revision's pages below. A cached reader remains
-    # bound to its exact active revision and must reopen after a metadata edit.
-    baseline_id = sha256(canonical([workspace, edition, row['asset'], config])
-                         .encode('utf-8')).hexdigest()
-    baseline = db.execute('SELECT r.workspace,r.edition,r.asset,r.config FROM revision r '
-        'JOIN sealed s ON s.revision=r.id WHERE r.id=?', (baseline_id,)).fetchone()
-    if baseline is None or tuple(baseline) != (workspace, edition, row['asset'], config):
-        raise ValueError('Electronic-book extraction settings have changed.')
+
+
+def _chapters(db, identity):
+    row = db.execute('SELECT r.config FROM revision r JOIN sealed s ON s.revision=r.id '
+        'WHERE r.workspace=? AND r.edition=? AND r.id=? AND r.asset=?',
+        (identity.workspace, identity.edition_id, identity.revision, identity.asset_sha256)).fetchone()
+    if row is None:
+        raise ValueError('The EPUB source revision is unavailable.')
+    if len(row[0].encode('utf-8')) > 4 * 1024 * 1024:
+        raise ValueError('The EPUB section index is too large.')
     try:
-        settings = json.loads(config)
-    except (ValueError, RecursionError):
-        raise ValueError('Electronic-book extraction settings are unreadable.') from None
-    if (not isinstance(settings, dict) or settings.get('adapter') != ADAPTER
-            or settings.get('kind') != 'logical_segment'
-            or not isinstance(settings.get('provenance'), dict)
-            or settings['provenance'].get('asset_sha256') != row['asset']):
-        raise ValueError('Unsupported electronic-book extraction settings.')
-    identity = Identity(workspace, edition, row['asset'], row['id'])
-    app._retained_source(db, workspace, identity, cancelled=cancelled)
-    book = _navigation(settings.get('ebook'))
-    pages = db.execute('SELECT ordinal,physical,printed,verified,length(raw),digest '
-                       'FROM page WHERE revision=? ORDER BY ordinal', (identity.revision,)).fetchall()
-    expected = tuple((r['ordinal'], None, None, 0, r['characters'], r['text_sha256'])
-                     for r in book['chapters'])
-    if tuple(tuple(p) for p in pages) != expected:
-        raise ValueError('Electronic-book chapters differ from their sealed extraction.')
-    if cancelled():
-        raise InterruptedError('Reading the electronic book was cancelled.')
-    return dict(book, workspace=workspace, edition_id=edition, revision=identity.revision,
-                asset_sha256=identity.asset_sha256, title=view.title or 'Untitled EPUB',
-                authors=list(view.authors), verified=False)
+        settings = json.loads(row[0])
+    except (ValueError, TypeError):
+        raise ValueError('The EPUB section index is invalid.') from None
+    if not isinstance(settings, dict) or settings.get('adapter') != 'epub-spine-v1':
+        return None
+    baseline = sha256(canonical([identity.workspace, identity.edition_id,
+                                 identity.asset_sha256, row[0]]).encode('utf-8')).hexdigest()
+    provenance = settings.get('provenance')
+    values = settings.get('chapters')
+    warnings = settings.get('warnings')
+    alternatives = settings.get('alternatives')
+    if (settings.get('kind') != 'logical_segment'
+            or not isinstance(provenance, dict)
+            or provenance.get('asset_sha256') != identity.asset_sha256
+            or not isinstance(values, list) or not 1 <= len(values) <= 1000
+            or not isinstance(alternatives, list) or len(alternatives) != len(values)
+            or not isinstance(warnings, list) or len(warnings) > 1000
+            or any(not isinstance(w, str) or len(w) > 1024 for w in warnings)):
+        raise ValueError('The EPUB section index differs from its source revision.')
+    # A metadata edit creates a new source-metadata revision while retaining the
+    # extraction settings. Keep its original deterministic import as the text
+    # and section-index reference instead of mistaking the new ID for corruption.
+    if not db.execute('SELECT 1 FROM revision r JOIN sealed s ON s.revision=r.id '
+            'WHERE r.id=? AND r.workspace=? AND r.edition=? AND r.asset=? AND r.config=?',
+            (baseline, identity.workspace, identity.edition_id,
+             identity.asset_sha256, row[0])).fetchone():
+        raise ValueError('The original EPUB extraction revision is unavailable.')
+    chapters = []
+    descriptions = []
+    for index, value in enumerate(values, 1):
+        if (not isinstance(value, dict) or type(value.get('spine_index')) is not int
+                or value['spine_index'] != index or type(value.get('linear')) is not bool
+                or not isinstance(value.get('href'), str) or not value['href']
+                or len(value['href']) > 4096 or not isinstance(value.get('title'), str)
+                or len(value['title']) > 4096):
+            raise ValueError('The EPUB chapter location is invalid.')
+        chapters.append(EbookChapter(index, value['title'] or f'Section {index}',
+                                     value['href'], value['linear']))
+        entries = alternatives[index - 1]
+        if not isinstance(entries, list) or len(entries) > 10000:
+            raise ValueError('The EPUB image description index is invalid.')
+        chapter_descriptions = []
+        previous = 0
+        for entry in entries:
+            if (not isinstance(entry, dict) or entry.get('kind') != 'image_alt'
+                    or type(entry.get('image_index')) is not int or entry['image_index'] <= previous
+                    or not isinstance(entry.get('text'), str) or len(entry['text']) > 4096):
+                raise ValueError('The EPUB image description is invalid.')
+            previous = entry['image_index']
+            chapter_descriptions.append((previous, entry['text']))
+        descriptions.append(tuple(chapter_descriptions))
+    count = db.execute('SELECT count(*) FROM page WHERE revision=?',
+                       (identity.revision,)).fetchone()[0]
+    if count != len(chapters):
+        raise ValueError('The EPUB section count differs from its source revision.')
+    return tuple(chapters), tuple(warnings), tuple(descriptions), baseline
 
 
-def open_ebook(app, workspace, edition, *, authorized_topic=None, cancelled=lambda: False):
-    """Read a bounded chapter/contents list for the freshly authorized edition."""
+def section_description(db, identity, position):
+    """Describe an already authorized search preview; never infer page labels."""
+    result = _chapters(db, identity)
+    if result is None:
+        return ''
+    chapters, _, _, _ = result
+    if type(position) is not int or not 1 <= position <= len(chapters):
+        raise ValueError('Choose an existing EPUB section.')
+    chapter = chapters[position - 1]
+    extra = ' (supplementary)' if not chapter.linear else ''
+    return f'EPUB section {position} of {len(chapters)}: {chapter.title}{extra}'
+
+
+def list_ebooks(app, workspace, *, authorized_topic=None, cancelled=lambda: False):
+    """List at most 500 EPUB editions in this library, using stable identities."""
+    _cancelled(cancelled)
     with app.read(workspace) as db:
-        return _selected(app, db, workspace, edition, None,
-                         authorized_topic=authorized_topic, cancelled=cancelled)
+        _topic(db, workspace, authorized_topic)
+        rows = db.execute('''SELECT e.id,a.revision,m.title,m.author,m.edition_label,
+                    (SELECT count(*) FROM page p WHERE p.revision=a.revision)
+            FROM catalog_edition e JOIN catalog_asset f ON f.digest=e.asset
+            JOIN active a ON a.workspace=e.workspace AND a.edition=e.id
+            JOIN revision r ON r.id=a.revision AND r.asset=e.asset
+            JOIN sealed s ON s.revision=r.id
+            JOIN source_metadata m ON m.workspace=e.workspace AND m.edition=e.id AND m.revision=r.id
+            WHERE e.workspace=? AND f.mime='application/epub+zip'
+            ORDER BY m.title COLLATE NOCASE,e.id COLLATE BINARY LIMIT 501''', (workspace,)).fetchall()
+        if len(rows) > 500:
+            raise ValueError('This EPUB list supports at most 500 editions per library.')
+        _cancelled(cancelled)
+        return tuple(EbookBook(workspace, row[0], row[1], row[2], row[3] or 'Unknown author',
+                              row[4] or '', row[5]) for row in rows)
 
 
-def read_chapter(app, workspace, edition, revision, ordinal, *, authorized_topic=None,
-                 cancelled=lambda: False):
-    """Return one exact stored chapter; no verified quotation or Anchor is minted."""
-    if type(ordinal) is not int:
-        raise ValueError('Choose a valid electronic-book chapter.')
+def read_ebook_section(app, workspace, edition_id, revision, position, *,
+                      authorized_topic=None, cancelled=lambda: False):
+    """Read one exact published EPUB section after checking scope and originals.
+
+    The requested revision stays fixed while the reader is open. A metadata
+    update or a new edition cannot silently retarget the displayed book.
+    """
+    if type(position) is not int or not 1 <= position <= 1000:
+        raise ValueError('Choose an existing EPUB section from 1 onwards.')
+    if any(not isinstance(v, str) or not v for v in (workspace, edition_id, revision)):
+        raise ValueError('Choose an EPUB book in the active library.')
+    _cancelled(cancelled)
     with app.read(workspace) as db:
-        book = _selected(app, db, workspace, edition, revision,
-                         authorized_topic=authorized_topic, cancelled=cancelled)
-        if not 1 <= ordinal <= len(book['chapters']):
-            raise ValueError('Choose a valid electronic-book chapter.')
-        row = db.execute('SELECT raw,digest FROM page WHERE revision=? AND ordinal=?',
-                         (revision, ordinal)).fetchone()
-        chapter = book['chapters'][ordinal - 1]
-        if (row is None or not isinstance(row['raw'], str)
-                or sha256(row['raw'].encode('utf-8')).hexdigest() != chapter['text_sha256']
-                or row['digest'] != chapter['text_sha256']):
-            raise ValueError('The extracted chapter text has changed.')
-        if cancelled():
-            raise InterruptedError('Reading the electronic book was cancelled.')
-        return dict(chapter, raw_text=row['raw'], revision=revision, verified=False)
+        _topic(db, workspace, authorized_topic)
+        row = db.execute('''SELECT r.asset,m.title FROM revision r
+            JOIN sealed s ON s.revision=r.id
+            JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset
+            JOIN catalog_asset f ON f.digest=r.asset AND f.mime='application/epub+zip'
+            JOIN source_metadata m ON m.workspace=r.workspace AND m.edition=r.edition AND m.revision=r.id
+            WHERE r.workspace=? AND r.edition=? AND r.id=?''',
+            (workspace, edition_id, revision)).fetchone()
+        if row is None:
+            raise ValueError('The EPUB book is unavailable in this library.')
+        identity = Identity(workspace, edition_id, row[0], revision)
+        app._retained_source(db, workspace, identity, cancelled=cancelled)
+        result = _chapters(db, identity)
+        if result is None:
+            raise ValueError('This source does not have a supported EPUB section index.')
+        chapters, warnings, descriptions, baseline = result
+        if position > len(chapters):
+            raise ValueError('Choose an existing EPUB section.')
+        page = db.execute('SELECT raw,digest,physical,printed,verified FROM page '
+                          'WHERE revision=? AND ordinal=?', (revision, position)).fetchone()
+        if (page is None or page[2] is not None or page[3] is not None or page[4] != 0
+                or sha256(page[0].encode('utf-8')).hexdigest() != page[1]):
+            raise ValueError('The EPUB section text or location changed.')
+        if baseline != revision:
+            original = db.execute('SELECT raw,digest,physical,printed,verified FROM page '
+                                  'WHERE revision=? AND ordinal=?', (baseline, position)).fetchone()
+            if original is None or tuple(original) != tuple(page):
+                raise ValueError('The EPUB section differs from its original extraction.')
+        _cancelled(cancelled)
+        chapter = chapters[position - 1]
+        return EbookSection(identity, row[1], chapter.title, chapter.resource, position,
+                            len(chapters), chapter.linear, page[0], chapters, warnings,
+                            descriptions[position - 1])

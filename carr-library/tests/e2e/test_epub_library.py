@@ -10,7 +10,8 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup
-from carr_library.reader.ebook import open_ebook, read_chapter
+from carr_library.reader.ebook import list_ebooks, read_ebook_section
+from carr_library.reader.ebook_contents import open_ebook, read_chapter
 from carr_library.reader.source_file import prepare_source_file
 from carr_library.storage.revisions import Storage
 
@@ -85,16 +86,26 @@ def test_isolated_import_spine_contents_search_and_quotation_boundary(tmp_path):
         'EPUB/cover.xhtml', 'EPUB/first.xhtml', 'EPUB/second.xhtml', 'EPUB/notes.xhtml']
     assert [r['linear'] for r in contents['chapters']] == [True, True, True, False]
     assert contents['chapters'][0]['characters'] == 0
-    assert 'images_not_transcribed' in contents['chapters'][0]['warnings']
+    assert 'images_omitted_from_text' in contents['chapters'][0]['warnings']
     assert contents['chapters'][0]['image_descriptions'] == ['Synthetic cover description']
     assert contents['toc'][0]['heading_only'] and contents['toc'][0]['ordinal'] is None
     assert [r['ordinal'] for r in contents['toc'][1:]] == [2, 3, 4]
     assert contents['page_hints'][0]['title'] == '7'
     chapter = read_chapter(app, workspace, result['edition'], result['id'], 2)
     assert chapter['raw_text'] == ('Перший розділ\nЗалізнична історія — Straße. '
-                                   'Nested original text.\nA  B\nC\n')
+                                   'Nested original text.\nA  B\nC')
     location = contents['page_hints'][0]['offset']
     assert chapter['raw_text'][location:].startswith('Залізнична')
+    # The additive contents descriptor must preserve the existing reader's
+    # section contract through the real isolated import and publication path.
+    legacy_book, = list_ebooks(app, workspace)
+    assert legacy_book.edition_id == result['edition']
+    assert legacy_book.revision == result['id'] and legacy_book.section_count == 4
+    legacy = read_ebook_section(app, workspace, result['edition'], result['id'], 2)
+    assert legacy.raw_text == chapter['raw_text'] and legacy.verified is False
+    assert legacy.chapters[1].resource == contents['chapters'][1]['member']
+    cover = read_ebook_section(app, workspace, result['edition'], result['id'], 1)
+    assert cover.raw_text == '' and cover.alternatives == ((1, 'Synthetic cover description'),)
     hit, = app.search(workspace, 'Залізнична історія')
     assert not hit.verified and 'Segment 2' in hit.page
     assert 'Залізнична історія' in app.preview(workspace, hit.ref, hit.revision)
@@ -242,6 +253,14 @@ def test_revision_commits_contents_descriptors_with_no_invented_pages(imported):
         settings = json.loads(config)
         assert settings['adapter'] == 'epub-spine-v1'
         assert settings['kind'] == 'logical_segment'
+        # Canonical chapter and alternative fields remain available alongside
+        # the new contents descriptor; existing readers need no migration.
+        assert settings['chapters'][1] == dict(spine_index=2, manifest_id='first',
+            href='EPUB/first.xhtml', linear=True, title='Перший розділ')
+        assert settings['alternatives'][0] == [dict(kind='image_alt', image_index=1,
+            text='Synthetic cover description')]
+        assert settings['warnings'] == settings['ebook']['warnings']
+        assert 'images_omitted_from_text' in settings['warnings']
         assert all(tuple(row) == (None, None, 0) for row in db.execute(
             'SELECT physical,printed,verified FROM page WHERE revision=?', (result['id'],)))
         assert settings['ebook']['chapters'][1]['text_sha256'] == sha256(
