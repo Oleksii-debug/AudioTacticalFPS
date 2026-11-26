@@ -628,8 +628,27 @@ class LibraryApp:
                             ingest.retry(workspace, job)
                     else:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                    published = storage.db.execute('SELECT 1 FROM revision WHERE id=?',
+                                                   (job,)).fetchone() is not None
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
+                    if published and result['state'] == 'complete':
+                        # Recovery verifies the original checkpoint text and
+                        # sealed revision, but does not register this request's
+                        # metadata or memberships. Reuse the catalog transaction
+                        # only while that exact revision is still active.
+                        with storage.transaction():
+                            self._authorize(storage.db, workspace)
+                            current = storage.db.execute('SELECT r.workspace,r.edition,r.asset '
+                                'FROM revision r JOIN sealed s ON s.revision=r.id '
+                                'JOIN active a ON a.revision=r.id AND a.workspace=r.workspace '
+                                'AND a.edition=r.edition WHERE r.id=?', (job,)).fetchone()
+                            if current is None or tuple(current) != (workspace, record.edition_id, asset.digest):
+                                raise ValueError('Published import is no longer active.')
+                            if cancelled():
+                                raise InterruptedError('Import cancelled.')
+                            register_batch(Catalog(storage.db, workspace), (record,))
+                            storage._check()
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
