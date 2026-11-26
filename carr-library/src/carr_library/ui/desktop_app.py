@@ -458,7 +458,9 @@ class DesktopFrame(WorkspaceFrame):
             ('Open existing library folder',self.open_library_folder),
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
-            ('Import books\tCtrl+I', self.import_books), ('Resume interrupted import',self.resume_import),
+            ('Import books\tCtrl+I', self.import_books),
+            ('Import Center: files, folders and queues\tCtrl+Shift+B', self.import_center),
+            ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
@@ -725,6 +727,13 @@ class DesktopFrame(WorkspaceFrame):
                 self._open_workspace(workspace)
         finally:
             dialog.Destroy()
+
+    def import_center(self, event=None):
+        try:
+            from .import_center import show_import_center
+            show_import_center(self, self._workspace())
+        except Exception as exc:
+            self.report(str(exc))
 
     def import_books(self, event):
         try:
@@ -1046,6 +1055,7 @@ class DesktopFrame(WorkspaceFrame):
             'Use Alt+L for Library, Alt+R for Research, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
+            'Ctrl+Shift+B opens Import Center for folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
