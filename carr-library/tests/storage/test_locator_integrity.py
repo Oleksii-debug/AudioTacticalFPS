@@ -55,8 +55,11 @@ def test_bad_historical_locator_refuses_backup(tmp_path):
         publish(s, 'old', [Page('first', 1), Page('second', 2)])
         publish(s, 'active', [Page('new')])
         # Synthetic database corruption; not an exposed user operation.
+        trigger = s.db.execute("SELECT sql FROM sqlite_master WHERE name='page_bu'").fetchone()[0]
         s.db.execute('DROP TRIGGER page_bu')
         s.db.execute("UPDATE page SET physical=3 WHERE revision='old' AND ordinal=1")
+        # Restore exact schema so this test still exercises locator corruption.
+        s.db.execute(trigger)
         assert s.db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         with pytest.raises(sqlite3.IntegrityError):
             s.check()
