@@ -5,3 +5,4 @@ platformdirs==4.10.0
 wxPython==4.2.4
 filelock==3.29.0
 Pillow==13.0.0
+defusedxml==0.7.1
