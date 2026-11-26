@@ -198,3 +198,40 @@ def test_resigned_library_cannot_restore_orphan_inputs_without_their_project(tmp
     with pytest.raises(ValueError, match='saved Studio project'):
         restore_backup(snapshot, tmp_path / 'rejected', sha256(encoded).hexdigest())
     assert not (tmp_path / 'rejected').exists()
+
+
+def test_restored_undo_history_retains_typed_original_and_intermediate_sound_inputs(tmp_path):
+    _, studio, source = _saved(tmp_path, name='original.bin')
+    names = ('original.bin', 'middle-$UNEXPANDED.bin', 'current.bin')
+    originals = {name: _wav(studio.output_dir / 'assets' / name, amplitude=1500 + index * 200)
+                 for index, name in enumerate(names)}
+    studio.edit_script(_script(names[1]))
+    studio.edit_script('[sound unfinished')
+    studio.edit_script(_script(names[2]))
+    studio.save()
+    source_bytes = source.read_bytes()
+    snapshot = tmp_path / 'history.zip'
+    backup_project(source, snapshot, project_dir=studio.output_dir,
+                   include_cache=False, include_audio=False)
+    restored = restore_project(snapshot, tmp_path / 'restored')
+    for name in names:
+        (studio.output_dir / 'assets' / name).unlink()
+    reopened = StudioController(private_root=tmp_path / 'other-private').open(restored['project_file'])
+
+    def assert_sound(name):
+        plan = reopened.plan()
+        assert isinstance(plan.scenes[0].events[0], Sound)
+        assert plan.scenes[0].events[0].asset == name
+        asset = reopened.output_dir / 'assets' / name
+        assert wav_info(asset).frames == 8000 and asset.read_bytes() == originals[name]
+
+    assert_sound(names[2])
+    assert reopened.draft.undo()
+    assert reopened.script == '[sound unfinished'
+    assert reopened.draft.undo()
+    assert_sound(names[1])
+    assert reopened.draft.undo()
+    assert_sound(names[0])
+    assert not reopened.draft.can_undo
+    assert reopened.draft.source_text == _script(names[0])
+    assert source.read_bytes() == source_bytes

@@ -141,18 +141,33 @@ def _asset_references(project, *, file_budget, cancelled):
     from .production import parse_script
     names = set()
     draft = NarrationDraft.from_dict(project['draft'])
-    for line in draft.text.splitlines():
+    historical = False
+    while True:
         check_cancelled(cancelled)
-        line = line.strip()
-        if not re.match(r'\[sound(?:\s|\])', line):
-            continue
-        # The production parser and Sound model own quoting, names and controls.
-        # An incomplete sound directive cannot silently discard an input file.
-        plan = parse_script(line, voice=project['voice'], language=project['language'])
-        names.update(event.asset for scene in plan.scenes for event in scene.events
-                     if isinstance(event, Sound))
-        if len(names) > file_budget:
-            raise ValueError('Sound inputs exceed the snapshot file budget.')
+        for line in draft.text.splitlines():
+            check_cancelled(cancelled)
+            line = line.strip()
+            if not re.match(r'\[sound(?:\s|\])', line):
+                continue
+            # The production parser and Sound model own quoting, names and
+            # controls. shlex does not expand variables or execute anything.
+            try:
+                plan = parse_script(line, voice=project['voice'], language=project['language'])
+            except ValueError:
+                if historical:
+                    # Incomplete older edits remain undoable text, not invented
+                    # asset references. The current script still fails closed.
+                    continue
+                raise
+            names.update(event.asset for scene in plan.scenes for event in scene.events
+                         if isinstance(event, Sound))
+            if len(names) > file_budget:
+                raise ValueError('Sound inputs exceed the snapshot file budget.')
+        # Work only on our fully validated private reconstruction. Public undo
+        # reaches every accepted saved edit and the immutable source text.
+        if not draft.undo():
+            break
+        historical = True
     return names
 
 
@@ -160,8 +175,9 @@ def input_assets(project_file, project_dir, *, strict=False,
                  file_budget=DEFAULT_FILE_BUDGET, cancelled=lambda: False):
     """Return checked input WAVs regardless of generated-output inclusion.
 
-    Referenced names come from both the saved script and recovery draft. Existing
-    WAV-named inputs remain included; other neighboring files are not collected.
+    Referenced names come from saved/recovery scripts and their validated undo
+    history, including immutable source text. Existing WAV-named inputs remain
+    included; other neighboring files are not collected.
     Strict mode validates an archive's asset directory without allowing extras.
     """
     _budget(DEFAULT_BYTE_BUDGET, file_budget)
