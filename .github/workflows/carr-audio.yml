@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-audio.yml
   push:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-reading-foundation-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-audio.yml
