@@ -191,7 +191,8 @@ def publish_file(staged, destination, *, cancelled=lambda: False):
         raise AudioError('A rendered artifact must be a regular file.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before publication.')
-    with staged.open('rb') as source:
+    # Windows requires a writable descriptor to flush the completed staging file.
+    with staged.open('r+b') as source:
         os.fsync(source.fileno())
     os.link(staged, destination, follow_symlinks=False)
     fsync_directory(destination.parent)

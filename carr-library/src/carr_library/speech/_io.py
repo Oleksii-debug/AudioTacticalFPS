@@ -129,7 +129,8 @@ def new_output(destination, *, cancelled=lambda: False):
         checked = local_file(target, must_exist=False)
         if checked != target or (target.parent.stat().st_dev, target.parent.stat().st_ino) != parent_identity:
             raise ValueError('The output folder changed during rendering.')
-        with staged.open('rb') as stream:
+        # Windows requires a writable descriptor to flush the completed staging file.
+        with staged.open('r+b') as stream:
             os.fsync(stream.fileno())
         check_cancelled(cancelled)
         os.link(staged, target)
