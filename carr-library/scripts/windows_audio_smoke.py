@@ -10,7 +10,9 @@ from pathlib import Path
 import socket
 from tempfile import TemporaryDirectory
 from time import monotonic, sleep
+from unittest.mock import patch
 import uuid
+import wave
 
 
 def main():
@@ -119,6 +121,63 @@ def main():
             assert controller.script == script, 'Native preview changed the original script.'
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
                            'native plan preview', 'project save and readback'])
+
+            # Exercise the actual native event -> worker -> completed status
+            # path, using a fresh output folder and the real production renderer.
+            assert controller.result is None and not list(desktop_output.iterdir())
+            saved_bytes = saved_project.read_bytes()
+            ui_errors = []
+            report_error = studio._error
+
+            def unexpected_dialog(*args, **kwargs):
+                message = 'The saved native render fixture unexpectedly requested a modal dialog.'
+                ui_errors.append(message)
+                raise AssertionError(message)
+
+            def capture_error(error):
+                ui_errors.append(str(error))
+                report_error(error)
+
+            def render_completed():
+                assert not ui_errors, 'Native Render failed: ' + '; '.join(ui_errors)
+                return not studio.busy and controller.result is not None
+
+            with (patch.multiple(wx, FileDialog=unexpected_dialog, DirDialog=unexpected_dialog,
+                                 MessageDialog=unexpected_dialog, TextEntryDialog=unexpected_dialog,
+                                 MessageBox=unexpected_dialog),
+                  patch.object(studio, '_error', side_effect=capture_error)):
+                assert studio.render_button.IsEnabled()
+                event = wx.CommandEvent(wx.EVT_BUTTON.typeId, studio.render_button.GetId())
+                event.SetEventObject(studio.render_button)
+                assert studio.render_button.GetEventHandler().ProcessEvent(event), 'Render event was not handled.'
+                assert studio.busy, 'The native Render button did not start its production worker.'
+                wait_for(render_completed, 'The native Render worker did not complete.', timeout=90)
+                assert not ui_errors
+                native_output = controller.result
+                native_path = Path(native_output['output'])
+                assert native_path.is_file() and native_path.resolve().is_relative_to(desktop_output.resolve())
+                native_info = wav_info(native_path)
+                assert native_info.channels == 2 and native_info.frames > 48000
+                assert native_output['status'] == 'complete' and not native_output['measurements']['clipped']
+                with wave.open(str(native_path), 'rb') as generated:
+                    pcm = generated.readframes(min(generated.getnframes(), generated.getframerate() * 10))
+                    assert any(pcm), 'The native Render worker produced silent PCM.'
+                status = studio.status.GetValue()
+                assert status.startswith('Audio render completed.\nMaster: ')
+                assert str(native_path) in status
+                assert studio.render_button.IsEnabled() and not studio.cancel_button.IsEnabled()
+                wait_for(lambda: wx.Window.FindFocus() is studio.status,
+                         'Completed render status did not receive native focus.', timeout=5)
+                assert controller.script == script, 'Native rendering changed the original script.'
+                assert saved_project.read_bytes() == saved_bytes, 'Native rendering changed the saved source project.'
+                native_gui_render = {'status': 'PASS', 'frames': native_info.frames,
+                    'sample_rate': native_info.rate, 'channels': native_info.channels,
+                    'duration_seconds': native_output['duration_seconds'], 'nonzero_pcm': True,
+                    'completed_status': True, 'source_unchanged': True, 'dialog_or_worker_errors': len(ui_errors)}
+                checks.extend(['native Render button dispatched to production worker',
+                               'native render produced actual nonzero PCM',
+                               'accessible completed render status and restored controls',
+                               'saved source bytes unchanged after native render'])
         finally:
             studio.closed = True
             studio.timer.Stop()
@@ -133,7 +192,8 @@ def main():
             application.Yield()
     print(json.dumps({'status': 'PASS', 'checks': checks, 'sapi_voices_available': len(voices),
         'distinct_voices_used': min(3, len(voices)), 'duration_seconds': output['duration_seconds'],
-        'measurements': output['measurements'], 'manual_nvda': 'NOT_RUN',
+        'measurements': output['measurements'], 'native_gui_render': native_gui_render,
+        'manual_nvda': 'NOT_RUN',
         'neural_music': 'NOT_RUN', 'native_ukrainian_slovak_quality': 'NOT_RUN'}, ensure_ascii=False))
     return 0
 
