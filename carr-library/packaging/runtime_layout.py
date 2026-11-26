@@ -21,8 +21,9 @@ def _directory(path):
     if not path.is_absolute():
         raise ValueError('absolute directory required')
     path = path.resolve()
-    if path.exists() and not path.is_dir():
-        raise ValueError('expected directory, not file')
+    for candidate in (path, *path.parents):
+        if candidate.exists() and not candidate.is_dir():
+            raise ValueError('expected directory, not file')
     return path
 
 
