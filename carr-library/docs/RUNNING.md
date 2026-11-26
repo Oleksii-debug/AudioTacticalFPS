@@ -134,6 +134,14 @@ use the same checked Save workflow as topic exports.
 
 ### Search and source actions
 
+**Ctrl+Shift+F** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ACADEMIC_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
+
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently
 chooses **Short quotations**, usually a source sentence around the match, or
