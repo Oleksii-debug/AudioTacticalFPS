@@ -16,6 +16,23 @@ ROOT = Path(__file__).resolve().parents[1]
 # Use pytest's own report classification in the isolated subprocess.
 PYTEST_CHILD = """
 import sys
+import socket
+
+def offline_network(*args, **kwargs):
+    raise OSError('Network access is disabled during offline verification')
+
+socket.socket.connect = offline_network
+socket.socket.connect_ex = offline_network
+socket.create_connection = offline_network
+socket.getaddrinfo = offline_network
+
+try:
+    import onnxruntime
+except ImportError:
+    pass
+else:
+    onnxruntime.disable_telemetry_events()
+
 import pytest
 
 class RejectExpectedFailures:
@@ -45,6 +62,13 @@ def run_suite(suite: str) -> bool:
         env.pop(key, None)
     env['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
     env['PYTHONPATH'] = str(ROOT / 'src')
+    # Native ONNX initialization can precede Python socket mocks or API opt-outs.
+    # Apply the documented opt-out before starting any test interpreter.
+    env.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_DISABLE_TELEMETRY='1',
+               HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', DO_NOT_TRACK='1')
+    env['HF_HUB_OFFLINE'] = '1'
+    env['HF_HUB_DISABLE_TELEMETRY'] = '1'
+    env['DO_NOT_TRACK'] = '1'
     with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
         report = Path(tmp) / 'junit.xml'
         try:

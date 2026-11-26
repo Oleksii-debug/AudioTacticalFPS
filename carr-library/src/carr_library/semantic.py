@@ -8,6 +8,7 @@ import hashlib
 import importlib.metadata
 import json
 import math
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -93,6 +94,8 @@ class OfflineSemanticRanker:
         root = verify_model_bundle(directory, manifest)
         if importlib.metadata.version('fastembed') != '0.9.1':
             raise ValueError('This model runtime requires the pinned FastEmbed 0.9.1.')
+        from .offline_policy import disable_native_telemetry
+        disable_native_telemetry()
         from fastembed import TextEmbedding
         from fastembed.common.preprocessor_utils import load_tokenizer
         self.tokenizer, _ = load_tokenizer(root)
