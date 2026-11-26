@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 import re
 import sqlite3
+from unicodedata import normalize
 
 
 @dataclass(frozen=True)
@@ -33,14 +34,16 @@ def _groups(query):
     if not isinstance(query, str) or len(query) > 500:
         raise ValueError("invalid thematic query")
     groups = []
-    for term in extract_query_terms(query):
+    for term in extract_query_terms(normalize("NFC", query)):
         # The upstream splitter is not a security boundary. Every token is quoted
         # independently below, never interpreted as FTS5 operators or columns.
-        words = re.findall(r"[^\W_]+", term, re.UNICODE)
-        if not words:
+        phrase = term.strip()
+        if not any(ch.isalnum() for ch in phrase):
             continue
-        phrase = " ".join(words)
-        variants = next((g for g in ALIASES if phrase.casefold() in
+        # Let native unicode61 tokenize the full term, including combining marks.
+        # Only the ASCII alias lookup strips surrounding punctuation.
+        alias_key = re.sub(r"^[\W_]+|[\W_]+$", "", phrase)
+        variants = next((g for g in ALIASES if alias_key.casefold() in
                          {v.casefold() for v in g}), (phrase,))
         if variants not in groups:
             groups.append(variants)
@@ -73,7 +76,8 @@ def search(workspace, passages, query, limit=20):
     size = 0
     db = sqlite3.connect(":memory:")
     try:
-        db.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='unicode61 remove_diacritics 0')")
+        db.execute("""CREATE VIRTUAL TABLE scoped USING fts5(text,
+            tokenize="unicode61 remove_diacritics 0 categories 'L* N* Co M*'")""")
         for p in passages:
             if p.workspace != workspace:
                 raise ValueError("foreign workspace passage")
@@ -90,7 +94,7 @@ def search(workspace, passages, query, limit=20):
             if len(refs) >= 20000 or size > 10_000_000:
                 raise ValueError("scope exceeds temporary ranking budget")
             refs.append(p)
-            db.execute("INSERT INTO scoped(rowid,text) VALUES (?,?)", (len(refs), quote))
+            db.execute("INSERT INTO scoped(rowid,text) VALUES (?,?)", (len(refs), normalize("NFC", quote)))
         # Native SQLite BM25: lower is better. All concepts must occur in the
         # same contiguous span, with OR only for controlled spelling variants.
         ranked = db.execute("SELECT rowid,bm25(scoped) FROM scoped WHERE scoped MATCH ? ORDER BY 2,rowid", (match,)).fetchall()
