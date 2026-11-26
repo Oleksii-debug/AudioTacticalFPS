@@ -83,15 +83,17 @@ def test_uncoerced_locator_rejected_inside_caller_transaction(tmp_path, bad):
     try:
         publish(s, 'old', [Page('old needle', 1, 'iv', True)])
         with s.transaction():
-            with pytest.raises(sqlite3.IntegrityError, match='invalid source locator'):
-                s.stage_revision('a', 'edition', 'bad', 'a'*64, 'fixture',
-                                 [Page('partial', 1), bad])
-            assert s.db.in_transaction
-            assert s.db.execute("SELECT count(*) FROM revision WHERE id='bad'").fetchone()[0] == 0
-            assert s.db.execute("SELECT count(*) FROM page WHERE revision='bad'").fetchone()[0] == 0
-            assert s.get_page('a', 'bad', 1) is None
-            assert s.db.execute('SELECT revision FROM active').fetchone()[0] == 'old'
-            assert s.db.execute('SELECT raw FROM indexed').fetchone()[0] == 'old needle'
+            # Single-page case exposes affinity coercion without a duplicate
+            # physical index masking the defect; partial case tests savepoint.
+            for pages in ([bad], [Page('partial', 1), bad]):
+                with pytest.raises(sqlite3.IntegrityError, match='invalid source locator'):
+                    s.stage_revision('a', 'edition', 'bad', 'a'*64, 'fixture', pages)
+                assert s.db.in_transaction
+                assert s.db.execute("SELECT count(*) FROM revision WHERE id='bad'").fetchone()[0] == 0
+                assert s.db.execute("SELECT count(*) FROM page WHERE revision='bad'").fetchone()[0] == 0
+                assert s.get_page('a', 'bad', 1) is None
+                assert s.db.execute('SELECT revision FROM active').fetchone()[0] == 'old'
+                assert s.db.execute('SELECT raw FROM indexed').fetchone()[0] == 'old needle'
             s.stage_revision('a', 'edition', 'good', 'a'*64, 'fixture',
                              [Page('Точна цитата', 3, '頁十二', True)])
         s.check()
