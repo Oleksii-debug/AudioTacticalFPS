@@ -60,7 +60,7 @@ def test_cancel_after_temporary_write_preserves_destination(tmp_path, private, m
         cancelled = True
 
     monkeypatch.setattr(export_file.os, 'fsync', cancel_after_flush)
-    with pytest.raises(InterruptedError, match='destination was not changed'):
+    with pytest.raises(TimeoutError, match='destination was not changed'):
         write_export(destination, 'A newly rendered bibliography', private_root=private,
                      cancelled=lambda: cancelled)
     assert destination.read_bytes() == b'previous export' if existing else not destination.exists()

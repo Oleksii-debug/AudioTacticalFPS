@@ -27,8 +27,10 @@ instructions.
 
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
-- Import UTF-8 TXT, PDF and DOCX. Retain originals, publish catalog/revision
+- Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
   changes atomically, isolate native parsers and resume interrupted imports.
+- Read EPUB books by their declared section order, with keyboard chapter
+  selection, previous/next navigation and separate authored image descriptions.
 - Search exact words, phrases or all terms; filter by collection, author, title,
   language and edition. Local thematic BM25 and multilingual MiniLM rank exact
   source slices. Catalog and source lookups share one authorized snapshot.
@@ -37,6 +39,10 @@ instructions.
   labels require their own independent approval.
 - Organize nested research topics, immutable saved evidence, editable notes,
   tags and saved searches. Metadata revisions preserve earlier saved citations.
+- Read complete imported source pages or segments without a search phrase;
+  resume the last opened page, keep named bookmarks, navigate back/forward,
+  and hear exact location information through native text controls. See
+  [the reading desk guide](docs/READING_DESK.md).
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
   Back up completed libraries with original files and checksums; restore into a
   new folder without overwriting the existing library.
@@ -44,11 +50,16 @@ instructions.
   an existing book. Export a whole library or collection bibliography in
   CSL-JSON, RIS or BibTeX, and export a complete research topic branch with its
   verified evidence, notes and tags. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md).
+- Review catalog details, export a source inventory, and build a literature-review
+  matrix with exact quotations and separate notes through **Library tools**.
+  Its bibliography exports use the same catalog service as the Bibliography
+  menu. See [catalog tools](docs/CATALOG_TOOLS.md).
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
-as verified quotations. DOCX is imported as logical segments, with unknown
-printed pagination and an explicit unverified status. A model's similarity
+as verified quotations. DOCX and EPUB are imported as logical segments, with unknown
+printed pagination and an explicit unverified status. The [EPUB reading guide](docs/EPUB_READING.md)
+describes the supported static XHTML subset. A model's similarity
 score never approves a quotation.
 
 ## Candidate status and verification

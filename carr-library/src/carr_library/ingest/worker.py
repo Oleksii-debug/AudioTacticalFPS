@@ -307,7 +307,7 @@ def _stop(process):
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
                 timeout=120.0, request_id=None):
-    """Execute a new or resumed PDF/DOCX request without parsing in the caller."""
+    """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):

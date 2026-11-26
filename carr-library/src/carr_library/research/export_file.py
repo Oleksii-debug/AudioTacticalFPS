@@ -84,15 +84,20 @@ def write_export(path, content, *, private_root, cancelled=lambda: False):
 
     A normal existing file may be replaced after caller-side confirmation.
     Library paths, linked ancestors/targets and hard-linked files are rejected.
-    Failure before publication preserves an existing target and removes the
-    temporary file. CR, LF and CRLF sequences in ``content`` remain unchanged.
+    Failure or cancellation before publication preserves an existing target and
+    removes the temporary file. Once the atomic replacement completes, the save
+    is complete. CR, LF and CRLF sequences in ``content`` remain unchanged.
     """
+    if not callable(cancelled):
+        raise ValueError('An export cancellation callback is required.')
+
+    def check_cancelled():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+
+    check_cancelled()
     if not isinstance(content, str):
         raise ValueError('Text export required.')
-    if not callable(cancelled):
-        raise ValueError('A cancellation callback is required.')
-    if cancelled():
-        raise InterruptedError('Export cancelled; the destination was not changed.')
     raw_path = os.fspath(path)
     if (not isinstance(raw_path, str) or not raw_path or raw_path in ('.', '..')
             or raw_path.endswith(('/', '\\'))):
@@ -104,6 +109,7 @@ def write_export(path, content, *, private_root, cancelled=lambda: False):
     target, parent_identity, previous = _destination(requested, private)
     temporary = None
     try:
+        check_cancelled()
         with NamedTemporaryFile(mode='wb', prefix='.research-export-',
                                 dir=target.parent, delete=False) as output:
             temporary = Path(output.name)
@@ -111,12 +117,12 @@ def write_export(path, content, *, private_root, cancelled=lambda: False):
             output.flush()
             os.fsync(output.fileno())
 
+        check_cancelled()
         checked_target, checked_parent, current = _destination(requested, private)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
-        if cancelled():
-            raise InterruptedError('Export cancelled; the destination was not changed.')
+        check_cancelled()
         os.replace(temporary, target)
         temporary = None
     finally:

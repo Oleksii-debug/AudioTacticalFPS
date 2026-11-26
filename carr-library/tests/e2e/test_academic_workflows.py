@@ -82,11 +82,35 @@ def test_catalog_bibliography_is_available_without_research_evidence(tmp_path):
     bibtex = app.export_bibliography(workspace, collection=collection, format='bibtex')
     assert '{A and B Institute} and {Олена}' in bibtex
     assert first['asset'] not in bibtex and str(app.root) not in bibtex
-    with pytest.raises(InterruptedError):
+    with pytest.raises(TimeoutError):
         app.export_bibliography(workspace, cancelled=lambda: True)
     app.archive_workspace(workspace)
     with pytest.raises(ValueError, match='archived'):
         app.export_bibliography(workspace)
+
+
+def test_bibliography_menu_alias_uses_the_catalog_exporter_for_every_scope_and_format(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Unified bibliography')
+    collection = app.create_collection(workspace, 'Selected sources')
+    app.add_text(workspace, 'Same title', 'A first edition.', authors=('A and B Institute',),
+                 edition='First', collections=(collection,))
+    app.add_text(workspace, 'Same title', 'A second edition.', authors=('Другий автор',), edition='Second')
+    canonical = app.export_catalog
+    calls = []
+
+    def shared_export(scope, **options):
+        calls.append((scope, options))
+        return canonical(scope, **options)
+
+    monkeypatch.setattr(app, 'export_catalog', shared_export)
+    cancelled = lambda: False
+    for format in ('csl-json', 'ris', 'bibtex'):
+        for selected in (None, collection):
+            options = dict(collection=selected, format=format, cancelled=cancelled)
+            assert app.export_bibliography(workspace, **options) == canonical(workspace, **options)
+            assert calls[-1] == (workspace, options)
+    assert len(calls) == 6
 
 
 def test_outline_excludes_other_branches_and_fails_after_original_damage(tmp_path):

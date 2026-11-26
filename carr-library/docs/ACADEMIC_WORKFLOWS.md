@@ -37,7 +37,9 @@ profile, not a lossless replacement for a reference manager's complete database.
 
 Choose **Bibliography → Export library or collection bibliography**, select all
 books or one collection, and choose **CSL-JSON**, **RIS** or **BibTeX** in the save
-dialog. You do not need to save quotations first.
+dialog. You do not need to save quotations first. This uses the same catalog
+exporter as **Library tools** (**Ctrl+Shift+L**), which also offers source inventory
+and literature-review matrix exports described in [Catalog tools](CATALOG_TOOLS.md).
 
 Each edition produces a separate reference, even if two editions have the same
 title or original bytes. Only known catalog metadata is included. Author strings
@@ -46,9 +48,10 @@ types are not guessed. Bibliographies exclude source text, research notes, file
 paths and original-file hashes. They are not library backups or formatted
 APA/Chicago reference lists.
 
-The export uses one consistent catalog snapshot and accepts up to **10,000
-references and 16 MiB of UTF-8 output**. Choose a smaller collection if it exceeds
-those limits. A large export may exceed the preview-import limits above. RIS
+The export uses one consistent catalog snapshot and accepts up to **50,000
+references and 32 MiB of UTF-8 output**, within a 60-second cooperative time budget.
+Choose a smaller collection if it exceeds those limits. A large export may
+exceed the preview-import limits above. RIS
 requires single-line values; CSL-JSON preserves catalog text without imposing
 that RIS restriction. BibTeX uses the application's existing TeX escaping and
 whitespace conversion.
@@ -82,6 +85,7 @@ file publisher.
   defines generic `document` items and literal author names.
 
 The existing licensed rispy reader/writer is reused. No new runtime dependency,
-database schema or network service is introduced. See the adjacent catalog
-`REFERENCE_EXCHANGE.md` and `BIBLIOGRAPHY_EXPORT_REUSE.md` for the exact adapter
-profile and upstream provenance.
+database schema or network service is introduced. See the
+[reference exchange profile](../src/carr_library/catalog/REFERENCE_EXCHANGE.md)
+and [Catalog tools](CATALOG_TOOLS.md) for the reviewed intake adapter, shared
+catalog exporter and upstream provenance.
