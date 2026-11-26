@@ -192,6 +192,38 @@ def test_epub_sections_share_exact_locations_with_reading_desk_bookmarks(app, tm
         read_ebook_section(reopened, workspace, book.edition_id, result['id'], 3)
 
 
+@pytest.mark.parametrize('archive', ['topic', 'workspace'])
+def test_epub_open_callback_rechecks_archived_scope(app, tmp_path, archive):
+    from threading import Event
+    from types import SimpleNamespace
+    from carr_library.ui.ebook_reader import EbookReaderActions
+
+    source = tmp_path / 'late-archive.epub'
+    write_epub(source)
+    workspace = app.create_workspace('Callback scope')
+    topic = app.create_topic(workspace, 'Current topic')
+    assert app.import_file(workspace, source)['state'] == 'complete'
+    jobs, shown = [], []
+    frame = SimpleNamespace(library=app, active=(workspace, topic), working=False,
+        _closing=False, cancel_event=Event(), _workspace=lambda: workspace,
+        run_job=lambda title, work, done: jobs.append((work, done)), report=lambda value: None,
+        choice=SimpleNamespace(IsEnabled=lambda: True, SetFocus=lambda: None))
+    actions = EbookReaderActions(frame, dialogs=SimpleNamespace(choose=lambda *args: 0),
+        show=lambda *args: shown.append(True))
+    actions.read()
+    work, done = jobs.pop(0)
+    done(work())
+    work, done = jobs.pop(0)
+    section = work()
+    if archive == 'workspace':
+        app.archive_workspace(workspace)
+    else:
+        with app.topic_transaction(workspace) as tree:
+            tree.archive(topic)
+    done(section)
+    assert shown == []
+
+
 def test_epub_original_survives_reopen_and_backup_restore_exactly(app, tmp_path):
     source = tmp_path / 'retained.epub'
     original = write_epub(source)

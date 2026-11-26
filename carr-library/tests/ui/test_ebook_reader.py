@@ -55,6 +55,9 @@ def test_session_rejects_stale_or_retargeted_section(changed):
 
 @pytest.fixture
 def actions(monkeypatch):
+    # These selection/session tests use synthetic source callbacks. Real
+    # post-worker archive authorization is covered by the EPUB E2E suite.
+    monkeypatch.setattr(ebook_reader, '_authorized_scope', lambda *_: True)
     frame = SimpleNamespace(working=False, _closing=False, active=('workspace', 'topic'),
         library=object(), report=Mock(), run_job=Mock(), choice=Mock(),
         cancel_event=Event(), _workspace=lambda: 'workspace')

@@ -4,8 +4,22 @@ All source reads run off the UI thread. A section is loaded again under fresh
 authorization on each visit; changing the active library invalidates callbacks.
 The dialog never approves, edits or exports extracted text as a quotation.
 """
+import sqlite3
+
 from ..reader.ebook import EbookSection, list_ebooks, read_ebook_section
+from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
+
+
+def _authorized_scope(library, workspace, topic):
+    """Reject an archived scope even after a worker has returned its text."""
+    try:
+        with library.read(workspace) as db:
+            if topic is not None:
+                TopicTree(db, workspace)._visible(topic)
+        return True
+    except (OSError, ValueError, sqlite3.Error):
+        return False
 
 
 class EbookSession:
@@ -160,7 +174,8 @@ class EbookReaderActions:
             library = frame.library
 
             def current_scope():
-                return (not frame._closing and frame.library is library and frame.active == scope)
+                return (not frame._closing and frame.library is library and frame.active == scope
+                        and _authorized_scope(library, workspace, topic))
 
             def chosen(books):
                 if not current_scope() or frame.cancel_event.is_set():
