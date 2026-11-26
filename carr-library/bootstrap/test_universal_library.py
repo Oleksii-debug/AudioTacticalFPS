@@ -1,7 +1,7 @@
 import json
 import sqlite3
 import pytest
-from universal_library import ResearchLibrary
+from .universal_library import ResearchLibrary
 
 
 def test_universal(tmp_path):
