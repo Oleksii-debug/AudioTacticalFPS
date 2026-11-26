@@ -365,3 +365,41 @@ def test_statistics_separate_archived_records_from_active_reading_work(library):
     assert stats['reading'] == stats['read'] == stats['high_priority'] == 1
     assert stats['unread'] == 0
     assert stats['missing_identifier'] == stats['missing_author'] == stats['missing_year'] == 1
+
+
+def test_doi_proxy_percent_decoding_is_once_and_bare_percent_is_literal():
+    assert normalize_doi('https://doi.org/10.1000/ABC%2Fdef') == '10.1000/abc/def'
+    assert normalize_doi('https://doi.org/10.1000/%C3%84') == '10.1000/Ä'
+    assert normalize_doi('https://doi.org/10.1000/abc%252Fdef') == '10.1000/abc%2fdef'
+    assert normalize_doi('10.1000/abc%2Fdef') == '10.1000/abc%2fdef'
+    assert normalize_doi('10.1000/Ä') != normalize_doi('10.1000/ä')
+    assert normalize_doi('10.23/Old') == '10.23/old'
+    assert normalize_doi('10.500.100/Subprefix') == '10.500.100/subprefix'
+    assert normalize_doi('10.1234567890123/Long') == '10.1234567890123/long'
+
+
+@pytest.mark.parametrize('doi', ['https://doi.org.evil.example/10.1000/test',
+    'https://user@doi.org/10.1000/test', 'https://doi.org:443/10.1000/test',
+    'https://doi.org/10.1000/test?tracking=1', 'https://doi.org/10.1000/test#fragment',
+    'https://doi.org/10.1000/a%2G', 'https://doi.org/10.1000/a%FF',
+    'https://doi.org/10.1000/a%00'])
+def test_doi_resolver_urls_reject_ambiguous_or_malformed_input(doi):
+    with pytest.raises(ValueError):
+        normalize_doi(doi)
+
+
+def test_non_ascii_doi_case_never_causes_wrong_duplicate_skip(library):
+    library.create(title='First paper', doi='10.1000/Ä')
+    preview = library.import_preview(json.dumps([{'title': 'Second paper', 'DOI': '10.1000/ä'}]).encode(),
+                                     format='csl-json')
+    assert preview.entries[0].duplicate_ids == ()
+    assert len(library.import_selected(preview, (0,), skip_duplicates=True).imported_ids) == 1
+    assert library.duplicates() == ()
+
+
+def test_ris_full_publication_title_precedes_journal_abbreviation_with_warning(library):
+    data = (b'TY  - JOUR\nTI  - Paper\nT2  - Journal of Library Studies\n'
+            b'JF  - Journal of Library Studies\nJO  - J. Libr. Stud.\nER  -\n')
+    preview = library.import_preview(data)
+    assert preview.entries[0].fields['container_title'] == 'Journal of Library Studies'
+    assert any('J. Libr. Stud.' in warning for warning in preview.entries[0].warnings)
