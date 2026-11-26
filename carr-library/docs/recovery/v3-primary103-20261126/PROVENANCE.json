@@ -1,0 +1,88 @@
+{
+  "kind": "source-recovery-checkpoint",
+  "schema": 1,
+  "date_utc": "2026-11-26",
+  "purpose": "Preserve original narrowly scoped integration changes from recorded tool inputs after the execution environment disconnected. These files are recovery artifacts; this commit does not apply them to the active product.",
+  "remote_parent": "f6720d1722aac51eef34fa8cee3fc72218e2bc5d",
+  "selected_primary_source": "41551f7c824f10a974ed259fefe63eda4ea3f303",
+  "last_local_clean_commit": {
+    "sha": "2c5248edb847d39e73b8f36769a8f6bc14a3965f",
+    "tree": "7bfce3ef7774ef47b7bc0568149912094f48172d",
+    "architecture": "PR99 named-stack composition",
+    "published": false,
+    "availability": "Last observed in lost scratch; not asserted to exist remotely."
+  },
+  "lost_primary_composition": {
+    "commit": null,
+    "parents": [
+      "41551f7c824f10a974ed259fefe63eda4ea3f303",
+      "2c5248edb847d39e73b8f36769a8f6bc14a3965f"
+    ],
+    "state": "Uncommitted isolated merge. No full source tree has been reconstructed."
+  },
+  "component_preimages": {
+    "common_backup": "f4586639f28887fdcb49c226b413037459cde6ee",
+    "keyboard": "84eff98174d82a5ce9d6b8bac835979066c6cde7",
+    "academic_foundation": "759e166d52058f68d8259393a0ed59344750982e",
+    "formats": "dd7a7d8751f5f5166b419845ef251ab37b9c1bc0",
+    "semantic_cache": "4381112e3110b26c37f4ab3dc4573f5ff2bddc41"
+  },
+  "patch_format": "OpenAI apply_patch envelope with repository-relative paths. Postimages are complete captured final source/test files, kept outside runtime/test discovery. Read dependencies and review current preimages before applying.",
+  "executed_evidence": {
+    "source": "Recorded executor output; original JUnit was in lost scratch and is not included.",
+    "source_tree": "Uncommitted primary103 composition; no frozen tree SHA was captured.",
+    "command": "python -B -m pytest -q -W error -p no:cacheprovider <the ten suites below>",
+    "python": "3.12.14",
+    "passed": 202,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 6.75,
+    "suites": [
+      "tests/ui/test_studio_keyboard_registration.py",
+      "tests/ui/test_desktop_handlers.py",
+      "tests/library_assistant/test_library_workflow.py",
+      "tests/library_assistant/test_library_workflow_ui.py",
+      "tests/storage/test_backup_v4_sidecars.py",
+      "tests/storage/test_backup_keyboard_drafts.py",
+      "tests/ingest/test_txt_replay_registration.py",
+      "tests/ui/test_evidence_draft_recovery.py",
+      "tests/ui/test_save_all.py",
+      "tests/ui/test_worker_cleanup.py"
+    ],
+    "limits": [
+      "This recovery commit has not been executed or retested.",
+      "The 202 cases are not whole-product acceptance.",
+      "Menu tests used explicit native-control doubles; no Windows or NVDA assertion.",
+      "Native File/Save All/reading/studio participant interaction was not exercised by this run.",
+      "Worker cleanup ordering used a real serial executor with a controlled service fixture; actual owned voice-process disposal depends on the separate ProductionService.close change."
+    ]
+  },
+  "application_order": [
+    "Select one primary103 runtime and reconcile the maintained F749 keyboard registry plus the academic library-workflow service.",
+    "Adopt the authoritative common backup4 implementation and current typed producer adapters; apply the verification patch contextually to preserve read-only verification.",
+    "Apply command registration and merge desktop installation order: primary speech/studio/assistant, local library workflow into the existing Tools menu, shared Save actions, then exactly one final F749 keyboard installer.",
+    "Apply save-completion.patch to the F749 evidence panel and its real database regression suite.",
+    "Use the captured save_actions.py postimage to replace only the obsolete shallow primary103 Save actions implementation. Apply save-participants.patch to the selected reader and Studio source.",
+    "Apply worker-cleanup.patch only after the service owner supplies idempotent ProductionService.close for its lazily owned registry. Explicitly injected registries remain caller-owned.",
+    "Rerun focused source, actual native keyboard/save/voice cleanup and full selected canonical gates before any release claim."
+  ],
+  "features_preserved": [
+    "Common4 complete-byte verification without source mutation",
+    "Durable note Save All completion and newer-edit retention",
+    "One semantic command registry and one Tools menu",
+    "Serial nonblocking resource cleanup after active worker completion"
+  ],
+  "excluded": [
+    "Full product reconstruction",
+    "Competing PR99 renderer/store/provider runtime",
+    "Private dordiai code or assets",
+    "User books or source quotations",
+    "Any claimed final bundle or release"
+  ],
+  "outstanding_at_loss": [
+    "Current canonical managed OCR source/gates had not yet been merged into the primary103 composition.",
+    "Authoritative primary103 common4 producer adapters were still incoming.",
+    "Renderer reserve/lifecycle and bundled-runtime/voice patches were still incoming.",
+    "Legacy backup fixture adaptation to common4 and the full gate union had not been completed."
+  ]
+}

@@ -1,0 +1,63 @@
+*** Begin Patch
+*** Update File: carr-library/src/carr_library/ui/studio_dialog.py
+@@
+ def install_studio_actions(frame):
+     import wx
+     from .engine_settings import show_engine_settings
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
+     menu = wx.Menu()
+-    for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
+-                            ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
+-                            ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
++    for identity, title, shortcut, handler in [
++            ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
++            ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
++            ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
+         item = menu.Append(wx.ID_ANY, title)
+         frame.Bind(wx.EVT_MENU, handler, item)
++        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
+     frame.menu_bar.Append(menu, 'Audio St&udio')
+*** Update File: carr-library/src/carr_library/ui/speech_dialog.py
+@@
+ def install_speech_actions(frame):
+@@
+     import wx
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
+ 
+     menu = wx.Menu()
+     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
+     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
++    register_menu_command(frame, CommandSpec('voice.reader', 'Voice reader and reading copy',
++                                           'main', 'Ctrl+Alt+V'), item)
+@@
+     selected = menu.Append(wx.ID_ANY, 'Narrate selected book or chapter...\tCtrl+Alt+R')
+     frame.Bind(wx.EVT_MENU, actions.open_book, selected)
++    register_menu_command(frame, CommandSpec('voice.book', 'Narrate selected book or chapter',
++                                           'main', 'Ctrl+Alt+R'), selected)
+*** Update File: carr-library/src/carr_library/ui/assistant_dialog.py
+@@
+ def install_assistant_actions(frame):
+     import wx
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
+     menu = wx.Menu()
+-    for title, handler in [('Local assistant...\tCtrl+Alt+J', lambda e: show_assistant(frame)),
+-                            ('AI and API connections...', lambda e: show_provider_settings(frame))]:
++    for identity, title, shortcut, handler in [
++            ('assistant.local', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
++            ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
+         item = menu.Append(wx.ID_ANY, title)
+         frame.Bind(wx.EVT_MENU, handler, item)
++        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
+     frame.menu_bar.Append(menu, '&Tools')
+*** Update File: carr-library/src/carr_library/ui/library_assistant.py
+@@
+     item = menu.Append(wx.ID_ANY, 'Local &library workflow assistant…')
+     frame.Bind(wx.EVT_MENU, lambda event: show_library_assistant(frame), item)
++    from .command_registry import CommandSpec
++    from .keyboard_settings import register_menu_command
++    register_menu_command(frame, CommandSpec('library.workflows', 'Local library workflow assistant'), item)
+     frame.library_assistant_menu_item = item
+*** End Patch

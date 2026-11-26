@@ -1,0 +1,81 @@
+*** Begin Patch
+*** Update File: carr-library/src/carr_library/application.py
+@@
+-    def backup(self, destination):
++    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
+         from .library_backup import create_backup
+-        return create_backup(self, destination)
++        return create_backup(self, destination, max_bytes=max_bytes,
++                             include_generated=include_generated, cancelled=cancelled)
+*** Update File: carr-library/src/carr_library/library_backup.py
+@@
+-def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
++def _verify_contents(source, stage, manifest, *, copy_originals=False, cancelled=lambda: False):
++    """Authenticate the common backup format using only a private database copy."""
++    inventory = backup_sidecars.normalize_manifest(manifest)
++    _plain(source / ORIGINALS, directory=True)
++    snapshot = stage / DATABASE
++    _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
++    with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
++        storage.check()
++        original_store = RetainedAssets(source / ORIGINALS)
++        entries = verify_catalog_assets(storage.db, original_store,
++            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
++        if _asset_manifest(entries) != manifest['assets']:
++            raise RestoreError('asset manifest disagrees with the database')
++        if copy_originals:
++            _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
++        backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
++    backup_sidecars._check_cancelled(cancelled)
++    return inventory, entries
++
++
++def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
++    """Authenticate all backup bytes and source bindings without changing it.
++
++    Library workflow recovery and restore use the same checked common-format
++    adapters. SQLite validation opens only a private temporary database; no
++    source file or completed backup is opened writable.
++    """
++    backup_sidecars._check_cancelled(cancelled)
++    source = Path(source).absolute()
++    _plain(source, directory=True)
++    source = source.resolve(strict=True)
++    manifest = _read_manifest(source, expected_manifest_sha256)
++    with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
++        _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
++    return manifest
++
++
++def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
+@@
+-    inventory = backup_sidecars.normalize_manifest(manifest)
+-    _plain(source / ORIGINALS, directory=True)
+     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
+         stage = Path(tmp)
+         snapshot = stage / DATABASE
+-        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
+-        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
+-            storage.check()
+-            original_store = RetainedAssets(source / ORIGINALS)
+-            entries = verify_catalog_assets(storage.db, original_store,
+-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+-            if _asset_manifest(entries) != manifest['assets']:
+-                raise RestoreError('asset manifest disagrees with the database')
+-            _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
+-            backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
++        inventory, entries = _verify_contents(source, stage, manifest,
++            copy_originals=True, cancelled=cancelled)
+*** Update File: carr-library/src/carr_library/backup_sidecars.py
+@@
+-    if set(path.name for path in directory.iterdir()) != {'library.sqlite', 'originals', 'manifest.json'} | roots:
+-        raise RestoreError('incomplete backup or unexpected files')
++    actual_roots = {path.name for path in directory.iterdir()}
++    expected_roots = {'library.sqlite', 'originals', 'manifest.json'} | roots
++    if actual_roots != expected_roots:
++        changed = ', '.join(sorted(actual_roots ^ expected_roots)[:10])
++        raise RestoreError('incomplete backup or unexpected files: ' + changed)
+@@
+-            raise RestoreError('sidecar digest or size mismatch')
++            raise RestoreError('sidecar digest or size mismatch: ' + name)
+*** End Patch

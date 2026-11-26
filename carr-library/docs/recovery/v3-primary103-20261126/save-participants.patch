@@ -1,0 +1,107 @@
+*** Begin Patch
+*** Update File: carr-library/src/carr_library/ui/save_all.py
+@@
+ class SaveSummary:
+@@
+         return prefix + 'Unsaved changes remain: ' + '; '.join(
+             f'{label}: {reason}' for label, reason in self.remaining)
+ 
+ 
++def coordinator_for(window):
++    """Find the owning main window's coordinator through native parent links."""
++    seen = set()
++    while window is not None and id(window) not in seen:
++        seen.add(id(window))
++        coordinator = getattr(window, '_save_coordinator', None)
++        if coordinator is not None:
++            return coordinator
++        parent = getattr(window, 'GetParent', None)
++        window = parent() if callable(parent) else None
++    return None
++
++
+ @dataclass
+ class _Participant:
+*** Update File: carr-library/src/carr_library/ui/studio_dialog.py
+@@
+     voices, current_job, alive, busy = (), None, True, False
+     draft_dirty = False
++    saved_signature = None
+@@
+     def save(event=None):
+-        nonlocal draft_dirty
++        nonlocal draft_dirty, saved_signature
+         try:
+             result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
+             draft_dirty = False
++            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
+@@
+     editor.Bind(wx.EVT_TEXT, changed)
+     title.Bind(wx.EVT_TEXT, changed)
++    voice_choice.Bind(wx.EVT_CHOICE, changed)
+@@
+     def loaded(result):
+-        nonlocal voices, draft_dirty
++        nonlocal voices, draft_dirty, saved_signature
+@@
+         draft_dirty = False
++        if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
++                controller.project.original_script, controller.project.title):
++            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
+@@
+-    run(lambda: service.voices.voices(), loaded)
++    from .save_all import SaveResult, coordinator_for
++    coordinator = coordinator_for(frame)
++    def unsaved():
++        return bool(editor.GetValue()) and (editor.GetValue(), title.GetValue(), selected_voices()) != saved_signature
++    def save_registered(completed):
++        if busy:
++            completed(SaveResult(False, 'Audio production is running; pause it before saving the project.'))
++        else:
++            completed(SaveResult(save() is not None, 'Project validation or saving did not complete.'))
++    unregister = (coordinator.register('studio.' + str(id(controller)), 'Audio Studio project',
++                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
++                  if coordinator is not None else lambda: None)
++    run(lambda: service.voices.voices(), loaded)
+     try:
+         dialog.ShowModal()
+     finally:
++        unregister()
+         if alive:
+*** Update File: carr-library/src/carr_library/ui/speech_dialog.py
+@@
+     autosave_timer = wx.Timer(dialog)
+     dialog.Bind(wx.EVT_TIMER, autosave, autosave_timer)
++    from .save_all import SaveResult, coordinator_for
++    coordinator = coordinator_for(parent)
++    def unsaved():
++        sync_document()
++        return bool(document.text) and document.dirty
++    def save_registered(completed):
++        if busy:
++            completed(SaveResult(False, 'Speech is running; stop it before saving the reading copy.'))
++        else:
++            completed(SaveResult(bool(save_project()), 'The reading copy was not saved.'))
++    unregister = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
++                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
++                  if coordinator is not None else lambda: None)
+     try:
+@@
+     finally:
++        unregister()
+         autosave_timer.Stop()
+*** Update File: carr-library/tests/ui/test_save_all.py
+@@
+ from carr_library.ui.save_all import SaveCoordinator, SaveResult
++
++
++def test_coordinator_follows_native_parent_links_and_rejects_a_cycle():
++    from types import SimpleNamespace
++    from carr_library.ui.save_all import coordinator_for
++    coordinator = SaveCoordinator()
++    root = SimpleNamespace(_save_coordinator=coordinator)
++    child = SimpleNamespace(GetParent=lambda: root)
++    assert coordinator_for(child) is coordinator
++    root = SimpleNamespace(GetParent=lambda: child)
++    assert coordinator_for(child) is None
+*** End Patch
