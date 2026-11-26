@@ -193,7 +193,7 @@ class _JsonLinesProcess:
                     raise DordiaiProtocolError("dordiai-voices reply exceeds its framing limit")
                 try:
                     value = json.loads(line, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
-                except (ValueError, UnicodeError):
+                except (ValueError, UnicodeError, RecursionError):
                     raise DordiaiProtocolError("dordiai-voices returned invalid JSON") from None
                 if not isinstance(value, dict):
                     raise DordiaiProtocolError("dordiai-voices reply must be an object")
@@ -536,6 +536,8 @@ class DordiaiVoicesAdapter:
                 if cancellation_requested():
                     raise DordiaiCancelled("dordiai-voices rendering was cancelled")
                 yield chunk
+                if cancellation_requested():
+                    raise DordiaiCancelled("dordiai-voices rendering was cancelled")
                 worker.send({"mode": "next"})
                 pending = True
                 deadline = monotonic() + self.request_timeout

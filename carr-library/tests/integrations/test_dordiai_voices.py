@@ -232,6 +232,16 @@ def test_cancel_from_progress_callback_yields_no_stale_pcm(adapter):
     assert len(list(adapter.stream_pcm("Recovery.", "fixture_one", "uk"))) == 2
 
 
+def test_cancel_after_yield_does_not_request_more_native_generation(adapter, runtime):
+    cancelled = Event()
+    stream = adapter.stream_pcm("Fixture.", "fixture_one", "uk", cancelled=cancelled)
+    assert next(stream).frames == 3
+    cancelled.set()
+    with pytest.raises(api.DordiaiCancelled):
+        next(stream)
+    assert [row["mode"] for row in requests(runtime)] == ["reference", "cancel", "drop"]
+
+
 def test_external_pre_cancel_does_not_start_worker(adapter, runtime):
     cancel = Event()
     cancel.set()
@@ -334,6 +344,17 @@ def test_private_worker_gets_offline_flags_without_host_environment_changes(tmp_
     finally:
         child.close()
     assert dict(os.environ) == before
+
+
+def test_deep_bounded_json_fails_as_protocol_error_without_dead_reader(tmp_path):
+    source = "print('{\"value\":'+'['*10000+'0'+']'*10000+'}',flush=True)"
+    child = api._JsonLinesProcess([sys.executable, "-I", "-B", "-u", "-c", source], tmp_path)
+    try:
+        with pytest.raises(api.DordiaiProtocolError, match="invalid JSON"):
+            child.receive(1.0)
+    finally:
+        child.close()
+    assert not child._reader.is_alive()
 
 
 def test_stalled_worker_cannot_block_large_stdin_or_shutdown(tmp_path):
