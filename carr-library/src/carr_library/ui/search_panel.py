@@ -60,7 +60,8 @@ class SearchPanel(wx.Panel):
             raise ValueError('Select exactly one result')
         return self.model.hit(rows[0])
 
-    def on_selection(self, event):
+    def _refresh_details(self):
+        """Keep the readable details in sync even without a native selection event."""
         try:
             hit = self.selected()
             self.details.ChangeValue(
@@ -68,6 +69,9 @@ class SearchPanel(wx.Panel):
                 f'\nCitation: {hit.citation}\n\nQuotation:\n{hit.quote}')
         except ValueError:
             self.details.ChangeValue('')
+
+    def on_selection(self, event):
+        self._refresh_details()
         event.Skip()
 
     def on_search(self, event):
@@ -97,6 +101,7 @@ class SearchPanel(wx.Panel):
         if count:
             self.grid.select_rows([0])
             self.grid.focus_row(0)
+            self._refresh_details()
         else:
             self.status.SetFocus()
 
@@ -128,6 +133,7 @@ class SearchPanel(wx.Panel):
             dialog.Destroy()
             self.grid.select_rows([row])
             self.grid.focus_row(row)
+            self._refresh_details()
 
     def copy(self, field):
         try:
