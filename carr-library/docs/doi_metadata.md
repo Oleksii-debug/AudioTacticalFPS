@@ -102,7 +102,7 @@ One client serializes concurrent lookups and spaces each service's calls by one
 second. Its bounded memory cache holds at most 128 previews for one hour; explicit
 `refresh=True` bypasses the cache without changing provider authorization.
 
-Contact email travels only in the explicit Unpaywall request. It is excluded
+Contact email travels to a service only in the explicit Unpaywall request. It is excluded
 from request reprs, error messages, process arguments, provenance, exported JSON
 and environment variables. The native dialog does not persist it. No paid
 service or API key is used. The worker environment omits proxy, Python injection
@@ -119,19 +119,24 @@ review notes. `oa_date` is not used to infer availability or embargo expiry.
 
 ## Frozen application entry point
 
-Source Python invokes the fixed worker with `-I doi.py --metadata-worker`.
-Frozen builds invoke the executable with `--carr-doi-metadata-worker`. The main
-entry point must handle that exact sole argument **before starting wx**:
+Console Python invokes the fixed worker with `-I doi.py --metadata-worker`
+and bounded stdin/stdout. Frozen builds and Pythonw use private request/reply
+files because a windowed executable may have no standard streams. Frozen argv
+is `executable --carr-doi-metadata-worker request_path reply_path`; it contains
+no email or document text. The main entry point handles this flag **before wx**:
 
 ```python
-if arguments == ["--carr-doi-metadata-worker"]:
+if arguments[:1] == ["--carr-doi-metadata-worker"] and len(arguments) in (1, 3):
     from carr_library.academic_integration.doi import _worker_main
-    return _worker_main()
+    return _worker_main(arguments[1:])
 ```
 
-The root application already provides this dispatch. Request data enters over
-stdin. Worker output contains bounded JSON or a fixed error category; no remote
-exception or request URL is printed.
+The root application provides this dispatch. Private temporary files use
+exclusive creation and restrictive file modes; replies cannot overwrite an
+existing file. Request/reply files are removed when normal completion, failure,
+or cancellation leaves the supervised call. Output contains bounded JSON or a
+fixed error category; no remote exception or request URL is printed. Tests
+exercise the worker with `stdin`, `stdout` and `stderr` all absent.
 
 ## Verification and limits
 

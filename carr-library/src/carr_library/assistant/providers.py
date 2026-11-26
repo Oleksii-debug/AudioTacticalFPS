@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import http.client
+import html
 import json
 import math
 import os
@@ -16,6 +17,7 @@ import ssl
 from tempfile import NamedTemporaryFile
 from time import monotonic, time
 from uuid import uuid4
+from urllib.parse import urlencode
 
 from filelock import FileLock
 from .credentials import WindowsCredentialVault, validate_profile_id
@@ -98,15 +100,28 @@ class UsageLedger:
             if value.get('authorization') != fingerprint or value.get('schema') != 'carr-provider-usage/1':
                 raise PermissionError('Provider authorization changed; approve a new envelope.')
             operations = value['operations']
+            profile_hash = sha256(canonical(profile.to_dict()).encode('utf-8')).hexdigest()
+            retry_not_sent = False
             if operation_id in operations:
                 prior = operations[operation_id]
                 if prior['request_sha256'] != request_hash:
                     raise PermissionError('Operation identity was reused for different data.')
-                raise ProviderError('This operation has already been attempted. Reconcile its recorded output or charge state before another call.')
+                if prior.get('status') != 'not_sent':
+                    raise ProviderError('This operation has already been attempted. Reconcile its recorded output or charge state before another call.')
+                if (prior.get('profile') != profile.id or prior.get('model') != profile.model
+                        or prior.get('operation') != operation or prior.get('profile_sha256') != profile_hash
+                        or money(prior['reserved_cost']) != bound):
+                    raise PermissionError('A not-sent operation cannot change its approved profile, operation or cost bound.')
+                # The prior attempt never reached connection.request. The same
+                # immutable envelope may reserve this identity again, under the
+                # lock; reserved/uncertain/complete attempts remain blocked.
+                retry_not_sent = True
             spent = sum((money(v['reserved_cost']) for v in operations.values() if v['status'] != 'not_sent'), Decimal(0))
-            if len(operations) >= authorization.max_calls or spent + bound > money(authorization.budget):
+            calls = len(operations) - int(retry_not_sent)
+            if calls >= authorization.max_calls or spent + bound > money(authorization.budget):
                 raise PermissionError('The approved provider call or cost budget would be exceeded.')
             operations[operation_id] = {'profile': profile.id, 'model': profile.model, 'operation': operation,
+                'profile_sha256': profile_hash,
                 'request_sha256': request_hash, 'reserved_cost': str(bound), 'cost_kind': 'user-approved upper bound',
                 'actual_cost': None, 'status': 'reserved', 'output_sha256': None, 'usage': None}
             atomic_json(path, value)
@@ -132,6 +147,23 @@ def _request(profile, operation, payload):
         raise ValueError('Provider request must be a typed JSON object.')
     if operation not in profile.capabilities:
         raise PermissionError('The provider profile does not support this operation.')
+    if profile.adapter == 'google-translation-v2':
+        def language(value):
+            if not isinstance(value, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', value):
+                raise ValueError('Choose an explicit supported translation language code.')
+            return value
+        if operation == 'translation.languages':
+            if set(payload) != {'target'}:
+                raise ValueError('Language discovery accepts only the display language.')
+            body = {'target': language(payload['target']), 'model': profile.model}
+            return '/languages?' + urlencode(body), body, 'application/json'
+        if operation != 'translation.text' or set(payload) - {'q', 'source', 'target'} or not {'q', 'target'} <= set(payload):
+            raise ValueError('Translation requires selected text and a target language.')
+        body = {'q': text(payload['q'], 'selected translation text', maximum=5000),
+                'target': language(payload['target']), 'format': 'text', 'model': profile.model}
+        if 'source' in payload:
+            body['source'] = language(payload['source'])
+        return '', body, 'application/json'
     if profile.adapter == 'openai-compatible':
         if set(payload) - {'messages', 'max_tokens', 'temperature', 'response_format'} or 'messages' not in payload:
             raise ValueError('Unsupported compatible-chat request fields.')
@@ -181,6 +213,28 @@ def _request(profile, operation, payload):
         return '/sound-generation?output_format=mp3_44100_128', {
             **payload, 'model_id': profile.model}, 'audio/mpeg'
     raise ValueError('Unsupported provider operation.')
+
+
+def _reject_decoded_credential(value, secret_bytes):
+    """Check structured results after JSON decoding and text normalization.
+
+    Raw scanning cannot recognize JSON Unicode escapes or HTML character
+    references. Inspect the actual returned values and their display-text form
+    before any receipt, language cache or completed-usage record is published.
+    """
+    if not secret_bytes:
+        return
+    secret = secret_bytes.decode('utf-8')
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            if secret in current or secret in html.unescape(current):
+                raise ProviderError('The provider response contained credential material and was discarded.')
+        elif isinstance(current, dict):
+            pending.extend(current.values())
+        elif isinstance(current, (list, tuple)):
+            pending.extend(current)
 
 
 class Gateway:
@@ -250,7 +304,9 @@ class Gateway:
                 secret = self.vault.get(profile.id, profile.credential_ref)
                 if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
                     raise ProviderError('The stored provider credential is invalid.')
-                headers['Authorization' if profile.adapter == 'openai-compatible' else 'xi-api-key'] = (
+                key_header = {'openai-compatible': 'Authorization', 'elevenlabs': 'xi-api-key',
+                              'google-translation-v2': 'X-goog-api-key'}[profile.adapter]
+                headers[key_header] = (
                     'Bearer ' + secret if profile.adapter == 'openai-compatible' else secret)
                 secret_bytes = secret.encode('utf-8')
                 del secret
@@ -268,7 +324,8 @@ class Gateway:
             if profile.adapter == 'elevenlabs' and not prefix:
                 prefix = '/v1'
             sent = True
-            connection.request('POST', prefix + route, body=raw, headers=headers)
+            method = 'GET' if operation == 'translation.languages' else 'POST'
+            connection.request(method, prefix + route, body=None if method == 'GET' else raw, headers=headers)
             response = connection.getresponse()
             if response.status != 200:
                 if 300 <= response.status < 400:
@@ -322,18 +379,45 @@ class Gateway:
                       'local': profile.local, 'actual_cost': None, 'artifacts': []}
             if expected_type == 'application/json':
                 parsed = json.loads(b''.join(chunks))
-                choices = parsed.get('choices') if type(parsed) is dict else None
-                if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
-                    raise ProviderError('The chat response schema is invalid.')
-                message = choices[0].get('message')
-                if type(message) is not dict or type(message.get('content')) is not str or message.get('tool_calls'):
-                    raise ProviderError('The adapter accepts text responses only; unsolicited tool calls were rejected.')
-                result['text'] = text(message['content'], 'provider response text', maximum=max_response_bytes)
-                observed_usage = parsed.get('usage')
-                if isinstance(observed_usage, dict):
-                    usage = {k: v for k, v in observed_usage.items()
-                             if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int and v >= 0}
+                if profile.adapter == 'google-translation-v2':
+                    data = parsed.get('data') if type(parsed) is dict else None
+                    if type(data) is not dict:
+                        raise ProviderError('The translation response schema is invalid.')
+                    if operation == 'translation.languages':
+                        languages = data.get('languages')
+                        if (not isinstance(languages, list) or not 1 <= len(languages) <= 1000
+                                or any(type(row) is not dict or type(row.get('language')) is not str
+                                       or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', row['language'])
+                                       or type(row.get('name', '')) is not str or len(row.get('name', '')) > 512
+                                       for row in languages)
+                                or len({row['language'] for row in languages}) != len(languages)):
+                            raise ProviderError('The supported-language response is invalid.')
+                        result['languages'] = [{'language': row['language'], 'name': row.get('name', '')} for row in languages]
+                    else:
+                        translations = data.get('translations')
+                        if (not isinstance(translations, list) or len(translations) != 1
+                                or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
+                            raise ProviderError('The text translation response is invalid.')
+                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        detected = translations[0].get('detectedSourceLanguage')
+                        if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
+                            raise ProviderError('The detected translation language is invalid.')
+                        result['detected_source'] = detected
+                        usage = {'submitted_characters': len(body['q'])}
+                else:
+                    choices = parsed.get('choices') if type(parsed) is dict else None
+                    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                        raise ProviderError('The chat response schema is invalid.')
+                    message = choices[0].get('message')
+                    if type(message) is not dict or type(message.get('content')) is not str or message.get('tool_calls'):
+                        raise ProviderError('The adapter accepts text responses only; unsolicited tool calls were rejected.')
+                    result['text'] = text(message['content'], 'provider response text', maximum=max_response_bytes)
+                    observed_usage = parsed.get('usage')
+                    if isinstance(observed_usage, dict):
+                        usage = {k: v for k, v in observed_usage.items()
+                                 if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int and v >= 0}
                 result['usage'] = usage
+                _reject_decoded_credential(result, secret_bytes)
             if destination:
                 local_path(destination.parent)
                 os.link(temporary, destination)

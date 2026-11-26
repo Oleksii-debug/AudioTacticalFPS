@@ -1,10 +1,13 @@
 """Synthetic metadata and real loopback HTTP; no public API or credentials."""
 from dataclasses import FrozenInstanceError
+from dataclasses import asdict
 from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import http.client
 from io import BytesIO
 import json
+import base64
+import os
 from pathlib import Path
 import ssl
 import subprocess
@@ -539,12 +542,72 @@ def test_actual_isolated_worker_rejects_invalid_envelope_without_echoing_email()
     assert EMAIL.encode() not in completed.stdout + completed.stderr
 
 
-def test_worker_command_distinguishes_source_python_and_frozen_launcher(monkeypatch):
+def test_worker_command_distinguishes_source_python_and_frozen_launcher(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "frozen", False, raising=False)
     assert module._worker_argv() == [sys.executable, "-I", str(Path(module.__file__).resolve()), "--metadata-worker"]
     monkeypatch.setattr(sys, "frozen", True)
-    assert module._worker_argv() == [sys.executable, "--carr-doi-metadata-worker"]
-    assert EMAIL not in repr(module._worker_argv())
+    incoming, reply = tmp_path / "request.json", tmp_path / "reply.json"
+    assert module._worker_argv(incoming, reply) == [sys.executable, "--carr-doi-metadata-worker", str(incoming), str(reply)]
+    assert EMAIL not in repr(module._worker_argv(incoming, reply))
+    with pytest.raises(ValueError, match="windowed worker"):
+        module._worker_argv()
+
+
+def test_file_worker_runs_without_standard_streams_and_never_overwrites_reply(tmp_path, monkeypatch):
+    incoming, reply = tmp_path / "request.json", tmp_path / "reply.json"
+    request = MetadataRequest("unpaywall", DOI, email=EMAIL)
+    module._private_write(incoming, raw_json(asdict(request)))
+    raw = raw_json(unpaywall())
+    monkeypatch.setattr(module, "_https_once", lambda value: MetadataResponse(200, {"Content-Type": "application/json"}, raw, value.url))
+    with monkeypatch.context() as streams:
+        streams.setattr(sys, "stdin", None)
+        streams.setattr(sys, "stdout", None)
+        streams.setattr(sys, "stderr", None)
+        status = module._worker_main([str(incoming), str(reply)])
+    assert status == 0
+    result = json.loads(reply.read_bytes())
+    assert base64.b64decode(result["body"]) == raw
+    assert EMAIL.encode() not in reply.read_bytes()
+    before = reply.read_bytes()
+    assert module._worker_main([str(incoming), str(reply)]) == 2
+    assert reply.read_bytes() == before
+    if os.name != "nt":
+        assert incoming.stat().st_mode & 0o777 == reply.stat().st_mode & 0o777 == 0o600
+
+
+def test_frozen_transport_uses_private_files_and_removes_them_after_completion(monkeypatch):
+    paths = []
+    request = MetadataRequest("unpaywall", DOI, email=EMAIL)
+    raw = raw_json(unpaywall())
+
+    class Process:
+        returncode = 0
+
+        def __init__(self, command, **settings):
+            assert command[1] == "--carr-doi-metadata-worker" and len(command) == 4
+            assert EMAIL not in repr(command)
+            assert settings["stdin"] == settings["stdout"] == subprocess.DEVNULL
+            incoming, reply = map(Path, command[2:])
+            paths.extend((incoming, reply))
+            assert json.loads(module._private_read(incoming, 8192))["email"] == EMAIL
+            module._private_write(reply, raw_json({"status": 200, "headers": [["Content-Type", "application/json"]],
+                                                   "body": base64.b64encode(raw).decode()}))
+
+        def communicate(self, data=None, timeout=None):
+            assert data is None
+            return None, None
+
+        def poll(self):
+            return 0
+
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(module.subprocess, "Popen", Process)
+    response = module._worker_transport(request, cancelled=lambda: False)
+    assert response.body == raw and len(paths) == 2
+    assert all(not path.exists() and not path.parent.exists() for path in paths)
 
 
 @pytest.mark.parametrize("cancel", [False, True])

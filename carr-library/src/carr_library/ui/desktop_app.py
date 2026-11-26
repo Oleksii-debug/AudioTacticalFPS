@@ -516,10 +516,12 @@ class DesktopFrame(WorkspaceFrame):
         from .citation_formatting import install_citation_actions
         from .operation_progress import install_operation_progress
         from .language_matrix import install_language_actions
+        from .translation_dialog import install_translation_actions
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
         install_assistant_actions(self)
+        install_translation_actions(self)
         install_conversion_actions(self)
         install_save_actions(self)
         install_citation_actions(self)

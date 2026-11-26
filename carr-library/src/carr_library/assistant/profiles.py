@@ -10,8 +10,9 @@ from .models import text, local_path
 from .state import atomic_json, read_json, regular
 
 
-CAPABILITIES = ('llm.chat', 'speech.synthesize', 'music.compose', 'sfx.generate')
-ADAPTERS = ('openai-compatible', 'elevenlabs')
+CAPABILITIES = ('llm.chat', 'speech.synthesize', 'music.compose', 'sfx.generate',
+                'translation.text', 'translation.languages')
+ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2')
 
 
 def endpoint(value, *, local=False):
@@ -69,8 +70,14 @@ class ProviderProfile:
         if self.adapter == 'elevenlabs':
             if self.local or target.hostname != 'api.elevenlabs.io' or target.port not in (None, 443) or target.path not in ('', '/v1'):
                 raise ValueError('ElevenLabs credentials may only be sent to its official HTTPS API host.')
-            if 'llm.chat' in self.capabilities:
-                raise ValueError('The ElevenLabs adapter does not provide chat completion.')
+            if any(c not in ('speech.synthesize', 'music.compose', 'sfx.generate') for c in self.capabilities):
+                raise ValueError('The ElevenLabs adapter does not provide chat completion or translation.')
+        if self.adapter == 'google-translation-v2':
+            if (self.local or target.hostname != 'translation.googleapis.com'
+                    or target.port not in (None, 443) or target.path != '/language/translate/v2'):
+                raise ValueError('Google Translation credentials require its exact official HTTPS Basic v2 endpoint.')
+            if self.model != 'nmt' or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities):
+                raise ValueError('This Google adapter supports Basic v2 NMT text and language discovery only; Advanced v3 requires IAM/ADC.')
         if self.credential_ref is not None:
             validate_reference(self.credential_ref, self.id)
         if self.voice is not None:

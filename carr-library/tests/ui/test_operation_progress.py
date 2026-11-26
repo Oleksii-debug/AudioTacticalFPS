@@ -375,6 +375,104 @@ def test_root_switch_loads_independent_off_preference(native, tmp_path):
     assert controller.preferences.mode == 'off' and native.sound.muted
 
 
+def test_registered_wave_players_follow_actual_eof_and_device_error_without_stuck_mute(native):
+    from carr_library.speech.player import WavePlayer
+
+    controller, sound = native.controller, native.sound
+    controller.configure(ProgressPreferences(mode='beep', interval_seconds=1))
+    first, second = WavePlayer(), WavePlayer()
+    first_process = SimpleNamespace(returncode=None)
+    second_process = SimpleNamespace(returncode=None)
+    first_process.poll = lambda: first_process.returncode
+    second_process.poll = lambda: second_process.returncode
+    for player, process in ((first, first_process), (second, second_process)):
+        player._state, player._process, player.duration_seconds = 'playing', process, 2.0
+        controller.register_player(player)
+    controller.start('Rendering another output')
+    assert sound.muted and not sound.calls
+
+    first_process.returncode = 0
+    controller._tick()
+    assert first.state == 'stopped' and first.position_seconds == 2.0
+    assert sound.muted  # The other recording is still playing.
+    second_process.returncode = 1
+    controller._tick()
+    assert second.state == 'error' and not sound.muted
+    assert len(sound.calls) == 1
+    controller.unregister_player(first)
+    controller.unregister_player(second)
+    controller.pause()
+    assert not controller.timer.IsRunning()
+
+
+def test_playback_pause_resume_stop_and_multiple_players_are_observed_on_timer(native):
+    class Player:
+        state = 'playing'
+
+    controller = native.controller
+    controller.configure(ProgressPreferences(mode='beep'))
+    player, other = Player(), Player()
+    controller.register_player(player)
+    assert native.sound.muted and controller.timer.IsRunning()
+    player.state = 'paused'
+    controller._tick()
+    assert not native.sound.muted
+    player.state = 'playing'
+    controller._tick()
+    assert native.sound.muted
+    controller.register_player(other)
+    player.state = 'stopped'
+    controller._tick()
+    assert native.sound.muted
+    controller.unregister_player(other)
+    assert not native.sound.muted
+    controller.unregister_player(player)
+    assert not controller.timer.IsRunning()
+
+
+def test_player_observation_does_not_retain_closed_dialogs_and_keeps_device_errors_quiet(native):
+    import gc
+    import weakref
+
+    class Player:
+        @property
+        def state(self):
+            raise RuntimeError('Device is unavailable')
+
+    controller = native.controller
+    controller.configure(ProgressPreferences(mode='beep'))
+    player = Player()
+    reference = weakref.ref(player)
+    controller.register_player(player)
+    assert native.sound.muted and controller.timer.IsRunning()
+    del player
+    gc.collect()
+    assert reference() is None
+    controller._tick()
+    assert not native.sound.muted and not controller.timer.IsRunning()
+
+
+def test_worker_player_registration_and_removal_are_marshaled_to_ui(native):
+    class Player:
+        state = 'playing'
+
+    controller, player = native.controller, Player()
+    controller.configure(ProgressPreferences(mode='beep'))
+    worker = threading.Thread(target=lambda: controller.register_player(player))
+    worker.start()
+    worker.join(2)
+    assert not worker.is_alive() and len(native.queue) == 1
+    assert not native.sound.muted
+    native.queue.pop()()
+    assert native.sound.muted
+    worker = threading.Thread(target=lambda: controller.unregister_player(player))
+    worker.start()
+    worker.join(2)
+    assert not worker.is_alive() and len(native.queue) == 1
+    native.queue.pop()()
+    assert not native.sound.muted and not controller.timer.IsRunning()
+
+
 def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch):
     from carr_library.ui.keyboard_settings import KeyboardSettings
     items = []
