@@ -278,6 +278,7 @@ jobs:
             'tests/e2e/test_search_deadline.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/ingest/test_terminal_replay_registration.py',
+            'tests/ingest/test_import_replay_identity.py',
             'tests/packaging/test_delivery_archive.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
