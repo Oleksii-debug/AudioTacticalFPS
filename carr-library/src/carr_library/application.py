@@ -640,6 +640,30 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
+                    if result['state'] in ('complete', 'superseded'):
+                        if cancelled():
+                            raise InterruptedError('Import cancelled before catalog registration.')
+                        # Recovery validates the retained asset/configuration and
+                        # checkpoint/page identity, but does not replay catalog
+                        # registration. Apply the same atomic membership and
+                        # metadata-conflict gate as the DOCX/EPUB replay path.
+                        # A journal's terminal state alone is not proof that its
+                        # source was actually published. Never reactivate an old
+                        # revision when current metadata has superseded it.
+                        with storage.transaction():
+                            published = storage.db.execute(
+                                'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
+                                'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
+                                'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
+                                (job,)).fetchone()
+                            if (published is None or tuple(published[:3]) !=
+                                    (workspace, record.edition_id, asset.digest)
+                                    or published[3] is None):
+                                raise ValueError('Completed import is missing its sealed source revision.')
+                            if (published[3] == job) != (result['state'] == 'complete'):
+                                raise ValueError('Completed import active revision changed.')
+                            register_batch(Catalog(storage.db, workspace), (record,))
+                            storage._check()
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 

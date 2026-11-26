@@ -18,8 +18,11 @@ import subprocess
 import venv
 
 
-def verify(root):
-    manifest = json.loads((root / "bundle-manifest.json").read_text(encoding="utf-8"))
+def verify(root, *, manifest_bytes=None):
+    # Packaging callers can bind verification to the exact snapshot they seal,
+    # without reopening a manifest that another operation might replace.
+    manifest = json.loads(manifest_bytes if manifest_bytes is not None else
+                          (root / "bundle-manifest.json").read_text(encoding="utf-8"))
     files = manifest.get("files")
     if manifest.get("schema") != 1 or not isinstance(files, dict) or not files:
         raise ValueError("invalid bundle manifest")

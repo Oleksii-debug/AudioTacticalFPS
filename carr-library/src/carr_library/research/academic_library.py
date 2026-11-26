@@ -27,9 +27,9 @@ SORTS = ('title', 'year', 'priority', 'updated')
 MAX_IMPORT_BYTES = 8 * 1024 * 1024
 MAX_IMPORT_RECORDS = 2000
 MAX_REFERENCES = 100000
-MAX_REFERENCE_BYTES = 32 * 1024 * 1024
-MAX_DUPLICATE_KEY_BYTES = 16 * 1024 * 1024
-MAX_DUPLICATE_PREVIEW_SLOTS = 100_000
+MAX_REFERENCE_SCAN_BYTES = 64 * 1024 * 1024
+MAX_DUPLICATE_METADATA_BYTES = 32 * 1024 * 1024
+MAX_DUPLICATE_PREVIEW_SLOTS = 100000
 _BIDI = frozenset('\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069')
 _STAMP = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -418,64 +418,61 @@ class AcademicLibrary:
         return tuple(_row_reference(row) for row in rows)
 
     def _all(self, *, include_archived=False):
-        self._preflight(_COLUMNS, MAX_REFERENCE_BYTES, include_archived=include_archived)
-        rows = self.db.execute(f'SELECT {_SELECT} FROM academic_reference WHERE workspace=?'
-            + ('' if include_archived else ' AND archived=0') + ' ORDER BY id LIMIT ?',
-            (self.workspace, MAX_REFERENCES + 1))
-        result = tuple(_row_reference(row) for row in rows)
-        if len(result) > MAX_REFERENCES:
-            raise ValueError('This operation supports at most 100,000 references per library.')
-        return result
-
-    def _preflight(self, columns, byte_limit, *, include_archived=False):
-        """Bound selected fields in SQLite before materializing Python objects.
-
-        Both reads use the caller's authorized snapshot. The columns are fixed
-        internal projections, never user-supplied identifiers. Notes, abstracts
-        and search caches are deliberately absent from duplicate-key reads.
-        """
         self._scope()
-        size = '+'.join(f'COALESCE(length(CAST({name} AS BLOB)),0)' for name in columns)
-        count, total = self.db.execute(
-            f'SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM (SELECT {size} AS bytes '
-            'FROM academic_reference WHERE workspace=?'
-            + ('' if include_archived else ' AND archived=0')
-            + ' ORDER BY id LIMIT ?)', (self.workspace, MAX_REFERENCES + 1)).fetchone()
+        where = 'workspace=?' + ('' if include_archived else ' AND archived=0')
+        args = (self.workspace, MAX_REFERENCES + 1)
+        # Bound stored UTF-8 payload before decoding complete notes and metadata.
+        # This runs in the same authorized snapshot as the materialization below.
+        size_expr = '+'.join(f'COALESCE(length(CAST({name} AS BLOB)),0)' for name in _COLUMNS)
+        count, size = self.db.execute(
+            f'SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM ('
+            f'SELECT {size_expr} AS bytes FROM academic_reference WHERE {where} '
+            'ORDER BY id LIMIT ?)', args).fetchone()
         if count > MAX_REFERENCES:
             raise ValueError('This operation supports at most 100,000 references per library.')
-        if total > byte_limit:
-            raise ValueError('Reference metadata exceeds the operation memory budget. '
-                             'Choose a smaller reference selection or library.')
-
-    def _duplicate_index(self):
-        columns = ('id', 'title', 'authors', 'year', 'item_type', 'doi', 'isbn')
-        self._preflight(columns, MAX_DUPLICATE_KEY_BYTES)
-        groups = defaultdict(list)
-        rows = self.db.execute('SELECT ' + ','.join(columns)
-            + ' FROM academic_reference WHERE workspace=? AND archived=0 ORDER BY id',
-            (self.workspace,))
-        for row in rows:
-            identity = _identity(row[0])
-            values = dict(zip(columns[1:], row[1:]))
-            try:
-                authors = json.loads(values['authors'])
-            except (TypeError, ValueError, RecursionError) as exc:
-                raise ValueError('Invalid stored authors.') from exc
-            if type(authors) is not list or _json(authors) != values['authors']:
-                raise ValueError('Invalid stored authors.')
-            values['authors'] = tuple(authors)
-            values = {**_DEFAULTS, **values}
-            checked = _validate(values)
-            if checked != values:
-                raise ValueError('Academic reference duplicate metadata has changed.')
-            for key in _duplicate_keys(checked):
-                groups[key].append(identity)
-        return groups
+        if size > MAX_REFERENCE_SCAN_BYTES:
+            raise ValueError('Academic reference metadata exceeds the operation limit. '
+                             'Select fewer references.')
+        rows = self.db.execute(f'SELECT {_SELECT} FROM academic_reference WHERE {where} '
+                               'ORDER BY id LIMIT ?', args)
+        return tuple(_row_reference(row) for row in rows)
 
     def duplicates(self):
         groups = self._duplicate_index()
         return tuple(DuplicateGroup(reason, tuple(identities), exact)
             for (reason, _, exact), identities in groups.items() if len(identities) > 1)
+
+    def _duplicate_index(self):
+        """Bound stored metadata before decoding it, then retain only keys/IDs.
+
+        Full row validation is still required: malformed notes, author JSON or
+        a stale search index must not become acceptable merely because this
+        operation needs only duplicate keys. Streaming those validated rows
+        avoids retaining all notes and abstracts alongside the comparison index.
+        Both passes use the caller's same authorized snapshot.
+        """
+        self._scope()
+        byte_sum = '+'.join(f'coalesce(length(CAST({name} AS BLOB)),0)' for name in _COLUMNS)
+        count, size = self.db.execute(
+            f'SELECT count(*),coalesce(sum(bytes),0) FROM (SELECT {byte_sum} AS bytes '
+            'FROM academic_reference WHERE workspace=? AND archived=0 LIMIT ?)',
+            (self.workspace, MAX_REFERENCES + 1)).fetchone()
+        if count > MAX_REFERENCES:
+            raise ValueError('This operation supports at most 100,000 references per library.')
+        if size > min(MAX_DUPLICATE_METADATA_BYTES, MAX_REFERENCE_SCAN_BYTES):
+            raise ValueError('Reference metadata exceeds the duplicate-check limit. '
+                             'Use a smaller active reference library.')
+        groups = defaultdict(list)
+        rows = self.db.execute(f'SELECT {_SELECT} FROM academic_reference '
+                               'WHERE workspace=? AND archived=0 ORDER BY id', (self.workspace,))
+        try:
+            for raw in rows:
+                row = _row_reference(raw)
+                for key in _duplicate_keys(_metadata(row)):
+                    groups[key].append(row.id)
+        finally:
+            rows.close()
+        return groups
 
     def statistics(self):
         self._scope()
@@ -505,17 +502,20 @@ class AcademicLibrary:
         for index, (values, _) in enumerate(parsed):
             for key in _duplicate_keys(values):
                 batch[key].append(index)
-        entries = []
+        # A bounded file can still repeat a huge matching group for every
+        # incoming row. Charge the aggregate before allocating result sets or
+        # tuples. Overlap across keys and the current batch row are deliberately
+        # counted conservatively; no duplicate list is silently truncated.
         remaining = MAX_DUPLICATE_PREVIEW_SLOTS
-        for index, (values, warnings) in enumerate(parsed):
-            keys = _duplicate_keys(values)
-            # Count before allocating sets/tuples: a small import file can
-            # otherwise multiply an existing duplicate group into GB of slots.
-            cost = sum(len(existing[key]) + len(batch[key]) for key in keys)
+        for values, _ in parsed:
+            cost = sum(len(existing.get(key, ())) + len(batch[key]) for key in _duplicate_keys(values))
             if cost > remaining:
                 raise ValueError('Too many duplicate matches to preview safely. '
-                                 'Refine the reference batch or library.')
+                                 'Split the reference batch or review duplicates in this library.')
             remaining -= cost
+        entries = []
+        for index, (values, warnings) in enumerate(parsed):
+            keys = _duplicate_keys(values)
             ids = tuple(sorted({identity for key in keys for identity in existing[key]}))
             indices = tuple(sorted({number for key in keys for number in batch[key] if number != index}))
             entries.append(ImportEntry(index, MappingProxyType(values), tuple(warnings), ids, indices))
