@@ -20,6 +20,7 @@ from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
 from .scope_bindings import ScopeServices
+from .scope_labels import scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
@@ -390,12 +391,16 @@ class DesktopSearchPanel(PagedSearchPanel):
                 return
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
+                labels = scope_labels((hit.workspace, t.id, t.name) for t in topics)
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', [t.name for t in topics])
+                                              'Save quotation', labels)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
-                    selected_topic = topics[dialog.GetSelection()].id
+                    index = dialog.GetSelection()
+                    if type(index) is not int or not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic for this quotation.')
+                    selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
             epoch = self._context_epoch
@@ -459,6 +464,8 @@ class DesktopFrame(WorkspaceFrame):
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
+            ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
+                ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
@@ -996,12 +1003,25 @@ class DesktopFrame(WorkspaceFrame):
         self.run_job('Checking this installation', self_test,
             lambda result: show_text(self, 'Installation check', '\n'.join(result['checks']) + '\n\nAll checks passed.'))
 
+    def open_academic_library(self, event):
+        from .academic_library_dialog import open_academic_library
+        open_academic_library(self)
+
+    def add_selected_book_reference(self, event):
+        from .academic_library_dialog import add_selected_book_reference
+        add_selected_book_reference(self)
+
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+S for Source, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
+            'Ctrl+Shift+B opens the academic bibliography and reading list for the current library.\n'
+            'Academic, Add selected book links an imported book to an editable bibliographic reference.\n'
+            'Academic references have reading status, priority, rating, progress, tags and personal notes.\n'
+            'Use Apply filters, Next page and Previous page to browse every matching reference.\n'
+            'Bibliography imports are reviewed before saving. Exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
