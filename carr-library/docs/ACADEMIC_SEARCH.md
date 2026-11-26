@@ -8,7 +8,7 @@ index, network operation or Zotero dependency.
 
 ## Desktop workflow
 
-Open **Research → Research Search Center...** with **Ctrl+Shift+F**. Only the
+Open **Research → Research Search Center...** with **Ctrl+Alt+F**. Only the
 current library is checked initially; without an available current library, the
 selection starts empty. Check the libraries to include, enter a query, and choose
 **Search** or press Enter in the query field. Space toggles the focused library.

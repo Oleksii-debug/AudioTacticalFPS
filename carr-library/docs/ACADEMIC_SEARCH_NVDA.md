@@ -23,7 +23,7 @@ an unverified state. Keep a separate unsaved note in the main notebook.
 
 ## Search Center
 
-1. Open a library and press Ctrl+Shift+F. Verify that Research Search Center is
+1. Open a library and press Ctrl+Alt+F. Verify that Research Search Center is
    announced, focus is inside it, and Tab/Shift+Tab reach every enabled control.
 2. At the library checklist, verify that only the current library starts checked.
    Arrow keys move focus; Space toggles the selected library. NVDA must announce

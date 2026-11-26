@@ -420,15 +420,47 @@ def test_forced_window_destruction_never_hides_or_destroys_deleted_controls(cent
     native.window.EndModal.assert_not_called()
 
 
-def test_menu_installer_is_additive_and_idempotent(monkeypatch):
+def test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_search(monkeypatch):
     wx = SimpleNamespace(ID_ANY=-1, EVT_MENU=object())
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    menu = Mock()
-    frame = SimpleNamespace(menu_bar=Mock(), Bind=Mock())
-    frame.menu_bar.FindMenu.return_value = 1
-    frame.menu_bar.GetMenu.return_value = menu
+    notebook_called, center_called = Mock(), Mock()
+    monkeypatch.setattr('carr_library.ui.federated_search.FederatedSearchActions.open',
+                        lambda self, event: center_called(event))
+
+    class Menu:
+        def __init__(self):
+            self.items = []
+            self.separators = 0
+
+        def Append(self, identity, label):
+            item = SimpleNamespace(id=identity if identity >= 0 else 100 + len(self.items), label=label)
+            self.items.append(item)
+            return item
+
+        def AppendSeparator(self):
+            self.separators += 1
+
+    menu = Menu()
+    notebook = menu.Append(10, 'Search saved research\tCtrl+Shift+F')
+    bindings = {notebook.id: notebook_called}
+    frame = SimpleNamespace(
+        menu_bar=SimpleNamespace(FindMenu=lambda title: 1 if title == 'Research' else -1,
+                                 GetMenu=lambda index: menu),
+        Bind=lambda event, handler, item: bindings.__setitem__(item.id, handler))
     installed = install_federated_search_actions(frame)
     assert install_federated_search_actions(frame) is installed
-    menu.Append.assert_called_once()
-    assert menu.Append.call_args.args[1].endswith('Ctrl+Shift+F')
-    frame.Bind.assert_called_once()
+    assert len(menu.items) == 2 and menu.separators == 1
+    assert menu.items[0] is notebook and bindings[notebook.id] is notebook_called
+
+    def press(shortcut, event):
+        matches = [item for item in menu.items if item.label.split('\t', 1)[-1] == shortcut]
+        assert len(matches) == 1, 'Each search shortcut must identify exactly one command.'
+        bindings[matches[0].id](event)
+
+    notebook_event, center_event = object(), object()
+    press('Ctrl+Shift+F', notebook_event)
+    notebook_called.assert_called_once_with(notebook_event)
+    center_called.assert_not_called()
+    press('Ctrl+Alt+F', center_event)
+    center_called.assert_called_once_with(center_event)
+    notebook_called.assert_called_once()

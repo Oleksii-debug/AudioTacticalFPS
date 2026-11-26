@@ -1,0 +1,497 @@
+{
+  "scope": "Local acceptance of the academic search increment composed with accepted notebook, catalog, EPUB and document workflows",
+  "recorded_at_utc": "2026-11-26T19:09:34.513653+00:00",
+  "source_binding": {
+    "canonical_base_commit": "72f2735341020e178ff79bb4f948d87c155ee75d",
+    "changed_files_sha256": {
+      "carr-library/README.md": "4c3df0bafb984443bccd1ba13e1eca8d100ec4b649ac334d82dbe7620e54bd16",
+      "carr-library/docs/ACADEMIC_SEARCH.md": "ad1408f2128a769df177d851ceb252125e8da19d47730f13deef716cee9d6da6",
+      "carr-library/docs/ACADEMIC_SEARCH_NVDA.md": "fda38f25d64f77d47e0ef6ba7de913db9640595197e6d9ff83999cbc6d5559f1",
+      "carr-library/docs/RUNNING.md": "d4ab0ec19200767a9d3166fc8183f1d5982da6a8e448a681c405e4d4f1a8a58d",
+      "carr-library/src/carr_library/__main__.py": "996ae651f3a20107ae9d1dfcecba9ceb836f85e7f4012a41b3fe90c3a44b1fa7",
+      "carr-library/src/carr_library/research/query_manager.py": "8f384eb1b0df69ac01ac524d5f4eb3921998c0370b731dcf75435310855b0d35",
+      "carr-library/src/carr_library/search/federated.py": "ef4886c9ee39a71d20ff08e00c072583e5871cb083886f9c090d4f00b7ef9cba",
+      "carr-library/src/carr_library/ui/desktop_app.py": "f77f887a633ea74c9ce61b8b611d06ad576573c318a4e95841b9e1ba7ee59787",
+      "carr-library/src/carr_library/ui/federated_search.py": "4e000aed6b6568843f7525aa56d95818ce8ba375e63c413c88def4515f7d186d",
+      "carr-library/src/carr_library/ui/query_manager.py": "d794b330547511666b69e51c3ff65591181325476163f269bee3d49af1c8dac3",
+      "carr-library/tests/e2e/test_research_search_cli.py": "1a1fe05a39974c4900add016e9be664c9dd7092fb677aa970856ba18a6f9f4f9",
+      "carr-library/tests/reader/test_query_manager.py": "14690cc78b50c1f9db4f49695c4628555102e0ea93690cfa6b9c676835a9c3f1",
+      "carr-library/tests/search/test_federated.py": "f4705ecf2027fd24591cac26f3e65c2934738a20b2df4d40575a4e73555c917e",
+      "carr-library/tests/search/test_federated_epub.py": "8d0f3a40c7a2dd7b1679950da584118ec3f7dd7fa4ec86c78586b5fe402afe49",
+      "carr-library/tests/search/test_federated_independent.py": "c10d824f35a64a40c2f1c851fde0427bc18f1968be51af2ec737d71054af9c2d",
+      "carr-library/tests/ui/federated_native_smoke.py": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e",
+      "carr-library/tests/ui/probe_source_open_native.py": "2f615c3bde959e2edf85ba90f95f407c0df6b83488db64b213aaaabf793df115",
+      "carr-library/tests/ui/test_federated_search.py": "c531c99c0e94c254dff85e563ebf2538d66b597b299eda7a076bdabce7f079d6",
+      "carr-library/tests/ui/test_query_manager_actions.py": "e2d13174950ff10f0a8a86a3f3c9433164c02f7729e42be52979a5c432cf1ffe"
+    },
+    "note": "The base commit and exact changed-file hashes bind these results. This report itself is outside the application wheel payload."
+  },
+  "runner": "scripts/ci_check.py; explicit suites; missing/skip/XFAIL/XPASS reject the gate; Python network calls disabled by the runner",
+  "lanes": [
+    {
+      "platform": "Linux",
+      "python": "3.12.14",
+      "pytest": "9.0.2",
+      "status": "PASS",
+      "suites": [
+        {
+          "suite": "tests/e2e/test_research_search_cli.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_query_manager.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_query_manager_actions.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/search/test_federated.py",
+          "passed": 90,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/search/test_federated_independent.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_federated_search.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_application.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_current_topic_scope.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_research_workflows.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_research_workflow_roundtrip.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_result_presentation.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_retained_source_search_integrity.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_search_operation_budget.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_nested_search_clock_budget.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_semantic_fallback_status.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_data_directory_containment.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/citations/test_authorized_action.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/citations/test_finish_pdf_authority.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/citations/test_finish_label_integrity.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/citations/test_pdf_mapping_contradiction.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_saved_topic_query.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_topic_search_runtime.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_evidence_export.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_research_schema.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_desktop_query_jobs.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_research_actions.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_source_open_handler.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_reading_desk_actions.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_catalog_tools_dialog.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_catalog_tools.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_reading_desk.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_reading_state.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_source_wheel.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_ci_check.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_epub_import.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/extract/test_epub_ordered.py",
+          "passed": 56,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_ebook_reader.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_ebook_reader.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/search/test_federated_epub.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_notebook_research_workflow.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/research/test_notebook_search.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_notebook_search_actions.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_insights_budget.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_catalog_insights_workflow.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_literature_matrix.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/probe_catalog_insights_actions.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_academic_document_export.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_academic_documents.py",
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_bibliographic_locators.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_binary_file_export.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_academic_export_handler.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ]
+    },
+    {
+      "platform": "Linux",
+      "python": "3.13.5",
+      "pytest": "9.0.2",
+      "wx": "4.2.3 GTK3, wxWidgets 3.2.7",
+      "native_windows_created": false,
+      "status": "PASS",
+      "suites": [
+        {
+          "suite": "tests/e2e/test_export_destination.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ]
+    }
+  ],
+  "distinct_passed_cases": 994,
+  "new_feature_cases_included_in_total": 176,
+  "core_dependencies": {
+    "pypdf": "7.1.1",
+    "pypdfium2": "5.13.0",
+    "python-docx": "1.2.0",
+    "platformdirs": "4.10.0",
+    "filelock": "3.29.0",
+    "Pillow": "13.0.0",
+    "defusedxml": "0.7.1"
+  },
+  "wheel_source_identity": {
+    "status": "PASS",
+    "wheel_sha256": "da5e8d8bbacf5bc79d6200390202264a7140d146ecdf0a575ca2510649f8a5e6",
+    "project_name": "universal-research-library",
+    "project_version": "0.1.0.dev1",
+    "payload_files": 158,
+    "required_runtime_files": 117
+  },
+  "fresh_isolated_installed_self_test": {
+    "status": "PASS",
+    "checks": [
+      "original import",
+      "scoped search",
+      "exact quotation",
+      "workspace isolation",
+      "saved research",
+      "reopen persistence",
+      "backup and restore"
+    ],
+    "native_gui": "NOT_RUN",
+    "windows_nvda": "NOT_RUN"
+  },
+  "fresh_isolated_installed_feature_smoke": {
+    "status": "PASS",
+    "python": "3.12.14",
+    "isolated_mode": true,
+    "runtime_origin": "fresh installed wheel outside checkout",
+    "checks": [
+      "package modules included",
+      "exact source copy",
+      "save to originating library topic",
+      "saved note criteria",
+      "query archive and restore",
+      "headless library listing",
+      "explicit CLI scope",
+      "Unicode metadata",
+      "unselected library excluded"
+    ],
+    "native_gui": "NOT_RUN",
+    "windows_nvda": "NOT_RUN"
+  },
+  "independent_review": {
+    "kind": "independent agent source and behavioral review",
+    "scope": [
+      "workspace and topic authority",
+      "original source verification",
+      "cancellation rollback",
+      "session ownership and contention",
+      "saved definition concurrency",
+      "CLI failures",
+      "native modal lifecycle",
+      "accepted saved-evidence composition"
+    ],
+    "unresolved_findings": []
+  },
+  "resolved_environment_setup": [
+    "Installed the newly declared defusedxml==0.7.1 pin before the successful EPUB runs.",
+    "Ran the wx-dependent export handler in an isolated environment with actual system wx instead of treating a skip as a pass."
+  ],
+  "native_acceptance": {
+    "local_native_dialogs": "NOT_RUN: no display",
+    "windows_ci": "Recorded separately by the exact PR head workflow",
+    "manual_windows_11_nvda": "NOT_RUN",
+    "protocol": "docs/ACADEMIC_SEARCH_NVDA.md"
+  }
+}

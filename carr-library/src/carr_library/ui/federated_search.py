@@ -654,7 +654,7 @@ def install_federated_search_actions(frame):
     menu = frame.menu_bar.GetMenu(index)
     actions = FederatedSearchActions(frame)
     menu.AppendSeparator()
-    item = menu.Append(wx.ID_ANY, 'Research Search &Center...\tCtrl+Shift+F')
+    item = menu.Append(wx.ID_ANY, 'Research Search &Center...\tCtrl+Alt+F')
     frame.Bind(wx.EVT_MENU, actions.open, item)
     frame.federated_search_actions = actions
     return actions
