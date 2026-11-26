@@ -1,58 +1,59 @@
-# Catalog completion handoff
+# Catalog completion and live integration
 
-These fixes extend the existing `carr/finish-desktop-20261126` application. They do
-not introduce another application, storage schema, extraction engine or PR.
+The changes below are applied to the existing `carr/finish-desktop-20261126`
+working tree. Do not replay the host patches onto that already-updated tree.
+This PR preserves the reviewed implementation and regression evidence without
+introducing another application, storage schema or PR.
 
-## Changes
+## Result
 
-- `catalog.read_views.get_edition` reads the exact edition inside the existing
-  authorized snapshot. It reuses the author-aware browsing query.
-- `ui.catalog_metadata_dialog` supplies the native editor used by the desktop
-  action. Atomic saves run on the existing executor; rejected saves retain the
-  entered text and return focus to the error. The old inline editor is removed
-  by the desktop patch.
-- `metadata-revisions.patch` corrects work-level title/author publication for all
-  active editions, retains edition-specific metadata and historical saved
-  citations, rejects malformed author sequences, and guards stale edits. It checks each prior page digest before staging a new revision, preventing damaged text from being republished under a fresh digest.
-- `catalog-overflow.patch` preserves collection navigation when a view exceeds
-  10,000 editions. It never displays a partial list as a complete catalog.
-- Both behavioral patches include independent regression tests in the product's
-  normal catalog test directory.
+- Exact-edition lookup reuses the existing author-aware SQLite query and the
+  caller's authorized snapshot. A frozen metadata view guards stale edits.
+- The native metadata editor uses the existing executor. A failed or stale save
+  leaves entered fields available; cancellation returns to the selected book.
+  The desktop patch replaces the old inline editor and adds `Ctrl+Shift+M`.
+- Work-level title/author corrections publish new metadata snapshots for every
+  active edition atomically. Sibling edition-specific fields and old saved
+  quotations, notes and exports remain unchanged. Invalid author collections
+  and damaged prior text digests abort the entire transaction.
+- Books uses real keyset pagination: 200 visible editions, at most 201 fetched
+  per query, native Previous/Next controls, ordered authors and stable IDs.
+  Collection changes reset paging; Previous restores the selected book;
+  removing the only book on the last page returns to the preceding page.
+  The old 10,000-edition cutoff and overflow patch are superseded.
+- A full backup/restore regression confirms corrected active metadata, old
+  saved evidence, original bytes and unrelated workspaces all survive.
 
-## Integration
+## Reusing the changes in another assembled checkout
 
-First incorporate this PR's `read_views.py`, new metadata editor and associated
-tests. In the existing completion checkout, apply the three patches from the
-repository root, checking each patch before applying it:
+Integrate the actual `catalog/read_views.py`, `ui/catalog_panel.py`,
+`ui/catalog_metadata_dialog.py` and their tests from this PR, preserving any
+newer independent edits. For an earlier finish-desktop application, check and
+apply the two narrow host patches from the repository root:
 
 ```sh
 git apply --check carr-library/integration/carr02/metadata-revisions.patch
 git apply carr-library/integration/carr02/metadata-revisions.patch
-git apply --check carr-library/integration/carr02/catalog-overflow.patch
-git apply carr-library/integration/carr02/catalog-overflow.patch
 git apply --check carr-library/integration/carr02/desktop-metadata.patch
 git apply carr-library/integration/carr02/desktop-metadata.patch
 ```
 
-The desktop patch replaces the existing metadata menu handler and inline form
-with the shared editor. It adds `Ctrl+Shift+M`; no second menu or persistence
-service is created. Title and authors apply to all editions of the work;
-language, edition and volume apply only to the selected edition.
+`metadata-revisions.patch` includes its application-integrity and backup tests.
+Do not combine incompatible V3 schemas from other candidate hosts. This repair
+uses the existing finish-desktop schema and changes no tables.
 
 ## Executed verification
 
-The immutable snapshot before repair had application SHA256
-`24b5ce32027f7f1b9ca588c6dc45da2337fb5bd1edcfe91dc64784c947ac2735`
-and catalog panel SHA256
-`61d23544462ee093442c7c81973262ed6c460ff9a2db071d113b01b1272655bd`.
-The checkpoint was based on assembled commit
-`7924b6fd46887e626b876ce7040f0d35ce5b3a7e`, not a published release.
+The initial metadata reproducer had 5 failures and 4 passes. The repaired
+metadata suite has 13 passing checks, including two actual SQLite page-damage
+cases and rollback after a second-edition publication failure. The pager's 14
+independent acceptance cases traverse all 10,001 editions without any active
+collections. All 11 existing catalog probes also pass.
 
-Metadata reproducer: 5 failed, 4 passed before repair. With correction and stale
-edit coverage: 13 passed, including two actual SQLite page-damage regressions. Catalog overflow reproducer: 2 failed, 5 passed before
-repair; all 7 passed after repair. Native-dialog handler tests with wx doubles:
-22 passed. Together with the existing 9 application end-to-end checks: 51
-passed, exit 0, Linux Python 3.12.14 / SQLite 3.53.1.
+After surgical integration into the live completion tree, the combined command
+below passed **113 tests and 15 subtests in 5.79 seconds**, exit 0. This is the
+catalog/application/desktop subset, not a full-product release result. Runtime:
+Linux Python 3.12.14, SQLite 3.53.1; sources are synthetic and disk-backed.
 
 ```sh
 cd carr-library
@@ -60,11 +61,21 @@ PYTHONPATH=src:. python -m pytest -q \
   tests/catalog/test_application_metadata_integrity.py \
   tests/catalog/test_catalog_panel_acceptance.py \
   tests/catalog/test_metadata_dialog.py \
-  tests/e2e/test_application.py
-PYTHONPATH=src python -m unittest discover -s tests/catalog -p test_read_views.py -v
-PYTHONPATH=src python tests/ui/probe_catalog_panel.py -v
+  tests/catalog/test_read_views.py \
+  tests/catalog/test_metadata_backup_roundtrip.py \
+  tests/e2e/test_application.py \
+  tests/ui/test_desktop_handlers.py \
+  tests/ui/probe_catalog_panel.py
 ```
 
-Exact-edition read-view checks: 9 passed. Existing catalog handler probes: 11
-passed. These tests use real temporary SQLite databases and synthetic sources.
-They do not replace Windows/NVDA acceptance or validate the full installer.
+Independent reviewers reran the 35 metadata/editor checks and the 14 pager
+acceptance checks plus 11 catalog probes. No blocking defect remained in these
+reviewed changes. Final pager SHA256:
+`5448e32555b041ce0e51f226505b7455ae38de70fccc2634c79b2ec5c7973611`.
+Editor SHA256:
+`98a97dabbd2a975f99962f0adef407b63a4a0be71a50af40601f3cb9b8f00f4f`.
+
+Native GTK dialog execution was not possible: the environment denied local
+display socket creation and rejected the one escalation request. Headless
+control checks do not establish native keyboard, NVDA or installer acceptance.
+Windows/NVDA and final Windows distribution acceptance remain **NOT_RUN here**.
