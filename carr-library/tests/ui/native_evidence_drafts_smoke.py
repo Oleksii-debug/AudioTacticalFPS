@@ -41,6 +41,9 @@ def run_native(source=None):
         app = wx.App(False)
     except (Exception, SystemExit) as exc:
         return not_run('Native application could not open: ' + str(exc))
+    # App.Yield alone does not dispatch MSW input without an active event loop.
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
     checks, errors = [], []
     origins = {module.__name__: str(Path(module.__file__).resolve()) for module in (draft_module, ui_module)}
 

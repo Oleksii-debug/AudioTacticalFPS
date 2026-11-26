@@ -51,6 +51,7 @@ test = [
 
 [project.scripts]
 research-library = "carr_library.__main__:main"
+research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 
 [project.gui-scripts]
 research-library-desktop = "carr_library.__main__:main"
@@ -90,6 +91,7 @@ bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+"carr_library.extract" = ["ocr-model-catalog.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

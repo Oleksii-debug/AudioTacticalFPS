@@ -48,6 +48,9 @@ def run_native(source=None):
         application = wx.App(False)
     except (Exception, SystemExit) as exc:
         return not_run('Native wx application could not open: ' + str(exc))
+    # Keep native OS dispatch active before and after the Reader's modal loop.
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
     simulator = wx.UIActionSimulator()
     checks = []
     origins = {module.__name__: str(Path(module.__file__).resolve())
