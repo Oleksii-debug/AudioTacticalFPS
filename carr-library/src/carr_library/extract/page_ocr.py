@@ -77,8 +77,10 @@ class Config:
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
-        if not re.fullmatch(r'[A-Za-z0-9_]+(?:\+[A-Za-z0-9_]+)*', self.languages):
+        if not re.fullmatch(r'(?:script/)?[A-Za-z0-9_]+(?:\+(?:script/)?[A-Za-z0-9_]+)*', self.languages):
             raise ValueError('invalid language selection')
+        if len(self.languages) > 2048 or len(set(self.languages.split('+'))) != len(self.languages.split('+')):
+            raise ValueError('duplicate or oversized language selection')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_policy == POLICY:

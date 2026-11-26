@@ -1,0 +1,103 @@
+"""Actual Windows SAPI/FFmpeg/native-control acceptance. No manual NVDA claim."""
+from dataclasses import asdict
+from pathlib import Path
+import json
+import os
+import sys
+from tempfile import TemporaryDirectory
+
+
+def main():
+    if sys.platform != 'win32':
+        raise RuntimeError('This acceptance script requires actual Windows execution.')
+    import wx
+    from carr_library.application import LibraryApp
+    from carr_library.speech import VoiceRegistry, SpeechSettings
+    from carr_library.studio.render import ProductionService
+    from carr_library.ui.desktop_app import DesktopFrame
+    from carr_library.ui.studio_dialog import show_studio
+    from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
+    from carr_library.ui.engine_settings import show_engine_settings
+    app = wx.App(False)
+    result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
+    with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
+        root = Path(temporary)
+        library = LibraryApp(root / 'library')
+        library.create_workspace('Native acceptance')
+        registry = VoiceRegistry.discover(include_flite=False)
+        sapi = tuple(voice for voice in registry.voices() if voice.engine.startswith('SAPI 5'))
+        if not sapi:
+            raise RuntimeError('Native SAPI discovery failed: ' + '; '.join(registry.notices))
+        voice = sapi[0]
+        spoken = registry.synthesize('This is an actual offline native voice acceptance check.', voice.id,
+                                      root / 'spoken.wav', settings=SpeechSettings(volume=65))
+        assert spoken.duration_seconds > .2 and spoken.frames > 0
+        result['checks'].append('actual installed SAPI voice to measured PCM')
+        result['voices'] = [{'id': item.id, 'name': item.name, 'language': item.language} for item in sapi]
+        service = ProductionService(library.root / 'state' / 'studio', voices=registry)
+        script = ('[Scene: First chapter]\n[Music: suspense; tempo=80]\n'
+                  'Narrator [center]: A quiet archive.\nAlice [left]: I found the letter.\n'
+                  '[Pause: 2]\nBob [right]: Preserve the original.\n'
+                  '[Scene: Second chapter]\nNarrator: The work is saved.')
+        project = service.create(script, voice_ids=tuple(item.id for item in sapi[:3]))
+        job = service.submit(project, root, stems=True, format='flac')
+        report = service.run(job)
+        assert report['status'] == 'complete' and report['result']['duration'] > 3
+        assert len(report['result']['chapters']) == 2 and not report['result']['loudness']['silent']
+        resumed = ProductionService(service.root, voices=registry).run(job)
+        assert resumed['artifacts'] == report['artifacts']
+        result['checks'] += ['actual local three-role production with score and pause',
+                             'WAV/FLAC, chapter and stem publication', 'completed-job restart and checksum verification']
+        result['audio'] = {'duration': report['result']['duration'], 'artifacts': len(report['artifacts']),
+                           'loudness': report['result']['loudness'],
+                           'distinct_voice_tokens': len({role.voice_id for role in project.roles})}
+        frame = DesktopFrame(library)
+        frame.Show()
+        app.Yield()
+        labels = [frame.menu_bar.GetMenuLabel(i).replace('&', '') for i in range(frame.menu_bar.GetMenuCount())]
+        assert all(name in labels for name in ('File', 'Edit', 'Library', 'Research', 'Audio Studio', 'Tools'))
+        shortcuts = []
+        for index in range(frame.menu_bar.GetMenuCount()):
+            for item in frame.menu_bar.GetMenu(index).GetMenuItems():
+                label = item.GetItemLabel()
+                if '\t' in label:
+                    shortcuts.append(label.split('\t', 1)[1].casefold())
+        assert len(shortcuts) == len(set(shortcuts)), 'Global menu shortcut collision'
+        result['checks'].append('native menu integration and unique global shortcuts')
+
+        def inspect_dialog(open_dialog, required_names, close_id=None):
+            inspected = []
+            def visit():
+                dialogs = [window for window in wx.GetTopLevelWindows() if isinstance(window, wx.Dialog) and window.IsShown()]
+                if not dialogs:
+                    wx.CallLater(100, visit)
+                    return
+                dialog = dialogs[-1]
+                names = []
+                def children(parent):
+                    for child in parent.GetChildren():
+                        names.append(child.GetName())
+                        children(child)
+                children(dialog)
+                inspected.append(all(any(required in name for name in names) for required in required_names))
+                if close_id is not None:
+                    dialog.EndModal(close_id)
+                else:
+                    dialog.Close()
+            wx.CallLater(500, visit)
+            open_dialog(frame)
+            assert inspected == [True], 'Native dialog lacked a required accessible control name'
+            app.Yield()
+        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'))
+        inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
+        inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
+        inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
+        result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
+        frame.Close()
+        app.Yield()
+    result['status'] = 'PASS'
+    print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+
+
+if __name__ == '__main__':
+    main()

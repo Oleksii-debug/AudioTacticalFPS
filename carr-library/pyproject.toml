@@ -77,6 +77,10 @@ packages = [
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",
+  "carr_library.audio",
+  "carr_library.speech",
+  "carr_library.studio",
+  "carr_library.assistant",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",
@@ -87,7 +91,7 @@ carr_library = "src/carr_library"
 bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
-"*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+"*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

@@ -193,8 +193,10 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         # The manifest cannot be changed between selecting and checking its files.
         if _read(root / MANIFEST, MAX_MANIFEST, remaining)[1] != manifest_hash:
             raise OcrRuntimeError('Portable OCR manifest changed during validation.')
-        languages = tuple(sorted(Path(name).stem for name in files
-                                 if PurePosixPath(name).parent == PurePosixPath(tessdata)
+        languages = tuple(sorted(PurePosixPath(name).relative_to(tessdata).with_suffix('').as_posix()
+                                 for name in files if name.startswith(tessdata + '/')
+                                 and (PurePosixPath(name).parent == PurePosixPath(tessdata)
+                                      or PurePosixPath(name).parent == PurePosixPath(tessdata) / 'script')
                                  and name.endswith('.traineddata')))
         return OcrRuntime(str(root / executable), root / tessdata, data['target'],
                           manifest_hash, tuple(hashes), languages, root)

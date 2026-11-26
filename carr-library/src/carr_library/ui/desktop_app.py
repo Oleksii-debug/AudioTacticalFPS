@@ -468,8 +468,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
             ('Library tools\tCtrl+Shift+L', lambda e: show_catalog_tools(self)),
-            ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
-            ('Exit\tAlt+F4', lambda e: self.Close())]),
+            ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup)]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
                 ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
                 ('Edit selected evidence tags',self.edit_tags),
@@ -500,6 +499,14 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
+        from .speech_dialog import install_speech_actions
+        from .studio_dialog import install_studio_actions
+        from .assistant_dialog import install_assistant_actions
+        from .save_actions import install_save_actions
+        install_speech_actions(self)
+        install_studio_actions(self)
+        install_assistant_actions(self)
+        install_save_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
