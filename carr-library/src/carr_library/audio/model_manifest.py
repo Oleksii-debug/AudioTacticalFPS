@@ -22,7 +22,7 @@ from .paths import filename_component
 # Keep explicit byte, file and traversal budgets while permitting its complete
 # inventory together with the interpreter and other inference dependencies.
 MAX_MODEL_MANIFEST_BYTES = 16 * 1024 * 1024
-MAX_MODEL_FILES = 32768
+MAX_MODEL_FILES = 40960
 MAX_MODEL_DIRECTORY_ENTRIES = 65536
 
 
