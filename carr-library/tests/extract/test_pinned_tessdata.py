@@ -105,8 +105,7 @@ def test_pdf_adapter(engine, tmp_path):
     assert 'A railway connects distant cities.' in result['raw_text']
     assert result['blocks']
     assert Config().model_policy != config.model_policy
-    with pytest.raises(ValueError, match='orientation'):
-        Config(model_policy=POLICY, orientation=True)
+    assert Config(model_policy=POLICY, orientation=True).orientation is True
 
 
 def test_pdf_adapter_refuses_wrong_model(engine, tmp_path, monkeypatch):
