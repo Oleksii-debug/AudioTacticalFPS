@@ -68,28 +68,28 @@ def test_changed_original_rejected(local):
 
 def test_failure_before_commit_and_recovery(local, monkeypatch):
     root,s,j=local; path=put(root); job=j.start('A','E',root,path)
-    publish=s.publish_revision
+    publish=s.stage_revision
     def fail(*args):
         raise sqlite3.OperationalError('simulated disk full')
-    monkeypatch.setattr(s,'publish_revision',fail)
+    monkeypatch.setattr(s,'stage_revision',fail)
     with pytest.raises(sqlite3.OperationalError): j.run('A',job,root,path)
     assert not active(s)
     assert j.inspect('A',job)['completed']==2
     j.retry('A',job)
-    monkeypatch.setattr(s,'publish_revision',publish)
+    monkeypatch.setattr(s,'stage_revision',publish)
     assert j.run('A',job,root,path)['state']=='complete'
 
 
 def test_crash_after_storage_commit(local, monkeypatch):
     root,s,j=local; path=put(root); job=j.start('A','E',root,path)
-    publish=s.publish_revision
+    publish=j._publish
     def crash(*args):
         publish(*args)
         raise KeyboardInterrupt()
-    monkeypatch.setattr(s,'publish_revision',crash)
+    monkeypatch.setattr(j,'_publish',crash)
     with pytest.raises(KeyboardInterrupt): j.run('A',job,root,path)
     assert len(active(s))==2
-    monkeypatch.setattr(s,'publish_revision',publish)
+    monkeypatch.setattr(j,'_publish',publish)
     assert j.run('A',job,root,path)['state']=='complete'
     assert len(active(s))==2
 
