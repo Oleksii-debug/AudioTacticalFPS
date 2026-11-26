@@ -127,9 +127,11 @@ def _native_visibility_warning(page, pdfium, max_pixels):
     raw = pdfium.raw
     try:
         left, bottom, right, top = page.get_bbox()
-        found = False
+        objects = []
         for obj in page.get_objects(filter=[raw.FPDF_PAGEOBJ_TEXT]):
-            found = True
+            if len(objects) >= 128:
+                return 'native_visibility_work_limit'
+            objects.append(obj)
             mode = raw.FPDFTextObj_GetTextRenderMode(obj.raw)
             if mode not in (raw.FPDF_TEXTRENDERMODE_FILL, raw.FPDF_TEXTRENDERMODE_STROKE,
                             raw.FPDF_TEXTRENDERMODE_FILL_STROKE,
@@ -144,14 +146,33 @@ def _native_visibility_warning(page, pdfium, max_pixels):
                 return 'native_bounds_unverified'
             if x1 <= left or x0 >= right or y1 <= bottom or y0 >= top:
                 return 'native_text_outside_page'
-        if not found:
+        if not objects:
             return 'native_text_objects_missing'
         width, height = page.get_size()
         if not all(math.isfinite(v) and v > 0 for v in (width, height)) or math.ceil(width) * math.ceil(height) > max_pixels:
             return 'native_visibility_render_limit'
+        # Bound aggregate raster work, not just the size of an individual render.
+        if math.ceil(width) * math.ceil(height) * (1 + len(objects)) > 64_000_000:
+            return 'native_visibility_work_limit'
         with closing(page.render(scale=1)) as bitmap:
-            if all(lo == 255 for lo, hi in bitmap.to_pil().convert('RGB').getextrema()):
+            image = bitmap.to_pil().convert('RGB')
+            if all(lo == 255 for lo, hi in image.getextrema()):
                 return 'native_text_on_blank_render'
-    except (pdfium.PdfiumError, ValueError, OSError, RuntimeError):
+            baseline = sha256(image.tobytes()).digest()
+        # Use PDFium's existing object activation API in this disposable document.
+        # A fully occluded or white-on-white object may pass mode/bounds checks.
+        # No pixel change is a contradiction signal, not proof of glyph accuracy.
+        for obj in objects:
+            if not raw.FPDFPageObj_SetIsActive(obj.raw, False):
+                return 'native_visibility_check_failed'
+            try:
+                with closing(page.render(scale=1)) as bitmap:
+                    without = sha256(bitmap.to_pil().convert('RGB').tobytes()).digest()
+            finally:
+                if not raw.FPDFPageObj_SetIsActive(obj.raw, True):
+                    raise RuntimeError('PDFium object restoration failed')
+            if without == baseline:
+                return 'native_text_object_not_painted'
+    except (pdfium.PdfiumError, ValueError, OSError, RuntimeError, AttributeError):
         return 'native_visibility_check_failed'
     return None
