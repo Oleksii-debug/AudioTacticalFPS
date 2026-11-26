@@ -29,7 +29,9 @@ from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
 from .academic_actions import install_academic_actions
+from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
+from .catalog_insights_actions import install_catalog_insights_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -464,6 +466,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
+                ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
@@ -486,6 +489,7 @@ class DesktopFrame(WorkspaceFrame):
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
+        install_catalog_insights_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1019,6 +1023,8 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
+            'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
+            'F1 inside the reader explains page navigation and bookmarks.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
@@ -1026,6 +1032,8 @@ class DesktopFrame(WorkspaceFrame):
             'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
             'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
             'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
+            'The Research menu also opens Library overview, Source metadata and indexing checklist, '
+            'and Export source comparison matrix for this library or one of its collections.\n'
             'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
@@ -1035,7 +1043,7 @@ class DesktopFrame(WorkspaceFrame):
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu.\n'
+            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

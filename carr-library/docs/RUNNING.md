@@ -119,6 +119,36 @@ Save dialog's confirmation. If another program changes the destination during
 export, select it again before replacing it. A failed save keeps the previous
 file intact.
 
+## Review the source catalog
+
+Open a library, then use the **Research** menu:
+
+- **Library overview** summarizes sources, languages, active collections,
+  searchable text units, recorded PDF reviews and links to visible research
+  topics.
+- **Source metadata and indexing checklist** lists sources with missing title,
+  author or language data, no active text, an incomplete index, PDF pages without
+  a matching recorded review, or no active collection. Missing optional metadata
+  is a prompt to check the source, not permission to invent it.
+- **Export source comparison matrix** compares your imported sources in CSV,
+  Markdown or plain text, including collections, topic links, evidence counts
+  and tags. Choose the entire library or one active collection.
+
+These reports contain catalog metadata and stored link counts. They do not
+include source text or research notes, approve an extraction, establish printed
+pagination, or recheck the original files. Physical PDF pages and unpaginated
+logical segments have separate counts. Archived topics and their descendants
+are excluded from the research links. A multi-page saved quotation counts as
+one evidence record, and historical source revisions keep their edition link.
+
+Use **Tab**, **Shift+Tab** and the arrow keys in the scope and format choices.
+Reports open in named, read-only text fields; **Escape** closes the report.
+**Cancel current operation** stops analysis. Opening a report does not refresh
+the evidence panel or discard an unsaved note.
+
+See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
+interchange details.
+
 ## Research from the keyboard
 
 ### Library and collection tools
@@ -182,6 +212,26 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
+
+## Search across saved research topics
+
+Choose **Research, Search saved research** or press **Ctrl+Shift+F**. Search
+quotations, your own notes, or both across the currently open library. An exact
+tag can narrow the search or find tagged material without a text query.
+Archived topics are excluded unless you explicitly include them.
+
+Results identify the topic, source, matching field and archive state. Original
+quotations, citations and your notes have separate readable controls. Choose a
+source part to read another page of a saved excerpt. Copying quotations and
+citations verifies the selected saved source again; opening a topic uses the
+existing protection for unsaved notes. Archived results remain read only.
+
+The dialog has its own **Cancel current operation** and **Close** controls.
+Tab and Shift+Tab move between controls, arrow keys choose a result or source
+part, and Enter starts the search from the query field. Counts disclose a
+result limit; refine the phrase or tag when more matches exist. See
+`docs/RESEARCH_NOTEBOOK.md` in the source distribution for matching rules and
+integrity boundaries.
 
 ## Optional local semantic search
 
