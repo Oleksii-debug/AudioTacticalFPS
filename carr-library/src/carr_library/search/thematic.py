@@ -361,3 +361,44 @@ def extract_query_terms(query: str) -> list[str]:
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+
+def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20):
+    """Fuse already-authorized locator keys; never construct or resolve quotes.
+
+    Each key is (workspace, edition, revision, passage). The trusted caller
+    must authorize active source spans in one storage snapshot before fusion
+    and re-resolve selected keys from that same snapshot. A missing semantic
+    backend is represented by an empty ranking, not synthetic vectors.
+    """
+    from ._vendor.rifflux.rrf import rrf_fuse
+
+    if (not isinstance(workspace, str) or not workspace or len(workspace) > 256
+            or '\x00' in workspace or type(limit) is not int or not 1 <= limit <= 100):
+        raise ValueError('explicit workspace and bounded fusion limit required')
+
+    def validated(keys):
+        if not isinstance(keys, (tuple, list)) or len(keys) > 20000:
+            raise ValueError('bounded locator sequence required')
+        seen = set()
+        for key in keys:
+            if (not isinstance(key, tuple) or len(key) != 4
+                    or any(not isinstance(v, str) or not v or len(v) > 256
+                           or '\x00' in v for v in key) or key[0] != workspace):
+                raise ValueError('invalid or foreign locator key')
+            if key in seen:
+                raise ValueError('duplicate locator key')
+            seen.add(key)
+        return seen
+
+    allowed = validated(authorized)
+    for ranking in (lexical, semantic):
+        if not validated(ranking) <= allowed:
+            raise ValueError('ranking contains unauthorized locator key')
+    # Use opaque IDs for upstream RRF; stable tie-break is the full locator.
+    keys = sorted(allowed)
+    tokens = {key: str(i) for i, key in enumerate(keys)}
+    scores = rrf_fuse({'lexical': [tokens[key] for key in lexical],
+                       'semantic': [tokens[key] for key in semantic]})
+    ranked = [(keys[int(token)], score) for token, score in scores.items()]
+    return sorted(ranked, key=lambda pair: (-pair[1], pair[0]))[:limit]
