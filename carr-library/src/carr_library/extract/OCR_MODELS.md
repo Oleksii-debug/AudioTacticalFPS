@@ -1,0 +1,18 @@
+# Pinned local neural OCR candidate
+
+Opt-in `Config(languages='eng', model_policy=POLICY)` from page_ocr.py / pinned_tessdata.py. POLICY names the exact public https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd revision (Apache-2.0, LICENSE blob d645695673349e3947e8e5ae42332d0ac3164cd7). Upstream tree metadata and local installed binary Git blob IDs matched exactly:
+
+| language | bytes | upstream/local Git blob |
+|---|---:|---|
+| eng | 4113088 | bbef4675053b5b468cdb477053e28b1c698ba08e |
+| ukr | 3825102 | d02cf90b2911a3da66dac6ae380bcefb18dd7663 |
+| slk | 4427661 | ca99e3e82f69a0e16b48cdfec3c4e706758269f2 |
+| osd (not integrated in pinned mode) | 10562727 | 527457ca8f8fe1fda7c2f88bce3c0e4be12be9d0 |
+
+The three language models (12,365,851 bytes total) were already installed locally and reused as actual pretrained integerized LSTM models, not newly downloaded or trained. SHA256 pins in pinned_tessdata.py computed from the matching bytes. No binary redistribution or copied model code. Private per-page staging verifies size and SHA256 of bytes being copied, then existing Tesseract subprocess uses explicit --tessdata-dir and --oem 1. Missing or changed weights fail closed rather than falling back. Output flags use native Tesseract variables tessedit_create_txt/tsv because the staged directory contains only models, not upstream renderer config files. OCR remains review_required, printed label unknown, raw evidence and boxes separate; no automatic citation attestation.
+
+Default OCR remains available, and pinned mode deliberately rejects orientation=True until OSD also uses explicitly staged verified models. Model policy is serialized in Config; CARR-10 must handle old journal configurations explicitly (new default field changes job identity; do not silently resume or retarget old jobs). No changes to ingest or package ownership. CARR-11/13: review engine distribution/notice, installation and trusted local binary path; staged weights do not attest the executable, local process integrity or same-user adversarial mutation. Network isolation, Windows, full checkpoint/resume and real corpus NOT_RUN. Optional RapidOCR/ONNX not installed; no inference claim.
+
+Reproduction from carr-library: PYTHONPATH=src python -m pytest -q -s tests/extract/test_pinned_tessdata.py tests/extract/test_page_ocr.py. Linux x86_64 AMD EPYC 9V74, Python 3.13.5, Tesseract 5.5.0, pypdf 5.9.0, pypdfium2 5.8.0, Pillow 12.3.0, pytest 9.0.2. Initial integrated test exposed missing Tesseract configs in staged directory: 7 PASS/1 FAIL; explicit native output variables fixed it: 8 PASS/0 FAIL. Combined with unchanged existing page OCR suite: 13 PASS/0 FAIL/0 SKIP in 3.67s, exit 0. Real staged model single-language synthetic raster CER after whitespace normalization: English 0.0 (0.217s inference), Ukrainian 0.012346 (0.098s), Slovak 0.0 (0.166s). These are three small clean fixtures only, not broad model quality or real historical book metrics. Real PDF path tested with correct pinned model and intentionally invalid local model; unchanged input hash, physical index, review-only output. Multi-language staging tested; combined-language actual inference NOT_RUN. Peak RAM NOT_RUN. Existing five regression tests pass including real default English/Ukrainian OCR.
+
+Exact tested Git blobs: page_ocr.py 1e6cf96ff1d772625e4c8d72ee061e75de66e8cd; pinned_tessdata.py a977f7f780e75174025f1378d76f3656617ecf91; test_pinned_tessdata.py 7fbbcdc2d75ed041eb1442cf20822d57c68eacb3; unchanged test_page_ocr.py 65a3e2a7772b4fada5cc62d89c8703367dc0c0b4. Independent review required.
