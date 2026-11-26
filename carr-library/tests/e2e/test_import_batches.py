@@ -43,7 +43,7 @@ def test_folder_plan_real_txt_import_search_copy_and_scope_safe_duplicates(app, 
     assert planned['counts']['duplicate'] == planned['counts']['rejected'] == 1
     assert app.browse(workspace) == () and not list(app.assets_dir.glob('*.txt'))
     journal = app.root / 'import-batches' / (planned['batch_id'] + '.json')
-    assert str(first) in journal.read_text(encoding='utf-8')
+    assert str(first) in {row['source'] for row in json.loads(journal.read_text(encoding='utf-8'))['rows']}
     assert first.read_text(encoding='utf-8') not in journal.read_text(encoding='utf-8')
     if os.name != 'nt':
         assert journal.stat().st_mode & 0o777 == 0o600
