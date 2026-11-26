@@ -87,6 +87,47 @@ that location; opening the file does not automatically jump to a particular
 page. Changes made in that reader do not alter the retained library original.
 Opening a source does not approve its extracted text for quotation.
 
+## Academic references and reading plans
+
+Open a library, then choose **Academic, Open academic library** or press
+**Ctrl+Shift+B**. References can describe books, articles, theses, reports and
+web resources even when no source document is available. Bibliographic titles,
+authors, identifiers and publication page ranges do not establish quotation or
+printed-page verification. They remain separate from retained originals and
+historical source citations.
+
+The catalog supports reading status, priority, progress, rating, tags, abstracts
+and personal reading notes. Search and filter within the active library; use
+Previous and Next when the list spans multiple pages. Opening the catalog keeps
+the main research notebook and any unsaved evidence note in place. Dialogs use
+named native text fields, choices and buttons; Tab, Shift+Tab, arrow keys,
+Ctrl+Tab and Escape provide keyboard navigation.
+
+Use **Add selected book to academic catalog** from the Academic menu to link an
+already imported book. **Open linked document** opens a checked viewing copy;
+changes in an external viewer do not modify the retained original. Standalone
+references do not fabricate document text or allow source quotation.
+
+Import RIS or CSL JSON files through a preview. Select the records to keep;
+possible duplicates and unsupported fields are reported before import. Selected
+records are saved in one transaction. DOI and ISBN comparisons and conservative
+title/author/year matches identify possible duplicates for review. Records are
+never automatically merged or deleted. Archive and restore retain their IDs.
+
+Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
+CSV or text. Bibliographic exports omit personal notes by default. Include notes
+only when you deliberately choose that option. The plain bibliography is a
+readable reference list, not a certified APA, MLA or Chicago citation style.
+BibTeX import and online DOI lookup are not part of this version. Entering a DOI
+or URL does not send a network request or download an attachment.
+
+Version 0.2 opens the exact supported version-three library layout through a
+transactional upgrade. Existing source documents and citations are preserved.
+Install an update into a new program folder, with a backup of your library saved
+first. Open the existing data folder in the new program. Do not use an earlier
+program version on the upgraded data folder. Previous valid backups can still
+be restored into a new folder and upgraded on opening.
+
 Choose **Research, Export active topic**. Markdown, plain text and CSV preserve
 source quotations and research notes in separate fields. RIS and BibTeX contain
 only bibliography; they omit quotations and private notes. CSV text columns
@@ -146,7 +187,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.1.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.

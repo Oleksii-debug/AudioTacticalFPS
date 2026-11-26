@@ -25,6 +25,14 @@ instructions.
 
 ## Implemented workflows
 
+- Maintain an academic reference catalog for books, articles, theses, reports
+  and web resources, including references without an attached source file.
+  Keep bibliographic descriptions separate from verified source quotations.
+- Plan reading with status, priority, progress, rating, tags and personal notes;
+  search and filter the reference catalog within the selected library.
+- Preview and import RIS or CSL JSON bibliographies, inspect possible duplicate
+  references, and export RIS, BibTeX, CSL JSON, CSV or plain text. Personal notes
+  are excluded from bibliography exports unless explicitly requested.
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
 - Import UTF-8 TXT, PDF and DOCX. Retain originals, publish catalog/revision
@@ -52,8 +60,9 @@ score never approves a quotation.
 This is an integrated development candidate. The assembled services and installed
 Python package have real end-to-end tests, including offline local model
 inference, citation preservation, workspace isolation and backup recovery.
-Native Windows execution and NVDA acceptance must still be performed on Windows;
-Linux tests and UI handler probes are not substitutes for those checks.
+The Windows workflow separately runs the installed package and native desktop
+probes. Manual Windows 11/NVDA acceptance remains a distinct check; Linux tests
+and native GUI automation do not certify screen-reader speech.
 
 The Windows bundle's hashes and dependency inventory are verified during
 assembly. Only local synthetic or lawfully supplied fixtures may be used in

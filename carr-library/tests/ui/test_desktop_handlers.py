@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices
+from carr_library.ui.scope_labels import scope_labels
 
 
 class BaseFrame:
@@ -46,7 +47,7 @@ def classes():
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
-               ScopeServices=ScopeServices,active_collections=active_collections,
+               ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
@@ -238,6 +239,59 @@ def test_save_quotation_keeps_the_bound_topic_authorization(classes):
     p.frame.run_job.call_args.args[1]()
     p.frame.library.save_hit.assert_called_once_with('a','research','hit','revision',
         authorized_topic='research',cancelled=p.frame.cancel_event.is_set)
+
+
+@pytest.mark.parametrize('generated_name_collision', [False, True])
+def test_save_quotation_distinguishes_same_name_topics_without_retargeting(classes, generated_name_collision):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.evidence = None
+    topics = [SimpleNamespace(id='first', name='History'), SimpleNamespace(id='second', name='History')]
+    if generated_name_collision:
+        topics.append(SimpleNamespace(id='third', name='History (library a; topic first)'))
+    p.frame.library.topics.return_value = tuple(topics)
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+
+    labels = chooser.call_args.args[3]
+    assert len(labels) == len(set(labels)) == len(topics)
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with('a', 'second', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
+
+
+def test_save_quotation_cancel_does_not_save_or_start_job(classes):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (SimpleNamespace(id='first', name='History'),)
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.ShowModal.return_value = 0
+
+    p.save_selected(None)
+
+    p.frame.run_job.assert_not_called()
+    p.frame.library.save_hit.assert_not_called()
+    chooser.return_value.Destroy.assert_called_once()
+
+
+@pytest.mark.parametrize('selection', [-1, 2])
+def test_save_quotation_rejects_missing_or_invalid_topic_choice(classes, selection):
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = (SimpleNamespace(id='first', name='History'),)
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = selection
+
+    p.save_selected(None)
+
+    p.frame.run_job.assert_not_called()
+    p.frame.library.save_hit.assert_not_called()
+    assert 'Quotation not saved' in p.status.ChangeValue.call_args.args[0]
+    p.status.SetFocus.assert_called_once()
+    chooser.return_value.Destroy.assert_called_once()
 
 
 def test_verified_context_loads_in_job_before_opening_page_dialog(classes):
