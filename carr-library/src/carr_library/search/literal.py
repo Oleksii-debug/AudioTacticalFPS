@@ -5,6 +5,7 @@ NFD/full casefold and whitespace folding are search-only; returned offsets are
 half-open Python code-point offsets into the original immutable page. No raw
 FTS syntax, stemming, cross-page stitching, or generated quotation.
 """
+from array import array
 from bisect import bisect_right
 from hashlib import sha256
 import re
@@ -60,16 +61,46 @@ def _ascii_mapped(text, check):
     return folded, offsets, offsets
 
 
+class _CompactOffsets:
+    """Source boundaries in a compact array; -1 is not a cluster boundary."""
+
+    def __init__(self, length):
+        self.values = array('i', [-1]) * (length + 1)
+
+    def __contains__(self, position):
+        return 0 <= position < len(self.values) and self.values[position] >= 0
+
+    def __getitem__(self, position):
+        if position not in self:
+            raise KeyError(position)
+        return self.values[position]
+
+    def __setitem__(self, position, value):
+        self.values[position] = value
+
+    def items(self):
+        return ((position, value) for position, value in enumerate(self.values) if value >= 0)
+
+
 def _mapped(text, check=lambda: None):
     """Map whole canonical clusters/whitespace runs, not partial casefold expansions."""
     # TXT books need not contain form-feed page boundaries. Mapping millions of
     # ordinary ASCII letters into two dictionaries exhausted the search deadline
     # and hundreds of megabytes even when the source was within MAX_CHARS.
-    # Keep the cluster-aware path for Unicode and small pages; long ASCII source
-    # segments need only the sparse whitespace map above.
+    # Long ASCII segments need only sparse whitespace offsets. Long Unicode
+    # segments keep the same cluster rules in compact integer arrays, avoiding
+    # two per-character dictionaries and millions of retained small strings.
     if len(text) >= _LONG_ASCII and text.isascii():
         return _ascii_mapped(text, check)
-    parts, starts, ends = [], {}, {}
+    compact = len(text) >= _LONG_ASCII
+    if compact:
+        check()
+        folded = _fold(text)
+        check()
+        starts, ends = _CompactOffsets(len(folded)), _CompactOffsets(len(folded))
+        parts = None
+    else:
+        parts, starts, ends = [], {}, {}
     i = pos = next_check = 0
     while i < len(text):
         if i >= next_check:
@@ -87,15 +118,22 @@ def _mapped(text, check=lambda: None):
                 if j % 1024 == 0:
                     check()
         part = _fold(text[i:j])
+        if compact and not folded.startswith(part, pos):
+            raise ValueError('unsupported normalization mapping')
         starts[pos] = i
         pos += len(part)
         ends[pos] = j
-        parts.append(part)
+        if not compact:
+            parts.append(part)
         i = j
     check()
-    folded = ''.join(parts)
-    if folded != _fold(text):
-        raise ValueError('unsupported normalization mapping')
+    if compact:
+        if pos != len(folded):
+            raise ValueError('unsupported normalization mapping')
+    else:
+        folded = ''.join(parts)
+        if folded != _fold(text):
+            raise ValueError('unsupported normalization mapping')
     return folded, starts, ends
 
 
@@ -125,14 +163,15 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
     word: one whitespace-free literal; terms: all whitespace-separated literals
     on the same page, one hit per page (first occurrence of each term).
-    No wildcard/operator syntax. Exact matches share score 1; tie-break is
+    advanced: explicit bounded Boolean/NEAR syntax, one source witness per page.
+    Other modes have no wildcard/operator syntax. Exact matches share score 1; tie-break is
     edition, segment ordinal, page id, raw offset. Results never cross pages.
     Only active_page rows from PR #21 are accepted; no persistent second index.
     Scope/offset caps fail explicitly, not silently with incomplete results.
     """
     if not isinstance(workspace, str) or not workspace:
         raise ValueError('explicit workspace required')
-    if mode not in ('word', 'phrase', 'terms'):
+    if mode not in ('word', 'phrase', 'terms', 'advanced'):
         raise ValueError('invalid literal mode')
     if not isinstance(query, str) or len(query) > MAX_QUERY or any(
         ud.category(c) in ('Cc', 'Cs') and c not in '\t\n\r' for c in query
@@ -163,6 +202,12 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             raise TimeoutError('literal search cancelled or timed out')
 
     check()
+    advanced = None
+    if mode == 'advanced':
+        # Lazy import keeps the parser reusable with the exact normalization and
+        # span helpers above, while all scope/integrity/budget logic stays here.
+        from .advanced import compile_query
+        advanced = compile_query(query, check=check)
     params = [workspace]
     where = 'workspace=?'
     if edition_ids is not None:
@@ -206,17 +251,21 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         # Trigram cannot match strings shorter than three code points. Fall back
         # to the scoped row list, then verify all literal needles against raw.
         candidate = next((n for n in needles if len(n) >= 3), None)
-        if candidate is None:
+        expression = (advanced.candidate if advanced is not None else
+                      '"' + candidate.replace('"', '""') + '"' if candidate is not None else None)
+        if expression is None:
             hits = range(1, len(rows)+1)
         else:
-            expression = '"' + candidate.replace('"', '""') + '"'
             hits = (r[0] for r in index.execute('SELECT rowid FROM scoped WHERE scoped MATCH ? ORDER BY rowid', (expression,)))
         for rowid in hits:
             check()
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
             folded, starts, ends = _mapped(raw, check)
             check()
-            if mode == 'terms':
+            if advanced is not None:
+                match = advanced.match(raw, folded, starts, ends, check=check)
+                groups = [match.spans] if match is not None else []
+            elif mode == 'terms':
                 spans = [next(_spans(folded, starts, ends, n, check), None) for n in needles]
                 groups = [tuple(sorted(set(spans)))] if all(s is not None for s in spans) else []
             else:
@@ -234,6 +283,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                     printed_label_verified=bool(physical is not None and verified),
                     raw_text_sha256=digest, start=start, end=end, raw_quote=raw[start:end],
                     match_spans=spans, score=1.0))
+                if advanced is not None:
+                    result[-1]['reason'] = match.reason
                 if len(result) == limit:
                     check()
                     return result

@@ -101,20 +101,29 @@ def test_replay_conflicting_identity_cannot_leave_catalog_or_membership(imported
 
 
 @pytest.mark.parametrize('current_metadata', [False, True])
-def test_replay_after_metadata_edit_stays_superseded_and_does_not_retarget(imported, current_metadata):
+def test_replay_after_metadata_edit_preserves_revision_and_validates_current_metadata(imported, current_metadata):
     item = imported
+    historical, = item.app.search(item.workspace, 'railway history')
+    historical_preview = item.app.preview(item.workspace, historical.ref, historical.revision)
     edited = dict(title='Edited title', authors=('Edited author',), language='uk',
                   edition='Second printing', volume='II')
     current_revision = item.app.update_metadata(item.workspace,
         item.metadata['edition_id'], **edited)
     before = source_state(item)
-    result = replay(item, **(edited if current_metadata else {}))
-    assert result['state'] == 'superseded' and result['id'] == item.initial['id']
-    assert result['verified'] is False
+    if current_metadata:
+        result = replay(item, **edited)
+        assert result['state'] == 'superseded' and result['id'] == item.initial['id']
+        assert result['verified'] is False
+        selected, = item.app.search(item.workspace, 'railway history', collection=item.requested)
+        assert selected.revision == current_revision and selected.title == 'Edited title'
+    else:
+        with pytest.raises(ValueError, match='identity conflict'):
+            replay(item)
+        assert item.app.browse(item.workspace, collection=item.requested) == ()
     assert source_state(item) == before
-    assert item.app.browse(item.workspace, collection=item.requested) == ()
     hit, = item.app.search(item.workspace, 'railway history')
     assert hit.revision == current_revision and hit.title == 'Edited title'
+    assert item.app.preview(item.workspace, historical.ref, historical.revision) == historical_preview
     assert item.source.read_bytes() == item.raw
 
 
@@ -163,7 +172,7 @@ def test_replay_rechecks_active_revision_before_registering(imported, monkeypatc
         return result
 
     monkeypatch.setattr(Ingest, 'run', run_then_replace)
-    with pytest.raises(ValueError, match='no longer active'):
+    with pytest.raises(ValueError, match='active revision changed'):
         replay(item)
     assert item.app.browse(item.workspace, collection=item.requested) == ()
     hit, = item.app.search(item.workspace, 'railway history')
