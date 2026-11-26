@@ -141,6 +141,14 @@ class Storage:
     def _check(self):
         if self.db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or self.db.execute('PRAGMA foreign_key_check').fetchone():
             raise ValueError('database integrity failure')
+        # Atomic publication never leaves a committed unsealed or empty revision.
+        if self.db.execute("""
+            SELECT 1 FROM revision r
+            WHERE NOT EXISTS (SELECT 1 FROM sealed s WHERE s.revision=r.id)
+               OR NOT EXISTS (SELECT 1 FROM page p WHERE p.revision=r.id)
+            LIMIT 1
+        """).fetchone():
+            raise ValueError('incomplete revision')
         self._check_locators()
         for row in self.db.execute('SELECT raw,digest FROM page'):
             if sha256(row[0].encode()).hexdigest()!=row[1]:
