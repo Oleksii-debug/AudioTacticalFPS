@@ -88,3 +88,63 @@ def test_pypdf_roman_and_arabic_are_only_candidates():
     assert [x.printed for x in result] == ['i', 'ii', '8', '9']
     assert all(not x.verified for x in result)
     assert [x.index for x in result] == [1, 2, 3, 4]
+
+
+def test_span_resolves_every_page_without_fabricating_range():
+    from carr_library.citations.anchors import resolve_span, format_span_citation
+    a = anchor('first', Locator('physical_page', 4, 'iv', True), start=2)
+    b = anchor('middle', Locator('physical_page', 5, 'iv', True))
+    c = anchor('last', Locator('physical_page', 6, '99'), end=2)
+    raw = {4: 'first', 5: 'middle', 6: 'last'}
+    def load(i, p):
+        return i, p, raw[p.index], True
+    assert resolve_span(iter([a, b, c]), load) == ((a, 'first'), (b, 'middle'), (c, 'last'))
+    assert format_span_citation([a, b, c], load) == (
+        'Synthetic author, Same title, vol. 2, edition 3, p. iv (PDF page 4); '
+        'p. iv (PDF page 5); PDF page 6 (printed page unverified)')
+    assert '99' not in format_span_citation([a, b, c], load)
+    assert format_span_citation([a], load) == format_citation(a)
+    with pytest.raises(ValueError):
+        resolve_span([a, replace(b, quote='fake'), c], load)
+    with pytest.raises(ValueError):
+        resolve_span([a, b, c], lambda i, p: (i, p, raw[p.index], p.index != 5))
+    del raw[5]
+    with pytest.raises(KeyError):
+        format_span_citation([a, b, c], load)
+
+
+def test_span_logical_segments_and_empty_generator():
+    from carr_library.citations.anchors import format_span_citation
+    a = anchor('one', Locator('logical_segment', 1))
+    b = anchor('two', Locator('logical_segment', 2))
+    def load(i, p):
+        return i, p, {1: 'one', 2: 'two'}[p.index], True
+    out = format_span_citation([a, b], load)
+    assert 'Segment 1 (unpaginated); Segment 2 (unpaginated)' in out
+    assert 'PDF' not in out
+    with pytest.raises(ValueError):
+        validate_span(iter(()))
+
+
+def test_manual_correction_does_not_mutate_saved_anchor():
+    from carr_library.citations.anchors import LabelCorrection
+    original = anchor(locator=Locator('physical_page', 4, '9'))
+    corrected = Locator('physical_page', 4, 'iv', True)
+    change = LabelCorrection(I, original.locator, corrected, 'Checked page image', 'synthetic reviewer', 'b'*64)
+    assert change.previous == original.locator
+    assert 'unverified' in format_citation(original)
+    assert resolve(original, I, change.previous, RAW) == RAW
+    with pytest.raises(ValueError):
+        resolve(original, I, corrected, RAW)
+    for fields in ({'reason': ''}, {'reviewer': ''}, {'evidence_sha256': 'bad'},
+                   {'replacement': Locator('physical_page', 5, 'iv', True)},
+                   {'replacement': Locator('logical_segment', 4)},
+                   {'replacement': original.locator}):
+        with pytest.raises(ValueError):
+            replace(change, **fields)
+
+
+@pytest.mark.parametrize('verified,printed', [(1, 'iv'), ('yes', 'iv'), (False, ['iv'])])
+def test_label_state_rejects_mutable_or_non_boolean_values(verified, printed):
+    with pytest.raises(ValueError):
+        Locator('physical_page', 1, printed, verified)
