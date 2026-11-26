@@ -6,10 +6,12 @@ only captures an explicit request and presents its complete result. Opening it
 never makes a network request or sends private source text.
 """
 from pathlib import Path
+import sqlite3
 from uuid import uuid4
 
 import wx
 
+from ..research.topic_tree import TopicTree
 from .catalog_tools_dialog import _collection_choices, _workspace
 
 
@@ -248,6 +250,18 @@ class AcquisitionDialog(wx.Dialog):
         except (AttributeError, IndexError, ValueError, RuntimeError):
             return False
 
+    def _current_scope(self):
+        """Reauthorize UI publication without querying SQLite in cancel polling."""
+        if not self._same_host():
+            return False
+        try:
+            with self.library.read(self.workspace) as db:
+                if self.host_scope is not None and self.host_scope[1] is not None:
+                    TopicTree(db, self.workspace)._visible(self.host_scope[1])
+            return True
+        except (OSError, ValueError, sqlite3.Error):
+            return False
+
     def _enabled(self):
         idle = not self.pending and not self._closed
         for control in (self.doi, *self.providers.values(), self.collection, self.sources):
@@ -328,7 +342,7 @@ class AcquisitionDialog(wx.Dialog):
         if self.pending or self.frame.working or getattr(self.frame, 'busy', False):
             self._message('An operation is running. Wait or choose Cancel operation.')
             return False
-        if not self._same_host():
+        if not self._current_scope():
             self._clear_preview()
             self._enabled()
             self._message('The selected library or research topic changed. Close DOI lookup and open it again.')
@@ -370,7 +384,7 @@ class AcquisitionDialog(wx.Dialog):
                 error = InterruptedError('Operation cancelled; the result was not displayed.')
             if mutation and error is None:
                 self.changed = True
-            if not self._same_host() or generation != self._generation:
+            if not self._current_scope() or generation != self._generation:
                 self._clear_preview()
                 self._message('The library, topic or DOI request changed. Open DOI lookup again before another action.')
             elif error is not None:
@@ -620,7 +634,7 @@ def show_acquisition_dialog(frame):
                                    selected_metadata=current, selected_panel=panel,
                                    selected_selection=selection)
         dialog.ShowModal()
-        if dialog.changed and dialog._same_host() and not frame.working and frame.book is not None:
+        if dialog.changed and dialog._current_scope() and not frame.working and frame.book is not None:
             catalog = frame.book.GetPage(1)
             if catalog.workspace == workspace:
                 catalog.refresh(selection=selection)

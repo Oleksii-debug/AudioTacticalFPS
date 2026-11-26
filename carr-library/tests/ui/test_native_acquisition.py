@@ -124,13 +124,26 @@ def preview_fixture(workspace='a', *, sources=True):
 
 class Library:
     def __init__(self, root):
+        from carr_library.application import LibraryApp
+
         self.root, self.calls, self.hook = root, [], None
+        # Keep UI/service responses synthetic while exercising real scope reads.
+        self.scope_app = LibraryApp(root / 'scope-fixture')
+        with self.scope_app.write() as db:
+            for workspace in ('a', 'b'):
+                db.execute('INSERT INTO workspace(id) VALUES(?)', (workspace,))
+                db.execute('INSERT INTO workspace_meta VALUES(?,?,?,0)',
+                           (workspace, 'Synthetic library ' + workspace, ''))
+        with self.scope_app.topic_transaction('a') as tree:
+            tree.create('topic-a', 'Synthetic topic')
         self.preview = preview_fixture()
         self.ignore_cancel = False
         self.error = None
         self.metadata = SimpleNamespace(edition_id='edition-exact', title='Existing selected title',
             authors=('Existing Author',), language='en', volume='1', edition='Second edition')
         self.result_state = 'quarantined'
+    def read(self, workspace):
+        return self.scope_app.read(workspace)
     def collections(self, workspace):
         self.calls.append(('collections', workspace))
         return (('collection-a', 'Selected collection'), ('collection-b', 'Another collection'))
@@ -764,6 +777,50 @@ def test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit(
     assert cancelled.is_set()
     assert app.edition_metadata(workspace, source['edition']) == current
     assert app.assets.resolve(source['asset']).read_bytes() == original
+
+
+@pytest.mark.parametrize('archived_scope', ['workspace', 'topic'])
+def test_review_completed_lookup_rechecks_external_archive(module, tmp_path, archived_scope):
+    """Actual service finishes before another instance archives its dialog scope."""
+    import json
+    from carr_library.application import LibraryApp
+    from carr_library.acquisition.service import AcquisitionService
+
+    app = LibraryApp(tmp_path / 'review-library')
+    workspace = app.create_workspace('DOI scope review')
+    topic = app.create_topic(workspace, 'Original topic')
+    requests = []
+
+    def transport(consent):
+        assert consent.allowed and consent.purpose == 'metadata'
+        def request(value, *, cancelled):
+            assert not cancelled()
+            requests.append(value)
+            return json.dumps({'status': 'ok', 'message-type': 'work', 'message': {
+                'DOI': '10.1234/reading', 'title': ['Synthetic reviewed metadata'],
+                'type': 'journal-article'}}).encode()
+        return request
+
+    app._acquisition_service = AcquisitionService(app, transport_factory=transport)
+    frame = Host(app, module.wx)
+    frame.active, frame.panel.workspace = (workspace, topic), workspace
+    form = module.AcquisitionDialog(frame, workspace)
+    form.doi.SetValue('10.1234/reading')
+    form.online.SetValue(True)
+    assert form.lookup()
+    frame.work()
+    assert len(requests) == 1 and form.preview is None and module.wx.callbacks
+    if archived_scope == 'workspace':
+        app.archive_workspace(workspace)
+    else:
+        with app.topic_transaction(workspace) as tree:
+            tree.archive(topic)
+    while module.wx.callbacks:
+        module.wx.callbacks.pop(0)()
+    assert frame.active == (workspace, topic)
+    assert form.preview is None, 'A queued result must not publish after its scope is archived.'
+    assert form.metadata_preview.GetValue() == ''
+    assert not form.save_button.enabled and not form.pending
 
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Actual wx window probe requires Windows desktop')
