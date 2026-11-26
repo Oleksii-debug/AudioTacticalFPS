@@ -61,6 +61,9 @@ report explains that embedded anchor navigation was not stored. Books with a
 repeated spine resource also retain every section occurrence; ambiguous embedded
 links are disabled rather than sent to an arbitrary occurrence. Navigation does
 not modify the source, its existing revisions or the reading desk's saved position.
+If repetition would multiply otherwise bounded headings beyond the navigation
+limit, optional headings and embedded contents are omitted with an explanation;
+the complete chapter order and extracted text remain available.
 
 Each read checks the current library/topic scope, active source revision, sealed
 extraction metadata and retained original. If those identities change, the reader

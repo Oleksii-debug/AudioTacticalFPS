@@ -19,7 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
-from .scope_bindings import ScopeServices
+from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
 from .search_model import Hit
@@ -28,6 +28,7 @@ from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
@@ -388,7 +389,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             hit = self.selected()
             if hit.workspace != self.bound_workspace or hit.workspace != self.model.workspace:
                 raise ValueError('Select one result in the active library.')
-            topics = self.frame.library.topics(hit.workspace)
+            topics = tuple(self.frame.library.topics(hit.workspace))
             if not topics:
                 self.status.ChangeValue('Create a research topic in Topics and Sections first.')
                 self.status.SetFocus()
@@ -396,11 +397,15 @@ class DesktopSearchPanel(PagedSearchPanel):
             selected_topic = self.frame.active[1] if self.frame.active else None
             if selected_topic is None:
                 dialog = wx.SingleChoiceDialog(self, 'Choose the research topic for this quotation.',
-                                              'Save quotation', [t.name for t in topics])
+                                              'Save quotation', scope_labels(
+                                                  (hit.workspace, t.id, t.name) for t in topics))
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
-                    selected_topic = topics[dialog.GetSelection()].id
+                    index = dialog.GetSelection()
+                    if not 0 <= index < len(topics):
+                        raise ValueError('Choose a research topic first.')
+                    selected_topic = topics[index].id
                 finally:
                     dialog.Destroy()
             epoch = self._context_epoch
@@ -481,6 +486,7 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_academic_actions(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
@@ -1039,7 +1045,8 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Use Alt+L for Library, Alt+R for Research, Alt+B for Bibliography, '
+            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
@@ -1053,6 +1060,10 @@ class DesktopFrame(WorkspaceFrame):
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
+            'Ctrl+Shift+E exports the active topic together with its nonarchived subtopics.\n'
+            'Bibliography exports a library or collection as CSL-JSON, RIS or BibTeX.\n'
+            'Select a book, then Bibliography, Review reference metadata to review a local RIS or CSL-JSON file.\n'
+            'Use the named reference buttons to replace chosen fields, then Save metadata.\n\n'
             'In Export topic, choose Word or HTML for a readable research document with heading navigation.\n'
             'The Research menu also opens Library overview, Source metadata and indexing checklist, '
             'and Export source comparison matrix for this library or one of its collections.\n'

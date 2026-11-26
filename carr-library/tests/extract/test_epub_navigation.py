@@ -236,3 +236,43 @@ def test_navigation_bytes_and_anchor_counts_are_bounded(monkeypatch):
         patch.setattr(epub_ordered, 'MAX_ANCHORS', 1)
         with pytest.raises(EpubError, match='anchor identity or budget'):
             extract_epub(build_epub())
+
+
+def test_repeated_heading_budget_disables_only_optional_navigation():
+    source = chapter('<h1 id="a">A</h1><h2 id="b">B</h2><h3 id="c">C</h3>')
+    data = build_epub([('one', 'EPUB/one.xhtml', source)], spine=['one'] * 1000)
+    result = extract_epub(data)
+    assert len(result['records']) == 1000
+    assert result['toc'] == result['page_hints'] == []
+    assert 'embedded_navigation_budget_exceeded' in result['warnings']
+    assert result['status'] == 'review_required'
+    for ordinal, record in enumerate(result['records'], 1):
+        assert record['raw_text'] == 'A\nB\nC'
+        assert record['text_sha256'] == sha256(b'A\nB\nC').hexdigest()
+        assert record['logical_locator'] == dict(spine_index=ordinal, manifest_id='one',
+            href='EPUB/one.xhtml', linear=True, title='Chapter')
+        assert record['headings'] == record['alternatives'] == []
+        assert record['printed_label_verified'] is False
+
+
+def test_repeated_headings_leaving_no_room_for_valid_toc_also_degrade(monkeypatch):
+    from carr_library.extract import epub_ordered
+    chapters = [('one', 'EPUB/one.xhtml', chapter('<h1>A</h1><h2>B</h2>')),
+                ('last', 'EPUB/last.xhtml', chapter('<p id="last">Last</p>'))]
+    nav = navigation('<li><a href="last.xhtml#last">Last</a></li>')
+    monkeypatch.setattr(epub_ordered, 'MAX_NAVIGATION', 4)
+    result = extract_epub(build_epub(chapters, spine=['one', 'one', 'last'], nav=nav))
+    assert [row['raw_text'] for row in result['records']] == ['A\nB', 'A\nB', 'Last']
+    assert all(row['headings'] == [] for row in result['records'])
+    assert result['toc'] == result['page_hints'] == []
+    assert 'embedded_navigation_budget_exceeded' in result['warnings']
+
+
+def test_repeated_navigation_fallback_does_not_relax_text_budget(monkeypatch):
+    from carr_library.extract import epub_ordered
+    source = chapter('<h1>A</h1><h2>B</h2><h3>C</h3>')
+    data = build_epub([('one', 'EPUB/one.xhtml', source)], spine=['one', 'one'])
+    monkeypatch.setattr(epub_ordered, 'MAX_NAVIGATION', 4)
+    monkeypatch.setattr(epub_ordered, 'MAX_TEXT', 9)
+    with pytest.raises(EpubError, match='text or section metadata budget'):
+        extract_epub(data)

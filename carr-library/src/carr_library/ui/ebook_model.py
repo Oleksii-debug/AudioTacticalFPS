@@ -38,6 +38,7 @@ _WARNING_TEXT = {
     'page_list_labels_unverified': 'EPUB page-list labels are unverified and are not used as printed-page references.',
     'embedded_contents_unavailable': 'Embedded contents are unavailable for this stored extraction. Use the chapter selector.',
     'embedded_contents_ambiguous_spine': 'Some contents links point to a resource repeated in the reading order. Their destination is ambiguous, so the embedded contents and page hints are unavailable. Use the chapter selector.',
+    'embedded_navigation_budget_exceeded': 'Contents and heading details exceed the navigation limit for this repeated reading order. All chapters remain available through the chapter selector.',
 }
 
 

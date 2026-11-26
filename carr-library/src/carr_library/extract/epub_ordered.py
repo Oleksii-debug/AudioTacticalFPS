@@ -67,6 +67,10 @@ class EpubError(ValueError):
     """A fixed, non-source-bearing explanation of an unsupported EPUB."""
 
 
+class _NavigationBudgetExceeded(EpubError):
+    """An optional descriptor budget, distinct from XML and text budgets."""
+
+
 @dataclass
 class _Budget:
     xml_bytes: int = 0
@@ -83,7 +87,7 @@ class _Budget:
             separators=(',', ':')).encode('utf-8'))
         if (self.navigation_count > MAX_NAVIGATION
                 or self.navigation_bytes > MAX_NAVIGATION_BYTES):
-            raise EpubError('EPUB navigation budget exceeded.')
+            raise _NavigationBudgetExceeded('EPUB navigation budget exceeded.')
 
 
 class _TreeBuilder(ET.TreeBuilder):
@@ -539,7 +543,7 @@ def _navigation_label(node):
     return label
 
 
-def _navigation(archive, items, ncx_id, order, parsed, budget, warnings):
+def _navigation(archive, items, ncx_id, order, parsed, budget, warnings, *, navigation_budget):
     """Build optional contents without choosing between repeated occurrences."""
     occurrences = {}
     for ordinal, (_, path, _) in enumerate(order, 1):
@@ -560,7 +564,7 @@ def _navigation(archive, items, ncx_id, order, parsed, budget, warnings):
         return occurrences[path][0], anchors.get(fragment, 0)
 
     def append(output, row):
-        budget.navigation([row])
+        navigation_budget.navigation([row])
         output.append(row)
 
     toc, pages = [], []
@@ -681,13 +685,23 @@ def extract_epub(data: bytes):
             package, items, order, hints, ncx_id = _package(archive, budget, warnings)
             _encryption(archive, package, items, order, budget, warnings)
             records, parsed = [], {}
+            unique_navigation = _Budget()
+            navigation_disabled = False
             for index, (ident, path, linear) in enumerate(order, 1):
                 if path not in parsed:
                     chapter_warnings = set()
                     parsed[path] = (*_chapter(archive, path, budget, chapter_warnings), sorted(chapter_warnings))
                     warnings.update(chapter_warnings)
+                    # Unique source complexity still fails explicitly. Only
+                    # multiplying bounded descriptors across legacy repeated
+                    # spine occurrences may disable the optional navigation.
+                    unique_navigation.navigation(parsed[path][3])
                 raw, title, alternatives, headings, _, chapter_warnings = parsed[path]
-                budget.navigation(headings)
+                if not navigation_disabled:
+                    try:
+                        budget.navigation(headings)
+                    except _NavigationBudgetExceeded:
+                        navigation_disabled = True
                 locator = dict(spine_index=index, manifest_id=ident, href=path,
                                linear=linear, title=title)
                 budget.output_chars += len(raw) + sum(len(a['text']) for a in alternatives)
@@ -699,10 +713,26 @@ def extract_epub(data: bytes):
                     text_sha256=sha256(raw.encode('utf-8')).hexdigest(),
                     alternatives=[dict(a) for a in alternatives], physical_index=None,
                     printed_label=None, printed_label_verified=False,
-                    headings=[dict(heading) for heading in headings], warnings=list(chapter_warnings)))
+                    headings=[] if navigation_disabled else [dict(heading) for heading in headings],
+                    warnings=list(chapter_warnings)))
             if not any(row['raw_text'].strip() for row in records):
                 raise EpubError('EPUB contains no readable XHTML text.')
-            toc, page_hints = _navigation(archive, items, ncx_id, order, parsed, budget, warnings)
+            toc, page_hints = [], []
+            if not navigation_disabled:
+                toc, page_hints = _navigation(archive, items, ncx_id, order, parsed, budget, warnings,
+                                              navigation_budget=unique_navigation)
+                try:
+                    if toc:
+                        budget.navigation(toc)
+                    if page_hints:
+                        budget.navigation(page_hints)
+                except _NavigationBudgetExceeded:
+                    navigation_disabled = True
+            if navigation_disabled:
+                warnings.add('embedded_navigation_budget_exceeded')
+                toc, page_hints = [], []
+                for record in records:
+                    record['headings'] = []
     except EpubError:
         raise
     except Exception:

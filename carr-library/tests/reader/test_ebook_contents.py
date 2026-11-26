@@ -35,11 +35,14 @@ def _legacy_settings(extracted):
         warnings=extracted['warnings'])
 
 
-def _published(tmp_path, *, enhanced, mutate=None, revision_override=None):
+def _published(tmp_path, *, enhanced, mutate=None, revision_override=None, source_bytes=None):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Contents compatibility')
     source = tmp_path / 'source.epub'
-    write_book(source)
+    if source_bytes is None:
+        write_book(source)
+    else:
+        source.write_bytes(source_bytes)
     asset = snapshot(source.parent, source.name)
     extracted = extract_epub(asset.data)
     settings = json.loads(extraction_settings(extracted)) if enhanced else _legacy_settings(extracted)
@@ -244,3 +247,25 @@ def test_new_navigation_descriptor_remains_bounded_independently_of_legacy_setti
     assert len(config.encode('utf-8')) < ebook_contents.MAX_SETTINGS
     with pytest.raises(ValueError, match='navigation budget'):
         open_ebook(app, workspace, 'edition')
+
+
+def test_repeated_spine_navigation_budget_keeps_both_reader_apis_available(tmp_path):
+    fixtures = runpy.run_path(str(Path(__file__).parents[1] / 'extract' / 'test_epub_navigation.py'))
+    chapter = fixtures['chapter']('<h1 id="a">A</h1><h2 id="b">B</h2><h3 id="c">C</h3>')
+    source = fixtures['build_epub']([('one', 'EPUB/one.xhtml', chapter)], spine=['one'] * 1000)
+    app, workspace, revision, _, extracted, config = _published(tmp_path, enhanced=True, source_bytes=source)
+    assert len(extracted['records']) == 1000
+    assert all(record['raw_text'] == 'A\nB\nC' and record['headings'] == []
+               for record in extracted['records'])
+    assert extracted['toc'] == extracted['page_hints'] == []
+    assert 'embedded_navigation_budget_exceeded' in extracted['warnings']
+    assert len(canonical(json.loads(config)['ebook']).encode('utf-8')) <= ebook_contents.MAX_NAVIGATION
+    contents = open_ebook(app, workspace, 'edition')
+    assert len(contents['chapters']) == 1000
+    assert contents['toc'] == contents['page_hints'] == []
+    assert 'embedded_navigation_budget_exceeded' in contents['warnings']
+    legacy = read_ebook_section(app, workspace, 'edition', revision, 1000)
+    enhanced = read_chapter(app, workspace, 'edition', revision, 1000)
+    assert legacy.position == legacy.count == enhanced['ordinal'] == 1000
+    assert legacy.raw_text == enhanced['raw_text'] == 'A\nB\nC'
+    assert legacy.verified is enhanced['verified'] is False
