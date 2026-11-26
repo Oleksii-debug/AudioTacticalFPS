@@ -38,6 +38,8 @@ def verified_bundle(root, approved_hashes):
 
 def load_engine(root, approved_hashes):
     path = verified_bundle(root, approved_hashes)
+    from carr_library.offline_policy import disable_native_telemetry
+    disable_native_telemetry()
     from fastembed import TextEmbedding
     return TextEmbedding(model_name=MODEL, specific_model_path=path,
                          local_files_only=True, providers=['CPUExecutionProvider'], threads=2)

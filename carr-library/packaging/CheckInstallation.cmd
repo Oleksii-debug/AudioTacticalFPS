@@ -1,5 +1,10 @@
 @echo off
 setlocal
+set "ORT_DISABLE_TELEMETRY=1"
+set "HF_HUB_DISABLE_TELEMETRY=1"
+set "HF_HUB_OFFLINE=1"
+set "TRANSFORMERS_OFFLINE=1"
+set "DO_NOT_TRACK=1"
 if exist "%~dp0ocr\ocr-manifest.json" set "CARR_OCR_DIR=%~dp0ocr"
 if not exist "%~dp0.venv\Scripts\python.exe" (
   echo Run Install.cmd in this folder first.

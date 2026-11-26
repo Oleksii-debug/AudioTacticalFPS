@@ -189,7 +189,8 @@ def test_original_byte_drift_blocks_fresh_copy(app):
     retained.write_bytes(b'Altered retained source.')
     with pytest.raises(ValueError):
         app.copy(workspace, hit.ref, hit.revision, 'quote')
-    assert app.search(workspace, 'exact quotation')[0].verified is False
+    with pytest.raises(ValueError, match='retained asset digest mismatch'):
+        app.search(workspace, 'exact quotation')
     retained.write_bytes(original)
     assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'exact quotation'
 

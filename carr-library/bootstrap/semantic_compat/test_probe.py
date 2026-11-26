@@ -2,9 +2,47 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
-from probe import REQUIRED, evaluate, verified_bundle
+from types import SimpleNamespace
+from unittest.mock import patch
+from probe import REQUIRED, evaluate, load_engine, verified_bundle
 
 class ProbeTests(unittest.TestCase):
+    def test_runtime_policy_precedes_optional_model_import(self):
+        events = []
+        engine = object()
+        original_import = __import__
+
+        def construct(**options):
+            self.assertEqual(events, ['policy', 'import'])
+            self.assertTrue(options['local_files_only'])
+            events.append('construct')
+            return engine
+
+        def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == 'fastembed':
+                self.assertEqual(events, ['policy'])
+                events.append('import')
+                return SimpleNamespace(TextEmbedding=construct)
+            return original_import(name, globals, locals, fromlist, level)
+
+        # Bundle validation has its own byte-level tests. No optional runtime
+        # is loaded here: the import hook checks ordering before returning it.
+        with patch('probe.verified_bundle', return_value='verified-local-model'), \
+                patch('carr_library.offline_policy.disable_native_telemetry',
+                      side_effect=lambda: events.append('policy')), \
+                patch('builtins.__import__', side_effect=guarded_import):
+            self.assertIs(load_engine('unused', {}), engine)
+        self.assertEqual(events, ['policy', 'import', 'construct'])
+
+        events.clear()
+        with patch('probe.verified_bundle', return_value='verified-local-model'), \
+                patch('carr_library.offline_policy.disable_native_telemetry',
+                      side_effect=RuntimeError('Restart before loading the runtime')), \
+                patch('builtins.__import__', side_effect=guarded_import):
+            with self.assertRaisesRegex(RuntimeError, 'Restart'):
+                load_engine('unused', {})
+        self.assertEqual(events, [])
+
     def test_rank(self):
         class Fake:
             def embed(self, texts, batch_size):

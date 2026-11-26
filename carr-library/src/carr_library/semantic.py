@@ -193,16 +193,21 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
         if stopped():
             raise TimeoutError('Semantic search cancelled or timed out.')
 
+    def remaining():
+        check()
+        value = deadline - monotonic()
+        if value <= 0:
+            raise TimeoutError('Semantic search cancelled or timed out.')
+        # Repeated coarse clock ticks may round subtraction above the limit.
+        return min(timeout, value)
+
     def fallback(reason):
         check()
         if on_status is not None:
             on_status('The local model\'s text limit was reached. Keyword search used. '
                       'Shorten the query or narrow the source filters to use the local model.')
-        remaining = deadline - monotonic()
-        if remaining <= 0:
-            raise TimeoutError('Semantic search cancelled or timed out.')
         hits = search_active(db, workspace, allowed, query, limit=limit,
-                             timeout=remaining, cancelled=stopped)
+                             timeout=remaining(), cancelled=stopped)
         for hit in hits:
             hit['reason'] = 'Semantic window limit reached; using lexical thematic search. ' + reason
         return hits
@@ -240,11 +245,11 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
 
     def rank(query, candidates):
         check()
-        return ranker.rank(query, candidates, cancelled=stopped, timeout=deadline - monotonic())
+        return ranker.rank(query, candidates, cancelled=stopped, timeout=remaining())
 
     try:
         hits = search_windowed(workspace, passages, query, tokenizer=ranker.tokenizer,
-                               semantic_ranker=rank, limit=limit, timeout=deadline - monotonic(),
+                               semantic_ranker=rank, limit=limit, timeout=remaining(),
                                cancelled=stopped)
     except ValueError as exc:
         if 'budget' in str(exc).lower() or 'semantic window' in str(exc).lower():

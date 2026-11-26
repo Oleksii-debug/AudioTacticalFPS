@@ -69,7 +69,8 @@ def test_changed_pdf_bytes_fail_even_when_visible_page_is_unchanged(reviewed_sou
     retained.write_bytes(original + b'\n% changed source identity\n')
     with pytest.raises(ValueError):
         app.copy(workspace, hit.ref, hit.revision, 'quote')
-    assert not app.search(workspace, 'railway quotation')[0].verified
+    with pytest.raises(ValueError, match='retained asset digest mismatch'):
+        app.search(workspace, 'railway quotation')
     retained.write_bytes(original)
     assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'railway quotation'
 

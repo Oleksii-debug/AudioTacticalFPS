@@ -307,7 +307,7 @@ def search_catalog(db, workspace, query, *, collection=None, limit=20,
             cursor.close()
     check()
     # Keep the entire operation within the original deadline and snapshot.
-    remaining = deadline - monotonic()
+    remaining = min(timeout, deadline - monotonic())
     if remaining <= 0:
         raise TimeoutError('catalog thematic search cancelled or timed out')
     hits = search_active(db, workspace, allowed, query, limit=limit,
@@ -462,7 +462,7 @@ def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
     check()
     if not refs:
         return []
-    remaining = deadline - monotonic()
+    remaining = min(timeout, deadline - monotonic())
     if remaining <= 0:
         raise TimeoutError('hybrid search cancelled or timed out')
     # Native BM25 also verifies every source anchor before the model sees text.

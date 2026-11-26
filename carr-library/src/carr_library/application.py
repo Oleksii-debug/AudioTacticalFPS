@@ -25,7 +25,7 @@ from .citations.text_attestation import strict_text_attestor
 from .citations.pdf_review_attestation import ReviewedPage, pdf_review_attestor
 from .citations.printed_label_attestation import printed_label_guard
 from .ingest.pipeline import Ingest, canonical
-from .ingest.retained_assets import RetainedAssets
+from .ingest.retained_assets import RetainedAssets, MAX_BYTES as MAX_SOURCE_BYTES, SUFFIXES
 from .ingest.writer_guard import exclusive_writer, _regular_if_present
 from .reader.context import open_context
 from .research.saved_evidence import SavedEvidenceStore
@@ -137,6 +137,9 @@ class _CatalogPublisher:
                 self.db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
                     (workspace, edition, revision, review['physical'], review['raw_sha256'],
                      review['render_sha256'], review['renderer'], review['reviewer']))
+            # Reject inconsistent candidates while this publication can still
+            # roll back every catalog, source, review and search-index write.
+            self.storage._check()
 
     def check(self):
         return self.storage.check()
@@ -535,16 +538,53 @@ class LibraryApp:
             path.write_bytes(text.encode('utf-8'))
             return self.import_file(workspace, path, title=_name(title), **metadata)
 
-    def _asset_bytes(self, db, workspace, identity):
+    def _retained_source(self, db, workspace, identity, *, checked_assets=None,
+                         cancelled=lambda: False):
+        """Authenticate source identity independently of text-review authority.
+
+        The optional cache belongs only to one search snapshot and holds paths,
+        not source bytes. Authorization is still checked for every edition.
+        Missing or changed originals must never become ordinary preview results.
+        """
         self._authorize(db, workspace)
-        if identity.workspace != workspace or not db.execute(
-                'SELECT 1 FROM catalog_edition WHERE workspace=? AND id=? AND asset=?',
-                (workspace, identity.edition_id, identity.asset_sha256)).fetchone():
+        if identity.workspace != workspace:
             raise ValueError('Source is outside the selected library.')
-        return self.assets.resolve(identity.asset_sha256).read_bytes()
+        row = db.execute('SELECT a.mime,a.size FROM catalog_edition e '
+            'JOIN catalog_asset a ON a.digest=e.asset '
+            'WHERE e.workspace=? AND e.id=? AND e.asset=?',
+            (workspace, identity.edition_id, identity.asset_sha256)).fetchone()
+        if row is None:
+            raise ValueError('Source is outside the selected library.')
+        mime, size = row
+        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+            raise ValueError('Invalid original source catalog manifest.')
+        if cancelled():
+            raise InterruptedError('Source verification cancelled.')
+        key = identity.asset_sha256, mime, size
+        if checked_assets is not None and key in checked_assets:
+            return checked_assets[key], mime, size
+        # Existing retention resolution checks regular-file/link rules, the
+        # 64 MiB size bound, and the complete original-byte SHA256.
+        path = self.assets.resolve(identity.asset_sha256)
+        if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
+            raise ValueError('The original source differs from its catalog manifest.')
+        if cancelled():
+            raise InterruptedError('Source verification cancelled.')
+        if checked_assets is not None:
+            checked_assets[key] = path
+        return path, mime, size
+
+    def _asset_bytes(self, db, workspace, identity, *, cancelled=lambda: False):
+        path, mime, size = self._retained_source(db, workspace, identity, cancelled=cancelled)
+        original = snapshot(self.assets_dir, path.name, max_bytes=size)
+        if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
+            raise ValueError('The original source differs from its catalog manifest.')
+        if cancelled():
+            raise InterruptedError('Source verification cancelled.')
+        return original.data
 
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
-        resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity)
+        resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
         text = strict_text_attestor(db, workspace, resolve_asset)
 
         def review(identity, physical):
@@ -576,11 +616,12 @@ class LibraryApp:
         guarded = printed_label_guard(workspace, attest, lambda *_: None)
         return historical_loader(db, workspace, guarded), metadata, guarded
 
-    def _selected(self, db, workspace, ref, revision):
+    def _selected(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected = self._selections.get(ref)
-        return self._resolve_selection(db, workspace, selected, revision)
+        return self._resolve_selection(db, workspace, selected, revision, cancelled=cancelled)
 
-    def _resolve_selection(self, db, workspace, selected, revision):
+    def _resolve_selection(self, db, workspace, selected, revision, *, checked_assets=None,
+                           cancelled=lambda: False):
         if not selected or selected.workspace != workspace or selected.revision != revision:
             raise ValueError('Select a result in the active library again.')
         if selected.collection is not None:
@@ -597,6 +638,8 @@ class LibraryApp:
         if sha256(row['raw'].encode('utf-8')).hexdigest() != row['digest']:
             raise ValueError('The stored source text has been damaged.')
         identity = Identity(workspace, selected.edition, row['asset'], revision)
+        self._retained_source(db, workspace, identity, checked_assets=checked_assets,
+                              cancelled=cancelled)
         locator = (Locator('physical_page', row['physical'], row['printed'], bool(row['verified']))
                    if row['physical'] is not None else Locator('logical_segment', row['ordinal']))
         meta = db.execute('SELECT author,title,volume,edition_label FROM source_metadata '
@@ -651,6 +694,7 @@ class LibraryApp:
             results = []
             selections = {}
             shown = set()
+            checked_assets = {}
             for hit in hits:
                 budget.check()
                 row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
@@ -661,7 +705,8 @@ class LibraryApp:
                 selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
                     row[0], hit['start'], hit['end'], collection)
                 selected, identity, locator, raw, meta = self._resolve_selection(
-                    db, workspace, selections[ref], hit['revision_id'])
+                    db, workspace, selections[ref], hit['revision_id'],
+                    checked_assets=checked_assets, cancelled=budget.stopped)
                 if raw[selected.start:selected.end] != hit['raw_quote']:
                     raise ValueError('Search quotation differs from the original source.')
                 if result_mode is not None:
@@ -697,7 +742,8 @@ class LibraryApp:
         return tuple(results)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
-        selected, identity, locator, raw, metadata = self._selected(db, workspace, ref, revision)
+        selected, identity, locator, raw, metadata = self._selected(
+            db, workspace, ref, revision, cancelled=cancelled)
         load, attest_metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
         _, _, checked, verified = load(identity, locator)
         if checked != raw or not attest_metadata(identity, metadata):
@@ -710,12 +756,14 @@ class LibraryApp:
             anchor, load, _ = self._anchor(db, workspace, ref, revision, cancelled=cancelled)
             return open_context(workspace, (anchor,), load)
 
-    def preview(self, workspace, ref, revision, *, authorized_topic=None):
+    def preview(self, workspace, ref, revision, *, authorized_topic=None,
+                cancelled=lambda: False):
         """Unverified extraction is clearly labelled and cannot be copied as evidence."""
         with self.read(workspace) as db:
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            _, _, locator, raw, meta = self._selected(db, workspace, ref, revision)
+            _, _, locator, raw, meta = self._selected(
+                db, workspace, ref, revision, cancelled=cancelled)
             return f'{meta.title}\n{locator.display()}\nExtracted text; verification status is shown in the search result.\n\n{raw}'
 
     def copy(self, workspace, ref, revision, field='both', *, cancelled=lambda: False):

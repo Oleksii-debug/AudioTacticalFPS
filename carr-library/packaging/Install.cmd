@@ -1,5 +1,10 @@
 @echo off
 setlocal
+set "ORT_DISABLE_TELEMETRY=1"
+set "HF_HUB_DISABLE_TELEMETRY=1"
+set "HF_HUB_OFFLINE=1"
+set "TRANSFORMERS_OFFLINE=1"
+set "DO_NOT_TRACK=1"
 cd /d "%~dp0"
 if exist "%~dp0runtime\python.exe" (
   "%~dp0runtime\python.exe" -I -B "%~dp0install_windows.py"
