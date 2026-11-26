@@ -1,5 +1,7 @@
 """Real background services behind headless named-view controller boundaries."""
 from concurrent.futures import ThreadPoolExecutor
+import subprocess
+import sys
 from threading import Event, get_ident
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -114,6 +116,50 @@ def test_editing_the_goal_invalidates_approval(state):
     assert state.library.topics(state.workspace) == ()
     assert not state.view.can_run
     assert 'Preview or load' in state.view.messages[-1][0]
+
+
+def test_load_review_and_resume_reconcile_only_the_recorded_export_publication(state):
+    """The UI must carry the service's checked crash checkpoint into its plan."""
+    outputs = state.tmp_path / 'outputs'
+    outputs.mkdir()
+    topic = state.library.create_topic(state.workspace, 'Exportable research')
+    service = LocalLibraryAssistant(state.library, state.workspace, output_root=outputs)
+    plan = service.plan(dict(steps=[dict(tool='export_topic',
+        arguments=dict(topic=topic, filename='outline.md'))]))
+    job = service.start(plan, approved=True)
+    child = '''import os, sys
+from carr_library.application import LibraryApp
+from carr_library.library_assistant import LocalLibraryAssistant
+original_link = os.link
+def crash_after_publication(source, destination, *args, **kwargs):
+    original_link(source, destination, *args, **kwargs)
+    os._exit(73)
+os.link = crash_after_publication
+app = LibraryApp(sys.argv[1])
+LocalLibraryAssistant.open_job(app, sys.argv[2], sys.argv[3]).run(sys.argv[3])
+'''
+    stopped = subprocess.run([sys.executable, '-I', '-c', child,
+        str(state.library.root), state.workspace, job['id']], timeout=20, check=False)
+    assert stopped.returncode == 73
+    target = outputs / 'outline.md'
+    before = target.read_bytes()
+    entries = tuple(sorted(path.name for path in outputs.iterdir()))
+    assert target.stat().st_nlink == 2 and len(entries) == 2
+
+    state.controller.load_job(job['id'])
+
+    assert state.controller.job_id == job['id'] and state.view.can_run
+    assert 'Saved plan loaded' in state.view.messages[-1][0]
+    assert 'Completed steps: 0/1' in state.view.result
+    assert target.read_bytes() == before and target.stat().st_nlink == 2
+    assert tuple(sorted(path.name for path in outputs.iterdir())) == entries
+    assert len(state.library.topics(state.workspace)) == 1
+    state.controller.approve_run()
+    assert 'Workflow complete' in state.view.messages[-1][0]
+    assert not state.view.can_run and 'Completed steps: 1/1' in state.view.result
+    assert target.read_bytes() == before and target.stat().st_nlink == 1
+    assert tuple(path.name for path in outputs.iterdir()) == ('outline.md',)
+    assert state.frame.unsaved_note == 'Keep this exact unsaved notebook draft.'
 
 
 def test_scope_change_before_execution_prevents_all_mutations(state):

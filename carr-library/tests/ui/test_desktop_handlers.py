@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -45,6 +46,7 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
@@ -120,16 +122,20 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     env['wx'].Button = Mock(return_value=Mock())
     env['wx'].ID_ANY, env['wx'].ALL = -1, 1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
-    installers = {name: Mock() for name in (
+    installation_order = []
+    installers = {name: Mock(side_effect=lambda frame, name=name: installation_order.append(name)) for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_academic_comparison_actions', 'install_library_assistant_actions',
         'install_audio_studio_actions', 'install_api_connection_actions')}
     env.update(installers)
-    ebook = Mock()
+    ebook = Mock(side_effect=lambda frame: installation_order.append('ebook'))
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
+    keyboard = Mock(side_effect=lambda frame: installation_order.append('keyboard'))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
+                        SimpleNamespace(install_keyboard_settings=keyboard))
 
     value._menus()
 
@@ -140,8 +146,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook):
+    for installer in (*installers.values(), ebook, keyboard):
         installer.assert_called_once_with(value)
+    assert installation_order[-1] == 'keyboard'
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide

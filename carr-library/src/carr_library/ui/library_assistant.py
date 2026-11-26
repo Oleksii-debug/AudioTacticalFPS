@@ -170,7 +170,7 @@ class LibraryWorkflowController:
             def work():
                 service = LocalLibraryAssistant.open_job(self.library, self.scope[0], identity)
                 job = service.load(identity)
-                return service, job, service._restore_plan(job['plan'])
+                return service, job, service._restore_plan(job['plan'], checkpoints=job['steps'])
             def complete(value):
                 self.service, job, self.plan = value
                 self.job_id = job['id']

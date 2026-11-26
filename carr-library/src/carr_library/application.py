@@ -36,6 +36,7 @@ from .research.topic_tree import TopicTree
 from .search import literal, thematic
 from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
 from .data_paths import guard_data_directory
+from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
 
 
 @dataclass(frozen=True)
@@ -232,8 +233,9 @@ class LibraryApp:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             raise
         except sqlite3.OperationalError as exc:
-            # Extended SQLite errors retain the primary result in the low byte.
-            code = getattr(exc, 'sqlite_errorcode', 0) & 0xff
+            # Include SQLite's extended BUSY/LOCKED codes in the same retry
+            # policy while preserving unrelated database errors.
+            code = (getattr(exc, 'sqlite_errorcode', 0) or 0) & 0xff
             if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             if code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
@@ -525,13 +527,13 @@ class LibraryApp:
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
+        """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
+        if path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
@@ -642,21 +644,27 @@ class LibraryApp:
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
                 publisher = _CatalogPublisher(storage, record)
-                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                  'application/epub+zip'):
+                if asset.mime in EXTENDED_MIMES or asset.mime in (
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
                         from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
                         settings = extraction_settings(extracted)
-                    else:
+                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
                         source_format = 'DOCX'
                         # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
+                    else:
+                        from .extract.document_formats import extract_document, extraction_settings
+                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
+                        source_format = FORMAT_BY_MIME[asset.mime].name
+                        settings = canonical(extraction_settings(extracted, asset.mime))
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
@@ -683,8 +691,10 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
+                            'format': source_format, 'warnings': extracted['warnings'],
                             'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown.'}
+                                       'printed pages are unknown. ' + (
+                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -703,24 +713,31 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] == 'complete':
-                        # Recovery verifies the retained checkpoint pages but does
-                        # not publish requested collection membership. Apply an
-                        # exact registration retry in its own checked transaction.
-                        # A superseded job must never reactivate an old revision.
+                    if result['state'] in ('complete', 'superseded'):
+                        if cancelled():
+                            raise InterruptedError('Import cancelled before catalog registration.')
+                        # Recovery validates the retained asset/configuration and
+                        # checkpoint/page identity, but does not replay catalog
+                        # registration. Apply the same atomic membership and
+                        # metadata-conflict gate as the DOCX/EPUB replay path.
+                        # A journal's terminal state alone is not proof that its
+                        # source was actually published. Never reactivate an old
+                        # revision when current metadata has superseded it.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
                             if cancelled():
                                 raise InterruptedError('Import cancelled before catalog registration.')
                             published = storage.db.execute(
-                                'SELECT r.workspace,r.edition,r.asset,a.revision,s.revision '
-                                'FROM revision r LEFT JOIN active a '
-                                'ON a.workspace=r.workspace AND a.edition=r.edition '
-                                'LEFT JOIN sealed s ON s.revision=r.id WHERE r.id=?',
+                                'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
+                                'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
+                                'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (published is None or tuple(published) !=
-                                    (workspace, record.edition_id, asset.digest, job, job)):
-                                raise ValueError('Completed import is no longer the active sealed source.')
+                            if (published is None or tuple(published[:3]) !=
+                                    (workspace, record.edition_id, asset.digest)
+                                    or published[3] is None):
+                                raise ValueError('Completed import is missing its sealed source revision.')
+                            if (published[3] == job) != (result['state'] == 'complete'):
+                                raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
@@ -1169,7 +1186,8 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination):
+    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
         from .library_backup import create_backup
-        return create_backup(self, destination)
+        return create_backup(self, destination, max_bytes=max_bytes,
+                             include_generated=include_generated, cancelled=cancelled)
 

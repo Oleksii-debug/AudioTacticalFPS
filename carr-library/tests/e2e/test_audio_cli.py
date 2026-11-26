@@ -41,6 +41,13 @@ class AudioCliTests(unittest.TestCase):
                       '--workspace', 'synthetic-library'])
             self.assertEqual(raised.exception.code, 2)
 
+    def test_document_format_listing_cannot_hide_an_audio_request(self):
+        for audio in (['--audio-voices'], ['--audio-script', 'script.txt', '--audio-preview'],
+                      ['--audio-plan', 'plan.json', '--audio-preview']):
+            with self.subTest(audio=audio), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
+                main([*audio, '--document-formats'])
+            self.assertEqual(raised.exception.code, 2)
+
 
 if __name__ == '__main__':
     unittest.main()

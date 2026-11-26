@@ -5,6 +5,7 @@ NFD/full casefold and whitespace folding are search-only; returned offsets are
 half-open Python code-point offsets into the original immutable page. No raw
 FTS syntax, stemming, cross-page stitching, or generated quotation.
 """
+from array import array
 from bisect import bisect_right
 from hashlib import sha256
 import re
@@ -60,16 +61,46 @@ def _ascii_mapped(text, check):
     return folded, offsets, offsets
 
 
+class _CompactOffsets:
+    """Source boundaries in a compact array; -1 is not a cluster boundary."""
+
+    def __init__(self, length):
+        self.values = array('i', [-1]) * (length + 1)
+
+    def __contains__(self, position):
+        return 0 <= position < len(self.values) and self.values[position] >= 0
+
+    def __getitem__(self, position):
+        if position not in self:
+            raise KeyError(position)
+        return self.values[position]
+
+    def __setitem__(self, position, value):
+        self.values[position] = value
+
+    def items(self):
+        return ((position, value) for position, value in enumerate(self.values) if value >= 0)
+
+
 def _mapped(text, check=lambda: None):
     """Map whole canonical clusters/whitespace runs, not partial casefold expansions."""
     # TXT books need not contain form-feed page boundaries. Mapping millions of
     # ordinary ASCII letters into two dictionaries exhausted the search deadline
     # and hundreds of megabytes even when the source was within MAX_CHARS.
-    # Keep the cluster-aware path for Unicode and small pages; long ASCII source
-    # segments need only the sparse whitespace map above.
+    # Long ASCII segments need only sparse whitespace offsets. Long Unicode
+    # segments keep the same cluster rules in compact integer arrays, avoiding
+    # two per-character dictionaries and millions of retained small strings.
     if len(text) >= _LONG_ASCII and text.isascii():
         return _ascii_mapped(text, check)
-    parts, starts, ends = [], {}, {}
+    compact = len(text) >= _LONG_ASCII
+    if compact:
+        check()
+        folded = _fold(text)
+        check()
+        starts, ends = _CompactOffsets(len(folded)), _CompactOffsets(len(folded))
+        parts = None
+    else:
+        parts, starts, ends = [], {}, {}
     i = pos = next_check = 0
     while i < len(text):
         if i >= next_check:
@@ -87,15 +118,22 @@ def _mapped(text, check=lambda: None):
                 if j % 1024 == 0:
                     check()
         part = _fold(text[i:j])
+        if compact and not folded.startswith(part, pos):
+            raise ValueError('unsupported normalization mapping')
         starts[pos] = i
         pos += len(part)
         ends[pos] = j
-        parts.append(part)
+        if not compact:
+            parts.append(part)
         i = j
     check()
-    folded = ''.join(parts)
-    if folded != _fold(text):
-        raise ValueError('unsupported normalization mapping')
+    if compact:
+        if pos != len(folded):
+            raise ValueError('unsupported normalization mapping')
+    else:
+        folded = ''.join(parts)
+        if folded != _fold(text):
+            raise ValueError('unsupported normalization mapping')
     return folded, starts, ends
 
 

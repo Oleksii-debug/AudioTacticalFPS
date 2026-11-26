@@ -1,5 +1,6 @@
 """Accessible, persistent file-import plans in the existing desktop host."""
 import unicodedata
+from ..extract.document_formats import file_dialog_wildcard
 
 
 def readable(value):
@@ -30,6 +31,37 @@ def row_details(row):
     message = result.get('message') or result.get('error')
     if message and message != row.get('message'):
         lines.append('Result: ' + readable(message))
+    warnings = result.get('warnings', ())
+    if isinstance(warnings, (list, tuple)) and warnings:
+        wording = {
+            'logical_locator_not_page': 'Locations are logical segments, not verified printed pages.',
+            'layout_not_verified': 'The document visual layout has not been verified.',
+            'html_active_or_nontext_content_omitted': 'HTML scripts and active or nontext content were omitted.',
+            'html_hidden_content_omitted': 'Hidden HTML content was omitted.',
+            'html_styles_not_applied': 'HTML styles were not applied; text hidden only by a stylesheet may appear.',
+            'html_images_and_media_not_transcribed': 'Images and media were not transcribed.',
+            'email_headers_not_authenticated': 'Email header metadata has not been authenticated.',
+            'email_attachments_omitted': 'Email attachments were omitted and were not opened.',
+            'email_attached_messages_omitted': 'Attached email messages were omitted.',
+            'email_related_resources_omitted': 'Related email resources were omitted.',
+            'formula_cells_not_read': 'Cells containing formulas were omitted.',
+            'formula_cells_not_evaluated': 'Spreadsheet formulas were not calculated.',
+            'stored_cell_values_not_formatted': 'Stored cell values are shown without spreadsheet display formatting.',
+            'hidden_sheets_not_read': 'Hidden sheets were omitted.',
+            'hidden_rows_not_read': 'Hidden rows were omitted.',
+            'hidden_columns_not_read': 'Hidden columns were omitted.',
+            'hidden_slides_not_read': 'Hidden slides were omitted.',
+            'external_resources_not_loaded': 'External resources were not loaded.',
+            'speaker_notes_master_slides_not_read': 'Speaker notes and master slides were omitted.',
+            'slide_shape_order_not_visual_order': 'Slide text follows stored shape order, which can differ from visual order.',
+            'inline_notes_images_not_read': 'Inline notes and images were omitted.',
+            'markdown_markup_preserved': 'Markdown notation is preserved as literal source text.',
+            'long_text_split_without_changing_characters': 'Long text was split into readable segments without changing characters.',
+        }
+        lines.append('Extraction notes:')
+        for warning in warnings[:100]:
+            if isinstance(warning, str):
+                lines.append(wording.get(warning, readable(warning[:256].replace('_', ' ')).capitalize() + '.'))
     if row.get('duplicate_of'):
         lines.append('Matches: ' + readable(row['duplicate_of']))
     if row.get('manifest'):
@@ -172,7 +204,7 @@ class ImportCenterActions:
     def add_files(self, event=None):
         import wx
         dialog = wx.FileDialog(self, 'Select books for an import plan',
-            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
+            wildcard=file_dialog_wildcard(),
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             paths = tuple(dialog.GetPaths()) if dialog.ShowModal() == wx.ID_OK else ()

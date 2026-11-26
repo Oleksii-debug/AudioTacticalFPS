@@ -27,7 +27,8 @@ def audio_requested(args):
 def validate_audio_arguments(args, parser):
     requested = audio_requested(args)
     if requested and (args.self_test or args.backup or args.restore or args.list_libraries
-                      or args.search is not None or getattr(args, 'lookup_doi', None) is not None):
+                      or args.search is not None or getattr(args, 'lookup_doi', None) is not None
+                      or getattr(args, 'document_formats', False)):
         parser.error('Choose one library or audio operation per command.')
     if args.audio_preview and not (args.audio_script or args.audio_plan):
         parser.error('--audio-preview requires --audio-script or --audio-plan.')

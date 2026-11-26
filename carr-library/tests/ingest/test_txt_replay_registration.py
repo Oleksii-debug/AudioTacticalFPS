@@ -88,8 +88,8 @@ def test_superseded_replay_never_reactivates_or_adds_membership(imported):
     app.update_metadata(ws, meta['edition_id'], title='Reviewed description')
     current, = app.search(ws, 'railway history', collection=first)
     assert current.revision != initial['id']
-    replay = app.import_file(ws, src, collections=(requested,), **meta)
-    assert replay['state'] == 'superseded' and not replay['verified']
+    with pytest.raises(ValueError, match='work identity conflict'):
+        app.import_file(ws, src, collections=(requested,), **meta)
     assert app.browse(ws, collection=requested) == ()
     after, = app.search(ws, 'railway history', collection=first)
     assert after.revision == current.revision and after.title == 'Reviewed description'
