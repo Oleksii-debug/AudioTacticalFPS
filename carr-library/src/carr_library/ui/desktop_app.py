@@ -726,7 +726,11 @@ class DesktopFrame(WorkspaceFrame):
         finally:
             dialog.Destroy()
         from .ocr_options import choose_ocr_config
-        config = choose_ocr_config(self, paths)
+        try:
+            config = choose_ocr_config(self,paths)
+        except Exception as exc:
+            self.report(f'Import not started: {exc}')
+            return
         if config is None:
             self.report('Import cancelled.')
             return

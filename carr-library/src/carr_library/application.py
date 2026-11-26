@@ -878,6 +878,8 @@ class LibraryApp:
             check()
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
+            if cancelled():
+                raise InterruptedError('PDF page review cancelled.')
             _, current, current_loc, current_raw, _ = self._selected(db, workspace, ref, revision)
             if (current, current_loc, current_raw) != (identity, locator, raw):
                 raise ValueError('The source changed during review.')

@@ -27,6 +27,13 @@ search available with an explicit fallback message.
 `specific_model_path`, `local_files_only=True` and two worker threads. The
 application passes it to `LibraryApp(data_dir, semantic_ranker=ranker)`.
 
+Before constructing a model session, the adapter explicitly disables ONNX
+Runtime telemetry and sets Hugging Face's offline and telemetry opt-out flags.
+Using local weights alone does not disable a dependency's diagnostic reporting.
+The complete test entrypoint also disables telemetry and rejects Python socket
+connections and name resolution. This is a test policy, not an operating-system
+network sandbox.
+
 The adapter reuses the existing `source_windows`, `search_windowed`, scoped
 SQLite BM25 and vendored Rifflux reciprocal-rank fusion. It does not generate
 text. Every hit retains its original edition, revision, page and exact Unicode

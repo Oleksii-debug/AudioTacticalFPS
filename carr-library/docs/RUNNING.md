@@ -7,6 +7,9 @@ reference. Unknown printed page numbers remain explicitly unknown.
 
 This is a development build. Windows and NVDA acceptance are recorded separately
 from automated checks; a successful installation is not an accessibility verdict.
+The prepared Windows bundle is for your private installation. Its Microsoft
+runtime terms are included; publishing or redistributing that binary package
+requires the applicable Microsoft redistribution grant.
 
 ## Windows offline package
 
@@ -22,6 +25,7 @@ After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
 startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
+When OCR is included, the checks also recognize a generated test image.
 These checks do not change your research data.
 
 A private complete package may include the verified Microsoft C++ runtime
@@ -32,9 +36,11 @@ rights. See `packaging/NATIVE_RUNTIME.md` in the source distribution.
 
 The complete package includes local Tesseract OCR with pinned English,
 Ukrainian and Slovak models and an orientation model. The launcher selects the
-included engine and models automatically. Scanned text remains a review
-candidate until you compare and explicitly approve it against the source page;
-OCR does not establish printed page numbers. No language download is needed.
+included engine and models automatically. Scanned pages wait for explicit
+independent review before the complete book is published for searching and
+quotation. OCR does not establish printed page numbers. No language download
+is needed. See `packaging/OCR_RUNTIME.md` in the source distribution for the
+review and runtime verification details.
 
 The default data location is `%LOCALAPPDATA%\Universal Research Library`.
 The portable launcher identifies its program folder. The application rejects
@@ -126,8 +132,8 @@ Cancel leaves it unchanged. Printed page numbers require separate verification.
 
 The `semantic` extra supplies the pinned FastEmbed runtime. A separately
 verified local model bundle is required; installing the extra alone does not
-download or approve model weights. The application must retain literal and
-lexical thematic search when the optional model is unavailable. The repository's
+download or approve model weights. Literal and lexical thematic search remain
+available when the optional model is unavailable. The repository's
 `packaging/MODEL_BUNDLE.md` records the model revision and checksum workflow.
 The complete semantic Windows package includes the checked MiniLM model and
 loads it from its own `models` folder. It makes no model download on startup.
@@ -156,18 +162,25 @@ in `packaging/windows-python.json`, sourced from uv 0.13.9's official download
 metadata. The bundler checks that SHA256 before unpacking with Python's standard
 tarfile data filter and retains the runtime's license files. Runtime downloads
 are build-time only.
+For the complete private installation, attach the verified native runtime with
+`packaging/add_native_runtime.py` after building the bundle. Follow
+`packaging/NATIVE_RUNTIME.md` for the exact pinned supplement and command.
+The application verifies and activates that separate DLL directory before
+loading wxPython or ONNX Runtime, preserving the original Python runtime files.
 
 To include semantic search, resolve/download `windows-semantic-cp311.lock`
 instead and pass `--model-dir` and `--model-manifest` to the bundler. It applies
 the application's pinned model verifier both before and after copying the
 model; the model's nine original files remain unchanged. Its Apache 2.0 license
 is included beside the model directory.
-To include the portable OCR runtime, pass `--ocr-dir` and
-`--ocr-source-archive`. The bundler verifies the package's
-`ocr/ocr-manifest.json` inventory before and after copying it. The runtime
-contains the required Windows DLLs, four pinned OCR models, and original
-license and build records. Its matching source archive is shipped alongside
-the runtime. See `packaging/OCR_RUNTIME.md` for the exact build command.
+To include portable OCR, pass `--ocr-dir prepared/ocr` and
+`--ocr-source-archive prepared/ocr-corresponding-source.tar`. The runtime has
+its own `ocr-manifest.json`; the bundler verifies every runtime file before and
+after copying, then checks the separately pinned corresponding-source archive.
+The application's OCR adapter verifies runtime and model files again when used.
+The runtime contains its required Windows DLLs, four pinned OCR models, and
+original license and build records. See `packaging/OCR_RUNTIME.md` for the
+exact build command.
 `--sbom` includes a native uv CycloneDX 1.5 runtime dependency inventory after
 checking that every package and version matches the dependency lock. The file
 hash manifest separately covers Python, the application, and optional model
@@ -190,7 +203,12 @@ The complete package also contains the Python runtime dependency notices from
 its publisher's exact build metadata, plus source-pinned notices for dependency
 wheels that omit their own license file. These are retained in `notices`.
 The separately licensed OCR tools include GPL/LGPL libraries. Their original
-notices and build records are retained with the runtime. The accompanying
-`ocr-corresponding-source.tar` contains matching source archives, recipes and
-patches. Keep the notices and corresponding-source archive with the package
-when redistributing it.
+notices and build records are in `ocr/licenses` and `ocr/provenance`;
+matching source archives, recipes and patches are retained in the included
+`ocr-corresponding-source.tar`. Keep these files with the package when
+redistributing it.
+Microsoft VC runtime terms, private-install notice and exact file provenance
+are retained in `native-runtime/licenses` and `native-runtime/provenance`.
+Microsoft DLL bytes are not
+included in the source repository. The private-install permission for this
+prepared package does not establish permission for public binary distribution.
