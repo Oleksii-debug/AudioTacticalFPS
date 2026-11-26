@@ -549,8 +549,9 @@ def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
     assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
 
 
-@pytest.mark.parametrize('choice,languages',[(0,'eng'),(1,'ukr'),(2,'slk'),(3,'eng+ukr+slk')])
-def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,choice,languages):
+@pytest.mark.parametrize('profile,languages', [('installed','eng'),('installed','ukr'),
+    ('fast','eng+script/Latin'),('best','ukr+slk')])
+def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,profile,languages):
     from carr_library.extract.page_ocr import Config
     from carr_library.ui import ocr_options
     f = frame(classes)
@@ -561,12 +562,13 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     monkeypatch.setitem(sys.modules,'wx',wx)
     chooser = Mock(wraps=ocr_options.choose_ocr_config)
     monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
+    selected = Config(languages=languages, model_profile=profile)
+    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent: selected)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     file_dialog = Mock()
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
-    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=Config(languages=languages)))
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -575,7 +577,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     call = f.library.import_files.call_args
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     config = call.kwargs['config']
-    assert config == Config(languages=languages)
+    assert config is selected
     complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
     assert 'Page 2 needs independent review' in f.report.call_args.args[0]
     assert 'Review pending imported page' in f.report.call_args.args[0]
@@ -594,7 +596,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=None))
+    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()

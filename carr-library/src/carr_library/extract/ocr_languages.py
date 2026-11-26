@@ -324,3 +324,18 @@ def _write_presets(root, presets):
                 os.close(directory)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def is_model_id(value):
+    """Validate one exact model ID; auxiliary models are inventory entries."""
+    return valid_model_code(value)
+
+
+def model_ids(languages):
+    """Preserve case/order while validating the bounded selector syntax."""
+    if not isinstance(languages, str) or not 0 < len(languages) <= MAX_SELECTED_MODELS * 72:
+        raise ValueError('invalid language selection')
+    selected = tuple(languages.split('+'))
+    if len(selected) > MAX_SELECTED_MODELS or not all(is_model_id(name) for name in selected):
+        raise ValueError('invalid language selection')
+    return selected

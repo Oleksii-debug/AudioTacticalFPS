@@ -6,6 +6,11 @@ on:
     paths:
       - carr-library/**
       - .github/workflows/carr-portable-snapshots.yml
+  push:
+    branches: [carr/v3-product-finish-20261126]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-portable-snapshots.yml
   workflow_dispatch:
 
 permissions:

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from carr_library.ui.ocr_options import choose_ocr_config
+from carr_library.ui.ocr_options import choose_ocr_config, choose_model_config
 from carr_library.ui import ocr_language_dialog
 from carr_library.extract.page_ocr import Config
 
@@ -23,7 +23,7 @@ def test_dialog_adapter_preserves_complete_model_selection(monkeypatch, expected
         return Dialog()
     monkeypatch.setattr(ocr_language_dialog, 'create_ocr_dialog', create)
     monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1))
-    result = choose_ocr_config(None, ['book.PDF'])
+    result = choose_model_config(None)
     assert result == Dialog.result
     assert observed['destroyed'] and observed['initial'] is None
 
@@ -33,7 +33,7 @@ def test_cancel_prevents_import_and_closes_dialog(monkeypatch):
     dialog = SimpleNamespace(ShowModal=lambda: 0, result=Config(), Destroy=lambda: observed.append('closed'))
     monkeypatch.setattr(ocr_language_dialog, 'create_ocr_dialog', lambda *args, **kwargs: dialog)
     monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1))
-    assert choose_ocr_config(None, ['scan.pdf']) is None
+    assert choose_model_config(None) is None
     assert observed == ['closed']
 
 

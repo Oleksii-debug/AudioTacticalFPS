@@ -8,11 +8,13 @@ and arbitrary neighboring files are never collected.
 from contextlib import contextmanager
 import hashlib
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
+import struct
 import tempfile
 import zipfile
 
@@ -24,6 +26,8 @@ from .jobs import check_cancelled, project_lock
 DEFAULT_BYTE_BUDGET = 1024 ** 4
 DEFAULT_FILE_BUDGET = 1000000
 MANIFEST_BUDGET = 64 * 1024 ** 2
+CENTRAL_DIRECTORY_BUDGET = 64 * 1024 ** 2
+MUSIC_STATE_BUDGET = 16 * 1024 ** 2
 BLOCK = 1024 * 1024
 _HEX = r'[0-9a-f]{64}'
 _STUDIO_KEYS = {'kind', 'version', 'mode', 'project_id', 'title', 'voice', 'language',
@@ -75,6 +79,9 @@ def _allowed(name):
         return True
     if re.fullmatch('audio/cache/' + _HEX + r'\.(wav|json|mid|music\.json)', name):
         return True
+    if re.fullmatch('audio/music-jobs/' + _HEX
+            + r'/(?:cue\.(?:wav|mid|music\.json)|cue\.music-work/(?:state\.json|part-[0-9]{8}\.wav))', name):
+        return True
     if re.fullmatch('audio/renders/' + _HEX + r'/[^/]+\.(wav|mp3|flac|ogg|opus|aac|m4a|m4b|aiff|wma|srt|vtt|json|ffmeta|mid)', name):
         return True
     return False
@@ -115,17 +122,172 @@ def _studio(payload):
 
 
 def _read_json(path, *, budget=MANIFEST_BUDGET):
-    if _safe(path).st_size > budget:
+    before = _safe(path)
+    if before.st_size > budget:
         raise ValueError('Project metadata exceeds the configured metadata budget.')
     with path.open('rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ValueError('Project metadata changed before reading.')
         raw = stream.read(budget + 1)
-    if len(raw) > budget:
-        raise ValueError('Project metadata exceeds the configured metadata budget.')
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ValueError('Project metadata changed during reading.')
+    if len(raw) > budget or len(raw) != before.st_size or _identity(_safe(path)) != _identity(before):
+        raise ValueError('Project metadata changed or exceeds the byte budget.')
     return decode_json(raw.decode('utf-8'))
 
 
-def _inventory(project_file, project_dir, *, include_cache, include_audio):
-    files = {'studio/project.json': project_file}
+def _checked_hash(path, *, maximum, cancelled):
+    before = _safe(path)
+    if before.st_size > maximum:
+        raise ValueError('Music checkpoint exceeds the snapshot byte budget.')
+    digest, size = hashlib.sha256(), 0
+    with path.open('rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ValueError('Music checkpoint changed before reading.')
+        while block := stream.read(min(BLOCK, before.st_size + 1 - size)):
+            check_cancelled(cancelled)
+            size += len(block)
+            if size > before.st_size:
+                raise ValueError('Music checkpoint grew while reading.')
+            digest.update(block)
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ValueError('Music checkpoint changed while reading.')
+    if size != before.st_size or _identity(_safe(path)) != _identity(before):
+        raise ValueError('Music checkpoint changed while reading.')
+    return digest.hexdigest()
+
+
+def _music_inventory(project_dir, include, *, file_budget, byte_budget, cancelled):
+    """Collect accepted music chunks and checked resume state, never scratch."""
+    from .ffmpeg import wav_info
+    from .music import COMPOSER_VERSION, _settings
+    from .models import SAMPLE_RATES
+
+    root = project_dir / 'music-jobs'
+    if not root.exists() and not root.is_symlink():
+        return
+    _safe(root, directory=True)
+    with os.scandir(root) as entries:
+        for entry in entries:
+            check_cancelled(cancelled)
+            if not re.fullmatch(_HEX, entry.name):
+                continue
+            job = root / entry.name
+            _safe(job, directory=True)
+            state_path, output = job / 'cue.music-work' / 'state.json', job / 'cue.wav'
+            if not state_path.exists() and not state_path.is_symlink():
+                if output.exists() or output.is_symlink():
+                    raise ValueError('Completed music is missing its validated resume state.')
+                continue
+            prefix = 'audio/music-jobs/' + entry.name + '/'
+            include(prefix + 'cue.music-work/state.json', state_path)
+            state = _read_json(state_path, budget=MUSIC_STATE_BUDGET)
+            if (type(state) is not dict or set(state) != {'schema_version', 'settings_sha256', 'settings', 'chunks'}
+                    or type(state['schema_version']) is not int or state['schema_version'] != 1
+                    or type(state['chunks']) is not dict or len(state['chunks']) > file_budget
+                    or type(state['settings']) is not dict):
+                raise ValueError('Invalid music checkpoint state.')
+            settings = state['settings']
+            known = {'version', 'engine', 'frames', 'sample_rate', 'mood', 'tempo', 'seed',
+                     'gain', 'ffmpeg_sha256', 'build_sha256', 'model'}
+            if (set(settings) != known or settings['version'] != COMPOSER_VERSION
+                    or settings['engine'] not in ('procedural', 'musicgen')
+                    or type(settings['frames']) is not int or settings['frames'] < 1
+                    or type(settings['sample_rate']) is not int or settings['sample_rate'] not in SAMPLE_RATES
+                    or settings['frames'] > 10**12 * settings['sample_rate']
+                    or any(not isinstance(settings[key], str) or not re.fullmatch(_HEX, settings[key])
+                           for key in ('ffmpeg_sha256', 'build_sha256'))):
+                raise ValueError('Invalid music checkpoint settings.')
+            frames, rate = settings['frames'], settings['sample_rate']
+            _, tempo = _settings(frames / rate, settings['mood'], settings['tempo'],
+                                settings['seed'], settings['gain'], rate)
+            model = settings['model']
+            if settings['engine'] == 'procedural':
+                if model is not None:
+                    raise ValueError('Procedural music cannot claim a neural model.')
+            elif (type(model) is not dict
+                    or set(model) != {'engine', 'model_id', 'revision', 'license', 'manifest_sha256'}
+                    or any(not isinstance(value, str) or not value or len(value) > 4096 for value in model.values())
+                    or model['engine'] != 'musicgen' or not re.fullmatch(_HEX, model['manifest_sha256'])
+                    or not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', model['revision'])):
+                raise ValueError('Invalid music checkpoint model identity.')
+            fingerprint = hashlib.sha256(json.dumps(settings, sort_keys=True, separators=(',', ':'),
+                                                      allow_nan=False).encode('utf-8')).hexdigest()
+            if state['settings_sha256'] != fingerprint:
+                raise ValueError('Music checkpoint settings checksum mismatch.')
+            chunk_size = rate * 16 * 60 / tempo if settings['engine'] == 'procedural' else rate * 25
+            planned = math.ceil(frames / chunk_size)
+            if len(state['chunks']) > planned:
+                raise ValueError('Music checkpoint contains too many accepted chunks.')
+            parent = None
+            for number in range(len(state['chunks'])):
+                check_cancelled(cancelled)
+                record = state['chunks'].get(str(number))
+                wanted = min(frames, round((number + 1) * chunk_size)) - round(number * chunk_size)
+                if (type(record) is not dict or set(record) != {'frames', 'sha256', 'parent_sha256'}
+                        or type(record['frames']) is not int or record['frames'] != wanted
+                        or not isinstance(record['sha256'], str) or not re.fullmatch(_HEX, record['sha256'])
+                        or record['parent_sha256'] != (parent if settings['engine'] == 'musicgen' else None)):
+                    raise ValueError('Music checkpoint has invalid or discontinuous accepted chunks.')
+                name = f'cue.music-work/part-{number:08d}.wav'
+                chunk = job / name
+                include(prefix + name, chunk)
+                info = wav_info(chunk)
+                if ((info.frames, info.rate, info.channels) != (wanted, rate, 1)
+                        or _checked_hash(chunk, maximum=byte_budget, cancelled=cancelled) != record['sha256']):
+                    raise ValueError('Music checkpoint audio does not match its accepted checksum and frames.')
+                parent = record['sha256']
+            if not output.exists() and not output.is_symlink():
+                continue
+            if len(state['chunks']) != planned:
+                raise ValueError('Completed music lacks all its accepted chunks.')
+            include(prefix + 'cue.wav', output)
+            provenance_path = job / 'cue.music.json'
+            include(prefix + 'cue.music.json', provenance_path)
+            provenance = _read_json(provenance_path, budget=MUSIC_STATE_BUDGET)
+            info = wav_info(output)
+            provenance_fields = {'schema_version', 'engine', 'settings_sha256', 'frames', 'sample_rate',
+                'channels', 'sha256', 'chunks', 'reused_chunks', 'mood', 'tempo', 'seed', 'kind',
+                'assembly', 'model', 'listening_acceptance', 'rights'}
+            if (type(provenance) is not dict or set(provenance) != provenance_fields
+                    or type(provenance.get('schema_version')) is not int or provenance['schema_version'] != 1
+                    or any(type(provenance.get(key)) is not int for key in
+                           ('frames', 'sample_rate', 'channels', 'chunks', 'reused_chunks', 'seed'))
+                    or any(not isinstance(provenance.get(key), str) or not provenance[key]
+                           or len(provenance[key]) > 8192 or '\x00' in provenance[key]
+                           for key in ('kind', 'assembly', 'listening_acceptance', 'rights'))
+                    or provenance.get('settings_sha256') != fingerprint
+                    or any(provenance.get(key) != settings[key] for key in
+                           ('engine', 'frames', 'sample_rate', 'mood', 'tempo', 'seed', 'model'))
+                    or provenance.get('channels') != 1 or provenance.get('chunks') != planned
+                    or type(provenance.get('reused_chunks')) is not int
+                    or not 0 <= provenance['reused_chunks'] <= planned
+                    or (info.frames, info.rate, info.channels) != (frames, rate, 1)
+                    or provenance.get('sha256') != _checked_hash(output, maximum=byte_budget, cancelled=cancelled)):
+                raise ValueError('Completed music does not match its accepted provenance.')
+            if settings['engine'] == 'procedural':
+                include(prefix + 'cue.mid', job / 'cue.mid')
+
+
+def _inventory(project_file, project_dir, *, include_cache, include_audio,
+               file_budget=DEFAULT_FILE_BUDGET, byte_budget=DEFAULT_BYTE_BUDGET,
+               cancelled=lambda: False):
+    files, total, path_bytes = {}, 0, 0
+
+    def include(name, path):
+        nonlocal total, path_bytes
+        check_cancelled(cancelled)
+        _member(name)
+        info = _safe(path)
+        total += info.st_size
+        path_bytes += len(name.encode('utf-8')) + 128
+        if len(files) + 1 > file_budget or path_bytes > MANIFEST_BUDGET:
+            raise ValueError('The project exceeds the configured snapshot file or metadata budget.')
+        if total > byte_budget:
+            raise ValueError('The project exceeds the configured snapshot byte budget.')
+        files[name] = path
+
+    include('studio/project.json', project_file)
     recovery = project_file.with_name(project_file.name + '.recovery.json')
     if recovery.exists() or recovery.is_symlink():
         data = _read_json(recovery)
@@ -134,32 +296,31 @@ def _inventory(project_file, project_dir, *, include_cache, include_audio):
                 or data['version'] != 1 or data['project_id'] != _read_json(project_file)['project_id']):
             raise ValueError('The recovery draft is invalid or belongs to another project.')
         _studio(data['project'])
-        files['studio/project.json.recovery.json'] = recovery
+        include('studio/project.json.recovery.json', recovery)
     if project_dir is None:
         return files
-    for base, directories, names in os.walk(project_dir, followlinks=False):
-        directory = Path(base)
-        relative = directory.relative_to(project_dir)
-        if relative == Path('.'):
-            permitted = {'assets'} | ({'cache'} if include_cache else set()) | ({'renders'} if include_audio else set())
-            directories[:] = [name for name in directories if name in permitted]
-        elif relative.parts[0] == 'cache':
-            directories[:] = []  # Corrupt/quarantined chunks are never resumed.
-        elif relative.parts[0] == 'assets':
-            directories[:] = []
-        elif relative.parts[0] == 'renders' and len(relative.parts) == 1:
-            directories[:] = [name for name in directories if re.fullmatch(_HEX, name)]
-        else:
-            directories[:] = []
-        for child in directories:
-            _safe(directory / child, directory=True)
-        for name in sorted(names):
-            path = directory / name
-            member = 'audio/' + path.relative_to(project_dir).as_posix()
-            if _allowed(member):
-                _member(member)
-                _safe(path)
-                files[member] = path
+    def visit(directory, relative=()):
+        # Scandir enforces budgets during enumeration rather than first making
+        # unbounded per-directory name lists. Only this fixed tree is traversed.
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                check_cancelled(cancelled)
+                path = directory / entry.name
+                permitted = {'assets'} | ({'cache'} if include_cache else set()) | ({'renders'} if include_audio else set())
+                is_directory = (not relative and entry.name in permitted) or (
+                    relative == ('renders',) and re.fullmatch(_HEX, entry.name))
+                if is_directory:
+                    _safe(path, directory=True)
+                    visit(path, (*relative, entry.name))
+                else:
+                    member = 'audio/' + '/'.join((*relative, entry.name))
+                    if _allowed(member):
+                        include(member, path)
+
+    visit(project_dir)
+    if include_cache:
+        _music_inventory(project_dir, include, file_budget=file_budget,
+                         byte_budget=byte_budget, cancelled=cancelled)
     return files
 
 
@@ -195,7 +356,8 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
     with _snapshot_lock(root):
         check_cancelled(cancelled)
         project = _studio(_read_json(source))
-        paths = _inventory(source, root, include_cache=include_cache, include_audio=include_audio)
+        paths = _inventory(source, root, include_cache=include_cache, include_audio=include_audio,
+                           file_budget=file_budget, byte_budget=byte_budget, cancelled=cancelled)
         if len(paths) > file_budget:
             raise ValueError('The project exceeds the configured snapshot file budget.')
         before = {name: _identity(_safe(path)) for name, path in paths.items()}
@@ -230,7 +392,8 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
                         raise ValueError('A source file changed while the snapshot was being made.')
                     records.append({'path': name, 'size': size, 'sha256': checksum.hexdigest()})
                     on_status(f'Snapshot: saved {number} of {len(paths)} files.')
-                current = _inventory(source, root, include_cache=include_cache, include_audio=include_audio)
+                current = _inventory(source, root, include_cache=include_cache, include_audio=include_audio,
+                                     file_budget=file_budget, byte_budget=byte_budget, cancelled=cancelled)
                 if set(current) != set(paths) or any(_identity(_safe(current[name])) != before[name] for name in paths):
                     raise ValueError('The project changed during its snapshot. Try again while it is idle.')
                 manifest = {'kind': 'audio-studio-snapshot', 'version': 1, 'project_id': project['project_id'],
@@ -238,7 +401,7 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
                             'include_audio': include_audio,
                             'limitations': ['Audio Studio project only; not a full research-library backup.',
                                 'API profiles, credentials, executable helpers and installed voice/music models are excluded.',
-                                'Only completed/cache files are copied. Interrupted working scratch files are excluded.']}
+                                'Completed audio, accepted cached/music chunks and their checked resume state are copied when selected. Partial working scratch files are excluded.']}
                 raw_manifest = _json(manifest)
                 if len(raw_manifest) > MANIFEST_BUDGET:
                     raise ValueError('Snapshot manifest exceeds its metadata budget.')
@@ -255,6 +418,63 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
                     'project_id': project['project_id'], 'limitations': manifest['limitations']}
         finally:
             stage.unlink(missing_ok=True)
+
+
+def _preflight_archive(stream, size, *, file_budget, cancelled):
+    """Count bounded central records before ZipFile allocates its inventory.
+
+    Studio writes comment-free single-disk ZIP/ZIP64. End-record entry counts
+    alone are insufficient because ZipFile scans to the directory's end.
+    """
+    if size < 22:
+        raise ValueError('Truncated audio snapshot archive.')
+    end = size - 22
+    stream.seek(end)
+    try:
+        signature, disk, directory_disk, disk_count, count, length, offset, comment = struct.unpack(
+            '<4s4H2LH', stream.read(22))
+        if signature != b'PK\x05\x06' or disk or directory_disk or disk_count != count or comment:
+            raise ValueError('Unsupported audio snapshot end record.')
+        legacy, locator = (count, length, offset), b''
+        if end >= 20:
+            stream.seek(end - 20)
+            locator = stream.read(20)
+        if locator.startswith(b'PK\x06\x07') or count == 0xffff or length == 0xffffffff or offset == 0xffffffff:
+            if end < 76:
+                raise ValueError('Truncated audio ZIP64 end record.')
+            signature, disk, end64, disks = struct.unpack('<4sLQL', locator)
+            if signature != b'PK\x06\x07' or disk or disks != 1 or end64 + 56 != end - 20:
+                raise ValueError('Unsupported audio ZIP64 locator.')
+            stream.seek(end64)
+            values = struct.unpack('<4sQ2H2L4Q', stream.read(56))
+            signature, record_size, _, _, disk, directory_disk, disk_count, count, length, offset = values
+            if signature != b'PK\x06\x06' or record_size != 44 or disk or directory_disk or disk_count != count:
+                raise ValueError('Unsupported audio ZIP64 end record.')
+            if any(old != sentinel and old != actual for old, actual, sentinel in
+                   zip(legacy, (count, length, offset), (0xffff, 0xffffffff, 0xffffffff))):
+                raise ValueError('Conflicting audio snapshot directory lengths.')
+            end = end64
+    except struct.error as exc:
+        raise ValueError('Truncated audio snapshot end record.') from exc
+    if (not 0 < count <= file_budget + 1 or not 0 < length <= CENTRAL_DIRECTORY_BUDGET
+            or offset < 30 or offset + length != end or length < 46 * count):
+        raise ValueError('Audio snapshot directory exceeds its budget or is inconsistent.')
+    stream.seek(offset)
+    for _ in range(count):
+        check_cancelled(cancelled)
+        header = stream.read(46)
+        if len(header) != 46 or header[:4] != b'PK\x01\x02':
+            raise ValueError('Invalid audio snapshot central-directory record.')
+        name_size, extra_size, comment_size = struct.unpack_from('<3H', header, 28)
+        if not 0 < name_size <= 4096 or extra_size > 4096 or comment_size:
+            raise ValueError('Unsupported audio snapshot directory metadata.')
+        if stream.tell() + name_size + extra_size > offset + length:
+            raise ValueError('Truncated audio snapshot central directory.')
+        stream.seek(name_size + extra_size, os.SEEK_CUR)
+    if stream.tell() != offset + length:
+        raise ValueError('Audio snapshot directory count disagrees with its actual records.')
+    stream.seek(0)
+    return count
 
 
 def _archive_manifest(archive, *, byte_budget, file_budget):
@@ -288,6 +508,9 @@ def _archive_manifest(archive, *, byte_budget, file_budget):
                 or not isinstance(record['sha256'], str) or not re.fullmatch(_HEX, record['sha256'])):
             raise ValueError('Invalid snapshot file record.')
         name = _member(record['path'])
+        if ((not value['include_cache'] and name.startswith(('audio/cache/', 'audio/music-jobs/')))
+                or (not value['include_audio'] and name.startswith('audio/renders/'))):
+            raise ValueError('Snapshot files disagree with the selected content scope.')
         if name.casefold() in folded:
             raise ValueError('Duplicate snapshot file record.')
         folded.add(name.casefold())
@@ -300,6 +523,41 @@ def _archive_manifest(archive, *, byte_budget, file_budget):
         if archive.getinfo(name).file_size != record['size']:
             raise ValueError('Snapshot member size does not match its manifest.')
     return value, expected
+
+
+@contextmanager
+def _checked_archive(source, *, file_budget, cancelled):
+    before = _safe(source)
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    with os.fdopen(os.open(source, flags), 'rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != _identity(before):
+            raise ValueError('Audio snapshot changed before it was opened.')
+        count = _preflight_archive(stream, before.st_size, file_budget=file_budget, cancelled=cancelled)
+        try:
+            with zipfile.ZipFile(stream, 'r') as archive:
+                if len(archive.infolist()) != count:
+                    raise ValueError('Audio snapshot inventory count is inconsistent.')
+                yield archive
+        except zipfile.BadZipFile as exc:
+            raise ValueError('Invalid or damaged audio snapshot archive.') from exc
+        if (_identity(os.fstat(stream.fileno())) != _identity(before)
+                or _identity(_safe(source)) != _identity(before)):
+            raise ValueError('Audio snapshot changed during restore.')
+
+
+def _check_restored_music(stage, records, *, file_budget, byte_budget, cancelled):
+    expected = {name for name in records if name.startswith('audio/music-jobs/')}
+    seen = set()
+
+    def include(name, path):
+        if name not in expected or name in seen:
+            raise ValueError('Music checkpoint contents disagree with the snapshot inventory.')
+        seen.add(name)
+
+    _music_inventory(stage / 'audio', include, file_budget=file_budget,
+                     byte_budget=byte_budget, cancelled=cancelled)
+    if seen != expected:
+        raise ValueError('Snapshot contains music files that were not accepted checkpoints.')
 
 
 def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
@@ -324,7 +582,7 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
     with tempfile.TemporaryDirectory(prefix='.audio-restore-', dir=target.parent) as temporary:
         stage = Path(temporary) / 'project'
         stage.mkdir(mode=0o700)
-        with zipfile.ZipFile(source, 'r') as archive:
+        with _checked_archive(source, file_budget=file_budget, cancelled=cancelled) as archive:
             manifest, records = _archive_manifest(archive, byte_budget=byte_budget, file_budget=file_budget)
             if shutil.disk_usage(target.parent).free < manifest['total_bytes'] + 1024 * 1024:
                 raise OSError('There is not enough free space to restore the project.')
@@ -346,6 +604,8 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
                 if size != record['size'] or checksum.hexdigest() != record['sha256']:
                     raise ValueError('A snapshot file failed its SHA256 integrity check.')
                 on_status(f'Restore: verified {number} of {len(records)} files.')
+        _check_restored_music(stage, records, file_budget=file_budget,
+                              byte_budget=byte_budget, cancelled=cancelled)
         project_path = stage / 'studio' / 'project.json'
         project = _studio(_read_json(project_path))
         if project['project_id'] != manifest['project_id']:

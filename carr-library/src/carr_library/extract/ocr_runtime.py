@@ -15,7 +15,7 @@ import shutil
 import stat
 import sys
 
-from .ocr_languages import valid_model_code
+from .ocr_languages import is_model_id, model_ids
 
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
@@ -118,8 +118,12 @@ class OcrRuntime:
                 'files_sha256': dict(self.files_sha256)}
 
     def require_languages(self, languages, orientation=False):
+        try:
+            selected = model_ids(languages)
+        except ValueError:
+            raise OcrRuntimeError('Invalid OCR language selection.') from None
         if self.portable:
-            wanted = set(languages.split('+')) | ({'osd'} if orientation else set())
+            wanted = set(selected) | ({'osd'} if orientation else set())
             if not wanted <= set(self.languages):
                 raise OcrRuntimeError('The portable OCR bundle lacks the selected language or orientation model.')
 
@@ -195,12 +199,17 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         # The manifest cannot be changed between selecting and checking its files.
         if _read(root / MANIFEST, MAX_MANIFEST, remaining)[1] != manifest_hash:
             raise OcrRuntimeError('Portable OCR manifest changed during validation.')
-        languages = tuple(sorted(
-            str(PurePosixPath(name).relative_to(tessdata))[:-len('.traineddata')]
-            for name in files
-            if name.endswith('.traineddata') and PurePosixPath(name).is_relative_to(tessdata)
-            and valid_model_code(str(PurePosixPath(name).relative_to(tessdata))[:-len('.traineddata')])
-        ))
+        # Tesseract reports official script packs as script/Latin, distinct
+        # from a model called Latin at the tessdata root. Preserve that exact
+        # relative identity while keeping every payload file fingerprinted.
+        prefix = tessdata + '/'
+        languages = []
+        for name in files:
+            if name.startswith(prefix) and name.endswith('.traineddata'):
+                language = name[len(prefix):-len('.traineddata')]
+                if is_model_id(language):
+                    languages.append(language)
+        languages = tuple(sorted(languages))
         return OcrRuntime(str(root / executable), root / tessdata, data['target'],
                           manifest_hash, tuple(hashes), languages, root)
     except (OSError, UnicodeError, ValueError, TypeError) as exc:
@@ -221,13 +230,36 @@ def _native_target():
     return None
 
 
-def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None):
+def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None,
+                         model_profile='installed'):
+    """Select the engine and an explicit installed or verified managed profile."""
+    try:
+        model_ids(languages)
+    except ValueError:
+        raise OcrRuntimeError('Invalid OCR language selection.') from None
+    if model_profile not in ('installed', 'fast', 'best'):
+        raise OcrRuntimeError('Choose an installed, Fast or Best OCR model profile.')
+    if model_profile == 'installed':
+        return _discover_ocr_runtime(languages, orientation=orientation, remaining=remaining)
+    # The portable engine includes English, but need not bundle every selected
+    # managed model. Verify its original inventory before rebinding models.
+    runtime = _discover_ocr_runtime('eng', orientation=False, remaining=remaining)
+    from .managed_ocr import bind_model_profile
+    return bind_model_profile(runtime, model_profile, languages,
+                              orientation=orientation, remaining=remaining)
+
+
+def _discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None):
     """Prefer explicitly selected or package-relative OCR, then developer PATH.
 
     Automatic discovery is limited to the interpreter prefixes and their two
     immediate ancestors. A Windows bundle is never auto-executed on Linux.
     An explicit environment selection is also useful for build-host testing.
     """
+    try:
+        model_ids(languages)
+    except ValueError:
+        raise OcrRuntimeError('Invalid OCR language selection.') from None
     explicit = os.environ.get('CARR_OCR_DIR')
     if explicit is not None:
         if not explicit or not Path(explicit).is_absolute():
@@ -285,7 +317,7 @@ def check_runtime(*, timeout=30):
         raise OcrRuntimeError('The OCR engine returned an unexpected version.')
     report = run('--list-langs')
     languages = [line.strip() for line in report.splitlines()
-                 if valid_model_code(line.strip())]
+                 if is_model_id(line.strip())]
     if 'eng' not in languages:
         raise OcrRuntimeError('The OCR engine cannot load English language data.')
     try:
