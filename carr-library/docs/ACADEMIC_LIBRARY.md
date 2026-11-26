@@ -45,7 +45,12 @@ All operations are local. Import does not fetch DOI metadata, resolve URLs,
 download full texts or open attachment paths. Explicit URLs accept HTTP/HTTPS
 without embedded credentials; storing a URL does not access it. DOI registrants
 and ISBNs use ASCII digits; ISBN checksums are verified. Identifier normalization
-does not create a missing identifier.
+does not create a missing identifier. DOI comparison folds ASCII A-Z only,
+preserving distinctions between non-ASCII code points. Resolver URL paths are
+strictly UTF-8 percent-decoded once; bare DOI percent signs remain literal.
+Resolver URLs with credentials, a query or a fragment are rejected explicitly.
+Registrant subprefixes and legacy shorter numeric registrants are supported;
+syntax validation does not assert that a DOI is registered or resolves.
 
 Private research notes are excluded from every export unless
 `include_notes=True` is explicitly selected. RIS, BibTeX and CSL JSON export the
@@ -71,6 +76,9 @@ RIS uses the already vendored MIT rispy parser/writer at
 unchanged. A local subclass preserves wrapped abstracts/notes and literal
 semicolon-containing URLs, after a strict framing check. The separate original
 `catalog.ris_preview` contract remains unchanged.
+The publication-title order is T2, then JF, then JO. Different alternate or
+abbreviated journal titles are reported in the preview rather than causing an
+otherwise valid batch to fail.
 
 CSL JSON accepts an array or a single reference object. It supports literal
 authors and structured family/given names, date-parts or a literal publication
@@ -130,6 +138,8 @@ workflows, rather than copying another application's implementation:
   selection and duplicate inspection before adding records.
 - [Official CSL input schema](https://github.com/citation-style-language/schema/blob/master/schemas/input/csl-data.json):
   bibliographic item, name and date interchange shapes.
+- [DOI Handbook](https://www.doi.org/doi-handbook/html/):
+  Basic Latin case equivalence, numeric registrants and URL percent-encoding rules.
 
 The first expansion implements the workflows described above. Native Windows
 and screen-reader acceptance must be recorded on the integrated final source;
