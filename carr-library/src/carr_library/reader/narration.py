@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import stat
 from tempfile import NamedTemporaryFile
@@ -33,10 +33,46 @@ MAX_PROJECTS = 1000
 MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
 _ID = re.compile(r'[0-9a-f]{32}')
 _FILE = re.compile(r'([0-9a-f]{32})(\.draft)?\.json')
+READING_REFERENCE_KIND = 'saved-reading-copy'
 
 
 def text_digest(value):
     return sha256(value.encode('utf-8')).hexdigest()
+
+
+def _original_path(value):
+    """Validate portable provenance without opening or requiring the source.
+
+    A restored project may refer to a disconnected drive or another operating
+    system. This field only prevents source overwrites; it never grants access.
+    """
+    if value is None:
+        return None
+    if (not isinstance(value, str) or not value or len(value) > 8192
+            or any(ord(char) < 32 for char in value)
+            or value.startswith(('//', '\\\\'))):
+        raise ValueError('The original text path must be an absolute local path.')
+    windows = PureWindowsPath(value)
+    if not PurePosixPath(value).is_absolute() and not windows.is_absolute():
+        raise ValueError('The original text path must be an absolute local path.')
+    if windows.drive and (not re.fullmatch('[A-Za-z]:', windows.drive) or ':' in value[2:]):
+        raise ValueError('The original text path must not use a network path or alternate data stream.')
+    return value
+
+
+def protect_original_path(original_path, destination):
+    """Reject an original filename and aliases, even after a project is reopened."""
+    original_path = _original_path(original_path)
+    if original_path is None:
+        return
+    original, selected = Path(original_path), Path(destination).absolute()
+    # Foreign-platform provenance remains intact on restore. It is not a local
+    # pathname and must not be interpreted relative to the current directory.
+    if not original.is_absolute():
+        return
+    if (selected.resolve() == original.resolve()
+            or (selected.exists() and original.exists() and selected.samefile(original))):
+        raise ValueError('The original source file is immutable. Choose a separate reading-copy or project filename.')
 
 
 def _body(value):
@@ -99,6 +135,7 @@ class NarrationProject:
     revisions: tuple[Revision, ...]
     cursor: int
     rules: tuple[PronunciationRule, ...] = ()
+    original_path: str | None = None
 
     def __post_init__(self):
         if not isinstance(self.id, str) or not _ID.fullmatch(self.id):
@@ -107,6 +144,9 @@ class NarrationProject:
         _body(self.original_text)
         if self.original_sha256 != text_digest(self.original_text):
             raise ValueError('Original reading text does not match its content digest.')
+        _original_path(self.original_path)
+        if self.source_location is not None and self.original_path is not None:
+            raise ValueError('A reading copy cannot replace its library source with an external file.')
         if self.source_location is not None:
             if type(self.source_location) is not ReadingLocation:
                 raise ValueError('A validated original source location is required.')
@@ -134,6 +174,9 @@ class NarrationProject:
     @property
     def provenance(self):
         if self.source_location is None:
+            if self.original_path is not None:
+                return (f'Reading copy imported from {self.original_path}. '
+                        'The original file stays unchanged. Edited text is not a verified quotation.')
             return 'Independent reading copy; no authenticated library source is attached.'
         where = self.source_location
         return (f'Reading copy of source edition {where.edition}, revision {where.revision}, '
@@ -141,10 +184,11 @@ class NarrationProject:
                 'Edited text is not a verified quotation. The original source stays unchanged.')
 
 
-def new_project(original_text='', *, title='Reading copy', source_location=None):
+def new_project(original_text='', *, title='Reading copy', source_location=None, original_path=None):
     text = _body(original_text)
     first = Revision(0, text, 'Original text', _now())
-    return NarrationProject(uuid4().hex, title, text, text_digest(text), source_location, (first,), 0)
+    return NarrationProject(uuid4().hex, title, text, text_digest(text), source_location,
+                            (first,), 0, original_path=original_path)
 
 
 def revise(project, text, *, label='Edited reading text'):
@@ -265,7 +309,7 @@ def comparison_text(project):
 def encode_project(project):
     if type(project) is not NarrationProject:
         raise ValueError('A validated reading project is required.')
-    value = dict(kind='carr-reading-copy', version=1, **asdict(project))
+    value = dict(kind='carr-reading-copy', version=2, **asdict(project))
     raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     if len(raw) > MAX_PROJECT_BYTES:
         raise ValueError('Reading project exceeds its storage budget.')
@@ -279,8 +323,10 @@ def decode_project(raw):
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
         fields = {'kind', 'version', 'id', 'title', 'original_text', 'original_sha256',
                   'source_location', 'revisions', 'cursor', 'rules'}
+        if type(value) is dict and value.get('version') == 2:
+            fields.add('original_path')
         if (type(value) is not dict or set(value) != fields or value['kind'] != 'carr-reading-copy'
-                or type(value['version']) is not int or value['version'] != 1
+                or type(value['version']) is not int or value['version'] not in (1, 2)
                 or type(value['revisions']) is not list or len(value['revisions']) > MAX_HISTORY
                 or type(value['rules']) is not list or len(value['rules']) > MAX_RULES):
             raise ValueError('Unsupported reading-project format.')
@@ -288,7 +334,7 @@ def decode_project(raw):
         revisions = tuple(Revision(**row) for row in value['revisions'])
         rules = tuple(PronunciationRule(**row) for row in value['rules'])
         return NarrationProject(value['id'], value['title'], value['original_text'], value['original_sha256'],
-                                location, revisions, value['cursor'], rules)
+                                location, revisions, value['cursor'], rules, value.get('original_path'))
     except (UnicodeError, TypeError, KeyError, RecursionError, ValueError) as exc:
         raise ValueError(f'The reading project is invalid; existing files were kept. {exc}') from exc
 
@@ -376,6 +422,7 @@ class NarrationStore:
             raise ValueError('Invalid reading-project save lease.')
         with exclusive_writer(self.root):
             path = self._path(project.id, draft, create=True)
+            protect_original_path(project.original_path, path)
             try:
                 previous = _read_bytes(path)
             except FileNotFoundError:
@@ -385,7 +432,8 @@ class NarrationStore:
                 raise ValueError('This reading copy changed elsewhere. Reopen it or save a new copy.')
             if previous is not None:
                 prior = validate_narration_payload(path.name, previous)
-                if (prior.original_text, prior.source_location) != (project.original_text, project.source_location):
+                if (prior.original_text, prior.source_location, prior.original_path) != (
+                        project.original_text, project.source_location, project.original_path):
                     raise ValueError('The original source of a reading project cannot be replaced.')
             temporary = None
             try:
@@ -445,17 +493,20 @@ class NarrationStore:
 
 
 def import_text(path, *, title=None):
-    raw = _read_bytes(Path(path), allow_empty=True)
+    path = Path(_original_path(str(Path(path).absolute())))
+    raw = _read_bytes(path, allow_empty=True)
     if len(raw) > MAX_TEXT_BYTES:
         raise ValueError('The UTF-8 text file exceeds the reading-section budget.')
     try:
         text = raw.decode('utf-8-sig')
     except UnicodeError as exc:
         raise ValueError('Choose a UTF-8 text file.') from exc
-    return new_project(text, title=title or Path(path).stem[:200] or 'Imported reading copy')
+    return new_project(text, title=title or path.stem[:200] or 'Imported reading copy',
+                       original_path=str(path.resolve(strict=True)))
 
 
 def export_text(project, path, *, private_root, overwrite=False):
+    protect_original_path(project.original_path, path)
     if Path(path).exists() and not overwrite:
         raise FileExistsError('Choose another filename or explicitly approve replacing the existing export.')
     write_export(path, project.current_text, private_root=private_root)
@@ -464,3 +515,42 @@ def export_text(project, path, *, private_root, overwrite=False):
 def save_as(project, *, title=None):
     """Fork a project identity while keeping immutable source/history provenance."""
     return replace(project, id=uuid4().hex, title=title or project.title)
+
+
+def reading_project_reference(project, *, saved_digest):
+    """Describe one explicitly saved reading revision for a one-way handoff."""
+    raw = encode_project(project)
+    if saved_digest != sha256(raw).hexdigest():
+        raise ValueError('Save this exact reading revision before preparing Audio Studio.')
+    return dict(kind=READING_REFERENCE_KIND, project_id=project.id,
+                revision=project.revisions[project.cursor].number,
+                project_sha256=saved_digest, original_sha256=project.original_sha256,
+                reading_sha256=text_digest(project.current_text),
+                source_location=None if project.source_location is None else asdict(project.source_location),
+                original_path=project.original_path)
+
+
+def validate_reading_project_reference(value, *, original_text, source_id):
+    """Validate stored handoff provenance without treating it as quotation authority.
+
+    reading_sha256 identifies the saved handoff revision. Later Studio edits or
+    undo can intentionally change the current derivative, so it is not compared
+    to the Studio draft's current text.
+    """
+    fields = {'kind', 'project_id', 'revision', 'project_sha256', 'original_sha256',
+              'reading_sha256', 'source_location', 'original_path'}
+    if (type(value) is not dict or set(value) != fields or value['kind'] != READING_REFERENCE_KIND
+            or not isinstance(value['project_id'], str) or not _ID.fullmatch(value['project_id'])
+            or type(value['revision']) is not int or value['revision'] < 0):
+        raise ValueError('Invalid saved reading-copy reference.')
+    for field in ('project_sha256', 'original_sha256', 'reading_sha256'):
+        if not isinstance(value[field], str) or not re.fullmatch('[0-9a-f]{64}', value[field]):
+            raise ValueError('Invalid saved reading-copy digest.')
+    if (text_digest(original_text) != value['original_sha256']
+            or source_id != f"reading-project:{value['project_id']}:revision:{value['revision']}"):
+        raise ValueError('The reading-copy reference does not match its immutable original.')
+    _original_path(value['original_path'])
+    location = None if value['source_location'] is None else _location(value['source_location'])
+    if location is not None and (location.text_sha256 != value['original_sha256'] or value['original_path'] is not None):
+        raise ValueError('The reading-copy source location does not match its original.')
+    return value

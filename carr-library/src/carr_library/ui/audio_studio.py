@@ -115,12 +115,23 @@ class StudioController:
         self.project_path = self.output_dir = self.result = None
         self._file_hash = self._saved_value = self._recovery_hash = None
 
+    def from_reading_project(self, project, *, saved_digest):
+        """Take one saved derivative into literal narration without writing back."""
+        from ..reader.narration import reading_project_reference
+        reference = reading_project_reference(project, saved_digest=saved_digest)
+        source_id = f"reading-project:{project.id}:revision:{reference['revision']}"
+        draft = NarrationDraft(project.original_text, source_id=source_id)
+        draft.edit_text(project.current_text, reason=f"Saved reading-copy revision {reference['revision']}")
+        self.new(project.original_text, title=project.title, source_id=source_id,
+                 source_reference=reference, input_kind='narration')
+        self.draft = draft
+        return self
+
     def _protect_original(self, selected):
+        from ..reader.narration import READING_REFERENCE_KIND, protect_original_path
         reference = self.source_reference
-        if isinstance(reference, dict) and reference.get('kind') == 'local-text' and reference.get('original_path'):
-            source = _local_path(reference['original_path'], 'original source file')
-            if selected.resolve() == source.resolve() or (selected.exists() and source.exists() and selected.samefile(source)):
-                raise ValueError('The original source file is immutable. Choose a separate project or reading-copy filename.')
+        if isinstance(reference, dict) and reference.get('kind') in ('local-text', READING_REFERENCE_KIND):
+            protect_original_path(reference.get('original_path'), selected)
 
     @property
     def script(self):
@@ -259,6 +270,10 @@ class StudioController:
         if reference is not None:
             if not isinstance(reference, dict) or len(_json_text(reference)) > self.loading_budget:
                 raise ValueError('The source reference is invalid.')
+            from ..reader.narration import READING_REFERENCE_KIND, validate_reading_project_reference
+            if reference.get('kind') == READING_REFERENCE_KIND:
+                validate_reading_project_reference(reference, original_text=values['draft'].source_text,
+                                                   source_id=values['draft'].source_id)
         values['source_reference'] = reference
         # Legacy independent scripts retain their established interpretation.
         # Imported sources use literal narration, including legacy page breaks.
@@ -287,6 +302,7 @@ class StudioController:
         if self.project_path is None or self._file_hash is None:
             return None
         path = self.project_path.with_name(self.project_path.name + '.recovery.json')
+        self._protect_original(path)
         if path.exists():
             raw = read_document(path, byte_budget=self.loading_budget)
             actual = hashlib.sha256(raw).hexdigest()

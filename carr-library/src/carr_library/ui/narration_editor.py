@@ -83,6 +83,17 @@ class NarrationController:
         export_text(candidate, path, private_root=self.store.root, overwrite=overwrite)
         return 'UTF-8 reading text exported. The project remains separate from its original source.'
 
+    def prepare_audio_studio(self, *, controller_factory=None):
+        """Explicitly save, then hand off a separate literal-narration snapshot."""
+        self.save()
+        self.guard()
+        if controller_factory is None:
+            from .audio_studio import StudioController
+            controller_factory = StudioController
+        studio = controller_factory(private_root=self.store.root)
+        studio.from_reading_project(self.project, saved_digest=self.saved_digest)
+        return studio
+
 
 def _dictionary_text(rules):
     # JSON interchange makes newlines, tabs and literal arrows unambiguous.
@@ -110,7 +121,7 @@ def _parse_rules(value):
 
 
 def open_narration_editor(parent, store, project, *, expected_digest=None, draft_digest=None,
-                          guard=lambda: None, dialogs=None, on_ready=None):
+                          guard=lambda: None, dialogs=None, on_ready=None, studio_factory=None):
     """Open one reading-copy editor; source provenance is always readable.
 
     The caller guards the captured workspace/source, not the current global
@@ -147,7 +158,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                           readonly=True, height=70)
     buttons = wx.WrapSizer(wx.HORIZONTAL)
     layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
-    state = {'closed': False, 'refreshing': False, 'last_autosaved': None}
+    state = {'closed': False, 'refreshing': False, 'last_autosaved': None, 'text_dirty': False}
     timer = wx.Timer(dialog)
 
     def say(message, *, focus=True):
@@ -165,9 +176,14 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             dialog.SetTitle('Reading copy — ' + controller.project.title)
         finally:
             state['refreshing'] = False
+            state['text_dirty'] = False
 
     def capture():
-        controller.set_text(editor.GetValue())
+        # A native multiline control may display CRLF as LF. Merely saving,
+        # exporting or opening Studio must not turn that display into an edit.
+        if state['text_dirty']:
+            controller.set_text(editor.GetValue())
+            state['text_dirty'] = False
 
     def run(operation, *, focus=True):
         if state['closed']:
@@ -190,6 +206,29 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                              controller.project.title)
         if title is not None:
             run(lambda: controller.save_as(title))
+
+    def open_audio_studio(event=None):
+        if state['closed']:
+            return
+        timer.Stop()
+        try:
+            capture()
+            studio = controller.prepare_audio_studio()
+            refresh()
+            guard()
+            factory = studio_factory
+            if factory is None:
+                from .audio_studio import AudioStudioDialog
+                factory = AudioStudioDialog
+            factory(dialog, studio).show()
+            guard()
+            say('Reading project saved. Audio Studio uses a separate literal narration project; '
+                'its edits do not replace this reading copy or the original source.')
+        except Exception as exc:
+            say('Audio Studio was not opened or could not finish: ' + str(exc))
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
 
     def preview_transform(title, text, description):
         capture()
@@ -299,6 +338,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
 
     def edited(event):
         if not state['refreshing'] and not state['closed']:
+            state['text_dirty'] = True
             timer.StartOnce(1200)
         event.Skip()
 
@@ -325,7 +365,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Normalize s&pacing', normalize), ('&Add pronunciation', add_rule),
         ('Pronunciation &dictionary', dictionary), ('Preview pro&nunciation', pronunciation),
         ('&Find and replace', replace_text), ('Compare &original', compare),
-        ('&Export UTF-8 text', export), ('C&lose', close),
+        ('&Export UTF-8 text', export), ('Save and open Audio S&tudio', open_audio_studio),
+        ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -339,6 +380,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         (wx.ACCEL_CTRL, ord('S'), ids[0]), (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), ids[1]),
         (wx.ACCEL_CTRL, ord('Z'), ids[2]), (wx.ACCEL_CTRL, ord('Y'), ids[3]),
         (wx.ACCEL_CTRL, ord('H'), ids[8]),
+        (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('A'), ids[11]),
     ]))
     dialog.Bind(wx.EVT_TIMER, auto, timer)
     dialog.Bind(wx.EVT_CLOSE, close)
@@ -353,7 +395,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             controls = dict(editor=editor, original=original, origin=origin, status=status,
                             save=native_buttons[0], save_as=native_buttons[1],
                             normalize=native_buttons[4], pronunciation=native_buttons[7],
-                            compare=native_buttons[9], close=native_buttons[-1])
+                            compare=native_buttons[9], audio_studio=native_buttons[11],
+                            close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
     finally:

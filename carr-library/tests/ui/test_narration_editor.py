@@ -190,3 +190,161 @@ def test_picker_without_library_only_exposes_independent_authored_projects(contr
     show_narration_projects(None, controller.store, dialogs=dialogs)
     assert [project.id for project in captured] == [controller.project.id]
     assert 'Private source copy' not in str(dialogs.messages)
+
+
+def test_save_to_studio_keeps_original_derivative_and_exact_saved_provenance(tmp_path):
+    from dataclasses import asdict
+    from hashlib import sha256
+    from carr_library.application import LibraryApp
+    from carr_library.reader.narration import encode_project
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.ui.audio_studio import StudioController
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Reading')
+    original = '# Heading\r\nDate: 2026-11-26\r\n[pause 2]\r\nExact source.'
+    book = app.add_text(workspace, 'Book', original)
+    page = ReadingDesk(app, workspace, book['edition']).page(1)
+    controller = NarrationController(NarrationStore(app.root),
+        new_project(page.raw_text, title='Prepared reading', source_location=page.location))
+    current = original.replace('Exact source.', 'Explicit reading derivative.')
+    controller.set_text(current)
+    studio = controller.prepare_audio_studio()
+    project, digest = controller.store.load(controller.project.id)
+    assert project == controller.project and digest == controller.saved_digest
+    assert digest == sha256(encode_project(project)).hexdigest()
+    assert studio.draft.source_text == original and studio.script == current
+    assert studio.input_kind == 'narration'
+    reference = studio.source_reference
+    assert reference['project_id'] == project.id
+    assert reference['revision'] == project.revisions[project.cursor].number == 1
+    assert reference['project_sha256'] == digest
+    assert reference['original_sha256'] == project.original_sha256
+    assert reference['reading_sha256'] == sha256(current.encode()).hexdigest()
+    assert reference['source_location'] == asdict(page.location)
+    plan = studio.plan()
+    assert plan.original_script == current
+    assert all(type(event).__name__ == 'Line' for scene in plan.scenes for event in scene.events)
+    assert '# Heading' in ''.join(event.text for scene in plan.scenes for event in scene.events)
+    assert '[pause 2]' in ''.join(event.text for scene in plan.scenes for event in scene.events)
+    saved_studio = tmp_path / 'audio-project.json'
+    studio.save(saved_studio)
+    reopened = StudioController(private_root=app.root).open(saved_studio)
+    assert reopened.source_reference == reference
+    assert reopened.draft.source_text == original and reopened.script == current
+    reopened.edit_script('Audio-only follow-up')
+    reopened.save()
+    assert controller.store.load(project.id) == (project, digest)
+    assert ReadingDesk(app, workspace, book['edition']).page(1).raw_text == original
+
+
+def test_studio_handoff_requires_successful_save_and_current_scope(controller):
+    from unittest.mock import Mock
+    factory = Mock()
+    controller.save()
+    other = NarrationController(controller.store, controller.project, expected_digest=controller.saved_digest)
+    controller.set_text('Newer saved text')
+    controller.save()
+    other.set_text('Stale text')
+    with pytest.raises(ValueError, match='changed elsewhere'):
+        other.prepare_audio_studio(controller_factory=factory)
+    factory.assert_not_called()
+    controller.guard = lambda: (_ for _ in ()).throw(ValueError('Source scope closed'))
+    with pytest.raises(ValueError, match='scope closed'):
+        controller.prepare_audio_studio(controller_factory=factory)
+    factory.assert_not_called()
+
+
+@pytest.mark.parametrize('edited', [False, True])
+def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp_path, monkeypatch, edited):
+    """Drive actual editor callbacks with a control that displays CRLF as LF."""
+    import itertools
+    import sys
+    from hashlib import sha256
+    from carr_library.ui.narration_editor import open_narration_editor
+
+    identifiers, queue = itertools.count(1), []
+    original = 'Exact original.\r\nДругий рядок.\r\n'
+    displayed = original.replace('\r\n', '\n')
+
+    class Window:
+        def __init__(self, *args, value='', style=0, **kwargs):
+            self.value, self.style = value.replace('\r\n', '\n'), style
+            self.handlers, self.identity = {}, next(identifiers)
+        def Bind(self, event, callback, *args, **kwargs):
+            self.handlers[event] = callback
+        def GetId(self):
+            return self.identity
+        def GetValue(self):
+            return self.value
+        def ChangeValue(self, value):
+            self.value = value.replace('\r\n', '\n')
+        def SetValue(self, value):
+            self.ChangeValue(value)
+            self.handlers['text'](SimpleNamespace(Skip=lambda: None))
+        def GetWindowStyleFlag(self):
+            return self.style
+        def SetWindowStyleFlag(self, style):
+            self.style = style
+        def ShowModal(self):
+            while queue:
+                queue.pop(0)()
+            return 1
+        def __getattr__(self, name):
+            if name in ('SetName', 'SetMinSize', 'SetInsertionPoint', 'SetFocus', 'SetTitle',
+                        'SetAcceleratorTable', 'SetSizer', 'SetEscapeId', 'EndModal', 'Destroy'):
+                return lambda *args: None
+            raise AttributeError(name)
+
+    class Sizer:
+        def __init__(self, *args):
+            pass
+        def Add(self, *args, **kwargs):
+            pass
+
+    class Timer:
+        def __init__(self, *args):
+            pass
+        def StartOnce(self, *args):
+            pass
+        def Stop(self):
+            pass
+
+    constants = ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL',
+                 'LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'ALL', 'EXPAND', 'TE_MULTILINE',
+                 'TE_READONLY', 'TE_PROCESS_TAB', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT')
+    wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate(constants)},
+        Dialog=Window, TextCtrl=Window, StaticText=Window, Button=Window,
+        BoxSizer=Sizer, WrapSizer=Sizer, Timer=Timer, ID_OK=1,
+        EVT_BUTTON='button', EVT_MENU='menu', EVT_TIMER='timer', EVT_CLOSE='close', EVT_TEXT='text',
+        AcceleratorTable=lambda rows: rows, CallAfter=lambda fn, *args: queue.append(lambda: fn(*args)))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    root = tmp_path / 'library'
+    root.mkdir()
+    store, project = NarrationStore(root), new_project(original)
+    captured = []
+
+    def studio_factory(parent, studio):
+        captured.append(studio)
+        return SimpleNamespace(show=lambda: studio.edit_script('Audio-only edit'))
+
+    def ready(dialog, controller, controls):
+        assert controls['editor'].GetValue() == displayed
+        dialog.handlers['timer'](None)
+        assert store.load(project.id, draft=True)[0].current_text == original
+        controls['save'].handlers['button']()
+        assert store.load(project.id)[0].current_text == original
+        assert len(controller.project.revisions) == 1
+        if edited:
+            controls['editor'].SetValue(displayed + 'Explicit editor change.')
+        controls['audio_studio'].handlers['button']()
+        assert len(captured) == 1
+        controls['close'].handlers['button']()
+
+    result = open_narration_editor(None, store, project, dialogs=Dialogs([]),
+                                   on_ready=ready, studio_factory=studio_factory)
+    expected = displayed + 'Explicit editor change.' if edited else original
+    assert result.original_text == original and result.current_text == expected
+    assert store.load(project.id)[0] == result
+    assert captured[0].draft.source_text == original
+    assert captured[0].source_reference['reading_sha256'] == sha256(expected.encode()).hexdigest()

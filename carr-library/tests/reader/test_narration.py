@@ -139,7 +139,7 @@ def test_malformed_saved_project_is_rejected(mutation):
 
 def test_duplicate_json_field_cannot_override_original_identity():
     raw = encode_project(new_project('text'))
-    raw = raw.replace(b'"version":1', b'"version":1,"version":1')
+    raw = raw.replace(b'"version":2', b'"version":2,"version":2')
     with pytest.raises(ValueError, match='Duplicate'):
         decode_project(raw)
 
@@ -278,3 +278,97 @@ def test_save_as_forks_project_without_retargting_source_or_erasing_history():
     assert fork.id != project.id and fork.title == 'Separate project'
     assert fork.original_text == project.original_text
     assert fork.revisions == project.revisions and fork.source_location == project.source_location
+
+
+def test_imported_source_path_survives_save_reopen_fork_and_blocks_alias_export(store, tmp_path):
+    import os
+    source = tmp_path / 'original.txt'
+    before = b'\xef\xbb\xbfOriginal\r\nSecond line\r\n'
+    source.write_bytes(before)
+    project = revise(import_text(source), 'Explicit reading derivative')
+    digest = store.save(project)
+    reopened, _ = store.load(project.id)
+    assert reopened.original_path == str(source.resolve())
+    assert reopened.original_text == 'Original\r\nSecond line\r\n'
+    assert save_as(reopened).original_path == reopened.original_path
+    for candidate in (source, source.parent / '.' / source.name):
+        with pytest.raises(ValueError, match='original source file is immutable'):
+            export_text(reopened, candidate, private_root=store.root, overwrite=True)
+    alias = tmp_path / 'original-alias.txt'
+    os.link(source, alias)
+    with pytest.raises(ValueError, match='original source file is immutable'):
+        export_text(reopened, alias, private_root=store.root, overwrite=True)
+    with pytest.raises(ValueError, match='cannot be replaced'):
+        store.save(replace(reopened, original_path=None), expected_digest=digest)
+    assert source.read_bytes() == alias.read_bytes() == before
+
+
+def test_v1_reading_projects_remain_readable_without_inventing_a_source_path():
+    original = source_project()
+    value = json.loads(encode_project(original))
+    assert value['version'] == 2
+    value['version'] = 1
+    del value['original_path']
+    loaded = decode_project(json.dumps(value).encode())
+    assert loaded == original and loaded.original_path is None
+    upgraded = json.loads(encode_project(loaded))
+    assert upgraded['version'] == 2 and upgraded['original_path'] is None
+    value['original_path'] = '/untrusted/extra.txt'
+    with pytest.raises(ValueError, match='Unsupported'):
+        decode_project(json.dumps(value).encode())
+
+
+@pytest.mark.parametrize('path', ['relative.txt', '../original.txt', '//server/share/file.txt',
+                                 r'\\server\share\file.txt', r'C:\source.txt:secret', 'https://example.test/file'])
+def test_saved_external_original_paths_are_local_absolute_provenance(path):
+    value = json.loads(encode_project(new_project('Original')))
+    value['original_path'] = path
+    with pytest.raises(ValueError, match='path'):
+        decode_project(json.dumps(value).encode())
+
+
+def test_missing_external_source_still_cannot_be_replaced(store, tmp_path):
+    source = tmp_path / 'original.txt'
+    source.write_text('Original')
+    project = import_text(source)
+    store.save(project)
+    source.unlink()
+    with pytest.raises(ValueError, match='original source file is immutable'):
+        export_text(store.load(project.id)[0], source, private_root=store.root)
+    assert not source.exists()
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_library_backup_preserves_new_source_path_and_exact_legacy_reading_bytes(tmp_path, legacy):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import create_backup, restore_backup
+
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Reading copies')
+    source = tmp_path / 'original.txt'
+    original_bytes = 'Exact original.\r\nДругий рядок.\r\n'.encode()
+    source.write_bytes(original_bytes)
+    store = NarrationStore(app.root)
+    project = revise(import_text(source), 'Explicit derivative')
+    store.save(project)
+    path = app.root / DIRECTORY / (project.id + '.json')
+    if legacy:
+        value = json.loads(path.read_bytes())
+        value['version'] = 1
+        del value['original_path']
+        path.write_bytes(json.dumps(value, ensure_ascii=False).encode())
+    saved = path.read_bytes()
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored, _ = NarrationStore(restored_root).load(project.id)
+    assert (restored_root / DIRECTORY / path.name).read_bytes() == saved
+    assert restored.original_text.encode() == original_bytes
+    assert restored.current_text == project.current_text
+    if legacy:
+        assert restored.original_path is None
+    else:
+        assert restored.original_path == str(source.resolve())
+        with pytest.raises(ValueError, match='original source file is immutable'):
+            export_text(restored, source, private_root=restored_root, overwrite=True)
+    assert source.read_bytes() == original_bytes

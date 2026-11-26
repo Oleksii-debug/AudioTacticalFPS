@@ -243,6 +243,36 @@ def test_original_imported_file_cannot_be_replaced_by_project_or_reading_export(
     assert original.read_text(encoding='utf-8') == 'Original source'
 
 
+def test_saved_reading_copy_requires_its_exact_save_digest_before_studio_mutation(controller):
+    from carr_library.reader.narration import encode_project, new_project
+    project = new_project('New original')
+    controller.new('Existing studio text', title='Keep this project')
+    before = controller.to_dict()
+    with pytest.raises(ValueError, match='Save this exact'):
+        controller.from_reading_project(project, saved_digest='0' * 64)
+    assert controller.to_dict() == before
+    digest = hashlib.sha256(encode_project(project)).hexdigest()
+    controller.from_reading_project(project, saved_digest=digest)
+    assert controller.script == controller.draft.source_text == 'New original'
+    assert controller.source_reference['project_sha256'] == digest
+
+
+def test_recovery_filename_cannot_replace_an_imported_original(tmp_path):
+    from carr_library.reader.narration import NarrationStore, import_text
+    from carr_library.ui.narration_editor import NarrationController
+    private = tmp_path / 'private'
+    private.mkdir()
+    source = tmp_path / 'studio.json.recovery.json'
+    source.write_text('Original source text', encoding='utf-8')
+    reading = NarrationController(NarrationStore(private), import_text(source))
+    studio = reading.prepare_audio_studio()
+    studio.save(tmp_path / 'studio.json')
+    studio.edit_script('Changed derivative')
+    with pytest.raises(ValueError, match='original source file is immutable'):
+        studio.save_recovery()
+    assert source.read_text(encoding='utf-8') == 'Original source text'
+
+
 def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     from carr_library.application import LibraryApp
     app = LibraryApp(tmp_path / 'library')
