@@ -447,7 +447,7 @@ def _native_types():
             self.details.SetName('Import preview details and warnings')
             self.details.SetMinSize((-1, 180))
             layout.Add(self.details, 1, wx.EXPAND | wx.ALL, 8)
-            self.skip_duplicates = wx.CheckBox(self, label='Skip detected duplicates when importing')
+            self.skip_duplicates = wx.CheckBox(self, label='Skip possible duplicates, including matching titles, authors and year')
             self.skip_duplicates.SetValue(False)
             layout.Add(self.skip_duplicates, 0, wx.ALL, 8)
             self.status = wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE)
