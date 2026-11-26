@@ -33,6 +33,8 @@ from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
+from .federated_search import install_federated_search_actions
+from .query_manager import install_query_manager_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -496,6 +498,8 @@ class DesktopFrame(WorkspaceFrame):
         install_ebook_reader(self)
         install_ebook_actions(self)
         install_catalog_insights_actions(self)
+        install_federated_search_actions(self)
+        install_query_manager_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -1080,6 +1084,8 @@ class DesktopFrame(WorkspaceFrame):
             'Use Apply filters, Next page and Previous page to browse every matching reference.\n'
             'Academic library imports are reviewed before saving. Its exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
+            'Ctrl+Alt+F opens Research Search Center for explicitly selected libraries and source metadata filters.\n'
+            'Research, Manage saved topic searches creates, edits, archives or restores searches of quotations and notes in the active topic.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
             'F1 inside the reader explains page navigation and bookmarks.\n'
@@ -1093,7 +1099,8 @@ class DesktopFrame(WorkspaceFrame):
             'In Export topic, choose Word or HTML for a readable research document with heading navigation.\n'
             'The Research menu also opens Library overview, Source metadata and indexing checklist, '
             'and Export source comparison matrix for this library or one of its collections.\n'
-            'Choose a library or topic, then Open selected scope. All searches stay inside that library.\n'
+            'Choose a library or topic, then Open selected scope. The Search tab stays inside that library.\n'
+            'Research Search Center searches only the libraries explicitly checked in its dialog.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'

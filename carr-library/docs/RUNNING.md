@@ -219,6 +219,24 @@ interchange details.
 
 ## Research from the keyboard
 
+### Search several libraries and manage saved criteria
+
+Press **Ctrl+Alt+F**, or choose **Research, Research Search Center...**.
+Only the current library is selected initially. Use Space to select additional
+libraries, then enter a phrase and optional title, author, language or edition
+filters. Results identify their originating library and verification status.
+Context, copying and saving recheck the original source; saving offers topics
+from the result's own library. This dialog preserves the active notebook and
+unsaved note. **Cancel operation** stops pending work without publishing partial
+results.
+
+With a research topic open, choose **Research, Manage saved topic searches…**
+to create or edit criteria for saved quotations or research notes, run the
+current definition, duplicate it, archive it or restore it. Each run searches
+the topic's current evidence. Definitions survive reopening and normal library
+backup/restore. See [academic search](ACADEMIC_SEARCH.md) for limits, source
+safeguards and the headless `--list-libraries` / `--search` commands.
+
 ### Library and collection tools
 
 Press **Ctrl+Shift+L**, or choose **Library, Library tools**. Choose the entire
