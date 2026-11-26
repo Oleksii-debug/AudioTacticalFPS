@@ -21,7 +21,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'ocr-language-presets.json')
+           'evidence-drafts.json', 'ocr-language-presets.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -64,7 +64,9 @@ def sidecar_limit(name):
     if name == 'keybindings.json':
         return _model('keybindings').MAX_BYTES
     if name == 'keyboard-shortcuts.json':
-        return _model('ui.keyboard_commands').MAX_BYTES
+        return _model('keyboard_preferences').MAX_BYTES
+    if name == 'evidence-drafts.json':
+        return _model('evidence_drafts').MAX_BYTES
     if name == 'ocr-language-presets.json':
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
@@ -124,7 +126,19 @@ def validate_sidecar(db, name, raw):
         elif name == 'keybindings.json':
             _model('keybindings').decode_preferences(raw)
         elif name == 'keyboard-shortcuts.json':
-            _model('ui.keyboard_commands').validate_keymap_document(raw)
+            _model('keyboard_preferences').validate_keymap(raw)
+        elif name == 'evidence-drafts.json':
+            drafts = _model('evidence_drafts').validate_evidence_drafts(raw)
+            for draft in drafts:
+                row = db.execute('''SELECT 1 FROM research_evidence e
+                    JOIN research_topic t ON t.workspace=e.workspace AND t.id=e.topic
+                    JOIN workspace w ON w.id=e.workspace
+                    WHERE e.workspace=? AND e.topic=? AND e.id=?''', draft.key).fetchone()
+                if row is None:
+                    raise ValueError('Recovery draft has no matching exact saved evidence.')
+            # Archived scopes and changed saved-note/source baselines are kept.
+            # A recovery copy is not an evidence edit: the editor authorizes
+            # again after restore and offers conflicting copies read-only.
         elif name == 'ocr-language-presets.json':
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name.startswith('narration-projects/'):
