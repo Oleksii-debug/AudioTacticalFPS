@@ -1,0 +1,28 @@
+{
+  "source": "803 current desktop_app.py",
+  "original_sha256": "3cbb3572d6f708033b81f9f9a7924e8372053367143942cf4cce9f585813088e",
+  "patched_sha256": "797c89082a200379b199a4f481975e0bf430c4653b61a0cf4eea5adb97825369",
+  "patch_sha256": "3534bc55a5036d47dde7feaafcbe8d5803d95be819e5ecc2d8c41ada718e0224",
+  "SaveCoordinator_register_contract": "register(key, label, *, dirty, save, focus=None) real completion test passed",
+  "save_coordinator_sha256": "f05c6de13b85f6d1ef91cabe85d9930a238a02552eef15bc57200edf6c84980d",
+  "authoritative_keyboard_base": "bf14cb5ef791eb7622a1c73f0ebd1aa80d2c0bc8",
+  "new_api": [
+    "CommandBinding(id,label,default,handler)",
+    "bind_context_shortcuts(window,parent,context,bindings)",
+    "KeyboardManager.bind_window(window,context,bindings)"
+  ],
+  "one_manager_attributes": [
+    "frame.keyboard_commands",
+    "frame.keyboard"
+  ],
+  "save_all_id": "library.save_all",
+  "editor_save_id": "reading_copy.save",
+  "independent_implementation": false,
+  "host_patch_check": "git apply --check passed on803 current desktop_app.py",
+  "native_windows_dispatch": "Not executed; controlled wx event doubles and existing reader service/dispatch tests.",
+  "validation": {
+    "passed": 165,
+    "duration_seconds": 0.65,
+    "command": "python -m pytest -q tests/ui/test_context_shortcuts_compat.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py"
+  }
+}
