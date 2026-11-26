@@ -11,6 +11,11 @@ if not exist "%~dp0.venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+if not exist "%~dp0.venv\.installation-complete" (
+  echo Installation is incomplete. Extract a fresh package into a new folder and run Install.cmd.
+  pause
+  exit /b 1
+)
 "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library.native_checks --bundle-root "%~dp0."
 set "CHECK_RESULT=%ERRORLEVEL%"
 if not "%CHECK_RESULT%"=="0" goto finished
