@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 from tempfile import NamedTemporaryFile
 from time import monotonic
 from uuid import NAMESPACE_URL, uuid4, uuid5
@@ -217,7 +218,12 @@ class AssistantService:
             path = local_path(value)
             if scope.output_root is None or not path.is_relative_to(local_path(scope.output_root)):
                 raise PermissionError('A tool returned an artifact outside the selected output folder.')
-            size = regular(path).st_size
+            # Rendered chapters may be hardlinks to verified local audio cache.
+            # They are outputs, not private mutable assistant checkpoints.
+            info = path.lstat()
+            if not stat.S_ISREG(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                raise ValueError('Tool artifacts must use ordinary local files.')
+            size = info.st_size
             total += size
             if total > scope.max_bytes:
                 raise ValueError('Produced artifacts exceed the approved byte budget.')

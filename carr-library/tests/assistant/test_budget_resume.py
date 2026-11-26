@@ -1,6 +1,7 @@
 """Approved limits cover the whole durable job, including complete backups."""
 from contextlib import nullcontext
 from hashlib import sha256
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -52,6 +53,39 @@ def test_one_step_cannot_return_more_artifacts_than_approved(environment):
                                    (Step('audio.produce', {'text': 'Fixture'}),)))
     result = service.run(identity)
     assert result.status == 'failed' and result.completed == 0 and 'file budget' in result.message
+
+
+def test_hardlinked_audio_artifact_completes_and_detects_changed_cache_on_resume(environment):
+    app, output, _ = environment
+    cache = app.root / 'cached-chapter.wav'
+    original = b'Synthetic chapter PCM bytes'
+    cache.write_bytes(original)
+    calls = []
+    def production(*_args):
+        calls.append(True)
+        chapter = output / 'chapter.wav'
+        os.link(cache, chapter)
+        return {'artifacts': [str(chapter)]}
+    service = AssistantService(app, production=production)
+    identity = service.submit(Plan(Scope(output_root=output, max_files=1, max_bytes=len(original)),
+                                   (Step('audio.produce', {'text': 'Fixture'}),)))
+    result = service.run(identity)
+    assert result.status == 'complete' and result.completed == 1
+    assert result.results[0]['artifacts'][0]['sha256'] == sha256(original).hexdigest()
+    assert service.resume(identity).status == 'complete' and len(calls) == 1
+    cache.write_bytes(b'X' * len(original))
+    changed = service.resume(identity)
+    assert changed.status == 'failed' and 'completed artifact changed' in changed.message
+    assert len(calls) == 1
+
+
+def test_hardlinked_assistant_checkpoint_remains_rejected(environment):
+    app, _output, _ = environment
+    service = AssistantService(app)
+    identity = service.submit(Plan(Scope(), (Step('library.list'),)))
+    os.link(service.store.path(identity), app.root / 'checkpoint-alias.json')
+    with pytest.raises(ValueError, match='private regular files'):
+        service.get(identity)
 
 
 @pytest.mark.parametrize('damage', ['missing_receipt', 'different_manifest'])
