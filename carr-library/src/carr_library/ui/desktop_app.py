@@ -28,6 +28,7 @@ from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .notebook_search import search_saved_research
 from .reading_desk import install_reading_desk_actions
 
 
@@ -502,7 +503,8 @@ class DesktopFrame(WorkspaceFrame):
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
-                ('Build advanced query\tCtrl+Shift+F', self.build_advanced_query),
+                ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
+                ('Build advanced query\tCtrl+Alt+F', self.build_advanced_query),
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
@@ -1067,10 +1069,12 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
-            'Ctrl+Shift+F opens the advanced query builder with All, Any, Exclude and Nearby conditions.\n'
+            'Ctrl+Alt+F opens the advanced query builder with All, Any, Exclude and Nearby conditions.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
+            'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'
+            'F1 inside the reader explains page navigation and bookmarks.\n'
             'Tab and Shift+Tab move between controls. Arrow keys choose list items.\n'
             'Ctrl+Tab switches sections. Enter searches from the query field.\n'
             'F5 refreshes library and topic choices. Ctrl+E exports the active topic.\n\n'
@@ -1086,7 +1090,7 @@ class DesktopFrame(WorkspaceFrame):
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu.\n'
+            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

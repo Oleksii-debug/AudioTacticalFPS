@@ -1,7 +1,7 @@
 # Advanced academic source search
 
 Choose **Advanced (AND, OR, NOT, NEAR)** in Search mode, or press
-**Ctrl+Shift+F** to open the query builder. The builder also has a button beside
+**Ctrl+Alt+F** to open the query builder. The builder also has a button beside
 the query field and an entry in the Research menu.
 
 ## Build a query from labelled fields
