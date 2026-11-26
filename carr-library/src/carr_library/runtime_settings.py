@@ -26,7 +26,7 @@ def validate_dordiai_configuration(value):
                 or '\x00' in selected or selected.startswith(('//', '\\\\'))):
             raise ValueError('Choose a local installed dordiai-voices runtime and interpreter.')
     expected = value.get('expected_worker_sha256')
-    if expected is not None and (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)):
+    if 'expected_worker_sha256' in value and (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)):
         raise ValueError('The reviewed dordiai-voices worker fingerprint must be a lowercase SHA-256.')
     return dict(value)
 
