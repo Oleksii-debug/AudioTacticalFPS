@@ -169,6 +169,7 @@ jobs:
             'tests/storage/test_library_backup.py',
             'tests/storage/test_library_backup_reading_state.py',
             'tests/storage/test_backup_v4_sidecars.py',
+            'tests/storage/test_backup_publication_recovery.py',
             'tests/storage/test_backup_keyboard_drafts.py',
             'tests/catalog/test_metadata_backup_roundtrip.py',
             'tests/reader/test_context.py',

@@ -83,6 +83,24 @@ def _check_budget(total, maximum):
         raise RestoreError('complete backup exceeds the requested byte budget')
 
 
+def _release_staging_links(stage, entries, sidecars):
+    """Retire private payload twins before publishing the completion manifest.
+
+    A process may exit immediately after that manifest is linked. At that point
+    originals and sidecars must already satisfy the ordinary one-link checks
+    used by both restore and read-only workflow recovery. Cleanup never reaches
+    outside this operation's private staging directory.
+    """
+    paths = [stage / DATABASE]
+    paths.extend(stage / ORIGINALS / entry.filename for entry in entries)
+    paths.extend(stage / entry['filename'] for entry in sidecars)
+    for path in paths:
+        path.unlink()
+    for parent in sorted({path.parent for path in paths},
+                         key=lambda path: len(path.parts), reverse=True):
+        _sync_directory(parent)
+
+
 def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cancelled=lambda: False):
     """Use the canonical catalog validator, with bounded cancellable file copying."""
     limits = dict(include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=max(1, max_bytes))
@@ -167,7 +185,12 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             backup_sidecars.publish(stage, destination, sidecars, sync_directory=_sync_directory)
             _sync_directory(destination / ORIGINALS)
-            os.link(stage / MANIFEST, destination / MANIFEST)
+            _release_staging_links(stage, entries, sidecars)
+            # The bounded manifest must have one link too: workflow recovery
+            # verifies it before reading the backup. Exclusive creation never
+            # replaces another file; an interrupted write fails the mandatory
+            # manifest digest/JSON checks and cannot be restored as complete.
+            _sync_file(destination / MANIFEST, raw)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
