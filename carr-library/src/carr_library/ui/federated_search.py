@@ -329,8 +329,7 @@ class SearchCenter:
                                      'Create a topic in that library before saving.', focus=True)
                     return
                 index = self.dialogs.choose(self.view.parent, 'Save quotation to a topic',
-                    f'Choose a topic in the source library: {hit.library_name}',
-                    _topic_labels(topics, hit.workspace))
+                    f'Choose a topic in the source library: {hit.library_name}', _topic_labels(topics, hit.workspace))
                 if index is None:
                     self.view.report('Saving the quotation was cancelled.')
                     self.view.focus_results()

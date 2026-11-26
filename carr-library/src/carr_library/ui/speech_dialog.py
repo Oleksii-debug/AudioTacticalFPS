@@ -420,6 +420,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     dialog.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
     autosave_timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, autosave_timer)
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(parent)
+    def unsaved():
+        sync_document()
+        return bool(document.text) and document.dirty
+    def save_registered(completed):
+        if busy:
+            completed(SaveResult(False, 'Speech is running; stop it before saving the reading copy.'))
+        else:
+            completed(SaveResult(bool(save_project()), 'The reading copy was not saved.'))
+    unregister = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
+                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                  if coordinator is not None else lambda: None)
     try:
         capabilities()
         reload()
@@ -427,6 +440,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         editor.SetFocus()
         dialog.ShowModal()
     finally:
+        unregister()
         autosave_timer.Stop()
         alive = False
         cancel.set()
@@ -441,10 +455,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 def install_speech_actions(frame):
     """Add one conventional menu without modifying existing keyboard bindings."""
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
 
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
+    register_menu_command(frame, CommandSpec('voice.reader', 'Voice reader and reading copy',
+                                           'main', 'Ctrl+Alt+V'), item)
     from .reading_desk import ReadingActions
     from ..speech.source import read_source_range
 
@@ -477,5 +495,7 @@ def install_speech_actions(frame):
     actions = ReadingActions(frame, reader_factory=BookSpeechReader)
     selected = menu.Append(wx.ID_ANY, 'Narrate selected book or chapter...\tCtrl+Alt+R')
     frame.Bind(wx.EVT_MENU, actions.open_book, selected)
+    register_menu_command(frame, CommandSpec('voice.book', 'Narrate selected book or chapter',
+                                           'main', 'Ctrl+Alt+R'), selected)
     frame.speech_reading_actions = actions
     frame.GetMenuBar().Append(menu, '&Voice')

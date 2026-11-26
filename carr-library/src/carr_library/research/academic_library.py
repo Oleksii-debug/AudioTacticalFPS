@@ -421,8 +421,9 @@ class AcademicLibrary:
         self._scope()
         where = 'workspace=?' + ('' if include_archived else ' AND archived=0')
         args = (self.workspace, MAX_REFERENCES + 1)
-        # Bound stored UTF-8 payload before decoding complete notes and metadata.
-        # This runs in the same authorized snapshot as the materialization below.
+        # Use the same authorized snapshot and predicates as the full read.
+        # Count bytes in SQLite before transferring notes, abstracts, authors
+        # and their search-text copies into Python or decoding any references.
         size_expr = '+'.join(f'COALESCE(length(CAST({name} AS BLOB)),0)' for name in _COLUMNS)
         count, size = self.db.execute(
             f'SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM ('

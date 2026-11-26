@@ -174,11 +174,14 @@ def show_assistant(frame):
 
     def close(event=None):
         nonlocal alive
+        if not alive:
+            return
         cancel.set()
         if busy and job_id:
             service.pause(job_id)
         alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
+        from .worker_cleanup import close_after_worker
+        close_after_worker(executor, production)
         dialog.EndModal(wx.ID_CLOSE)
 
     def help_text(event):
@@ -357,9 +360,13 @@ def show_provider_settings(frame):
 
 def install_assistant_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = wx.Menu()
-    for title, handler in [('Local assistant...\tCtrl+Alt+J', lambda e: show_assistant(frame)),
-                            ('AI and API connections...', lambda e: show_provider_settings(frame))]:
+    for identity, title, shortcut, handler in [
+            ('assistant.local', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
+            ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
     frame.menu_bar.Append(menu, '&Tools')

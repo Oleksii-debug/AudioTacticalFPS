@@ -11,11 +11,10 @@ import stat
 from tempfile import TemporaryDirectory
 
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
+from ..extract.document_formats import MIME_SUFFIXES
 
 MAX_BYTES = 64 * 1024 * 1024
-SUFFIXES = {'text/plain': '.txt', 'application/pdf': '.pdf',
-            'application/epub+zip': '.epub',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx'}
+SUFFIXES = dict(MIME_SUFFIXES)
 
 
 class RetentionError(ValueError):
