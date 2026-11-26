@@ -198,13 +198,36 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
 
 def search_file(path, workspace, query, *, timeout=5.0,
                 cancelled=lambda: False, **options):
-    """Search a trusted local library file on a dedicated read-only connection.
+    """Low-level search of a trusted local file, with explicit edition IDs.
 
-    The source SQL and transient FTS share one outer deadline and a sticky
-    cancellation flag. Never change a caller's writer/progress handler.
-    Lock contention fails immediately with SQLite's explicit busy/locked error;
-    it is not a successful empty search. No file creation or immutable URI
-    (the latter would ignore concurrent commits). WAL sidecars and filesystem
+    For a live collection or catalog selection, use search_catalog_file instead;
+    IDs resolved in another transaction are not a collection authorization.
+    """
+    return _search_file(path, workspace, query, timeout, cancelled, options)
+
+
+def search_catalog_file(path, workspace, query, *, collection=None, timeout=5.0,
+                        cancelled=lambda: False, **options):
+    """Resolve catalog scope and search in one read-only SQLite snapshot.
+
+    None means all cataloged editions in the explicit workspace, not global
+    search. A collection must be active in that workspace. Never accept cached
+    edition_ids as a substitute for catalog resolution. The existing 500-edition
+    search cap applies; oversized scopes fail explicitly. Results represent the
+    snapshot at the first read; subsequent actions need fresh authorization.
+    """
+    if 'edition_ids' in options:
+        raise ValueError('catalog search resolves edition IDs in its own snapshot')
+    return _search_file(path, workspace, query, timeout, cancelled, options,
+                        catalog_scope=True, collection=collection)
+
+
+def _search_file(path, workspace, query, timeout, cancelled, options, *,
+                 catalog_scope=False, collection=None):
+    """One outer deadline and sticky cancellation across all source and FTS SQL.
+
+    Never change a caller's writer/progress handler. Lock contention fails
+    immediately; no file creation or immutable URI. WAL sidecars and filesystem
     stalls remain subject to SQLite/OS behavior; not a hard real-time deadline.
     """
     from pathlib import Path
@@ -229,9 +252,18 @@ def search_file(path, workspace, query, *, timeout=5.0,
         uri = Path(path).absolute().as_uri() + '?mode=ro'
         db = sqlite3.connect(uri, uri=True, timeout=0.0)
         db.set_progress_handler(lambda: int(stopped()), 1000)
+        db.execute('PRAGMA foreign_keys=ON')
         db.execute('PRAGMA query_only=ON')
         db.execute('PRAGMA trusted_schema=OFF')
         check()
+        if catalog_scope:
+            from carr_library.catalog.membership import Catalog
+            db.execute('BEGIN')
+            # Catalog's first SELECT establishes the snapshot, and all active
+            # page reads below use that same connection and transaction.
+            rows = Catalog(db, workspace).editions(collection)
+            check()
+            options = dict(options, edition_ids=(row[0] for row in rows))
         hits = search(db, workspace, query, timeout=timeout,
                       cancelled=stopped, **options)
         check()
