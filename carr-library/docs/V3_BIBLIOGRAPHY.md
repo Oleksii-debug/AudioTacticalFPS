@@ -4,7 +4,7 @@ This V3-08 increment extends the existing Academic Library. References, notes,
 original documents and saved source quotations keep their existing storage and
 authorization boundaries. This is one part of the expanded V3 product; it is
 not acceptance of the audio studio, online acquisition, live Word add-in,
-custom CSL styles, complete BibLaTeX semantics or manual NVDA workflows.
+complete BibLaTeX semantics or manual NVDA workflows.
 
 ## Keyboard workflow
 
@@ -20,6 +20,9 @@ custom CSL styles, complete BibLaTeX semantics or manual NVDA workflows.
 4. Choose a style, author-name convention and citation language. Use **Preview
    formatting** (Alt+P). Rendering runs in a worker; the window remains available
    to the keyboard. The read-only multiline preview receives focus when ready.
+   To use a local independent `.csl` file, choose **Load custom style file**
+   (Alt+S), select the file, then preview. Loading another custom file replaces
+   that choice; the installed styles stay available.
 5. Use **Copy bibliography** (Alt+B), **Copy citation examples** (Alt+X), or
    **Export bibliography** (Alt+E). Exports offer plain text, formatted HTML and
    editable Word `.docx`. Close with Escape or Alt+C. Copy and export recheck the
@@ -56,6 +59,26 @@ titles or invent publication metadata. The embedded runtime does not provide
 ICU-quality locale-specific collation. The upstream grouped citation ordering
 limitation and exact version identities are recorded in [the CSL provenance
 record](UPSTREAM_CSL.md).
+
+### Explicit custom styles
+
+Custom styles use the same actual processor and output guards. The file must be
+an independent CSL style with both citation and bibliography layouts. The loader
+accepts at most 512 KiB and enforces XML depth, node, attribute and text budgets.
+DTD declarations, entities, processing instructions, foreign namespaces,
+unsafe dynamic keys and recursive or missing macros are rejected. A dependent
+style that needs an external parent is refused with an explanation; no style,
+locale or parent is downloaded. Select the corresponding independent style file
+instead. Remote, Windows device, alternate-stream and redirected Windows paths
+are not accepted by this offline file loader.
+
+The preview keeps the exact selected bytes and their SHA-256. Changing or
+removing the file afterward does not change that preview or its exports. Load
+the revised file explicitly to apply a new version. Custom styles remain scoped
+to the current dialog/CLI request; they do not replace installed resources or add
+an unversioned library sidecar. A style's metadata or publication link is inert.
+The application validates supported structural/resource boundaries; it does not
+claim complete CSL schema conformance or scholarly approval of a user file.
 
 Existing references store display names. **Keep author names exactly as entered**
 is the default and does not guess surnames. Select the explicit personal-name
@@ -98,6 +121,7 @@ python -m carr_library.bibliography_cli styles
 python -m carr_library.bibliography_cli import --data-dir "D:\Research data" --workspace WORKSPACE_ID --input references.bib
 python -m carr_library.bibliography_cli import --data-dir "D:\Research data" --workspace WORKSPACE_ID --input references.bib --commit --skip-duplicates
 python -m carr_library.bibliography_cli format --data-dir "D:\Research data" --workspace WORKSPACE_ID --style apa --names family-given --output "D:\Exports\bibliography.docx" --format docx
+python -m carr_library.bibliography_cli format --data-dir "D:\Research data" --workspace WORKSPACE_ID --style-file "D:\Styles\journal.csl" --output "D:\Exports\journal-bibliography.html" --format html
 ```
 
 Import defaults to a read-only preview; `--commit` explicitly applies it.
@@ -107,6 +131,9 @@ archived references from all-active output. Existing destinations require the
 explicit `--overwrite` option. Without it, publication uses an atomic no-clobber
 operation, including when a file appears during rendering. A filesystem lacking
 that operation fails clearly instead of weakening the replacement policy.
+`--style` and `--style-file` are mutually exclusive. The saved-output report
+includes the exact style hash and whether an explicitly loaded custom style was
+used.
 
 ## Packaging and verification
 
@@ -123,6 +150,8 @@ exact candidate SHA; predecessor CI is not a substitute.
 
 The accompanying maintenance commit repairs already-completed TXT/PDF reimports:
 requested collection membership is now applied through the existing atomic
-registration contract. Conflicting metadata, superseded revisions, cancellation
-and consistency failures cannot silently alter source identity. Its baseline
-failures and passing recovery cases are preserved in the committed regressions.
+registration contract. After a metadata revision, replay accepts only matching
+current metadata and never reactivates the historical source revision. Conflicting
+metadata, cancellation and consistency failures cannot silently alter source
+identity. Baseline failures and passing recovery cases are preserved in the
+committed regressions.

@@ -10,6 +10,9 @@ from html import escape
 from html.parser import HTMLParser
 from io import BytesIO
 import json
+import os
+from pathlib import Path, PureWindowsPath
+import stat
 
 from ..research.export_file import write_binary_export, write_export
 
@@ -30,7 +33,7 @@ class StylePreview:
     workspace: str
     identity: str | None
     snapshot_sha256: str
-    style: str
+    style: object
     locale: str
     name_mode: str
     titles: tuple[str, ...]
@@ -48,6 +51,9 @@ class StylePreview:
     @property
     def explanation(self):
         parts = [self.result.style.title, METADATA_NOTICE]
+        if getattr(self.result, 'custom_style', False):
+            parts.append('Custom CSL style loaded from the selected file. '
+                         'This preview and its exports use the same captured style.')
         if self.warnings:
             parts.append('Review notes:\n' + '\n'.join(self.warnings))
         parts.append('Bibliography:\n' + self.bibliography)
@@ -58,6 +64,50 @@ class StylePreview:
             parts.append(label + ':\n' + '\n\n'.join(examples))
         parts.append(self.result.attribution)
         return '\n\n'.join(parts)
+
+
+def load_style_file(path):
+    """Capture one explicitly selected regular local file with a byte budget."""
+    from .csl import MAX_CUSTOM_STYLE_BYTES, load_custom_style
+    raw = os.fspath(path)
+    if not isinstance(raw, str) or not raw or raw.startswith(('\\\\', '//', '\\??\\')):
+        raise ValueError('Choose a local CSL file, without a network or device path.')
+    windows = PureWindowsPath(raw)
+    parts = [part for part in windows.parts if part != windows.anchor]
+    if (windows.drive and (len(windows.drive) != 2 or windows.drive[1] != ':'
+                          or not windows.drive[0].isalpha() or not windows.root)
+            or any(PureWindowsPath(part).is_reserved() or ':' in part
+                   or any(char in '<>"|?*' or ord(char) < 32 for char in part)
+                   for part in parts)):
+        raise ValueError('Choose a local CSL filename without Windows devices or alternate streams.')
+    requested = Path(raw).absolute()
+    if os.name == 'nt':
+        # Mapped network drives also perform I/O outside this offline feature.
+        # Classify the drive before opening any user-supplied file or device.
+        import ctypes
+        from ctypes import wintypes
+        if requested.drive.startswith('\\\\'):
+            raise ValueError('Choose a CSL style on a local drive.')
+        drive_type = ctypes.WinDLL('kernel32', use_last_error=True).GetDriveTypeW
+        drive_type.argtypes, drive_type.restype = [wintypes.LPCWSTR], wintypes.UINT
+        if drive_type(requested.anchor) not in (2, 3, 5, 6):
+            raise ValueError('Choose a CSL style on an available local drive.')
+        for component in (*reversed(requested.parents), requested):
+            info = component.lstat()
+            if (stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0)
+                    & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)):
+                raise ValueError('Choose a local CSL file without links or Windows reparse points.')
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NONBLOCK', 0)
+    flags |= getattr(os, 'O_NOFOLLOW', 0)
+    descriptor = os.open(requested, flags)
+    with os.fdopen(descriptor, 'rb') as source:
+        info = os.fstat(source.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError('Choose a regular local CSL style file.')
+        if info.st_size > MAX_CUSTOM_STYLE_BYTES:
+            raise ValueError('The custom CSL style exceeds the 512 KiB file limit.')
+        data = source.read(MAX_CUSTOM_STYLE_BYTES + 1)
+    return load_custom_style(data)
 
 
 def records_for_style(snapshot, *, name_mode='literal'):
@@ -147,7 +197,8 @@ class BibliographyWorkbench:
             return preview.citations
         raise ValueError('Choose bibliography or citation examples to copy.')
 
-    def export(self, preview, destination, *, format='text', cancelled=lambda: False, require_absent=False):
+    def export(self, preview, destination, *, format='text', cancelled=lambda: False,
+               require_absent=False, approval=None):
         snapshot = self.check(preview)
         if cancelled():
             raise TimeoutError('Bibliography export cancelled; no output was changed.')
@@ -176,7 +227,7 @@ class BibliographyWorkbench:
             return False
 
         writer(destination, content, private_root=self.controller.library.root,
-               cancelled=cancelled_or_changed, require_absent=require_absent)
+               cancelled=cancelled_or_changed, require_absent=require_absent, approval=approval)
         return content
 
 

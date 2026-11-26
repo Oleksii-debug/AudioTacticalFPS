@@ -11,12 +11,15 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.research.export_file import write_export
+from carr_library.ui import citation_styles_dialog as style_dialog
 from carr_library.ui.citation_styles_dialog import create_citation_styles_dialog
 
 
 class Control:
     def __init__(self, *args, **kwargs):
         self.value = kwargs.get('value', '')
+        self.label = kwargs.get('label', '')
+        self.choices = list(kwargs.get('choices', ()))
         self.selection = -1
         self.enabled = True
         self.focused = self.destroyed = self.hidden = False
@@ -28,6 +31,8 @@ class Control:
     def SetValue(self, value): self.value = value
     def SetSelection(self, value): self.selection = value
     def GetSelection(self): return self.selection
+    def Append(self, value): self.choices.append(value)
+    def SetString(self, index, value): self.choices[index] = value
     def Enable(self, value): self.enabled = value
     def SetFocus(self): self.focused = True
     def Destroy(self): self.destroyed = True
@@ -72,7 +77,9 @@ def form(tmp_path, monkeypatch):
     constants = ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL',
         'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'TE_MULTILINE', 'TE_READONLY',
         'LEFT', 'RIGHT', 'BOTTOM', 'ALIGN_RIGHT', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON',
-        'EVT_CHOICE', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')
+        'EVT_CHOICE', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+        'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION',
+        'ID_YES', 'ID_NO')
     for index, name in enumerate(constants):
         setattr(wx, name, 1 << index)
     queued = []
@@ -82,11 +89,13 @@ def form(tmp_path, monkeypatch):
     destination = tmp_path / 'bibliography.txt'
     wx.FileDialog = Mock(return_value=N(ShowModal=lambda: wx.ID_OK,
         GetPath=lambda: str(destination), Destroy=Mock()))
+    wx.MessageDialog = Mock(return_value=N(ShowModal=lambda: wx.ID_YES, Destroy=Mock()))
     wx.TheClipboard = N(Open=Mock(return_value=True), SetData=Mock(return_value=True), Close=Mock())
     wx.TextDataObject = lambda value: value
     monkeypatch.setitem(sys.modules, 'wx', wx)
     executor = DeferredExecutor()
-    dialog = create_citation_styles_dialog(None, N(workspace='selected-library'),
+    dialog = create_citation_styles_dialog(None,
+        N(workspace='selected-library', library=N(root=tmp_path / 'private')),
         selected_identity='selected-reference', executor=executor)
     dialog.workbench = N(preview=Mock(), check=Mock(), export=Mock(), copy_text=Mock())
 
@@ -142,8 +151,9 @@ def test_new_job_does_not_clear_old_export_cancellation_or_publish_its_file(form
     form.private.mkdir()
     dialog.preview = preview('Previous preview')
 
-    def export_file(selected, destination, *, format, cancelled):
-        write_export(destination, 'Obsolete export', private_root=form.private, cancelled=cancelled)
+    def export_file(selected, destination, *, format, cancelled, require_absent, approval):
+        write_export(destination, 'Obsolete export', private_root=form.private,
+                     cancelled=cancelled, require_absent=require_absent, approval=approval)
 
     dialog.workbench.export.side_effect = export_file
     dialog.on_export()
@@ -201,3 +211,229 @@ def test_copy_authorization_failure_never_opens_clipboard(form):
     dialog.on_copy('bibliography')
     form.wx.TheClipboard.Open.assert_not_called()
     assert 'archived' in dialog.status.value
+
+
+def test_custom_load_replaces_one_slot_and_invalidates_the_previous_preview(form, monkeypatch):
+    dialog = form.dialog
+    first, second = N(info=N(title='First local style')), N(info=N(title='Second local style'))
+    loader = Mock(side_effect=(first, second))
+    monkeypatch.setattr(style_dialog, 'load_style_file', loader)
+    installed = tuple(dialog.style_choice.choices)
+    dialog.preview = preview('Previous bibliography')
+    dialog.output.SetValue('Previous bibliography')
+    dialog.controls(pending=False)
+    previous_event = dialog.cancelled
+    dialog.style_choice.focused = False
+
+    dialog.on_load_style()
+
+    loader.assert_called_once_with(str(form.destination))
+    assert dialog.custom_style is first
+    assert tuple(dialog.style_choice.choices) == (*installed, 'Custom: First local style')
+    assert dialog.style_choice.GetSelection() == len(installed)
+    assert dialog.preview is None and dialog.output.value == ''
+    assert not dialog.copy_bibliography.enabled and not dialog.export_button.enabled
+    assert previous_event.is_set()
+    assert dialog.style_choice.focused and dialog.custom_style_button.enabled
+    assert '&' in dialog.custom_style_button.label
+    assert dialog.custom_style_button.bindings[form.wx.EVT_BUTTON] == dialog.on_load_style
+
+    dialog.on_load_style()
+
+    assert dialog.custom_style is second
+    assert tuple(dialog.style_choice.choices) == (*installed, 'Custom: Second local style')
+    assert dialog.style_choice.GetSelection() == len(installed)
+    assert form.wx.FileDialog.return_value.Destroy.call_count == 2
+    assert 'loaded locally' in dialog.status.value
+
+
+@pytest.mark.parametrize('outcome', ('cancel', 'invalid'))
+def test_cancelled_or_invalid_custom_load_preserves_the_valid_style_and_preview(form, monkeypatch, outcome):
+    dialog = form.dialog
+    custom = N(info=N(title='Previously loaded style'))
+    loader = Mock(return_value=custom)
+    monkeypatch.setattr(style_dialog, 'load_style_file', loader)
+    dialog.on_load_style()
+    completed = preview('Valid previous bibliography')
+    dialog.workbench.preview.return_value = completed
+    dialog.on_preview()
+    form.executor.finish(0)
+    form.drain()
+    selection, choices = dialog.style_choice.GetSelection(), tuple(dialog.style_choice.choices)
+    previous_event = dialog.cancelled
+    loader.reset_mock()
+    if outcome == 'cancel':
+        form.wx.FileDialog.return_value.ShowModal = lambda: form.wx.ID_CANCEL
+    else:
+        loader.side_effect = ValueError('The selected CSL file is invalid')
+
+    dialog.on_load_style()
+
+    assert dialog.custom_style is custom and dialog.preview is completed
+    assert dialog.output.value == completed.explanation
+    assert dialog.style_choice.GetSelection() == selection
+    assert tuple(dialog.style_choice.choices) == choices
+    assert dialog.cancelled is previous_event and not previous_event.is_set()
+    assert dialog.copy_bibliography.enabled and dialog.export_button.enabled
+    assert dialog.pending is None and form.wx.FileDialog.return_value.Destroy.call_count == 2
+    if outcome == 'cancel':
+        loader.assert_not_called()
+    else:
+        assert 'invalid' in dialog.status.value and dialog.status.focused
+
+
+@pytest.mark.parametrize('operation', ('preview', 'export'))
+def test_pending_job_disables_custom_load_and_ignores_queued_load_events(form, monkeypatch, operation):
+    dialog = form.dialog
+    loader = Mock(return_value=N(info=N(title='Must not be loaded')))
+    monkeypatch.setattr(style_dialog, 'load_style_file', loader)
+    dialog.workbench.preview.return_value = preview('Completed bibliography')
+    if operation == 'preview':
+        dialog.on_preview()
+    else:
+        dialog.preview = preview('Previous bibliography')
+        dialog.on_export()
+    job = dialog.pending
+    form.wx.FileDialog.reset_mock()
+
+    assert not dialog.custom_style_button.enabled and dialog.close_button.enabled
+    dialog.on_load_style()
+
+    form.wx.FileDialog.assert_not_called()
+    loader.assert_not_called()
+    assert dialog.pending is job
+    form.executor.finish(0)
+    form.drain()
+    assert dialog.pending is None and dialog.custom_style_button.enabled
+
+
+def test_custom_jobs_capture_their_own_style_and_replaced_completion_stays_hidden(form, monkeypatch):
+    dialog = form.dialog
+    first, second = N(info=N(title='First custom style')), N(info=N(title='Second custom style'))
+    monkeypatch.setattr(style_dialog, 'load_style_file', Mock(side_effect=(first, second)))
+    obsolete, current = preview('Obsolete custom output'), preview('Current custom output')
+    dialog.workbench.preview.side_effect = lambda **options: obsolete if options['style'] is first else current
+    dialog.on_load_style()
+    dialog.on_preview()
+    old_event = dialog.cancelled
+    assert form.executor.calls[0][2]['style'] is first
+
+    dialog.on_options_changed()
+    dialog.on_load_style()
+    dialog.on_preview()
+
+    assert form.executor.calls[1][2]['style'] is second
+    assert old_event.is_set() and dialog.cancelled is not old_event and not dialog.cancelled.is_set()
+    assert len(dialog.style_choice.choices) == len(dialog.styles) + 1
+    # Deliver the replacement first; an older running completion must not
+    # overwrite the already visible, freshly authorized custom bibliography.
+    form.executor.finish(1)
+    form.drain()
+    assert dialog.preview is current and dialog.output.value == current.explanation
+    form.executor.finish(0)
+    form.drain()
+    assert dialog.preview is current and dialog.output.value == current.explanation
+    dialog.workbench.check.assert_called_once_with(current)
+
+
+def test_installed_selection_after_custom_load_submits_the_installed_style_id(form, monkeypatch):
+    dialog = form.dialog
+    custom = N(info=N(title='Local style'))
+    monkeypatch.setattr(style_dialog, 'load_style_file', Mock(return_value=custom))
+    dialog.on_load_style()
+    dialog.style_choice.SetSelection(2)
+    dialog.on_options_changed()
+    dialog.on_preview()
+    assert dialog.custom_style is custom
+    assert form.executor.calls[0][2]['style'] == dialog.styles[2].id
+
+
+@pytest.mark.parametrize('loaded', (False, True))
+def test_unavailable_custom_selection_does_not_submit_a_formatting_job(form, monkeypatch, loaded):
+    dialog = form.dialog
+    if loaded:
+        monkeypatch.setattr(style_dialog, 'load_style_file', Mock(return_value=N(info=N(title='Local style'))))
+        dialog.on_load_style()
+    dialog.style_choice.SetSelection(len(dialog.styles) + int(loaded))
+    dialog.on_preview()
+    assert form.executor.calls == [] and dialog.pending is None
+    assert dialog.preview is None and not dialog.copy_bibliography.enabled
+    assert dialog.generate.enabled and dialog.custom_style_button.enabled
+    assert 'load a custom CSL file' in dialog.status.value
+
+
+def use_real_writer(form):
+    def publish(selected, destination, *, format, cancelled, require_absent, approval):
+        write_export(destination, selected.explanation, private_root=form.private,
+                     cancelled=cancelled, require_absent=require_absent, approval=approval)
+    form.dialog.workbench.export.side_effect = publish
+    form.dialog.preview = preview('New approved bibliography')
+
+
+def test_native_new_destination_preserves_file_created_while_export_is_queued(form):
+    use_real_writer(form)
+    form.dialog.on_export()
+    assert form.executor.calls[0][2]['require_absent'] is True
+    form.wx.MessageDialog.assert_not_called()
+    form.destination.write_bytes(b'Another program created this after file selection')
+
+    form.executor.finish(0)
+    form.drain()
+
+    assert form.destination.read_bytes() == b'Another program created this after file selection'
+    assert 'not exported' in form.dialog.status.value
+    assert 'changed' in form.dialog.status.value
+    assert not list(form.destination.parent.glob('.research-export-*'))
+
+
+def test_native_existing_destination_requires_confirmation_and_can_be_replaced(form):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Existing bibliography')
+    form.dialog.on_export()
+    form.wx.MessageDialog.assert_called_once()
+    assert form.wx.MessageDialog.call_args.kwargs['style'] & form.wx.NO_DEFAULT
+    assert form.executor.calls[0][2]['require_absent'] is False
+    assert form.executor.calls[0][2]['approval'].state is not None
+
+    form.executor.finish(0)
+    form.drain()
+
+    assert form.destination.read_text() == 'New approved bibliography'
+    assert 'saved to' in form.dialog.status.value
+    form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
+
+
+def test_native_declined_overwrite_does_not_submit_or_change_file(form):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Keep existing bibliography')
+    form.wx.MessageDialog.return_value.ShowModal = lambda: form.wx.ID_NO
+
+    form.dialog.on_export()
+
+    assert form.executor.calls == [] and form.dialog.pending is None
+    form.dialog.workbench.export.assert_not_called()
+    assert form.destination.read_bytes() == b'Keep existing bibliography'
+    form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
+
+
+@pytest.mark.parametrize('when', ('confirmation', 'queued'))
+def test_native_existing_approval_is_bound_before_confirmation_and_async_work(form, when):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Original file presented for replacement')
+    changed = b'Newer work must survive the old approval'
+    if when == 'confirmation':
+        def confirm_while_another_program_writes():
+            form.destination.write_bytes(changed)
+            return form.wx.ID_YES
+        form.wx.MessageDialog.return_value.ShowModal = confirm_while_another_program_writes
+
+    form.dialog.on_export()
+    if when == 'queued':
+        form.destination.write_bytes(changed)
+    form.executor.finish(0)
+    form.drain()
+
+    assert form.destination.read_bytes() == changed
+    assert 'not exported' in form.dialog.status.value
+    assert 'changed' in form.dialog.status.value
+    assert not list(form.destination.parent.glob('.research-export-*'))

@@ -17,7 +17,7 @@ def _controller(args):
 
 def main(argv=None):
     from .citations.bibliography_workbench import (
-        BibliographyWorkbench, EXPORT_FORMATS, LOCALES, NAME_MODES,
+        BibliographyWorkbench, EXPORT_FORMATS, LOCALES, NAME_MODES, load_style_file,
     )
     parser = argparse.ArgumentParser(description='Local bibliography import and citation styles')
     commands = parser.add_subparsers(dest='operation', required=True)
@@ -34,7 +34,10 @@ def main(argv=None):
     importer.add_argument('--select', type=int, action='append', help='Zero-based preview row; repeat to select several')
     importer.add_argument('--skip-duplicates', action='store_true')
     formatter.add_argument('--reference', help='Format one reference; default is all active references')
-    formatter.add_argument('--style', default='apa', help='Use the styles command to list available IDs')
+    styles = formatter.add_mutually_exclusive_group()
+    styles.add_argument('--style', default='apa', help='Use the styles command to list available IDs')
+    styles.add_argument('--style-file', type=Path,
+                        help='Explicit local independent CSL file; loaded offline with resource limits')
     formatter.add_argument('--locale', choices=[item[0] for item in LOCALES], default='en-US')
     formatter.add_argument('--names', choices=[item[0] for item in NAME_MODES], default='literal')
     formatter.add_argument('--format', choices=[item[0] for item in EXPORT_FORMATS], default='text')
@@ -72,11 +75,15 @@ def main(argv=None):
         if args.output is not None and (args.output.exists() or args.output.is_symlink()) and not args.overwrite:
             raise ValueError('The output exists. Choose another path or explicitly use --overwrite.')
         workbench = BibliographyWorkbench(controller)
-        preview = workbench.preview(identity=args.reference, style=args.style,
+        style = load_style_file(args.style_file) if args.style_file is not None else args.style
+        preview = workbench.preview(identity=args.reference, style=style,
                                      locale=args.locale, name_mode=args.names)
         if args.output is not None:
             workbench.export(preview, args.output, format=args.format, require_absent=not args.overwrite)
-            print(json.dumps({'result': 'SAVED', 'output': str(args.output), 'style': preview.style,
+            print(json.dumps({'result': 'SAVED', 'output': str(args.output),
+                              'style': preview.result.style.id,
+                              'style_sha256': preview.result.style_sha256,
+                              'custom_style': preview.result.custom_style,
                               'references': len(preview.result.entries), 'warnings': preview.warnings},
                              ensure_ascii=False, indent=2))
         else:

@@ -2,8 +2,11 @@
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
+from ..research.export_file import capture_export_destination
+
 from ..citations.bibliography_workbench import (
     BibliographyWorkbench, EXPORT_FORMATS, LOCALES, METADATA_NOTICE, NAME_MODES,
+    load_style_file,
 )
 
 
@@ -18,6 +21,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             self.workbench = BibliographyWorkbench(controller)
             self.selected_identity = selected_identity
             self.styles = available_styles()
+            self.custom_style = None
             self.preview = None
             self.pending = None
             self.alive = True
@@ -52,6 +56,9 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 grid.Add(control, 1, wx.EXPAND)
                 control.Bind(wx.EVT_CHOICE, self.on_options_changed)
             layout.Add(grid, 0, wx.EXPAND | wx.ALL, 8)
+            self.custom_style_button = wx.Button(self, label='Load custom &style file...')
+            self.custom_style_button.Bind(wx.EVT_BUTTON, self.on_load_style)
+            layout.Add(self.custom_style_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.generate = wx.Button(self, label='&Preview formatting')
             self.generate.Bind(wx.EVT_BUTTON, self.on_preview)
             layout.Add(self.generate, 0, wx.ALL, 8)
@@ -86,7 +93,8 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
-            self.options = (self.style_choice, self.scope_choice, self.names_choice, self.locale_choice)
+            self.options = (self.style_choice, self.scope_choice, self.names_choice,
+                            self.locale_choice, self.custom_style_button)
             self.style_choice.SetFocus()
 
         def report(self, message, *, focus=True):
@@ -111,6 +119,32 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             self.controls(pending=False)
             self.report('Options changed. Preview again before copying or exporting.', focus=False)
 
+        def on_load_style(self, event=None):
+            if self.pending is not None:
+                return
+            try:
+                chooser = wx.FileDialog(self, 'Open a custom CSL style',
+                    wildcard='Citation Style Language (*.csl)|*.csl',
+                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    custom = load_style_file(chooser.GetPath())
+                finally:
+                    chooser.Destroy()
+                label = 'Custom: ' + custom.info.title
+                if self.custom_style is None:
+                    self.style_choice.Append(label)
+                else:
+                    self.style_choice.SetString(len(self.styles), label)
+                self.custom_style = custom
+                self.style_choice.SetSelection(len(self.styles))
+                self.on_options_changed()
+                self.report('Custom style loaded locally. Preview to review its formatting.', focus=False)
+                self.style_choice.SetFocus()
+            except (ImportError, OSError, ValueError, RuntimeError) as exc:
+                self.report(f'Custom style not loaded: {exc}')
+
         def on_preview(self, event=None):
             if self.pending is not None:
                 return
@@ -119,7 +153,13 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 scope_index = self.scope_choice.GetSelection()
                 name_index = self.names_choice.GetSelection()
                 locale_index = self.locale_choice.GetSelection()
-                if (not 0 <= style_index < len(self.styles) or scope_index not in (0, 1)
+                if style_index == len(self.styles) and self.custom_style is not None:
+                    style = self.custom_style
+                elif 0 <= style_index < len(self.styles):
+                    style = self.styles[style_index].id
+                else:
+                    raise ValueError('Choose an installed style or explicitly load a custom CSL file.')
+                if (scope_index not in (0, 1)
                         or (scope_index == 1 and self.selected_identity is None)
                         or not 0 <= name_index < len(NAME_MODES) or not 0 <= locale_index < len(LOCALES)):
                     raise ValueError('Choose a style, reference scope, name convention and language.')
@@ -130,7 +170,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.report('Formatting locally. Close cancels delivery of this preview.', focus=False)
                 future = self.executor.submit(self.workbench.preview,
                     identity=self.selected_identity if scope_index else None,
-                    style=self.styles[style_index].id, locale=LOCALES[locale_index][0],
+                    style=style, locale=LOCALES[locale_index][0],
                     name_mode=NAME_MODES[name_index][0])
                 self.pending = future
                 future.add_done_callback(lambda completed: wx.CallAfter(self.on_ready, completed))
@@ -190,18 +230,34 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 chooser = wx.FileDialog(self, 'Save formatted bibliography',
                     defaultFile='bibliography.' + extension,
                     wildcard=f'{label} (*.{extension})|*.{extension}',
-                    style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                    style=wx.FD_SAVE)
                 try:
                     if chooser.ShowModal() != wx.ID_OK:
                         return
                     destination = chooser.GetPath()
                 finally:
                     chooser.Destroy()
+                # Bind the exact file before showing our overwrite question.
+                # A picker prompt cannot carry its file identity into the
+                # asynchronous render, and a new path needs no-clobber.
+                approval = capture_export_destination(destination,
+                    private_root=controller.library.root)
+                if not approval.require_absent:
+                    question = wx.MessageDialog(self,
+                        f'Replace the existing bibliography file?\n{destination}',
+                        'Replace bibliography file',
+                        style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                    try:
+                        if question.ShowModal() != wx.ID_YES:
+                            return
+                    finally:
+                        question.Destroy()
                 self.cancelled = threading.Event()
                 self.controls(pending=True)
                 self.report('Preparing the bibliography file locally. Close cancels an unfinished export.', focus=False)
                 future = self.executor.submit(self.workbench.export, self.preview, destination,
-                    format=format, cancelled=self.cancelled.is_set)
+                    format=format, cancelled=self.cancelled.is_set,
+                    require_absent=approval.require_absent, approval=approval)
                 self.pending = future
                 future.add_done_callback(lambda completed: wx.CallAfter(self.on_export_ready, completed, destination))
             except Exception as exc:
