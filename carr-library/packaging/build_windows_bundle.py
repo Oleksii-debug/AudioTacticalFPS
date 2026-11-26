@@ -119,7 +119,10 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
-        bom = json.loads(sbom.read_text(encoding="utf-8"))
+        # Seal the very bytes whose dependency inventory was validated.
+        # Do not re-open a mutable input later in the build.
+        sbom_bytes = sbom.read_bytes()
+        bom = json.loads(sbom_bytes.decode("utf-8"))
         expected = {(name, version) for name, (version, _hashes) in pins.items()}
         actual = {(canonicalize_name(item["name"]), item["version"])
                   for item in bom.get("components", [])}
@@ -283,7 +286,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
         if sbom is not None:
-            shutil.copyfile(sbom, staged / "runtime-sbom.cdx.json")
+            (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
