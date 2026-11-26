@@ -39,7 +39,7 @@ def linked(info):
         & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400))
 
 
-def local_file(path, *, must_exist=True):
+def local_file(path, *, must_exist=True, _allow_hardlinks=False):
     raw = os.fspath(path)
     if not isinstance(raw, str) or not raw or '\0' in raw or raw.startswith(('\\\\', '//')):
         raise ValueError('Choose a local file; network paths are not permitted.')
@@ -59,9 +59,37 @@ def local_file(path, *, must_exist=True):
         if must_exist:
             raise
     else:
-        if linked(info) or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        if linked(info) or not stat.S_ISREG(info.st_mode) or (info.st_nlink != 1 and not _allow_hardlinks):
             raise ValueError('The file must be regular and must not have links or reparse points.')
     return result
+
+
+def windows_directory():
+    """Ask Windows itself, rather than trusting an overridable environment path."""
+    if os.name != 'nt':
+        raise RuntimeError('The Windows system directory is only available on Windows.')
+    import ctypes
+    buffer = ctypes.create_unicode_buffer(32768)
+    length = ctypes.windll.kernel32.GetWindowsDirectoryW(buffer, len(buffer))
+    if not 0 < length < len(buffer):
+        raise OSError('Windows did not return its system directory.')
+    return Path(buffer.value)
+
+
+def system_powershell(path):
+    """Accept Windows' serviced PowerShell executable, including WinSxS hard links.
+
+    This exception is confined to the two fixed OS executables. Source files,
+    voice models, helpers and rendered outputs keep the single-link requirement.
+    Reparse points and linked ancestors remain forbidden in every case.
+    """
+    candidate = Path(path).absolute()
+    root = windows_directory()
+    allowed = {root / folder / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
+               for folder in ('System32', 'SysWOW64')}
+    if candidate not in allowed:
+        raise ValueError('SAPI must use the installed Windows system PowerShell host.')
+    return local_file(candidate, _allow_hardlinks=True)
 
 
 def digest(path):
