@@ -1,0 +1,315 @@
+name: CARR Windows integrated desktop
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-windows.yml
+  push:
+    branches: [carr/finish-desktop-20261126]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integrated-desktop:
+    name: Windows x64 / CPython 3.11 / integrated desktop
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the actual desktop package in a fresh environment
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check the installed application through its self-test entrypoint
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run required integrated source workflows
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/packaging/test_offline_runtime_policy.py',
+            'tests/e2e/test_offline_startup.py',
+            'bootstrap/semantic_compat/test_probe.py',
+            'tests/e2e/test_application.py',
+            'tests/e2e/test_retained_source_search_integrity.py',
+            'tests/e2e/test_research_workflows.py',
+            'tests/e2e/test_current_topic_scope.py',
+            'tests/e2e/test_search_operation_budget.py',
+            'tests/e2e/test_nested_search_clock_budget.py',
+            'tests/ingest/test_application_atomic_gate.py',
+            'tests/ingest/test_worker_isolated_launch.py',
+            'tests/ingest/test_application_atomic_docx_gate.py',
+            'tests/e2e/test_semantic_fallback_status.py',
+            'tests/e2e/test_source_file.py',
+            'tests/e2e/test_export_destination.py',
+            'tests/e2e/test_data_directory_containment.py',
+            'tests/extract/test_clipping_visibility.py',
+            'tests/storage/test_library_backup.py',
+            'tests/storage/test_backup_schema_identity.py',
+            'tests/citations/test_finish_label_integrity.py',
+            'tests/storage/test_printed_label_integrity.py',
+            'tests/catalog/test_catalog_panel_acceptance.py',
+            'tests/storage/test_v2_recovery.py',
+            'tests/storage/test_catalog_composition.py',
+            'tests/reader/test_saved_topic_query.py',
+            'tests/reader/test_evidence_export.py',
+            'tests/reader/test_topic_search_runtime.py',
+            'tests/search/test_literal_long_source.py',
+            'tests/search/test_thematic_work_diversity.py',
+            'tests/search/test_literal_v2_composition.py',
+            'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/probe_workspace_shell.py',
+            'tests/accessibility/test_pr71_catalog_scope_ux.py',
+            'tests/ui/test_source_open_handler.py'
+          )
+          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native wx startup and source-opening events
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native saved-evidence page selection and note recovery
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the pinned local model through the existing upstream verifier
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
+          $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-model-ci/model-manifest.json'
+          $acquire = @'
+          import importlib.util, json, pathlib, shutil, sys
+          from huggingface_hub import hf_hub_download
+          spec = importlib.util.spec_from_file_location('model_build', pathlib.Path('packaging/model_bundle.py').resolve())
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          target, manifest = map(pathlib.Path, sys.argv[1:])
+          target.mkdir(parents=True, exist_ok=False)
+          for name in sorted(helper.FILES):
+              source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
+              shutil.copyfile(source, target / name)
+          proof = helper.seal(target)
+          with manifest.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True)
+          print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
+          '@
+          # Only this explicit build-time child may fetch the pinned public model.
+          # Importing the application before acquisition would enforce offline mode.
+          $env:HF_HUB_OFFLINE = '0'
+          try {
+            $acquire | & $env:CARR_PYTHON -I -B - $model $modelManifest | Tee-Object 'ci-results/model-acquisition.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:HF_HUB_OFFLINE = '1'
+          }
+          & $env:CARR_PYTHON -I -B -c "import sys; from carr_library.semantic import verify_model_bundle; verify_model_bundle(sys.argv[1], sys.argv[2]); print('PASS: exact approved local model')" $model $modelManifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build, install and exercise the complete bundle with runtime egress blocked
+        timeout-minutes: 20
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $wheelhouse = Join-Path $bundleWork 'wheelhouse'
+          $applicationWheels = Join-Path $bundleWork 'application'
+          $baseBundle = Join-Path $bundleWork 'base bundle'
+          $bundle = Join-Path $bundleWork 'complete bundle'
+          New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $applicationWheels -Filter '*.whl')
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $applicationWheel = $wheels[0].FullName
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
+          Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
+          $archiveHash = (Get-FileHash -LiteralPath $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($archiveHash -ne $runtime.download.sha256) { throw 'Pinned Python archive checksum mismatch.' }
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $bundleWork 'native-runtime.conda'
+          Invoke-WebRequest -Uri $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item -LiteralPath $nativePackage).Length -ne $nativeLock.package.size) { throw 'Pinned native package size mismatch.' }
+          if ((Get-FileHash -LiteralPath $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nativeLock.package.sha256) { throw 'Pinned native package checksum mismatch.' }
+          $nativeRuntime = Join-Path $bundleWork 'native-runtime'
+          & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'ci-results/native-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $manifest = Join-Path $bundle 'bundle-manifest.json'
+          $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+          $bundledPython = Join-Path $bundle 'runtime/python.exe'
+          $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          # Finish test-only acquisition before the offline execution boundary.
+          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
+          New-Item -ItemType Directory -Force $testWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+          # Temporary rules on this disposable CI VM. Fail before execution if
+          # Windows Firewall cannot enforce every runtime program's outbound block.
+          Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+          foreach ($program in $programs) {
+            $ruleName = $rulePrefix + '-' + $ruleNames.Count
+            $ruleNames += $ruleName
+            New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+          }
+          $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+          if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline checks require enabled Windows Firewall profiles.' }
+          $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+          if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline execution rules are not active.' }
+          $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+          if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
+          @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
+          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # This probe imports wx first: hold the application's verified DLL
+          # directory handle before loading that native extension.
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          # Test dependencies are installed only after production installation passes.
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          $runInstalledTests = @'
+          import ctypes, json, pathlib, sys
+          from ctypes import wintypes
+          import carr_library
+          from carr_library.native_runtime import activate_bundled_runtime
+          root = pathlib.Path(sys.argv[1]).resolve()
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          manifest = json.loads((root / 'bundle-manifest.json').read_text())
+          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
+          runtime_handle = activate_bundled_runtime(bundle_root=root)
+          assert runtime_handle is not None
+          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
+          import pytest
+          status = pytest.main(sys.argv[2:])
+          if status:
+              raise SystemExit(status)
+          kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+          kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+          kernel.GetModuleHandleW.restype = wintypes.HMODULE
+          kernel.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+          kernel.GetModuleFileNameW.restype = wintypes.DWORD
+          for name in ('msvcp140.dll', 'msvcp140_1.dll'):
+              module = kernel.GetModuleHandleW(name)
+              assert module, name + ' was not loaded by the native workflow'
+              actual = ctypes.create_unicode_buffer(32768)
+              length = kernel.GetModuleFileNameW(module, actual, len(actual))
+              assert 0 < length < len(actual)
+              assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
+          print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
+          '@
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing'}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
+      # Evidence only: no model, native DLLs, OCR source payload, or user documents
+      # are uploaded. NVDA and final-download identity remain separate acceptance.
+      - name: Preserve exact-commit runtime and test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-windows-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7

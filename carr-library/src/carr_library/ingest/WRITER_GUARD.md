@@ -1,0 +1,16 @@
+# CARR-10 cooperative writer session — REVIEW_REQUIRED
+
+Base a450bd9eb97b11764f0fe2d70d72efbf9788aa5d; continuation of PR31 head 5f06479fbc4c5cc24a9d66111c788e648aa91f36; claim #11 comment 7186908611. Existing Ingest and Storage remain the source of truth. This optional adapter does not replace their transactions or fix the direct non-cooperating writer race.
+
+## Actual upstream adoption
+
+- filelock 3.29.0, MIT, copyright Bernát Gábor and contributors, upstream https://github.com/tox-dev/filelock/tree/469b47f192b0a9f8c8b795d9b9f57212c716959b ; LICENSE inspected at exact commit. Reuses FileLock, Timeout, native UnixFileLock/WindowsFileLock rather than implementing OS locking. All 13 upstream Python source files under src/filelock were compared by Git blob hash with the installed runtime; 13/13 match. Installed generated version.py is additional packaging output, not upstream source. No upstream files copied or altered. Existing installed runtime actually exercised; direct download failed DNS. Candidate dependency pin for CARR-11: filelock @ git+https://github.com/tox-dev/filelock.git@469b47f192b0a9f8c8b795d9b9f57212c716959b ; packaging must lock reviewed platform wheels, preserve MIT notice and record artifact hashes. Not a complete dependency lock.
+- Existing PR31 uses PR17 MIT cairnsearch hash_file, unchanged. No new extraction engine or model added in this lane. BagIt upstream inspected again at 4bd2713cedbe1f8e634567c20ef0dded9622011d; in-place directory transformation and unassembled workspace schema remain reasons not to integrate it yet. CARR-07 owns model inference.
+
+## Contract and limitations
+
+Use open_ingest_session(private_root, storage_path, journal_path) to open/close existing Ingest and Storage under exclusive_writer; all mutating callers must cooperate on the same canonical root. Explicit paths, portable distinct database filenames; default immediate busy result, bounded timeout up to 30 seconds; refuse absent/unreviewed dependency, non-native lock, unexpected namespace entries. Private stable local directories only, not network filesystems or hostile shared paths. This is not a security sandbox, an authorization mechanism, or a replacement for transactional compare-and-swap. No GUI/CLI callsite is claimed migrated; CARR-01/05/09 must coordinate common writer entrypoint. Existing in-process calls that bypass the adapter are unaffected.
+
+## Executed evidence
+
+Linux Python 3.13.5, SQLite 3.46.1, actual filelock 3.29.0 (not mocked). From carr-library candidate root: PYTHONPATH=src python -m pytest -q tests/ingest/test_writer_guard.py -k 'not real_ingest_session' -> 11 passed, 1 deselected in 2.47s, exit 0. Real child-process contention/reacquisition, forced process death and native lock release, SQLite persistence after caller exception, Unicode path, preservation of existing nonempty and hardlinked entries, timeout validation and rejection of unsafe database names. Tested Git blobs: writer_guard.py 2445a40f97cdb45bd590e64da415a18fae31ce54; test_writer_guard.py 25b6e886aaf7007d2e860a32ce41d9da54cc7bad. Both read back identical on GitHub. Full test_real_ingest_session requires assembled pinned dependencies; NOT_RUN. Windows native runtime, NVDA, full integration, lock artifact/SBOM and CI NOT_RUN. No gate closed; no merge until independent acceptance.

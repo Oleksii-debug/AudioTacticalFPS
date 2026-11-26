@@ -1,0 +1,25 @@
+# Pinned MiniLM model bundle — build-time candidate only
+
+Reuse huggingface_hub 1.16.1 (Apache-2.0), source tag v1.16.1 resolves to https://github.com/huggingface/huggingface_hub/tree/ff0cc602c3fa77edaee06a58b9922dd79e49c94c. LICENSE and native HfApi.verify_repo_checksums inspected. Do not introduce a custom downloader or remote metadata verifier. This is a build-tool dependency, not a new mandatory runtime dependency; complete wheel lock and transitive license/security review still required.
+
+Model candidate: https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/tree/faf4aa4225822f3bc6376869cb1164e8e3feedd0 (Apache-2.0 as declared in model card; rights/security redistribution review pending). Published SHA256 values are recorded for the three large artifacts from their individual blob pages at that exact revision. ONNX ~235 MB; full snapshot ~267 MB. Other files must pass native remote Git blob / LFS checksum validation before sealing. No weights in public Git.
+
+## Acquisition and handoff
+
+On an authorized, network-enabled build host with reviewed and locked huggingface_hub, use native hf download with the exact repo and --revision faf4aa4225822f3bc6376869cb1164e8e3feedd0. Use HF_HUB_DISABLE_IMPLICIT_TOKEN=1 and HF_HUB_DISABLE_TELEMETRY=1. Copy only the nine expected regular files from the pinned snapshot into a fresh dedicated flat staging directory (dereference cache symlinks into regular files; no .cache directories). No other local documents. Keep staging private and quiescent during sealing; this is not a sandbox against concurrent writers. Run:
+
+    python packaging/model_bundle.py <staged-model-dir> <new-manifest.json>
+
+The helper calls upstream verification at the exact revision with token=False, requires complete match, checks published large-file SHA256 and rejects staging changes. Manifest is outside the model folder and created without overwrite. Distribute only after independent review, with verified installer or manifest authenticity; a self-generated manifest is not a signature. The hashes field is the flat map accepted by PR37 verified_bundle(root, approved_hashes); hand over only to CARR-07 after independent approval. No live verification/download on runtime startup. PR37/25 handle retrieval and offline runtime, PR39 handles Windows dependency resolution. Missing/unapproved bundle must not block lexical search.
+
+Alternative evaluated: https://huggingface.co/intfloat/multilingual-e5-small (MIT, 384 dimensions, requires query/passage prefixes). Xenova ONNX conversion exact revision https://huggingface.co/Xenova/multilingual-e5-small/tree/761b726dd34fb83930e26aab4e9ac3899aa1fa78/onnx lists INT8 ~118 MB; conversion license and binary SHA256 not confirmed, no adoption. Do not confuse its quantized artifact size with Qdrant MiniLM.
+
+## Reproducible evidence
+
+Linux Python 3.13.5, installed huggingface_hub 1.16.1, pytest 9.0.2. From carr-library: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/packaging/test_model_bundle.py. Exit 0, 9 passed in 0.22s. Actual installed upstream HfApi.verify_repo_checksums executed, with synthetic list_repo_tree metadata; no claim of live remote verification or model inference. Tested blob IDs d7a97dbeb7e394f83ef1127ced0d9da1d06ddaac (helper) and c12e588bc1888758979cd8c0731d80e92e83948c (tests). Real pinned hf_hub_download config.json attempt failed DNS, exit 1. Full model download, live verification, RAM/CPU inference, NVDA and Windows packaging NOT_RUN. No redistribution approval, no release. CARR-13 review artifact security/license and authenticity; CARR-07 benchmark actual inference. Keep PR37 and PR25 ownership intact.
+
+## SEC-MODEL-001 build-time boundary regression, 2026-11-26
+
+Addresses the independent PR46 hardlink and linked-ancestor findings: inspect the original absolute path component by component using pathlib.lstat, reject symbolic links and Windows reparse flags, and accept only regular model files with exactly one hardlink. Reapply checks in the existing post-verification hash pass; retain the upstream Hub checksum implementation unchanged. This is a preflight, not a race-safe filesystem sandbox. Fresh app-owned private staging, trusted manifest output location, ACLs, Windows runtime validation, immutable authenticated handoff and no concurrent writer remain mandatory. Runtime PR37 is not modified; SEC-MODEL-001 is not globally closed.
+
+Actual Linux Python 3.13.5, huggingface_hub 1.16.1 and pytest 9.0.2: `python -m pytest -q -p no:cacheprovider tests/packaging/test_model_bundle.py`. Original exact blobs: 9 PASS (0.35s). Expanded before fix: 9 PASS / 3 FAIL (0.48s, exit 1). Expanded after fix: 12 PASS / 0 FAIL (0.36s, exit 0). Hardlink and ancestor symlink are real filesystem operations; Windows reparse flag is simulated. Tested new source blob 5533046bd42cd10af74cd3ea028553c59ead832d and test blob 3def3e7e0b4b6a8ff451c6c1b11e25a9a2bea40e. Actual upstream verification with synthetic remote metadata; no downloaded weights, Windows ACL/reparse execution, inference or release claim. CARR-13 independent re-review required.

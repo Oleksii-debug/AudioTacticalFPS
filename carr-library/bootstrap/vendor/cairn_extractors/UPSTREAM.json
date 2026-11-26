@@ -1,0 +1,48 @@
+{
+  "repository": "https://github.com/smwaqas89/cairnsearch",
+  "commit": "eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93",
+  "license": "MIT",
+  "files": [
+    {
+      "source": "LICENSE",
+      "destination": "LICENSE",
+      "blob_sha": "7f60bd126b932ca626c4f19ae6d4086690f56825"
+    },
+    {
+      "source": "src/cairnsearch/extractors/base.py",
+      "destination": "base.py",
+      "blob_sha": "c64aa541c7a8deed7e0039cc38b845548a9d57f8"
+    },
+    {
+      "source": "src/cairnsearch/extractors/docx_extractor.py",
+      "destination": "docx_extractor.py",
+      "blob_sha": "cf89f4569fc87f982cbebca5bdd9a60535278bf1"
+    },
+    {
+      "source": "src/cairnsearch/extractors/html_extractor.py",
+      "destination": "html_extractor.py",
+      "blob_sha": "c91772c65d9f75cc12457b58ae0c03629cff614f"
+    },
+    {
+      "source": "src/cairnsearch/extractors/txt_extractor.py",
+      "destination": "txt_extractor.py",
+      "blob_sha": "ed96b96beef0538567532fb5156c8b88f139268a"
+    },
+    {
+      "source": "src/cairnsearch/extractors/csv_extractor.py",
+      "destination": "csv_extractor.py",
+      "blob_sha": "9ed7a0481799e277b6588c1acd347f13ce2192ea"
+    },
+    {
+      "source": "src/cairnsearch/extractors/xlsx_extractor.py",
+      "destination": "xlsx_extractor.py",
+      "blob_sha": "65715374e438112b96cbd7fb12d8216e37ea391b"
+    },
+    {
+      "source": "src/cairnsearch/indexer/hasher.py",
+      "destination": "hasher.py",
+      "blob_sha": "b872612f8470191b53af83e41af02f637cbaee69"
+    }
+  ],
+  "modifications": "Only package layout and local __init__.py. Original files copied verbatim."
+}

@@ -1,0 +1,23 @@
+{
+  "uv_version": "0.13.9",
+  "metadata_url": "https://raw.githubusercontent.com/astral-sh/uv/6b2d39dcc390293d51c9c0d2bbcd650f4bcbfdce/crates/uv-python-managed/download-metadata.json",
+  "target": "cpython-3.11.18-windows-x86_64-none",
+  "download": {
+    "name": "cpython",
+    "arch": {
+      "family": "x86_64",
+      "variant": null
+    },
+    "os": "windows",
+    "libc": "none",
+    "major": 3,
+    "minor": 11,
+    "patch": 18,
+    "prerelease": "",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.11.18%2B20261110-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+    "sha256": "f31751f4a8483f5ac7cd77ad83f8dfb80d9f2a7245bff1585e27516c777fb46f",
+    "variant": null,
+    "build": "20261110"
+  },
+  "uv_commit": "6b2d39dcc390293d51c9c0d2bbcd650f4bcbfdce"
+}

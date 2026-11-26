@@ -1,0 +1,3 @@
+# Selected source matchers
+Upstream: https://github.com/h2non/filetype.py/tree/3eae5cedad2dc65076a501a9374abafb1d700602
+MIT; original LICENSE included. base.py unchanged (blob 7c0c0d26d9344907eb6d5cba107dd927c8477d5d). archive.py selects Zip, Pdf, Exe and Rtf classes verbatim from filetype/types/archive.py (blob 0ffc95483fcbd1f34f400b3002b95c1bab140d7e), removing unrelated matchers and unused imports. No package dependencies; only signature screening, never a malware or structural validation claim. PR #17's cairnsearch extractors remain separate; snapshot hashing intentionally hashes the exact bounded immutable bytes rather than reopening an original path.
