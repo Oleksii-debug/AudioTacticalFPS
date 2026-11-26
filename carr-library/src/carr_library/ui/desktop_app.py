@@ -203,7 +203,8 @@ class DesktopSearchPanel(PagedSearchPanel):
                 compile_query(query)
             except ValueError as exc:
                 self.status.ChangeValue(f'Invalid advanced query: {exc}')
-                self.query.SetFocus()
+                self.status.SetInsertionPoint(0)
+                self.status.SetFocus()
                 return
         presentation = self.result_mode.GetSelection()
         if not 0 <= presentation < 2:

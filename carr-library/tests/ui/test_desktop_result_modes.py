@@ -97,7 +97,8 @@ def test_invalid_advanced_syntax_starts_no_background_job(panel):
     panel.on_search(None)
     panel.frame.run_job.assert_not_called()
     assert 'Invalid advanced query' in panel.status.ChangeValue.call_args.args[0]
-    panel.query.SetFocus.assert_called_once()
+    panel.status.SetInsertionPoint.assert_called_once_with(0)
+    panel.status.SetFocus.assert_called_once()
 
 
 def test_query_builder_cancel_preserves_current_results(panel, monkeypatch):

@@ -132,8 +132,10 @@ class QueryBuilderDialog:
         self.distance.SetName('Nearby distance; maximum intervening words, 0 to 100')
         layout.Add(self.distance, 0, wx.EXPAND | wx.ALL, 8)
         self.preview = self._field(layout, 'Generated query preview', readonly=True, multiline=True)
+        # wxMSW skips single-line read-only text in Tab traversal. A native
+        # multiline reader keeps validation messages reachable in wx 4.2.x.
         self.status = self._field(layout, 'Query builder status',
-                                 'Enter terms, then choose Build query.', readonly=True)
+                                 'Enter terms, then choose Build query.', readonly=True, multiline=True)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         self.build_button = wx.Button(self.dialog, label='&Build query')
         self.use_button = wx.Button(self.dialog, wx.ID_OK, '&Use query')

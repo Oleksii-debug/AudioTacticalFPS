@@ -18,6 +18,17 @@ from tempfile import TemporaryDirectory
 import traceback
 
 
+def _unwind_failed_probe(wx, gui):
+    """Stop the outer loop after closing just the currently nested modal."""
+    main_loop = gui.GetMainLoop()
+    if main_loop is not None:
+        main_loop.ScheduleExit(1)
+    for window in reversed(wx.GetTopLevelWindows()):
+        if isinstance(window, wx.Dialog) and window.IsModal():
+            window.EndModal(wx.ID_CANCEL)
+            return
+
+
 def run_probe(wx, native_active):
     from carr_library.application import LibraryApp
     from carr_library.search import advanced
@@ -30,16 +41,18 @@ def run_probe(wx, native_active):
         failures.append(message)
         if frame is not None:
             frame.cancel_event.set()
-        # End nested modal loops before the application's outer loop.
-        for window in reversed(wx.GetTopLevelWindows()):
-            if isinstance(window, wx.Dialog) and window.IsModal():
-                window.EndModal(wx.ID_CANCEL)
-        gui.ExitMainLoop()
+        _unwind_failed_probe(wx, gui)
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             fail(traceback.format_exc())
             return False
+
+        def OnEventLoopExit(self, loop):
+            if failures and not loop.IsMain():
+                # The inner ShowModal must return before its parent can close.
+                wx.CallAfter(_unwind_failed_probe, wx, self)
+            super().OnEventLoopExit(loop)
 
     gui = ProbeApp(False)
     with TemporaryDirectory(prefix='research-advanced-native-') as temporary:
@@ -164,7 +177,7 @@ def run_probe(wx, native_active):
                     assert field.GetWindowStyleFlag() & wx.TE_MULTILINE
             for control in (form.preview, form.status):
                 assert control.GetWindowStyleFlag() & wx.TE_READONLY
-                assert control.GetName() and control.AcceptsFocusFromKeyboard()
+                assert control.GetName() and control.AcceptsFocusFromKeyboard(), control.GetName()
             assert form.distance.GetMin() == 0 and form.distance.GetMax() == 100
             assert form.distance.GetValue() == 5
             for button in (form.build_button, form.use_button, form.cancel_button, form.help_button):
@@ -232,6 +245,24 @@ def run_probe(wx, native_active):
             assert form.preview.GetValue() == '"Temporary local phrase"'
             assert form.use_button.IsEnabled()
             focus(form.preview)
+            assert simulator.KeyDown(wx.WXK_TAB)
+            assert simulator.KeyUp(wx.WXK_TAB)
+            later(lambda: readonly_status_reached(form), 80)
+
+        def readonly_status_reached(form):
+            focus(form.status)
+            assert 'Query built.' in form.status.GetValue()
+            assert simulator.KeyDown(wx.WXK_SHIFT)
+            try:
+                assert simulator.KeyDown(wx.WXK_TAB)
+                assert simulator.KeyUp(wx.WXK_TAB)
+            finally:
+                simulator.KeyUp(wx.WXK_SHIFT)
+            later(lambda: readonly_preview_reached(form), 80)
+
+        def readonly_preview_reached(form):
+            focus(form.preview)
+            assert form.preview.GetValue() == '"Temporary local phrase"'
             form.fields['all_terms'].SetFocus()
             form.fields['all_terms'].SetValue('Changed temporary phrase')
             later(lambda: edited(form))
@@ -323,12 +354,14 @@ def run_probe(wx, native_active):
         def finish():
             focus(panel.status)
             assert panel.status.GetName() == 'Search status'
+            assert panel.status.AcceptsFocusFromKeyboard()
             assert not scenarios
             report.update(status='PASS', platform=platform.system(), wx_version=wx.version(),
                 native_runtime_active=native_active, windows_nvda='NOT_RUN',
                 checks=['real TXT imports and separate library', 'named native dialog fields',
                         'keyboard Tab and Shift+Tab', 'native readable Help and focus return',
                         'negative-only validation and status focus', 'reviewable Build preview',
+                        'keyboard Tab and Shift+Tab through readonly preview and status',
                         'editing invalidates Use', 'Cancel preserves query and results',
                         'All/Any/Exclude/NEAR Use updates advanced mode', 'stale results cleared',
                         'query focus returned', 'actual asynchronous advanced Enter search',

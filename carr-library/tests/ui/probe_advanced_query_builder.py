@@ -132,6 +132,9 @@ def fake_wx():
         def SetEscapeId(self, value): self.escape = value
         def SetInsertionPoint(self, value): self.insertion = value
         def SetFocus(self): wx.focus = self
+        def AcceptsFocusFromKeyboard(self):
+            # wxMSW 3.2 excludes single-line read-only text from Tab traversal.
+            return not self.style & wx.TE_READONLY or bool(self.style & wx.TE_MULTILINE)
         def SetDefault(self): self.default = True
         def Enable(self, value): self.enabled = value
         def Bind(self, event, callback): self.bindings[event] = callback
@@ -169,6 +172,44 @@ def test_named_native_controls_and_initial_focus():
     assert form.distance.kwargs['min'] == 0 and form.distance.kwargs['max'] == 100
     assert form.build_button.default and not form.use_button.enabled
     assert form.dialog.escape == wx.ID_CANCEL
+
+
+def test_readonly_query_and_validation_readers_are_keyboard_reachable():
+    wx = fake_wx()
+    form = QueryBuilderDialog(wx, None, 'previous query')
+    for control in (form.current, form.preview, form.status):
+        assert control.style & wx.TE_READONLY
+        assert control.AcceptsFocusFromKeyboard(), control.name
+        assert control.minimum[1] >= 56
+
+
+def test_failure_cleanup_schedules_outer_exit_before_unwinding_nested_modals():
+    from pathlib import Path
+    import runpy
+
+    unwind = runpy.run_path(str(Path(__file__).with_name('probe_advanced_search_native.py')))[
+        '_unwind_failed_probe']
+    events = []
+
+    class Dialog:
+        def __init__(self, name): self.name, self.modal = name, True
+        def IsModal(self): return self.modal
+        def EndModal(self, result):
+            events.append(('end', self.name, result))
+            self.modal = False
+
+    outer, inner = Dialog('builder'), Dialog('help')
+    loop = SimpleNamespace(ScheduleExit=lambda code: events.append(('exit-main', code)))
+    gui = SimpleNamespace(GetMainLoop=lambda: loop)
+    wx = SimpleNamespace(Dialog=Dialog, ID_CANCEL=5101,
+                         GetTopLevelWindows=lambda: [outer, inner])
+    unwind(wx, gui)
+    assert events == [('exit-main', 1), ('end', 'help', 5101)]
+    assert outer.IsModal(), 'The parent must remain until the child event loop returns.'
+    unwind(wx, gui)
+    assert events[-2:] == [('exit-main', 1), ('end', 'builder', 5101)]
+    unwind(wx, gui)
+    assert events[-1] == ('exit-main', 1)
 
 
 def test_build_preview_then_use_returns_exact_query_and_destroys_dialog():
