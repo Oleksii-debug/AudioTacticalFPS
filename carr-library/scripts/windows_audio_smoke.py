@@ -130,6 +130,10 @@ def main():
 
         library = LibraryApp(root / 'library')
         frame = DesktopFrame(library)
+        labels = [frame.menu_bar.GetMenuLabel(index) for index in range(frame.menu_bar.GetMenuCount())]
+        mnemonics = [match.group(1).casefold() for label in labels
+                     if (match := re.search(r'(?<!&)&(?!&)(.)', label))]
+        assert len(mnemonics) == len(set(mnemonics)), 'Top-level native menu mnemonics collide.'
         controller = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
         controller.new(script, title='Synthetic local production', input_kind='script')
         desktop_output = root / 'desktop-output'

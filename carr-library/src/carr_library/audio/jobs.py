@@ -67,12 +67,16 @@ def _sync_directory(path):
             os.close(descriptor)
 
 
+def _json_bytes(value):
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False).encode('utf-8')
+
+
 def atomic_json(path, value):
     path = Path(path)
     parent = checked_directory(path.parent)
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError('Unsafe checkpoint path.')
-    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False).encode('utf-8')
+    encoded = _json_bytes(value)
     descriptor, name = tempfile.mkstemp(prefix='.checkpoint-', dir=parent)
     try:
         with os.fdopen(descriptor, 'wb') as stream:
@@ -130,10 +134,34 @@ def project_lock(root):
 
 class ChunkCache:
     def __init__(self, root, *, cancelled=lambda: False, disk_budget_bytes=32 * 1024 ** 3):
+        if type(disk_budget_bytes) is not int or disk_budget_bytes < 0:
+            raise ValueError('Invalid audio disk budget.')
         self.root = checked_directory(root, create=True)
         self.cancelled = cancelled
         self.disk_budget_bytes = disk_budget_bytes
-        self.used = sum(p.stat().st_size for p in self.root.iterdir() if p.is_file() and not p.is_symlink())
+        self.used = self._retained_bytes()
+
+    def _retained_bytes(self):
+        """Count every retained payload, including forensic quarantine.
+
+        A corrupt link may have been quarantined deliberately. Count the link
+        entry itself without following it or traversing a reparse directory.
+        Like the existing budget, this counts file sizes, not filesystem block
+        allocation; accepted chunks are maintained under the project lock.
+        """
+        total, pending = 0, [self.root]
+        while pending:
+            directory = checked_directory(pending.pop())
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    check_cancelled(self.cancelled)
+                    info = entry.stat(follow_symlinks=False)
+                    if (stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode)
+                            and not getattr(info, 'st_file_attributes', 0) & 0x400):
+                        pending.append(Path(entry.path))
+                    else:
+                        total += info.st_size
+        return total
 
     @staticmethod
     def _key(key):
@@ -181,6 +209,9 @@ class ChunkCache:
                 if path.exists() or path.is_symlink():
                     # Move a bad link itself; never read or erase its target.
                     path.rename(quarantine / (path.name + '.' + uuid.uuid4().hex))
+            # Corruption may change a file's size. Retaining it never releases
+            # its storage allowance, either now or after the next restart.
+            self.used = self._retained_bytes()
             return None
 
     def seal(self, key, source, *, provenance=None, companions=()):
@@ -189,30 +220,48 @@ class ChunkCache:
         from .ffmpeg import wav_info
         info = wav_info(source)
         size = regular_file(source).st_size
-        self.reserve(size)
+        prepared, seen, payload_size = [], set(), size
+        for suffix in companions:
+            if suffix not in ('.mid', '.music.json') or suffix in seen:
+                raise ValueError('Unsupported or duplicate music companion.')
+            seen.add(suffix)
+            path = source.with_suffix(suffix)
+            companion_size = regular_file(path).st_size
+            prepared.append((path, key + suffix, companion_size))
+            payload_size += companion_size
+        self.reserve(payload_size)
         checksum = sha256_file(source, cancelled=self.cancelled)
         target = self.root / (key + '.wav')
         metadata = {'schema_version': 1, 'key': key, 'sha256': checksum, 'size': size,
                     'sample_rate': info.rate, 'channels': info.channels, 'frames': info.frames,
                     'provenance': provenance or {}, 'companions': []}
+        for path, name, companion_size in prepared:
+            metadata['companions'].append({'name': name, 'size': companion_size,
+                'sha256': sha256_file(path, cancelled=self.cancelled)})
+        metadata_size = len(_json_bytes(metadata))
+        if metadata_size > 65536:
+            raise ValueError('Oversized chunk checkpoint.')
+        # Check the complete committed payload before publishing even the first
+        # companion. The checkpoint uses exactly this JSON serialization.
+        reserved = payload_size + metadata_size
+        self.reserve(reserved)
         published = []
         try:
-            for suffix in companions:
-                if suffix not in ('.mid', '.music.json'):
-                    raise ValueError('Unsupported music companion.')
-                path = source.with_suffix(suffix)
-                name = key + suffix
-                record = {'name': name, 'size': regular_file(path).st_size,
-                          'sha256': sha256_file(path, cancelled=self.cancelled)}
+            for path, name, _size in prepared:
+                check_cancelled(self.cancelled)
                 publish_new(path, self.root / name)
                 published.append(self.root / name)
-                metadata['companions'].append(record)
+            check_cancelled(self.cancelled)
             publish_new(source, target)
             published.append(target)
+            check_cancelled(self.cancelled)
             atomic_json(self.root / (key + '.json'), metadata)
         except Exception:
             for path in published:
                 path.unlink()
+            # A checkpoint may have been replaced before a durability error.
+            # Its retained bytes still count even though this seal failed.
+            self.used = self._retained_bytes()
             raise
-        self.used += size
+        self.used += reserved
         return target, metadata

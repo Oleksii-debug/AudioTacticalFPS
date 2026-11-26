@@ -7,6 +7,24 @@ import re
 from .models import local_path
 
 
+def _published_file_count(plan):
+    """Count delivered renderer outputs, excluding resumable cache/checkpoints."""
+    from ..audio.models import Line, Sound
+    roles = {event.role for scene in plan.scenes for event in scene.events if isinstance(event, Line)}
+    sounds = any(isinstance(event, Sound) for scene in plan.scenes for event in scene.events)
+    music = [scene.music for scene in plan.scenes if scene.music is not None]
+    stems = roles - {'Sound effects'} if plan.export_stems else set()
+    if plan.export_stems:
+        if sounds:
+            stems.add('Sound effects')
+        if music:
+            stems.add('Music (dry)')
+    # Master WAV, three text/JSON sidecars and complete.json; every chapter;
+    # exported stems; score/provenance companions; optional transcoded master.
+    return (5 + len(plan.scenes) + len(stems) + (plan.output_format != 'wav')
+            + sum(2 if cue.engine == 'procedural' else 1 for cue in music))
+
+
 class LocalAudioProduction:
     def __init__(self, private_root, *, registry=None, ffmpeg=None):
         from ..audio.engines import default_registry
@@ -16,6 +34,15 @@ class LocalAudioProduction:
         self.voices = registry if registry is not None else default_registry(ffmpeg=self.ffmpeg)
 
     def assistant_callback(self, settings, output_root, cancelled, progress):
+        from ..audio.jobs import RenderCancelled
+        try:
+            return self._produce(settings, output_root, cancelled, progress)
+        except RenderCancelled as exc:
+            # The assistant uses InterruptedError for durable pause/cancel.
+            # Preserve the renderer's reusable chunks and its cancellation state.
+            raise InterruptedError(str(exc)) from exc
+
+    def _produce(self, settings, output_root, cancelled, progress):
         from ..audio.jobs import atomic_json, checked_directory, check_cancelled, regular_file
         from ..audio.models import ProductionPlan, digest
         from ..audio.production import plan_narration, render_project
@@ -48,6 +75,12 @@ class LocalAudioProduction:
         if 'title' in settings:
             changes['title'] = settings['title']
         plan = replace(plan, **changes)
+        max_files = settings['max_files']
+        if type(max_files) is not int or max_files < 0:
+            raise ValueError('Invalid remaining audio file budget.')
+        expected_files = _published_file_count(plan)
+        if expected_files > max_files:
+            raise ValueError(f'Audio needs {expected_files} delivered files; the remaining file budget is {max_files}.')
         expected = {'schema': 'carr-assistant-audio/1', 'operation_id': identity,
                     'data_dir': str(self.private_root), 'plan_sha256': digest(plan.to_dict())}
         directory = output_root / ('assistant-audio-' + identity)
@@ -69,10 +102,15 @@ class LocalAudioProduction:
         completed = local_path(result['manifest']).parent
         if not completed.is_relative_to(directory):
             raise ValueError('The renderer returned a different output directory.')
-        artifacts = []
+        artifacts, total = [], 0
         for path in sorted(completed.iterdir()):
-            regular_file(path)
+            check_cancelled(cancelled)
+            total += regular_file(path).st_size
             artifacts.append(str(path))
+            if len(artifacts) > max_files or total > settings['max_bytes']:
+                raise ValueError('Rendered audio exceeds the remaining artifact budget.')
+        if len(artifacts) != expected_files:
+            raise ValueError('The renderer returned an unexpected delivered-file inventory.')
         return {'artifacts': artifacts, 'output': result['output'], 'project': str(directory),
                 'source_sha256': plan.source_sha256, 'input_kind': plan.input_kind,
                 'notice': 'Actual local audio; line timings come from rendered segments. Source quotation approval is unchanged.'}

@@ -277,7 +277,10 @@ def show_api_connections(frame):
 
 def install_api_connection_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'AI and API &connections...')
     frame.Bind(wx.EVT_MENU, lambda event: show_api_connections(frame), item)
-    frame.menu_bar.Append(menu, 'Se&ttings')
+    frame.menu_bar.Append(menu, '&Connections')
+    register_menu_command(frame, CommandSpec('api.connections.open', 'AI and API connections'), item)
