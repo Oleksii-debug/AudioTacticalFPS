@@ -63,7 +63,9 @@ class SearchPanel(wx.Panel):
     def on_selection(self, event):
         try:
             hit = self.selected()
-            self.details.ChangeValue(hit.citation + '\n\n' + hit.quote)
+            self.details.ChangeValue(
+                f'Title: {hit.title}\nAuthor: {hit.author}\nEdition: {hit.edition}\nPage: {hit.page}'
+                f'\nCitation: {hit.citation}\n\nQuotation:\n{hit.quote}')
         except ValueError:
             self.details.ChangeValue('')
         event.Skip()
@@ -135,10 +137,11 @@ class SearchPanel(wx.Panel):
             try:
                 if not wx.TheClipboard.SetData(wx.TextDataObject(value)):
                     raise RuntimeError('Clipboard rejected data')
-                wx.TheClipboard.Flush()
+                persisted = wx.TheClipboard.Flush()
             finally:
                 wx.TheClipboard.Close()
-            self.status.ChangeValue('Copied ' + field)
+            self.status.ChangeValue('Copied ' + field if persisted else
+                                    'Copied ' + field + '; availability after exit not confirmed. Paste before closing.')
         except Exception:
             self.status.ChangeValue('Copy failed. Select one result and retry.')
         self.status.SetFocus()
