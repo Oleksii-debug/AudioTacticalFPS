@@ -22,7 +22,13 @@ def ranker():
         pytest.skip('Set CARR_TEST_MODEL_DIR to the verified offline MiniLM bundle.')
     with patch('socket.socket.connect', side_effect=AssertionError('Network is forbidden during inference')), \
             patch('socket.create_connection', side_effect=AssertionError('Network is forbidden during inference')):
-        yield OfflineSemanticRanker(directory)
+        import onnxruntime
+        with patch('onnxruntime.disable_telemetry_events', wraps=onnxruntime.disable_telemetry_events) as disable:
+            instance = OfflineSemanticRanker(directory)
+            disable.assert_called_once()
+        assert os.environ['HF_HUB_DISABLE_TELEMETRY'] == '1'
+        assert os.environ['HF_HUB_OFFLINE'] == '1'
+        yield instance
 
 
 def test_actual_multilingual_ranker_and_complete_token_coverage(ranker):

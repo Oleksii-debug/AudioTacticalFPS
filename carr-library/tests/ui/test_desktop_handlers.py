@@ -312,38 +312,60 @@ def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
     assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
 
 
-def test_import_uses_the_chosen_recognition_configuration(classes,monkeypatch):
-    config = object()
-    choose = Mock(return_value=config)
-    monkeypatch.setitem(sys.modules,'carr_library.ui.ocr_options',SimpleNamespace(choose_ocr_config=choose))
+@pytest.mark.parametrize('choice,languages',[(0,'eng'),(1,'ukr'),(2,'slk'),(3,'eng+ukr+slk')])
+def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,choice,languages):
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
     f.run_job = Mock()
     wx = classes[0]['wx']
+    monkeypatch.setitem(sys.modules,'wx',wx)
+    chooser = Mock(wraps=ocr_options.choose_ocr_config)
+    monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     file_dialog = Mock()
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
+    wx.SingleChoiceDialog.return_value.GetSelection.return_value = choice
     f.import_books(None)
-    choose.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
-    file_dialog.Destroy.assert_called_once()
+    chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
     _,import_files,complete = f.run_job.call_args.args
     import_files()
     call = f.library.import_files.call_args
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
-    assert call.kwargs['config'] is config
-    assert call.kwargs['cancelled'] == f.cancel_event.is_set
+    config = call.kwargs['config']
+    assert config == Config(languages=languages)
     complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
     assert 'Page 2 needs independent review' in f.report.call_args.args[0]
     assert 'Review pending imported page' in f.report.call_args.args[0]
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
-    choose = Mock(return_value=None)
-    monkeypatch.setitem(sys.modules,'carr_library.ui.ocr_options',SimpleNamespace(choose_ocr_config=choose))
+    f = frame(classes)
+    f.library = Mock()
+    f._workspace = lambda:'a'
+    f.run_job = Mock()
+    wx = classes[0]['wx']
+    monkeypatch.setitem(sys.modules,'wx',wx)
+    wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
+    dialog = Mock()
+    dialog.ShowModal.return_value = wx.ID_OK
+    dialog.GetPaths.return_value = ['book.pdf']
+    wx.FileDialog = Mock(return_value=dialog)
+    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    f.import_books(None)
+    f.run_job.assert_not_called()
+    f.library.import_files.assert_not_called()
+    f.report.assert_called_once_with('Import cancelled.')
+
+
+def test_text_and_docx_import_reuse_helper_config_without_language_dialog(classes,monkeypatch):
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -352,13 +374,34 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     dialog = Mock()
     dialog.ShowModal.return_value = wx.ID_OK
-    dialog.GetPaths.return_value = ['book.pdf']
+    dialog.GetPaths.return_value = ['notes.txt','chapter.docx']
     wx.FileDialog = Mock(return_value=dialog)
+    chooser = Mock(wraps=ocr_options.choose_ocr_config)
+    monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
     f.import_books(None)
-    choose.assert_called_once_with(f,['book.pdf'])
+    chooser.assert_called_once_with(f,['notes.txt','chapter.docx'])
+    wx.SingleChoiceDialog.assert_not_called()
+    f.run_job.call_args.args[1]()
+    assert f.library.import_files.call_args.kwargs['config'] == Config()
+
+
+def test_recognition_configuration_error_prevents_import_and_is_readable(classes,monkeypatch):
+    from carr_library.ui import ocr_options
+    f = frame(classes)
+    f.library = Mock()
+    f._workspace = lambda:'a'
+    f.run_job = Mock()
+    wx = classes[0]['wx']
+    wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
+    dialog = Mock()
+    dialog.ShowModal.return_value = wx.ID_OK
+    dialog.GetPaths.return_value = ['scan.pdf']
+    wx.FileDialog = Mock(return_value=dialog)
+    monkeypatch.setattr(ocr_options,'choose_ocr_config',Mock(side_effect=ValueError('Choose a recognition language.')))
+    f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
-    f.report.assert_called_once_with('Import cancelled.')
+    f.report.assert_called_once_with('Import not started: Choose a recognition language.')
 
 
 def pending_import_frame(classes):
@@ -487,3 +530,52 @@ def test_bound_services_recheck_topic_in_the_source_transaction(classes,tmp_path
         with pytest.raises(ValueError,match='archived'):
             with transaction():
                 pass
+
+
+def test_import_uses_the_chosen_recognition_configuration(classes,monkeypatch):
+    config = object()
+    choose = Mock(return_value=config)
+    monkeypatch.setitem(sys.modules,'carr_library.ui.ocr_options',SimpleNamespace(choose_ocr_config=choose))
+    f = frame(classes)
+    f.library = Mock()
+    f._workspace = lambda:'a'
+    f.run_job = Mock()
+    wx = classes[0]['wx']
+    wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
+    file_dialog = Mock()
+    file_dialog.ShowModal.return_value = wx.ID_OK
+    file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
+    wx.FileDialog = Mock(return_value=file_dialog)
+    f.import_books(None)
+    choose.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
+    file_dialog.Destroy.assert_called_once()
+    f.library.import_files.assert_not_called()
+    _,import_files,complete = f.run_job.call_args.args
+    import_files()
+    call = f.library.import_files.call_args
+    assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
+    assert call.kwargs['config'] is config
+    assert call.kwargs['cancelled'] == f.cancel_event.is_set
+    complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
+    assert 'Page 2 needs independent review' in f.report.call_args.args[0]
+    assert 'Review pending imported page' in f.report.call_args.args[0]
+
+
+def test_cancelled_canonical_config_starts_no_import(classes,monkeypatch):
+    choose = Mock(return_value=None)
+    monkeypatch.setitem(sys.modules,'carr_library.ui.ocr_options',SimpleNamespace(choose_ocr_config=choose))
+    f = frame(classes)
+    f.library = Mock()
+    f._workspace = lambda:'a'
+    f.run_job = Mock()
+    wx = classes[0]['wx']
+    wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
+    dialog = Mock()
+    dialog.ShowModal.return_value = wx.ID_OK
+    dialog.GetPaths.return_value = ['book.pdf']
+    wx.FileDialog = Mock(return_value=dialog)
+    f.import_books(None)
+    choose.assert_called_once_with(f,['book.pdf'])
+    f.run_job.assert_not_called()
+    f.library.import_files.assert_not_called()
+    f.report.assert_called_once_with('Import cancelled.')
