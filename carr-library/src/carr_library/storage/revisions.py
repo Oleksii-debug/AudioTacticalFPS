@@ -220,8 +220,16 @@ class Storage:
             self.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',(revision,workspace,edition,asset,config))
             count = 0
             for count,p in enumerate(pages,1):
-                if not isinstance(p,Page) or '\x00' in p.raw:
+                if not isinstance(p,Page) or not isinstance(p.raw,str) or '\x00' in p.raw:
                     raise ValueError('invalid raw page')
+                # Validate original Python values before SQLite affinity or int()
+                # can turn a malformed locator into an apparently valid one.
+                try:
+                    Locator('logical_segment' if p.physical is None else 'physical_page',
+                            count if p.physical is None else p.physical,
+                            p.printed, p.verified)
+                except ValueError as exc:
+                    raise sqlite3.IntegrityError('invalid source locator') from exc
                 self.db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) VALUES(?,?,?,?,?,?,?)',
                     (revision,count,p.physical,p.printed,int(p.verified),p.raw,sha256(p.raw.encode()).hexdigest()))
             if not count:
