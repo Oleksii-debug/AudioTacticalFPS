@@ -123,3 +123,53 @@ def test_changed_source_cannot_enter_backup(tmp_path):
             assert copy.get_page('A', job, 1) is None
             assert not search(copy, 'A', 'railway')
             assert not search(copy, 'A', 'Changed')
+
+
+def test_real_ocr_candidate_quarantined_and_excluded_from_backup(tmp_path):
+    import json
+    import shutil
+    from PIL import Image, ImageDraw, ImageFont
+    from reportlab.lib.utils import ImageReader
+    from carr_library.extract.page_ocr import Config
+
+    if shutil.which('tesseract') is None:
+        pytest.skip('Tesseract required for real OCR integration')
+    root = tmp_path / 'library'
+    root.mkdir()
+    pdf = tmp_path / 'scan.pdf'
+    image = Image.new('RGB', (1000, 300), 'white')
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default(size=36)
+    for i, line in enumerate(('Synthetic railway evidence', 'A railway connects towns', 'This is a scanned page')):
+        draw.text((30, 25 + i * 65), line, fill='black', font=font)
+    writer = canvas.Canvas(str(pdf))
+    writer.drawString(80, 700, 'Native railway evidence')
+    writer.showPage()
+    writer.drawImage(ImageReader(image), 50, 500, width=500, height=150)
+    writer.showPage()
+    writer.save()
+    source_hash = hash_file(pdf)
+    config = Config(dpi=144)
+    db, journal = root / 'library.sqlite', root / 'jobs.sqlite'
+    with open_ingest_session(root, db, journal) as j:
+        job = j.start('A', 'scan-edition', tmp_path, pdf.name, config)
+        result = j.run('A', job, tmp_path, pdf.name, config)
+        assert (result['state'], result['completed']) == ('quarantined', 2)
+        row = j.db.execute('SELECT payload FROM checkpoint WHERE job=? AND ordinal=2', (job,)).fetchone()
+        page = json.loads(row['payload'])
+        assert page['provenance']['method'] == 'ocr_candidate', page['warnings']
+        assert page['physical_index'] == 2
+        assert 'railway' in page['raw_text'].lower()
+        assert page['provenance']['asset_sha256'] == source_hash == hash_file(pdf)
+        assert page['printed_label'] is None and not page['printed_label_verified']
+        assert not search(j.storage, 'A', 'railway')
+        manifest = create_revision_bundle(j.storage, root / 'backup', include_all_workspaces=True)
+        j.retry('A', job)
+        assert j.inspect('A', job)['completed'] == 1
+    with exclusive_writer(root):
+        restored = restore_revision_bundle(root / 'backup', root / 'copy.sqlite',
+                                           expected_manifest_sha256=manifest)
+        with closing(Storage(restored)) as copy:
+            copy.check()
+            assert copy.get_page('A', job, 1) is None
+            assert not search(copy, 'A', 'railway')
