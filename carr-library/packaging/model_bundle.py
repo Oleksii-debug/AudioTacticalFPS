@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import stat
 from pathlib import Path
 
 REPO = 'Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q'
@@ -16,13 +17,27 @@ PUBLISHED = {
 }
 
 
+def _unaliased(info):
+    return (not stat.S_ISLNK(info.st_mode)
+            and not getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
+
 def hashes(root):
-    root = Path(root)
-    if root.is_symlink() or not root.is_dir():
-        raise ValueError('expected a dedicated local directory')
+    # Do not resolve() before inspecting the original path: it hides linked ancestors.
+    root = Path(root).absolute()
+    if '..' in root.parts:
+        raise ValueError('model directory must not contain parent traversal')
+    for directory in (*reversed(root.parents), root):
+        info = directory.lstat()
+        if not _unaliased(info) or not stat.S_ISDIR(info.st_mode):
+            raise ValueError('expected a dedicated local directory without linked ancestors')
     children = list(root.iterdir())
-    if {p.name for p in children} != FILES or any(p.is_symlink() or not p.is_file() for p in children):
-        raise ValueError('unexpected, missing or linked model files')
+    if {p.name for p in children} != FILES:
+        raise ValueError('unexpected or missing model files')
+    for p in children:
+        info = p.lstat()
+        if not _unaliased(info) or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError('linked or non-regular model file')
     result = {}
     for p in sorted(children):
         with p.open('rb') as f:
