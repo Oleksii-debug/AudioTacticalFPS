@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 import sqlite3
+import os
+from tempfile import TemporaryDirectory
 
 SCHEMA = '''
 CREATE TABLE revision(id TEXT PRIMARY KEY, workspace TEXT NOT NULL, edition TEXT NOT NULL,
@@ -127,20 +129,28 @@ class Storage:
             self._check()
 
     def backup(self, path):
+        """Publish a checked SQLite snapshot without replacing any existing path.
+
+        Requires a local filesystem supporting hard links. Interrupted processes
+        may leave a staging directory, never an incomplete final snapshot.
+        """
         path = Path(path)
-        with path.open('xb'):
-            pass
-        try:
-            dst = sqlite3.connect(path)
+        if os.path.lexists(path):
+            raise FileExistsError(path)
+        with TemporaryDirectory(prefix='.carr-backup-', dir=path.parent) as work:
+            staged = Path(work) / 'snapshot.db'
+            dst = sqlite3.connect(staged)
             try:
                 self.db.backup(dst)
             finally:
                 dst.close()
-            copy = Storage(path)
+            copy = Storage(staged)
             try:
                 copy.check()
             finally:
                 copy.close()
-        except BaseException:
-            path.unlink(missing_ok=True)
-            raise
+            with staged.open('r+b') as file:
+                os.fsync(file.fileno())
+            # Atomic no-replace publication, including a competing writer.
+            # Unsupported filesystems fail closed; no overwrite/copy fallback.
+            os.link(staged, path)
