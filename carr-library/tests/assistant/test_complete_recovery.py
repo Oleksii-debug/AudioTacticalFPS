@@ -31,11 +31,13 @@ def test_actual_complete_backup_includes_running_plan_and_checks_database_on_res
     assert reopened.search(workspace, 'Railway transport')[0].quote == 'Railway transport'
     assert (restored / 'state/assistant' / (identity + '.json')).is_file()
     # A restored plan never silently inherits permissions for another data root.
-    with pytest.raises(PermissionError, match='another data directory'):
+    with pytest.raises(PermissionError, match='new review'):
         AssistantService(reopened).run(identity)
     recovered_service = AssistantService(reopened)
     listed, = recovered_service.jobs()
-    assert listed.status == 'attention'
+    assert listed.status == 'paused'
+    assert (listed.completed, listed.total) == (0, 1)
+    assert 'review' in listed.message.lower()
     review = recovered_service.saved_plan_for_review(identity)
     assert 'scope' not in review
     assert [step['tool'] for step in review['steps']] == ['library.backup']

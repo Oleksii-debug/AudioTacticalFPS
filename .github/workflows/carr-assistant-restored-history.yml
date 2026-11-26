@@ -49,5 +49,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify restored history and refusal with no skips
         run: |
-          python scripts/ci_check.py tests/storage/test_assistant_restored_history.py
+          python scripts/ci_check.py tests/storage/test_assistant_restored_history.py tests/assistant/test_complete_recovery.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
