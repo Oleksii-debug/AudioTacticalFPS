@@ -12,7 +12,8 @@ import re
 import shutil
 from tempfile import TemporaryDirectory
 
-from build_windows_bundle import read_lock, wheel_metadata, verify_application_source, sha256
+from build_windows_bundle import (read_lock, wheel_metadata, verify_application_source,
+                                  verify_dependency_closure, sha256)
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
 from create_delivery import _read_manifest, _manifest
@@ -36,6 +37,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
     identity = verify_application_source(wheel, source_commit)
     lock = read_lock(HERE / ('windows-semantic-cp311.lock' if previous.get('bundled_model') else 'windows-cp311.lock'))
     dependencies = {}
+    selected = {}
     wheelhouses = [source / 'wheelhouse']
     if extra_wheelhouse is not None:
         wheelhouses.append(local(extra_wheelhouse, exists=True))
@@ -45,7 +47,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             regular(path)
             if path.suffix != '.whl':
                 raise ValueError('A wheelhouse must contain only regular wheel files.')
-            name, version, _ = wheel_metadata(path)
+            name, version, metadata = wheel_metadata(path)
             if name == 'universal-research-library' and directory == wheelhouses[0]:
                 continue
             digest = sha256(path)
@@ -54,8 +56,14 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             if name in dependencies:
                 raise ValueError('More than one wheel supplied for dependency: ' + name)
             dependencies[name] = (path, digest)
+            selected[name] = (path, version, metadata)
     if set(dependencies) != set(lock):
         raise ValueError('The private bundle and extra wheelhouse lack required locked dependencies.')
+    name, version, metadata = wheel_metadata(wheel)
+    if name != 'universal-research-library' or name in selected:
+        raise ValueError('Expected exactly one application wheel.')
+    selected[name] = (wheel, version, metadata)
+    verify_dependency_closure(selected)
     sbom_path = HERE / ('windows-semantic-sbom.cdx.json' if previous.get('bundled_model') else 'windows-sbom.cdx.json')
     sbom_bytes = sbom_path.read_bytes()
     sbom = json.loads(sbom_bytes)
@@ -70,7 +78,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         audio = local(audio, exists=True)
         audio_lock, _ = load_lock(HERE / 'windows-audio.lock.json')
         for name, record in audio_lock['output_files'].items():
-            path = audio / name
+            path = local(audio / name, exists=True)
             if regular(path).st_size != record['size'] or sha256(path) != record['sha256']:
                 raise ValueError('Audio runtime differs from the pinned build.')
             if path.suffix == '.exe':
@@ -81,7 +89,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         citations = local(citations, exists=True)
         node_lock = json.loads((HERE / 'windows-citations.lock.json').read_bytes())
         for name, expected in node_lock['files'].items():
-            path = citations / name
+            path = local(citations / name, exists=True)
             regular(path)
             if sha256(path) != expected:
                 raise ValueError('Citation runtime differs from the pinned Node build.')

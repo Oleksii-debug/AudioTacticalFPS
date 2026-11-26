@@ -36,6 +36,12 @@ def fixture(tmp_path, *, extra=(), machine=0x8664):
         for name, raw in data.items():
             archive.writestr('release/' + name, raw)
         for name, raw in extra:
+            if isinstance(name, str):
+                # ZipInfo normalizes os.sep on Windows at construction time.
+                # Preserve hostile names literally on every platform.
+                member = zipfile.ZipInfo('fixture')
+                member.filename = member.orig_filename = name
+                name = member
             archive.writestr(name, raw)
     lock = {'schema': 1, 'target': 'win_amd64', 'engine': 'FFmpeg', 'engine_version': 'synthetic',
             'license': 'GPL-3.0-only', 'source': {'revision': 'synthetic'},
