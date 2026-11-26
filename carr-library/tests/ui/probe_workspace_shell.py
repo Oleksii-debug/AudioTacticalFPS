@@ -59,6 +59,7 @@ def load():
     source = Path(__file__).resolve().parent / 'workspace_shell.py'
     if not source.exists():
         source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/workspace_shell.py'
+    pkg.__path__ = [str(source.parent)]
     spec = importlib.util.spec_from_file_location('shell_probe.workspace_shell', source)
     mod = importlib.util.module_from_spec(spec)
     mods[spec.name] = mod

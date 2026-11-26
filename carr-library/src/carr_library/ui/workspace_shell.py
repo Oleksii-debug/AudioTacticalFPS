@@ -5,27 +5,12 @@ bind_scope(workspace, topic) returns ScopeServices after fresh authorization.
 Every bound service must independently enforce authorization on each operation.
 No global search, database access, or new persistence contract here.
 """
-from dataclasses import dataclass
-from typing import Callable
-
 import wx
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
 from .evidence_panel import EvidencePanel
-
-
-@dataclass(frozen=True)
-class ScopeServices:
-    workspace: str
-    topic: str | None
-    search: Callable
-    load_context: Callable
-    verified_copy: Callable
-    catalog_tx: Callable
-    collections: Callable
-    topic_tx: Callable
-    evidence_tx: Callable | None = None
+from .scope_bindings import ScopeServices, bind_scope_services
 
 
 class WorkspaceFrame(wx.Frame):
