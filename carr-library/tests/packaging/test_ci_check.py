@@ -57,6 +57,30 @@ class CIEntrypointTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn('missing or out-of-tree', result.stdout)
 
+    def test_explicit_nonstrict_xpass_not_green(self):
+        result = self.run_fixture(
+            "import pytest\n@pytest.mark.xfail(reason='unfinished', strict=False)\ndef test_xpass(): assert True\n",
+            'test_sample.py')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_xfail_not_green(self):
+        result = self.run_fixture(
+            "import pytest\n@pytest.mark.xfail(reason='unfinished')\ndef test_xfail(): assert False\n",
+            'test_sample.py')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_mixed_pass_xpass_not_green(self):
+        result = self.run_fixture(
+            "import pytest\ndef test_ok(): assert True\n@pytest.mark.xfail(reason='unfinished', strict=False)\ndef test_xpass(): assert True\n",
+            'test_sample.py')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_inactive_xfail_marker_allows_pass(self):
+        result = self.run_fixture(
+            "import pytest\n@pytest.mark.xfail(False, reason='inactive')\ndef test_ok(): assert True\n",
+            'test_sample.py')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()
