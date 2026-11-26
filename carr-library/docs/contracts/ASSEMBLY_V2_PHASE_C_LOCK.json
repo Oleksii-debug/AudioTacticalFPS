@@ -1,0 +1,1014 @@
+{
+  "format": 1,
+  "state": "CANDIDATE_NOT_RELEASE",
+  "phase": "C",
+  "base": "a450bd9eb97b11764f0fe2d70d72efbf9788aa5d",
+  "parent": "53862836acc5e0b68332cf3577cd31865bd61072",
+  "claim": 7195277838,
+  "heads": {
+    "18": "e7cee1885dcf47da8c206c399d1214ab6a394689",
+    "19": "5c4853d8dce3bf397e4f2c240727ac03ee7fc48b",
+    "20": "8ef0e769990ac168001cbe028dc63978b6d9e161",
+    "25": "db7e1321dfcf69b371ea55d1681aed774ceb00af",
+    "31": "9cd57b0212704b64a64871c73ee8fd3190f21f13",
+    "32": "a3174222dd25216b5cd89f828d8b167d61d3b70a",
+    "35": "42ca054f396aca5588a2c3dd92438f0b3ff99ffa",
+    "36": "8aeb9c9784c12aee9299bed616560fb5ade67da7",
+    "37": "baf2073144d2820308af4efad1f991b2e3e20157",
+    "39": "0109b8ea52a86221164e2e87b2d592e73ce6bb00",
+    "41": "c607d7af9132cf34966c728c98396f3e8c4fad40",
+    "44": "8a890cf63d590873354fc448074de30c7c936627",
+    "46": "46446948e76bd3b78c1fad26c827ccd893df5b06",
+    "47": "5018e2a753fa735deb35ac0e084b5d154fc2de3b",
+    "51": "136548256d7aa662e93e025c871ecfb994073f7f",
+    "63": "dad680befaf75a095cb8b2eaa8246c97ef7928eb",
+    "65": "81ae556972712024224b4c751d57d01186b4af5b",
+    "66": "059efa36086bea1c916fefded9a6879bcc42793c",
+    "67": "442a398ffb5dc85b42f17826442f8523ff2fa5ea",
+    "68": "7b46a75d5f4e3b0ac3b1ccd9d9de574e3c229b48"
+  },
+  "files": [
+    {
+      "path": "carr-library/bootstrap/semantic_compat/probe.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ae7f64b247e89eb00f2c9ea2713bba3c2b2b4d3",
+      "pr": 37,
+      "head": "baf2073144d2820308af4efad1f991b2e3e20157"
+    },
+    {
+      "path": "carr-library/bootstrap/semantic_compat/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3c2cc8190acd2cf342993e9a181146e3a3d377c",
+      "pr": 37,
+      "head": "baf2073144d2820308af4efad1f991b2e3e20157"
+    },
+    {
+      "path": "carr-library/bootstrap/semantic_compat/requirements-upstream.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a78efad97651169222717589a39280e8f9d62a2b",
+      "pr": 37,
+      "head": "baf2073144d2820308af4efad1f991b2e3e20157"
+    },
+    {
+      "path": "carr-library/bootstrap/semantic_compat/test_probe.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a36683403e51dc8d030e8312a5194173ce084517",
+      "pr": 37,
+      "head": "baf2073144d2820308af4efad1f991b2e3e20157"
+    },
+    {
+      "path": "carr-library/docs/contracts/probes/test_semantic_windows.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f5f35195c36f2aa7f52efadafbffebfda284229",
+      "pr": 65,
+      "head": "81ae556972712024224b4c751d57d01186b4af5b"
+    },
+    {
+      "path": "carr-library/docs/contracts/SEMANTIC_WINDOW_V2.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83786e777033e16a41e41ffd6eb4469b508be4fc",
+      "pr": 65,
+      "head": "81ae556972712024224b4c751d57d01186b4af5b"
+    },
+    {
+      "path": "carr-library/packaging/LICENSES.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9690cb40b12663b85ac360022ce8d6627a4209fa",
+      "pr": 19,
+      "head": "5c4853d8dce3bf397e4f2c240727ac03ee7fc48b"
+    },
+    {
+      "path": "carr-library/packaging/MODEL_BUNDLE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91e659e65c458f003069f00ad349030cecd321dc",
+      "pr": 46,
+      "head": "46446948e76bd3b78c1fad26c827ccd893df5b06"
+    },
+    {
+      "path": "carr-library/packaging/model_bundle.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5533046bd42cd10af74cd3ea028553c59ead832d",
+      "pr": 46,
+      "head": "46446948e76bd3b78c1fad26c827ccd893df5b06"
+    },
+    {
+      "path": "carr-library/packaging/offline_pdf_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35f00e6236434cbfedcc9661ba7cf5e7cd2a7846",
+      "pr": 19,
+      "head": "5c4853d8dce3bf397e4f2c240727ac03ee7fc48b"
+    },
+    {
+      "path": "carr-library/packaging/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "faae1d2fa4a14909427f0ecb582310440b796501",
+      "pr": 19,
+      "head": "5c4853d8dce3bf397e4f2c240727ac03ee7fc48b"
+    },
+    {
+      "path": "carr-library/packaging/requirements-layout.lock",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9ba480fbc078edfc4a8d896e101b91433b44901",
+      "pr": 51,
+      "head": "136548256d7aa662e93e025c871ecfb994073f7f"
+    },
+    {
+      "path": "carr-library/packaging/requirements-pdf-smoke.lock",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66b20e5d6869ed913e9340f01d98ba1486532bd8",
+      "pr": 19,
+      "head": "5c4853d8dce3bf397e4f2c240727ac03ee7fc48b"
+    },
+    {
+      "path": "carr-library/packaging/RUNTIME_LAYOUT.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1d7303d3d0e72c2b62a5cb2ae42a71b147aabaa",
+      "pr": 51,
+      "head": "136548256d7aa662e93e025c871ecfb994073f7f"
+    },
+    {
+      "path": "carr-library/packaging/runtime_layout.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0310bfcdb5d0ff29daad750887d285962b9a3469",
+      "pr": 51,
+      "head": "136548256d7aa662e93e025c871ecfb994073f7f"
+    },
+    {
+      "path": "carr-library/packaging/uv_sbom_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35ec5b011091d8142c51ef0b5810eb5b2b59c8a5",
+      "pr": 35,
+      "head": "42ca054f396aca5588a2c3dd92438f0b3ff99ffa"
+    },
+    {
+      "path": "carr-library/packaging/UV_SBOM.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac9ddc691d4c68000a934a18e07f7b7ae54c4201",
+      "pr": 35,
+      "head": "42ca054f396aca5588a2c3dd92438f0b3ff99ffa"
+    },
+    {
+      "path": "carr-library/packaging/WINDOWS_WHEELHOUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78e65b62c7340c02bb5d6c53fdb2ca35e94aa082",
+      "pr": 39,
+      "head": "0109b8ea52a86221164e2e87b2d592e73ce6bb00"
+    },
+    {
+      "path": "carr-library/packaging/windows_wheelhouse.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7688d1ac85239bfd3c72dd4b965649793cf5ab39",
+      "pr": 39,
+      "head": "0109b8ea52a86221164e2e87b2d592e73ce6bb00"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_filetype/archive.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "df7e8a66cf10b3b2b1adf4629b0f26f5aa7b8f1b",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_filetype/base.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c0c0d26d9344907eb6d5cba107dd927c8477d5d",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_filetype/LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5dbb7e344c68026011fef2d937ddb940acd0e8a",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_filetype/UPSTREAM.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0ace1ef47c0a9a0f92a22be628ad8b7bdfc1d20",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_rispy_LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61a240b3b02b5ff26c10deaed955fa7f32940dde",
+      "pr": 44,
+      "head": "8a890cf63d590873354fc448074de30c7c936627"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_rispy_parser.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f89d29b915c590ff530cc6f3cc65f6a97245a445",
+      "pr": 44,
+      "head": "8a890cf63d590873354fc448074de30c7c936627"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/EPUB_METADATA_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae88aee78903ddafa6555edcce77d1ac334449be",
+      "pr": 41,
+      "head": "c607d7af9132cf34966c728c98396f3e8c4fad40"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/epub_metadata.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d31d5f11f2b3fa37115fa990acae5e8cb4bcb478",
+      "pr": 41,
+      "head": "c607d7af9132cf34966c728c98396f3e8c4fad40"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e5734b4039d5668eb2e22b69dd0d2756a1399375",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/metadata_preview.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3b31a8f51e567cd8418498865f37f1cac8b683b",
+      "pr": 36,
+      "head": "8aeb9c9784c12aee9299bed616560fb5ade67da7"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/METADATA_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4594636bd5ccf4d352ddc2d3cfbb3a470e9fb675",
+      "pr": 36,
+      "head": "8aeb9c9784c12aee9299bed616560fb5ade67da7"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/office_archive.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cb8d1cd07c97102d41a91043093ea7b33626dff",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/ris_preview.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0da26a89199d9f8a1d81f9a502a2ffc852fe5f1a",
+      "pr": 44,
+      "head": "8a890cf63d590873354fc448074de30c7c936627"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/RIS_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "279ca69185e2fa250d29761a225770c6e4a33b2c",
+      "pr": 44,
+      "head": "8a890cf63d590873354fc448074de30c7c936627"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/PDF_REVIEW_ATTESTATION.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d50ba86ea58901b73374e748beb3b97a7fbefbe",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fa7126a20d181c59962977a10a19938238036403",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/PRINTED_LABEL_ATTESTATION.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e229a8b9a65069e0a12986634fb060962660c6bb",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/printed_label_attestation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1eb9e06b79a5e0a39354da0d358581a7598512e4",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/SPAN_APPROVAL_INTEGRATION.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "afbeb7e0d85623b448265044ff4eb82f6e922a66",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/TEXT_ATTESTATION.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1ac99268aa73da518ef301c1cb9dbc456fe8ed8",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/text_attestation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bcd966d4fdb0fc1eca4935e00559620cd3538a09",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/docx_ordered.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b0eee2fc2fb8534d1853739a08a650667c451f1",
+      "pr": 47,
+      "head": "5018e2a753fa735deb35ac0e084b5d154fc2de3b"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/DOCX_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "284a8d31ca10919c7d6f87ebb4ea7d0af041ea50",
+      "pr": 47,
+      "head": "5018e2a753fa735deb35ac0e084b5d154fc2de3b"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/OCR_MODELS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d70414af150f1eda4fe4752569264032e04065b",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_orientation_bridge.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d18f210665a46531c3467f0a8677914d098d3a8e",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/OCR_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "809d0826ee96fb0e3ebef7c119625c61321e26e2",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ORIENTATION_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81abfd86c2e74db02862fe1380b253807ea10e05",
+      "pr": 32,
+      "head": "a3174222dd25216b5cd89f828d8b167d61d3b70a"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/orientation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5238ebd402cecc11bb6c7a57a2d289de07b8a218",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd3f871e0de80927a9b02d0281df3dbd201349a9",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/pinned_tessdata.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13541a673d10fec4a9599879e7954ff90ec092e3",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/RUNTIME_IDENTITY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8a41e4f2274ae0604b47f11593b0933dfd24a86",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dfb9d0823f020d758208feb18e20247347b21350",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/ASSET_COPY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad826a9bdd6ac043a45ec6934ea55b60fbbabb32",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/asset_copy.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e5df593a191b43983ad332a327d33151837709a",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/BUNDLE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a7eea093e1be4f94f1f297c30f89e0b7ba44557",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/bundle.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d664107cebe9704c568220a6752c159e95c70f60",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/CATALOG_ASSET_COPY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06c53d9dcdfaf4d88bf4a93777b475fc2bc4f44b",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2af8a72cba5ced234664d8cd38549a47f518aeef",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/GUARDED_ROUNDTRIP.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb0492abe30357fdd07bd4b727972301f17e7d83",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/IMPORT_ROUNDTRIP.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41a1e483e835bdadcca1f6b55793040c5890d7c5",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d932ee0c6982b05ddef9082b9410d3101b6eb501",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7958c10e8f43c7836f764881816d84b71c2907dc",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/RESTORE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "52a4145df87708e2b6a04b22ae3a35996106df36",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/restore.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c752b0203eb3d85bf3dfdeb2dea9a8c76013f37",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/RETAINED_ASSETS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5c6da82d285b0fa0fe87fd7b0d3f646b19b6215",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7cd2f1f27e186067cae1a80d66ee5464193ae038",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/WRITER_GUARD.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbbbd94866596bc7b3fe9b7b94957b0a9da3a915",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/writer_guard.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2445a40f97cdb45bd590e64da415a18fae31ce54",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/saved_topic_query.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d1882b9ac8fb8446c30e19457e668b0943156c6",
+      "pr": 68,
+      "head": "7b46a75d5f4e3b0ac3b1ccd9d9de574e3c229b48"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/topic_search.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6267cf760fb16c5b1ac2b5dd86a03d599b6a199",
+      "pr": 63,
+      "head": "dad680befaf75a095cb8b2eaa8246c97ef7928eb"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/_vendor/rifflux/LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e53903fda3f5eef44b59bbad0490f8dd4030de53",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/_vendor/rifflux/rrf.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61d9e6444a5e778120c92a7b9d9cb8394989fd20",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/_vendor/rifflux/UPSTREAM.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6336847e1ad6a7f2d26d71c99a80b73bd8ed7a53",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/semantic_windows.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d76ec795dbe75556d5940fb4f2c496ab5c8f9d8c",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/thematic.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ebef07f824a7fb5cb34e96fd9fac6b37a483316e",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_epub_metadata.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c7ad365ced54c0d43dd213475528f9d93f78a664",
+      "pr": 41,
+      "head": "c607d7af9132cf34966c728c98396f3e8c4fad40"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_intake.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e05098fb0d9e8a18973ff9738cc01bf633632d54",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_metadata_preview.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd59b871a5ca3842c14b4ecab3bfbaa6bb58a834",
+      "pr": 36,
+      "head": "8aeb9c9784c12aee9299bed616560fb5ade67da7"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_office_intake.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b86f234f1ada3069afaab06868213d6ffe90f52",
+      "pr": 20,
+      "head": "8ef0e769990ac168001cbe028dc63978b6d9e161"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_read_views_v2_integration.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "52b200a0dc67d89ffdfd8b019488ffa72d165690",
+      "pr": 66,
+      "head": "059efa36086bea1c916fefded9a6879bcc42793c"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_ris_preview.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e29df1bdcb84634320ca5600e4da54e113aab6b",
+      "pr": 44,
+      "head": "8a890cf63d590873354fc448074de30c7c936627"
+    },
+    {
+      "path": "carr-library/tests/citations/test_authorized_action.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9ba33d00e0eb340633153d1d6565b3afed5c65f",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/tests/citations/test_pdf_mapping_contradiction.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3fa395f699ad6c6e909a36d7ce6e7742a78e19ef",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/tests/citations/test_pdf_review_attestation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6a8929cd11a17f30f1deb1c544314d0587c23a5",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/tests/citations/test_printed_label_attestation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a67225286fad93add3106441f1cb7dfe855d7c8a",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/tests/citations/test_span_approval_integration.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b80df5b31640da66e72ab3272b5fa49cc879e5c",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/tests/citations/test_text_attestation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "775a17f374a0eee44adf68cfb9586a656ee60e89",
+      "pr": 67,
+      "head": "442a398ffb5dc85b42f17826442f8523ff2fa5ea"
+    },
+    {
+      "path": "carr-library/tests/extract/test_docx_ordered.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f27d889db99ff73ff656a3bdc7ea34d8b2edd216",
+      "pr": 47,
+      "head": "5018e2a753fa735deb35ac0e084b5d154fc2de3b"
+    },
+    {
+      "path": "carr-library/tests/extract/test_ocr_orientation_bridge.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3b57d0a727a18e4f98c7b4c47587a13fb2c83e2",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_orientation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78cc4cf5c2f26dfb0360f123a10ad9ca900e8030",
+      "pr": 32,
+      "head": "a3174222dd25216b5cd89f828d8b167d61d3b70a"
+    },
+    {
+      "path": "carr-library/tests/extract/test_page_ocr.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65a3e2a7772b4fada5cc62d89c8703367dc0c0b4",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_page_visibility.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06d63601a6e28c67738938f624d1aa4c5f3f9014",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_partial_visibility.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1fa35d95b8b2485231175304c78542e4f8e993f3",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_pinned_osd.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30e7755a820be0628f1e07b461b782f43f7d1bc4",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_pinned_tessdata.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a198e794d8a108028872e4fdc57200009002d8a",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_runtime_identity.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6333c913d2a3e7a2c52064a33e88d4a0d34f78f0",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/extract/test_visibility_delta.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "46c53806da3ae19d79e4281a140ad8765c1f80f6",
+      "pr": 18,
+      "head": "e7cee1885dcf47da8c206c399d1214ab6a394689"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_asset_copy.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "764d85f65791549abb4da72fffb903b13ecba86b",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_bundle.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7293ae86c047a0a2190beae92e4cb94f11d7de3b",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_catalog_asset_copy.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b8f469cefed009fcd5798eaf528aaab0d791eeb",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_guarded_roundtrip.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8b190ee49e042a65f9cfb5258af2a3bf8ba9ae3",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_roundtrip.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "80e06ae55c7883740f09f5bd1e9d4f80c504a136",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_pipeline.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11e68408f08dd08ad3cc961487354040155b10f5",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_restore.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e950bfd2c746d1bd6974bf026ac2c3decc00bbd",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_retained_assets.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "edd45add5f532d08788b4c799695a47556ea7bce",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_writer_guard.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25b6e886aaf7007d2e860a32ce41d9da54cc7bad",
+      "pr": 31,
+      "head": "9cd57b0212704b64a64871c73ee8fd3190f21f13"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_model_bundle.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3def3e7e0b4b6a8ff451c6c1b11e25a9a2bea40e",
+      "pr": 46,
+      "head": "46446948e76bd3b78c1fad26c827ccd893df5b06"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_offline_pdf_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d50ed8c79a454ac40e109097656d8bd7418d4fc4",
+      "pr": 19,
+      "head": "5c4853d8dce3bf397e4f2c240727ac03ee7fc48b"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_runtime_layout.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3c30721d254b333570899c0b7b22807cb8c2c9a8",
+      "pr": 51,
+      "head": "136548256d7aa662e93e025c871ecfb994073f7f"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_wheelhouse.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47d5f306cbd8c837353290491258da757e7c37c5",
+      "pr": 39,
+      "head": "0109b8ea52a86221164e2e87b2d592e73ce6bb00"
+    },
+    {
+      "path": "carr-library/tests/reader/saved_topic_query_candidate.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40049bb5cd919be479cd38aa5613065bd5ef48fa",
+      "pr": 68,
+      "head": "7b46a75d5f4e3b0ac3b1ccd9d9de574e3c229b48"
+    },
+    {
+      "path": "carr-library/tests/reader/test_saved_topic_query.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fbd6138de134fec0fdbbf48c227b5d279ecffe6",
+      "pr": 68,
+      "head": "7b46a75d5f4e3b0ac3b1ccd9d9de574e3c229b48"
+    },
+    {
+      "path": "carr-library/tests/reader/test_topic_search.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "279705ef1d20453d0124f63557745273697beccd",
+      "pr": 63,
+      "head": "dad680befaf75a095cb8b2eaa8246c97ef7928eb"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_active_locator.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d4f01d4cd267fa57c294439cdacb39927fd8d6d",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_baseline.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1a896be5028eee953e1aaea963ad5278de86b25",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_budget.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da2b7429c25fc68ac267da3d0704b0c188d422a9",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_catalog_handoff.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "edd6e56e10c3f09df52b817da49e2f76065e3aa7",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_hybrid_fusion.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "999bea45aaf400c4c60df3d84509db8680819b2c",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_hybrid_handoff.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4836c77c7e345ec8029d0bd39ed2dc8d0d0d600",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_onnx_probe.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f449752f5fcf31ee3c962166cddc278e7680432c",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_semantic_windows.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "589dc2173355c5497cd9f6ae2e51d2ad05198c33",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_unicode.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8c502ea8df8d4ebf130e0a7562bc30e20cb06430",
+      "pr": 25,
+      "head": "db7e1321dfcf69b371ea55d1681aed774ceb00af"
+    }
+  ],
+  "decisions": [
+    "PR18 orientation.py 5238ebd402cecc11bb6c7a57a2d289de07b8a218 supersedes PR32 15d57520354135306391a6e7d48adeb0c4f3cd13; preserve PR32 independent tests and documentation. No other overlaps.",
+    "Latest consolidated CARR-04 PR67 authorized_action regression test supersedes older Phase B test; source blobs retained or added exactly."
+  ],
+  "execution": "NOT_RUN whole tree; no gate closure.",
+  "pending": [
+    "Shared workspace/topic/evidence/attestation migration and authoritative host service binding",
+    "Production atomic import transaction and same-snapshot collection authorization",
+    "QA-010 verified printed label defect",
+    "Actual model weights and CPU ONNX inference",
+    "Full assembled CI and independent review",
+    "Clean Windows installation and NVDA",
+    "Lawful non-Carr real-fixture acceptance"
+  ]
+}
