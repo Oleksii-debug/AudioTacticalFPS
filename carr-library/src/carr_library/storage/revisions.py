@@ -60,6 +60,10 @@ class Storage:
         self.db.row_factory = sqlite3.Row
         try:
             self.db.execute('PRAGMA foreign_keys=ON')
+            # SQLite REPLACE fires implicit delete triggers only with recursion enabled.
+            self.db.execute('PRAGMA recursive_triggers=ON')
+            if self.db.execute('PRAGMA recursive_triggers').fetchone()[0] != 1:
+                raise ValueError('recursive triggers required for immutable revisions')
             with self.transaction():
                 version = self.db.execute('PRAGMA user_version').fetchone()[0]
                 if version == 0:
