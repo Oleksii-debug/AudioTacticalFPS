@@ -22,6 +22,12 @@ ISBN_REQUEST = ['--lookup-isbn', '9780306406157', '--allow-online-isbn', '--work
      '--download-source-url', 'https://example.org/file.pdf'],
     ['--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'one',
      '--unpaywall-email-env', 'INVALID=NAME'],
+    ['--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'one',
+     '--list-ocr-models'],
+    ['--lookup-isbn', '9780306406157', '--allow-online-isbn', '--workspace', 'one',
+     '--install-ocr-models', 'offline-models'],
+    ['--lookup-isbn', '9780306406157', '--allow-online-isbn', '--workspace', 'one',
+     '--verify-ocr-models', 'eng'],
 ))
 def test_missing_or_ambiguous_consent_is_rejected_before_app_or_network(arguments, capsys, monkeypatch):
     def forbidden(*args, **kwargs):
