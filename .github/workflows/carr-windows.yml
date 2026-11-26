@@ -105,8 +105,46 @@ jobs:
           & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Build and install the core bundle with its pinned Python runtime
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $wheelhouse = Join-Path $bundleWork 'wheelhouse'
+          $applicationWheels = Join-Path $bundleWork 'application'
+          $bundle = Join-Path $bundleWork 'core bundle'
+          New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $applicationWheels -Filter '*.whl')
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $applicationWheel = $wheels[0].FullName
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
+          Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
+          $archiveHash = (Get-FileHash -LiteralPath $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($archiveHash -ne $runtime.download.sha256) { throw 'Pinned Python archive checksum mismatch.' }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-cp311.lock --python-archive $pythonArchive --source-commit $sourceCommit --output $bundle | Tee-Object 'ci-results/core-bundle-build.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $manifest = Join-Path $bundle 'bundle-manifest.json'
+          $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+          $bundledPython = Join-Path $bundle 'runtime/python.exe'
+          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='NOT_INCLUDED',ocr='NOT_INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/core-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       # These are synthetic native Windows checks. NVDA, actual model inference,
-      # and the distributed installer have separate acceptance evidence.
+      # OCR, and the final full distribution have separate acceptance evidence.
       - name: Preserve exact-commit runtime and test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
