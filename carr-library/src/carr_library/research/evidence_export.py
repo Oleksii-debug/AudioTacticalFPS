@@ -39,7 +39,7 @@ class Evidence:
 def _check(scope, topic, row):
     if row.workspace_id != scope or row.topic_id != topic:
         raise ValueError("evidence outside selected workspace/topic")
-    if not all(isinstance(v, str) and v for v in (
+    if not all(isinstance(v, str) and v.strip() for v in (
         scope, topic, row.evidence_id, row.edition_id, row.revision_id
     )):
         raise ValueError("missing identity")
@@ -53,13 +53,14 @@ def _check(scope, topic, row):
             or not 0 <= row.start < row.end <= len(row.raw_text)
             or row.raw_text[row.start:row.end] != row.quote):
         raise ValueError("invalid exact span")
-    if type(row.printed_label_verified) is not bool:
+    if (type(row.printed_label_verified) is not bool
+            or (row.printed_label is not None and not isinstance(row.printed_label, str))):
         raise ValueError("invalid label state")
     if row.kind == "physical_page":
         if (type(row.physical_index) is not int or row.physical_index < 1
                 or row.segment_index is not None):
             raise ValueError("invalid physical locator")
-        if row.printed_label_verified and not row.printed_label:
+        if row.printed_label_verified and not (row.printed_label and row.printed_label.strip()):
             raise ValueError("missing verified printed label")
     elif row.kind == "logical_segment":
         if (type(row.segment_index) is not int or row.segment_index < 1
@@ -78,7 +79,7 @@ def _locator(row):
 
 
 def _records(workspace_id, topic_id, rows):
-    if not workspace_id or not topic_id:
+    if not all(isinstance(v, str) and v.strip() for v in (workspace_id, topic_id)):
         raise ValueError("scope required")
     seen = set()
     for row in rows:
