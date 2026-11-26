@@ -177,3 +177,24 @@ def test_restored_input_runs_through_real_ffmpeg_without_original_assets(tmp_pat
     assert result['status'] == 'complete' and result['frames'] == 8000
     with wave.open(str(output), 'rb') as stream:
         assert any(stream.readframes(stream.getnframes()))
+
+
+def test_resigned_library_cannot_restore_orphan_inputs_without_their_project(tmp_path):
+    app, studio, source = _saved(tmp_path, managed=True)
+    raw = _wav(studio.output_dir / 'assets' / 'EFFECT.WAV')
+    snapshot = tmp_path / 'backup'
+    create_backup(app, snapshot)
+    identity = 'f' * 32 if studio.project_id != 'f' * 32 else 'e' * 32
+    name = 'audio-projects/' + identity + '/audio/assets/orphan.bin'
+    orphan = snapshot / 'sidecars' / name
+    orphan.parent.mkdir(parents=True)
+    orphan.write_bytes(raw)
+    manifest_path = snapshot / 'manifest.json'
+    manifest = json.loads(manifest_path.read_bytes())
+    manifest['sidecars'].append({'path': name, 'size_bytes': len(raw),
+                                'sha256': sha256(raw).hexdigest()})
+    encoded = (json.dumps(manifest, sort_keys=True) + '\n').encode('utf-8')
+    manifest_path.write_bytes(encoded)
+    with pytest.raises(ValueError, match='saved Studio project'):
+        restore_backup(snapshot, tmp_path / 'rejected', sha256(encoded).hexdigest())
+    assert not (tmp_path / 'rejected').exists()

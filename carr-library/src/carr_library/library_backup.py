@@ -391,6 +391,8 @@ def _validate_studios(db, root, *, strict_assets=False):
     for project in _projects(root):
         saved = project / 'studio' / 'project.json'
         if not os.path.lexists(saved):
+            if strict_assets and os.path.lexists(project / 'audio' / 'assets'):
+                raise RestoreError('archived sound inputs require their saved Studio project')
             continue
         payload = _audio_document(saved)
         _validate_studio_source(db, payload)
