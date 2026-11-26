@@ -111,6 +111,11 @@ jobs:
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
             'tests/catalog/test_catalog_panel_acceptance.py',
+            'tests/catalog/test_bibliography.py',
+            'tests/catalog/test_catalog_reports.py',
+            'tests/e2e/test_catalog_tools.py',
+            'tests/research/test_review_matrix.py',
+            'tests/ui/test_catalog_tools_dialog.py',
             'tests/storage/test_v2_recovery.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
@@ -146,6 +151,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_ebook_reader_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-ebook-reader.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native library reports and academic exports
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native full-source reader and page bookmarks
