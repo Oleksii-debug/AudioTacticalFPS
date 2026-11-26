@@ -37,6 +37,11 @@ instructions.
   books into multiple collections without duplicating original bytes.
 - Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
   changes atomically, isolate native parsers and resume interrupted imports.
+- Import supported HTML, Markdown, EML, FB2/FB3, ODT/ODS/ODP, PPTX and XLSX
+  text through the same reader, search and recoverable queues. Keep exact
+  originals and review format-specific omissions in the import report. Open
+  **Help → Document formats** or see [document formats](docs/DOCUMENT_FORMATS_V3.md)
+  for the implemented subsets, unsupported conversions and resource limits.
 - Read EPUB books by their declared section order, with keyboard chapter
   selection, previous/next navigation and separate authored image descriptions.
 - Navigate embedded EPUB contents and headings, find exact text within a chapter,
@@ -69,13 +74,20 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+- Compare saved source versions and research themes, then export a literature
+  matrix or an ordered outline with subtopics. Review selected RIS metadata for
+  already imported editions, and inspect catalog quality without automatic
+  merges. Open **Academic** with **Alt+A**, or compare a topic with
+  **Ctrl+Alt+M**. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md) for the
+  supported fields, exact-source safeguards and keyboard steps.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
 as verified quotations. DOCX and EPUB are imported as logical segments, with unknown
 printed pagination and an explicit unverified status. The [EPUB reading guide](docs/EPUB_READING.md)
 describes the supported static XHTML subset. A model's similarity
-score never approves a quotation.
+score never approves a quotation. Additional document formats also remain
+unverified; their logical text locations do not establish printed pages.
 
 ## Candidate status and verification
 

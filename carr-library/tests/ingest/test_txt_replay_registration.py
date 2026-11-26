@@ -81,3 +81,49 @@ def test_txt_replay_rejects_conflicting_identity(imported):
     assert hit.title == meta['title'] and hit.revision == initial['id']
     assert app.search(other, 'railway history') == ()
     assert src.read_bytes() == raw
+
+
+def test_superseded_replay_rejects_stale_metadata_without_reactivation(imported):
+    app, ws, _, first, requested, src, _, meta, initial = imported
+    app.update_metadata(ws, meta['edition_id'], title='Reviewed description')
+    current, = app.search(ws, 'railway history', collection=first)
+    assert current.revision != initial['id']
+    with pytest.raises(ValueError, match='work identity conflict'):
+        app.import_file(ws, src, collections=(requested,), **meta)
+    assert app.browse(ws, collection=requested) == ()
+    after, = app.search(ws, 'railway history', collection=first)
+    assert after.revision == current.revision and after.title == 'Reviewed description'
+
+
+def test_cancelled_completed_replay_preserves_membership(imported):
+    app, ws, _, first, requested, src, _, meta, initial = imported
+    with pytest.raises(InterruptedError, match='cancelled'):
+        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)
+    assert app.browse(ws, collection=requested) == ()
+    assert app.browse(ws, collection=first)
+
+
+def test_pdf_completed_replay_registers_exact_source_without_approving_it(tmp_path):
+    from reportlab.pdfgen.canvas import Canvas
+    app = LibraryApp(tmp_path / 'library')
+    ws = app.create_workspace('PDF study')
+    collection = app.create_collection(ws, 'Reviewed selection')
+    src = tmp_path / 'synthetic.pdf'
+    canvas = Canvas(str(src))
+    canvas.drawString(72, 720, 'Synthetic railway research evidence.')
+    canvas.save()
+    original = src.read_bytes()
+    meta = dict(title='Synthetic PDF', authors=('Fixture Author',),
+                work_id='pdf-work', edition_id='pdf-edition')
+    initial = app._import_file(ws, src, **meta)
+    assert initial['state'] == 'complete' and not initial['verified']
+    replay = app._import_file(ws, src, collections=(collection,), **meta)
+    assert replay['state'] == 'complete' and replay['id'] == initial['id']
+    result, = app.search(ws, 'railway', collection=collection)
+    assert not result.verified
+    with pytest.raises(ValueError):
+        app.copy(ws, result.ref, result.revision, 'quote')
+    assert src.read_bytes() == original
+    with app.read(ws) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM source_page_review').fetchone()[0] == 0

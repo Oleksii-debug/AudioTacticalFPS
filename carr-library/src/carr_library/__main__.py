@@ -91,6 +91,8 @@ def main(argv=None):
     parser.add_argument('--ocr-model-search', default='',
                         help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
+    research.add_argument('--document-formats', action='store_true',
+                          help='Print supported import formats and fidelity limits without opening a library')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
@@ -110,9 +112,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore)):
-        parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
+    if ocr_operation and any((args.document_formats, args.list_libraries,
+                              args.search is not None, args.self_test, args.backup, args.restore)):
+        parser.error('Choose one OCR model, document formats, library, search, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -124,14 +126,18 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
+    if (args.document_formats or args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None:
         parser.error('--workspace is only used with --search.')
     native_handle = None
     try:
+        if args.document_formats:
+            from .extract.document_formats import supported_formats_text
+            print(supported_formats_text())
+            return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
         if ocr_operation:

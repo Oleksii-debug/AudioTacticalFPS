@@ -37,7 +37,7 @@ class DesktopEvidencePanel(EvidencePanel):
             self.status.SetValue(message)
         self.status.SetFocus()
 
-    def refresh(self,event=None,*,evidence_id=None,discard=False):
+    def refresh(self,event=None,*,evidence_id=None,discard=False,focus=False):
         if not self._desktop_ready:
             self._clear_details()
             wx.CallAfter(self._initial_refresh)
@@ -85,6 +85,8 @@ class DesktopEvidencePanel(EvidencePanel):
                 self.items.SetSelection(index)
                 self._show(rows[index],editable)
             self.status.SetValue(f'{len(rows)} saved evidence items.' + ('' if editable else ' Read only.'))
+            if focus:
+                (self.items if rows else self.status).SetFocus()
 
         self.frame.run_job('Loading saved evidence',load,done,
             lambda error: self._failed(epoch,'Evidence unavailable. Check the library and original source.'))

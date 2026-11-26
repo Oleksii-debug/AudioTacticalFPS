@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-document-formats-e021-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: pwsh
@@ -39,6 +39,9 @@ jobs:
       HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
+      CARR_EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CARR_EVENT_SHA: ${{ github.sha }}
+      CARR_WORKFLOW_SHA: ${{ github.workflow_sha }}
     steps:
       - name: Check out the exact event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,9 +65,15 @@ jobs:
           New-Item -ItemType Directory -Force 'ci-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testedSource = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testedTree = (git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($testedSource -ne $env:CARR_EXPECTED_SOURCE_SHA) { throw 'Checked-out source differs from the required event head.' }
+          @{ source_commit=$testedSource; source_tree=$testedTree; event_commit=$env:CARR_EVENT_SHA; workflow_commit=$env:CARR_WORKFLOW_SHA } | ConvertTo-Json | Set-Content 'ci-results/source-identity.json'
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -103,6 +112,18 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-library.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise native advanced query builder and source search
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed document formats and native accessible reading
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Retain core-only fallback and offline startup coverage
         timeout-minutes: 5
         run: |
@@ -133,10 +154,12 @@ jobs:
           & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_OCR_SOURCE=$ocrSource" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run required integrated source workflows
-        timeout-minutes: 20
+        timeout-minutes: 25
         run: |
+          $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
@@ -151,6 +174,9 @@ jobs:
             'tests/ui/test_ocr_selection.py',
             'tests/ui/test_ocr_options.py',
             'tests/e2e/test_epub_import.py',
+            'tests/extract/test_document_formats_text.py',
+            'tests/extract/test_document_formats_xml.py',
+            'tests/e2e/test_extended_document_workflows.py',
             'tests/extract/test_epub_ordered.py',
             'tests/reader/test_ebook_reader.py',
             'tests/ui/test_ebook_reader.py',
@@ -163,6 +189,7 @@ jobs:
             'tests/e2e/test_research_workflows.py',
             'tests/e2e/test_catalog_insights_workflow.py',
             'tests/e2e/test_notebook_research_workflow.py',
+            'tests/e2e/test_advanced_research_search.py',
             'tests/e2e/test_current_topic_scope.py',
             'tests/e2e/test_search_operation_budget.py',
             'tests/e2e/test_nested_search_clock_budget.py',
@@ -177,6 +204,10 @@ jobs:
             'tests/extract/test_clipping_visibility.py',
             'tests/extract/test_ocr_model_catalog.py',
             'tests/storage/test_library_backup.py',
+            'tests/storage/test_library_backup_reading_state.py',
+            'tests/catalog/test_metadata_backup_roundtrip.py',
+            'tests/reader/test_context.py',
+            'tests/reader/test_topic_tree.py',
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
@@ -201,11 +232,20 @@ jobs:
             'tests/reader/test_literature_matrix.py',
             'tests/reader/test_topic_search_runtime.py',
             'tests/research/test_notebook_search.py',
+            'tests/reader/test_topic_literature_matrix.py',
+            'tests/reader/test_outline_export.py',
+            'tests/catalog/test_ris_apply.py',
+            'tests/catalog/test_quality.py',
+            'tests/ui/test_academic_tools.py',
+            'tests/ui/test_literature_matrix.py',
+            'tests/ui/test_bibliography_import.py',
+            'tests/ui/test_catalog_quality.py',
             'tests/reader/test_reading_desk.py',
             'tests/reader/test_reading_state.py',
             'tests/search/test_literal_long_source.py',
             'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
+            'tests/search/test_advanced_search.py',
             'tests/ui/test_desktop_query_jobs.py',
             'tests/ui/test_scope_labels.py',
             'tests/ui/test_desktop_handlers.py',
@@ -213,6 +253,8 @@ jobs:
             'tests/ui/test_academic_export_handler.py',
             'tests/ui/test_notebook_search_actions.py',
             'tests/ui/test_reading_desk_actions.py',
+            'tests/ui/test_desktop_result_modes.py',
+            'tests/ui/probe_advanced_query_builder.py',
             'tests/ui/probe_workspace_shell.py',
             'tests/ui/probe_catalog_insights_actions.py',
             'tests/ui/test_academic_library_dialog.py',
@@ -241,13 +283,12 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
-            'tests/reader/test_context.py',
-            'tests/reader/test_topic_tree.py',
             'tests/ui/test_federated_labels.py',
             'tests/search/test_literal_unicode_memory.py',
             'tests/e2e/test_search_deadline.py',
             'tests/ingest/test_txt_replay_registration.py',
-            'tests/ingest/test_terminal_replay_registration.py'
+            'tests/ingest/test_terminal_replay_registration.py',
+            'tests/packaging/test_delivery_archive.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -275,6 +316,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I tests/ui/native_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-workflows.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native academic comparison, bibliography and catalog review
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native research-notebook search and keyboard actions
@@ -436,8 +483,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -492,7 +541,7 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/storage/test_library_backup_reading_state.py tests/e2e/test_research_search_cli.py tests/extract/test_ocr_model_catalog.py tests/citations/test_pdf_mapping_contradiction.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -509,7 +558,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: carr-windows-${{ github.sha }}-${{ github.run_attempt }}
+          name: carr-windows-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: carr-library/ci-results/
           if-no-files-found: warn
           retention-days: 7

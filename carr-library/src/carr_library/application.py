@@ -35,6 +35,7 @@ from .research.topic_tree import TopicTree
 from .search import literal, thematic
 from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
 from .data_paths import guard_data_directory
+from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
 
 
 @dataclass(frozen=True)
@@ -361,7 +362,8 @@ class LibraryApp:
                                         collection=collection, cancelled=budget.stopped)
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
-                        language=None, edition=None, volume=None, expected_metadata=None):
+                        language=None, edition=None, volume=None, expected_metadata=None,
+                        selected_fields=None):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -370,12 +372,34 @@ class LibraryApp:
         new citation snapshots when those fields change. Edition-specific fields
         change only on the selected edition. An optional prior EditionView guards
         interactive edits against overwriting a concurrently changed catalog.
+        Partial imports must supply both selected_fields and expected_metadata.
+        Unselected values are retained exactly from the locked current catalog;
+        only explicitly selected values receive the usual edit validation.
         """
-        title = _name(title)
-        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
-            raise ValueError('authors must be a list or tuple of at most 100 names.')
-        authors = tuple(_name(name) for name in authors)
-        language, edition, volume = map(_metadata, (language, edition, volume))
+        allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
+        if selected_fields is None:
+            fields = allowed_fields
+        else:
+            if (not isinstance(selected_fields, (tuple, list, set, frozenset))
+                    or not selected_fields
+                    or any(not isinstance(field, str) for field in selected_fields)
+                    or expected_metadata is None):
+                raise ValueError('A partial metadata edit requires selected fields and the reviewed metadata.')
+            fields = frozenset(selected_fields)
+            if not fields <= allowed_fields:
+                raise ValueError('Select only supported metadata fields.')
+        if 'title' in fields:
+            title = _name(title)
+        if 'authors' in fields:
+            if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+                raise ValueError('authors must be a list or tuple of at most 100 names.')
+            authors = tuple(_name(name) for name in authors)
+        if 'language' in fields:
+            language = _metadata(language)
+        if 'edition' in fields:
+            edition = _metadata(edition)
+        if 'volume' in fields:
+            volume = _metadata(volume)
         revision = uuid4().hex
         with exclusive_writer(self.root):
             self._check_database_paths()
@@ -386,6 +410,12 @@ class LibraryApp:
                     current = get_edition(Catalog(db, workspace), edition_id)
                     if expected_metadata is not None and current != expected_metadata:
                         raise ValueError('Book metadata changed. Refresh the catalog before editing again.')
+                    if selected_fields is not None:
+                        title = title if 'title' in fields else current.title
+                        authors = authors if 'authors' in fields else current.authors
+                        language = language if 'language' in fields else current.language
+                        edition = edition if 'edition' in fields else current.edition
+                        volume = volume if 'volume' in fields else current.volume
                     row = db.execute('SELECT e.work,e.asset,a.revision,r.config FROM catalog_edition e '
                         'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
                         'JOIN revision r ON r.id=a.revision WHERE e.workspace=? AND e.id=?',
@@ -463,13 +493,13 @@ class LibraryApp:
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
+        """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
+        if path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
@@ -580,21 +610,27 @@ class LibraryApp:
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
                 publisher = _CatalogPublisher(storage, record)
-                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                  'application/epub+zip'):
+                if asset.mime in EXTENDED_MIMES or asset.mime in (
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
                         from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
                         settings = extraction_settings(extracted)
-                    else:
+                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
                         source_format = 'DOCX'
                         # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
+                    else:
+                        from .extract.document_formats import extract_document, extraction_settings
+                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
+                        source_format = FORMAT_BY_MIME[asset.mime].name
+                        settings = canonical(extraction_settings(extracted, asset.mime))
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
@@ -621,8 +657,10 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
+                            'format': source_format, 'warnings': extracted['warnings'],
                             'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown.'}
+                                       'printed pages are unknown. ' + (
+                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -652,6 +690,9 @@ class LibraryApp:
                         # source was actually published. Never reactivate an old
                         # revision when current metadata has superseded it.
                         with storage.transaction():
+                            self._authorize(storage.db, workspace)
+                            if cancelled():
+                                raise InterruptedError('Import cancelled before catalog registration.')
                             published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
@@ -808,7 +849,7 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
-        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
+        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')
