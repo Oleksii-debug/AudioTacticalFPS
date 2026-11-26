@@ -20,7 +20,7 @@ def register_batch(catalog: Catalog, records: tuple[Registration, ...]):
     """Register exact explicit identities or reject conflicts; never infer editions.
 
     The caller supplies manifests from bounded intake. No source bytes are read.
-    The outer transaction is neither committed nor rolled back by this service.
+    This service does not commit the outer transaction; SQLite itself may roll it back.
     An exact retry adds only requested collection memberships; metadata is not edited.
     """
     catalog._write()
@@ -62,7 +62,9 @@ def register_batch(catalog: Catalog, records: tuple[Registration, ...]):
             for collection in r.collections:
                 catalog.assign(collection, eid)
     except BaseException:
-        db.execute('ROLLBACK TO catalog_register_batch')
-        db.execute('RELEASE catalog_register_batch')
+        # SQLite RAISE(ROLLBACK) may already have ended the outer transaction.
+        if db.in_transaction:
+            db.execute('ROLLBACK TO catalog_register_batch')
+            db.execute('RELEASE catalog_register_batch')
         raise
     db.execute('RELEASE catalog_register_batch')
