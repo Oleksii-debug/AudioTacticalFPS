@@ -27,6 +27,8 @@ SORTS = ('title', 'year', 'priority', 'updated')
 MAX_IMPORT_BYTES = 8 * 1024 * 1024
 MAX_IMPORT_RECORDS = 2000
 MAX_REFERENCES = 100000
+# Budgets for one full-reference operation and one complete import preview.
+# Stored UTF-8 payload is a bounded-input metric, not an estimate of Python RSS.
 MAX_REFERENCE_SCAN_BYTES = 64 * 1024 * 1024
 MAX_DUPLICATE_METADATA_BYTES = 32 * 1024 * 1024
 MAX_DUPLICATE_PREVIEW_SLOTS = 100000
@@ -421,8 +423,9 @@ class AcademicLibrary:
         self._scope()
         where = 'workspace=?' + ('' if include_archived else ' AND archived=0')
         args = (self.workspace, MAX_REFERENCES + 1)
-        # Bound stored UTF-8 payload before decoding complete notes and metadata.
-        # This runs in the same authorized snapshot as the materialization below.
+        # Use the same authorized snapshot and predicates as the full read.
+        # Count bytes in SQLite before transferring notes, abstracts, authors
+        # and their search-text copies into Python or decoding any references.
         size_expr = '+'.join(f'COALESCE(length(CAST({name} AS BLOB)),0)' for name in _COLUMNS)
         count, size = self.db.execute(
             f'SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM ('
@@ -600,8 +603,11 @@ def _parse_import(data, format):
         rows = _parse_ris(text)
     elif format == 'csl-json':
         rows = _parse_csl(text)
+    elif format == 'bibtex':
+        from .bibtex_import import parse_bibtex
+        rows = parse_bibtex(text)
     else:
-        raise ValueError('Supported import formats are RIS and CSL JSON.')
+        raise ValueError('Supported import formats are RIS, BibTeX and CSL JSON.')
     if not 1 <= len(rows) <= MAX_IMPORT_RECORDS:
         raise ValueError('Import between 1 and 2,000 references at a time.')
     result = []

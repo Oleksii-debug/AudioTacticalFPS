@@ -92,6 +92,27 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    audio = root / "audio-runtime"
+    included = manifest.get("bundled_audio_runtime", False)
+    expected_audio = {p for p in files if p.casefold().startswith("audio-runtime/")}
+    if type(included) is not bool:
+        raise ValueError("invalid audio runtime installation flag")
+    if included:
+        if not manifest.get("bundled_python") or not manifest.get("bundled_native_runtime"):
+            raise ValueError("audio runtime requires the supplemented Python bundle")
+        for directory, dirs, _names in os.walk(audio, followlinks=False):
+            for name in dirs:
+                info = (Path(directory) / name).lstat()
+                if (not stat.S_ISDIR(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                    raise ValueError("linked audio runtime directories are not supported")
+        actual = {p.relative_to(root).as_posix() for p in audio.rglob("*") if p.is_file()}
+        required_audio = {"audio-runtime/audio-manifest.json", "audio-runtime/provenance/source-lock.json",
+                          "audio-runtime/bin/ffmpeg.exe", "audio-runtime/bin/ffprobe.exe", "audio-runtime/bin/ffplay.exe"}
+        if not required_audio.issubset(actual) or actual != expected_audio:
+            raise ValueError("unexpected or missing audio runtime file")
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError("unannounced audio runtime files")
 
 
 def main():

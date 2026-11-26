@@ -51,7 +51,7 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime'}
+            or value.keys() - required - {'source_commit', 'source_tree', 'bundled_native_runtime', 'bundled_audio_runtime'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
@@ -60,6 +60,11 @@ def _manifest(root):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
     if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
         raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
+    if ('bundled_audio_runtime' in value and type(value['bundled_audio_runtime']) is not bool):
+        raise ValueError('The bundled_audio_runtime installation flag must be a boolean.')
+    if ('source_tree' in value and (not isinstance(value['source_tree'], str)
+            or not re.fullmatch('[0-9a-f]{40}', value['source_tree']))):
+        raise ValueError('Invalid installation source tree.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')
@@ -84,7 +89,8 @@ def check_native_dependencies(bundle_root):
     report = {'status': 'FAIL', 'platform': sys.platform, 'machine': platform.machine(),
               'python': platform.python_version(), 'windows_execution': 'NOT_RUN',
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
-              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'}}
+              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
+              'audio': {'status': 'NOT_INCLUDED'}}
     component = 'installation manifest'
     _runtime_handle = None
     try:
@@ -99,6 +105,16 @@ def check_native_dependencies(bundle_root):
         # Keep the shared loader's returned directory handle alive until all
         # extension loading finishes, including delayed semantic dependencies.
         _runtime_handle = native_runtime.activate_bundled_runtime(bundle_root=root)
+        if (manifest.get('bundled_audio_runtime') or os.path.lexists(root / 'audio-runtime')
+                or any(name.casefold().startswith('audio-runtime/') for name in manifest['files'])):
+            component = 'bundled audio runtime integrity'
+            report['audio']['status'] = 'FAIL'
+            audio_runtime = import_module('carr_library.audio_runtime')
+            tools = audio_runtime.bundled_audio_tools(bundle_root=root)
+            if tools is None:
+                raise RuntimeError('The declared audio runtime is unavailable.')
+            report['audio'] = {'status': 'PASS', 'native_execution': 'NOT_RUN'}
+            report['checks'].append(component)
         for component, module in NATIVE_MODULES:
             import_module(module)
             report['checks'].append(component)

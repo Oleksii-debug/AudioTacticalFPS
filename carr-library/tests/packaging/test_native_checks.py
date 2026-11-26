@@ -17,7 +17,7 @@ def bundle(tmp_path, *, model=False, ocr=False):
 
 
 def controlled_imports(monkeypatch, events, *, failure=None, telemetry_failure=False,
-                       ocr_status='PASS', native_handle=None):
+                       ocr_status='PASS', native_handle=None, audio_failure=False):
     def activate(*, bundle_root):
         events.append(('activate_bundled_runtime', str(bundle_root)))
         return native_handle
@@ -31,8 +31,15 @@ def controlled_imports(monkeypatch, events, *, failure=None, telemetry_failure=F
         events.append(('canonical_ocr_check', timeout, os.environ.get('CARR_OCR_DIR')))
         return {'status': ocr_status, 'runtime': 'portable', 'synthetic_recognition': 'RESEARCH'}
 
+    def audio(*, bundle_root):
+        events.append(('bundled_audio_tools', str(bundle_root)))
+        if audio_failure:
+            raise ValueError('Audio runtime checksum failed.')
+        return {'ffmpeg': str(bundle_root / 'audio-runtime/bin/ffmpeg.exe')}
+
     modules = {name: SimpleNamespace() for _, name in native_checks.NATIVE_MODULES}
     modules.update({'carr_library.native_runtime': SimpleNamespace(activate_bundled_runtime=activate),
+                    'carr_library.audio_runtime': SimpleNamespace(bundled_audio_tools=audio),
                     'carr_library.offline_policy': SimpleNamespace(disable_native_telemetry=telemetry),
                     'tokenizers.tokenizers': SimpleNamespace(),
                     'carr_library.extract.ocr_runtime': SimpleNamespace(check_runtime=ocr)})
@@ -111,6 +118,24 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+@pytest.mark.parametrize('damaged', [False, True])
+def test_audio_integrity_is_checked_before_native_extensions_without_claiming_execution(tmp_path, monkeypatch, damaged):
+    manifest = bundle(tmp_path)
+    manifest.update(source_tree='c' * 40, bundled_audio_runtime=True)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events, audio_failure=damaged)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert ('bundled_audio_tools', str(tmp_path)) in events
+    assert report['status'] == ('FAIL' if damaged else 'PASS')
+    if damaged:
+        assert 'wx._core' not in events
+        assert report['failed_component'] == 'bundled audio runtime integrity'
+    else:
+        assert report['audio'] == {'status': 'PASS', 'native_execution': 'NOT_RUN'}
+        assert events.index(('bundled_audio_tools', str(tmp_path))) < events.index('wx._core')
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []
@@ -150,7 +175,7 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'bad_tree',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +197,10 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio_runtime'] = 'false'
+    elif change == 'bad_tree':
+        manifest['source_tree'] = 'HEAD'
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]

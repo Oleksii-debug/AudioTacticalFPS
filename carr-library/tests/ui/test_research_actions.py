@@ -557,3 +557,21 @@ def test_rename_preserves_distinct_topic_labels_and_unsaved_note(frame):
     assert frame.scopes[frame.choice.selection] == (workspace, topic)
     assert frame.book is book and frame.evidence.note.GetValue() == 'Unsaved draft'
     assert frame.choice.focused
+
+
+def test_rename_keeps_unicode_equivalent_topic_choices_distinct_without_losing_draft(frame):
+    import unicodedata
+
+    workspace, topic = frame.active
+    with frame.library.topic_transaction(workspace) as service:
+        service.create('nfc-one', 'Café')
+        service.create('nfc-two', 'Cafe\u0301')
+    frame.evidence.note.SetValue('Unsaved multilingual draft — Україна')
+    book = frame.book
+    ResearchActions(frame, Dialogs({'name': 'Renamed', 'description': ''})).rename_or_describe_library()
+    keys = {' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+            for label in frame.choice.items}
+    assert len(keys) == len(frame.choice.items) == len(frame.scopes)
+    assert frame.scopes == [(workspace, topic) for workspace, topic, _ in frame.library.list_scopes()]
+    assert frame.scopes[frame.choice.selection] == (workspace, topic)
+    assert frame.book is book and frame.evidence.note.GetValue() == 'Unsaved multilingual draft — Україна'

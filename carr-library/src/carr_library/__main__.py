@@ -91,10 +91,14 @@ def main(argv=None):
     parser.add_argument('--ocr-model-search', default='',
                         help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
+    research.add_argument('--document-formats', action='store_true',
+                          help='Print supported import formats and fidelity limits without opening a library')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
+    from .acquisition.cli import add_arguments, validate_arguments
+    add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
     parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
@@ -107,12 +111,17 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
+    add_audio_arguments(parser)
     args = parser.parse_args(argv)
+    validate_arguments(parser, args)
+    validate_audio_arguments(args, parser)
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore)):
-        parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
+    if ocr_operation and any((args.document_formats, args.list_libraries,
+                              args.search is not None, args.lookup_doi is not None,
+                              audio_requested(args), args.self_test, args.backup, args.restore)):
+        parser.error('Choose one OCR model, document, audio, acquisition or library operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -124,16 +133,22 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
+    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, or DOI lookup.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None:
-        parser.error('--workspace is only used with --search.')
+    if args.workspaces and args.search is None and args.lookup_doi is None:
+        parser.error('--workspace is used with --search or --lookup-doi.')
     native_handle = None
     try:
+        if args.document_formats:
+            from .extract.document_formats import supported_formats_text
+            print(supported_formats_text())
+            return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        if audio_requested(args):
+            return run_audio(args)
         if ocr_operation:
             from .extract.model_catalog import models, profile_provenance
             from .extract.ocr_model_store import OcrModelStore
@@ -193,6 +208,9 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
+        if args.lookup_doi is not None:
+            from .acquisition.cli import run
+            return run(app, args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0
