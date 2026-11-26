@@ -12,6 +12,11 @@ if not exist "%~dp0.venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+if not exist "%~dp0.venv\.installation-complete" (
+  echo Installation is incomplete. Extract a fresh package into a new folder and run Install.cmd.
+  pause
+  exit /b 1
+)
 if exist "%~dp0models\minilm-manifest.json" (
   "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library --model-dir "%~dp0models\minilm" --model-manifest "%~dp0models\minilm-manifest.json" %*
 ) else (

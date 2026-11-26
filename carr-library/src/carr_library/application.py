@@ -283,6 +283,12 @@ class LibraryApp:
         with self.read(workspace) as db:
             return browse_editions(Catalog(db, workspace), **filters)
 
+    def export_bibliography(self, workspace, *, collection=None, format='csl-json',
+                            cancelled=lambda: False):
+        """Use the shared catalog exporter for the Bibliography desktop command."""
+        return self.export_catalog(workspace, collection=collection, format=format,
+                                   cancelled=cancelled)
+
     def edition_metadata(self, workspace, edition_id):
         """Read one exact edition in a fresh authorized catalog snapshot."""
         with self.read(workspace) as db:
@@ -1026,6 +1032,14 @@ class LibraryApp:
                                    (workspace, topic)).fetchone()
                 return export_saved(workspace, topic, rows, load, format=format, title=name)
             return export_saved(workspace, topic, rows, load, format=format)
+
+    def export_outline(self, workspace, topic, *, cancelled=lambda: False):
+        """Export this topic and its visible descendants with freshly verified evidence."""
+        from .research.outline_export import export_outline
+        with self.read(workspace) as db:
+            load, metadata, _ = self._loaders(db, workspace, cancelled=cancelled)
+            return export_outline(db, workspace, topic, load_page=load,
+                                  attest_metadata=metadata, cancelled=cancelled)
 
     def save_query(self, workspace, topic, name, query, *, field='quote'):
         identity = uuid4().hex
