@@ -3,6 +3,7 @@
 Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
 import subprocess
@@ -75,6 +76,7 @@ def run_suite(suite: str) -> bool:
             proc = subprocess.run([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
+                '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
             ], cwd=ROOT, env=env, timeout=600, check=False)
             cases = list(ET.parse(report).iter('testcase'))
@@ -92,9 +94,20 @@ def run_suite(suite: str) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
+                        help='Run up to four isolated required suites concurrently; default: one')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
-    results = [run_suite(suite) for suite in args.suites]
+    if args.jobs == 1:
+        results = [run_suite(suite) for suite in args.suites]
+    else:
+        # Every suite retains its own interpreter, offline policy, deadline and
+        # JUnit verdict. Consume every future: one failing suite cannot hide
+        # another missing, skipped or unfinished required suite.
+        with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
+            results = list(executor.map(run_suite, args.suites))
+    print(f'Required suites complete: {len(results)}; passed={sum(results)}; '
+          f'failed={len(results) - sum(results)}', flush=True)
     return 0 if all(results) else 1
 
 

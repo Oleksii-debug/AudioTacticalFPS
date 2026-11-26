@@ -49,10 +49,11 @@ def forbid_writable_storage(monkeypatch):
 
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
-    assert manifest['version'] == 2
+    assert manifest['version'] == 4
     assert manifest['schema_version'] == 4
     assert set(manifest) == {'version', 'kind', 'schema_version',
-                             'schema_fingerprint', 'database', 'assets'}
+                             'schema_fingerprint', 'database', 'assets',
+                             'sidecars', 'generated_audio_included'}
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
@@ -84,6 +85,8 @@ def test_legacy_v1_backup_restores_exact_current_schema(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
     manifest['version'] = 1
     del manifest['schema_fingerprint']
+    del manifest['sidecars']
+    del manifest['generated_audio_included']
     digest = write_manifest(directory, manifest)
     original = bundle_bytes(directory)
     before = app.evidence(workspace, topic)[0]
@@ -110,6 +113,8 @@ def test_different_layout_is_rejected_before_writable_open(
         db.execute(sql)
         db.commit()
     manifest['version'] = version
+    del manifest['sidecars']
+    del manifest['generated_audio_included']
     if version == 1:
         del manifest['schema_fingerprint']
     # A valid outer checksum cannot turn an incompatible layout into our schema.
