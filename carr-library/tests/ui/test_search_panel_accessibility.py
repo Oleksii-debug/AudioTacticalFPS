@@ -24,6 +24,7 @@ def panel():
     h = Hit('library', 'ref', 'revision', 'Title A', 'Автор Б', 'Edition C',
             'Printed page unknown; physical 2', 'Точний текст\n“quote”', 'Citation token')
     p.model.replace('library', [h])
+    p.verified_copy_service = Mock(side_effect=lambda w, ref, rev, field: getattr(h, field))
     p.grid, p.details, p.status = Mock(), Mock(), Mock()
     p.grid.selected_rows.return_value = [0]
     return p, h, clip
