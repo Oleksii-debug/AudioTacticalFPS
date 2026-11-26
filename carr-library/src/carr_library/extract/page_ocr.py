@@ -60,6 +60,14 @@ def extract_page(asset, physical_index, config=Config()):
             suspect = bool(visible) and (any(c == '\ufffd' or ord(c) < 32 for c in visible)
                                          or sum(c.isalnum() for c in visible) / len(visible) < .4)
             if native.strip() and not suspect and not has_images:
+                # Native extraction can include text never painted on this page.
+                # Reuse PDFium visibility and bounds APIs, retaining raw evidence.
+                reason = _native_visibility_warning(page, pdfium, config.max_pixels)
+                if reason:
+                    provenance['method'] = 'native_visibility_review'
+                    result['status'] = 'review_required'
+                    result['warnings'].append(reason)
+                    return result
                 provenance['method'] = 'native'
                 result['status'] = 'candidate'
                 return result
@@ -112,3 +120,38 @@ def extract_page(asset, physical_index, config=Config()):
     result['status'] = 'review_required'
     result['warnings'].append('ocr_not_verified' if raw.strip() else 'ocr_empty_nonblank')
     return result
+
+
+def _native_visibility_warning(page, pdfium, max_pixels):
+    """Conservative contradiction checks, not a full rendered-glyph verifier."""
+    raw = pdfium.raw
+    try:
+        left, bottom, right, top = page.get_bbox()
+        found = False
+        for obj in page.get_objects(filter=[raw.FPDF_PAGEOBJ_TEXT]):
+            found = True
+            mode = raw.FPDFTextObj_GetTextRenderMode(obj.raw)
+            if mode not in (raw.FPDF_TEXTRENDERMODE_FILL, raw.FPDF_TEXTRENDERMODE_STROKE,
+                            raw.FPDF_TEXTRENDERMODE_FILL_STROKE,
+                            raw.FPDF_TEXTRENDERMODE_FILL_CLIP, raw.FPDF_TEXTRENDERMODE_STROKE_CLIP,
+                            raw.FPDF_TEXTRENDERMODE_FILL_STROKE_CLIP):
+                return 'native_text_nonpainting_or_unknown'
+            # Form object transforms need separate coordinate verification.
+            if obj.level:
+                return 'native_form_coordinates_unverified'
+            x0, y0, x1, y1 = obj.get_bounds()
+            if not all(math.isfinite(v) for v in (x0, y0, x1, y1, left, bottom, right, top)):
+                return 'native_bounds_unverified'
+            if x1 <= left or x0 >= right or y1 <= bottom or y0 >= top:
+                return 'native_text_outside_page'
+        if not found:
+            return 'native_text_objects_missing'
+        width, height = page.get_size()
+        if not all(math.isfinite(v) and v > 0 for v in (width, height)) or math.ceil(width) * math.ceil(height) > max_pixels:
+            return 'native_visibility_render_limit'
+        with closing(page.render(scale=1)) as bitmap:
+            if all(lo == 255 for lo, hi in bitmap.to_pil().convert('RGB').getextrema()):
+                return 'native_text_on_blank_render'
+    except (pdfium.PdfiumError, ValueError, OSError, RuntimeError):
+        return 'native_visibility_check_failed'
+    return None
