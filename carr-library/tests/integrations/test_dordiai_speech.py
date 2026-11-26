@@ -163,6 +163,9 @@ def test_disabled_configuration_does_not_probe_and_enabled_registers(shared_spee
 
 def test_discover_opt_in_hook_registers_same_provider(shared_speech, runtime, monkeypatch):
     monkeypatch.setattr(shared_speech.shutil, "which", lambda _: None)
+    if hasattr(shared_speech, "NativeSapiProvider"):
+        monkeypatch.setattr(shared_speech, "NativeSapiProvider", lambda: types.SimpleNamespace(
+            name="Synthetic empty system-voice provider", voices=lambda: ()))
     original_is_file = Path.is_file
     monkeypatch.setattr(Path, "is_file", lambda path: False if path.name == "powershell.exe" else original_is_file(path))
     registry = shared_speech.VoiceRegistry.discover(include_flite=False, dordiai={

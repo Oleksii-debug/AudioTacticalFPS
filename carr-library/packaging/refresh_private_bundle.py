@@ -8,34 +8,63 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 from tempfile import TemporaryDirectory
 
 from build_windows_bundle import read_lock, wheel_metadata, verify_application_source, sha256
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
+from create_delivery import _read_manifest, _manifest
 
 HERE = Path(__file__).resolve().parent
 
 
-def refresh(source, wheel, output, source_commit, *, audio=None, citations=None):
+def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
+            audio=None, citations=None, extra_wheelhouse=None):
     source, wheel, output = local(source, exists=True), local(wheel, exists=True), local(output)
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
         raise ValueError('Choose a new bundle directory outside the previous one.')
-    verify(source)
-    previous = json.loads((source / 'bundle-manifest.json').read_bytes())
+    if (not isinstance(parent_manifest_sha256, str)
+            or not re.fullmatch('[0-9a-f]{64}', parent_manifest_sha256)):
+        raise ValueError('An independently recorded parent manifest SHA256 is required.')
+    raw = _read_manifest(source, lambda: False)
+    if hashlib.sha256(raw).hexdigest() != parent_manifest_sha256:
+        raise ValueError('The parent bundle manifest differs from its recorded SHA256.')
+    previous = _manifest(raw, json.loads(raw).get('source_commit'))
+    verify(source, manifest_bytes=raw)
     identity = verify_application_source(wheel, source_commit)
     lock = read_lock(HERE / ('windows-semantic-cp311.lock' if previous.get('bundled_model') else 'windows-cp311.lock'))
     dependencies = {}
-    for path in (source / 'wheelhouse').iterdir():
-        name, version, _ = wheel_metadata(path)
-        if name == 'universal-research-library':
-            continue
-        if name not in lock or str(version) != lock[name][0] or sha256(path) not in lock[name][1]:
-            raise ValueError('The prior dependency no longer matches the current lock: ' + name)
-        dependencies[name] = path
+    wheelhouses = [source / 'wheelhouse']
+    if extra_wheelhouse is not None:
+        wheelhouses.append(local(extra_wheelhouse, exists=True))
+    for directory in wheelhouses:
+        regular(directory, directory=True)
+        for path in directory.iterdir():
+            regular(path)
+            if path.suffix != '.whl':
+                raise ValueError('A wheelhouse must contain only regular wheel files.')
+            name, version, _ = wheel_metadata(path)
+            if name == 'universal-research-library' and directory == wheelhouses[0]:
+                continue
+            digest = sha256(path)
+            if name not in lock or str(version) != lock[name][0] or digest not in lock[name][1]:
+                raise ValueError('A dependency does not match the current lock: ' + name)
+            if name in dependencies:
+                raise ValueError('More than one wheel supplied for dependency: ' + name)
+            dependencies[name] = (path, digest)
     if set(dependencies) != set(lock):
-        raise ValueError('The prior private bundle is missing required locked dependencies.')
+        raise ValueError('The private bundle and extra wheelhouse lack required locked dependencies.')
+    sbom_path = HERE / ('windows-semantic-sbom.cdx.json' if previous.get('bundled_model') else 'windows-sbom.cdx.json')
+    sbom_bytes = sbom_path.read_bytes()
+    sbom = json.loads(sbom_bytes)
+    components = sbom.get('components', [])
+    if (sbom.get('bomFormat') != 'CycloneDX' or sbom.get('specVersion') != '1.5'
+            or len(components) != len(lock)
+            or {(item['name'], item['version']) for item in components}
+            != {(name, version) for name, (version, _) in lock.items()}):
+        raise ValueError('The current runtime SBOM differs from the dependency lock.')
     audio_files = {}
     if audio is not None:
         audio = local(audio, exists=True)
@@ -64,7 +93,7 @@ def refresh(source, wheel, output, source_commit, *, audio=None, citations=None)
         for name, expected in previous['files'].items():
             if name.startswith(('audio/', 'citation-runtime/')):
                 continue
-            if name.startswith('wheelhouse/') and name not in {'wheelhouse/' + p.name for p in dependencies.values()}:
+            if name.startswith('wheelhouse/'):
                 continue
             origin = local(source / name, exists=True)
             regular(origin)
@@ -73,6 +102,12 @@ def refresh(source, wheel, output, source_commit, *, audio=None, citations=None)
             shutil.copyfile(origin, target)
             if sha256(target) != expected:
                 raise ValueError('The old bundle changed during refresh.')
+        (stage / 'wheelhouse').mkdir(exist_ok=True)
+        for path, expected in dependencies.values():
+            target = stage / 'wheelhouse' / path.name
+            shutil.copyfile(path, target)
+            if sha256(target) != expected:
+                raise ValueError('A locked dependency changed during private bundle assembly.')
         shutil.copyfile(wheel, stage / 'wheelhouse' / wheel.name)
         if sha256(stage / 'wheelhouse' / wheel.name) != identity['wheel_sha256']:
             raise ValueError('Application wheel changed after exact source verification.')
@@ -85,6 +120,12 @@ def refresh(source, wheel, output, source_commit, *, audio=None, citations=None)
             shutil.copyfile(HERE / name, stage / name)
         shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
         shutil.copyfile(HERE.parent / 'docs' / 'START_V3_UK.txt', stage / 'START_V3_UK.txt')
+        (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
+        for origin in (HERE / 'wheel-notices').iterdir():
+            regular(origin)
+            target = stage / 'notices' / 'wheels' / origin.name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(origin, target)
         for directory, files in (('audio', audio_files), ('citation-runtime', node_files)):
             for name, origin in files.items():
                 target = stage / directory / name
@@ -101,6 +142,8 @@ def refresh(source, wheel, output, source_commit, *, audio=None, citations=None)
         manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
         manifest.update(source_commit=source_commit, bundled_audio=bool(audio_files),
                         bundled_citation_runtime=bool(node_files), use_scope='private-personal-installation',
+                        parent_source_commit=previous['source_commit'],
+                        parent_manifest_sha256=parent_manifest_sha256,
                         files={p.relative_to(stage).as_posix(): sha256(p) for p in sorted(stage.rglob('*')) if p.is_file()})
         (stage / 'bundle-manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
         verify(stage)
@@ -113,13 +156,16 @@ def refresh(source, wheel, output, source_commit, *, audio=None, citations=None)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for argument in ('source', 'wheel', 'output', 'source-commit'):
+    for argument in ('source', 'wheel', 'output', 'source-commit', 'parent-manifest-sha256'):
         parser.add_argument('--' + argument, required=True)
     parser.add_argument('--audio')
     parser.add_argument('--citations')
+    parser.add_argument('--extra-wheelhouse')
     args = parser.parse_args()
     print(json.dumps(refresh(args.source, args.wheel, args.output, args.source_commit,
-                             audio=args.audio, citations=args.citations)))
+                             parent_manifest_sha256=args.parent_manifest_sha256,
+                             audio=args.audio, citations=args.citations,
+                             extra_wheelhouse=args.extra_wheelhouse)))
 
 
 if __name__ == '__main__':

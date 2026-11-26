@@ -7,13 +7,13 @@ from pathlib import Path
 import csv
 import importlib.metadata as metadata
 import math
-import re
 import subprocess
 import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
 from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime, NON_READING_MODELS
+from .ocr_languages import model_ids
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -73,22 +73,25 @@ class Config:
     max_pixels: int = 20_000_000
     orientation: bool = False
     model_policy: str = 'default'
+    model_profile: str = 'installed'
 
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
-        if not re.fullmatch(r'(?:script/)?[A-Za-z0-9_]+(?:\+(?:script/)?[A-Za-z0-9_]+)*', self.languages):
-            raise ValueError('invalid language selection')
-        if len(self.languages) > 2048 or len(set(self.languages.split('+'))) != len(self.languages.split('+')):
-            raise ValueError('duplicate or oversized language selection')
-        if NON_READING_MODELS.intersection(self.languages.split('+')):
+        selected = model_ids(self.languages)
+        if NON_READING_MODELS.intersection(selected):
             raise ValueError('Choose reading languages or scripts; special detectors are separate.')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
+        if self.model_profile not in ('installed', 'fast', 'best'):
+            raise ValueError('unsupported OCR model profile')
+        if self.model_policy == POLICY and self.model_profile == 'best':
+            raise ValueError('the pinned Fast policy cannot use the Best model profile')
         if self.model_policy == POLICY:
-            selected = self.languages.split('+')
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
+        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
+            raise ValueError('duplicate or oversized language selection')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 
@@ -166,14 +169,16 @@ def extract_page(asset, physical_index, config=Config()):
                             raise subprocess.TimeoutExpired('tesseract', config.timeout)
                         return seconds
 
+                    profile_options = ({'model_profile': config.model_profile}
+                                       if config.model_profile != 'installed' else {})
                     runtime = discover_ocr_runtime(config.languages, orientation=config.orientation,
-                                                   remaining=remaining)
+                                                   remaining=remaining, **profile_options)
                     if runtime is None:
                         result['status'] = 'review_required'
                         result['warnings'].append('ocr_engine_missing')
                         return result
                     exe = runtime.executable
-                    if runtime.portable:
+                    if runtime.portable or getattr(runtime, 'managed', False):
                         provenance['ocr_runtime'] = runtime.fingerprint()
 
                     with tempfile.TemporaryDirectory() as tmp:
@@ -209,7 +214,8 @@ def extract_page(asset, physical_index, config=Config()):
                         if config.orientation:
                             from .ocr_orientation_bridge import orientation_candidate
                             provenance['orientation'] = orientation_candidate(
-                                image, config, exe, remaining, run, recognize, native_cli=runtime.portable)
+                                image, config, exe, remaining, run, recognize,
+                                native_cli=runtime.portable or getattr(runtime, 'managed', False))
                         runtime.assert_unchanged(remaining)
                 except _OcrOutputLimit:
                     result['status'] = 'review_required'
