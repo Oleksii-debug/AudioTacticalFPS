@@ -60,10 +60,19 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-The existing research-database backup does not yet include this sidecar. Keep the
-reading-state export with that backup when moving to another computer. A restored
-library retains the same source identities; a different library cannot accept
-the export. No cloud account or network retrieval is involved.
+**Library, Back up all libraries** includes the complete reading-state sidecar
+along with the source database and retained originals. It also preserves saved
+reading copies, their recovery drafts, keyboard preferences and OCR-language
+presets when present. All are validated and checksummed before restoration into
+a new folder. Older backups without these files remain usable; they cannot
+recreate bookmarks or settings that were never saved in them. See
+[complete backups](COMPLETE_BACKUP.md) for the supported contents and limits.
+
+A restored library retains the same source identities, including archived
+libraries and old revisions. A bookmark for an older revision stays attached to
+that revision; the reader reports when a fresh start is necessary. A different
+library cannot accept the individual reading-state export. No cloud account or
+network retrieval is involved.
 
 ## Implementation and primary references
 

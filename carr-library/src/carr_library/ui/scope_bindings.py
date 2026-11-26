@@ -9,23 +9,26 @@ from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable
+import unicodedata
 
 
 def scope_labels(rows):
     """Render distinct spoken labels without changing the authorized row order."""
     rows = tuple(rows)
-    label_counts = Counter(label for _, _, label in rows)
+    def key(label):
+        return ' '.join(unicodedata.normalize('NFC', label).split())
+    label_counts = Counter(key(label) for _, _, label in rows)
     rendered = set()
     labels = []
     for workspace, topic, label in rows:
-        if label_counts[label] > 1:
+        if label_counts[key(label)] > 1:
             kind = 'library only' if topic is None else f'topic {topic}'
             label = f'{label} (library {workspace}; {kind})'
         original, number = label, 1
-        while label in rendered:
+        while key(label) in rendered:
             number += 1
             label = f'{original} (choice {number})'
-        rendered.add(label)
+        rendered.add(key(label))
         labels.append(label)
     return labels
 

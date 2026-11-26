@@ -447,6 +447,8 @@ class DesktopFrame(WorkspaceFrame):
         self.SetTitle('Universal Research Library')
         self.SetMinSize((760, 650))
         self._menus()
+        from .productivity import install_productivity_actions
+        keyboard = install_productivity_actions(self)
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
@@ -454,6 +456,8 @@ class DesktopFrame(WorkspaceFrame):
             self.status.SetValue('Welcome. Choose Library, New library to begin. All books stay on this computer.')
         if getattr(library,'semantic_notice',None):
             self.report(library.semantic_notice)
+        if keyboard.notice:
+            self.report(keyboard.notice)
 
     def _menus(self):
         self.menu_bar = wx.MenuBar()
@@ -661,11 +665,13 @@ class DesktopFrame(WorkspaceFrame):
         self._drop()
         self.library = candidate
         self.list_scopes = candidate.list_scopes
+        keyboard = getattr(self, 'keyboard_actions', None)
+        keyboard_notice = keyboard.reload() if keyboard is not None else ''
         self.refresh_scopes()
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
-        self.report(f'Opened library folder: {candidate.root}')
+        self.report(f'Opened library folder: {candidate.root}' + ('\n' + keyboard_notice if keyboard_notice else ''))
         return True
 
     def open_library_folder(self,event):
@@ -1017,7 +1023,8 @@ class DesktopFrame(WorkspaceFrame):
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'All completed libraries, original files, saved evidence, notes, tags, and searches are included. '
+                'All completed libraries, original files, saved evidence, notes, tags, searches, '
+                'reading positions, bookmarks and saved reading-copy projects are included. '
                 'Unfinished imports and their pending reviews are excluded.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
@@ -1068,8 +1075,15 @@ class DesktopFrame(WorkspaceFrame):
 
     def help(self, event):
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Use Alt+F for File, Alt+O for Options, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Ctrl+S saves the current research note; Ctrl+Shift+S saves all main-window changes. '
+            'Modal editors have their own Save and Save As commands.\n'
+            'Options, Keyboard shortcuts changes main-window keys and checks conflicts. '
+            'Options, List current keyboard shortcuts shows the active assignments; the keys below are defaults.\n'
+            'File, New reading copy opens an editable text project. File, Open saved reading copy reopens saved work. '
+            'Inside the book reader, Create editable reading copy makes a separate copy of the current page or segment. '
+            'Original source text and quotations stay unchanged.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
@@ -1109,7 +1123,8 @@ class DesktopFrame(WorkspaceFrame):
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'Reading positions, bookmarks and reading-copy projects are included in complete library backups. '
+            'The Reading menu also provides separate bookmark export and import.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

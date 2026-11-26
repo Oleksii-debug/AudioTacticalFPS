@@ -431,7 +431,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
-    wx.SingleChoiceDialog.return_value.GetSelection.return_value = choice
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=Config(languages=languages)))
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -447,6 +447,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -458,7 +459,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
@@ -715,3 +716,28 @@ def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, moda
     chooser.Destroy.assert_called_once()
     p.frame.run_job.assert_not_called()
     p.frame.library.save_hit.assert_not_called()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+@pytest.mark.parametrize('index', [0, 1])
+def test_save_presentation_equivalent_topic_labels(classes, names, index):
+    import unicodedata
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = tuple(
+        SimpleNamespace(id=f'topic-{i}', name=name)
+        for i, name in enumerate(names))
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = index
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', x).split())
+                for x in labels}) == 2
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with(
+        'a', f'topic-{index}', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
