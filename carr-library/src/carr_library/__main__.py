@@ -32,6 +32,19 @@ def self_test():
         saved, = reopened.evidence(first, topic)
         if saved.evidence_id != evidence or 'A separate test note.' not in reopened.export_topic(first, topic):
             raise RuntimeError('Saved research did not survive reopening.')
+        from .research.academic_library import AcademicLibrary
+        with reopened.write(first) as db:
+            references = AcademicLibrary(db, first)
+            reference = references.create(title='Synthetic academic reference',
+                authors=('Synthetic researcher',), year='2026', reading_status='reading',
+                priority='high', progress=25, tags=('Installation check',),
+                edition_id=imported['edition'])
+        with reopened.read(first) as db:
+            references = AcademicLibrary(db, first)
+            if references.list(status='reading') != (reference,):
+                raise RuntimeError('Academic reading-list check failed.')
+            if 'Synthetic academic reference' not in references.export(format='ris'):
+                raise RuntimeError('Academic bibliography export check failed.')
         backup = Path(temp) / 'backup'
         checksum = app.backup(backup)
         from .library_backup import restore_backup
@@ -40,8 +53,12 @@ def self_test():
         recovered = LibraryApp(restored)
         if recovered.evidence(first, topic)[0].anchor.quote != hit.quote:
             raise RuntimeError('Backup quotation check failed.')
+        with recovered.read(first) as db:
+            if AcademicLibrary(db, first).get(reference.id) != reference:
+                raise RuntimeError('Academic reference backup check failed.')
         return {'status': 'PASS', 'checks': ['original import', 'scoped search', 'exact quotation',
-            'workspace isolation', 'saved research', 'reopen persistence', 'backup and restore'],
+            'workspace isolation', 'saved research', 'reopen persistence', 'academic reading list',
+            'bibliography export', 'backup and restore'],
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 

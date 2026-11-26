@@ -1,7 +1,7 @@
 # Import Center
 
-Open **Library → Import Center: files, folders and queues** or press
-**Ctrl+Shift+B** inside a library. The center prepares and saves import plans for
+Open **Library → Import Center: files, folders and queues** inside a library.
+The center prepares and saves import plans for
 TXT, PDF, DOCX and EPUB documents. It uses the same retained originals, extraction
 worker, review requirements and search publication as ordinary book import.
 

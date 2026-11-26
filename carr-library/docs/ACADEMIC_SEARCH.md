@@ -6,6 +6,11 @@ use. It composes the existing `LibraryApp`, retrieval engines and source
 verification services. It introduces no database migration, persistent search
 index, network operation or Zotero dependency.
 
+The complete version 0.2 desktop uses the host's version-four storage, including
+the [Academic Library](ACADEMIC_LIBRARY.md). These search services reuse that
+initialized host and its existing saved-query records; they add no further
+schema migration.
+
 ## Desktop workflow
 
 Open **Research → Research Search Center...** with **Ctrl+Alt+F**. Only the

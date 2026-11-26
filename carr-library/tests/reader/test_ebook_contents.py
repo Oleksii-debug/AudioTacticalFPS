@@ -55,7 +55,7 @@ def _published(tmp_path, *, enhanced, mutate=None, revision_override=None, sourc
                           ('Catalog author',), 'uk', None, None, ())
     with exclusive_writer(app.root):
         app.assets.retain(asset.data, asset.mime, asset.digest)
-        with closing(Storage(app.database, schema_version=3)) as storage:
+        with closing(Storage(app.database, schema_version=4)) as storage:
             _CatalogPublisher(storage, record).publish_revision(workspace, 'edition', revision,
                 asset.digest, config, tuple(Page(item['raw_text']) for item in extracted['records']))
     return app, workspace, revision, source, extracted, config

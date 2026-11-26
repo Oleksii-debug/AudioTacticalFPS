@@ -1,17 +1,19 @@
 {
-  "scope": "Local acceptance of academic search composed with complete imports, bibliography exchange, outlines, notebook, catalog, EPUB contents and document workflows",
-  "recorded_at_utc": "2026-11-26T19:31:03.170613+00:00",
+  "scope": "Academic search composed with complete version0.2 references, reading plans, V4 migration, imports, bibliography, notebook, catalog, EPUB and document workflows",
+  "recorded_at_utc": "2026-11-26T19:54:43.283643+00:00",
   "source_binding": {
-    "canonical_base_commit": "f322e2ef5376501387b86c63fc81cf5be0fc9b8e",
+    "canonical_base_commit": "2b95f264d88842fc392ef3354a3a83141c22b2f6",
     "changed_files_sha256": {
-      "carr-library/README.md": "77e5f3fdaa39e14974e67a50095f176293e7ef70a77ed41a04feb3830485d1b8",
-      "carr-library/docs/ACADEMIC_SEARCH.md": "ad1408f2128a769df177d851ceb252125e8da19d47730f13deef716cee9d6da6",
+      "carr-library/README.md": "56d46b2c9afcd9952cd16bfbb73916dc891becd08cadb78a7f4e5a11e078ca6d",
+      "carr-library/docs/ACADEMIC_SEARCH.md": "0f2b32129fc61edada84212d0599c4364335c241df0978dc875e6336fcee4abd",
       "carr-library/docs/ACADEMIC_SEARCH_NVDA.md": "fda38f25d64f77d47e0ef6ba7de913db9640595197e6d9ff83999cbc6d5559f1",
-      "carr-library/docs/RUNNING.md": "bccfa6c56860f294e57469b3d950bc45fab08db54d7ac54639b52502fce6a740",
-      "carr-library/src/carr_library/__main__.py": "996ae651f3a20107ae9d1dfcecba9ceb836f85e7f4012a41b3fe90c3a44b1fa7",
+      "carr-library/docs/RUNNING.md": "0ac76f230bab9608660a600e914fd63d675c641a61376934a477e1c9b550078c",
+      "carr-library/docs/START_UK.txt": "71798843c2332979a270bbab7f95a83364d4bfb3513760dc481a70bc2b5b665d",
+      "carr-library/src/carr_library/__main__.py": "0fb02201289b38e20189c357fba3f942fe5c232ba518d3b8544c72b5975bbf13",
       "carr-library/src/carr_library/research/query_manager.py": "8f384eb1b0df69ac01ac524d5f4eb3921998c0370b731dcf75435310855b0d35",
       "carr-library/src/carr_library/search/federated.py": "ef4886c9ee39a71d20ff08e00c072583e5871cb083886f9c090d4f00b7ef9cba",
-      "carr-library/src/carr_library/ui/desktop_app.py": "3b93b50a70a7eec54b84016ceeb16f35feb765cfbe6cc6908609ec7d124727c2",
+      "carr-library/src/carr_library/ui/academic_library_dialog.py": "e747148d38a0b354071e72fae4750ae38f95217e3619bc2fbf6744e7e659c7fa",
+      "carr-library/src/carr_library/ui/desktop_app.py": "a9bfa522af43fe5b164511e9701c2765a231efce84b3e57fd62437792ad628a2",
       "carr-library/src/carr_library/ui/federated_search.py": "4e000aed6b6568843f7525aa56d95818ce8ba375e63c413c88def4515f7d186d",
       "carr-library/src/carr_library/ui/query_manager.py": "d794b330547511666b69e51c3ff65591181325476163f269bee3d49af1c8dac3",
       "carr-library/tests/e2e/test_research_search_cli.py": "1a1fe05a39974c4900add016e9be664c9dd7092fb677aa970856ba18a6f9f4f9",
@@ -19,8 +21,11 @@
       "carr-library/tests/search/test_federated.py": "f4705ecf2027fd24591cac26f3e65c2934738a20b2df4d40575a4e73555c917e",
       "carr-library/tests/search/test_federated_epub.py": "8d0f3a40c7a2dd7b1679950da584118ec3f7dd7fa4ec86c78586b5fe402afe49",
       "carr-library/tests/search/test_federated_independent.py": "c10d824f35a64a40c2f1c851fde0427bc18f1968be51af2ec737d71054af9c2d",
+      "carr-library/tests/storage/test_saved_query_v4_upgrade.py": "c1e09efba37effae64a256227654df6cf4a687233ee942c35079e0060fc140d7",
       "carr-library/tests/ui/federated_native_smoke.py": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e",
       "carr-library/tests/ui/probe_source_open_native.py": "2f615c3bde959e2edf85ba90f95f407c0df6b83488db64b213aaaabf793df115",
+      "carr-library/tests/ui/test_academic_library_dialog.py": "81dd5a35ac8614890481eff86afb004a1e38cc23e8b8c8161b863559d5536ac3",
+      "carr-library/tests/ui/test_desktop_handlers.py": "07914d4d9026220ca32e9ac8d27cc2d2130c611356c5ed036e00181b816910a5",
       "carr-library/tests/ui/test_federated_search.py": "c531c99c0e94c254dff85e563ebf2538d66b597b299eda7a076bdabce7f079d6",
       "carr-library/tests/ui/test_query_manager_actions.py": "e2d13174950ff10f0a8a86a3f3c9433164c02f7729e42be52979a5c432cf1ffe"
     },
@@ -218,7 +223,7 @@
         },
         {
           "suite": "tests/ui/test_research_actions.py",
-          "passed": 27,
+          "passed": 30,
           "failed": 0,
           "skipped": 0,
           "pytest_exit": 0
@@ -504,13 +509,210 @@
           "pytest_exit": 0
         },
         {
+          "suite": "tests/packaging/test_offline_runtime_policy.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_offline_startup.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "bootstrap/semantic_compat/test_probe.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ingest/test_application_atomic_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ingest/test_worker_isolated_launch.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ingest/test_application_atomic_docx_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_source_file.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/extract/test_clipping_visibility.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_schema_identity.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_academic_migration.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/research/test_academic_library.py",
+          "passed": 71,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_academic_workflow.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_printed_label_integrity.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_catalog_panel_acceptance.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_bibliography.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_catalog_reports.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/research/test_review_matrix.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_v2_recovery.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_catalog_composition.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/reader/test_file_export.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/search/test_thematic_work_diversity.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/search/test_literal_v2_composition.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/probe_workspace_shell.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/accessibility/test_pr71_catalog_scope_ux.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
           "suite": "tests/ui/test_desktop_handlers.py",
-          "passed": 40,
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_saved_query_v4_upgrade.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_application_metadata_integrity.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_finish_workspace_integrity.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_academic_library_dialog.py",
+          "passed": 43,
           "failed": 0,
           "skipped": 0,
           "pytest_exit": 0
         }
-      ]
+      ],
+      "acceptance_method": "Distinct explicit suites across strict runs. The first92-suite invocation rejected an outdated menu-test fixture; its full46-case suite was corrected and rerun successfully. Additional V4 integrity, saved-query migration and dialog-lifetime suites passed independently."
     },
     {
       "platform": "Linux",
@@ -530,7 +732,7 @@
       ]
     }
   ],
-  "distinct_passed_cases": 1377,
+  "distinct_passed_cases": 1854,
   "new_feature_cases_included_in_total": 176,
   "core_dependencies": {
     "pypdf": "7.1.1",
@@ -542,12 +744,12 @@
     "defusedxml": "0.7.1"
   },
   "wheel_source_identity": {
-    "status": "PASS",
-    "wheel_sha256": "a813a9a6df6259d22affd404c9607bb555ae5ecaf1ddad8a158910a3c40a7abc",
+    "wheel_sha256": "df73de9aced99067a390f8de94ea27a37c44a9b9b47a2080e8e619f2543daeb6",
     "project_name": "universal-research-library",
-    "project_version": "0.1.0.dev1",
-    "payload_files": 169,
-    "required_runtime_files": 127
+    "project_version": "0.2.0.dev1",
+    "payload_files": 173,
+    "required_runtime_files": 131,
+    "status": "PASS"
   },
   "fresh_isolated_installed_self_test": {
     "status": "PASS",
@@ -558,6 +760,8 @@
       "workspace isolation",
       "saved research",
       "reopen persistence",
+      "academic reading list",
+      "bibliography export",
       "backup and restore"
     ],
     "native_gui": "NOT_RUN",
@@ -594,13 +798,17 @@
       "native modal lifecycle",
       "accepted saved-evidence composition",
       "complete import and bibliography host compatibility",
-      "global accelerator and menu preservation"
+      "global accelerator and menu preservation",
+      "V4 migration and backup compatibility",
+      "populated V3 saved-query preservation",
+      "academic dialog forced-destruction callbacks"
     ],
     "unresolved_findings": []
   },
   "resolved_environment_setup": [
     "Installed the newly declared defusedxml==0.7.1 pin before the successful EPUB runs.",
-    "Ran the wx-dependent export handler in an isolated environment with actual system wx instead of treating a skip as a pass."
+    "Ran the wx-dependent export handler in an isolated environment with actual system wx instead of treating a skip as a pass.",
+    "Updated the accepted isolated menu fixture to bind and assert both new installers; the complete46-case desktop suite then passed."
   ],
   "native_acceptance": {
     "local_native_dialogs": "NOT_RUN: no display",
@@ -609,16 +817,38 @@
     "protocol": "docs/ACADEMIC_SEARCH_NVDA.md"
   },
   "required_windows_source_inventory": {
-    "workflow_sha256": "3c434fca77f55f9245e865fd6e16f7bc435ac35d058146962cbbc99c02bcb007",
-    "required_suites": 76,
-    "missing_paths": []
+    "workflow_sha256": "8bc0f2780d01857f09ae8f1422439383c20b3f9282c64539b4aa6aeb7aa2a5e6",
+    "required_suites": 80,
+    "referenced_checkout_python_paths_reviewed": 101,
+    "missing_paths": [],
+    "gate_changes": "None relative to canonical base"
   },
-  "previous_windows_attempt": {
-    "head": "9500c52bb49f2bc1bbfbd2bc70f83cac8b0cba45",
-    "run_id": 45881828069,
-    "status": "FAIL",
-    "cause": "Eight required suites were absent from that source snapshot. The accepted canonical composition now contains their actual implementations and every required suite.",
-    "existing_cases_passed": 1094,
-    "native_steps": "SKIPPED after the required source gate failed"
+  "additional_regressions_included_in_total": {
+    "saved_query_v3_to_v4_preservation": 1,
+    "academic_window_lifetime": 17
+  },
+  "previous_windows_attempts": [
+    {
+      "head": "9500c52bb49f2bc1bbfbd2bc70f83cac8b0cba45",
+      "run_id": 45881828069,
+      "status": "FAIL",
+      "cause": "Eight required suites were absent from that source snapshot. The accepted canonical composition now contains their actual implementations and every required suite.",
+      "existing_cases_passed": 1094,
+      "native_steps": "SKIPPED after the required source gate failed"
+    },
+    {
+      "head": "df4cb68ff05659cf40f32e5e0d899997c096374a",
+      "run_id": 45884314695,
+      "status": "FAIL",
+      "cause": "The updated base workflow required scripts/windows_academic_smoke.py, absent from that older source. The current canonical composition contains its implementation and V4 host.",
+      "native_steps": "Native academic script could not start; later native and source gates were skipped."
+    }
+  ],
+  "source_gate_followup": {
+    "initial_result": "FAIL",
+    "cause": "New canonical isolated menu fixture did not bind our two added installer names.",
+    "resolution": "Added both installer bindings and assertions; preserved every existing assertion and added both search shortcut guide checks.",
+    "complete_rerun_suite": "tests/ui/test_desktop_handlers.py",
+    "rerun_passed": 46
   }
 }

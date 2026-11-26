@@ -25,6 +25,14 @@ instructions.
 
 ## Implemented workflows
 
+- Maintain an academic reference catalog for books, articles, theses, reports
+  and web resources, including references without an attached source file.
+  Keep bibliographic descriptions separate from verified source quotations.
+- Plan reading with status, priority, progress, rating, tags and personal notes;
+  search and filter the reference catalog within the selected library.
+- Preview and import RIS or CSL JSON bibliographies, inspect possible duplicate
+  references, and export RIS, BibTeX, CSL JSON, CSV or plain text. Personal notes
+  are excluded from bibliography exports unless explicitly requested.
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
 - Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
