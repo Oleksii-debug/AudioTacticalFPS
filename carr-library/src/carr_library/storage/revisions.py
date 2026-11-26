@@ -106,6 +106,7 @@ class Storage:
                     (revision,count,p.physical,p.printed,int(p.verified),p.raw,sha256(p.raw.encode()).hexdigest()))
             if not count:
                 raise ValueError('empty revision')
+            self._check_locators(revision)
             self.db.execute('INSERT INTO sealed VALUES(?)',(revision,))
             self.db.execute('DELETE FROM indexed WHERE id IN (SELECT id FROM active_page WHERE workspace=? AND edition=?)',(workspace,edition))
             self.db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
@@ -114,9 +115,33 @@ class Storage:
     def get_page(self, workspace, revision, ordinal):
         return self.db.execute('SELECT p.* FROM page p JOIN revision r ON r.id=p.revision WHERE r.workspace=? AND p.revision=? AND p.ordinal=?',(workspace,revision,ordinal)).fetchone()
 
+    def _check_locators(self, revision=None):
+        # Native SQLite window functions validate sequence and locator kind.
+        # Existing schema derives kind from physical IS NULL; no migration here.
+        invalid = self.db.execute("""
+            WITH ordered AS (
+                SELECT ordinal, physical, printed, verified,
+                    row_number() OVER w AS expected,
+                    lag(physical) OVER w AS previous_physical,
+                    lag(physical IS NULL) OVER w AS previous_logical
+                FROM page WHERE (? IS NULL OR revision=?)
+                WINDOW w AS (PARTITION BY revision ORDER BY ordinal)
+            )
+            SELECT 1 FROM ordered WHERE ordinal != expected
+                OR (physical IS NULL AND (printed IS NOT NULL OR verified != 0))
+                OR (physical IS NOT NULL AND typeof(physical) != 'integer')
+                OR (verified=1 AND (printed IS NULL OR trim(printed, char(9,10,13,32))=''))
+                OR (expected>1 AND previous_logical != (physical IS NULL))
+                OR (physical IS NOT NULL AND physical <= previous_physical)
+            LIMIT 1
+        """, (revision, revision)).fetchone()
+        if invalid:
+            raise sqlite3.IntegrityError('invalid source locator sequence or label')
+
     def _check(self):
         if self.db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or self.db.execute('PRAGMA foreign_key_check').fetchone():
             raise ValueError('database integrity failure')
+        self._check_locators()
         for row in self.db.execute('SELECT raw,digest FROM page'):
             if sha256(row[0].encode()).hexdigest()!=row[1]:
                 raise ValueError('raw digest mismatch')
