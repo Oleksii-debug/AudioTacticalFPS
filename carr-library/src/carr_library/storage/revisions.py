@@ -113,7 +113,11 @@ class Storage:
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
 
     def get_page(self, workspace, revision, ordinal):
-        return self.db.execute('SELECT p.* FROM page p JOIN revision r ON r.id=p.revision WHERE r.workspace=? AND p.revision=? AND p.ordinal=?',(workspace,revision,ordinal)).fetchone()
+        # Only sealed, workspace-scoped pages can serve as historical evidence.
+        row = self.db.execute('SELECT p.* FROM page p JOIN revision r ON r.id=p.revision JOIN sealed s ON s.revision=r.id WHERE r.workspace=? AND p.revision=? AND p.ordinal=?',(workspace,revision,ordinal)).fetchone()
+        if row is not None and (not isinstance(row['raw'], str) or sha256(row['raw'].encode()).hexdigest() != row['digest']):
+            raise ValueError('raw digest mismatch')
+        return row
 
     def _check_locators(self, revision=None):
         # Native SQLite window functions validate sequence and locator kind.
@@ -149,6 +153,13 @@ class Storage:
             LIMIT 1
         """).fetchone():
             raise ValueError('incomplete revision')
+        # Schema v1 has no archive operation: every published edition has an active pointer.
+        if self.db.execute("""
+            SELECT 1 FROM revision r WHERE NOT EXISTS (
+                SELECT 1 FROM active a WHERE a.workspace=r.workspace AND a.edition=r.edition
+            ) LIMIT 1
+        """).fetchone():
+            raise ValueError('missing active edition')
         self._check_locators()
         for row in self.db.execute('SELECT raw,digest FROM page'):
             if sha256(row[0].encode()).hexdigest()!=row[1]:
