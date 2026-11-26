@@ -142,6 +142,11 @@ def _refresh(bundle, **kwargs):
 
 
 def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(bundle, monkeypatch):
+    # CPython discovers Windows version with the fixed OS `ver` command.
+    # Bootstrap the cached host marker snapshot before guarding payload use;
+    # the guard still permits only Git during the reviewed packaging operation.
+    from packaging.markers import default_environment
+    default_environment()
     run = subprocess.run
     def git_only(arguments, *args, **kwargs):
         assert arguments[0] == 'git', 'A runtime or installer was executed during packaging.'
