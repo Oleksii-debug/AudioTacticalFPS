@@ -7,11 +7,15 @@ from ._vendor.wx_grid.grid import AccessibleGrid
 class SearchPanel(wx.Panel):
     """search(workspace, query, retrieval_mode, result_mode, limit) -> Hit iterable.
     more(workspace, ref, revision) -> verified context string (or raises).
+    verified_copy(workspace, ref, revision, field) -> re-resolved exact string (or raises).
     No indexing, citation formatting, or workspace data access in this widget.
     """
-    def __init__(self, parent, search, more):
+    def __init__(self, parent, search, more, *, verified_copy):
         super().__init__(parent)
         self.search_service, self.more_service = search, more
+        if not callable(verified_copy):
+            raise TypeError("verified_copy service required")
+        self.verified_copy_service = verified_copy
         self.model = SearchModel()
         layout = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(layout)
@@ -137,7 +141,18 @@ class SearchPanel(wx.Panel):
 
     def copy(self, field):
         try:
-            value = getattr(self.selected(), field)
+            hit = self.selected()
+            if field not in ('quote', 'citation') or not hit.workspace or hit.workspace != self.model.workspace:
+                raise ValueError('Invalid copy scope or field')
+            value = self.verified_copy_service(hit.workspace, hit.ref, hit.revision, field)
+            if (not isinstance(value, str) or not value or value != getattr(hit, field) or
+                    hit.workspace != self.model.workspace or self.selected() != hit):
+                raise ValueError('Verified source or selection changed')
+        except Exception:
+            self.status.ChangeValue('Source verification failed. Search again or reopen the source. Nothing copied.')
+            self.status.SetFocus()
+            return
+        try:
             if not wx.TheClipboard.Open():
                 raise RuntimeError('Clipboard busy')
             try:
