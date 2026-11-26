@@ -27,6 +27,7 @@ from .catalog_metadata_dialog import edit_selected_book
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
+from .reading_desk import install_reading_desk_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -474,6 +475,7 @@ class DesktopFrame(WorkspaceFrame):
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
+        install_reading_desk_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
