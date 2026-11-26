@@ -9,8 +9,9 @@ from dataclasses import dataclass
 from hashlib import sha256
 from importlib import import_module
 import json
+import math
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import stat
 
@@ -20,6 +21,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
+ENGINE_SETTINGS_BYTES = 32 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
            'evidence-drafts.json', 'ocr-language-presets.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
@@ -69,6 +71,8 @@ def sidecar_limit(name):
         return _model('evidence_drafts').MAX_BYTES
     if name == 'ocr-language-presets.json':
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
+    if name == 'state/audio/engines.json':
+        return ENGINE_SETTINGS_BYTES
     if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return _model('reader.narration').MAX_PROJECT_BYTES
     if re.fullmatch(r'reading-copies/[0-9a-f]{32}\.json', name):
@@ -114,6 +118,123 @@ def _json(raw):
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid JSON number.')))
 
 
+def _validate_engine_settings(value):
+    """Passive schema-1 declarations, never installed engines or their assets.
+
+    Mirror runtime_settings, speech.runtime's Piper/LocalHelper constructors,
+    speech.dordiai, and audio.models.LocalModelConfig without importing them.
+    External files can be absent after relocation; normal engine activation
+    remains responsible for checking their availability, trust and hashes.
+    """
+    def fields(record, required, optional=()):
+        if (type(record) is not dict or not set(required) <= record.keys()
+                or not record.keys() <= set(required) | set(optional)):
+            raise ValueError('Unknown or missing local engine setting fields.')
+
+    def text(value, maximum):
+        if (type(value) is not str or not value.strip() or len(value) > maximum
+                or '\x00' in value):
+            raise ValueError('Invalid local engine text setting.')
+        value.encode('utf-8', errors='strict')
+
+    def path(value, *, absolute=False):
+        # These are inert external references, not archive member names. Keep
+        # both Windows and POSIX spellings, including valid legacy relatives.
+        text(value, 32767)
+        normalized = value.replace('\\', '/')
+        if (normalized.startswith('//') or '://' in value
+                or any(ord(character) < 32 for character in value)):
+            raise ValueError('Engine settings require local filesystem references.')
+        without_drive = value[2:] if re.match(r'^[A-Za-z]:', value) else value
+        if ':' in without_drive:
+            raise ValueError('Engine references cannot contain URLs or alternate streams.')
+        if absolute and not (PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()):
+            raise ValueError('A local music model needs absolute installation references.')
+
+    def checksum(value):
+        if type(value) is not str or not re.fullmatch('[0-9a-f]{64}', value):
+            raise ValueError('An engine asset needs a lowercase SHA-256 fingerprint.')
+
+    def boolean(value):
+        if type(value) is not bool:
+            raise ValueError('Engine enablement and use profiles must be booleans.')
+
+    def entries(value, maximum=100):
+        if type(value) is not list or len(value) > maximum:
+            raise ValueError('Invalid or excessive local engine registrations.')
+        return value
+
+    fields(value, {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'})
+    if type(value['schema']) is not int or value['schema'] != 1:
+        raise ValueError('Unsupported local engine settings schema.')
+    for name in ('ffmpeg', 'ffprobe'):
+        if value[name] is not None:
+            path(value[name])
+    for registration in entries(value['piper']):
+        fields(registration, {'executable', 'models'})
+        path(registration['executable'])
+        seen = set()
+        for model in entries(registration['models'], maximum=10000):
+            fields(model, {'path', 'sha256', 'config_sha256', 'license', 'name', 'language'}, {'config'})
+            path(model['path'])
+            if 'config' in model:
+                path(model['config'])
+            for name in ('sha256', 'config_sha256'):
+                checksum(model[name])
+            if model['sha256'] in seen:
+                raise ValueError('Duplicate Piper model identity.')
+            seen.add(model['sha256'])
+            for name in ('license', 'name', 'language'):
+                text(model[name], 2048)
+    for helper in entries(value['voice_helpers']):
+        if type(helper) is not dict:
+            raise ValueError('Invalid local voice registration.')
+        if 'adapter' in helper:
+            fields(helper, {'adapter', 'runtime_directory', 'rights_notice', 'enabled'},
+                   {'python_executable', 'expected_worker_sha256'})
+            if helper['adapter'] != 'dordiai-voices':
+                raise ValueError('Unsupported local voice adapter.')
+            text(helper['runtime_directory'], 4096)
+            path(helper['runtime_directory'])
+            text(helper['rights_notice'], 4096)
+            boolean(helper['enabled'])
+            if helper.get('python_executable') is not None:
+                path(helper['python_executable'])
+            if 'expected_worker_sha256' in helper:
+                checksum(helper['expected_worker_sha256'])
+        else:
+            fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices'})
+            path(helper['executable'])
+            checksum(helper['sha256'])
+            text(helper['engine_name'], 128)
+            if 'enabled' in helper:
+                boolean(helper['enabled'])
+            if 'max_voices' in helper and (type(helper['max_voices']) is not int
+                                         or not 1 <= helper['max_voices'] <= 10000):
+                raise ValueError('Invalid local helper voice limit.')
+    for model in entries(value['music_models']):
+        fields(model, {'engine', 'python', 'directory', 'manifest'},
+               {'device', 'private_noncommercial', 'max_chunk_seconds'})
+        if model['engine'] not in ('musicgen', 'ace-step') or model.get('device', 'cpu') not in ('cpu', 'cuda', 'mps'):
+            raise ValueError('Unsupported local music engine or device.')
+        for name in ('python', 'directory', 'manifest'):
+            path(model[name], absolute=True)
+        if 'private_noncommercial' in model:
+            boolean(model['private_noncommercial'])
+        chunk = model.get('max_chunk_seconds', 30)
+        if type(chunk) not in (int, float) or not 1 <= chunk <= 600 or not math.isfinite(chunk):
+            raise ValueError('Invalid local music chunk allowance.')
+    font = value['fluidsynth']
+    if font is not None:
+        fields(font, {'binary', 'soundfont', 'sha256', 'license_notice'})
+        path(font['binary'])
+        path(font['soundfont'])
+        if PureWindowsPath(font['soundfont']).suffix.lower() not in ('.sf2', '.sf3'):
+            raise ValueError('Unsupported local SoundFont filename.')
+        checksum(font['sha256'])
+        text(font['license_notice'], 4000)
+
+
 def validate_sidecar(db, name, raw):
     maximum = sidecar_limit(name)
     if type(raw) is not bytes or not 0 < len(raw) <= maximum:
@@ -141,6 +262,8 @@ def validate_sidecar(db, name, raw):
             # again after restore and offers conflicting copies read-only.
         elif name == 'ocr-language-presets.json':
             _model('extract.ocr_languages').validate_presets_bytes(raw)
+        elif name == 'state/audio/engines.json':
+            _validate_engine_settings(_json(raw))
         elif name.startswith('narration-projects/'):
             project = _model('reader.narration').validate_narration_payload(name, raw)
             _validate_original_text(db, project.source_location, project.original_text)
