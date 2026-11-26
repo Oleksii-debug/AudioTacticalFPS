@@ -42,17 +42,86 @@ PRAGMA user_version=1;
 '''
 
 
+# Catalog DDL reused from PR53 (blob 5ab88793b8e4041127f88c2a1dd7662bbe42094e).
+# V2 is a fresh catalog/revision candidate, not a live migration.
+CATALOG_V2 = '''
+CREATE TABLE workspace(id TEXT PRIMARY KEY);
+CREATE TABLE catalog_asset(
+    digest TEXT PRIMARY KEY CHECK(length(digest)=64),
+    mime TEXT NOT NULL,
+    size INTEGER NOT NULL CHECK(typeof(size)='integer' AND size>0)
+);
+CREATE TABLE catalog_work(
+    workspace TEXT NOT NULL REFERENCES workspace(id),
+    id TEXT NOT NULL,
+    title TEXT,
+    PRIMARY KEY(workspace,id)
+);
+CREATE TABLE catalog_author(
+    workspace TEXT NOT NULL,
+    work TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK(position>=0),
+    name TEXT NOT NULL,
+    PRIMARY KEY(workspace,work,position),
+    FOREIGN KEY(workspace,work) REFERENCES catalog_work(workspace,id)
+);
+CREATE TABLE catalog_edition(
+    workspace TEXT NOT NULL,
+    id TEXT NOT NULL,
+    work TEXT NOT NULL,
+    asset TEXT NOT NULL REFERENCES catalog_asset(digest),
+    language TEXT,
+    edition TEXT,
+    volume TEXT,
+    PRIMARY KEY(workspace,id),
+    UNIQUE(workspace,id,asset),
+    FOREIGN KEY(workspace,work) REFERENCES catalog_work(workspace,id)
+);
+CREATE TABLE catalog_collection(
+    workspace TEXT NOT NULL REFERENCES workspace(id),
+    id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
+    PRIMARY KEY(workspace,id)
+);
+CREATE UNIQUE INDEX catalog_collection_name ON catalog_collection(workspace,name) WHERE archived=0;
+CREATE TABLE catalog_membership(
+    workspace TEXT NOT NULL,
+    collection TEXT NOT NULL,
+    edition TEXT NOT NULL,
+    PRIMARY KEY(workspace,collection,edition),
+    FOREIGN KEY(workspace,collection) REFERENCES catalog_collection(workspace,id),
+    FOREIGN KEY(workspace,edition) REFERENCES catalog_edition(workspace,id)
+);
+CREATE TRIGGER catalog_edition_identity_immutable BEFORE UPDATE OF workspace,id,work,asset ON catalog_edition
+BEGIN SELECT RAISE(ABORT,'immutable edition identity'); END;
+CREATE TRIGGER catalog_edition_no_delete BEFORE DELETE ON catalog_edition
+BEGIN SELECT RAISE(ABORT,'destructive deletion not supported'); END;
+CREATE TRIGGER catalog_asset_no_update BEFORE UPDATE ON catalog_asset
+BEGIN SELECT RAISE(ABORT,'immutable asset manifest'); END;
+CREATE TRIGGER catalog_asset_no_delete BEFORE DELETE ON catalog_asset
+BEGIN SELECT RAISE(ABORT,'destructive deletion not supported'); END;
+CREATE TRIGGER catalog_work_identity_immutable BEFORE UPDATE OF workspace,id ON catalog_work
+BEGIN SELECT RAISE(ABORT,'immutable work identity'); END;
+'''
+SCHEMA_V2 = CATALOG_V2 + SCHEMA.replace(
+    'UNIQUE(workspace, edition, id));',
+    'UNIQUE(workspace, edition, id), FOREIGN KEY(workspace,edition,asset) '
+    'REFERENCES catalog_edition(workspace,id,asset));',
+).replace('PRAGMA user_version=1;', 'PRAGMA user_version=2;')
+SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2}
+
+
 def _schema_signature(db):
     # Reuse the native schema signature from CARR-10 restore (PR #31).
     return tuple(tuple(row) for row in db.execute(
         'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'))
 
 
-@lru_cache(maxsize=1)
-def _expected_v1_signature():
-    # This is the standalone V1 schema, not a catalog/evidence migration.
+@lru_cache(maxsize=2)
+def _expected_signature(version):
     with closing(sqlite3.connect(':memory:')) as reference:
-        reference.executescript(SCHEMA)
+        reference.executescript(SCHEMAS[version])
         return _schema_signature(reference)
 
 
@@ -70,59 +139,80 @@ class Page:
     verified: bool = False
 
 class Storage:
-    def __init__(self, path):
+    def __init__(self, path, *, schema_version=None):
+        if schema_version is not None and (type(schema_version) is not int or schema_version not in SCHEMAS):
+            raise ValueError('unsupported schema version')
         self.db = sqlite3.connect(path, isolation_level=None, timeout=5)
         self.db.row_factory = sqlite3.Row
         try:
             self.db.execute('PRAGMA foreign_keys=ON')
             # SQLite REPLACE fires implicit delete triggers only with recursion enabled.
             self.db.execute('PRAGMA recursive_triggers=ON')
-            if self.db.execute('PRAGMA recursive_triggers').fetchone()[0] != 1:
-                raise ValueError('recursive triggers required for immutable revisions')
             with self.transaction():
                 version = self.db.execute('PRAGMA user_version').fetchone()[0]
                 if version == 0:
                     if self.db.execute('SELECT 1 FROM sqlite_master LIMIT 1').fetchone():
                         raise ValueError('unversioned existing database')
+                    version = schema_version if schema_version is not None else 1
                     # executescript commits implicitly; execute each complete statement instead.
                     sql = ''
-                    for line in SCHEMA.splitlines():
+                    for line in SCHEMAS[version].splitlines():
                         sql += line + '\n'
                         if sqlite3.complete_statement(sql):
                             self.db.execute(sql)
                             sql = ''
-                elif version != 1:
-                    raise ValueError('unsupported schema version')
+                elif version not in SCHEMAS or (schema_version is not None and version != schema_version):
+                    raise ValueError('unsupported or mismatched schema version; no live upgrade')
+                self.schema_version = version
                 self._check_schema()
         except BaseException:
             self.db.close()
             raise
 
+    def _require_pragmas(self):
+        if self.db.execute('PRAGMA foreign_keys').fetchone()[0] != 1:
+            raise ValueError('foreign keys required')
+        if self.db.execute('PRAGMA recursive_triggers').fetchone()[0] != 1:
+            raise ValueError('recursive triggers required for immutable revisions')
+
     @contextmanager
     def transaction(self):
+        self._require_pragmas()
         self.db.execute('BEGIN IMMEDIATE')
         try:
             yield
+            if not self.db.in_transaction:
+                raise RuntimeError('publication transaction ended unexpectedly')
             self.db.commit()
         except BaseException:
-            self.db.rollback()
+            if self.db.in_transaction:
+                self.db.rollback()
             raise
 
     def close(self):
         self.db.close()
 
     def _check_schema(self):
-        if (self.db.execute('PRAGMA user_version').fetchone()[0] != 1 or
-                _schema_signature(self.db) != _expected_v1_signature()):
+        if (self.db.execute('PRAGMA user_version').fetchone()[0] != self.schema_version or
+                _schema_signature(self.db) != _expected_signature(self.schema_version)):
             raise ValueError('revision storage schema mismatch')
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
+        with self.transaction():
+            self.stage_revision(workspace, edition, revision, asset, config, pages)
+
+    def stage_revision(self, workspace, edition, revision, asset, config, pages):
+        """Stage in the caller's transaction; never commit the outer unit."""
+        if not self.db.in_transaction:
+            raise ValueError('caller transaction required')
+        self._require_pragmas()
         if not all(isinstance(v,str) and v for v in (workspace,edition,revision,config)):
             raise ValueError('missing identity or extraction config')
         if len(asset) != 64 or any(c not in '0123456789abcdef' for c in asset):
             raise ValueError('invalid SHA256')
-        with self.transaction():
-            self._check_schema()
+        self._check_schema()
+        self.db.execute('SAVEPOINT stage_revision')
+        try:
             self.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',(revision,workspace,edition,asset,config))
             count = 0
             for count,p in enumerate(pages,1):
@@ -137,6 +227,12 @@ class Storage:
             self.db.execute('DELETE FROM indexed WHERE id IN (SELECT id FROM active_page WHERE workspace=? AND edition=?)',(workspace,edition))
             self.db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
+        except BaseException:
+            if self.db.in_transaction:
+                self.db.execute('ROLLBACK TO stage_revision')
+                self.db.execute('RELEASE stage_revision')
+            raise
+        self.db.execute('RELEASE stage_revision')
 
     def get_page(self, workspace, revision, ordinal):
         # Only sealed, workspace-scoped pages can serve as historical evidence.
@@ -215,6 +311,10 @@ class Storage:
         The caller must own a stable private parent directory and exclude
         concurrent namespace writers; these checks are not a hostile-directory lock.
         """
+        if self.db.in_transaction:
+            raise ValueError('backup forbidden inside publication transaction')
+        self._require_pragmas()
+        self._check_schema()
         path = Path(path)
         if os.path.lexists(path) or _sidecars(path):
             raise FileExistsError(path)
