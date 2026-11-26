@@ -27,6 +27,8 @@ SORTS = ('title', 'year', 'priority', 'updated')
 MAX_IMPORT_BYTES = 8 * 1024 * 1024
 MAX_IMPORT_RECORDS = 2000
 MAX_REFERENCES = 100000
+MAX_REFERENCE_SCAN_BYTES = 64 * 1024 * 1024
+MAX_DUPLICATE_PREVIEW_SLOTS = 100000
 _BIDI = frozenset('\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069')
 _STAMP = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -416,13 +418,23 @@ class AcademicLibrary:
 
     def _all(self, *, include_archived=False):
         self._scope()
-        rows = self.db.execute(f'SELECT {_SELECT} FROM academic_reference WHERE workspace=?'
-            + ('' if include_archived else ' AND archived=0') + ' ORDER BY id LIMIT ?',
-            (self.workspace, MAX_REFERENCES + 1))
-        result = tuple(_row_reference(row) for row in rows)
-        if len(result) > MAX_REFERENCES:
+        where = 'workspace=?' + ('' if include_archived else ' AND archived=0')
+        args = (self.workspace, MAX_REFERENCES + 1)
+        # Bound stored UTF-8 payload before decoding complete notes and metadata.
+        # This runs in the same authorized snapshot as the materialization below.
+        size_expr = '+'.join(f'COALESCE(length(CAST({name} AS BLOB)),0)' for name in _COLUMNS)
+        count, size = self.db.execute(
+            f'SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM ('
+            f'SELECT {size_expr} AS bytes FROM academic_reference WHERE {where} '
+            'ORDER BY id LIMIT ?)', args).fetchone()
+        if count > MAX_REFERENCES:
             raise ValueError('This operation supports at most 100,000 references per library.')
-        return result
+        if size > MAX_REFERENCE_SCAN_BYTES:
+            raise ValueError('Academic reference metadata exceeds the operation limit. '
+                             'Select fewer references.')
+        rows = self.db.execute(f'SELECT {_SELECT} FROM academic_reference WHERE {where} '
+                               'ORDER BY id LIMIT ?', args)
+        return tuple(_row_reference(row) for row in rows)
 
     def duplicates(self):
         groups = defaultdict(list)
@@ -464,8 +476,16 @@ class AcademicLibrary:
             for key in _duplicate_keys(values):
                 batch[key].append(index)
         entries = []
+        remaining = MAX_DUPLICATE_PREVIEW_SLOTS
         for index, (values, warnings) in enumerate(parsed):
             keys = _duplicate_keys(values)
+            # Count before constructing per-entry sets/tuples. Overlapping keys
+            # deliberately overcount instead of silently truncating suggestions.
+            cost = sum(len(existing[key]) + len(batch[key]) for key in keys)
+            if cost > remaining:
+                raise ValueError('Too many duplicate matches to preview safely. '
+                                 'Refine the reference batch or library.')
+            remaining -= cost
             ids = tuple(sorted({identity for key in keys for identity in existing[key]}))
             indices = tuple(sorted({number for key in keys for number in batch[key] if number != index}))
             entries.append(ImportEntry(index, MappingProxyType(values), tuple(warnings), ids, indices))
