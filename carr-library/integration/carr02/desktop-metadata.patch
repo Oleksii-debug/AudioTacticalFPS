@@ -1,0 +1,89 @@
+--- a/carr-library/src/carr_library/ui/desktop_app.py
++++ b/carr-library/src/carr_library/ui/desktop_app.py
+@@ -19,6 +19,7 @@
+ from .scope_bindings import ScopeServices
+ from .paged_search_panel import PagedSearchPanel
+ from .search_model import Hit
++from .catalog_metadata_dialog import edit_selected_book
+ 
+ 
+ def text_dialog(parent, title, label, value='', *, multiline=False):
+@@ -26,40 +27,6 @@
+         style=wx.OK | wx.CANCEL | (wx.TE_MULTILINE if multiline else 0))
+     try:
+         return dialog.GetValue() if dialog.ShowModal() == wx.ID_OK else None
+-    finally:
+-        dialog.Destroy()
+-
+-
+-def metadata_dialog(parent, book):
+-    dialog = wx.Dialog(parent, title='Edit book metadata', size=(650, 550))
+-    try:
+-        layout = wx.BoxSizer(wx.VERTICAL)
+-        form = wx.FlexGridSizer(cols=2, hgap=8, vgap=8)
+-        form.AddGrowableCol(1)
+-        controls = {}
+-        for key, label, value in [('title','Title',book.title or ''),
+-                ('authors','Authors, one per line','\n'.join(book.authors)),
+-                ('language','Language code',book.language or ''),
+-                ('edition','Edition',book.edition or ''),('volume','Volume',book.volume or '')]:
+-            form.Add(wx.StaticText(dialog,label=label),0,wx.ALL,4)
+-            control = wx.TextCtrl(dialog,value=value,style=wx.TE_MULTILINE if key == 'authors' else 0)
+-            control.SetName(label)
+-            if key == 'authors':
+-                control.SetMinSize((-1,80))
+-            controls[key] = control
+-            form.Add(control,1,wx.EXPAND | wx.ALL,4)
+-        layout.Add(form,1,wx.EXPAND | wx.ALL,8)
+-        layout.Add(wx.StaticText(dialog,label='Saved quotations keep their original citation metadata.'),0,wx.ALL,8)
+-        layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL),0,wx.EXPAND | wx.ALL,8)
+-        dialog.SetSizer(layout)
+-        controls['title'].SetFocus()
+-        if dialog.ShowModal() != wx.ID_OK:
+-            return None
+-        values = {key: control.GetValue().strip() for key,control in controls.items()}
+-        values['authors'] = tuple(line.strip() for line in values['authors'].splitlines() if line.strip())
+-        for key in ('language','edition','volume'):
+-            values[key] = values[key] or None
+-        return values
+     finally:
+         dialog.Destroy()
+ 
+@@ -299,7 +266,7 @@
+             ('Restore archived library', self.unarchive_library),
+             ('Import books\tCtrl+I', self.import_books), ('Resume interrupted import',self.resume_import),
+             ('Add original text\tCtrl+Shift+N', self.add_text),
+-            ('Edit selected book metadata',self.edit_metadata),
++            ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
+             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
+             ('Exit\tAlt+F4', lambda e: self.Close())]),
+             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
+@@ -578,26 +545,8 @@
+         except Exception as exc:
+             self.report(str(exc))
+ 
+-    def edit_metadata(self,event):
+-        try:
+-            workspace = self._workspace()
+-            if self.book is None or self.book.GetSelection() != 1:
+-                raise ValueError('Open Books and Collections and select the book to edit.')
+-            panel = self.book.GetPage(1)
+-            edition_id = panel._selection()[2]
+-            book = panel.rows.get(edition_id)
+-            if book is None:
+-                raise ValueError('Select a book first.')
+-            values = metadata_dialog(self,book)
+-            if values is None:
+-                return
+-            def done(result):
+-                panel.refresh()
+-                self.book.GetPage(0).refresh_collections()
+-                self.report('Book metadata updated. Existing saved quotations keep their original citation metadata.')
+-            self.run_job('Updating book metadata',lambda: self.library.update_metadata(workspace,edition_id,**values),done)
+-        except Exception as exc:
+-            self.report(str(exc))
++    def edit_metadata(self, event):
++        edit_selected_book(self)
+ 
+     def edit_tags(self,event):
+         try:

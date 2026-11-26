@@ -38,7 +38,7 @@ def active_collections(catalog: Catalog):
 
 
 def browse_editions(catalog: Catalog, *, collection=None, title=None, author=None,
-                    language=None, edition=None, after=None, limit=100):
+                    language=None, edition=None, edition_id=None, after=None, limit=100):
     """Bounded edition page, ordered by ID. Pass last ID as after for next page.
 
     Title/author are literal, case-sensitive Unicode substrings (not LIKE or
@@ -52,6 +52,8 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
         raise ValueError('invalid page size')
     if after is not None:
         after = _identity(after)
+    if edition_id is not None:
+        edition_id = _identity(edition_id)
     if collection is not None:
         collection = _identity(collection)
         catalog._active_collection(collection)
@@ -62,6 +64,7 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
         SELECT e.workspace,e.id,e.work,e.asset,w.title,e.language,e.edition,e.volume
         FROM catalog_edition e JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work
         WHERE e.workspace=:scope AND (:after IS NULL OR e.id COLLATE BINARY > :after)
+        AND (:edition_id IS NULL OR e.id=:edition_id)
         AND (:collection IS NULL OR EXISTS (SELECT 1 FROM catalog_membership m
             WHERE m.workspace=e.workspace AND m.edition=e.id AND m.collection=:collection))
         AND (:title IS NULL OR instr(w.title,:title)>0)
@@ -73,7 +76,7 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
     ) SELECT s.id,s.work,s.asset,s.title,s.language,s.edition,s.volume,a.name
       FROM selected s LEFT JOIN catalog_author a ON a.workspace=s.workspace AND a.work=s.work
       ORDER BY s.id COLLATE BINARY,a.position''',
-        dict(scope=scope, after=after, collection=collection, title=title,
+        dict(scope=scope, after=after, edition_id=edition_id, collection=collection, title=title,
              author=author, language=language, edition=edition, limit=limit))
     grouped = {}
     for row in rows:
@@ -82,3 +85,16 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
         if name is not None:
             names.append(name)
     return tuple(EditionView(*fields, tuple(names)) for fields, names in grouped.items())
+
+
+def get_edition(catalog: Catalog, edition_id: str) -> EditionView:
+    """Read one exact edition in the caller's authorized snapshot.
+
+    Uses the same ordered metadata view as browsing. The identity filter never
+    treats an edition ID as a title, edition label or SQL/FTS expression.
+    A returned frozen view can also guard an optimistic metadata edit.
+    """
+    rows = browse_editions(catalog, edition_id=_identity(edition_id), limit=1)
+    if not rows:
+        raise ValueError('unknown edition in this library')
+    return rows[0]
