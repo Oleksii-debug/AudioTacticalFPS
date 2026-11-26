@@ -120,6 +120,8 @@ jobs:
             'tests/ingest/test_worker_isolated_launch.py',
             'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
+            'tests/search/test_semantic_cache.py',
+            'tests/search/test_semantic_cache_boundary.py',
             'tests/e2e/test_source_file.py',
             'tests/e2e/test_export_destination.py',
             'tests/e2e/test_academic_document_export.py',

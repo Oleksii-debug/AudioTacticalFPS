@@ -165,6 +165,10 @@ class LibraryApp:
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
+        if semantic_ranker is not None:
+            from .semantic import OfflineSemanticRanker
+            if isinstance(semantic_ranker, OfflineSemanticRanker):
+                semantic_ranker.bind_cache(self.root)
 
     def _check_database_paths(self):
         for path in (self.database, self.root / 'imports.sqlite'):
