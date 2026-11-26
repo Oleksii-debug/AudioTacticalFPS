@@ -23,3 +23,20 @@ def test_generated_label_collision_in_both_orders():
 
 def test_empty_choices():
     assert scope_labels([]) == []
+
+
+import unicodedata
+import pytest
+
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+def test_presentation_collision(names):
+    rows = [('a', 'one', names[0]), ('a', 'two', names[1])]
+    labels = scope_labels(rows)
+    assert len(set(labels)) == 2
+    assert len({' '.join(unicodedata.normalize('NFC', x).split()) for x in labels}) == 2
+    assert all(label.startswith(row[2]) for row, label in zip(rows, labels))
