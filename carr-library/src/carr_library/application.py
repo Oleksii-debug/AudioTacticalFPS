@@ -418,13 +418,13 @@ class LibraryApp:
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate PDF/DOCX native parsing; retain the exact TXT path inline."""
+        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
         from .extract.page_ocr import Config
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ('.pdf', '.docx'):
+        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
@@ -497,13 +497,28 @@ class LibraryApp:
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
                 publisher = _CatalogPublisher(storage, record)
-                if asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                    from .extract.docx_ordered import extract_docx
-                    extracted = extract_docx(asset.data)
+                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                  'application/epub+zip'):
+                    if asset.mime == 'application/epub+zip':
+                        from .extract.epub_ordered import extract_epub
+                        extracted = extract_epub(asset.data)
+                        source_format = 'EPUB'
+                        settings = canonical({'adapter': 'epub-spine-v1', 'kind': 'logical_segment',
+                            'provenance': extracted['provenance'],
+                            'chapters': [r['logical_locator'] for r in extracted['records']],
+                            'alternatives': [r.get('alternatives', []) for r in extracted['records']],
+                            'warnings': extracted['warnings']})
+                        if len(settings.encode('utf-8')) > 4 * 1024 * 1024:
+                            raise ValueError('The EPUB section index exceeds the supported limit.')
+                    else:
+                        from .extract.docx_ordered import extract_docx
+                        extracted = extract_docx(asset.data)
+                        source_format = 'DOCX'
+                        # Preserve the original configuration and revision identities.
+                        settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
+                                              'provenance': extracted['provenance']})
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
-                    settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
-                                          'provenance': extracted['provenance']})
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
                                       .encode('utf-8')).hexdigest()
                     prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
@@ -513,14 +528,14 @@ class LibraryApp:
                             tuple(Page(r['raw_text']) for r in extracted['records']))
                     else:
                         if tuple(prior) != (workspace, record.edition_id, asset.digest, settings):
-                            raise ValueError('Published DOCX import identity changed.')
+                            raise ValueError(f'Published {source_format} import identity changed.')
                         pages = storage.db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
                             'FROM page WHERE revision=? ORDER BY ordinal', (revision,)).fetchall()
                         expected = tuple((i, None, None, 0, r['raw_text'], r['text_sha256'])
                                          for i, r in enumerate(extracted['records'], 1))
                         if (tuple(tuple(p) for p in pages) != expected or not storage.db.execute(
                                 'SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()):
-                            raise ValueError('Published DOCX import differs from retained source bytes.')
+                            raise ValueError(f'Published {source_format} import differs from retained source bytes.')
                         with storage.transaction():
                             register_batch(Catalog(storage.db, workspace), (record,))
                             # Replays may add memberships; validate before exposing them.
@@ -528,7 +543,8 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
-                            'message': 'DOCX imported as unverified logical segments; printed pages are unknown.'}
+                            'message': f'{source_format} imported as unverified logical segments; '
+                                       'printed pages are unknown.'}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -800,9 +816,14 @@ class LibraryApp:
         with self.read(workspace) as db:
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            _, _, locator, raw, meta = self._selected(
+            selected, identity, locator, raw, meta = self._selected(
                 db, workspace, ref, revision, cancelled=cancelled)
-            return f'{meta.title}\n{locator.display()}\nExtracted text; verification status is shown in the search result.\n\n{raw}'
+            section = ''
+            if locator.kind == 'logical_segment':
+                from .reader.ebook import section_description
+                section = section_description(db, identity, selected.ordinal)
+            return (f'{meta.title}\n{locator.display()}\n' + (section + '\n' if section else '') +
+                    'Extracted text; verification status is shown in the search result.\n\n' + raw)
 
     def copy(self, workspace, ref, revision, field='both', *, cancelled=lambda: False):
         with self.read(workspace) as db:

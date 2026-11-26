@@ -10,9 +10,11 @@ from types import SimpleNamespace
 import pytest
 from reportlab.pdfgen.canvas import Canvas
 
+from carr_library import application as application_module
 from carr_library.application import LibraryApp
 from carr_library.citations.anchors import make_anchor
 from carr_library.library_backup import restore_backup
+from carr_library.research import notebook_search as notebook_module
 
 
 def identities(result):
@@ -204,18 +206,36 @@ def test_current_metadata_edits_preserve_historical_notebook_citations(notebook)
     assert n.app.export_topic(n.workspace, n.parent, format='text') == before
 
 
-def test_cancellation_and_finite_deadlines_apply_to_search_and_fresh_navigation(notebook):
+def test_cancellation_and_finite_deadlines_apply_to_search_and_fresh_navigation(notebook, monkeypatch):
     n = notebook
     actions = (
         lambda **options: n.app.search_notebook(n.workspace, 'Shared review marker', **options),
         lambda **options: n.app.get_notebook_hit(n.workspace, n.parent, n.en_id, **options),
     )
     before = n.app.evidence(n.workspace, n.parent)
+    original_loaders = n.app._loaders
     for action in actions:
         with pytest.raises(TimeoutError):
             action(cancelled=lambda: True)
-        with pytest.raises(TimeoutError):
-            action(timeout=1e-12)
+        # A positive interval need not elapse between two coarse Windows clock
+        # ticks. Advance the shared clock only after a real source is loaded,
+        # proving that an in-progress operation observes its elapsed deadline.
+        clock, loaded = [100.0], []
+        def timed_loaders(*args, **kwargs):
+            load, metadata, attest = original_loaders(*args, **kwargs)
+            def charged_load(*source_args):
+                value = load(*source_args)
+                loaded.append(source_args)
+                clock[0] += 2.0
+                return value
+            return charged_load, metadata, attest
+        with monkeypatch.context() as timed:
+            timed.setattr(application_module, 'monotonic', lambda: clock[0])
+            timed.setattr(notebook_module, 'monotonic', lambda: clock[0])
+            timed.setattr(n.app, '_loaders', timed_loaders)
+            with pytest.raises(TimeoutError):
+                action(timeout=1.0)
+        assert len(loaded) == 1
         for timeout in (float('nan'), float('inf')):
             with pytest.raises(ValueError):
                 action(timeout=timeout)
