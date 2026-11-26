@@ -23,6 +23,7 @@ import socket
 import sqlite3
 import ssl
 import tempfile
+from time import monotonic
 from typing import Protocol
 from urllib.parse import quote, urlsplit
 import uuid
@@ -171,7 +172,7 @@ class WindowsCredentialVault:
                 ('AttributeCount', wintypes.DWORD), ('Attributes', ctypes.c_void_p),
                 ('TargetAlias', wintypes.LPWSTR), ('UserName', wintypes.LPWSTR)]
         self.Credential = CREDENTIALW
-        self.api = ctypes.WinDLL('Advapi32.dll', use_last_error=True)
+        self.api = ctypes.WinDLL('Advapi32.dll', use_last_error=True, winmode=0x00000800)
         self.api.CredWriteW.argtypes = [ctypes.POINTER(CREDENTIALW), wintypes.DWORD]
         self.api.CredWriteW.restype = wintypes.BOOL
         self.api.CredReadW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
@@ -207,9 +208,19 @@ class WindowsCredentialVault:
         if not self.api.CredReadW(self._target(reference, binding), 1, 0, ctypes.byref(pointer)):
             raise ProviderError('Reconnect this profile: its API key is unavailable.')
         try:
-            return ctypes.string_at(pointer.contents.CredentialBlob,
-                                    pointer.contents.CredentialBlobSize).decode('utf-8')
+            record = pointer.contents
+            if (record.Type != 1 or record.TargetName != self._target(reference, binding)
+                    or not 1 <= record.CredentialBlobSize <= 2400 or not record.CredentialBlob):
+                raise ProviderError('Reconnect this profile: its saved credential has an invalid format.')
+            try:
+                return ctypes.string_at(record.CredentialBlob, record.CredentialBlobSize).decode('utf-8')
+            except UnicodeError:
+                raise ProviderError('Reconnect this profile: its saved credential has an invalid format.') from None
         finally:
+            if pointer:
+                record = pointer.contents
+                if record.CredentialBlob and 0 < record.CredentialBlobSize <= 2400:
+                    ctypes.memset(record.CredentialBlob, 0, record.CredentialBlobSize)
             self.api.CredFree(pointer)
 
     def delete(self, reference, binding):
@@ -220,6 +231,14 @@ class WindowsCredentialVault:
 class ProfileStore:
     def __init__(self, path: Path, vault: CredentialVault | None = None):
         self.path, self.vault = _plain(path), vault
+        self.warning = ''
+
+    def _discard_key(self, profile):
+        try:
+            (self.vault or WindowsCredentialVault()).delete(profile.credential_ref, profile.credential_binding)
+        except Exception:
+            self.warning = ('Profile settings were saved, but an unused Windows credential could not be removed. '
+                            'Review this application\'s entries in Windows Credential Manager.')
 
     def profiles(self):
         _plain(self.path)
@@ -237,6 +256,7 @@ class ProfileStore:
 
     def save(self, profile: ProviderProfile, *, secret: str | None = None):
         from .ingest.writer_guard import exclusive_writer
+        self.warning = ''
         with exclusive_writer(self.path.parent, timeout=10):
             return self._save_locked(profile, secret=secret)
 
@@ -247,7 +267,11 @@ class ProfileStore:
             vault = self.vault or WindowsCredentialVault()
             reference = 'url-api-' + uuid.uuid4().hex
             profile = ProviderProfile(**{**asdict(profile), 'credential_ref': reference})
-            vault.put(reference, profile.credential_binding, secret)
+            try:
+                vault.put(reference, profile.credential_binding, secret)
+            except Exception:
+                self._discard_key(profile)
+                raise ProviderError('The key could not be saved securely. The profile was not changed.') from None
         elif profile.credential_ref and (previous is None or previous.credential_ref != profile.credential_ref
                 or previous.credential_binding != profile.credential_binding):
             raise ProviderError('Reconnect the key when changing the provider, destination, model or account.')
@@ -256,14 +280,15 @@ class ProfileStore:
             _atomic_json(self.path, {'version': 1, 'profiles': [asdict(p) for p in profiles.values()]})
         except BaseException:
             if secret is not None:
-                vault.delete(reference, profile.credential_binding)
+                self._discard_key(profile)
             raise
         if previous and previous.credential_ref and previous.credential_ref != profile.credential_ref:
-            (self.vault or WindowsCredentialVault()).delete(previous.credential_ref, previous.credential_binding)
+            self._discard_key(previous)
         return profile
 
     def remove(self, identity):
         from .ingest.writer_guard import exclusive_writer
+        self.warning = ''
         with exclusive_writer(self.path.parent, timeout=10):
             return self._remove_locked(identity)
 
@@ -272,9 +297,9 @@ class ProfileStore:
         found = next((p for p in profiles if p.id == identity), None)
         if found is None:
             raise ProviderError('Profile no longer exists.')
-        if found.credential_ref:
-            (self.vault or WindowsCredentialVault()).delete(found.credential_ref, found.credential_binding)
         _atomic_json(self.path, {'version': 1, 'profiles': [asdict(p) for p in profiles if p.id != identity]})
+        if found.credential_ref:
+            self._discard_key(found)
 
     def export_profiles(self):
         return {'version': 1, 'profiles': [{**asdict(p), 'credential_ref': None} for p in self.profiles()]}
@@ -375,12 +400,21 @@ class BudgetLedger:
             db.execute('INSERT OR IGNORE INTO approval VALUES(?,?)', (approval.job_id, fingerprint))
             if db.execute('SELECT 1 FROM operation WHERE id=?', (identity,)).fetchone():
                 raise ProviderError('Operation already recorded; reconcile its result before any retry.')
-            count, total = db.execute("SELECT count(*),coalesce(sum(estimate_micros),0) FROM operation WHERE job=? AND state!='reconciled_no_charge'",
+            count, total = db.execute("SELECT count(*),coalesce(sum(CASE WHEN state='cancelled_before_send' THEN 0 ELSE estimate_micros END),0) FROM operation WHERE job=? AND state!='reconciled_no_charge'",
                                       (approval.job_id,)).fetchone()
             if count >= approval.max_calls or total + estimate > approval.budget_micros:
                 raise ProviderError('The approved call count or budget would be exceeded.')
+            if db.execute("SELECT 1 FROM operation WHERE job=? AND state IN ('reserved','uncertain')",
+                          (approval.job_id,)).fetchone():
+                raise ProviderError('Reconcile the previous uncertain or interrupted request before continuing this job.')
             db.execute('INSERT INTO operation VALUES(?,?,?,?,?,NULL)',
                        (identity, approval.job_id, request_hash, estimate, 'reserved'))
+
+    def cancel_before_send(self, identity):
+        with self._db() as db:
+            cursor = db.execute("UPDATE operation SET state='cancelled_before_send' WHERE id=? AND state='reserved'", (identity,))
+            if cursor.rowcount != 1:
+                raise ProviderError('Only an unsent reserved operation can be cancelled without charge.')
 
     def finish(self, identity, *, output_sha256=None):
         with self._db() as db:
@@ -409,6 +443,18 @@ class DirectTransport:
         if not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route):
             raise ProviderError('Invalid adapter route.')
         host = parts.hostname
+        deadline = monotonic() + 120
+
+        def active(connection=None):
+            if cancelled():
+                raise ProviderError('Provider operation cancelled; reconcile any possible charge before retrying.')
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                raise ProviderError('Provider request exceeded its total elapsed-time budget.')
+            if connection is not None and connection.sock is not None:
+                connection.sock.settimeout(min(30, remaining))
+            return min(30, remaining)
+
         try:
             addresses = sorted({item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)})
             if not addresses or any(not (ipaddress.ip_address(ip).is_loopback if profile.local
@@ -417,8 +463,9 @@ class DirectTransport:
             if cancelled():
                 raise ProviderError('Provider operation cancelled before transmission.')
             address = addresses[0]
-            connection = http.client.HTTPConnection(address, port, timeout=30)
+            connection = http.client.HTTPConnection(address, port, timeout=active())
             connection.connect()
+            active(connection)
             if parts.scheme == 'https':
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
                 context.load_default_certs()
@@ -429,10 +476,12 @@ class DirectTransport:
                 host_header += ':' + str(port)
             if cancelled():
                 raise ProviderError('Provider operation cancelled before transmission.')
+            active(connection)
             connection.request('POST', parts.path.rstrip('/') + route, body=payload,
                 headers={**headers, 'Host': host_header, 'Content-Type': 'application/json',
                          'Accept': 'application/json' if route.endswith('/completions') else 'audio/mpeg',
                          'Connection': 'close'})
+            active(connection)
             response = connection.getresponse()
             if response.status != 200:
                 raise ProviderError(f'Provider returned HTTP {response.status}; no automatic retry was made.')
@@ -440,12 +489,15 @@ class DirectTransport:
             if declared and (not declared.isdecimal() or int(declared) > MAX_RESPONSE):
                 raise ProviderError('Provider response exceeds its resource budget.')
             data = bytearray()
-            while block := response.read(65536):
-                if cancelled():
-                    raise ProviderError('Provider operation cancelled; reconcile any possible charge before retrying.')
+            while True:
+                active(connection)
+                block = response.read(min(65536, MAX_RESPONSE + 1 - len(data)))
+                if not block:
+                    break
                 data.extend(block)
                 if len(data) > MAX_RESPONSE:
                     raise ProviderError('Provider response exceeds its resource budget.')
+            active(connection)
             if not data:
                 raise ProviderError('Provider returned an empty result.')
             if declared and len(data) != int(declared):
@@ -457,7 +509,10 @@ class DirectTransport:
             raise ProviderError('Provider request failed; its charge status may be uncertain.') from None
         finally:
             if 'connection' in locals():
-                connection.close()
+                try:
+                    connection.close()
+                except Exception:
+                    pass
 
 
 class ProviderGateway:
@@ -497,19 +552,23 @@ class ProviderGateway:
         if len(raw) > MAX_REQUEST:
             raise ProviderError('Request exceeds its resource budget.')
         headers = {}
-        if profile.credential_ref:
-            try:
-                secret = (self.vault or WindowsCredentialVault()).get(profile.credential_ref, profile.credential_binding)
-            except Exception:
-                raise ProviderError('Reconnect this profile: its securely stored credential could not be read.') from None
-            if not isinstance(secret, str) or not secret or any(ord(c) < 33 for c in secret):
-                raise ProviderError('Reconnect this profile: the stored credential is invalid.')
-            headers['xi-api-key' if profile.provider == 'elevenlabs' else 'Authorization'] = (
-                secret if profile.provider == 'elevenlabs' else 'Bearer ' + secret)
-        elif not profile.local:
-            raise ProviderError('Reconnect this profile before using an external provider.')
         self.ledger.reserve(operation_id, approval, request.fingerprint(profile), estimated_micros)
+        submitted = False
         try:
+            if profile.credential_ref:
+                try:
+                    secret = (self.vault or WindowsCredentialVault()).get(profile.credential_ref, profile.credential_binding)
+                except Exception:
+                    raise ProviderError('Reconnect this profile: its securely stored credential could not be read.') from None
+                if not isinstance(secret, str) or not secret or any(not 33 <= ord(c) <= 126 for c in secret):
+                    raise ProviderError('Reconnect this profile: the stored credential is invalid.')
+                headers['xi-api-key' if profile.provider == 'elevenlabs' else 'Authorization'] = (
+                    secret if profile.provider == 'elevenlabs' else 'Bearer ' + secret)
+            elif not profile.local:
+                raise ProviderError('Reconnect this profile before using an external provider.')
+            if cancelled():
+                raise ProviderError('Provider operation cancelled before transmission.')
+            submitted = True
             output = self.transport.post(profile, route, raw, headers, cancelled=cancelled)
             if not isinstance(output, bytes) or not 0 < len(output) <= MAX_RESPONSE:
                 raise ProviderError('Invalid or oversized provider result.')
@@ -524,11 +583,16 @@ class ProviderGateway:
             self.ledger.finish(operation_id, output_sha256=sha256(output).hexdigest())
             return output
         except BaseException as exc:
-            self.ledger.finish(operation_id)
+            if submitted:
+                self.ledger.finish(operation_id)
+            else:
+                self.ledger.cancel_before_send(operation_id)
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             # Transport implementations may include raw request/key material in
             # exceptions. No third-party exception is displayed or chained.
+            if not submitted:
+                raise ProviderError('Provider operation stopped before transmission. No request was sent.') from None
             raise ProviderError('Provider operation did not complete. Review its uncertain charge status before retrying.') from None
         finally:
             headers.clear()

@@ -379,19 +379,26 @@ def test_staging_disk_failure_does_not_publish_a_partial_destination(
     if phase == 'restore':
         digest = create_backup(app, folder)
     raw = (app.root / FILENAME).read_bytes()
-    original = library_backup._sync_file
+    original = library_backup._copy_sidecar
+    interrupted = []
 
-    def full_disk(path, data):
-        if path.name == FILENAME:
+    def full_disk(root, relative, target, identity, cancelled):
+        if relative == FILENAME:
+            # Exercise failure after private staging began, at the actual
+            # streamed sidecar-copy boundary rather than the old byte writer.
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b'partially staged reading state')
+            interrupted.append(target)
             raise OSError(ENOSPC, 'synthetic disk full')
-        return original(path, data)
+        return original(root, relative, target, identity, cancelled)
 
-    monkeypatch.setattr(library_backup, '_sync_file', full_disk)
+    monkeypatch.setattr(library_backup, '_copy_sidecar', full_disk)
     with pytest.raises(OSError, match='disk full'):
         if phase == 'restore':
             restore_backup(folder, tmp_path / 'rejected', digest)
         else:
             create_backup(app, tmp_path / 'rejected')
+    assert interrupted and all(not path.exists() for path in interrupted)
     assert not (tmp_path / 'rejected').exists()
     assert (app.root / FILENAME).read_bytes() == raw
     assert not list(tmp_path.glob('.carr-library-*'))

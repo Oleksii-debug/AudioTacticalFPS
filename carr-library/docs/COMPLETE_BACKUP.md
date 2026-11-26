@@ -18,6 +18,8 @@ when they exist:
   and separate recoverable drafts. Independent scripts remain independent scripts.
 - Customized main-window keyboard shortcuts.
 - Named OCR-language selections and their orientation/model-policy settings.
+- Managed Audio Studio projects, recovery drafts, local production assets,
+  cached speech/music, subtitles, masters, stems and render checkpoints.
 
 The copy is taken under the same local writer lock used by these features. A
 concurrent cooperating write cannot change the database or these saved files
@@ -26,11 +28,12 @@ control: save it or allow its recovery draft to finish before starting the backu
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
 The reader/editor/settings files use manifest version 3; libraries with none of
-these files retain the existing version-2 format. Restore also accepts supported
-version-1 and version-2 backups and validates their exact database schema. Both
-version-3 layouts are accepted: the earlier single `reading_state` entry and the
-current explicit `sidecars` list. A manifest combining both layouts is rejected.
-New backups always use the `sidecars` list when sidecars are present. Older
+these files retain the existing version-2 format. A snapshot that also contains
+managed audio uses version 4 with streamed sidecars in a separate folder.
+Restore accepts supported version-1 through version-4 backups and validates their
+exact database schema. The earlier version-3 `reading_state` entry and the
+current version-3 `sidecars` list remain supported as distinct exact schemas.
+Combining the two is rejected; new backups use the sidecars list. Older
 backups contain only the state that existed in their original format.
 
 ## Restoration and source integrity
@@ -59,8 +62,16 @@ The backup does not copy arbitrary neighboring files, API credentials, runtime
 model weights, temporary render files or external documents. Pending import
 queues/journals and unpublished retained originals are not included in this
 version; complete those imports before using a backup to move all work to another
-computer. Audio timelines, rendered audio, sync and scheduled/encrypted backups
-remain separate V3 work and are not implied by this reader-state increment.
+computer. External Audio Studio projects retain their separate verified ZIP64
+backup; use **Save in library** to include an explicitly selected project in the
+managed snapshot. No external directories are searched automatically. Sync and
+scheduled/encrypted backups remain separate work.
+
+Managed audio takes its draft and renderer locks after the library writer lock.
+Busy jobs produce a retry message. Restore preserves project/recovery bytes and
+their baselines; opening a managed project binds output to its new local audio
+folder, never the original library. See [audio backup details](LIBRARY_BACKUP.md)
+for the supported namespaces, version-4 layout and explicit long-audio budgets.
 
 Existing bounded backup budgets still apply: 512 MiB database, 10,000 registered
 originals, 8 GiB original bytes; reader state up to 8 MiB; narration copies/drafts

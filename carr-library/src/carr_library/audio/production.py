@@ -207,7 +207,12 @@ def plan_narration(text, *, title='Narration', voice='sapi5:default', language='
 def _read_json(path, limit=16 * 1024 ** 2):
     if regular_file(path).st_size > limit:
         raise ValueError('Audio project manifest is too large.')
-    return json.loads(Path(path).read_text('utf-8'))
+    with Path(path).open('rb') as source:
+        data = source.read(limit + 1)
+    if len(data) > limit:
+        raise ValueError('Audio project manifest is too large.')
+    from ..reader.narration_text import decode_json
+    return decode_json(data)
 
 
 def save_plan(plan, path):
@@ -349,7 +354,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                 assets[event.asset] = sha256_file(asset, cancelled=cancelled)
     run_key = digest({'pipeline_version': 1, 'plan': plan.to_dict(), 'engines': identities,
                       'processor': processor, 'assets': assets, 'music_models': music_identities,
-                      'composer': composer_identity})
+                      'composer': composer_identity, 'mix_revision': audio.MIX_REVISION})
     cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes)
     renders = checked_directory(root / 'renders', create=True)
     output_dir = renders / run_key
@@ -534,7 +539,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     music_companions.append((scene_index + 1, music_info))
                 mixed, mixed_info = cached({'kind': 'scene_mix', 'voice_sha256': core_info['sha256'],
                     'music_sha256': music_info['sha256'] if music_info else None,
-                    'gain': scene.music.gain if scene.music else None, 'processor': processor},
+                    'gain': scene.music.gain if scene.music else None, 'processor': processor,
+                    'mix_revision': audio.MIX_REVISION},
                     lambda path: audio.mix_scene(core, music_file, path, ffmpeg=ffmpeg,
                         music_gain=scene.music.gain if scene.music else 0, cancelled=cancelled), estimate=scene_frames * 4 + 80)
                 scene_audio.append((mixed, mixed_info))
@@ -612,6 +618,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                       'duration_seconds': position / plan.sample_rate, 'sample_rate': plan.sample_rate,
                       'frames': position, 'chapters': chapters, 'stem_names': stem_names, 'stem_labels': stem_labels,
                       'measurements': measurements, 'files': files, 'engines': identities, 'processor': processor,
+                      'mix_revision': audio.MIX_REVISION,
                       'music_models': music_identities,
                       'limitations': ['Guided script parser; arbitrary natural-language planning is not enabled.',
                           'Line timing is measured; word alignment is unavailable.',

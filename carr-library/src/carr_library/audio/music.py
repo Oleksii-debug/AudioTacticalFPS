@@ -130,52 +130,13 @@ def _write_midi(path, *, frames, sample_rate, mood, tempo, seed, cancelled):
 
 
 def _wave_frames(path):
-    """Read PCM RIFF/RF64 metadata without loading samples (including >4 GiB)."""
-    with Path(path).open('rb') as source:
-        header = source.read(12)
-        if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
-            raise ValueError('Music output is not a RIFF/RF64 WAV file.')
-        frames64, data64, format_info = None, None, None
-        size_on_disk = Path(path).stat().st_size
-        for _ in range(64):
-            tag = source.read(8)
-            if len(tag) != 8:
-                raise ValueError('Music output has no complete PCM data chunk.')
-            kind, count = struct.unpack('<4sI', tag)
-            if kind == b'ds64':
-                if not 28 <= count <= 4096:
-                    raise ValueError('Invalid RF64 size metadata.')
-                chunk = source.read(count)
-                if len(chunk) != count:
-                    raise ValueError('Truncated RF64 metadata.')
-                _, data64, frames64, _ = struct.unpack('<QQQI', chunk[:28])
-            elif kind == b'fmt ':
-                if not 16 <= count <= 4096:
-                    raise ValueError('Invalid WAV audio format.')
-                chunk = source.read(count)
-                if len(chunk) != count:
-                    raise ValueError('Truncated WAV format.')
-                encoding, channels, rate, _, block_align, bits = struct.unpack('<HHIIHH', chunk[:16])
-                if encoding == 65534 and len(chunk) >= 40:
-                    encoding = struct.unpack('<I', chunk[24:28])[0]
-                if encoding != 1 or channels != 1 or bits != 16 or block_align != 2:
-                    raise ValueError('Expected mono PCM16 music output.')
-                format_info = (channels, rate)
-            elif kind == b'data':
-                length = data64 if count == 0xffffffff else count
-                if format_info is None or length is None or length % 2 or source.tell() + length > size_on_disk:
-                    raise ValueError('Music output is truncated or has inconsistent sample alignment.')
-                frames = length // 2
-                if frames64 not in (None, 0, frames):
-                    raise ValueError('RF64 duration metadata disagrees with the data length.')
-                return {'frames': frames, 'sample_rate': format_info[1], 'channels': 1, 'sample_width': 2}
-            else:
-                if count > size_on_disk or source.tell() + count > size_on_disk:
-                    raise ValueError('Invalid WAV chunk size.')
-                source.seek(count, 1)
-            if count % 2:
-                source.seek(1, 1)
-        raise ValueError('Too many WAV metadata chunks.')
+    """Use the shared bounded RIFF/RF64 validator for music checkpoints."""
+    from .ffmpeg import wav_info
+    info = wav_info(path)
+    if info.channels != 1:
+        raise ValueError('Expected mono PCM16 music output.')
+    return {'frames': info.frames, 'sample_rate': info.rate,
+            'channels': info.channels, 'sample_width': 2}
 
 
 def _atomic_json(path, data):

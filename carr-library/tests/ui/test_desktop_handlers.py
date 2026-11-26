@@ -127,9 +127,13 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
-        'install_academic_comparison_actions',
-        'install_audio_studio_actions', 'install_api_connection_actions')}
+        'install_academic_comparison_actions')}
     env.update(installers)
+    from carr_library.ui.audio_studio import install_audio_studio_actions
+    from carr_library.ui.api_connections import install_api_connection_actions
+    env.update(install_audio_studio_actions=install_audio_studio_actions,
+               install_api_connection_actions=install_api_connection_actions)
+    monkeypatch.setitem(sys.modules, 'wx', env['wx'])
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
@@ -139,6 +143,10 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     labels = [item.title for menu in menus.values() for item in menu.items]
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
     assert len(shortcuts) == len(set(shortcuts))
+    mnemonics = [name[name.index('&')+1].casefold() for name in menus if '&' in name]
+    assert len(mnemonics) == len(set(mnemonics))
+    assert 'Open Audio Studio...\tCtrl+Alt+A' in labels
+    assert 'AI and API &connections...' in labels
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'DOI lookup and open-access sources...' in labels
     assert 'Document formats' in labels

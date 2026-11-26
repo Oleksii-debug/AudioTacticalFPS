@@ -47,7 +47,7 @@ def main():
                 '--models', 'eng'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
             assert len(result.stdout) < 8192 and not result.stderr
             receipt = json.loads(result.stdout)
-            assert receipt['path'] == str(destination)
+            assert Path(receipt['path']).samefile(destination)
             assert receipt['models'] == ['eng'] and receipt['size_bytes'] == 4113088
             manifest_raw = (destination / 'models.json').read_bytes()
             manifest = json.loads(manifest_raw)

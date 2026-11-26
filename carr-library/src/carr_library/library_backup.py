@@ -1,54 +1,49 @@
 """Complete local research-library backups using the canonical SQLite snapshot.
 
-Backups include all workspaces, saved research, registered original files and
-the optional reading-state sidecar containing bookmarks and resume positions,
-plus saved narration copies and their recoverable drafts.
-Keyboard preferences and named OCR-language selections are included when present.
+Backups include all workspaces, saved research and registered original files,
+reader/editor/preferences state and explicitly managed Audio Studio projects.
 Retained files from failed/unpublished imports are deliberately not included.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
-Version 3 extends that manifest with explicitly named, checksummed sidecars.
-The earlier version-3 reading_state shape remains readable; new backups use
-one sidecars list. The two shapes are mutually exclusive, never combined.
-Legacy version 1/2 backups and version 3 backups are accepted only for an exact
-supported V3 or V4 database schema. V3 snapshots are restored unchanged; opening the
+Version 3 preserves the reader foundation's filename/root sidecar schema.
+Version 4 adds managed audio using path/sidecars and streamed file checksums.
+Live jobs must release their project locks before a snapshot can be taken.
+Legacy version 1 backups and newer backups are accepted only for an exact
+supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
 """
-from contextlib import closing
+from contextlib import closing, contextmanager, ExitStack
 from hashlib import sha256
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import sqlite3
 import stat
 from tempfile import TemporaryDirectory
+import unicodedata
 
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
 from .ingest.catalog_asset_copy import copy_catalog_assets, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
-from .ingest.writer_guard import _regular_if_present, exclusive_writer
+from .ingest.writer_guard import exclusive_writer, _regular_if_present
 from .data_paths import guard_data_directory
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
-    _decode as _decode_reading_state, _file_identity,
+    ReadingLocation, _decode as _decode_reading_state, _file_identity,
 )
 from .reader.narration import (
     DIRECTORY as NARRATION_DIRECTORY, MAX_PROJECT_BYTES, MAX_PROJECTS,
     MAX_SNAPSHOT_BYTES as MAX_NARRATION_BYTES,
     snapshot_narration_files, validate_narration_payload,
 )
-from .keybindings import (
-    FILENAME as KEYBINDINGS, MAX_BYTES as MAX_KEYBINDINGS, decode_preferences,
-)
-from .extract.ocr_languages import (
-    FILENAME as OCR_PRESETS, MAX_PRESET_BYTES, validate_presets_bytes,
-)
+from .keybindings import FILENAME as KEYBINDINGS, MAX_BYTES as MAX_KEYBINDINGS, decode_preferences
+from .extract.ocr_languages import FILENAME as OCR_PRESETS, MAX_PRESET_BYTES, validate_presets_bytes
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -58,58 +53,21 @@ MAX_MANIFEST = 8 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
-MAX_SIDECARS = 3 + MAX_PROJECTS * 2
-MAX_SIDECAR_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS + MAX_PRESET_BYTES
+SIDECARS = 'sidecars'
+MAX_SIDECAR_FILES = 100000
+MAX_SIDECAR_BYTES = 128 * 1024**3
+MAX_SIDECAR_FILE_BYTES = 32 * 1024**3
+MAX_SIDECAR_JSON_BYTES = 64 * 1024**2
+MAX_AUDIO_PROJECTS = 1000
+_PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
 }
+MAX_READER_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS + MAX_PRESET_BYTES
 
 
-def _destination(value, source):
-    path = guard_data_directory(value, purpose='backup or restored library')
-    _plain(path.parent, directory=True)
-    if os.path.lexists(path):
-        raise FileExistsError(path)
-    path = path.parent.resolve() / path.name
-    source = Path(source).resolve(strict=True)
-    if path.is_relative_to(source) or source.is_relative_to(path):
-        raise RestoreError('destination must be outside the source directory')
-    return path
-
-
-def _asset_manifest(entries):
-    return [dict(filename=e.filename, sha256=e.digest, mime=e.mime, size_bytes=e.size)
-            for e in entries]
-
-
-def _sidecar_manifest(sidecars):
-    return [dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest())
-            for name, raw in sorted(sidecars.items())]
-
-
-def _manifest_sidecars(manifest):
-    """Normalize the two explicitly supported v3 shapes after field checks.
-
-    Earlier builds stored only reading_state. Keeping that reader does not
-    relax its one-file allowlist or allow it to hide additional sidecars.
-    """
-    if 'reading_state' not in manifest:
-        return manifest.get('sidecars', [])
-    reading = manifest['reading_state']
-    if reading is None:
-        return []
-    if (type(reading) is not dict or set(reading) != {'filename', 'size_bytes', 'sha256'}
-            or reading['filename'] != READING_STATE
-            or type(reading['size_bytes']) is not int
-            or not 0 < reading['size_bytes'] <= MAX_READING_STATE
-            or not isinstance(reading['sha256'], str)
-            or not re.fullmatch('[0-9a-f]{64}', reading['sha256'])):
-        raise RestoreError('invalid reading-state manifest')
-    return [reading]
-
-
-def _sidecar_limit(name):
+def _reader_limit(name):
     # This is an allowlist, not a general folder backup. In particular, private
     # settings, credentials, caches and incomplete import journals cannot enter
     # a backup merely by appearing beside the research database.
@@ -121,6 +79,10 @@ def _sidecar_limit(name):
         return MAX_PROJECT_BYTES
     raise RestoreError('unsupported backup sidecar')
 
+
+def _reader_path(name):
+    return (name == READING_STATE or name in _SIMPLE_SIDECARS
+            or re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name))
 
 def _optional_sidecar(path, maximum):
     _regular_if_present(path)
@@ -142,8 +104,7 @@ def _optional_sidecar(path, maximum):
         raise RestoreError('backup sidecar changed while reading')
     return raw
 
-
-def _snapshot_sidecars(root):
+def _snapshot_readers(root):
     raw = ReadingState(root).snapshot()
     sidecars = {} if raw is None else {READING_STATE: raw}
     sidecars.update(snapshot_narration_files(root))
@@ -153,7 +114,6 @@ def _snapshot_sidecars(root):
             validate(raw)
             sidecars[name] = raw
     return sidecars
-
 
 def _validate_reading_locations(db, locations):
     # Historical revisions and archived libraries remain valid backup contents.
@@ -177,10 +137,9 @@ def _validate_reading_locations(db, locations):
             raise RestoreError('reading-state location disagrees with the backup database, '
                                'or narration copy does not match its exact saved source')
 
-
-def _validate_sidecars(db, sidecars):
+def _validate_readers(db, sidecars):
     for name, raw in sidecars.items():
-        _sidecar_limit(name)
+        _reader_limit(name)
         try:
             if name == READING_STATE:
                 positions, bookmarks, _ = _decode_reading_state(raw.decode('utf-8'))
@@ -197,30 +156,386 @@ def _validate_sidecars(db, sidecars):
         _validate_reading_locations(db, locations)
 
 
-def _stage_sidecars(stage, sidecars):
-    for name, raw in sorted(sidecars.items()):
-        (stage / name).parent.mkdir(mode=0o700, exist_ok=True)
-        _sync_file(stage / name, raw)
+def _sidecar_budget(max_files, max_bytes, cancelled):
+    if (type(max_files) is not int or not 1 <= max_files <= MAX_SIDECAR_FILES
+            or type(max_bytes) is not int or not 1 <= max_bytes <= 1024**5
+            or not callable(cancelled)):
+        raise RestoreError('invalid sidecar backup budget')
+    if cancelled():
+        raise InterruptedError('Library backup or restore cancelled.')
 
 
-def _publish_sidecars(stage, destination, sidecars):
-    for name in sorted(sidecars):
-        (destination / name).parent.mkdir(mode=0o700, exist_ok=True)
-        os.link(stage / name, destination / name)
-    for parent in {(destination / name).parent for name in sidecars}:
-        _sync_directory(parent)
+def _portable_relative(value):
+    if not isinstance(value, str) or not value or len(value) > 4096 or '\\' in value:
+        raise RestoreError('invalid audio-project artifact path')
+    path = PurePosixPath(value)
+    if (path.is_absolute() or len(path.parts) > 16
+            or any(part in ('', '.', '..') for part in value.split('/'))
+            or any(part.rstrip(' .') != part or PureWindowsPath(part).is_reserved()
+                   or any(c in '<>:"|?*' or ord(c) < 32 or 127 <= ord(c) < 160 for c in part)
+                   for part in path.parts)):
+        raise RestoreError('invalid audio-project artifact path')
+    return path.parts
 
 
-def _check_backup_namespace(directory, names):
-    roots = {name.split('/')[0] for name in names}
-    if set(p.name for p in directory.iterdir()) != {DATABASE, ORIGINALS, MANIFEST} | roots:
-        raise RestoreError('incomplete backup or unexpected reading-state/sidecar files')
-    narration = {name.split('/')[1] for name in names if '/' in name}
-    if narration:
-        folder = directory / NARRATION_DIRECTORY
-        _plain(folder, directory=True)
-        if set(p.name for p in folder.iterdir()) != narration:
-            raise RestoreError('incomplete narration backup or unexpected files')
+def _sidecar_allowed(value):
+    parts = _portable_relative(value)
+    if _reader_path(value):
+        return True
+    if (len(parts) < 3 or parts[0] != 'audio-projects'
+            or not _PROJECT_ID.fullmatch(parts[1])):
+        return False
+    tail = '/'.join(parts[2:])
+    if tail == 'restore-manifest.json':
+        return True
+    from .audio.backup import _allowed
+    return bool(_allowed(tail))
+
+
+def _claim_path(relative, names, *, allow_existing=False):
+    """Reject aliases of either a file or one of its parent directories."""
+    parts = _portable_relative(relative)
+    for count in range(1, len(parts) + 1):
+        name = '/'.join(parts[:count])
+        key = unicodedata.normalize('NFC', name).casefold()
+        item = (name, count == len(parts))
+        previous = names.get(key)
+        if previous is not None and (previous != item or (item[1] and not allow_existing)):
+            raise RestoreError('duplicate or conflicting reading/audio paths on Windows')
+        names[key] = item
+
+
+def _identity(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
+            info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _production_link_path(relative):
+    parts = PurePosixPath(relative).parts
+    if len(parts) < 5 or parts[:1] != ('audio-projects',) or parts[2] != 'audio' or parts[3] not in ('cache', 'renders'):
+        return False
+    from .audio.backup import _allowed
+    return bool(_allowed('/'.join(parts[2:])))
+
+
+def _check_internal_links(inventory):
+    """Canonical production links cache chunks into completed renders.
+
+    Permit those links only when every name for that inode belongs to this
+    bounded snapshot and the same project. Copies in the archive are independent.
+    """
+    groups = {}
+    for name, identity in inventory.items():
+        if identity[3] > 1:
+            groups.setdefault(identity[:2], []).append((name, identity))
+    for group in groups.values():
+        names = [name for name, _ in group]
+        identities = {identity for _, identity in group}
+        if (len(identities) != 1 or len(group) != group[0][1][3]
+                or any(not _production_link_path(name) for name in names)
+                or len({PurePosixPath(name).parts[1] for name in names}) != 1):
+            raise RestoreError('audio hard links extend outside the verified project inventory')
+
+
+def _sidecar_info(root, relative):
+    if not _sidecar_allowed(relative):
+        raise RestoreError('unsupported audio-project artifact')
+    parts = _portable_relative(relative)
+    parent = root
+    _plain(parent, directory=True)
+    for part in parts[:-1]:
+        parent = parent / part
+        _plain(parent, directory=True)
+    info = _plain(parent / parts[-1])
+    if info.st_nlink < 1 or (info.st_nlink != 1 and not _production_link_path(relative)):
+        raise RestoreError('sidecar files cannot be hard links')
+    limit = (_reader_limit(relative) if _reader_path(relative) else
+             MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
+    minimum = 0 if relative.lower().endswith(('.srt', '.vtt', '.ffmeta')) else 1
+    if not minimum <= info.st_size <= limit:
+        raise RestoreError('sidecar file exceeds its size limit')
+    return info
+
+
+def _children(path, limit):
+    _plain(path, directory=True)
+    children = []
+    for child in path.iterdir():
+        if len(children) >= limit:
+            raise RestoreError('audio-project directory exceeds entry limit')
+        children.append(child)
+    return tuple(sorted(children))
+
+
+def _projects(root):
+    folder = root / 'audio-projects'
+    if not os.path.lexists(folder):
+        return ()
+    result = []
+    for child in _children(folder, MAX_AUDIO_PROJECTS):
+        if _PROJECT_ID.fullmatch(child.name):
+            _plain(child, directory=True)
+            result.append(child)
+    return tuple(result)
+
+
+def _audio_document(path):
+    with path.open('rb') as stream:
+        raw = stream.read(MAX_SIDECAR_JSON_BYTES + 1)
+    if len(raw) > MAX_SIDECAR_JSON_BYTES:
+        raise RestoreError('audio-project metadata exceeds its size limit')
+    try:
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise RestoreError('invalid audio-project metadata') from exc
+    if type(value) is not dict:
+        raise RestoreError('invalid audio-project metadata')
+    return value
+
+
+@contextmanager
+def _locked_sidecars(root):
+    from filelock import FileLock, Timeout
+    from .audio.jobs import project_lock
+    projects = _projects(root)
+    with ExitStack() as stack:
+        for project in projects:
+            lock_path = project / '.draft.lock'
+            _regular_if_present(lock_path, empty=True)
+            try:
+                stack.enter_context(FileLock(str(lock_path), timeout=0))
+            except Timeout as exc:
+                raise RestoreError('An audio project is being edited. Retry the backup after it stops.') from exc
+            if os.path.lexists(project / 'studio' / 'project.json'):
+                try:
+                    # A saved draft can have no render files yet. Establish
+                    # its lock now, before any renderer can create those files.
+                    stack.enter_context(project_lock(project / 'audio'))
+                except RuntimeError as exc:
+                    raise RestoreError('An audio project is rendering. Retry the backup after it stops.') from exc
+        def verify():
+            if _projects(root) != projects:
+                raise RestoreError('Audio projects changed during backup. Retry with the projects idle.')
+        yield verify
+
+
+def _studio_files(project, max_files):
+    """Reuse the production backup member allowlist with a bounded traversal."""
+    from .audio.backup import _allowed
+    saved = project / 'studio' / 'project.json'
+    if not os.path.lexists(saved):
+        return
+    yield saved
+    recovery = saved.with_name(saved.name + '.recovery.json')
+    if os.path.lexists(recovery):
+        yield recovery
+    audio = project / 'audio'
+    if not os.path.lexists(audio):
+        return
+    for child in _children(audio, max_files):
+        if _allowed('audio/' + child.name):
+            yield child
+        elif child.name in ('assets', 'cache'):
+            for item in _children(child, max_files):
+                if _allowed('audio/' + child.name + '/' + item.name):
+                    yield item
+        elif child.name == 'renders':
+            for render in _children(child, max_files):
+                if not _allowed('audio/renders/' + render.name + '/master.wav'):
+                    continue
+                for item in _children(render, max_files):
+                    if _allowed('audio/renders/' + render.name + '/' + item.name):
+                        yield item
+
+
+def _validate_studio_source(db, payload):
+    from .audio.backup import _studio
+    from .reader.narration_text import NarrationDraft
+    _studio(payload)
+    reference = payload['source_reference']
+    if reference is None or reference['kind'] != 'library-source-reading-copy':
+        return
+    original = NarrationDraft.from_dict(payload['draft']).source_text
+    pages = reference.get('pages')
+    if type(pages) is not list or not 1 <= len(pages) <= 10000:
+        raise RestoreError('invalid audio source-page inventory')
+    offset, locations = 0, []
+    for index, page in enumerate(pages):
+        if (type(page) is not dict or set(page) != {'location', 'source_start', 'source_end', 'verified'}
+                or type(page['location']) is not dict or type(page['source_start']) is not int
+                or type(page['source_end']) is not int or type(page['verified']) is not bool
+                or page['source_start'] != offset or not offset <= page['source_end'] <= len(original)):
+            raise RestoreError('invalid audio source-page binding')
+        try:
+            location = ReadingLocation(**page['location'])
+        except (TypeError, ValueError) as exc:
+            raise RestoreError('invalid audio source location') from exc
+        if (location.workspace != reference.get('workspace') or location.edition != reference.get('edition')
+                or location.revision != reference.get('revision')
+                or sha256(original[offset:page['source_end']].encode('utf-8')).hexdigest() != location.text_sha256):
+            raise RestoreError('audio reading copy does not match its exact saved source')
+        locations.append(location)
+        offset = page['source_end']
+        if index + 1 < len(pages):
+            if original[offset:offset + 1] != '\f':
+                raise RestoreError('invalid audio source-page separator')
+            offset += 1
+    if offset != len(original):
+        raise RestoreError('audio source-page inventory is incomplete')
+    _validate_reading_locations(db, locations)
+
+
+def _validate_studios(db, root):
+    for project in _projects(root):
+        saved = project / 'studio' / 'project.json'
+        if not os.path.lexists(saved):
+            continue
+        payload = _audio_document(saved)
+        _validate_studio_source(db, payload)
+        if payload['project_id'] != project.name:
+            raise RestoreError('saved audio project identity differs from its managed folder')
+        recovery = saved.with_name(saved.name + '.recovery.json')
+        if os.path.lexists(recovery):
+            value = _audio_document(recovery)
+            if (set(value) != {'kind', 'version', 'project_id', 'base_sha256', 'project'}
+                    or value['kind'] != 'audio-studio-recovery' or type(value['version']) is not int
+                    or value['version'] != 1 or value['project_id'] != payload['project_id']
+                    or not isinstance(value['base_sha256'], str)
+                    or not re.fullmatch('[0-9a-f]{64}', value['base_sha256'])):
+                raise RestoreError('invalid audio recovery draft')
+            _validate_studio_source(db, value['project'])
+            if value['project']['project_id'] != payload['project_id']:
+                raise RestoreError('audio recovery draft belongs to another project')
+
+
+def _sidecar_inventory(root, max_files, max_bytes, cancelled):
+    files, names, total = {}, {}, 0
+    def add(path):
+        nonlocal total
+        _sidecar_budget(max_files, max_bytes, cancelled)
+        relative = path.relative_to(root).as_posix()
+        if relative in files:
+            return
+        _claim_path(relative, names)
+        info = _sidecar_info(root, relative)
+        total += info.st_size
+        if len(files) >= max_files or total > max_bytes:
+            raise RestoreError('reading/audio sidecars exceed the backup file or byte budget')
+        files[relative] = _identity(info)
+    for name in _snapshot_readers(root):
+        add(root / name)
+    for project in _projects(root):
+        for path in _studio_files(project, max_files):
+            add(path)
+        provenance = project / 'restore-manifest.json'
+        if os.path.lexists(provenance):
+            add(provenance)
+    _check_internal_links(files)
+    return dict(sorted(files.items()))
+
+
+def _copy_sidecar(root, relative, target, identity, cancelled):
+    before = _sidecar_info(root, relative)
+    if _identity(before) != identity:
+        raise RestoreError('Reading/audio state changed during backup or restore. Retry with the project idle.')
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    digest, count = sha256(), 0
+    with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, target.open('xb') as output:
+        if _identity(os.fstat(incoming.fileno())) != identity:
+            raise RestoreError('sidecar changed before copying')
+        if relative.lower().endswith('.wav'):
+            header = incoming.read(12)
+            if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
+                raise RestoreError('project audio artifact is not a WAV or RF64 file')
+            incoming.seek(0)
+        while block := incoming.read(min(1024 * 1024, before.st_size + 1 - count)):
+            if cancelled():
+                raise InterruptedError('Library backup or restore cancelled.')
+            count += len(block)
+            if count > before.st_size:
+                raise RestoreError('sidecar grew while copying')
+            output.write(block)
+            digest.update(block)
+        output.flush()
+        os.fsync(output.fileno())
+        if _identity(os.fstat(incoming.fileno())) != identity:
+            raise RestoreError('sidecar changed while copying')
+    if count != before.st_size or _identity(_sidecar_info(root, relative)) != identity:
+        raise RestoreError('sidecar changed while copying')
+    return dict(path=relative, size_bytes=count, sha256=digest.hexdigest())
+
+
+def _managed_output_directories(entries):
+    # Empty output roots contain no file to archive. Recreate only the reserved
+    # audio sibling of a verified managed studio document, never a JSON path.
+    return tuple(sorted({str(PurePosixPath(entry['path']).parents[1] / 'audio')
+                         for entry in entries if entry['path'].endswith('/studio/project.json')}))
+
+
+def _publish_sidecars(stage, destination, entries, output_directories=()):
+    directories = set()
+    for relative in output_directories:
+        directory = destination / relative
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        directories.add(directory)
+    for entry in entries:
+        target = destination / entry['path']
+        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.link(stage / entry['path'], target)
+        parent = target.parent
+        while parent != destination:
+            directories.add(parent)
+            parent = parent.parent
+    for directory in sorted(directories, key=lambda p: len(p.parts), reverse=True):
+        _sync_directory(directory)
+
+
+def _verify_sidecar_tree(root, entries, max_files, ignored=()):
+    by_name = {entry['path']: entry for entry in entries}
+    expected = set(by_name)
+    directories = {parent.as_posix() for name in expected
+                   for parent in PurePosixPath(name).parents if parent != PurePosixPath('.')}
+    seen = set()
+    identities = {}
+    pending = [root]
+    _plain(root, directory=True)
+    while pending:
+        for child in _children(pending.pop(), max_files + len(directories)):
+            relative = child.relative_to(root).as_posix()
+            if relative in ignored:
+                continue
+            if relative in expected:
+                info = _sidecar_info(root, relative)
+                if info.st_size != by_name[relative]['size_bytes']:
+                    raise RestoreError('sidecar size mismatch')
+                identities[relative] = _identity(info)
+                seen.add(relative)
+            elif relative in directories:
+                _plain(child, directory=True)
+                pending.append(child)
+            else:
+                raise RestoreError('unexpected file or directory in sidecar backup')
+    if seen != expected:
+        raise RestoreError('missing file in sidecar backup')
+    _check_internal_links(identities)
+
+
+def _destination(value, source):
+    path = guard_data_directory(value, purpose='backup or restored library')
+    _plain(path.parent, directory=True)
+    if os.path.lexists(path):
+        raise FileExistsError(path)
+    path = path.parent.resolve() / path.name
+    source = Path(source).resolve(strict=True)
+    if path.is_relative_to(source) or source.is_relative_to(path):
+        raise RestoreError('destination must be outside the source directory')
+    return path
+
+
+def _asset_manifest(entries):
+    return [dict(filename=e.filename, sha256=e.digest, mime=e.mime, size_bytes=e.size)
+            for e in entries]
 
 
 def _sync_file(path, data):
@@ -241,20 +556,26 @@ def _sync_directory(path):
             os.close(fd)
 
 
-def create_backup(app, destination):
+def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
+                  max_sidecar_bytes=MAX_SIDECAR_BYTES, cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
+    Reader-only sidecars retain version 3; managed audio uses version 4.
+    Active draft/render jobs are refused, not copied mid-publication.
+    File and total-byte budgets are caller-controlled; audio is copied in chunks.
     """
+    _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root):
+    with exclusive_writer(app.root), _locked_sidecars(app.root) as check_projects:
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
+            inventory = _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled)
             snapshot = stage / DATABASE
             with closing(Storage(app.database, schema_version=4)) as storage:
                 storage.backup(snapshot)
@@ -265,15 +586,22 @@ def create_backup(app, destination):
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-                sidecars = _snapshot_sidecars(app.root)
-                _validate_sidecars(snapshot_storage.db, sidecars)
-            _stage_sidecars(stage, sidecars)
-            manifest = dict(version=3 if sidecars else 2, kind='carr-library', schema_version=4,
+                _validate_readers(snapshot_storage.db, _snapshot_readers(app.root))
+                _validate_studios(snapshot_storage.db, app.root)
+            sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
+                        for name, identity in inventory.items()]
+            if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
+                raise RestoreError('Reading/audio state changed during backup. Retry with the projects idle.')
+            check_projects()
+            has_audio = any(entry['path'].startswith('audio-projects/') for entry in sidecars)
+            manifest = dict(version=4 if has_audio else 3 if sidecars else 2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
             if sidecars:
-                manifest['sidecars'] = _sidecar_manifest(sidecars)
+                manifest['sidecars'] = sidecars if has_audio else [
+                    dict(filename=entry['path'], size_bytes=entry['size_bytes'], sha256=entry['sha256'])
+                    for entry in sidecars]
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -287,15 +615,55 @@ def create_backup(app, destination):
             os.link(snapshot, destination / DATABASE)
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-            _publish_sidecars(stage, destination, sidecars)
             _sync_directory(destination / ORIGINALS)
+            if sidecars:
+                sidecar_destination = destination / SIDECARS if has_audio else destination
+                if has_audio:
+                    sidecar_destination.mkdir(mode=0o700)
+                _publish_sidecars(stage / SIDECARS, sidecar_destination, sidecars)
+                _sync_directory(sidecar_destination)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _sidecar_layout(manifest):
+    """Reading v3 keeps filename/root; combined v4 uses path/sidecars."""
+    return ('path', SIDECARS) if manifest['version'] == 4 else ('filename', '')
+
+
+def _declared_sidecars(manifest):
+    """Keep the historical one-reading-file v3 shape as an exact read schema."""
+    if 'reading_state' not in manifest:
+        return manifest.get('sidecars', [])
+    reading = manifest['reading_state']
+    if reading is None:
+        return []
+    if (type(reading) is not dict or set(reading) != {'filename', 'size_bytes', 'sha256'}
+            or reading['filename'] != READING_STATE or type(reading['size_bytes']) is not int
+            or not 0 < reading['size_bytes'] <= MAX_READING_STATE
+            or not isinstance(reading['sha256'], str)
+            or not re.fullmatch('[0-9a-f]{64}', reading['sha256'])):
+        raise RestoreError('invalid reading-state manifest')
+    return [reading]
+
+
+def _manifest_sidecars(manifest):
+    field, _ = _sidecar_layout(manifest)
+    return [dict(path=entry[field], size_bytes=entry['size_bytes'], sha256=entry['sha256'])
+            for entry in _declared_sidecars(manifest)]
+
+
+def _backup_sidecar_allowed(value):
+    try:
+        return _sidecar_allowed(value)
+    except RestoreError:
+        return False
+
+
+def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX_SIDECAR_FILES,
+                   max_sidecar_bytes=MAX_SIDECAR_BYTES):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
@@ -311,15 +679,15 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3)):
+            or manifest['version'] not in (1, 2, 3, 4)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
     if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
     if manifest['version'] == 3:
-        # Accept each historical schema exactly. A manifest with both keys,
-        # neither key, or undeclared extras is rejected by the field check.
         fields.add('reading_state' if 'reading_state' in manifest else 'sidecars')
+    elif manifest['version'] == 4:
+        fields.add('sidecars')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
@@ -353,28 +721,42 @@ def _read_manifest(directory, expected_manifest_sha256):
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
-    sidecars = _manifest_sidecars(manifest)
-    if type(sidecars) is not list or len(sidecars) > MAX_SIDECARS:
-        raise RestoreError('invalid backup sidecar manifest')
-    names, total, narration_total = set(), 0, 0
-    for entry in sidecars:
-        if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
-                or not isinstance(entry['filename'], str)
-                or type(entry['size_bytes']) is not int
-                or not 0 < entry['size_bytes'] <= _sidecar_limit(entry['filename'])
-                or not isinstance(entry['sha256'], str)
-                or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])
-                or entry['filename'] in names):
-            raise RestoreError('invalid backup sidecar manifest')
-        names.add(entry['filename'])
-        total += entry['size_bytes']
-        if entry['filename'].startswith(NARRATION_DIRECTORY + '/'):
-            narration_total += entry['size_bytes']
-        if narration_total > MAX_NARRATION_BYTES:
-            raise RestoreError('narration backup byte limit')
-        if total > MAX_SIDECAR_BYTES:
-            raise RestoreError('backup sidecar byte limit')
-    _check_backup_namespace(directory, names)
+    field, subdirectory = _sidecar_layout(manifest)
+    if manifest['version'] >= 3:
+        entries = _declared_sidecars(manifest)
+        minimum = 1 if subdirectory else 0
+        if type(entries) is not list or not minimum <= len(entries) <= max_sidecar_files:
+            raise RestoreError('invalid sidecar manifest count')
+        names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
+        for entry in entries:
+            if (type(entry) is not dict or set(entry) != {field, 'size_bytes', 'sha256'}
+                    or not _backup_sidecar_allowed(entry[field])
+                    or (not subdirectory and not _reader_path(entry[field]))
+                    or type(entry['size_bytes']) is not int or not 0 <= entry['size_bytes'] <= MAX_SIDECAR_FILE_BYTES
+                    or (entry['size_bytes'] == 0 and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta')))
+                    or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
+                raise RestoreError('invalid backup sidecar manifest entry')
+            _claim_path(entry[field], names)
+            total += entry['size_bytes']
+            if total > max_sidecar_bytes:
+                raise RestoreError('sidecar manifest byte limit')
+            if _reader_path(entry[field]):
+                reader_total += entry['size_bytes']
+                reader_count += 1
+                if entry['size_bytes'] > _reader_limit(entry[field]):
+                    raise RestoreError('reader sidecar byte limit')
+                if entry[field].startswith(NARRATION_DIRECTORY + '/'):
+                    narration_total += entry['size_bytes']
+            if (reader_total > MAX_READER_BYTES or narration_total > MAX_NARRATION_BYTES
+                    or reader_count > 3 + MAX_PROJECTS * 2):
+                raise RestoreError('reader sidecar count or byte limit')
+    normalized = _manifest_sidecars(manifest)
+    expected_names = {DATABASE, ORIGINALS, MANIFEST}
+    expected_names.update({SIDECARS} if subdirectory else {entry['path'].split('/')[0] for entry in normalized})
+    if set(p.name for p in directory.iterdir()) != expected_names:
+        raise RestoreError('incomplete backup or unexpected reading-state/sidecar files')
+    _verify_sidecar_tree(directory / subdirectory, normalized, max_sidecar_files,
+                         ignored=() if subdirectory else {DATABASE, ORIGINALS, MANIFEST})
     return manifest
 
 
@@ -406,30 +788,42 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def restore_backup(source, destination, expected_manifest_sha256):
+def restore_backup(source, destination, expected_manifest_sha256, *,
+                   max_sidecar_files=MAX_SIDECAR_FILES, max_sidecar_bytes=MAX_SIDECAR_BYTES,
+                   cancelled=lambda: False):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
     opened writable. A failed/terminated publication retains .restore-incomplete;
     the application must reject such a root instead of opening partial data.
     """
+    _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
     source = Path(source).absolute()
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256,
+        max_sidecar_files=max_sidecar_files, max_sidecar_bytes=max_sidecar_bytes)
     _plain(source / ORIGINALS, directory=True)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
+        sidecars = _manifest_sidecars(manifest)
+        _, subdirectory = _sidecar_layout(manifest)
+        sidecar_source = source / subdirectory
+        for entry in sidecars:
+            identity = _identity(_sidecar_info(sidecar_source, entry['path']))
+            actual = _copy_sidecar(sidecar_source, entry['path'],
+                                   stage / SIDECARS / entry['path'], identity, cancelled)
+            if actual != entry:
+                raise RestoreError('sidecar size or digest mismatch')
+        output_directories = _managed_output_directories(sidecars)
         snapshot = stage / DATABASE
         _copy_database(source / DATABASE, snapshot, manifest)
         with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
             storage.check()
-            sidecars = _snapshot_sidecars(source)
-            if _sidecar_manifest(sidecars) != _manifest_sidecars(manifest):
-                raise RestoreError('backup sidecar size or digest mismatch')
-            _validate_sidecars(storage.db, sidecars)
-            _stage_sidecars(stage, sidecars)
+            if sidecars:
+                _validate_readers(storage.db, _snapshot_readers(stage / SIDECARS))
+                _validate_studios(storage.db, stage / SIDECARS)
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
@@ -437,6 +831,7 @@ def restore_backup(source, destination, expected_manifest_sha256):
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -444,8 +839,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-        _publish_sidecars(stage, destination, sidecars)
         _sync_directory(destination / ORIGINALS)
+        _publish_sidecars(stage / SIDECARS, destination, sidecars, output_directories)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
     (destination / INCOMPLETE).unlink()

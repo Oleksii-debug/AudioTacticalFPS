@@ -92,6 +92,21 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    audio = root / "audio-runtime"
+    included = manifest.get("bundled_audio_runtime", False)
+    expected_audio = {p for p in files if p.startswith("audio-runtime/")}
+    if type(included) is not bool:
+        raise ValueError("invalid audio runtime installation flag")
+    if included:
+        required_audio = {"audio-runtime/ffmpeg.exe", "audio-runtime/ffmpeg-runtime.json",
+                          "audio-runtime/FFmpeg-LICENSE.txt", "audio-runtime/FFmpeg-README.txt"}
+        if not audio.is_dir() or audio.is_symlink():
+            raise ValueError("missing or redirected audio runtime directory")
+        actual = {p.relative_to(root).as_posix() for p in audio.iterdir()}
+        if actual != expected_audio or actual != required_audio:
+            raise ValueError("unexpected or missing audio runtime file")
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError("unannounced audio runtime files")
 
 
 def main():

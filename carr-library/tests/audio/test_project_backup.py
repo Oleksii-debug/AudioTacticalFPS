@@ -69,6 +69,43 @@ def test_snapshot_roundtrip_relocates_settings_and_recovery_with_exact_source(pr
     assert restored['recovery_relocated'] is True and result['files'] == 5
 
 
+def test_snapshot_and_restore_flush_only_writable_owned_files(project, tmp_path, monkeypatch):
+    """Windows rejects fsync on read-only handles; reproduce that on every OS."""
+    _, file, root = project
+    opened, synced = {}, []
+    real_open, real_sync = Path.open, os.fsync
+    def track_open(path, *args, **kwargs):
+        stream = real_open(path, *args, **kwargs)
+        opened[stream.fileno()] = stream
+        return stream
+    def windows_sync(descriptor):
+        stream = opened.get(descriptor)
+        if stream is not None and not stream.closed:
+            if not stream.writable():
+                raise OSError(9, 'Windows cannot flush a read-only file handle')
+            synced.append(Path(stream.name).name)
+        return real_sync(descriptor)
+    monkeypatch.setattr(Path, 'open', track_open)
+    monkeypatch.setattr(os, 'fsync', windows_sync)
+    snapshot = tmp_path / 'snapshot.zip'
+    backup_project(file, snapshot, project_dir=root)
+    restored = restore_project(snapshot, tmp_path / 'restored')
+    assert any(name.startswith('.audio-snapshot-') for name in synced)
+    assert 'project.json' in synced and 'restore-manifest.json' in synced
+    assert Path(restored['project_file']).is_file()
+
+
+def test_snapshot_sync_failure_does_not_publish_or_get_ignored(project, tmp_path, monkeypatch):
+    _, file, root = project
+    def fail_sync(descriptor):
+        raise OSError('disk flush failed')
+    monkeypatch.setattr(os, 'fsync', fail_sync)
+    target = tmp_path / 'snapshot.zip'
+    with pytest.raises(OSError, match='disk flush failed'):
+        backup_project(file, target, project_dir=root)
+    assert not target.exists()
+    assert not tuple(tmp_path.glob('.audio-snapshot-*'))
+
 def test_saved_reading_handoff_and_original_file_protection_survive_audio_restore(tmp_path):
     from carr_library.reader.narration import NarrationStore, import_text
     from carr_library.ui.narration_editor import NarrationController

@@ -32,7 +32,9 @@ def main():
     socket.create_connection = offline
     socket.socket.connect = offline
     socket.socket.connect_ex = offline
-    ffmpeg = Path(os.environ['CARR_FFMPEG'])
+    from carr_library.audio.runtime import resolve_ffmpeg
+    ffmpeg = resolve_ffmpeg()
+    assert ffmpeg is not None, 'No verified local FFmpeg runtime is available.'
     registry = VoiceRegistry((SAPI5Engine(),))
     voices = tuple(v for v in registry.voices() if any(lang.lower().split('-')[0] == 'en' for lang in v.languages))
     assert voices, 'No usable English SAPI 5 voice is installed; this is not a successful smoke.'
@@ -111,8 +113,12 @@ def main():
             assert studio.status.GetName() == 'Audio Studio status and render progress'
             studio.notebook.SetSelection(0)
             studio.script.SetFocus()
-            wait_for(lambda: wx.Window.FindFocus() is studio.script,
-                     'The editable script did not receive native focus.', timeout=5)
+            def script_has_focus():
+                focused = wx.Window.FindFocus()
+                while focused is not None and focused is not studio.script:
+                    focused = focused.GetParent()
+                return focused is studio.script
+            wait_for(script_has_focus, 'The editable script did not receive native focus.', timeout=5)
             studio.preview()
             application.Yield()
             assert studio.plan_text.GetValue() == controller.preview()
