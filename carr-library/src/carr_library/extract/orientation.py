@@ -38,6 +38,13 @@ def detect_orientation(image, *, timeout=15, min_confidence=15.0, max_pixels=20_
         return Orientation('engine_missing')
     except (OSError, RuntimeError):
         return Orientation('osd_failed_or_timed_out')
+    return parse_osd(raw, min_confidence=min_confidence)
+
+
+def parse_osd(raw, *, min_confidence=15.0):
+    """Reuse one parser for both the wrapper and the pinned native CLI."""
+    if not isfinite(min_confidence) or min_confidence < 0:
+        raise ValueError('invalid orientation confidence threshold')
     # Only the two required fixed English fields are interpreted; retain raw OSD.
     fields = {}
     for line in raw.splitlines():
