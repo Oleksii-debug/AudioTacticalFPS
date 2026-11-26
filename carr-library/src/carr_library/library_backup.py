@@ -321,7 +321,7 @@ def _locked_sidecars(root):
 
 def _studio_files(project, max_files):
     """Reuse the production backup member allowlist with a bounded traversal."""
-    from .audio.backup import _allowed
+    from .audio.backup import _allowed, input_assets
     saved = project / 'studio' / 'project.json'
     if not os.path.lexists(saved):
         return
@@ -330,12 +330,13 @@ def _studio_files(project, max_files):
     if os.path.lexists(recovery):
         yield recovery
     audio = project / 'audio'
+    yield from input_assets(saved, audio, file_budget=max_files).values()
     if not os.path.lexists(audio):
         return
     for child in _children(audio, max_files):
         if _allowed('audio/' + child.name):
             yield child
-        elif child.name in ('assets', 'cache'):
+        elif child.name == 'cache':
             for item in _children(child, max_files):
                 if _allowed('audio/' + child.name + '/' + item.name):
                     yield item
@@ -385,7 +386,8 @@ def _validate_studio_source(db, payload):
     _validate_reading_locations(db, locations)
 
 
-def _validate_studios(db, root):
+def _validate_studios(db, root, *, strict_assets=False):
+    from .audio.backup import input_assets
     for project in _projects(root):
         saved = project / 'studio' / 'project.json'
         if not os.path.lexists(saved):
@@ -406,6 +408,7 @@ def _validate_studios(db, root):
             _validate_studio_source(db, value['project'])
             if value['project']['project_id'] != payload['project_id']:
                 raise RestoreError('audio recovery draft belongs to another project')
+        input_assets(saved, project / 'audio', strict=strict_assets)
 
 
 def _sidecar_inventory(root, max_files, max_bytes, cancelled):
@@ -823,7 +826,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
             storage.check()
             if sidecars:
                 _validate_readers(storage.db, _snapshot_readers(stage / SIDECARS))
-                _validate_studios(storage.db, stage / SIDECARS)
+                _validate_studios(storage.db, stage / SIDECARS, strict_assets=True)
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
