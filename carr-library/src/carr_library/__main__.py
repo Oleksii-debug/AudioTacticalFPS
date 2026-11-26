@@ -55,7 +55,10 @@ def main(argv=None):
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
     args = parser.parse_args(argv)
+    native_handle = None
     try:
+        from .native_runtime import activate_bundled_runtime
+        native_handle = activate_bundled_runtime()
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
@@ -111,6 +114,9 @@ def main(argv=None):
     except (ValueError, RuntimeError, OSError) as exc:
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
+    finally:
+        if native_handle is not None:
+            native_handle.close()
 
 
 if __name__ == '__main__':

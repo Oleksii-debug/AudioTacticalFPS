@@ -19,8 +19,16 @@ The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
 After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
-startup fails, so a screen reader can read the error. `CheckInstallation.cmd`
-runs the synthetic application self-test without changing your research data.
+startup fails, so a screen reader can read the error. Installation and
+`CheckInstallation.cmd` verify that native desktop and document components can
+load before reporting success, then run the synthetic application self-test.
+These checks do not change your research data.
+
+A private complete package may include the verified Microsoft C++ runtime
+supplement required by wxPython and ONNX Runtime. Its original licenses and
+source provenance accompany the files. This supplement is for the account
+holder's private local installation; it does not grant public redistribution
+rights. See `packaging/NATIVE_RUNTIME.md` in the source distribution.
 
 The complete package includes local Tesseract OCR with pinned English,
 Ukrainian and Slovak models and an orientation model. The launcher selects the

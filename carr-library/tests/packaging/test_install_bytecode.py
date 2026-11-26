@@ -76,9 +76,13 @@ class VenvFinder:
 def package_process(command, **kwargs):
     marker = command.index('-m')
     stage = {'ensurepip': 'bootstrap_runtime_probe', 'pip': 'pip_runtime_probe',
+             'carr_library.native_checks': 'native_runtime_probe',
              'carr_library': 'application_runtime_probe'}[command[marker + 1]]
-    return probe(command[1:marker], stage, kwargs['env'],
-                 command[marker:] if command[marker + 1] == 'ensurepip' else ())
+    result = probe(command[1:marker], stage, kwargs['env'],
+                   command[marker:] if command[marker + 1] == 'ensurepip' else ())
+    if stage == 'native_runtime_probe' and kwargs['env'].get('CARR_TEST_FAIL_NATIVE') == '1':
+        raise subprocess.CalledProcessError(1, command)
+    return result
 
 # Keep pathlib bound to the host filesystem while the installer's Windows gate
 # sees the intended target. No native Windows execution is represented here.
@@ -113,10 +117,13 @@ def launcher_flags(name):
                          line, flags=re.IGNORECASE)
         if match:
             flags = []
-            for token in shlex.split(match[1], posix=False):
+            tokens = iter(shlex.split(match[1], posix=False))
+            for token in tokens:
                 if token in ('-m', '-c') or not token.startswith('-'):
                     break
                 flags.append(token)
+                if token in ('-X', '-W'):
+                    flags.append(next(tokens))
             commands.append(flags)
     if not commands:
         raise AssertionError('No Python invocation found in ' + name)
@@ -135,7 +142,8 @@ def fixture(root):
     source = root / 'runtime' / 'Lib' / 'venv' / '__init__.py'
     source.parent.mkdir(parents=True)
     source.write_bytes(Path(importlib.util.find_spec('venv').origin).read_bytes())
-    for name in ('bootstrap_runtime_probe', 'pip_runtime_probe', 'application_runtime_probe'):
+    for name in ('bootstrap_runtime_probe', 'pip_runtime_probe', 'native_runtime_probe',
+                 'application_runtime_probe'):
         (source.parent.parent / (name + '.py')).write_text('VALUE = 1\n')
     files = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
              for p in root.rglob('*') if p.is_file()}
@@ -145,10 +153,12 @@ def fixture(root):
 
 
 class InstallBytecodeTests(unittest.TestCase):
-    def run_installer(self, root, flags):
+    def run_installer(self, root, flags, *, fail_native=False):
         environment = {k: v for k, v in os.environ.items() if not k.upper().startswith('PYTHON')}
         # Deliberately start with an environment that permits bytecode writing.
         environment['PYTHONDONTWRITEBYTECODE'] = ''
+        if fail_native:
+            environment['CARR_TEST_FAIL_NATIVE'] = '1'
         return subprocess.run([sys.executable, *flags, '-c', INSTALL_HARNESS, str(root)],
                               capture_output=True, text=True, env=environment)
 
@@ -162,7 +172,9 @@ class InstallBytecodeTests(unittest.TestCase):
             installer.verify(root)
             records = [json.loads(line) for line in
                        (root / 'child-processes.jsonl').read_text().splitlines()]
-            self.assertEqual(len(records), 3)
+            self.assertEqual([row['stage'] for row in records],
+                             ['bootstrap_runtime_probe', 'pip_runtime_probe',
+                              'native_runtime_probe', 'application_runtime_probe'])
             self.assertTrue(all(row['dont_write'] for row in records), records)
             self.assertFalse(list((root / 'runtime').rglob('*.pyc')))
             second = self.run_installer(root, flags)
@@ -177,6 +189,18 @@ class InstallBytecodeTests(unittest.TestCase):
 
     def test_direct_installer_disables_bytecode_before_importing_venv(self):
         self.check_install_twice(['-I'])
+
+    def test_native_dependency_failure_prevents_application_and_success_message(self):
+        with tempfile.TemporaryDirectory(prefix='installer-native-failure-') as temp:
+            root = fixture(Path(temp) / 'bundle')
+            result = self.run_installer(root, launcher_flags('Install.cmd')[0], fail_native=True)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertNotIn('Installation complete.', result.stdout)
+            records = [json.loads(line) for line in
+                       (root / 'child-processes.jsonl').read_text().splitlines()]
+            self.assertEqual([row['stage'] for row in records],
+                             ['bootstrap_runtime_probe', 'pip_runtime_probe', 'native_runtime_probe'])
+            installer_module().verify(root)
 
     def test_application_and_diagnostic_launchers_do_not_modify_runtime(self):
         for name in ('ResearchLibrary.cmd', 'CheckInstallation.cmd'):

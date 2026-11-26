@@ -149,17 +149,66 @@ def test_changed_selection_and_removed_membership_cannot_be_approved(pdf_case):
     assert reviews(pdf_case) == ()
 
 
-def test_original_drift_blocks_open_and_approval_but_not_revocation(pdf_case):
+@pytest.mark.parametrize('mutation', ['changed', 'missing'])
+def test_original_drift_blocks_open_and_approval_but_not_revocation(pdf_case, mutation):
     session(pdf_case).approve('Synthetic reviewer', confirmed=True)
     current = session(pdf_case)
     retained = pdf_case.app.assets.resolve(current.page.identity.asset_sha256)
-    retained.write_bytes(b'Changed original, outside the application.')
+    if mutation == 'changed':
+        retained.write_bytes(b'Changed original, outside the application.')
+    else:
+        retained.unlink()
     launcher = Mock(return_value=True)
-    with pytest.raises(ValueError, match='digest mismatch'):
+    with pytest.raises(ValueError, match='retained'):
         current.open_original(launcher)
     launcher.assert_not_called()
     current.revoke(confirmed=True)
     assert reviews(pdf_case) == (('Synthetic reviewer', 0),)
+
+
+@pytest.mark.parametrize('mutation', ['changed', 'missing'])
+def test_revocation_only_session_never_grants_original_source_authority(pdf_case, mutation):
+    session(pdf_case).approve('Synthetic reviewer', confirmed=True)
+    retained = pdf_case.app.assets.resolve(pdf_case.imported['asset'])
+    if mutation == 'changed':
+        retained.write_bytes(b'Changed retained source.')
+    else:
+        retained.unlink()
+    with pytest.raises(ValueError):
+        session(pdf_case)
+    current = PdfReviewSession(pdf_case.app, pdf_case.workspace,
+        pdf_case.hit.ref, pdf_case.hit.revision, revocation_only=True)
+    opener = Mock(return_value=True)
+    with pytest.raises(ValueError, match='withdrawing'):
+        current.open_original(opener)
+    with pytest.raises(ValueError):
+        current.approve('Another reviewer', confirmed=True)
+    opener.assert_not_called()
+    assert reviews(pdf_case) == (('Synthetic reviewer', 1),)
+    current.revoke(confirmed=True)
+    assert reviews(pdf_case) == (('Synthetic reviewer', 0),)
+    with pytest.raises(ValueError):
+        pdf_case.app.copy(pdf_case.workspace, pdf_case.hit.ref, pdf_case.hit.revision)
+    with pytest.raises(ValueError):
+        pdf_case.app.preview(pdf_case.workspace, pdf_case.hit.ref, pdf_case.hit.revision)
+    with pytest.raises(ValueError):
+        pdf_case.app.search(pdf_case.workspace, 'Railway history', result_mode='short')
+
+
+def test_revocation_only_session_rechecks_selected_collection_and_identity(pdf_case):
+    session(pdf_case).approve('Synthetic reviewer', confirmed=True)
+    current = PdfReviewSession(pdf_case.app, pdf_case.workspace,
+        pdf_case.hit.ref, pdf_case.hit.revision, revocation_only=True)
+    selected = pdf_case.app._selections[pdf_case.hit.ref]
+    pdf_case.app._selections[pdf_case.hit.ref] = replace(selected, ordinal=2)
+    with pytest.raises(ValueError, match='selected source'):
+        current.revoke(confirmed=True)
+    pdf_case.app._selections[pdf_case.hit.ref] = selected
+    with pdf_case.app.catalog_transaction(pdf_case.workspace) as catalog:
+        catalog.remove(pdf_case.collection, selected.edition)
+    with pytest.raises(ValueError, match='left the selected collection'):
+        current.revoke(confirmed=True)
+    assert reviews(pdf_case) == (('Synthetic reviewer', 1),)
 
 
 def test_archived_topic_denies_preview_open_and_approval(pdf_case):
@@ -430,3 +479,18 @@ def test_revocation_dialog_has_no_default_and_cancel_keeps_review(pdf_case):
     panel.grid.control.SetFocus.assert_called_once()
     native.Destroy.assert_called_once()
     assert reviews(pdf_case) == (('Synthetic reviewer', 1),)
+
+
+def test_native_revocation_action_can_withdraw_after_original_disappears(pdf_case):
+    session(pdf_case).approve('Synthetic reviewer', confirmed=True)
+    pdf_case.app.assets.resolve(pdf_case.imported['asset']).unlink()
+    frame, panel = frame_for(pdf_case)
+    wx = fake_wx()
+    native = SimpleNamespace(ShowModal=lambda: wx.ID_YES, Destroy=Mock())
+    wx.MessageDialog = Mock(return_value=native)
+    SourceReviewActions(frame, wx).revoke()
+    _, operation, complete = frame.run_job.call_args.args
+    complete(operation())
+    assert reviews(pdf_case) == (('Synthetic reviewer', 0),)
+    panel.model.clear.assert_called_once()
+    assert 'revoked' in frame.report.call_args.args[0]

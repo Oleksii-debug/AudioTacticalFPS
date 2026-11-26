@@ -624,6 +624,17 @@ class LibraryApp:
 
     def _resolve_selection(self, db, workspace, selected, revision, *, checked_assets=None,
                            cancelled=lambda: False):
+        resolved = self._stored_selection(db, workspace, selected, revision)
+        self._retained_source(db, workspace, resolved[1], checked_assets=checked_assets,
+                              cancelled=cancelled)
+        return resolved
+
+    def _stored_selection(self, db, workspace, selected, revision):
+        """Validate stored identity for withdrawing authority, without reading originals.
+
+        This cannot establish source authenticity. Search, preview and evidence
+        operations must use the retained-source guard in _resolve_selection.
+        """
         if not selected or selected.workspace != workspace or selected.revision != revision:
             raise ValueError('Select a result in the active library again.')
         if selected.collection is not None:
@@ -640,8 +651,6 @@ class LibraryApp:
         if sha256(row['raw'].encode('utf-8')).hexdigest() != row['digest']:
             raise ValueError('The stored source text has been damaged.')
         identity = Identity(workspace, selected.edition, row['asset'], revision)
-        self._retained_source(db, workspace, identity, checked_assets=checked_assets,
-                              cancelled=cancelled)
         locator = (Locator('physical_page', row['physical'], row['printed'], bool(row['verified']))
                    if row['physical'] is not None else Locator('logical_segment', row['ordinal']))
         meta = db.execute('SELECT author,title,volume,edition_label FROM source_metadata '

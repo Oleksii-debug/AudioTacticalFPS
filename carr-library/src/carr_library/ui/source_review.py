@@ -63,24 +63,34 @@ class ReviewPage:
 class PdfReviewSession:
     """Bind human confirmation to the exact displayed source and review state."""
 
-    def __init__(self, library, workspace, reference, revision, *, topic=None):
+    def __init__(self, library, workspace, reference, revision, *, topic=None,
+                 revocation_only=False):
         self.library = library
         self.workspace, self.reference, self.revision = workspace, reference, revision
         self.topic = topic
+        self._revocation_only = revocation_only
         self._opened_source = None
-        self.page = self._read_page()
+        self.page = self._read_page(revoking=revocation_only)
 
     def _visible_topic(self, db):
         if self.topic is not None:
             TopicTree(db, self.workspace)._visible(self.topic)
 
-    def _read_page(self):
-        preview = self.library.preview(self.workspace, self.reference, self.revision,
-                                       authorized_topic=self.topic)
+    def _read_page(self, *, revoking=False):
+        preview = None
+        if not revoking:
+            preview = self.library.preview(self.workspace, self.reference, self.revision,
+                                           authorized_topic=self.topic)
         with self.library.read(self.workspace) as db:
             self._visible_topic(db)
-            _, identity, locator, raw, metadata = self.library._selected(
-                db, self.workspace, self.reference, self.revision)
+            if revoking:
+                # Withdrawal uses only the scoped immutable record. It cannot
+                # turn a missing or damaged original into an authentic source.
+                _, identity, locator, raw, metadata = self.library._stored_selection(
+                    db, self.workspace, self.library._selections.get(self.reference), self.revision)
+            else:
+                _, identity, locator, raw, metadata = self.library._selected(
+                    db, self.workspace, self.reference, self.revision)
             asset = db.execute(
                 'SELECT a.mime,a.size FROM catalog_edition e JOIN catalog_asset a '
                 'ON a.digest=e.asset WHERE e.workspace=? AND e.id=? AND e.asset=?',
@@ -90,7 +100,9 @@ class PdfReviewSession:
                                  'sources cannot receive a PDF page review.')
             expected = (f'{metadata.title}\n{locator.display()}\nExtracted text; '
                         'verification status is shown in the search result.\n\n' + raw)
-            if preview != expected:
+            if revoking:
+                preview = expected
+            elif preview != expected:
                 raise ValueError('The source preview changed. Open its review again.')
             review = db.execute(
                 'SELECT raw_sha256,render_sha256,renderer,reviewer,active '
@@ -101,6 +113,8 @@ class PdfReviewSession:
                               raw, preview, asset[1], tuple(review) if review is not None else None)
 
     def validate(self):
+        if self._revocation_only:
+            raise ValueError('This session is only for withdrawing an independent review.')
         if self._read_page() != self.page:
             raise ValueError('The selected source or its review status changed. '
                              'Open the review again; no change was saved.')
@@ -145,7 +159,9 @@ class PdfReviewSession:
     def revoke(self, *, confirmed=False, cancelled=lambda: False):
         if confirmed is not True:
             raise ValueError('Confirm withdrawal of this independent text review.')
-        self.validate()
+        if self._read_page(revoking=True) != self.page:
+            raise ValueError('The selected source or its review status changed. '
+                             'Open the review again; no change was saved.')
         if self.page.state != 'reviewed':
             raise ValueError('This page has no active review to revoke.')
         if cancelled():
@@ -310,9 +326,10 @@ class SourceReviewActions:
         except Exception:
             self.frame.status.SetFocus()
 
-    def _session(self, selected):
+    def _session(self, selected, *, revocation_only=False):
         return PdfReviewSession(selected.library, selected.workspace,
-                                selected.reference, selected.revision, topic=selected.scope[1])
+                                selected.reference, selected.revision, topic=selected.scope[1],
+                                revocation_only=revocation_only)
 
     def _run(self, selected, operation):
         # This check reads only Python host state, not native controls, and is
@@ -358,7 +375,7 @@ class SourceReviewActions:
     def revoke(self, event=None):
         try:
             selected = self._capture()
-            session = self._session(selected)
+            session = self._session(selected, revocation_only=True)
             if session.page.state != 'reviewed':
                 raise ValueError('The selected page has no active review to revoke.')
             dialog = self.wx.MessageDialog(self.frame,
@@ -379,7 +396,7 @@ class SourceReviewActions:
                 lambda: self._run(selected, lambda: session.revoke(confirmed=True,
                                         cancelled=self.frame.cancel_event.is_set)),
                 lambda _: self._finished(selected, 'Independent text review revoked. Search again to '
-                    'load its current status. The extracted text remains readable.'))
+                    'load its current status. Existing source text and notes were kept.'))
         except Exception as exc:
             self.frame.report(f'Review not revoked: {exc}')
 

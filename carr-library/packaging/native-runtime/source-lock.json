@@ -1,0 +1,49 @@
+{
+  "host_python": {
+    "archive_sha256": "f31751f4a8483f5ac7cd77ad83f8dfb80d9f2a7245bff1585e27516c777fb46f",
+    "dll_sha256": {
+      "vcruntime140.dll": "d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066",
+      "vcruntime140_1.dll": "1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f"
+    },
+    "target": "cpython-3.11.18-windows-x86_64-none",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.11.18%2B20261110-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+  },
+  "package": {
+    "build": "hfcedb63_45",
+    "license": "LicenseRef-MicrosoftVisualCpp2015-2022Runtime",
+    "name": "vc14_runtime",
+    "sha256": "fc56758530ae98573f0caf9a1270a4e2c77f3c53a2662bac5a6ccd0998f5c94b",
+    "size": 836810,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.52.37029-hfcedb63_45.conda",
+    "version": "14.52.37029"
+  },
+  "schema": 1,
+  "selected_original_files": {
+    "Library/bin/msvcp140.dll": {
+      "destination": "bin/msvcp140.dll",
+      "sha256": "59d325227321d52b9a523ea401ce6787a5d59f78229a0ff3a6f124e5d3445685",
+      "size": 652136
+    },
+    "Library/bin/msvcp140_1.dll": {
+      "destination": "bin/msvcp140_1.dll",
+      "sha256": "1c6522f4d005539109aa040f063659704bfda94a224142f50942573cfbcf7ec9",
+      "size": 35696
+    },
+    "info/licenses/LICENSE.DOCX": {
+      "destination": "licenses/LICENSE.DOCX",
+      "sha256": "08651651a7602fc7c0e2763de0fde1ff9f868df2780597cd1775ee9d6441c783",
+      "size": 39553
+    },
+    "info/licenses/LICENSE.RTF": {
+      "destination": "licenses/LICENSE.RTF",
+      "sha256": "9020a331682370e8359e02c5e51762d375896d62f42e33aef331be83255036bc",
+      "size": 45
+    },
+    "info/licenses/LICENSE.TXT": {
+      "destination": "licenses/LICENSE.TXT",
+      "sha256": "cf89b37107c22cf8ce21043da1da143087b86ce7fd4556f91c25bc429533807e",
+      "size": 7590
+    }
+  },
+  "use_scope": "private-local-installation"
+}

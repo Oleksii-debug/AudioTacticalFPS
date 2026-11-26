@@ -102,16 +102,19 @@ def main():
     # safe import paths and no-bytecode behavior across that nested process.
     bootstrap_environment = dict(environment, PYTHONNOUSERSITE="1", PYTHONSAFEPATH="1",
                                  PYTHONDONTWRITEBYTECODE="1")
-    subprocess.run([str(executable), "-B", "-s", "-P", "-m", "ensurepip", "--upgrade", "--default-pip"],
+    subprocess.run([str(executable), "-B", "-X", "utf8", "-s", "-P", "-m", "ensurepip", "--upgrade", "--default-pip"],
                    check=True, env=bootstrap_environment, cwd=destination)
-    subprocess.run([str(executable), "-I", "-B", "-m", "pip", "--isolated", "--disable-pip-version-check",
+    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "pip", "--isolated", "--disable-pip-version-check",
                     "install", "--no-index", "--only-binary=:all:", "--require-hashes",
                     "--no-cache-dir", "--find-links", str(root / "wheelhouse"),
                     "-r", str(root / "install.lock")], check=True, env=environment)
-    subprocess.run([str(executable), "-I", "-B", "-m", "carr_library", "--self-test"],
+    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m",
+                    "carr_library.native_checks", "--bundle-root", str(root)],
+                   check=True, env=environment, cwd=root)
+    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)
     if (root / "ocr" / "ocr-manifest.json").is_file():
-        subprocess.run([str(executable), "-I", "-B", "-m", "carr_library.extract.ocr_runtime", "--check"],
+        subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library.extract.ocr_runtime", "--check"],
                        check=True, env=environment, cwd=root)
     print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
     return 0

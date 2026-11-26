@@ -13,9 +13,9 @@ if not exist "%~dp0.venv\Scripts\python.exe" (
   exit /b 1
 )
 if exist "%~dp0models\minilm-manifest.json" (
-  "%~dp0.venv\Scripts\python.exe" -I -B -m carr_library --model-dir "%~dp0models\minilm" --model-manifest "%~dp0models\minilm-manifest.json" %*
+  "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library --model-dir "%~dp0models\minilm" --model-manifest "%~dp0models\minilm-manifest.json" %*
 ) else (
-  "%~dp0.venv\Scripts\python.exe" -I -B -m carr_library %*
+  "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library %*
 )
 if errorlevel 1 (
   echo The application could not start. The error is shown above.
