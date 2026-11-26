@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 import re
 import sqlite3
-from unicodedata import normalize
+from time import monotonic
+from unicodedata import category, normalize
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,8 @@ ALIASES = (("Herzen", "Gertsen"), ("Ogarev", "Ogaryov"),
 
 
 def _groups(query):
-    if not isinstance(query, str) or len(query) > 500:
+    if (not isinstance(query, str) or len(query) > 500 or any(
+            category(c) in ('Cc', 'Cs') and c not in '\t\n\r' for c in query)):
         raise ValueError("invalid thematic query")
     groups = []
     for term in extract_query_terms(normalize("NFC", query)):
@@ -56,17 +58,32 @@ def _quote(value):
     return '"' + value.replace('"', '""') + '"'
 
 
-def search(workspace, passages, query, limit=20):
+def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambda: False):
     """Rank active, authorized source spans supplied by the caller.
 
     The caller must resolve active revisions and collection/topic memberships
     in storage before invoking this adapter. Mixed workspace input fails closed.
     Scores are scope-local; the temporary FTS5 table is discarded after use.
     Returns exact code-point spans, never transformed snippets or page labels.
+    Cancellation is cooperative; a blocking caller iterator or native operation
+    may exceed the deadline, but a stopped search never returns partial results.
     """
-    if not isinstance(workspace, str) or not workspace or not 1 <= limit <= 100:
-        raise ValueError("explicit workspace and bounded limit required")
+    if (not isinstance(workspace, str) or not workspace or type(limit) is not int
+            or not 1 <= limit <= 100 or type(timeout) not in (int, float)
+            or not 0 < timeout <= 60 or not callable(cancelled)):
+        raise ValueError("explicit workspace and bounded search budget required")
+    deadline = monotonic() + timeout
+
+    def stopped():
+        return cancelled() or monotonic() >= deadline
+
+    def check():
+        if stopped():
+            raise TimeoutError("thematic search cancelled or timed out")
+
+    check()
     groups = _groups(query)
+    check()
     if not groups:
         return []
     expressions = ["(" + " OR ".join(map(_quote, g)) + ")" for g in groups]
@@ -76,9 +93,11 @@ def search(workspace, passages, query, limit=20):
     size = 0
     db = sqlite3.connect(":memory:")
     try:
+        db.set_progress_handler(lambda: int(bool(stopped())), 1000)
         db.execute("""CREATE VIRTUAL TABLE scoped USING fts5(text,
             tokenize="unicode61 remove_diacritics 0 categories 'L* N* Co M*'")""")
         for p in passages:
+            check()
             if p.workspace != workspace:
                 raise ValueError("foreign workspace passage")
             if (not all((p.work_id, p.edition_id, p.revision_id, p.passage_id))
@@ -95,12 +114,15 @@ def search(workspace, passages, query, limit=20):
                 raise ValueError("scope exceeds temporary ranking budget")
             refs.append(p)
             db.execute("INSERT INTO scoped(rowid,text) VALUES (?,?)", (len(refs), normalize("NFC", quote)))
+        check()
         # Native SQLite BM25: lower is better. All concepts must occur in the
         # same contiguous span, with OR only for controlled spelling variants.
         ranked = db.execute("SELECT rowid,bm25(scoped) FROM scoped WHERE scoped MATCH ? ORDER BY 2,rowid", (match,)).fetchall()
+        check()
         ranked.sort(key=lambda r: (r[1], refs[r[0]-1].edition_id, refs[r[0]-1].revision_id, refs[r[0]-1].passage_id))
         hits, deferred, works = [], [], set()
         for rowid, rank in ranked:
+            check()
             p = refs[rowid-1]
             if p.work_id in works:
                 deferred.append((rowid, rank))
@@ -109,6 +131,7 @@ def search(workspace, passages, query, limit=20):
                 hits.append((rowid, rank))
         result = []
         for rowid, rank in (hits + deferred)[:limit]:
+            check()
             p = refs[rowid-1]
             matched = tuple(v for g in groups for v in g if db.execute(
                 "SELECT 1 FROM scoped WHERE rowid=? AND scoped MATCH ?", (rowid, _quote(v))).fetchone())
@@ -118,7 +141,12 @@ def search(workspace, passages, query, limit=20):
                 "page_sha256": p.page_sha256, "raw_quote": p.raw_page[p.start:p.end],
                 "score": -rank, "matched_terms": matched,
                 "reason": "lexical BM25 with controlled variants; not semantic verification"})
+        check()
         return result
+    except sqlite3.OperationalError as exc:
+        if getattr(exc, 'sqlite_errorcode', None) == sqlite3.SQLITE_INTERRUPT:
+            raise TimeoutError("thematic search cancelled or timed out") from exc
+        raise
     finally:
         db.close()
 
