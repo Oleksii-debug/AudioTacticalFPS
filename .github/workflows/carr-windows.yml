@@ -178,6 +178,10 @@ jobs:
             'tests/extract/test_ocr_model_catalog.py',
             'tests/storage/test_library_backup.py',
             'tests/storage/test_backup_schema_identity.py',
+            'tests/storage/test_backup_v4_sidecars.py',
+            'tests/storage/test_backup_keyboard_drafts.py',
+            'tests/assistant/test_backup_receipt.py',
+            'tests/integrations/test_dordiai_voices.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
             'tests/e2e/test_academic_workflow.py',
@@ -217,6 +221,8 @@ jobs:
             'tests/ui/test_reader_keymap_context.py',
             'tests/ui/test_command_registry.py',
             'tests/ui/test_keyboard_manager.py',
+            'tests/ui/test_context_shortcuts_compat.py',
+            'tests/ui/test_save_all.py',
             'tests/storage/test_keyboard_preferences.py',
             'tests/storage/test_evidence_drafts.py',
             'tests/ui/test_evidence_draft_recovery.py',
@@ -256,7 +262,7 @@ jobs:
             'tests/ingest/test_txt_replay_registration.py',
             'tests/ingest/test_terminal_replay_registration.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 
@@ -481,7 +487,13 @@ jobs:
                             'tests/extract/test_ocr_model_store.py',
                             'tests/extract/test_managed_ocr.py',
                             'tests/e2e/test_managed_ocr_import.py',
-                            'tests/extract/test_ocr_languages.py']
+                            'tests/extract/test_ocr_languages.py',
+                            'tests/storage/test_backup_v4_sidecars.py',
+                            'tests/storage/test_backup_keyboard_drafts.py',
+                            'tests/assistant/test_backup_receipt.py',
+                            'tests/integrations/test_dordiai_voices.py',
+                            'tests/ui/test_context_shortcuts_compat.py',
+                            'tests/ui/test_save_all.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
