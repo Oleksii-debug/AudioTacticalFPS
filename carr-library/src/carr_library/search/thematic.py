@@ -242,6 +242,73 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
     return hits
 
 
+def search_catalog(db, workspace, query, *, collection=None, limit=20,
+                   timeout=5.0, cancelled=lambda: False):
+    """Candidate PR53/PR21 handoff on a caller-owned SQLite read snapshot.
+
+    Catalog memberships authorize editions; the active revision must reference
+    the same immutable asset. No transaction is opened, committed or rolled back
+    here. Use a dedicated trusted reader; the caller owns its native SQL budget.
+    """
+    from carr_library.catalog.membership import Catalog
+
+    if (not db.in_transaction or not isinstance(workspace, str) or not workspace
+            or type(limit) is not int or not 1 <= limit <= 100
+            or type(timeout) not in (int, float) or not 0 < timeout <= 60
+            or not callable(cancelled)):
+        raise ValueError('explicit read snapshot and bounded search budget required')
+    deadline = monotonic() + timeout
+    latched = False
+
+    def stopped():
+        nonlocal latched
+        latched = latched or cancelled() or monotonic() >= deadline
+        return latched
+
+    def check():
+        if stopped():
+            raise TimeoutError('catalog thematic search cancelled or timed out')
+
+    check()
+    rows = Catalog(db, workspace).editions(collection)
+    check()
+    if len(rows) > 500:
+        raise ValueError('catalog scope exceeds edition budget')
+    allowed = {}
+    assets = {}
+    for edition, work, asset, *_ in rows:
+        check()
+        if edition in allowed or not isinstance(asset, str) or not re.fullmatch('[0-9a-f]{64}', asset):
+            raise ValueError('invalid catalog edition identity')
+        allowed[edition] = work
+        assets[edition] = asset
+    if allowed:
+        placeholders = ','.join('?' for _ in allowed)
+        sql = ('SELECT a.edition,r.asset FROM active a JOIN revision r ON r.id=a.revision '
+               'WHERE a.workspace=? AND a.edition IN (' + placeholders + ')')
+        cursor = db.execute(sql, (workspace, *allowed))
+        try:
+            for edition, asset in cursor:
+                check()
+                if assets[edition] != asset:
+                    raise ValueError('active revision asset differs from catalog edition')
+        finally:
+            cursor.close()
+    check()
+    # Keep the entire operation within the original deadline and snapshot.
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        raise TimeoutError('catalog thematic search cancelled or timed out')
+    hits = search_active(db, workspace, allowed, query, limit=limit,
+                         timeout=remaining, cancelled=stopped)
+    for hit in hits:
+        check()
+        if assets.get(hit['edition_id']) != hit['asset_sha256']:
+            raise ValueError('returned source asset differs from catalog edition')
+    check()
+    return hits
+
+
 def extract_query_terms(query: str) -> list[str]:
     """Extract searchable terms from query string."""
     terms = []
