@@ -16,6 +16,7 @@ class RegistrationTests(unittest.TestCase):
         self.db = sqlite3.connect(self.path, isolation_level=None)
         self.addCleanup(self.db.close)
         self.db.execute('PRAGMA foreign_keys=ON')
+        self.db.execute('PRAGMA recursive_triggers=ON')
         self.db.execute('CREATE TABLE workspace(id TEXT PRIMARY KEY)')
         self.db.executescript(Path(__file__).with_name('catalog_membership_candidate.sql').read_text())
         self.db.executemany('INSERT INTO workspace VALUES(?)', [('a',), ('b',)])
@@ -86,6 +87,30 @@ class RegistrationTests(unittest.TestCase):
             register_batch(self.cat, (replace(self.r, collections=('d',)),))
         self.assertEqual(self.cat.editions(), ())
 
+
+    def test_engine_rollback_preserves_error(self):
+        self.db.execute("CREATE TRIGGER fail_author BEFORE INSERT ON catalog_author "
+                        "WHEN NEW.name='Reject' BEGIN SELECT RAISE(ROLLBACK,'original rejection'); END")
+        register_batch(self.cat, (self.r,))
+        bad = replace(self.r, work='bad', edition_id='bad', authors=('Reject',))
+        with self.assertRaisesRegex(sqlite3.IntegrityError, 'original rejection'):
+            register_batch(self.cat, (bad,))
+        self.assertFalse(self.db.in_transaction)
+        with sqlite3.connect(self.path) as other:
+            for table in ('catalog_work', 'catalog_author', 'catalog_edition', 'catalog_asset', 'catalog_membership'):
+                self.assertEqual(other.execute('SELECT count(*) FROM ' + table).fetchone()[0], 0)
+        self.db.execute('BEGIN IMMEDIATE')
+        register_batch(self.cat, (self.r,))
+        self.db.commit()
+        self.assertEqual(len(self.cat.editions()), 1)
+
+    def test_recursive_triggers_required(self):
+        self.db.rollback()
+        self.db.execute('PRAGMA recursive_triggers=OFF')
+        self.db.execute('BEGIN IMMEDIATE')
+        with self.assertRaisesRegex(ValueError, 'recursive triggers required'):
+            register_batch(self.cat, (self.r,))
+        self.assertEqual(self.cat.editions(), ())
 
 if __name__ == '__main__':
     unittest.main()
