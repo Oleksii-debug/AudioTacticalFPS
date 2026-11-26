@@ -17,6 +17,7 @@ from carr_library.extract.managed_ocr import ManagedOcrRuntime, bind_model_profi
 from carr_library.extract.model_catalog import REVISIONS, models
 from carr_library.extract.ocr_model_store import ModelSelection, OcrModelStore
 from carr_library.extract.ocr_runtime import OcrRuntime, OcrRuntimeError, verify_ocr_bundle
+from carr_library.extract.ocr_process import run_ocr
 
 
 @pytest.fixture
@@ -140,8 +141,8 @@ def test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environm
     image.save(path, dpi=(300, 300))
     before = sha256(path.read_bytes()).hexdigest()
     runtime.assert_unchanged()
-    result = subprocess.run(runtime.command([runtime.executable, str(path), 'stdout',
-        '-l', 'eng', '--psm', '6']), check=True, capture_output=True, timeout=20, cwd=runtime.root)
+    result = run_ocr(runtime, [runtime.executable, str(path), 'stdout',
+        '-l', 'eng', '--psm', '6'], remaining=lambda: 20)
     assert result.stdout.decode('utf-8').strip() == 'Managed research library'
     runtime.assert_unchanged()
     assert sha256(path.read_bytes()).hexdigest() == before
@@ -151,8 +152,7 @@ def test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environm
 def test_real_list_languages_uses_managed_model_directory(real_models, monkeypatch, tmp_path):
     runtime, _ = real_models
     monkeypatch.setenv('TESSDATA_PREFIX', str(tmp_path / 'missing'))
-    result = subprocess.run(runtime.command([runtime.executable, '--list-langs']),
-                            check=True, capture_output=True, timeout=10)
+    result = run_ocr(runtime, [runtime.executable, '--list-langs'], remaining=lambda: 10)
     report = result.stdout.decode('utf-8')
     assert str(runtime.tessdata) in report and '\neng\n' in report and '\nosd\n' in report
 
@@ -241,3 +241,134 @@ def test_remaining_budget_is_forwarded_and_timeout_is_not_relabelled(real_models
         bind_model_profile(runtime.runtime, 'fast', 'eng', remaining=expired)
     with pytest.raises(TimeoutError, match='deadline'):
         runtime.assert_unchanged(expired)
+
+
+
+def test_real_unicode_image_output_and_temp_use_exact_managed_models(real_models, tmp_path, monkeypatch):
+    """Actual inference with Unicode at every user-writable path boundary."""
+    import sys
+    import tempfile
+    from PIL import Image, ImageDraw, ImageFont
+    from carr_library.extract import ocr_process
+    runtime, _ = real_models
+    temporary = tmp_path / 'Окрема тимчасова папка'
+    temporary.mkdir()
+    monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
+    source = tmp_path / 'Скан джерела.png'
+    output = tmp_path / 'Результат розпізнавання'
+    picture = Image.new('RGB', (1600, 320), 'white')
+    ImageDraw.Draw(picture).text((40, 80), 'Unicode research evidence', fill='black',
+                                font=ImageFont.load_default(size=65))
+    picture.save(source, dpi=(300, 300))
+    original = sha256(source.read_bytes()).hexdigest()
+    model_hash = sha256((runtime.tessdata / 'eng.traineddata').read_bytes()).hexdigest()
+    calls = []
+    copy = ocr_process._copy
+    def record(source, target, *args, **kwargs):
+        calls.append((source, target))
+        return copy(source, target, *args, **kwargs)
+    monkeypatch.setattr(ocr_process, '_copy', record)
+    result = run_ocr(runtime, [runtime.executable, str(source), str(output),
+        '-l', 'eng', '--psm', '6', '-c', 'tessedit_create_txt=1',
+        '-c', 'tessedit_create_tsv=1'], remaining=lambda: 20)
+    assert result.returncode == 0
+    assert Path(str(output) + '.txt').read_text(encoding='utf-8').strip() == 'Unicode research evidence'
+    assert Path(str(output) + '.tsv').read_text(encoding='utf-8').startswith('level\tpage_num\t')
+    assert sha256(source.read_bytes()).hexdigest() == original
+    assert sha256((runtime.tessdata / 'eng.traineddata').read_bytes()).hexdigest() == model_hash
+    assert list(temporary.iterdir()) == []
+    runtime.assert_unchanged()
+    if sys.platform == 'win32':
+        assert any(origin == runtime.tessdata / 'eng.traineddata' for origin, _ in calls)
+        assert all(arg.isascii() for arg in result.args[1:])
+
+
+def test_real_unicode_pinned_stage_preserves_review_and_model_provenance(real_models, tmp_path, monkeypatch):
+    import tempfile
+    from PIL import Image, ImageDraw, ImageFont
+    from carr_library.extract.page_ocr import Config, extract_page
+    from carr_library.extract.pinned_tessdata import POLICY, MODELS
+    runtime, _ = real_models
+    temporary = tmp_path / 'Тимчасові перевірені файли'
+    temporary.mkdir()
+    monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
+    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
+    picture = Image.new('RGB', (1600, 400), 'white')
+    ImageDraw.Draw(picture).text((40, 100), 'Pinned Unicode evidence', fill='black',
+                                font=ImageFont.load_default(size=65))
+    source = tmp_path / 'Українська назва.pdf'
+    picture.save(source, resolution=300)
+    before = sha256(source.read_bytes()).hexdigest()
+    result = extract_page(source, 1, Config(model_profile='fast', model_policy=POLICY))
+    assert result['raw_text'].strip() == 'Pinned Unicode evidence'
+    assert result['status'] == 'review_required' and result['blocks']
+    assert result['provenance']['ocr_model']['model_sha256'] == {'eng': MODELS['eng'][1]}
+    assert result['provenance']['ocr_runtime']['managed_models']['profile'] == 'fast'
+    assert not result['printed_label_verified'] and 'ocr_not_verified' in result['warnings']
+    assert before == sha256(source.read_bytes()).hexdigest()
+    assert list(temporary.iterdir()) == []
+    runtime.assert_unchanged()
+
+
+def test_real_unicode_inventory_keeps_bounded_native_discovery(real_models, monkeypatch):
+    from carr_library.extract import ocr_runtime
+    from carr_library.ui.ocr_selection import discover_installed_models
+    runtime, _ = real_models
+    monkeypatch.setattr(ocr_runtime, 'discover_ocr_runtime', lambda *args, **kwargs: runtime)
+    assert set(discover_installed_models()) == {'eng', 'osd'}
+    runtime.assert_unchanged()
+
+
+@pytest.mark.parametrize('failure', ['digest', 'deadline', 'size'], ids=['wrong-digest', 'cancelled', 'size-limit'])
+def test_private_copy_failure_removes_only_its_partial_output(tmp_path, failure):
+    from carr_library.extract.ocr_process import _copy
+    source, target = tmp_path / 'source.bin', tmp_path / 'private.bin'
+    source.write_bytes(b'preserved input bytes')
+    before = source.read_bytes()
+    def remaining():
+        if failure == 'deadline':
+            raise TimeoutError('test cancellation')
+        return 1
+    with pytest.raises((OcrRuntimeError, TimeoutError)):
+        _copy(source, target, 2 if failure == 'size' else 1024, remaining,
+              '0' * 64 if failure == 'digest' else None)
+    assert not target.exists() and source.read_bytes() == before
+
+
+def test_private_copy_never_clobbers_a_competing_output(tmp_path):
+    from carr_library.extract.ocr_process import _copy
+    source, target = tmp_path / 'source.bin', tmp_path / 'existing.bin'
+    source.write_bytes(b'new source')
+    target.write_bytes(b'keep existing output')
+    with pytest.raises(FileExistsError):
+        _copy(source, target, 1024, lambda: 1)
+    assert target.read_bytes() == b'keep existing output'
+
+
+def test_private_copy_rejects_a_linked_model(tmp_path):
+    from carr_library.extract.ocr_process import _copy
+    source, alias, target = (tmp_path / name for name in ('source.bin', 'alias.bin', 'staged.bin'))
+    source.write_bytes(b'linked model')
+    os.link(source, alias)
+    with pytest.raises(OcrRuntimeError, match='unlinked'):
+        _copy(source, target, 1024, lambda: 1)
+    assert not target.exists() and source.read_bytes() == alias.read_bytes() == b'linked model'
+
+
+def test_inventory_normalization_checks_the_actual_reported_directory(tmp_path):
+    from carr_library.extract.ocr_process import normalize_ocr_query_output
+    selected, other = tmp_path / 'Вибрані моделі', tmp_path / 'other'
+    selected.mkdir()
+    other.mkdir()
+    report = b'List of available languages in "./" (1):\neng\n'
+    normalized = normalize_ocr_query_output(report, selected).decode('utf-8')
+    assert str(selected) in normalized and normalized.endswith('\neng\n')
+    wrong = f'List of available languages in "{other}" (1):\neng\n'.encode('utf-8')
+    with pytest.raises(OcrRuntimeError, match='different'):
+        normalize_ocr_query_output(wrong, selected)
+
+
+def test_explicit_equals_model_directory_is_not_overridden(tmp_path):
+    runtime = OcrRuntime('tesseract', tessdata=tmp_path / 'base')
+    command = ['tesseract', 'scan.png', 'stdout', '--tessdata-dir=' + str(tmp_path / 'selected')]
+    assert runtime.command(command) == command
