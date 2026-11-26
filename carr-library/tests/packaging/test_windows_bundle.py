@@ -58,6 +58,66 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+    def sbom(self, version="1.0"):
+        path = self.root / "input-sbom.json"
+        path.write_text(json.dumps({
+            "bomFormat": "CycloneDX", "specVersion": "1.5",
+            "components": [{"name": "fixture", "version": version}],
+        }, indent=2) + "\n", encoding="utf-8")
+        return path
+
+    def test_sbom_exact_bytes_are_sealed_and_tampering_is_rejected(self):
+        sbom = self.sbom()
+        expected = sbom.read_bytes()
+        builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        sealed = self.output / "runtime-sbom.cdx.json"
+        self.assertEqual(sealed.read_bytes(), expected)
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
+        self.assertEqual(manifest["files"]["runtime-sbom.cdx.json"],
+                         hashlib.sha256(expected).hexdigest())
+        installer.verify(self.output)
+        sealed.write_bytes(b"changed")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
+    def test_sbom_initial_mismatch_rejected(self):
+        sbom = self.sbom("9.9")
+        with self.assertRaisesRegex(ValueError, "SBOM does not match"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+    def test_duplicate_sbom_component_rejected(self):
+        sbom = self.sbom()
+        bom = json.loads(sbom.read_text(encoding="utf-8"))
+        bom["components"][0]["bom-ref"] = "pkg:pypi/fixture@1.0"
+        bom["components"].append(dict(bom["components"][0]))
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            builder.build_bundle(self.app, self.wheels, self.lock,
+                                 self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+    def test_sbom_replaced_after_validation_cannot_change_sealed_bytes(self):
+        sbom = self.sbom()
+        expected = sbom.read_bytes()
+        original_copy = builder.shutil.copyfile
+        replacements = []
+
+        def copy_after_replacement(source, destination, *args, **kwargs):
+            if Path(source) == self.dep and not replacements:
+                replacement = sbom.with_suffix(".replacement")
+                replacement.write_bytes(expected.replace(b'"1.0"', b'"9.9"'))
+                replacement.replace(sbom)
+                replacements.append(True)
+            return original_copy(source, destination, *args, **kwargs)
+
+        with patch.object(builder.shutil, "copyfile", side_effect=copy_after_replacement):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual(replacements, [True])
+        self.assertNotEqual(sbom.read_bytes(), expected)
+        self.assertEqual((self.output / "runtime-sbom.cdx.json").read_bytes(), expected)
+        installer.verify(self.output)
+
     def test_changed_wheel_rejected_before_output(self):
         with ZipFile(self.dep, "a") as archive:
             archive.writestr("unapproved.txt", "changed after lock generation")

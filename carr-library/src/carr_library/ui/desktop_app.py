@@ -500,6 +500,8 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
+        from .keyboard_settings import install_keyboard_settings
+        install_keyboard_settings(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -660,6 +662,8 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        if getattr(self, 'keyboard_commands', None) is not None:
+            self.keyboard_commands.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:
@@ -1067,6 +1071,9 @@ class DesktopFrame(WorkspaceFrame):
         add_selected_book_reference(self)
 
     def help(self, event):
+        if getattr(self, 'keyboard_commands', None) is not None:
+            show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
+            return
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
