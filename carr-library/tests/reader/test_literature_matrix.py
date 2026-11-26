@@ -1,314 +1,263 @@
-"""Real application/store regressions for the source-by-theme research view."""
-from contextlib import contextmanager
-from dataclasses import replace
+"""Real CSV round trips and read-only academic-matrix integration."""
 import csv
+from dataclasses import replace
 import io
 import json
-import sqlite3
 from threading import Event
 
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.research import literature_matrix as matrix_module
-from carr_library.research.literature_matrix import build_literature_matrix, export_matrix
-from carr_library.research.outline_export import export_outline
+from carr_library.catalog.insights import CatalogAnalysis, SourceInsight, analyze_catalog, NOTICE
+from carr_library.research import literature_matrix as matrix
 
 
-@pytest.fixture
-def research(tmp_path):
+def source(**changes):
+    row = SourceInsight(
+        edition_id='source-edition', title='Історія науки — 研究',
+        authors=('Олексій Петренко', 'Research and Documentation Consortium'),
+        language='uk', edition='Second edition', volume='II', collections=('Research',),
+        text_units=5, indexed_units=4, physical_pages=3, logical_segments=2,
+        recorded_review_pages=1, evidence_count=2,
+        topics=('Research / Methods [topic methods]',), tags=('methods',),
+        issues=('not_fully_indexed',), asset_sha256='a9' * 32, revision='active-revision')
+    return replace(row, **changes)
+
+
+def analysis(*rows, **changes):
+    report = CatalogAnalysis('workspace-id', 'Дослідницька бібліотека',
+                             'collection-id', 'Selected sources', tuple(rows))
+    return replace(report, **changes)
+
+
+def csv_rows(report, **options):
+    rendered = matrix.render_literature_matrix(report, **options)
+    return list(csv.DictReader(io.StringIO(rendered, newline='')))
+
+
+def test_real_catalog_and_saved_evidence_export_without_private_content(tmp_path):
     app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Academic research')
-    with app.topic_transaction(workspace) as tree:
-        tree.create('root', 'Review')
-        tree.create('later', 'Repeated topic', parent='root', position=20)
-        tree.create('first', 'Repeated topic', parent='root', position=10)
-        tree.create('deep', 'Nested section', parent='first')
-        tree.create('hidden', 'Archived section', parent='root')
-        tree.create('hidden-child', 'Hidden child', parent='hidden')
-        tree.archive('hidden')
-    return app, workspace
+    workspace = app.create_workspace('Research Україна')
+    collection = app.create_collection(workspace, 'Library review')
+    imported = app.add_text(workspace, '=SUM(1,2)',
+        'Private original prose; the evidence target is a railway.',
+        authors=('Smith and Jones Research Group',), language='en', collections=(collection,))
+    # Separate editions sharing identical source bytes remain separate rows.
+    second = app.add_text(workspace, 'Another edition',
+        'Private original prose; the evidence target is a railway.', collections=(collection,))
+    assert imported['asset'] == second['asset'] and imported['edition'] != second['edition']
+    app.add_text(workspace, 'Outside selected collection', 'Unselected source text.')
+    other = app.create_workspace('Private unrelated library')
+    app.add_text(other, 'Unrelated private title', 'Unrelated private text.')
+    topic = app.create_topic(workspace, 'Transport')
+    hit = next(hit for hit in app.search(workspace, 'railway') if hit.edition_id == imported['edition'])
+    evidence = app.save_hit(workspace, topic, hit.ref, hit.revision,
+                            note='A PRIVATE RESEARCH NOTE that must not leave the library.')
+    app.set_evidence_tags(workspace, topic, evidence, ('=HYPERLINK("example")', 'history'))
+
+    report = analyze_catalog(app, workspace, collection=collection)
+    csv_data = matrix.render_literature_matrix(report)
+    rows = list(csv.DictReader(io.StringIO(csv_data, newline='')))
+    assert rows[0]['record_type'] == 'report' and rows[0]['source_count'] == '2'
+    assert json.loads(rows[0]['notice_json']) == NOTICE
+    records = [row for row in rows if row['record_type'] == 'source']
+    assert len(records) == 2
+    row = next(row for row in records if json.loads(row['title_json']) == '=SUM(1,2)')
+    assert json.loads(row['authors_json']) == ['Smith and Jones Research Group']
+    assert json.loads(row['collections_json']) == ['Library review']
+    assert row['physical_pages'] == '0' and row['logical_segments'] == '1'
+    assert row['recorded_review_pages'] == '0' and row['evidence_count'] == '1'
+    assert json.loads(row['tags_json']) == ['=HYPERLINK("example")', 'history']
+    assert any('Transport' in label for label in json.loads(row['topics_json']))
+    for format in ('csv', 'markdown', 'text'):
+        output = matrix.render_literature_matrix(report, format=format)
+        assert 'Private original prose' not in output
+        assert 'A PRIVATE RESEARCH NOTE' not in output
+        assert 'Outside selected collection' not in output
+        assert 'Unrelated private' not in output
+        assert imported['asset'] not in output and hit.revision not in output
+        assert str(app.root) not in output
+    # Rendering has no side effects on either evidence or source selection.
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'railway'
+    assert app.evidence(workspace, topic)[0].note.startswith('A PRIVATE RESEARCH NOTE')
 
 
-def save_source(app, workspace, topic, *, raw='Railway history and archives.',
-                title='Source', author='Researcher', note='Independent note',
-                tags=(), evidence='evidence'):
-    imported = app.add_text(workspace, title, raw, authors=(author,), edition='First', volume='I')
-    hit = next(hit for hit in app.search(workspace, 'Railway') if hit.edition_id == imported['edition'])
-    with app.read(workspace) as db:
-        anchor, _, _ = app._anchor(db, workspace, hit.ref, hit.revision)
-    full = replace(anchor, start=0, end=len(raw), quote=raw)
-    with app.evidence_transaction(workspace) as store:
-        store.save(topic, evidence, full, note)
-    if tags:
-        app.set_evidence_tags(workspace, topic, evidence, tags)
-    return imported, full
+@pytest.mark.parametrize('payload', [
+    '=HYPERLINK("https://example.invalid", "open")', '+1+2', '-1+2', '@SUM(A1:A2)',
+    '\t\r\n=2+3', ' \ufeff＝SUM(A1:A2)', '\u202e＠SUM(A1:A2)',
+    '\",;\r\n=2+3\x00\u0085\u2028\u2029',
+])
+def test_every_untrusted_csv_cell_is_formula_inert_and_exactly_reversible(payload):
+    row = source(title=payload, authors=(payload,), language=payload, edition=payload,
+        volume=payload, collections=(payload,), topics=(payload,), tags=(payload,), issues=(payload,),
+        edition_id='=identity', revision='+revision')
+    report = analysis(row, workspace='@workspace', workspace_name=payload,
+                      collection_id='-collection', collection_name=payload, warnings=(payload,))
+    output = matrix.render_literature_matrix(report, include_trace=True)
+    records = list(csv.DictReader(io.StringIO(output, newline='')))
+    assert len(records) == 2 and len(output.splitlines()) == 3
+    metadata, data = records
+    assert json.loads(metadata['warnings_json']) == [payload]
+    for field in ('title', 'language', 'edition', 'volume'):
+        assert json.loads(data[field + '_json']) == payload
+    for field in ('authors', 'collections', 'topics', 'tags', 'checklist'):
+        assert json.loads(data[field + '_json']) == [payload]
+    assert json.loads(data['workspace_name_json']) == payload
+    assert json.loads(data['collection_name_json']) == payload
+    assert json.loads(data['edition_id_json']) == '=identity'
+    assert json.loads(data['revision_id_json']) == '+revision'
+    for record in records:
+        for cell in record.values():
+            assert not cell or cell[0] not in '=+-@\t\r\n＝＋－＠'
+            assert not any(char in cell for char in '\x00\r\n\u0085\u2028\u2029\u202e\ufeff')
+    assert row.title == payload and report.workspace_name == payload
 
 
-def test_topic_order_and_scoped_evidence_ids_reopen(research):
-    app, workspace = research
-    imported, anchor = save_source(app, workspace, 'root', tags=('Method', 'History'))
-    with app.evidence_transaction(workspace) as store:
-        for topic in ('first', 'deep', 'later'):
-            # IDs are only unique within a topic; drill-down must retain both.
-            store.save(topic, 'evidence', anchor, 'Note in ' + topic)
-    app.set_evidence_tags(workspace, 'deep', 'evidence', ('Method',))
-    own = build_literature_matrix(app, workspace, 'root')
-    assert len(own.sections) == len(own.sources) == 1
-    assert own.sources[0].evidence_count == 1
-    result = build_literature_matrix(LibraryApp(app.root), workspace, 'root', include_descendants=True)
-    assert [(s.topic_id, s.depth) for s in result.sections] == [('root', 0), ('first', 1), ('deep', 2), ('later', 1)]
-    assert result.sections[2].path == ('Review', 'Repeated topic', 'Nested section')
-    source, = result.sources
-    assert source.edition_id == imported['edition']
-    assert source.evidence_count == 4
-    assert [(e.topic_id, e.evidence_id) for e in source.evidence] == [
-        ('root', 'evidence'), ('first', 'evidence'), ('deep', 'evidence'), ('later', 'evidence')]
-    assert result.themes == ('History', 'Method')
-    assert source.theme_counts == (('History', 1), ('Method', 2))
-    assert source.locations == ('Segment 1 (unpaginated)',)
-    assert source.evidence[0].quotes == (anchor.quote,)
-    assert source.notes[-1] == 'Note in later'
+def test_absent_fields_and_distinct_editions_remain_explicit():
+    first = source(title=None, authors=(), language=None, edition=None, volume=None,
+                   collections=(), revision=None)
+    second = replace(first, edition_id='another-edition')
+    rows = csv_rows(analysis(first, second))
+    assert len(rows) == 3
+    for row in rows[1:]:
+        assert json.loads(row['title_json']) is None
+        assert json.loads(row['authors_json']) == []
+        assert row['physical_pages'] == '3' and row['logical_segments'] == '2'
+        assert row['recorded_review_pages'] == '1' and row['evidence_count'] == '2'
+    assert 'edition_id_json' not in rows[0] and 'asset_sha256_json' not in rows[0]
+    assert 'revision_id_json' not in rows[0] and 'workspace_id_json' not in rows[0]
 
 
-def test_repeated_titles_and_historical_metadata_are_distinct_sources(research):
-    app, workspace = research
-    imported, original = save_source(app, workspace, 'root', title='Same title', author='Original author')
-    save_source(app, workspace, 'first', title='Same title', author='Different author',
-                raw='Railway research in another work.', evidence='other')
-    revision = app.update_metadata(workspace, imported['edition'], title='Same title',
-        authors=('Revised author',), edition='Second', volume='II')
-    current = next(hit for hit in app.search(workspace, 'Railway') if hit.edition_id == imported['edition'])
-    current_id = app.save_hit(workspace, 'later', current.ref, revision)
-    result = build_literature_matrix(app, workspace, 'root', include_descendants=True)
-    assert len(result.sources) == 3
-    sources = {(row.edition_id, row.revision_id): row for row in result.sources}
-    old = sources[(imported['edition'], original.identity.revision)]
-    new = sources[(imported['edition'], revision)]
-    assert (old.author, old.edition, old.volume) == ('Original author', 'First', 'I')
-    assert (new.author, new.edition, new.volume) == ('Revised author', 'Second', 'II')
-    assert old.evidence[0].quotes == (original.quote,)
-    assert new.evidence[0].evidence_id == current_id
-    assert all(source.title == 'Same title' for source in result.sources)
+@pytest.mark.parametrize('format', ['csv', 'markdown', 'text'])
+def test_trace_requires_explicit_boolean_and_no_extra_private_attributes_are_read(format):
+    class PrivateSource(SourceInsight):
+        @property
+        def quote(self):
+            pytest.fail('The matrix must not access source quotations.')
+
+        @property
+        def note(self):
+            pytest.fail('The matrix must not access research notes.')
+
+        @property
+        def path(self):
+            pytest.fail('The matrix must not access source paths.')
+
+    item = source()
+    private = PrivateSource(**vars(item))
+    report = analysis(private)
+    ordinary = matrix.render_literature_matrix(report, format=format)
+    explicit = matrix.render_literature_matrix(report, format=format, include_trace=True)
+    assert item.asset_sha256 not in ordinary and item.asset_sha256 in explicit
+    with pytest.raises(ValueError, match='options'):
+        matrix.render_literature_matrix(report, format=format, include_trace='yes')
 
 
-def test_exact_tag_filter_and_empty_sections(research):
-    app, workspace = research
-    save_source(app, workspace, 'first', tags=('Method', 'Qualitative'))
-    result = build_literature_matrix(app, workspace, 'root', include_descendants=True, tag_filter='Method')
-    assert result.tag_filter == 'Method' and result.themes == ('Method', 'Qualitative')
-    assert result.sources[0].evidence[0].topic_id == 'first'
-    assert len(result.sections) == 4 and not result.sections[0].evidence
-    assert build_literature_matrix(app, workspace, 'root', include_descendants=True, tag_filter='method').sources == ()
-    assert build_literature_matrix(app, workspace, 'root', tag_filter='Method').sources == ()
+@pytest.mark.parametrize('format', ['csv', 'markdown', 'text'])
+def test_empty_scope_retains_actual_scope_notices_and_warnings(format):
+    report = analysis(workspace_name='Empty library', collection_name='Empty collection',
+                      warnings=('Stored research link could not be decoded.',))
+    output = matrix.render_literature_matrix(report, format=format)
+    assert 'Empty library' in output and 'Empty collection' in output
+    assert 'Stored research link could not be decoded' in output
+    assert 'not a fresh check of source authenticity' in output
+    if format == 'csv':
+        records = list(csv.DictReader(io.StringIO(output, newline='')))
+        assert len(records) == 1 and records[0]['source_count'] == '0'
+        assert records[0]['record_type'] == 'report'
+    else:
+        assert 'No sources in this scope.' in output
 
 
-def test_workspace_archive_and_cross_workspace_scope(research):
-    app, workspace = research
-    save_source(app, workspace, 'root')
-    other = app.create_workspace('Another library')
-    with app.topic_transaction(other) as tree:
-        tree.create('root', 'Same root ID in another library')
-        tree.create('foreign', 'Only in the other library')
-    assert build_literature_matrix(app, other, 'root').sources == ()
-    with pytest.raises(ValueError, match='archived'):
-        build_literature_matrix(app, workspace, 'foreign')
-    with pytest.raises(ValueError, match='archived'):
-        build_literature_matrix(app, workspace, 'hidden-child')
-    app.archive_workspace(workspace)
-    with pytest.raises(ValueError, match='archived'):
-        build_literature_matrix(app, workspace, 'root')
+def test_long_visible_topic_paths_are_not_cut_off_or_relabelled():
+    path = ' / '.join('Long research topic ' + str(n) for n in range(256)) + ' [topic exact-id]'
+    assert len(path) > 4000
+    rows = csv_rows(analysis(source(topics=(path,))))
+    assert json.loads(rows[1]['topics_json']) == [path]
 
 
-def test_one_snapshot_for_topics_notes_and_tags(research, monkeypatch):
-    app, workspace = research
-    save_source(app, workspace, 'root', note='Old note', tags=('Old theme',))
-    with sqlite3.connect(app.database) as db:
-        assert db.execute('PRAGMA journal_mode=WAL').fetchone()[0] == 'wal'
-    original_read, original_loaders = app.read, app._loaders
-    reads = []
-
-    @contextmanager
-    def read(scope=None):
-        reads.append(scope)
-        with original_read(scope) as db:
-            yield db
-
-    def loaders(db, scope, **options):
-        # A different connection commits after this read snapshot was opened.
-        with sqlite3.connect(app.database) as writer:
-            writer.execute('UPDATE research_evidence SET note=? WHERE workspace=?', ('New note', workspace))
-            writer.execute('UPDATE research_tag SET name=? WHERE workspace=?', ('New theme', workspace))
-        return original_loaders(db, scope, **options)
-
-    monkeypatch.setattr(app, 'read', read)
-    monkeypatch.setattr(app, '_loaders', loaders)
-    monkeypatch.setattr(app, 'evidence_tags', lambda *_: pytest.fail('No per-item snapshot allowed'))
-    result = build_literature_matrix(app, workspace, 'root')
-    assert reads == [workspace]
-    assert result.sources[0].notes == ('Old note',)
-    assert result.themes == ('Old theme',)
-    monkeypatch.setattr(app, '_loaders', original_loaders)
-    refreshed = build_literature_matrix(app, workspace, 'root')
-    assert refreshed.sources[0].notes == ('New note',) and refreshed.themes == ('New theme',)
-
-
-@pytest.mark.parametrize('action', [build_literature_matrix, export_matrix, export_outline])
-def test_damaged_retained_source_is_never_hidden_by_filter(research, action):
-    app, workspace = research
-    imported, _ = save_source(app, workspace, 'root', tags=('Included',))
-    app.assets.resolve(imported['asset']).write_bytes(b'Damaged original source')
-    with pytest.raises(ValueError):
-        action(app, workspace, 'root', tag_filter='Unrelated')
-
-
-def test_revoked_pdf_review_blocks_fresh_matrix_and_exports(research, tmp_path):
-    from reportlab.pdfgen.canvas import Canvas
-
-    app, workspace = research
-    pdf = tmp_path / 'review.pdf'
-    canvas = Canvas(str(pdf))
-    canvas.drawString(72, 700, 'Reviewed railway research')
-    canvas.save()
-    app.import_file(workspace, pdf, title='Reviewed PDF')
-    hit, = app.search(workspace, 'railway')
-    # Explicit confirmation for this synthetic fixture is not human acceptance.
-    app.review_pdf_page(workspace, hit.ref, hit.revision, 'Fixture reviewer', confirmed=True)
-    app.save_hit(workspace, 'root', hit.ref, hit.revision)
-    shown = build_literature_matrix(app, workspace, 'root')
-    assert shown.sources[0].evidence[0].locations == ('PDF page 1 (printed page unverified)',)
-    app.revoke_pdf_review(workspace, hit.edition_id, hit.revision, 1)
-    for action in (build_literature_matrix, export_matrix, export_outline):
-        with pytest.raises(ValueError):
-            action(app, workspace, 'root')
-
-
-def test_real_two_page_span_keeps_individual_quotes_locations_and_citations(research, tmp_path):
-    from reportlab.pdfgen.canvas import Canvas
-
-    app, workspace = research
-    pdf = tmp_path / 'two-pages.pdf'
-    canvas = Canvas(str(pdf))
-    for text in ('First railway slice.', 'Second railway slice.'):
-        canvas.drawString(72, 700, text)
-        canvas.showPage()
-    canvas.save()
-    app.import_file(workspace, pdf, title='Two-page study')
-    hits = app.search(workspace, 'railway')
-    assert len(hits) == 2
-    for hit in hits:
-        app.review_pdf_page(workspace, hit.ref, hit.revision, 'Fixture reviewer', confirmed=True)
-    anchors = []
-    with app.read(workspace) as db:
-        for hit in hits:
-            anchor, load, _ = app._anchor(db, workspace, hit.ref, hit.revision)
-            _, _, raw, verified = load(anchor.identity, anchor.locator)
-            assert verified
-            anchors.append(replace(anchor, start=0, end=len(raw), quote=raw))
-    anchors = tuple(sorted(anchors, key=lambda anchor: anchor.locator.index))
-    with app.evidence_transaction(workspace) as store:
-        store.save('root', 'span', anchors, 'One note for both slices.')
-    result = build_literature_matrix(app, workspace, 'root')
-    source, = result.sources
-    evidence, = source.evidence
-    assert source.evidence_count == 1 and evidence.quotes == tuple(a.quote for a in anchors)
-    assert len(evidence.citations) == len(evidence.locations) == 2
-    assert 'PDF page 1' in evidence.citations[0] and 'PDF page 2' in evidence.citations[1]
-    csv_row, = csv.DictReader(io.StringIO(export_matrix(app, workspace, 'root')))
-    assert json.loads(csv_row['quotation_slices_json']) == [[a.quote for a in anchors]]
-    text = export_outline(app, workspace, 'root', format='text')
-    assert 'Source slice 1 of 2' in text and 'Source slice 2 of 2' in text
-    quotes = [json.loads(line.removeprefix('Exact quotation: ')) for line in text.splitlines()
-              if line.startswith('Exact quotation: ')]
-    assert quotes == [a.quote for a in anchors]
-
-
-def test_cancel_before_read_and_during_historical_verification(research, monkeypatch):
-    app, workspace = research
-    save_source(app, workspace, 'root')
-    read = app.read
-    monkeypatch.setattr(app, 'read', lambda *_: pytest.fail('Cancelled operation read the database'))
-    with pytest.raises(TimeoutError):
-        build_literature_matrix(app, workspace, 'root', cancelled=lambda: True)
-    monkeypatch.setattr(app, 'read', read)
-    original = app._loaders
+@pytest.mark.parametrize('format', ['csv', 'markdown', 'text'])
+def test_cancellation_during_render_returns_no_report(format, monkeypatch):
     stopped = Event()
+    original = matrix._source_value
 
-    def loaders(*args, **kwargs):
-        load, metadata, attest = original(*args, **kwargs)
-        def stop_after_read(*args):
-            result = load(*args)
+    def read_value(row, field):
+        value = original(row, field)
+        if value == 'Cancel during this title':
             stopped.set()
-            return result
-        return stop_after_read, metadata, attest
+        return value
 
-    monkeypatch.setattr(app, '_loaders', loaders)
-    with pytest.raises(TimeoutError):
-        build_literature_matrix(app, workspace, 'root', cancelled=stopped.is_set)
-
-
-@pytest.mark.parametrize('limit,value', [('MAX_TOPICS', 1), ('MAX_DEPTH', 0),
-    ('MAX_WORKSPACE_TOPICS', 1), ('MAX_TEXT_BYTES', 1), ('MAX_EVIDENCE', 0),
-    ('MAX_SOURCES', 0), ('MAX_THEMES', 0), ('MAX_TAGS_PER_EVIDENCE', 0)])
-def test_limits_fail_instead_of_dropping_results(research, monkeypatch, limit, value):
-    app, workspace = research
-    save_source(app, workspace, 'root', tags=('Theme',))
-    monkeypatch.setattr(matrix_module, limit, value)
-    with pytest.raises(ValueError, match='limit|Too many|exceeds'):
-        build_literature_matrix(app, workspace, 'root', include_descendants=True)
+    monkeypatch.setattr(matrix, '_source_value', read_value)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        matrix.render_literature_matrix(analysis(source(title='Cancel during this title')),
+                                        format=format, cancelled=stopped.is_set)
+    assert stopped.is_set()
 
 
-def test_malformed_topic_cycle_cannot_hang(research):
-    app, workspace = research
-    with app.write(workspace) as db:
-        db.execute('UPDATE research_topic SET parent=? WHERE workspace=? AND id=?', ('deep', workspace, 'root'))
-    with pytest.raises(ValueError, match='archived'):
-        build_literature_matrix(app, workspace, 'root', include_descendants=True)
+def test_already_cancelled_export_does_not_inspect_its_input():
+    with pytest.raises(InterruptedError):
+        matrix.render_literature_matrix(object(), cancelled=lambda: True)
 
 
-@pytest.mark.parametrize('options', [{'include_descendants': 1}, {'tag_filter': ''},
-    {'tag_filter': 'x\x00y'}, {'tag_filter': 42}, {'cancelled': None}])
-def test_invalid_options_fail(research, options):
-    app, workspace = research
+@pytest.mark.parametrize('format', ['csv', 'markdown', 'text'])
+def test_output_budget_rejects_whole_report_without_silent_truncation(format, monkeypatch):
+    monkeypatch.setattr(matrix, 'MAX_OUTPUT_BYTES', 128)
+    with pytest.raises(ValueError, match='output exceeds'):
+        matrix.render_literature_matrix(analysis(source()), format=format)
+
+
+@pytest.mark.parametrize('changes', [
+    {'evidence_count': True}, {'text_units': -1}, {'indexed_units': 6},
+    {'recorded_review_pages': 4}, {'logical_segments': 0},
+    {'asset_sha256': '../source.pdf'}, {'authors': ['not an immutable list']},
+    {'title': '\ud800'},
+])
+def test_invalid_analysis_records_fail_before_export(changes):
     with pytest.raises(ValueError):
-        build_literature_matrix(app, workspace, 'root', **options)
+        matrix.render_literature_matrix(analysis(source(**changes)))
 
 
-def test_csv_preserves_exact_text_and_neutralizes_formulas(research):
-    app, workspace = research
-    raw = 'Railway\r\n=SUM(A1:A2) | ``` <script> Café\u0301\u202e'
-    note = '+SUM(1,2)\nSeparate note'
-    title = '=HYPERLINK("https://invalid.example") | title'
-    _, anchor = save_source(app, workspace, 'root', raw=raw, title=title,
-        author='@author', note=note, tags=('-Theme', '=Theme'))
-    content = export_matrix(app, workspace, 'root')
-    row, = csv.DictReader(io.StringIO(content))
-    assert row['text_encoding'] == 'json-v1' and row['evidence_count'] == '1'
-    assert row['include_descendants'] == 'true' and json.loads(row['tag_filter_json']) is None
-    assert json.loads(row['title_json']) == title
-    assert json.loads(row['quotation_slices_json']) == [[raw]]
-    assert json.loads(row['research_notes_json']) == [note]
-    assert json.loads(row['evidence_ids_json']) == [['root', 'evidence']]
-    assert json.loads(row['themes_json']) == ['-Theme', '=Theme']
-    assert all(value[:1] not in '=+-@\t\r\n' for value in row.values())
-    assert anchor.quote == raw and app.evidence(workspace, 'root')[0].anchor.quote == raw
-    markdown = export_matrix(app, workspace, 'root', format='markdown')
-    assert '# Literature review matrix' in markdown
-    assert matrix_module._inline(title, table_cell=True) in markdown
-    assert '\\| title' in matrix_module._inline(title, table_cell=True)
-    assert matrix_module._block(raw) in markdown and matrix_module._block(note) in markdown
+def test_duplicate_identity_and_unbounded_input_are_rejected(monkeypatch):
+    row = source()
+    with pytest.raises(ValueError, match='Duplicate'):
+        matrix.render_literature_matrix(analysis(row, row))
+    monkeypatch.setattr(matrix, 'MAX_SOURCES', 1)
+    with pytest.raises(ValueError, match='Too many'):
+        matrix.render_literature_matrix(analysis(row, replace(row, edition_id='other')))
+    monkeypatch.setattr(matrix, 'MAX_METADATA_BYTES', 10)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        matrix.render_literature_matrix(analysis(row))
 
 
-def test_export_is_fresh_and_output_limit_is_explicit(research, monkeypatch):
-    app, workspace = research
-    save_source(app, workspace, 'root', note='Old note')
-    displayed = build_literature_matrix(app, workspace, 'root')
-    with app.evidence_transaction(workspace) as store:
-        store.edit_note('root', 'evidence', 'Changed note')
-    assert displayed.sources[0].notes == ('Old note',)
-    assert 'Changed note' in export_matrix(app, workspace, 'root')
-    monkeypatch.setattr(matrix_module, 'MAX_EXPORT_BYTES', 1)
-    with pytest.raises(ValueError, match='output size'):
-        export_matrix(app, workspace, 'root')
-    with pytest.raises(ValueError, match='output size'):
-        export_outline(app, workspace, 'root')
+def test_invalid_scope_or_options_never_yield_partial_data():
+    report = analysis(source())
+    with pytest.raises(ValueError, match='collection scope'):
+        matrix.render_literature_matrix(replace(report, collection_name=None))
+    with pytest.raises(ValueError, match='Choose CSV'):
+        matrix.render_literature_matrix(report, format='html')
+    with pytest.raises(ValueError, match='options'):
+        matrix.render_literature_matrix(report, cancelled=False)
+    with pytest.raises(ValueError, match='authorized catalog analysis'):
+        matrix.render_literature_matrix(object())
+
+
+def test_rendering_is_deterministic_and_preserves_source_order():
+    first = source(title='First in the chosen catalog order', edition_id='z-edition')
+    second = source(title='Second in that order', edition_id='a-edition')
+    report = analysis(first, second)
+    for format in ('csv', 'markdown', 'text'):
+        result = matrix.render_literature_matrix(report, format=format)
+        assert result == matrix.render_literature_matrix(report, format=format)
+        assert result.index(first.title) < result.index(second.title)
+
+
+@pytest.mark.parametrize('format', ['markdown', 'text'])
+def test_readable_reports_use_normal_names_and_explicit_missing_values(format):
+    row = source(title='Readable source', authors=('First author', 'Research Consortium'),
+                 language=None, edition=None, volume=None, collections=(), tags=())
+    output = matrix.render_literature_matrix(analysis(row), format=format)
+    assert 'First author; Research Consortium' in output
+    assert 'Not recorded' in output and 'None' in output
+    assert 'json-v1' not in output and 'Format:' not in output
+    assert '"Readable source"' not in output and 'null' not in output
+    assert '["First author"' not in output

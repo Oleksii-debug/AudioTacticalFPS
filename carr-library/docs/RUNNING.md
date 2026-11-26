@@ -103,10 +103,60 @@ only bibliography; they omit quotations and private notes. CSV text columns
 ending in `_json` use reversible quoted text so line breaks and Unicode remain
 exact and spreadsheet programs cannot execute a quotation as a formula.
 
+Word (`.docx`) and HTML (`.html`) produce a readable research document titled
+with the current topic name. Heading navigation separates evidence, source citations,
+research notes and the source bibliography. A quotation spanning several source
+pages keeps its separate slices and locators. Unusual control characters and
+original line endings that a document reader cannot preserve are shown with
+explicit reversible text encoding; they are never silently rewritten as a
+different quotation. The document includes source identities for later checking.
+These documents contain the topic's research notes as well as quotations.
+
+In the Save dialog, choose the file type and use its matching extension. The
+Word document uses native paragraph styles and can be edited in a word processor;
+it is a static export and changes do not update the library. HTML is one local
+file with headings for screen-reader navigation. Neither export loads remote
+content or requires an internet connection. Source descriptions are not a
+claim of conformity to APA, Chicago or another journal's citation style.
+
+RIS and BibTeX preserve citation pinpoint locations as a labelled **Source
+locator** note. They do not infer a publication's page extent from the pages
+selected for a quotation. Research notes remain excluded from those formats.
+
 Choose a folder outside the private library data folder. Existing ordinary export files can be replaced after the
 Save dialog's confirmation. If another program changes the destination during
 export, select it again before replacing it. A failed save keeps the previous
 file intact.
+
+## Review the source catalog
+
+Open a library, then use the **Research** menu:
+
+- **Library overview** summarizes sources, languages, active collections,
+  searchable text units, recorded PDF reviews and links to visible research
+  topics.
+- **Source metadata and indexing checklist** lists sources with missing title,
+  author or language data, no active text, an incomplete index, PDF pages without
+  a matching recorded review, or no active collection. Missing optional metadata
+  is a prompt to check the source, not permission to invent it.
+- **Export source comparison matrix** compares your imported sources in CSV,
+  Markdown or plain text, including collections, topic links, evidence counts
+  and tags. Choose the entire library or one active collection.
+
+These reports contain catalog metadata and stored link counts. They do not
+include source text or research notes, approve an extraction, establish printed
+pagination, or recheck the original files. Physical PDF pages and unpaginated
+logical segments have separate counts. Archived topics and their descendants
+are excluded from the research links. A multi-page saved quotation counts as
+one evidence record, and historical source revisions keep their edition link.
+
+Use **Tab**, **Shift+Tab** and the arrow keys in the scope and format choices.
+Reports open in named, read-only text fields; **Escape** closes the report.
+**Cancel current operation** stops analysis. Opening a report does not refresh
+the evidence panel or discard an unsaved note.
+
+See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
+interchange details.
 
 ## Research from the keyboard
 

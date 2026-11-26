@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..research.export_file import write_export
-from ..research.literature_matrix import build_literature_matrix, export_matrix
+from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
 from ..research.outline_export import export_outline
 from .literature_matrix import make_matrix_dialog
 

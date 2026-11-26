@@ -1,338 +1,252 @@
-"""Fresh, source-backed comparisons of the evidence in a research topic.
+"""Offline comparison of catalog metadata and stored research-link counts.
 
-This is a view of the existing research store, not another database or a source
-of citation authority. A call uses one authorized read snapshot and verifies
-every scoped evidence item before applying an optional exact tag filter.
+The caller supplies one authorized CatalogAnalysis snapshot. No source text,
+notes, files, parsers or network services are consulted. These exports cannot
+establish quotation, source-byte or printed-page authenticity.
 """
-from collections import defaultdict
-from dataclasses import dataclass
 import csv
 import io
 import re
-import sqlite3
 
-from ..citations.anchors import Anchor, format_citation
-from .evidence_export import _block, _encoded
-from .saved_evidence import SavedEvidenceStore
-from .topic_tree import TopicTree
+from ..catalog.insights import (CatalogAnalysis, SourceInsight, ISSUE_LABELS,
+                                MAX_METADATA_BYTES, MAX_SOURCES, NOTICE, display_value)
+from .evidence_export import _encoded
 
 
-MAX_WORKSPACE_TOPICS = 10000
-MAX_TOPICS = 1000
-MAX_DEPTH = 32
-MAX_EVIDENCE = 5000
-MAX_SOURCES = 1000
-MAX_TAGS_PER_EVIDENCE = 100
-MAX_THEMES = 500
-MAX_TEXT_BYTES = 16 * 1024 * 1024
-MAX_EXPORT_BYTES = 64 * 1024 * 1024
+MAX_OUTPUT_BYTES = 32 * 1024 * 1024
+MAX_LIST_ITEMS = 10_000
+# Visible topic paths can contain up to 256 named ancestors. They are longer
+# than an individual catalog field; the shared total metadata budget still caps
+# the complete report before rendering starts.
+MAX_FIELD_CHARACTERS = 1_000_000
+_MARKDOWN_ESCAPES = str.maketrans({char: '\\' + char for char in r'\`*_{}[]()!#<>|&~'})
+_COUNTS = ('text_units', 'indexed_units', 'physical_pages', 'logical_segments',
+           'recorded_review_pages', 'evidence_count')
+_LISTS = ('authors', 'collections', 'topics', 'tags', 'issues')
+_FIELDS = (
+    ('title_json', 'Source title', 'title'),
+    ('authors_json', 'Authors in source order', 'authors'),
+    ('language_json', 'Language', 'language'),
+    ('edition_json', 'Edition', 'edition'),
+    ('volume_json', 'Volume', 'volume'),
+    ('collections_json', 'Active collections', 'collections'),
+    ('text_units', 'Active text units', 'text_units'),
+    ('indexed_units', 'Indexed text units', 'indexed_units'),
+    ('physical_pages', 'Physical PDF pages', 'physical_pages'),
+    ('logical_segments', 'Unpaginated logical segments', 'logical_segments'),
+    ('recorded_review_pages', 'Recorded PDF page reviews', 'recorded_review_pages'),
+    ('evidence_count', 'Stored evidence links', 'evidence_count'),
+    ('topics_json', 'Visible research topics', 'topics'),
+    ('tags_json', 'Evidence tags', 'tags'),
+    ('checklist_json', 'Catalog checklist', 'issues'),
+)
+_TRACE_FIELDS = (
+    ('edition_id_json', 'Source edition ID', 'edition_id'),
+    ('asset_sha256_json', 'Retained asset SHA256 identifier', 'asset_sha256'),
+    ('revision_id_json', 'Active revision ID', 'revision'),
+)
+def _check_analysis(analysis, check):
+    if not isinstance(analysis, CatalogAnalysis):
+        raise ValueError('An authorized catalog analysis is required.')
+    used = 0
 
-
-@dataclass(frozen=True)
-class MatrixEvidence:
-    topic_id: str
-    topic_name: str
-    evidence_id: str
-    anchors: tuple[Anchor, ...]
-    note: str
-    tags: tuple[str, ...]
-
-    @property
-    def quotes(self):
-        return tuple(anchor.quote for anchor in self.anchors)
-
-    @property
-    def citations(self):
-        return tuple(format_citation(anchor) for anchor in self.anchors)
-
-    @property
-    def locations(self):
-        return tuple(anchor.locator.display() for anchor in self.anchors)
-
-
-@dataclass(frozen=True)
-class TopicSection:
-    topic_id: str
-    parent_id: str | None
-    name: str
-    depth: int
-    path: tuple[str, ...]
-    evidence: tuple[MatrixEvidence, ...]
-
-
-@dataclass(frozen=True)
-class SourceRow:
-    edition_id: str
-    revision_id: str
-    asset_sha256: str
-    title: str
-    author: str
-    edition: str
-    volume: str
-    evidence: tuple[MatrixEvidence, ...]
-
-    @property
-    def evidence_count(self):
-        return len(self.evidence)
-
-    @property
-    def locations(self):
-        return tuple(dict.fromkeys(location for item in self.evidence for location in item.locations))
-
-    @property
-    def tags(self):
-        return tuple(sorted({tag for item in self.evidence for tag in item.tags}))
-
-    @property
-    def notes(self):
-        return tuple(item.note for item in self.evidence)
-
-    @property
-    def theme_counts(self):
-        return tuple((tag, sum(tag in item.tags for item in self.evidence)) for tag in self.tags)
-
-
-@dataclass(frozen=True)
-class LiteratureMatrix:
-    workspace: str
-    topic_id: str
-    topic_name: str
-    sections: tuple[TopicSection, ...]
-    sources: tuple[SourceRow, ...]
-    themes: tuple[str, ...]
-    include_descendants: bool
-    tag_filter: str | None
-
-
-def _topics(db, workspace, topic, include_descendants, check):
-    # Bound the existing TopicTree traversal before asking it for visible rows.
-    count = db.execute('SELECT count(*) FROM (SELECT 1 FROM research_topic '
-        'WHERE workspace=? LIMIT ?)', (workspace, MAX_WORKSPACE_TOPICS + 1)).fetchone()[0]
-    if count > MAX_WORKSPACE_TOPICS:
-        raise ValueError('Too many topics for a research overview.')
-    tree = TopicTree(db, workspace)
-    tree._visible(topic)
-    visible = {row.id: row for row in tree.list_topics()}
-    check()
-    root = visible[topic]
-    children = defaultdict(list)
-    for row in visible.values():
-        children[row.parent].append(row)
-    for siblings in children.values():
-        siblings.sort(key=lambda row: (row.position, row.id))
-    result, seen = [], set()
-    pending = [(root, 0, ())]
-    while pending:
+    def text(value, *, optional=False, identity=False):
+        nonlocal used
         check()
-        row, depth, ancestors = pending.pop()
-        if row.id in seen:
-            raise ValueError('A topic cycle prevents the research overview.')
-        if len(result) >= MAX_TOPICS or depth > MAX_DEPTH:
-            raise ValueError('Topic count or depth exceeds the research overview limit.')
-        seen.add(row.id)
-        path = (*ancestors, row.name)
-        result.append((row, depth, path))
-        if include_descendants:
-            pending.extend((child, depth + 1, path) for child in reversed(children[row.id]))
-    return result
+        if optional and value is None:
+            return
+        if not isinstance(value, str) or len(value) > (200 if identity else MAX_FIELD_CHARACTERS):
+            raise ValueError('Invalid or oversized matrix text field.')
+        if identity and (not value.strip() or any(ord(char) < 32 or 127 <= ord(char) <= 159
+                                                for char in value)):
+            raise ValueError('Invalid matrix source identity.')
+        try:
+            used += len(value.encode('utf-8'))
+        except UnicodeError as exc:
+            raise ValueError('Matrix text must contain valid Unicode.') from exc
+        if used > MAX_METADATA_BYTES:
+            raise ValueError('Matrix metadata exceeds the report limit. Choose a smaller collection.')
+
+    def text_list(values, *, limit=MAX_LIST_ITEMS):
+        if not isinstance(values, tuple) or len(values) > limit:
+            raise ValueError('Invalid or oversized matrix text list.')
+        for value in values:
+            text(value)
+
+    text(analysis.workspace, identity=True)
+    text(analysis.workspace_name)
+    text(analysis.collection_id, optional=True, identity=True)
+    text(analysis.collection_name, optional=True)
+    if (analysis.collection_id is None) != (analysis.collection_name is None):
+        raise ValueError('The matrix collection scope is incomplete.')
+    text_list(analysis.warnings)
+    if not isinstance(analysis.sources, tuple) or len(analysis.sources) > MAX_SOURCES:
+        raise ValueError('Too many or invalid sources for this matrix.')
+    seen = set()
+    for source in analysis.sources:
+        check()
+        if not isinstance(source, SourceInsight):
+            raise ValueError('Invalid matrix source record.')
+        text(source.edition_id, identity=True)
+        if source.edition_id in seen:
+            raise ValueError('Duplicate source edition in this matrix.')
+        seen.add(source.edition_id)
+        text(source.revision, optional=True, identity=True)
+        text(source.asset_sha256)
+        if re.fullmatch(r'[0-9a-f]{64}', source.asset_sha256) is None:
+            raise ValueError('Invalid retained asset identifier in this matrix.')
+        for name in ('title', 'language', 'edition', 'volume'):
+            text(getattr(source, name), optional=True)
+        for name in _LISTS:
+            text_list(getattr(source, name), limit=100 if name == 'authors' else MAX_LIST_ITEMS)
+        for name in _COUNTS:
+            value = getattr(source, name)
+            if type(value) is not int or not 0 <= value <= 2_147_483_647:
+                raise ValueError('Invalid stored count in this matrix.')
+        if (source.indexed_units > source.text_units
+                or source.physical_pages + source.logical_segments != source.text_units
+                or source.recorded_review_pages > source.physical_pages):
+            raise ValueError('Inconsistent stored counts in this matrix.')
 
 
-def build_literature_matrix(app, workspace, topic, *, include_descendants=False,
-                            tag_filter=None, cancelled=lambda: False):
-    """Compare exact edition/revision snapshots; titles never become identities.
+class _Output(io.StringIO):
+    def __init__(self, check):
+        super().__init__(newline='')
+        self.check, self.size = check, 0
 
-    Descendants follow TopicTree sibling order (position, ID), in pre-order.
-    Archived topics and their descendants are excluded. A tag filter is one
-    exact, case-sensitive tag name, or None for all evidence. Tags describe the
-    user's research; they do not verify a source or imply a model judgment.
+    def write(self, value):
+        self.check()
+        self.size += len(value.encode('utf-8'))
+        if self.size > MAX_OUTPUT_BYTES:
+            raise ValueError('Matrix output exceeds the report limit. Choose a smaller collection.')
+        return super().write(value)
 
-    Limits are explicit: 10,000 workspace topics, 1,000 selected topics, depth
-    32, 5,000 evidence items, 1,000 source revisions, 500 distinct tags and 16 MiB
-    of stored evidence/notes/tag text. Exceeding a limit raises, never truncates.
+
+def _source_value(source, field):
+    value = getattr(source, field)
+    if field == 'issues':
+        return tuple(ISSUE_LABELS.get(issue, issue) for issue in value)
+    return value
+
+
+def _csv(analysis, include_trace, output, check):
+    fields = _FIELDS + (_TRACE_FIELDS if include_trace else ())
+    heading = ('record_type', 'format', 'text_encoding', 'scope_kind',
+               'workspace_name_json', 'collection_name_json', 'notice_json',
+               'source_count', 'warnings_json', 'source_number')
+    if include_trace:
+        heading += ('workspace_id_json', 'collection_id_json')
+    writer = csv.DictWriter(output, fieldnames=heading + tuple(item[0] for item in fields),
+                            quoting=csv.QUOTE_ALL, lineterminator='\n')
+    writer.writeheader()
+    scope = dict(format='csv', text_encoding='json-v1',
+                 scope_kind='library' if analysis.collection_id is None else 'collection',
+                 workspace_name_json=_encoded(analysis.workspace_name),
+                 collection_name_json=_encoded(analysis.collection_name))
+    if include_trace:
+        scope.update(workspace_id_json=_encoded(analysis.workspace),
+                     collection_id_json=_encoded(analysis.collection_id))
+    # A distinct metadata record keeps scope and warnings even for an empty
+    # library. Consumers select record_type=source for comparison rows.
+    writer.writerow(dict(scope, record_type='report', notice_json=_encoded(NOTICE),
+                         source_count=len(analysis.sources), warnings_json=_encoded(analysis.warnings)))
+    for number, source in enumerate(analysis.sources, 1):
+        check()
+        record = dict(scope, record_type='source', source_number=number)
+        for key, _label, field in fields:
+            check()
+            value = _source_value(source, field)
+            record[key] = value if field in _COUNTS else _encoded(value)
+        writer.writerow(record)
+
+
+def _display(value):
+    """Use the catalog's readable text convention, never quotation formatting."""
+    if isinstance(value, tuple):
+        return '; '.join(display_value(item) for item in value) if value else 'None'
+    result = display_value(value)
+    return result if result.strip() else 'Not recorded'
+
+
+def _markdown_value(value):
+    # GFM backslash escapes cover ASCII punctuation, including table pipes,
+    # link/image syntax, HTML delimiters, backticks and existing backslashes.
+    # The shared catalog display helper neutralizes line breaks and controls.
+    return _display(value).translate(_MARKDOWN_ESCAPES)
+
+
+def _heading(analysis, format, output, include_trace):
+    markdown = format == 'markdown'
+    encode = _markdown_value if markdown else _display
+    output.write(('# ' if markdown else '') + 'Source comparison matrix\n\n')
+    output.write('Library: ' + encode(analysis.workspace_name) + '\n\n')
+    output.write(('Scope: all sources in this library.' if analysis.collection_id is None
+                  else 'Collection: ' + encode(analysis.collection_name)) + '\n\n')
+    output.write(f'Source editions: {len(analysis.sources)}.\n\n')
+    output.write(NOTICE + '\n\n')
+    for warning in analysis.warnings:
+        output.write('Report warning: ' + encode(warning) + '\n\n')
+    if include_trace:
+        output.write('Library ID: ' + encode(analysis.workspace) + '\n\n')
+        if analysis.collection_id is not None:
+            output.write('Collection ID: ' + encode(analysis.collection_id) + '\n\n')
+
+
+def _markdown(analysis, include_trace, output, check):
+    _heading(analysis, 'markdown', output, include_trace)
+    fields = _FIELDS + (_TRACE_FIELDS if include_trace else ())
+    output.write('| Source number | ' + ' | '.join(label for _key, label, _field in fields) + ' |\n')
+    output.write('| --- | ' + ' | '.join('---' for _ in fields) + ' |\n')
+    for number, source in enumerate(analysis.sources, 1):
+        check()
+        cells = [str(number)]
+        for _key, _label, field in fields:
+            check()
+            value = _source_value(source, field)
+            cells.append(str(value) if field in _COUNTS else _markdown_value(value))
+        output.write('| ' + ' | '.join(cells) + ' |\n')
+    if not analysis.sources:
+        output.write('\nNo sources in this scope.\n')
+
+
+def _text(analysis, include_trace, output, check):
+    _heading(analysis, 'text', output, include_trace)
+    fields = _FIELDS + (_TRACE_FIELDS if include_trace else ())
+    for number, source in enumerate(analysis.sources, 1):
+        check()
+        output.write(f'Source {number}\n')
+        for _key, label, field in fields:
+            value = _source_value(source, field)
+            output.write(label + ': ' + (str(value) if field in _COUNTS else _display(value)) + '\n')
+        output.write('\n')
+    if not analysis.sources:
+        output.write('No sources in this scope.\n')
+
+
+def render_literature_matrix(analysis, *, format='csv', include_trace=False,
+                             cancelled=lambda: False):
+    """Return a bounded report string; file publication belongs to the caller.
+
+    Source order is retained. CSV text cells use the project's reversible JSON
+    representation so no untrusted text can become a leading spreadsheet
+    formula. Its first record_type=report row carries scope and notices;
+    subsequent source rows form the matrix. Markdown and plain text use readable
+    catalog labels. Physical pages and logical segments stay distinct. Optional
+    trace adds IDs and the retained asset digest identifier, never filesystem
+    paths. There is no notes/quotes option.
     """
-    if type(include_descendants) is not bool or not callable(cancelled):
-        raise ValueError('Explicit descendant selection and cancellation callback required.')
-    if tag_filter is not None and (not isinstance(tag_filter, str) or not tag_filter.strip()
-            or len(tag_filter) > 512 or '\x00' in tag_filter):
-        raise ValueError('Choose one exact tag name or no tag filter.')
-    if tag_filter is not None:
-        tag_filter.encode('utf-8', errors='strict')
-    latched = False
-
-    def stopped():
-        nonlocal latched
-        latched = latched or bool(cancelled())
-        return latched
+    if format not in ('csv', 'markdown', 'text'):
+        raise ValueError('Choose CSV, Markdown or plain text for the literature matrix.')
+    if type(include_trace) is not bool or not callable(cancelled):
+        raise ValueError('Invalid matrix export options.')
 
     def check():
-        if stopped():
-            raise TimeoutError('Research overview cancelled.')
-
-    check()
-    sections, grouped, metadata = [], {}, {}
-    themes = set()
-    total_items = total_bytes = 0
-    with app.read(workspace) as db:
-        db.set_progress_handler(stopped, 1000)
-        try:
-            selected = _topics(db, workspace, topic, include_descendants, check)
-            load, attest_metadata, _ = app._loaders(db, workspace, cancelled=stopped)
-            store = SavedEvidenceStore(db, workspace, load, attest_metadata)
-            for selected_topic, depth, path in selected:
-                check()
-                count, size = db.execute('SELECT count(*),coalesce(sum(size),0) FROM '
-                    '(SELECT length(CAST(payload AS BLOB))+length(CAST(note AS BLOB)) AS size '
-                    'FROM research_evidence WHERE workspace=? AND topic=? LIMIT ?)',
-                    (workspace, selected_topic.id, MAX_EVIDENCE + 1)).fetchone()
-                total_items += count
-                total_bytes += size
-                if total_items > MAX_EVIDENCE or total_bytes > MAX_TEXT_BYTES:
-                    raise ValueError('Evidence count or text exceeds the research overview limit.')
-                tags = defaultdict(list)
-                cursor = db.execute('SELECT e.evidence,t.name FROM research_evidence_tag e '
-                    'JOIN research_tag t ON t.workspace=e.workspace AND t.id=e.tag '
-                    'WHERE e.workspace=? AND e.topic=? ORDER BY e.evidence,t.name',
-                    (workspace, selected_topic.id))
-                try:
-                    for evidence_id, tag in cursor:
-                        check()
-                        tags[evidence_id].append(tag)
-                        total_bytes += len(tag.encode('utf-8'))
-                        themes.add(tag)
-                        if (len(tags[evidence_id]) > MAX_TAGS_PER_EVIDENCE
-                                or len(themes) > MAX_THEMES or total_bytes > MAX_TEXT_BYTES):
-                            raise ValueError('Tags exceed the research overview limit.')
-                finally:
-                    cursor.close()
-                items = []
-                # Even filtered-out evidence is verified: a filter must never
-                # turn a damaged or revoked scoped source into a green report.
-                for saved in store.iter_saved(selected_topic.id, cancelled=stopped):
-                    check()
-                    item_tags = tuple(tags.get(saved.evidence_id, ()))
-                    if tag_filter is not None and tag_filter not in item_tags:
-                        continue
-                    item = MatrixEvidence(selected_topic.id, selected_topic.name,
-                        saved.evidence_id, saved.anchors, saved.note, item_tags)
-                    identity, meta = saved.anchor.identity, saved.anchor.metadata
-                    key = (identity.edition_id, identity.revision)
-                    source = (identity.asset_sha256, meta.title, meta.author or '',
-                              meta.edition or '', meta.volume or '')
-                    if key not in grouped:
-                        if len(grouped) >= MAX_SOURCES:
-                            raise ValueError('Too many source revisions for a research overview.')
-                        grouped[key], metadata[key] = [], source
-                    elif metadata[key] != source:
-                        raise ValueError('Conflicting immutable metadata for one source revision.')
-                    grouped[key].append(item)
-                    items.append(item)
-                sections.append(TopicSection(selected_topic.id, selected_topic.parent,
-                    selected_topic.name, depth, path, tuple(items)))
-            check()
-        except (sqlite3.OperationalError, InterruptedError) as exc:
-            if stopped():
-                raise TimeoutError('Research overview cancelled.') from exc
-            raise
-        finally:
-            db.set_progress_handler(None, 0)
-    check()
-    sources = tuple(SourceRow(*key, *metadata[key], tuple(items)) for key, items in grouped.items())
-    shown_themes = tuple(sorted({tag for source in sources for tag in source.tags}))
-    return LiteratureMatrix(workspace, topic, sections[0].name, tuple(sections), sources,
-                             shown_themes, include_descendants, tag_filter)
-
-
-def _inline(value, *, table_cell=False):
-    """A reversible code span; table separators need a separate Markdown escape."""
-    value = _encoded(value)
-    fence = '`' * (max([0] + [len(run) for run in re.findall(r'`+', value)]) + 1)
-    if table_cell:
-        value = value.replace('|', '\\|')
-    return f'{fence} {value} {fence}'
-
-
-def _bounded_export(chunks, cancelled):
-    result, size = [], 0
-    for chunk in chunks:
         if cancelled():
-            raise TimeoutError('Research export cancelled.')
-        size += len(chunk.encode('utf-8'))
-        if size > MAX_EXPORT_BYTES:
-            raise ValueError('Research export exceeds the output size limit.')
-        result.append(chunk)
-    if cancelled():
-        raise TimeoutError('Research export cancelled.')
-    return ''.join(result)
+            raise InterruptedError('Matrix export cancelled; no report was returned.')
 
-
-def export_matrix(app, workspace, topic, *, format='csv', include_descendants=True,
-                  tag_filter=None, cancelled=lambda: False):
-    """Export a newly verified comparison; no previously displayed rows are used.
-
-    CSV has one row per exact edition/revision. Untrusted text and structured
-    cells use reversible JSON, so source strings cannot become spreadsheet
-    formulas. Evidence IDs, topic paths, quotation slices, citations and notes
-    use the same item order. Quotations stay separate; notes remain user text.
-    """
-    if format not in ('csv', 'markdown'):
-        raise ValueError('Choose CSV or Markdown for a literature matrix.')
-    matrix = build_literature_matrix(app, workspace, topic,
-        include_descendants=include_descendants, tag_filter=tag_filter, cancelled=cancelled)
-
-    def chunks():
-        if format == 'csv':
-            buffer = io.StringIO(newline='')
-            writer = csv.writer(buffer, lineterminator='\n')
-            def row(values):
-                buffer.seek(0)
-                buffer.truncate()
-                writer.writerow(values)
-                return buffer.getvalue()
-            yield row(('text_encoding', 'workspace_id_json', 'root_topic_id_json',
-                'include_descendants', 'tag_filter_json',
-                'edition_id_json', 'revision_id_json', 'asset_sha256_json', 'title_json',
-                'author_json', 'edition_json', 'volume_json', 'evidence_count',
-                'locations_json', 'themes_json', 'theme_counts_json', 'evidence_ids_json',
-                'topic_paths_json', 'quotation_slices_json', 'citations_json', 'research_notes_json'))
-            paths = {section.topic_id: section.path for section in matrix.sections}
-            for source in matrix.sources:
-                refs = [(item.topic_id, item.evidence_id) for item in source.evidence]
-                yield row(('json-v1', _encoded(workspace), _encoded(topic),
-                    'true' if include_descendants else 'false', _encoded(tag_filter),
-                    *(_encoded(getattr(source, key)) for key in ('edition_id', 'revision_id',
-                        'asset_sha256', 'title', 'author', 'edition', 'volume')),
-                    source.evidence_count, _encoded(source.locations), _encoded(source.tags),
-                    _encoded(source.theme_counts), _encoded(refs),
-                    _encoded([paths[item.topic_id] for item in source.evidence]),
-                    _encoded([item.quotes for item in source.evidence]),
-                    _encoded([item.citations for item in source.evidence]), _encoded(source.notes)))
-            return
-        yield '# Literature review matrix\n\n'
-        yield ('Text fields use reversible JSON strings. Quotations are exact source slices; '
-               'research notes and themes are supplied by the researcher.\n\n')
-        for label, value in (('Library ID', workspace), ('Root topic', matrix.topic_name),
-                ('Root topic ID', topic), ('Include descendants', include_descendants),
-                ('Exact tag filter', tag_filter)):
-            yield f'**{label}**\n\n{_block(value)}\n\n'
-        yield '| Source | Title | Author | Evidence | Themes |\n| --- | --- | --- | ---: | --- |\n'
-        for number, source in enumerate(matrix.sources, 1):
-            yield f'| {number} | {_inline(source.title, table_cell=True)} | {_inline(source.author, table_cell=True)} | {source.evidence_count} | {_inline(source.tags, table_cell=True)} |\n'
-        if not matrix.sources:
-            yield '\nNo matching saved evidence.\n'
-        for number, source in enumerate(matrix.sources, 1):
-            yield f'\n## Source {number}\n\n'
-            for label, value in (('Title', source.title), ('Author', source.author),
-                    ('Edition', source.edition), ('Volume', source.volume),
-                    ('Edition ID', source.edition_id), ('Revision ID', source.revision_id),
-                    ('Asset SHA-256', source.asset_sha256), ('Theme counts', source.theme_counts)):
-                yield f'### {label}\n\n{_block(value)}\n\n'
-            for item in source.evidence:
-                yield f'### Evidence\n\n{_block((item.topic_id, item.evidence_id))}\n\n'
-                for index, (quote, citation, location) in enumerate(zip(item.quotes, item.citations, item.locations), 1):
-                    yield f'**Source slice {index} of {len(item.anchors)}**\n\n'
-                    for label, value in (('Exact quotation', quote), ('Citation', citation), ('Location', location)):
-                        yield f'**{label}**\n\n{_block(value)}\n\n'
-                for label, value in (('Research note', item.note), ('Researcher tags', item.tags)):
-                    yield f'**{label}**\n\n{_block(value)}\n\n'
-
-    return _bounded_export(chunks(), cancelled)
+    check()
+    _check_analysis(analysis, check)
+    output = _Output(check)
+    {'csv': _csv, 'markdown': _markdown, 'text': _text}[format](analysis, include_trace, output, check)
+    check()
+    return output.getvalue()

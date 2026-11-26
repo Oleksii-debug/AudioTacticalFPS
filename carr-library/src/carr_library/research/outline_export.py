@@ -1,6 +1,6 @@
 """Hierarchical outlines from freshly authorized, immutable research evidence."""
 from .evidence_export import _block, _encoded
-from .literature_matrix import _bounded_export, _inline, build_literature_matrix
+from .topic_literature_matrix import _bounded_export, _inline, build_literature_matrix
 
 
 def export_outline(app, workspace, topic, *, format='markdown', include_descendants=True,
