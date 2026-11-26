@@ -33,7 +33,7 @@ class SearchPanel(wx.Panel):
         self.retrieval.SetSelection(0)
         self.result_mode = add('Result mode', wx.Choice(self, choices=['Short quotations', 'Thematic excerpts']))
         self.result_mode.SetSelection(0)
-        self.go = wx.Button(self, label='&Search')
+        self.go = wx.Button(self, label='S&earch')
         layout.Add(self.go, 0, wx.ALL, 3)
         self.grid = AccessibleGrid(self, self.model, label='Search results')
         layout.Add(self.grid.control, 1, wx.EXPAND | wx.ALL, 3)
