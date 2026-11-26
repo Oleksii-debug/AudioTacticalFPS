@@ -11,7 +11,7 @@ import stat
 import tempfile
 
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import SCHEMAS, Storage
 
 
 class RestoreError(ValueError):
@@ -31,7 +31,7 @@ def _signature(db):
 def restore_revision_snapshot(source, destination, manifest, *, max_bytes=512 * 1024 * 1024):
     """Validate a versioned manifest and publish without replacing any file.
 
-    Manifest: version=1, kind='revision-storage', schema_version=1,
+    Manifest: version=1, kind='revision-storage', schema_version from Storage,
     size_bytes and sha256. Hashes check integrity, not authenticity. Call only
     with a locally created, closed SQLite backup and trusted manifest. Parents
     must be private, stable and free of concurrent writers to the target name.
@@ -41,8 +41,9 @@ def restore_revision_snapshot(source, destination, manifest, *, max_bytes=512 * 
         raise RestoreError('invalid manifest fields')
     if (type(manifest['version']) is not int or manifest['version'] != 1 or
             manifest['kind'] != 'revision-storage' or
-            type(manifest['schema_version']) is not int or manifest['schema_version'] != 1):
+            type(manifest['schema_version']) is not int or manifest['schema_version'] not in SCHEMAS):
         raise RestoreError('unsupported manifest version or kind')
+    schema_version = manifest['schema_version']
     size = manifest['size_bytes']
     expected = manifest['sha256']
     if (type(max_bytes) is not int or max_bytes < 1 or type(size) is not int or
@@ -83,15 +84,15 @@ def restore_revision_snapshot(source, destination, manifest, *, max_bytes=512 * 
         with staged.open('rb') as f:
             if f.read(16) != b'SQLite format 3\x00':
                 raise RestoreError('not a SQLite snapshot')
-        reference = Storage(':memory:')
+        reference = Storage(':memory:', schema_version=schema_version)
         try:
             with closing(sqlite3.connect(staged.absolute().as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
                 db.execute('PRAGMA trusted_schema=OFF')
-                if db.execute('PRAGMA user_version').fetchone()[0] != 1 or _signature(db) != _signature(reference.db):
+                if db.execute('PRAGMA user_version').fetchone()[0] != schema_version or _signature(db) != _signature(reference.db):
                     raise RestoreError('snapshot schema mismatch')
         finally:
             reference.close()
-        candidate = Storage(staged)
+        candidate = Storage(staged, schema_version=schema_version)
         try:
             candidate.check()
         finally:
