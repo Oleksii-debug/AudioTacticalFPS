@@ -1,0 +1,3 @@
+# Candidate runtime component only; include in the reviewed unified Windows lock.
+# Publisher wheel SHA256: https://pypi.org/project/platformdirs/4.10.0/
+platformdirs==4.10.0 --hash=sha256:fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a
