@@ -64,6 +64,9 @@ def self_test():
 
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments == ['--carr-doi-metadata-worker']:
+        from .academic_integration.doi import _worker_main
+        return _worker_main()
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])

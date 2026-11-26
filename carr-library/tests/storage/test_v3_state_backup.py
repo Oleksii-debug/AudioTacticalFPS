@@ -49,7 +49,7 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text())
-    assert manifest['version'] == 3 and manifest['generated_audio_included'] is False
+    assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
     assert {entry['filename'] for entry in manifest['state']} == set(values)
     for entry in manifest['state']:
         raw = (folder / 'state' / entry['filename']).read_bytes()
@@ -222,7 +222,19 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     app.add_text(workspace, 'Source', 'Legacy source stays readable.')
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
-    assert json.loads((backup / 'manifest.json').read_text())['version'] == 2
+    # Construct the historical v2 shape from the same verified catalog bytes.
+    # New backups also preserve the import journal, which did not exist in v2.
+    import shutil
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    manifest['version'] = 2
+    for key in ('state', 'generated_audio_included', 'pending'):
+        manifest.pop(key, None)
+    for name in ('state', 'pending'):
+        if (backup / name).exists():
+            shutil.rmtree(backup / name)
+    raw = (json.dumps(manifest, sort_keys=True, ensure_ascii=False, separators=(',', ':')) + '\n').encode('utf-8')
+    (backup / 'manifest.json').write_bytes(raw)
+    digest = sha256(raw).hexdigest()
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'
     assert not (restored.root / 'state').exists()
