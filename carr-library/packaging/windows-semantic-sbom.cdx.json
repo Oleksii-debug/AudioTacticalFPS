@@ -1,0 +1,941 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 2,
+  "serialNumber": "urn:uuid:c0a01d9e-f9a9-47ef-87cd-48907b46d55b",
+  "metadata": {
+    "timestamp": "2026-11-26T17:54:24.006257631Z",
+    "tools": [
+      {
+        "vendor": "Astral Software Inc.",
+        "name": "uv",
+        "version": "0.13.9"
+      }
+    ],
+    "component": {
+      "type": "library",
+      "bom-ref": "universal-research-library-runtime-1@0.1.0.dev1",
+      "name": "universal-research-library-runtime",
+      "version": "0.1.0.dev1",
+      "properties": [
+        {
+          "name": "uv:package:is_project_root",
+          "value": "true"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "annotated-doc-2@0.0.7",
+      "name": "annotated-doc",
+      "version": "0.0.7",
+      "purl": "pkg:pypi/annotated-doc@0.0.7",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "annotated-types-3@0.8.0",
+      "name": "annotated-types",
+      "version": "0.8.0",
+      "purl": "pkg:pypi/annotated-types@0.8.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "anyio-4@4.16.0",
+      "name": "anyio",
+      "version": "4.16.0",
+      "purl": "pkg:pypi/anyio@4.16.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "certifi-5@2026.11.20",
+      "name": "certifi",
+      "version": "2026.11.20",
+      "purl": "pkg:pypi/certifi@2026.11.20",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "charset-normalizer-6@3.5.3",
+      "name": "charset-normalizer",
+      "version": "3.5.3",
+      "purl": "pkg:pypi/charset-normalizer@3.5.3",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "colorama-7@0.4.6",
+      "name": "colorama",
+      "version": "0.4.6",
+      "purl": "pkg:pypi/colorama@0.4.6",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "defusedxml-48@0.7.1",
+      "name": "defusedxml",
+      "version": "0.7.1",
+      "purl": "pkg:pypi/defusedxml@0.7.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "PSF-2.0"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "fastembed-8@0.9.1",
+      "name": "fastembed",
+      "version": "0.9.1",
+      "purl": "pkg:pypi/fastembed@0.9.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "filelock-9@3.29.0",
+      "name": "filelock",
+      "version": "3.29.0",
+      "purl": "pkg:pypi/filelock@3.29.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "flatbuffers-10@25.12.19",
+      "name": "flatbuffers",
+      "version": "25.12.19",
+      "purl": "pkg:pypi/flatbuffers@25.12.19",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "fsspec-11@2026.9.0",
+      "name": "fsspec",
+      "version": "2026.9.0",
+      "purl": "pkg:pypi/fsspec@2026.9.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "h11-12@0.16.0",
+      "name": "h11",
+      "version": "0.16.0",
+      "purl": "pkg:pypi/h11@0.16.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "hf-xet-13@1.8.0",
+      "name": "hf-xet",
+      "version": "1.8.0",
+      "purl": "pkg:pypi/hf-xet@1.8.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "httpcore-14@1.0.9",
+      "name": "httpcore",
+      "version": "1.0.9",
+      "purl": "pkg:pypi/httpcore@1.0.9",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "httpx-15@0.28.1",
+      "name": "httpx",
+      "version": "0.28.1",
+      "purl": "pkg:pypi/httpx@0.28.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "huggingface-hub-16@1.16.1",
+      "name": "huggingface-hub",
+      "version": "1.16.1",
+      "purl": "pkg:pypi/huggingface-hub@1.16.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "idna-17@3.20",
+      "name": "idna",
+      "version": "3.20",
+      "purl": "pkg:pypi/idna@3.20",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "loguru-18@0.7.3",
+      "name": "loguru",
+      "version": "0.7.3",
+      "purl": "pkg:pypi/loguru@0.7.3",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "lxml-19@6.1.3",
+      "name": "lxml",
+      "version": "6.1.3",
+      "purl": "pkg:pypi/lxml@6.1.3",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "markdown-it-py-20@4.3.0",
+      "name": "markdown-it-py",
+      "version": "4.3.0",
+      "purl": "pkg:pypi/markdown-it-py@4.3.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "mdurl-21@0.1.2",
+      "name": "mdurl",
+      "version": "0.1.2",
+      "purl": "pkg:pypi/mdurl@0.1.2",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "mmh3-22@5.3.1",
+      "name": "mmh3",
+      "version": "5.3.1",
+      "purl": "pkg:pypi/mmh3@5.3.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "numpy-23@2.3.5",
+      "name": "numpy",
+      "version": "2.3.5",
+      "purl": "pkg:pypi/numpy@2.3.5",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "onnxruntime-24@1.32.0",
+      "name": "onnxruntime",
+      "version": "1.32.0",
+      "purl": "pkg:pypi/onnxruntime@1.32.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "packaging-25@26.4",
+      "name": "packaging",
+      "version": "26.4",
+      "purl": "pkg:pypi/packaging@26.4",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pillow-26@13.0.0",
+      "name": "pillow",
+      "version": "13.0.0",
+      "purl": "pkg:pypi/pillow@13.0.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "platformdirs-27@4.10.0",
+      "name": "platformdirs",
+      "version": "4.10.0",
+      "purl": "pkg:pypi/platformdirs@4.10.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "protobuf-28@7.36.2",
+      "name": "protobuf",
+      "version": "7.36.2",
+      "purl": "pkg:pypi/protobuf@7.36.2",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "py-rust-stemmers-29@0.1.8",
+      "name": "py-rust-stemmers",
+      "version": "0.1.8",
+      "purl": "pkg:pypi/py-rust-stemmers@0.1.8",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pydantic-30@2.14.4",
+      "name": "pydantic",
+      "version": "2.14.4",
+      "purl": "pkg:pypi/pydantic@2.14.4",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pydantic-core-31@2.50.5",
+      "name": "pydantic-core",
+      "version": "2.50.5",
+      "purl": "pkg:pypi/pydantic-core@2.50.5",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pygments-32@2.21.0",
+      "name": "pygments",
+      "version": "2.21.0",
+      "purl": "pkg:pypi/pygments@2.21.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypdf-33@7.1.1",
+      "name": "pypdf",
+      "version": "7.1.1",
+      "purl": "pkg:pypi/pypdf@7.1.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypdfium2-34@5.13.0",
+      "name": "pypdfium2",
+      "version": "5.13.0",
+      "purl": "pkg:pypi/pypdfium2@5.13.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "python-docx-35@1.2.0",
+      "name": "python-docx",
+      "version": "1.2.0",
+      "purl": "pkg:pypi/python-docx@1.2.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pyyaml-36@6.0.4",
+      "name": "pyyaml",
+      "version": "6.0.4",
+      "purl": "pkg:pypi/pyyaml@6.0.4",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "requests-37@2.34.2",
+      "name": "requests",
+      "version": "2.34.2",
+      "purl": "pkg:pypi/requests@2.34.2",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "rich-38@15.0.0",
+      "name": "rich",
+      "version": "15.0.0",
+      "purl": "pkg:pypi/rich@15.0.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "shellingham-39@1.5.4",
+      "name": "shellingham",
+      "version": "1.5.4",
+      "purl": "pkg:pypi/shellingham@1.5.4",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "tokenizers-40@0.23.3",
+      "name": "tokenizers",
+      "version": "0.23.3",
+      "purl": "pkg:pypi/tokenizers@0.23.3",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "tqdm-41@4.70.1",
+      "name": "tqdm",
+      "version": "4.70.1",
+      "purl": "pkg:pypi/tqdm@4.70.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "typer-42@0.29.3",
+      "name": "typer",
+      "version": "0.29.3",
+      "purl": "pkg:pypi/typer@0.29.3",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "typing-extensions-43@4.16.0",
+      "name": "typing-extensions",
+      "version": "4.16.0",
+      "purl": "pkg:pypi/typing-extensions@4.16.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "typing-inspection-44@0.4.5",
+      "name": "typing-inspection",
+      "version": "0.4.5",
+      "purl": "pkg:pypi/typing-inspection@0.4.5",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "urllib3-45@2.8.0",
+      "name": "urllib3",
+      "version": "2.8.0",
+      "purl": "pkg:pypi/urllib3@2.8.0",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "win32-setctime-46@1.2.1",
+      "name": "win32-setctime",
+      "version": "1.2.1",
+      "purl": "pkg:pypi/win32-setctime@1.2.1",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "wxpython-47@4.2.4",
+      "name": "wxpython",
+      "version": "4.2.4",
+      "purl": "pkg:pypi/wxpython@4.2.4",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "annotated-doc-2@0.0.7"
+    },
+    {
+      "ref": "annotated-types-3@0.8.0"
+    },
+    {
+      "ref": "anyio-4@4.16.0",
+      "dependsOn": [
+        "idna-17@3.20",
+        "typing-extensions-43@4.16.0"
+      ]
+    },
+    {
+      "ref": "certifi-5@2026.11.20"
+    },
+    {
+      "ref": "charset-normalizer-6@3.5.3"
+    },
+    {
+      "ref": "colorama-7@0.4.6"
+    },
+    {
+      "ref": "defusedxml-48@0.7.1"
+    },
+    {
+      "ref": "fastembed-8@0.9.1",
+      "dependsOn": [
+        "huggingface-hub-16@1.16.1",
+        "loguru-18@0.7.3",
+        "mmh3-22@5.3.1",
+        "numpy-23@2.3.5",
+        "onnxruntime-24@1.32.0",
+        "pillow-26@13.0.0",
+        "py-rust-stemmers-29@0.1.8",
+        "requests-37@2.34.2",
+        "tokenizers-40@0.23.3",
+        "tqdm-41@4.70.1"
+      ]
+    },
+    {
+      "ref": "filelock-9@3.29.0"
+    },
+    {
+      "ref": "flatbuffers-10@25.12.19"
+    },
+    {
+      "ref": "fsspec-11@2026.9.0"
+    },
+    {
+      "ref": "h11-12@0.16.0"
+    },
+    {
+      "ref": "hf-xet-13@1.8.0"
+    },
+    {
+      "ref": "httpcore-14@1.0.9",
+      "dependsOn": [
+        "certifi-5@2026.11.20",
+        "h11-12@0.16.0"
+      ]
+    },
+    {
+      "ref": "httpx-15@0.28.1",
+      "dependsOn": [
+        "anyio-4@4.16.0",
+        "certifi-5@2026.11.20",
+        "httpcore-14@1.0.9",
+        "idna-17@3.20"
+      ]
+    },
+    {
+      "ref": "huggingface-hub-16@1.16.1",
+      "dependsOn": [
+        "filelock-9@3.29.0",
+        "fsspec-11@2026.9.0",
+        "hf-xet-13@1.8.0",
+        "httpx-15@0.28.1",
+        "packaging-25@26.4",
+        "pyyaml-36@6.0.4",
+        "tqdm-41@4.70.1",
+        "typer-42@0.29.3",
+        "typing-extensions-43@4.16.0"
+      ]
+    },
+    {
+      "ref": "idna-17@3.20"
+    },
+    {
+      "ref": "loguru-18@0.7.3",
+      "dependsOn": [
+        "colorama-7@0.4.6",
+        "win32-setctime-46@1.2.1"
+      ]
+    },
+    {
+      "ref": "lxml-19@6.1.3"
+    },
+    {
+      "ref": "markdown-it-py-20@4.3.0",
+      "dependsOn": [
+        "mdurl-21@0.1.2"
+      ]
+    },
+    {
+      "ref": "mdurl-21@0.1.2"
+    },
+    {
+      "ref": "mmh3-22@5.3.1"
+    },
+    {
+      "ref": "numpy-23@2.3.5"
+    },
+    {
+      "ref": "onnxruntime-24@1.32.0",
+      "dependsOn": [
+        "flatbuffers-10@25.12.19",
+        "numpy-23@2.3.5",
+        "packaging-25@26.4",
+        "protobuf-28@7.36.2"
+      ]
+    },
+    {
+      "ref": "packaging-25@26.4"
+    },
+    {
+      "ref": "pillow-26@13.0.0"
+    },
+    {
+      "ref": "platformdirs-27@4.10.0"
+    },
+    {
+      "ref": "protobuf-28@7.36.2"
+    },
+    {
+      "ref": "py-rust-stemmers-29@0.1.8"
+    },
+    {
+      "ref": "pydantic-30@2.14.4",
+      "dependsOn": [
+        "annotated-types-3@0.8.0",
+        "pydantic-core-31@2.50.5",
+        "typing-extensions-43@4.16.0",
+        "typing-inspection-44@0.4.5"
+      ]
+    },
+    {
+      "ref": "pydantic-core-31@2.50.5",
+      "dependsOn": [
+        "typing-extensions-43@4.16.0"
+      ]
+    },
+    {
+      "ref": "pygments-32@2.21.0"
+    },
+    {
+      "ref": "pypdf-33@7.1.1"
+    },
+    {
+      "ref": "pypdfium2-34@5.13.0"
+    },
+    {
+      "ref": "python-docx-35@1.2.0",
+      "dependsOn": [
+        "lxml-19@6.1.3",
+        "typing-extensions-43@4.16.0"
+      ]
+    },
+    {
+      "ref": "pyyaml-36@6.0.4"
+    },
+    {
+      "ref": "requests-37@2.34.2",
+      "dependsOn": [
+        "certifi-5@2026.11.20",
+        "charset-normalizer-6@3.5.3",
+        "idna-17@3.20",
+        "urllib3-45@2.8.0"
+      ]
+    },
+    {
+      "ref": "rich-38@15.0.0",
+      "dependsOn": [
+        "markdown-it-py-20@4.3.0",
+        "pygments-32@2.21.0"
+      ]
+    },
+    {
+      "ref": "shellingham-39@1.5.4"
+    },
+    {
+      "ref": "tokenizers-40@0.23.3",
+      "dependsOn": [
+        "huggingface-hub-16@1.16.1"
+      ]
+    },
+    {
+      "ref": "tqdm-41@4.70.1",
+      "dependsOn": [
+        "colorama-7@0.4.6"
+      ]
+    },
+    {
+      "ref": "typer-42@0.29.3",
+      "dependsOn": [
+        "annotated-doc-2@0.0.7",
+        "colorama-7@0.4.6",
+        "pydantic-30@2.14.4",
+        "rich-38@15.0.0",
+        "shellingham-39@1.5.4"
+      ]
+    },
+    {
+      "ref": "typing-extensions-43@4.16.0"
+    },
+    {
+      "ref": "typing-inspection-44@0.4.5",
+      "dependsOn": [
+        "typing-extensions-43@4.16.0"
+      ]
+    },
+    {
+      "ref": "universal-research-library-runtime-1@0.1.0.dev1",
+      "dependsOn": [
+        "annotated-doc-2@0.0.7",
+        "annotated-types-3@0.8.0",
+        "anyio-4@4.16.0",
+        "certifi-5@2026.11.20",
+        "charset-normalizer-6@3.5.3",
+        "colorama-7@0.4.6",
+        "defusedxml-48@0.7.1",
+        "fastembed-8@0.9.1",
+        "filelock-9@3.29.0",
+        "flatbuffers-10@25.12.19",
+        "fsspec-11@2026.9.0",
+        "h11-12@0.16.0",
+        "hf-xet-13@1.8.0",
+        "httpcore-14@1.0.9",
+        "httpx-15@0.28.1",
+        "huggingface-hub-16@1.16.1",
+        "idna-17@3.20",
+        "loguru-18@0.7.3",
+        "lxml-19@6.1.3",
+        "markdown-it-py-20@4.3.0",
+        "mdurl-21@0.1.2",
+        "mmh3-22@5.3.1",
+        "numpy-23@2.3.5",
+        "onnxruntime-24@1.32.0",
+        "packaging-25@26.4",
+        "pillow-26@13.0.0",
+        "platformdirs-27@4.10.0",
+        "protobuf-28@7.36.2",
+        "py-rust-stemmers-29@0.1.8",
+        "pydantic-30@2.14.4",
+        "pydantic-core-31@2.50.5",
+        "pygments-32@2.21.0",
+        "pypdf-33@7.1.1",
+        "pypdfium2-34@5.13.0",
+        "python-docx-35@1.2.0",
+        "pyyaml-36@6.0.4",
+        "requests-37@2.34.2",
+        "rich-38@15.0.0",
+        "shellingham-39@1.5.4",
+        "tokenizers-40@0.23.3",
+        "tqdm-41@4.70.1",
+        "typer-42@0.29.3",
+        "typing-extensions-43@4.16.0",
+        "typing-inspection-44@0.4.5",
+        "urllib3-45@2.8.0",
+        "win32-setctime-46@1.2.1",
+        "wxpython-47@4.2.4"
+      ]
+    },
+    {
+      "ref": "urllib3-45@2.8.0"
+    },
+    {
+      "ref": "win32-setctime-46@1.2.1"
+    },
+    {
+      "ref": "wxpython-47@4.2.4",
+      "dependsOn": [
+        "numpy-23@2.3.5"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Rifflux RRF reuse
+
+MIT, copyright Benjamin 2026. Source: https://github.com/yxbh/rifflux/tree/6ceeeb64b0813ebc6ab07a31705b8d090d090f5c. Unmodified src/rifflux/retrieval/rrf.py (blob 61d9e6444a5e778120c92a7b9d9cb8394989fd20); accompanying upstream LICENSE (blob e53903fda3f5eef44b59bbad0490f8dd4030de53). Standard library only. No global retrieval, document chunking or embedding storage copied: those upstream APIs do not enforce our workspace/immutable source locator boundary. Wrapper accepts only preauthorized keys. Synthetic rank tests are not model quality or release evidence. Packaging/SBOM must retain this notice and LICENSE.

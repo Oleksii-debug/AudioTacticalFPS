@@ -1,4 +1,4 @@
-"""Versioned multi-page evidence payload; no schema migration or implicit write."""
+"""Versioned evidence codec with read-only legacy single-anchor support."""
 from dataclasses import asdict
 from itertools import islice
 import json
@@ -48,25 +48,53 @@ def restore_span(workspace, payload, checksum, load_page, attest_metadata):
     Caller must independently authorize topic and record membership and supply
     historical readers within one consistent read transaction.
     """
+    anchors = _decode_snapshot(payload, checksum)
+    return _verify(workspace, anchors, load_page, attest_metadata)
+
+
+def restore_anchors(workspace, payload, checksum, load_page, attest_metadata):
+    """Return all verified anchors from either persisted encoding.
+
+    Authenticate the original payload and checksum before decoding. Legacy
+    rows are never rewritten or assigned a replacement checksum. The caller
+    retains that original checksum when binding a displayed selection to a
+    later fresh authorization/copy action.
+    """
+    context = restore_span(workspace, payload, checksum, load_page, attest_metadata)
+    return tuple(page.anchor for page in context.pages)
+
+
+def _decode_snapshot(payload, checksum):
     if not isinstance(payload, str) or len(payload) > MAX_PAYLOAD:
         raise ValueError('invalid evidence snapshot size')
     if len(payload.encode('utf-8')) > MAX_PAYLOAD or digest(payload) != checksum:
         raise ValueError('evidence snapshot drift')
     try:
         data = json.loads(payload)
-        if type(data['version']) is not int or data['version'] != 1:
-            raise ValueError('unsupported evidence snapshot version')
-        if not isinstance(data['anchors'], list) or not 1 <= len(data['anchors']) <= MAX_PAGES:
-            raise ValueError('invalid span size')
+        if not isinstance(data, dict):
+            raise ValueError('invalid evidence snapshot')
+        legacy = 'version' not in data
+        if legacy:
+            items = [data]
+        else:
+            if type(data['version']) is not int or data['version'] != 1:
+                raise ValueError('unsupported evidence snapshot version')
+            if not isinstance(data['anchors'], list) or not 1 <= len(data['anchors']) <= MAX_PAGES:
+                raise ValueError('invalid span size')
+            items = data['anchors']
         anchors = []
-        for item in data['anchors']:
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError('invalid anchor snapshot')
             item = dict(item)
             item['identity'] = Identity(**item['identity'])
             item['locator'] = Locator(**item['locator'])
             item['metadata'] = Metadata(**item['metadata'])
             anchors.append(Anchor(**item))
-        if _encode(anchors) != payload:
+        canonical = (json.dumps(asdict(anchors[0]), ensure_ascii=False, sort_keys=True,
+                                separators=(',', ':')) if legacy else _encode(anchors))
+        if canonical != payload:
             raise ValueError('noncanonical evidence snapshot')
     except (KeyError, TypeError, RecursionError, AttributeError) as exc:
         raise ValueError('invalid evidence snapshot') from exc
-    return _verify(workspace, tuple(anchors), load_page, attest_metadata)
+    return tuple(anchors)

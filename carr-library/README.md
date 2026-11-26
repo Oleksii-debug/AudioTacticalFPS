@@ -1,17 +1,105 @@
-# Carr Research Library
-A local-first English research library for historical works. This project lives solely in the carr-library branch and carr-library/ directory. Preserve the unrelated repository's main branch and existing contents.
+# Universal Research Library
 
-## Product
-Import legally supplied digital documents, extract page-aware text (native and OCR), catalog works and editions, search words/phrases or themes, display short source-exact quotations or contiguous thematic excerpts with edition-specific citations. More opens the original page context. Copy quotation and citation. Keyboard-first accessible desktop UI, offline operation and Windows packaging are delivery targets.
+An offline research desktop for multiple libraries, authors and languages. Carr
+is an optional collection. All project changes stay in `carr-library/`; the
+unrelated repository's `main` branch is unchanged.
 
-## State
-BOOTSTRAP; actual Carr books were not included with the requirements. BLOCKED_MISSING_CORPUS only affects real corpus validation, not implementation or synthetic fixtures. No real books, source excerpts, client records or private Drive links may enter this public repository.
+## Run the desktop
 
-## Control
-- [Control issue #1](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1)
-- [Shared autonomous delivery protocol](automation/COMMON.md)
-- [15 lane definitions](automation/ROLES.json)
-- [Baseline contracts](docs/contracts/v0.md)
-- [Acceptance matrix](docs/acceptance.md)
+The standalone Windows x64 candidate includes Python, dependencies and the
+verified local multilingual MiniLM model. Extract its complete folder, run
+`Install.cmd`, then `ResearchLibrary.cmd`. No Python installation or internet
+connection is needed for that bundle. `CheckInstallation.cmd` exercises a
+temporary synthetic library without touching personal research.
 
-All work is scoped by the lane claim and current upstream commit. PRs target carr-library, never main. Independent review and verified checks are mandatory. No release claim without G0–G7 evidence.
+From a Python 3.11+ development environment:
+
+```sh
+python -m pip install '.[desktop]'
+python -m carr_library
+```
+
+Use `python -m carr_library --help` for explicit data-folder, backup, restore and
+model options. See [the running guide](docs/RUNNING.md) for installer and keyboard
+instructions.
+
+## Implemented workflows
+
+- Maintain an academic reference catalog for books, articles, theses, reports
+  and web resources, including references without an attached source file.
+  Keep bibliographic descriptions separate from verified source quotations.
+- Plan reading with status, priority, progress, rating, tags and personal notes;
+  search and filter the reference catalog within the selected library.
+- Preview and import RIS or CSL JSON bibliographies, inspect possible duplicate
+  references, and export RIS, BibTeX, CSL JSON, CSV or plain text. Personal notes
+  are excluded from bibliography exports unless explicitly requested.
+- Create, rename, describe, archive and reopen independent libraries; organize
+  books into multiple collections without duplicating original bytes.
+- Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
+  changes atomically, isolate native parsers and resume interrupted imports.
+- Read EPUB books by their declared section order, with keyboard chapter
+  selection, previous/next navigation and separate authored image descriptions.
+- Navigate embedded EPUB contents and headings, find exact text within a chapter,
+  and inspect extraction notes; earlier imports retain their existing identities
+  and remain readable through a chapter-start contents list.
+- Search exact words, phrases or all terms; filter by collection, author, title,
+  language and edition. Local thematic BM25 and multilingual MiniLM rank exact
+  source slices. Catalog and source lookups share one authorized snapshot.
+- Open source context and copy verified quotations and citations. Original text,
+  physical PDF pages and unpaginated segments remain distinct. Printed page
+  labels require their own independent approval.
+- Organize nested research topics, immutable saved evidence, editable notes,
+  tags and saved searches. Metadata revisions preserve earlier saved citations.
+- Read complete imported source pages or segments without a search phrase;
+  resume the last opened page, keep named bookmarks, navigate back/forward,
+  and hear exact location information through native text controls. See
+  [the reading desk guide](docs/READING_DESK.md).
+- Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
+  Back up completed libraries with original files and checksums; restore into a
+  new folder without overwriting the existing library.
+- Review RIS or CSL-JSON reference metadata before applying selected fields to
+  an existing book. Export a whole library or collection bibliography in
+  CSL-JSON, RIS or BibTeX, and export a complete research topic branch with its
+  verified evidence, notes and tags. See [academic workflows](docs/ACADEMIC_WORKFLOWS.md).
+- Review catalog details, export a source inventory, and build a literature-review
+  matrix with exact quotations and separate notes through **Library tools**.
+  Its bibliography exports use the same catalog service as the Bibliography
+  menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+
+TXT quotation text is independently checked against retained original bytes.
+PDF extraction and OCR require explicit independent review before being treated
+as verified quotations. DOCX and EPUB are imported as logical segments, with unknown
+printed pagination and an explicit unverified status. The [EPUB reading guide](docs/EPUB_READING.md)
+describes the supported static XHTML subset. A model's similarity
+score never approves a quotation.
+
+## Candidate status and verification
+
+This is an integrated development candidate. The assembled services and installed
+Python package have real end-to-end tests, including offline local model
+inference, citation preservation, workspace isolation and backup recovery.
+The native Windows workflow also exercises installation, desktop controls, local
+model inference and scanned-source review. Manual NVDA acceptance remains a
+separate check; automated native UI tests do not establish its spoken behavior.
+
+The Windows bundle's hashes and dependency inventory are verified during
+assembly. Only local synthetic or lawfully supplied fixtures may be used in
+public tests. Do not commit private books, quotations, file paths or client data.
+
+## Development
+
+Install `.[test,semantic]` for the complete test environment. OCR tests additionally
+need local Tesseract and the pinned language files documented in
+`src/carr_library/extract/OCR_MODELS.md`. Local-model integration tests require the
+verified model directory; the test runner fails a required gate if tests skip.
+
+```sh
+python scripts/ci_check.py tests bootstrap docs/contracts/probes
+```
+
+The adapters reuse SQLite/FTS5, pypdf, PDFium, Tesseract, python-docx, FastEmbed,
+ONNX Runtime and the already imported licensed components. Exact upstream
+notices and model/dependency pins are preserved with the source and distribution.
+See [scope](docs/UNIVERSAL_SCOPE_V2.md), [acceptance](docs/acceptance.md),
+[packaging](packaging/README.md), and
+[the control issue](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1).

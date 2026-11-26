@@ -78,7 +78,7 @@ class SavedTopicQueries:
             raise ValueError('invalid archive state')
         return SavedQuery(_id(identity), *_definition(name, query, field, limit), bool(archived))
 
-    def run(self, topic, identity):
+    def run(self, topic, identity, *, timeout=5.0, cancelled=lambda: False):
         self._topic(topic)
         row = self.db.execute('SELECT id,name,query,field,result_limit,archived '
                               'FROM research_saved_query WHERE workspace=? AND topic=? AND id=? AND archived=0',
@@ -86,4 +86,5 @@ class SavedTopicQueries:
         if row is None:
             raise ValueError('unknown or archived query')
         q = self._row(row)
-        return search_topic(self.store, self.workspace, topic, q.query, field=q.field, limit=q.limit)
+        return search_topic(self.store, self.workspace, topic, q.query, field=q.field, limit=q.limit,
+                            timeout=timeout, cancelled=cancelled)

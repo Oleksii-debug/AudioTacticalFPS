@@ -1,0 +1,431 @@
+{
+  "format": 1,
+  "state": "CANDIDATE_NOT_RELEASE",
+  "base": "a450bd9eb97b11764f0fe2d70d72efbf9788aa5d",
+  "base_tree": "ed6722cf00d8dda2bfdc9c1c4344bf62536b1d1d",
+  "claim_issue_comment": 7195077788,
+  "phase": "A_storage_catalog_literal_search",
+  "heads": {
+    "17": "4c2ee5ba43a778a2b160325cfe48678eeab213d3",
+    "21": "54497fb20487850939d6d3eb49c8758a7fc047b8",
+    "28": "00d615ff1adfcac14de6a6a491bc140c3b2fe189",
+    "33": "7b0a4b31312fe2e5f4413c5d0bd94c449aa688d3",
+    "53": "9c56900cf1b932428ad3427c74fc7a4b34cfc221",
+    "57": "fe068a11f859476192abd222af853fa2d2bd0282",
+    "61": "9cb8f4f1d256347fae8d69f6681ffafe9dad0cad",
+    "70": "41ac55ed25f4ddecb81202023149b93b6b5a93fd"
+  },
+  "files": [
+    {
+      "path": "carr-library/bootstrap/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/external_reuse.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8db699528710cd4930507ead147ae75da63cfb5",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/requirements-external.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4db99242a45975e6844a06c91beffd4b7a047634",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/test_external_reuse.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "265bbf8875321bb831eec1b1029b5d07d69947e4",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/test_universal_library.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dceacef0f7b8330b6a6895af21199532e11cfe1c",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/universal_library.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "803f463fd4ae92f3bf97af50e1b892c4b187cd47",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d201ab774dd15640e516f3b6c7007245381a2f1f",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d2788bd441c79083f0d5a5b0bbba085ee8899bd",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/base.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c64aa541c7a8deed7e0039cc38b845548a9d57f8",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/csv_extractor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ed7a0481799e277b6588c1acd347f13ce2192ea",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/docx_extractor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf89f4569fc87f982cbebca5bdd9a60535278bf1",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/hasher.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b872612f8470191b53af83e41af02f637cbaee69",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/html_extractor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c91772c65d9f75cc12457b58ae0c03629cff614f",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f60bd126b932ca626c4f19ae6d4086690f56825",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/txt_extractor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed96b96beef0538567532fb5156c8b88f139268a",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/UPSTREAM.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82736936c37872ce015ed2f5118bb32998197987",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/bootstrap/vendor/cairn_extractors/xlsx_extractor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65715374e438112b96cbd7fb12d8216e37ea391b",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/docs/contracts/ATOMIC_ASSEMBLY_V2.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8317838a9850f87dd25def08d0af9a188eada08",
+      "pr": 61,
+      "head": "9cb8f4f1d256347fae8d69f6681ffafe9dad0cad"
+    },
+    {
+      "path": "carr-library/docs/contracts/probes/test_atomic_assembly_v2_integration.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77a1f7a6256092dcafb12132d4d6ac58276c7b06",
+      "pr": 61,
+      "head": "9cb8f4f1d256347fae8d69f6681ffafe9dad0cad"
+    },
+    {
+      "path": "carr-library/docs/contracts/probes/test_atomic_assembly.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01cf5f34361ec77beb9e4c7ce9f473a1e26c5f16",
+      "pr": 61,
+      "head": "9cb8f4f1d256347fae8d69f6681ffafe9dad0cad"
+    },
+    {
+      "path": "carr-library/docs/REUSE_DECISIONS_V2.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83e7c8aad3069641fd5fd211890b971d3d677f80",
+      "pr": 17,
+      "head": "4c2ee5ba43a778a2b160325cfe48678eeab213d3"
+    },
+    {
+      "path": "carr-library/packaging/CI_ENTRYPOINT.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9300c77119c31229eeca77918995503e983e6279",
+      "pr": 33,
+      "head": "7b0a4b31312fe2e5f4413c5d0bd94c449aa688d3"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a9743a4f90bbd1f5ec9b26d3c69007274bdde770",
+      "pr": 33,
+      "head": "7b0a4b31312fe2e5f4413c5d0bd94c449aa688d3"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/MEMBERSHIP_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "20cd2383886836965e4003e3fb764ee15d3949a5",
+      "pr": 53,
+      "head": "9c56900cf1b932428ad3427c74fc7a4b34cfc221"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/membership.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddffa3b2bcd23fc23dbca5c8f1104031a4887908",
+      "pr": 53,
+      "head": "9c56900cf1b932428ad3427c74fc7a4b34cfc221"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/REGISTRATION_REUSE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "910d0f3c11214f9f3688f7c90823ff35a82d2c0e",
+      "pr": 57,
+      "head": "fe068a11f859476192abd222af853fa2d2bd0282"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/registration.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "337a2573b1483aeef87a1e3fc1fcd1b6f52fb0a9",
+      "pr": 57,
+      "head": "fe068a11f859476192abd222af853fa2d2bd0282"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b54220ff941acbed089e3801b8cdbaa326cb126",
+      "pr": 28,
+      "head": "00d615ff1adfcac14de6a6a491bc140c3b2fe189"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b0bee8778f8dd6caef1484f18c58d6f9c0f1cbd",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c23ecf1405f8ddc95386944fc02629eaf2d07b2",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/catalog/catalog_membership_candidate.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ab88793b8e4041127f88c2a1dd7662bbe42094e",
+      "pr": 53,
+      "head": "9c56900cf1b932428ad3427c74fc7a4b34cfc221"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_membership_atomicity.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c647541d8866ce03ebdc54644cbe7e8cc698f25",
+      "pr": 53,
+      "head": "9c56900cf1b932428ad3427c74fc7a4b34cfc221"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_membership.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e167b814f13bf07f459336ffe94310d4de65a22a",
+      "pr": 53,
+      "head": "9c56900cf1b932428ad3427c74fc7a4b34cfc221"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_registration.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9d791b32434bca0fc8087750741a8b54744a8e2",
+      "pr": 57,
+      "head": "fe068a11f859476192abd222af853fa2d2bd0282"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8b6b6dc0a9507315e2a1b9b657120bb77dd8a71",
+      "pr": 33,
+      "head": "7b0a4b31312fe2e5f4413c5d0bd94c449aa688d3"
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_filter.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "28aa6dc1d52826164c8ef2a345dfb2ac5d99ed00",
+      "pr": 28,
+      "head": "00d615ff1adfcac14de6a6a491bc140c3b2fe189"
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_integrity.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4369630452009bc9e08efacaea2208b3b178e65",
+      "pr": 28,
+      "head": "00d615ff1adfcac14de6a6a491bc140c3b2fe189"
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_readonly.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "545665899e3d70acc70912ad4e15619b7fb67896",
+      "pr": 28,
+      "head": "00d615ff1adfcac14de6a6a491bc140c3b2fe189"
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_scoped.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "063290714c8a3efb0e685c81a89cccfbe6008316",
+      "pr": 28,
+      "head": "00d615ff1adfcac14de6a6a491bc140c3b2fe189"
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_v2_composition.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d0329d5abebedf70fd07fcb03dfa5a3a9aef93e",
+      "pr": 70,
+      "head": "41ac55ed25f4ddecb81202023149b93b6b5a93fd"
+    },
+    {
+      "path": "carr-library/tests/storage/test_atomic_v2.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e28595a819652bbd2531b3a46ce0b85ddcf6a52d",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_boundary.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "896613d3d73ba46cfb3df571dbd0501236f84689",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_catalog_composition.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c627543505addb5cfba418d21fbe4a71c8bac1c5",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_crash_backup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1e61da6457677758a5dffd365fb577b58ada96a3",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_locator_integrity.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcdaba8eac7bb7894de9e87df74019240db187ae",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_read_boundary.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a760e122a3db3444457eeef477a3a13a98cc6db",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_replace_boundary.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aef41fcc1621e25f54e53a67f887b99d9f65e8c3",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_revisions.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_schema_boundary.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b647eb1d6d39b4b9a59a30caa41e25ad66b9f85",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_seal_integrity.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7d59fc861845b8f1cc4513441cb51ce3c370f650",
+      "pr": 21,
+      "head": "54497fb20487850939d6d3eb49c8758a7fc047b8"
+    }
+  ],
+  "scope_policy": "Preserve latest base UNIVERSAL_SCOPE_V2.md; omit stale PR17 copy. Bootstrap is prototype and upstream vendor source, not authoritative production storage.",
+  "upstream_cairnsearch": "eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93",
+  "pending": [
+    "CARR-QA-010 verified printed label validation",
+    "PR70 collection snapshot hazard must be closed in host",
+    "independent exact-head reviews",
+    "CI not registered on key heads",
+    "production ingest/research/citation/UI dependency closure",
+    "Windows/NVDA and actual ONNX inference"
+  ],
+  "execution": "NOT_RUN at assembly creation; no PASS or merge approval claimed."
+}

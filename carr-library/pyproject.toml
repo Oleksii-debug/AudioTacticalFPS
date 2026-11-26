@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=77,<85", "wheel>=0.45,<0.49"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-research-library"
+version = "0.2.0.dev1"
+description = "Offline academic libraries, reading plans and exact source quotations with accessible desktop controls"
+readme = "docs/RUNNING.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pypdf==7.1.1",
+  "pypdfium2==5.13.0",
+  "python-docx==1.2.0",
+  "platformdirs==4.10.0",
+  "filelock==3.29.0",
+  "Pillow==13.0.0",
+  "defusedxml==0.7.1",
+]
+license-files = [
+  "bootstrap/vendor/cairn_extractors/LICENSE",
+  "src/carr_library/catalog/_filetype/LICENSE",
+  "src/carr_library/catalog/_rispy_LICENSE",
+  "src/carr_library/research/_vendor_rispy/LICENSE",
+  "src/carr_library/search/_vendor/rifflux/LICENSE",
+  "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+]
+
+[project.optional-dependencies]
+desktop = ["wxPython==4.2.4"]
+semantic = [
+  "fastembed==0.9.1",
+  "onnxruntime==1.32.0",
+  "tokenizers==0.23.3",
+  "huggingface-hub==1.16.1",
+  "numpy==2.3.5",
+]
+test = [
+  "pytest==9.0.2",
+  "beautifulsoup4>=4.12,<5",
+  "openpyxl>=3.1,<4",
+  "packaging>=25,<27",
+  "huggingface-hub==1.16.1",
+  "Pillow>=10.3,<14",
+  "reportlab==4.4.9",
+  "pytesseract==0.3.13",
+  "rapidfuzz==3.14.6",
+  "nltk==3.9.2",
+  "zstandard==0.25.0",
+]
+
+[project.scripts]
+research-library = "carr_library.__main__:main"
+
+[project.gui-scripts]
+research-library-desktop = "carr_library.__main__:main"
+
+[project.urls]
+Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/carr-library"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+  "carr_library",
+  "carr_library.catalog",
+  "carr_library.catalog._filetype",
+  "carr_library.citations",
+  "carr_library.extract",
+  "carr_library.ingest",
+  "carr_library.reader",
+  "carr_library.research",
+  "carr_library.research._vendor_rispy",
+  "carr_library.search",
+  "carr_library.search._vendor",
+  "carr_library.search._vendor.rifflux",
+  "carr_library.storage",
+  "carr_library.ui",
+  "carr_library.ui._vendor",
+  "carr_library.ui._vendor.wx_grid",
+  "bootstrap",
+  "bootstrap.vendor",
+  "bootstrap.vendor.cairn_extractors",
+]
+
+[tool.setuptools.package-dir]
+carr_library = "src/carr_library"
+bootstrap = "bootstrap"
+
+[tool.setuptools.package-data]
+"*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
+pythonpath = ["src", "."]
