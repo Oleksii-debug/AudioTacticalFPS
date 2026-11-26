@@ -2,6 +2,13 @@
 
 The Reading menu opens an editable reading copy, imports a UTF-8 text file, or reopens a saved project. The source reader can create a copy of its current page or logical section. This is a preparation editor: it does not synthesize speech, infer accents or certify quotation text.
 
+**Open in Audio Studio** transfers the current reading version to the integrated
+local production view. A recovery draft is saved first. The audio project keeps
+the immutable original text, reading-project identity and exact source location;
+later studio edits do not change the reading project. Choose a local voice,
+output folder and Render in Studio to create audio. Project files and rendered
+outputs are saved separately from library evidence.
+
 ## Source and reading text
 
 The original text remains in a separate read-only field. Its SHA256 and, when available, exact library, edition, revision, page or segment remain attached to the project. Edited text stays in the reading copy; saving never alters the original file, extracted source, research evidence or quotation approval. An independent authored/imported text is explicitly marked as having no authenticated library source.

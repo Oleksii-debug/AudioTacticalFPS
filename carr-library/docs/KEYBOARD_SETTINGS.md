@@ -13,6 +13,17 @@ saves the project and **Ctrl+Shift+S** creates a new copy. **Ctrl+Z/Ctrl+Y** mov
 through its saved editing revisions. Use the editor's named buttons for preview,
 comparison and export. The exact source reader remains read-only.
 
+## Find a command
+
+Press **Ctrl+Shift+P**, or choose **Options, Find a command**. Type words from a
+menu path, command name or current shortcut. Tab to the native results list;
+Up and Down select a command, Enter runs it, and Escape closes the search.
+Rows show the current assignment and clearly identify unavailable commands.
+The palette closes before the original menu command runs and checks again
+that the command and selected library/topic are still available. It uses the
+same command inventory as keyboard preferences. See
+[Find a command](COMMAND_PALETTE.md) for details.
+
 ## Change a main-window shortcut
 
 1. Press **Alt+O** to open **Options** and choose **Keyboard shortcuts**.

@@ -18,8 +18,11 @@ import subprocess
 import venv
 
 
-def verify(root):
-    manifest = json.loads((root / "bundle-manifest.json").read_text(encoding="utf-8"))
+def verify(root, *, manifest_bytes=None):
+    # Packaging callers can bind verification to the exact snapshot they seal,
+    # without reopening a manifest that another operation might replace.
+    manifest = json.loads(manifest_bytes if manifest_bytes is not None else
+                          (root / "bundle-manifest.json").read_text(encoding="utf-8"))
     files = manifest.get("files")
     if manifest.get("schema") != 1 or not isinstance(files, dict) or not files:
         raise ValueError("invalid bundle manifest")
@@ -89,6 +92,18 @@ def verify(root):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    audio = root / "audio-runtime"
+    included_audio = manifest.get("bundled_audio_runtime", False)
+    expected_audio = {p for p in files if p.startswith("audio-runtime/")}
+    if type(included_audio) is not bool:
+        raise ValueError("invalid audio runtime installation flag")
+    if included_audio:
+        required_audio = {"audio-runtime/" + name for name in (
+            "ffmpeg.exe", "FFmpeg-LICENSE.txt", "FFmpeg-README.txt", "ffmpeg-runtime.json")}
+        if expected_audio != required_audio or {"audio-runtime/" + p.name for p in audio.iterdir()} != required_audio:
+            raise ValueError("unexpected or missing audio runtime file")
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError("unannounced audio runtime files")
 
 
 def main():

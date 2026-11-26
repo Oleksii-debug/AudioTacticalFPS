@@ -70,10 +70,11 @@ def center(monkeypatch, tmp_path):
     jobs = []
     frame = SimpleNamespace(library=library, working=False, cancel_event=Event(), book=None)
 
-    def run_job(title, operation, done, *, failed):
+    def run_job(title, operation, done, *, failed, progress_tracker=None, progress_outcome=None):
         frame.working = True
         frame.cancel_event.clear()
-        jobs.append(SimpleNamespace(operation=operation, done=done, failed=failed))
+        jobs.append(SimpleNamespace(operation=operation, done=done, failed=failed,
+                                    tracker=progress_tracker, outcome=progress_outcome))
 
     frame.run_job = Mock(side_effect=run_job)
     view = ImportCenterActions()
@@ -182,6 +183,46 @@ def test_progress_is_marshaled_and_completion_preserves_quarantine_status(center
     assert 'need page review' in center.status.value
     assert 'Review pending imported page' in center.details.value
     assert center.status.focused
+    assert center.jobs[0].tracker.snapshot().state == 'failed'
+    assert center.jobs[0].tracker.snapshot().percent != 100
+
+
+def test_batch_progress_measures_actual_resolution_and_retry_never_counts_old_failures_as_new_work(center):
+    center.batch = batch(states=('complete', 'failed', 'quarantined', 'queued'))
+    center.saved['first'] = deepcopy(center.batch)
+
+    def run(workspace, identity, *, progress, **kwargs):
+        tracker = center.jobs[-1].tracker
+        assert (tracker.snapshot().completed, tracker.snapshot().total) == (0, 3)
+        progress(batch(states=('complete', 'running', 'quarantined', 'queued')))
+        assert tracker.snapshot().completed == 0
+        progress(batch(states=('complete', 'complete', 'quarantined', 'queued')))
+        assert tracker.snapshot().completed == 1
+        progress(batch(states=('complete', 'complete', 'running', 'queued')))
+        assert tracker.snapshot().completed == 1
+        resolved = batch(states=('complete', 'complete', 'complete', 'complete'))
+        progress(resolved)
+        assert tracker.snapshot().percent == 99
+        center.saved['first'] = resolved
+        return resolved
+
+    center.library.run_import_batch.side_effect = run
+    center.run(retry=True)
+    result = center.jobs[-1].operation()
+    complete(center, center.jobs[-1], result)
+    assert center.jobs[-1].tracker.snapshot().percent == 100
+
+
+def test_batch_paused_queue_or_cancel_never_claims_complete(center):
+    center.run()
+    complete(center, center.jobs[-1], batch(states=('queued',)))
+    assert center.jobs[-1].tracker.snapshot().state == 'cancelled'
+    assert center.jobs[-1].tracker.snapshot().percent == 0
+    center.run()
+    center.frame.cancel_event.set()
+    complete(center, center.jobs[-1], batch(states=('complete',)))
+    assert center.jobs[-1].tracker.snapshot().state == 'cancelled'
+    assert center.jobs[-1].tracker.snapshot().percent != 100
 
 
 def test_previous_job_progress_cannot_replace_a_new_batch(center):

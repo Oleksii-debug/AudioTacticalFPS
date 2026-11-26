@@ -35,6 +35,8 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from .audio_studio import install_audio_studio_actions
+from .api_connections import install_api_connection_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -446,6 +448,10 @@ class DesktopFrame(WorkspaceFrame):
         super().__init__(None, library.list_scopes, self._bind)
         self.SetTitle('Universal Research Library')
         self.SetMinSize((760, 650))
+        from .progress_view import ProgressView
+        self.progress_view = ProgressView(self.host, settings_root=lambda: self.library.root,
+                                          label='Library operation progress')
+        self.layout.Insert(0, self.progress_view.panel, 0, wx.EXPAND | wx.ALL, 3)
         self._menus()
         from .productivity import install_productivity_actions
         keyboard = install_productivity_actions(self)
@@ -481,7 +487,10 @@ class DesktopFrame(WorkspaceFrame):
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
-            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help),
+                ('Current operation progress\tCtrl+Alt+P', self.current_progress),
+                ('Progress sound settings...', self.progress_settings),
+                ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -504,6 +513,8 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
+        install_audio_studio_actions(self)
+        install_api_connection_actions(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -595,24 +606,40 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None):
+    def current_progress(self, event=None):
+        self.progress_view.query()
+
+    def progress_settings(self, event=None):
+        self.progress_view.configure()
+
+    def run_job(self, title, operation, done=None, failed=None, *, progress_tracker=None, progress_outcome=None):
+        from ..progress import ProgressTracker
         if self._closing:
             return
         if self.working:
             self.report('An operation is already running. Wait or choose Cancel current operation.')
             return
+        tracker = progress_tracker or ProgressTracker(title)
+        view = getattr(self, 'progress_view', None)
+        if view is not None:
+            view.track(tracker, audible=progress_tracker is None)
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
         self.choice.Disable()
         if self.book is not None:
             self.book.Disable()
+        help_menu = self.menu_bar.FindMenu('Help')
         for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+            # Read-only help/progress remains reachable during long jobs.
+            self.menu_bar.EnableTop(i, i == help_menu)
         self.report(title + '…')
         try:
             future = self.executor.submit(operation)
         except Exception as exc:
+            tracker.finish('failed', phase=f'Could not start: {exc}')
+            if view is not None:
+                view.refresh(force=True)
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
@@ -631,10 +658,17 @@ class DesktopFrame(WorkspaceFrame):
                     self.report(title + ': complete.')
                     if done is not None:
                         done(result)
+                    outcome = ('cancelled' if self.cancel_event.is_set() else
+                               progress_outcome(result) if progress_outcome is not None else 'completed')
+                    tracker.finish(outcome, verified=outcome == 'completed')
                 except Exception as exc:
+                    tracker.finish('cancelled' if self.cancel_event.is_set() else 'failed', phase=str(exc))
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
+                finally:
+                    if view is not None:
+                        view.refresh(force=True)
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
@@ -784,7 +818,8 @@ class DesktopFrame(WorkspaceFrame):
             if self.book is not None:
                 self.book.GetPage(1).refresh()
         self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set,config=config), done)
+            cancelled=self.cancel_event.is_set,config=config), done,
+            progress_outcome=lambda rows: 'completed' if all(row['state'] == 'complete' for row in rows) else 'failed')
 
     def add_text(self, event):
         try:
@@ -824,7 +859,8 @@ class DesktopFrame(WorkspaceFrame):
                 if self.book is not None:
                     self.book.GetPage(1).refresh()
             self.run_job('Resuming import',lambda: self.library.resume_import(workspace,
-                selected['request_id'],cancelled=self.cancel_event.is_set),done)
+                selected['request_id'],cancelled=self.cancel_event.is_set),done,
+                progress_outcome=lambda result: 'completed' if result['state'] == 'complete' else 'failed')
         except Exception as exc:
             self.report(str(exc))
 
@@ -884,7 +920,8 @@ class DesktopFrame(WorkspaceFrame):
                     if self.book is not None:
                         self.book.GetPage(1).refresh()
 
-                self.run_job('Saving page review and resuming import',approve_and_resume,resumed)
+                self.run_job('Saving page review and resuming import',approve_and_resume,resumed,
+                    progress_outcome=lambda result: 'completed' if result['state'] == 'complete' else 'failed')
 
             self.run_job('Preparing imported page for review',
                 lambda: self.library.pending_review(workspace,request_id),prepared)
@@ -1025,6 +1062,9 @@ class DesktopFrame(WorkspaceFrame):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
                 'All completed libraries, original files, saved evidence, notes, tags, searches, '
                 'reading positions, bookmarks and saved reading-copy projects are included. '
+                'Keyboard, OCR and progress settings, disconnected API profiles and the API operation ledger '
+                'are included when present. Credentials are excluded; reconnect keys and approve new tasks '
+                'after restoring. Audio Studio projects and outputs use their separate audio snapshot. '
                 'Unfinished imports and their pending reviews are excluded.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
@@ -1076,14 +1116,25 @@ class DesktopFrame(WorkspaceFrame):
     def help(self, event):
         show_text(self, 'Keyboard guide',
             'Use Alt+F for File, Alt+O for Options, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
-            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Alt+S for Source, Alt+D for Reading, Alt+U for Audio, and Alt+H for Help.\n'
             'Ctrl+S saves the current research note; Ctrl+Shift+S saves all main-window changes. '
+            'Ctrl+Alt+P reads the current operation phase, percentage when known, and completed units. '
+            'Help, Progress sound settings controls optional application tones, off by default. '
             'Modal editors have their own Save and Save As commands.\n'
             'Options, Keyboard shortcuts changes main-window keys and checks conflicts. '
             'Options, List current keyboard shortcuts shows the active assignments; the keys below are defaults.\n'
+            'Ctrl+Shift+P finds a command by name, menu or current shortcut. Tab and arrows select a result; Enter runs it.\n'
+            'Options, Language capability catalog searches the selected 135 entries and their recorded resource evidence. '
+            'Unassessed capabilities are not presented as installed or working voices.\n'
             'File, New reading copy opens an editable text project. File, Open saved reading copy reopens saved work. '
             'Inside the book reader, Create editable reading copy makes a separate copy of the current page or segment. '
             'Original source text and quotations stay unchanged.\n'
+            'Inside a reading-copy editor, Open in Audio Studio creates a separate audio project from the current derivative.\n'
+            'Ctrl+Alt+A opens Audio Studio with Script, Preparation and Production pages. Choose an available local voice, '
+            'an output folder, preview the plan, then Render / resume. Cancel retains accepted checkpoints. '
+            'Audio projects and outputs are saved outside the research-library data folder.\n'
+            'Settings, AI and API connections manages named profiles and OS-vault credentials. Opening or saving settings '
+            'sends nothing. Run a reviewed task requires exact request and cost approval; local rendering stays local.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
@@ -1124,6 +1175,9 @@ class DesktopFrame(WorkspaceFrame):
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
             'Reading positions, bookmarks and reading-copy projects are included in complete library backups. '
+            'Progress preferences, disconnected API profiles and the operation ledger are included when present. '
+            'After restore, reconnect credentials and explicitly approve new API work. '
+            'Audio Studio has a separate Back up audio project command for its outputs and assets. '
             'The Reading menu also provides separate bookmark export and import.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
@@ -1136,6 +1190,8 @@ class DesktopFrame(WorkspaceFrame):
         super().on_close(event)
         if not event.GetVeto():
             self._closing = True
+            if getattr(self, 'progress_view', None) is not None:
+                self.progress_view.close()
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
 

@@ -163,7 +163,12 @@ def test_busy_search_fails_promptly_and_preserves_previous_selection(research, m
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='library is busy'):
-                app.search(workspace, 'history', mode=mode, timeout=.05)
+                # Isolate immediate lock reporting from deadline expiry. A
+                # preempted Windows runner may consume 50 ms before SQLite
+                # reports BUSY, in which case TimeoutError is correctly used.
+                # The independent <1 s assertion still rejects SQLite's old
+                # five-second busy wait; deadline tests remain separate.
+                app.search(workspace, 'history', mode=mode, timeout=5)
             assert monotonic() - started < 1.0
             assert app._selections == selections
         finally:

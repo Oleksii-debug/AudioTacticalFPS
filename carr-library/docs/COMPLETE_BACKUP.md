@@ -18,17 +18,62 @@ when they exist:
   and separate recoverable drafts. Independent scripts remain independent scripts.
 - Customized main-window keyboard shortcuts.
 - Named OCR-language selections and their orientation/model-policy settings.
+- Progress notification preferences: Off/Beep, tone volume, notification interval,
+  mute and background behavior. These are local output preferences, not live job
+  queues or a record of unfinished work.
+- API connection profiles: friendly labels, provider, endpoint, model and
+  capabilities. Credential references are cleared in the exported copy; the
+  original connected profiles are unchanged.
+- The API operations ledger, including approval digests, operation IDs, request
+  and output hashes, estimated costs, and reserved, uncertain, complete and
+  explicitly reconciled records. Request text and API keys are not ledger fields.
 
-The copy is taken under the same local writer lock used by these features. A
-concurrent cooperating write cannot change the database or these saved files
-halfway through the snapshot. This does not capture text still only in an open
-control: save it or allow its recovery draft to finish before starting the backup.
+The library database and saved profiles/settings are frozen under the same local
+writer lock used by those features. The API ledger is captured through SQLite's
+backup API in one read transaction, including committed WAL pages. This supplies
+one consistent point in time for approval and operation records while a running
+paid request can still record its completion. Its later completion need not
+appear in the earlier snapshot; the captured reservation remains protected.
+This does not capture text still only in an open control: save it or allow its
+recovery draft to finish before starting the backup.
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
-The reader/editor/settings files use manifest version 3; libraries with none of
-these files retain the existing version-2 format. Restore also accepts supported
-version-1 and version-2 backups and validates their exact database schema. Older
-backups contain only the state that existed in their original format.
+The reader/editor/keyboard/OCR files use manifest version 3; backups containing
+progress preferences, API profiles or the operations ledger use version 4 with
+an explicit LOCAL ONLY restoration policy. Libraries with none of these files
+retain the existing version-2 format. Restore also accepts supported version-1, version-2 and
+version-3 backups and validates their exact database schema. Older backups
+contain only the state that existed in their original format.
+
+## API restoration and possible charges
+
+Restored profiles contain no usable credential references. Reconnect keys through
+**Settings, AI and API connections** when needed. Restoring a backup never opens
+the credential vault or sends a request. The default stays **LOCAL ONLY**;
+neither the profiles nor the ledger authorize a remote task. A remote task and a
+local loopback service still require their normal explicit review and approval.
+No old approval digest is rebound to a newly connected profile.
+
+All historical operation IDs and states are preserved, including reconciled
+records. A reserved or uncertain operation remains counted against its original
+approval, and a previously recorded operation ID cannot be reused. Restoration
+does not retry a request, release a reservation, or turn an estimate into an
+actual billed amount. Unknown charge status requires reconciliation with the
+provider before considering another paid request.
+
+An older backup cannot know about operations performed after its snapshot. It
+must not be treated as proof that a later request was never charged. Preserve
+the current ledger when comparing an older backup and check provider billing
+before repeating work. The backup prevents loss or reinterpretation of the
+records it captured; it cannot establish account-wide billing history.
+
+The ledger must have the exact supported two-table schema and valid identifiers,
+hashes, integer estimates, state/output combinations and approval references.
+Unknown tables, views, triggers and indexes are rejected. The portable SQLite
+copy is compacted to exclude deleted records and unused pages. Original approval
+limits are represented by an opaque digest, so validation checks the supported
+absolute bounds; it does not claim to reconstruct a user's smaller original
+budget from that digest.
 
 ## Restoration and source integrity
 
@@ -56,13 +101,22 @@ The backup does not copy arbitrary neighboring files, API credentials, runtime
 model weights, temporary render files or external documents. Pending import
 queues/journals and unpublished retained originals are not included in this
 version; complete those imports before using a backup to move all work to another
-computer. Audio timelines, rendered audio, sync and scheduled/encrypted backups
-remain separate V3 work and are not implied by this reader-state increment.
+computer.
+
+Audio Studio projects and their output directories are deliberately stored
+outside the private research library. Use **Back up audio project** for their
+separate checked ZIP64 snapshot, including project/recovery files, assets, cache,
+rendered audio, MIDI and manifests. The library backup does not follow output
+directory references or silently collect those external files. Installed
+voice/music models also require their separate installation/backup process.
+Synchronization and scheduled/encrypted backups are not supplied by this action.
 
 Existing bounded backup budgets still apply: 512 MiB database, 10,000 registered
 originals, 8 GiB original bytes; reader state up to 8 MiB; narration copies/drafts
 up to 32 MiB per file and 64 MiB combined; keyboard preferences up to 128 KiB; OCR
-presets up to 64 KiB. These are checked resource budgets, not measurements of
+presets up to 64 KiB; progress preferences up to 8 KiB; API profiles up to 512 KiB
+and 1,000 profiles; the API ledger up to 64 MiB with at most 100,000 approvals and
+100,000 operations. These are checked resource budgets, not measurements of
 large-library capacity. Future streaming/scale work must preserve the same source
 and publication guarantees.
 

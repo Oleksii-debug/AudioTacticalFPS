@@ -123,7 +123,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions', 'install_audio_studio_actions',
+        'install_api_connection_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -210,6 +211,40 @@ def test_failed_submit_does_not_leave_application_disabled(classes):
     assert not f.working and not f.busy
     f.choice.Enable.assert_called_once()
     assert 'could not start' in f.report.call_args.args[0]
+
+
+@pytest.mark.parametrize('ending', ['accepted', 'worker-error', 'handler-error', 'cancelled', 'partial-result'])
+def test_main_job_shared_progress_requires_accepted_success_and_help_stays_available(classes, ending):
+    from carr_library.progress import ProgressTracker
+    f = frame(classes)
+    f.progress_view = Mock()
+    f.menu_bar.FindMenu.return_value = 2
+    future = Future()
+    f.executor.submit.return_value = future
+    tracker = ProgressTracker('Import', total=4)
+    tracker.update(completed=4, total=4)
+
+    def done(result):
+        assert tracker.snapshot().percent == 99
+        if ending == 'handler-error':
+            raise ValueError('result validation failed')
+
+    f.run_job('Import', lambda: None, done, progress_tracker=tracker,
+              progress_outcome=lambda result: 'failed' if ending == 'partial-result' else 'completed')
+    assert f.menu_bar.EnableTop.call_args_list[2].args == (2, True)
+    f.progress_view.track.assert_called_once_with(tracker, audible=False)
+    if ending == 'worker-error':
+        future.set_exception(ValueError('failed'))
+    else:
+        if ending == 'cancelled':
+            f.cancel_event.set()
+        future.set_result('result')
+    assert tracker.snapshot().percent == 99
+    classes[1].pop()()
+    assert (tracker.snapshot().percent == 100) is (ending == 'accepted')
+    assert tracker.snapshot().state == {
+        'accepted': 'completed', 'worker-error': 'failed', 'handler-error': 'failed',
+        'cancelled': 'cancelled', 'partial-result': 'failed'}[ending]
 
 
 def test_running_job_vetoes_normal_close(classes):

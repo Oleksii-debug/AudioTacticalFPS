@@ -4,7 +4,7 @@ No speech synthesis or automatic linguistic correction is implied. The testable
 controller owns pending text and confirmed saves; wx is imported only to open
 the dialog. Background autosave never steals keyboard or screen-reader focus.
 """
-from dataclasses import replace
+from dataclasses import asdict, replace
 from hashlib import sha256
 
 from ..reader.narration import (
@@ -82,6 +82,21 @@ class NarrationController:
         candidate = self.candidate()
         export_text(candidate, path, private_root=self.store.root, overwrite=overwrite)
         return 'UTF-8 reading text exported. The project remains separate from its original source.'
+
+    def audio_copy(self):
+        """Transfer a reading derivative without changing its original or evidence."""
+        from .audio_studio import StudioController
+        candidate = self.candidate()
+        studio = StudioController(private_root=self.store.root)
+        studio.new(candidate.original_text, title=candidate.title,
+            source_id='reading-copy:' + candidate.id,
+            source_reference={'kind': 'versioned-reading-copy', 'project_id': candidate.id,
+                              'original_sha256': candidate.original_sha256,
+                              'reading_sha256': sha256(candidate.current_text.encode('utf-8')).hexdigest(),
+                              'source_location': asdict(candidate.source_location) if candidate.source_location else None})
+        studio.edit_script(candidate.current_text)
+        self.guard()
+        return studio
 
 
 def _dictionary_text(rules):
@@ -275,6 +290,21 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         finally:
             picker.Destroy()
 
+    def audio_studio(event=None):
+        try:
+            from .audio_studio import AudioStudioDialog
+            capture()
+            controller.autosave()
+            studio = controller.audio_copy()
+            timer.Stop()
+            AudioStudioDialog(dialog, studio).show()
+            say('The reading copy is preserved. Audio Studio saves its own project and audio output.')
+        except Exception as exc:
+            say('Audio Studio was not opened: ' + str(exc))
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
+
     def close(event=None):
         if state['closed']:
             return
@@ -325,7 +355,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Normalize s&pacing', normalize), ('&Add pronunciation', add_rule),
         ('Pronunciation &dictionary', dictionary), ('Preview pro&nunciation', pronunciation),
         ('&Find and replace', replace_text), ('Compare &original', compare),
-        ('&Export UTF-8 text', export), ('C&lose', close),
+        ('&Export UTF-8 text', export), ('Open in Audio &Studio', audio_studio), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:

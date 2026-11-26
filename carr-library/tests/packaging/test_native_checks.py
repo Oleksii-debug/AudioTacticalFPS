@@ -150,7 +150,7 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +172,8 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio_runtime'] = 'false'
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]
@@ -184,3 +186,25 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
     assert report['status'] == 'FAIL'
     assert report['failed_component'] == 'installation manifest'
     assert not events
+
+
+@pytest.mark.parametrize('announced', [False, True])
+def test_audio_diagnostic_rejects_unannounced_or_incomplete_runtime(tmp_path, monkeypatch, announced):
+    from carr_library.audio import runtime
+    manifest = bundle(tmp_path)
+    manifest['bundled_audio_runtime'] = announced
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    (tmp_path / 'audio-runtime').mkdir()
+    events = []
+    controlled_imports(monkeypatch, events)
+    previous = native_checks.import_module
+    def load(name):
+        if name == 'carr_library.audio.runtime':
+            events.append(name)
+            return runtime
+        return previous(name)
+    monkeypatch.setattr(native_checks, 'import_module', load)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == report['audio']['status'] == 'FAIL'
+    assert report['failed_component'] == 'bundled FFmpeg audio runtime'
+    assert 'carr_library.audio.ffmpeg' not in events

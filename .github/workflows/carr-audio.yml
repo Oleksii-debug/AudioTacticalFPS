@@ -1,0 +1,89 @@
+name: CARR local audio studio
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-audio.yml
+  push:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-audio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-audio-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  windows-audio:
+    name: Windows / actual SAPI / FFmpeg / native Studio
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install pinned desktop and separately verified test audio runtime
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pytest==9.0.2 --only-binary=:all:
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-pinned.zip'
+          $audioBin = Join-Path $env:RUNNER_TEMP 'carr-audio-tools'
+          $audioUrl = python -I -B -c "from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL; print(FFMPEG_ARCHIVE_URL)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Invoke-WebRequest -Uri $audioUrl -OutFile $audioArchive
+          python packaging/prepare_ffmpeg_runtime.py --archive $audioArchive --destination $audioBin --verify-native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $binary = Join-Path $audioBin 'ffmpeg.exe'
+          "CARR_FFMPEG=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          git rev-parse HEAD
+          & $binary -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run provider safety, source integrity and audio recovery regressions
+        run: |
+          New-Item -ItemType Directory -Force 'ci-audio-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-audio-results/tested-commit.txt'
+          python -m pytest -q tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_audio_cli.py tests/test_progress.py tests/ui/test_progress_view.py tests/ui/test_reading_audio_bridge.py --import-mode=importlib --junitxml=ci-audio-results/audio-tests.xml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify real offline SAPI output, native controls and OS credential vault
+        run: |
+          python -I -B scripts/windows_audio_smoke.py 2>&1 | Tee-Object 'ci-audio-results/native-audio.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify the installed library still works
+        run: |
+          python -I -m carr_library --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve source-bound audio acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-audio-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-audio-results/
+          if-no-files-found: warn
+          retention-days: 7

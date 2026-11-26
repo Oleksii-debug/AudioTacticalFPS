@@ -77,11 +77,11 @@ def main():
         identity = library.save_hit(workspace, topic, hit.ref, hit.revision, 'Original note')
         original_bytes = library.assets.resolve(imported['asset']).read_bytes()
         frame = DesktopFrame(library)
-        gui.SetTopWindow(frame)
-        frame.Show()
-        frame._open_workspace(workspace, topic)
-        pump(lambda: not frame.working and frame.evidence is not None and frame.evidence.displayed is not None)
         try:
+            gui.SetTopWindow(frame)
+            frame.Show()
+            frame._open_workspace(workspace, topic)
+            pump(lambda: not frame.working and frame.evidence is not None and frame.evidence.displayed is not None)
             check('File is the first Alt menu', frame.menu_bar.GetMenuLabel(0).replace('&', '') == 'File')
             check('Options and Reading remain accessible', frame.menu_bar.FindMenu('Options') >= 0
                   and frame.menu_bar.FindMenu('Reading') >= 0)
@@ -191,7 +191,9 @@ def main():
                   KeybindingStore(restored).load() == KeybindingStore(library.root).load())
         finally:
             if not frame.IsBeingDeleted():
-                frame.Close()
+                # A failed Save assertion can leave the synthetic note dirty.
+                # Teardown must not open an unattended discard confirmation.
+                frame.Close(force=True)
                 gui.Yield()
             if native_handle is not None:
                 native_handle.close()

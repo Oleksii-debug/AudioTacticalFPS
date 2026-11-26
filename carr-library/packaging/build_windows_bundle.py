@@ -108,7 +108,7 @@ def verify_application_source(wheel, source_commit):
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None):
+                 ocr_source_archive=None, audio_dir=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -205,6 +205,13 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             raise ValueError("OCR source archive is not declared in its runtime provenance")
     elif ocr_source_archive is not None:
         raise ValueError("OCR source archive requires the OCR runtime")
+    if audio_dir is not None:
+        source_root = str(HERE.parent / "src")
+        if source_root not in sys.path:
+            sys.path.insert(0, source_root)
+        from carr_library.audio.runtime import verify_runtime as verify_audio_runtime, ARCHIVE_MEMBERS
+        audio_dir = Path(audio_dir)
+        verify_audio_runtime(audio_dir)
 
     # Validate active Windows requirements from every wheel. Pip performs the
     # actual offline resolution again at install time; this is a build preflight.
@@ -285,6 +292,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                 shutil.copyfile(ocr_source_archive, source_destination)
                 if sha256(source_destination) != source_identity["sha256"]:
                     raise ValueError("OCR source archive changed during bundle assembly")
+        if audio_dir is not None:
+            destination = staged / "audio-runtime"
+            destination.mkdir()
+            for name in (*ARCHIVE_MEMBERS, "ffmpeg-runtime.json"):
+                shutil.copyfile(regular(audio_dir / name), destination / name)
+            verify_audio_runtime(destination)
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
@@ -297,6 +310,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
                     "files": files}
+        if audio_dir is not None:
+            manifest["bundled_audio_runtime"] = True
         if source_commit is not None:
             manifest["source_commit"] = source_commit
         (staged / "bundle-manifest.json").write_text(
@@ -326,10 +341,13 @@ def main():
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
+    parser.add_argument("--audio-dir", type=Path,
+                        help="Verified pinned Windows FFmpeg runtime, license and provenance")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
-                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive)))
+                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
+                                  args.audio_dir)))
 
 
 if __name__ == "__main__":

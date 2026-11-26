@@ -81,6 +81,15 @@ jobs:
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check the installed offline OCR catalogue and console entrypoint
+        timeout-minutes: 2
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrModels = Join-Path (Split-Path $env:CARR_PYTHON) 'research-library-ocr-models.exe'
+          & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise native academic references and reading controls
         timeout-minutes: 3
         run: |
@@ -156,6 +165,7 @@ jobs:
             'tests/e2e/test_academic_document_export.py',
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
+            'tests/extract/test_ocr_model_catalog.py',
             'tests/storage/test_library_backup.py',
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
@@ -229,6 +239,21 @@ jobs:
             'tests/extract/test_ocr_languages.py',
             'tests/ui/test_ocr_language_dialog.py',
             'tests/ui/test_ocr_options.py',
+            'tests/audio/test_audio_runtime.py',
+            'tests/packaging/test_native_checks.py',
+            'tests/ui/test_command_palette.py',
+            'tests/ui/test_reading_audio_bridge.py',
+            'tests/reader/test_narration_text.py',
+            'tests/ui/test_audio_studio.py',
+            'tests/ui/test_api_connections.py',
+            'tests/e2e/test_provider_gateway.py',
+            'tests/e2e/test_audio_cli.py',
+            'tests/storage/test_backup_provider_state.py',
+            'tests/language_catalog/test_canonical_catalog.py',
+            'tests/audio/test_dordiai_profile_languages.py',
+            'tests/ui/test_language_catalog_dialog.py',
+            'tests/test_progress.py',
+            'tests/ui/test_progress_view.py',
             'tests/reader/test_context.py',
             'tests/reader/test_topic_tree.py',
             'tests/ui/test_federated_labels.py',
@@ -252,6 +277,12 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_v3_reading_smoke.py 2>&1 | Tee-Object 'ci-results/native-v3-reading.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B scripts/windows_ocr_languages_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-languages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/native-command-palette.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_language_catalog_smoke.py 2>&1 | Tee-Object 'ci-results/native-language-catalog.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_progress_smoke.py 2>&1 | Tee-Object 'ci-results/native-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native wx startup and source-opening events
@@ -375,9 +406,16 @@ jobs:
           $nativeRuntime = Join-Path $bundleWork 'native-runtime'
           & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'ci-results/native-runtime-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioArchive = Join-Path $bundleWork 'ffmpeg-pinned.zip'
+          $audioRuntime = Join-Path $bundleWork 'audio-runtime'
+          $audioUrl = & $env:CARR_PYTHON -I -B -c "from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL; print(FFMPEG_ARCHIVE_URL)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Invoke-WebRequest -Uri $audioUrl -OutFile $audioArchive
+          & $env:CARR_PYTHON packaging/prepare_ffmpeg_runtime.py --archive $audioArchive --destination $audioRuntime --verify-native | Tee-Object 'ci-results/audio-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $audioRuntime --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -397,7 +435,7 @@ jobs:
           New-Item -ItemType Directory -Force $testWheels | Out-Null
           & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/ffmpeg.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -421,6 +459,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # This probe imports wx first: hold the application's verified DLL
@@ -433,8 +473,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-command-palette-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_language_catalog_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-language-catalog-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_progress_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-progress-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # No executable environment override: the installed Studio must find
+          # and authenticate the exact sealed runtime from its own bundle.
+          Remove-Item Env:CARR_FFMPEG -ErrorAction SilentlyContinue
+          & $installedPython -I -B scripts/windows_audio_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-audio-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',audio_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -453,7 +504,7 @@ jobs:
           root = pathlib.Path(sys.argv[1]).resolve()
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
-          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
+          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
@@ -465,7 +516,16 @@ jobs:
                             'tests/reader/test_narration.py', 'tests/ui/test_narration_editor.py',
                             'tests/ui/test_productivity.py', 'tests/storage/test_backup_reading_state.py',
                             'tests/storage/test_backup_source_binding_review.py',
-                            'tests/extract/test_ocr_languages.py', 'tests/ui/test_ocr_language_dialog.py']
+                            'tests/extract/test_ocr_languages.py', 'tests/ui/test_ocr_language_dialog.py',
+                            'tests/ui/test_command_palette.py', 'tests/ui/test_reading_audio_bridge.py',
+                            'tests/reader/test_narration_text.py', 'tests/ui/test_audio_studio.py',
+                            'tests/ui/test_api_connections.py', 'tests/e2e/test_provider_gateway.py',
+                            'tests/e2e/test_audio_cli.py', 'tests/audio/test_audio_runtime.py',
+                            'tests/storage/test_backup_provider_state.py',
+                            'tests/language_catalog/test_canonical_catalog.py',
+                            'tests/audio/test_dordiai_profile_languages.py',
+                            'tests/ui/test_language_catalog_dialog.py',
+                            'tests/test_progress.py', 'tests/ui/test_progress_view.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)

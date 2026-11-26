@@ -111,6 +111,10 @@ class KeyboardActions:
             '\n\nThese are main-window commands. Modal readers and editors keep their contextual shortcuts. '
             'Ordinary text editing keys and Alt-menu letters remain reserved.')
 
+    def find_command(self, event=None):
+        from .command_palette import show_command_palette
+        return show_command_palette(self)
+
     def change(self, event=None):
         try:
             commands = tuple(command for command in self.commands if command.configurable)
@@ -258,11 +262,16 @@ def install_productivity_actions(frame):
     # Add all commands before collecting defaults; closures resolve the action
     # object only when invoked after construction has completed.
     options = wx.Menu()
+    from .command_palette import PALETTE_SHORTCUT
+    append(options, '&Find a command...\t' + PALETTE_SHORTCUT, lambda event: keyboard.find_command(event))
+    options.AppendSeparator()
     append(options, '&Keyboard shortcuts...', lambda event: keyboard.change(event))
     append(options, '&List current keyboard shortcuts...', lambda event: keyboard.show_list(event))
     append(options, '&Restore default keyboard shortcuts...', lambda event: keyboard.reset(event))
     append(options, '&Export keyboard shortcuts...', lambda event: keyboard.transfer(save=True))
     append(options, '&Import keyboard shortcuts...', lambda event: keyboard.transfer(save=False))
+    from .language_catalog_dialog import show_language_catalog
+    append(options, 'Language capability catalog...', lambda event: show_language_catalog(frame))
     frame.menu_bar.Append(options, '&Options')
     keyboard = KeyboardActions(frame, collect_commands(frame.menu_bar))
     frame.keyboard_actions, frame.narration_actions = keyboard, narration

@@ -51,6 +51,7 @@ test = [
 
 [project.scripts]
 research-library = "carr_library.__main__:main"
+research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 
 [project.gui-scripts]
 research-library-desktop = "carr_library.__main__:main"
@@ -62,11 +63,13 @@ Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/ca
 include-package-data = true
 packages = [
   "carr_library",
+  "carr_library.audio",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",
   "carr_library.extract",
   "carr_library.ingest",
+  "carr_library.language_catalog",
   "carr_library.reader",
   "carr_library.research",
   "carr_library.research._vendor_rispy",
@@ -88,6 +91,7 @@ bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+"carr_library.extract" = ["ocr-model-catalog.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

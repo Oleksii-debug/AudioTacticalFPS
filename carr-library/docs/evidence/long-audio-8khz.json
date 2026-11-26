@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "fixture": "Repeated actual local procedural score; not full-length original neural music.",
+  "source_sha256": "9f0a0151dba4402647324d826132453fd1e403816c69f5046b56575e4648202c",
+  "checkpoint_reopen": "PASS",
+  "cancelled_output_not_published": "PASS",
+  "checks": [
+    {
+      "hours": 1,
+      "duration_seconds": 3600.0,
+      "frames": 28800000,
+      "file_bytes": 115200044,
+      "container": "RIFF",
+      "elapsed_seconds": 0.31228006600008484,
+      "python_peak_rss_bytes": 23134208,
+      "sample_rate": 8000,
+      "sha256": "b51bf9c9ff6acb957c42cde9b1084e330530dff8a586ad6e99fd272c4984e527",
+      "complete_input_blocks": 6
+    },
+    {
+      "hours": 3,
+      "duration_seconds": 10800.0,
+      "frames": 86400000,
+      "file_bytes": 345600044,
+      "container": "RIFF",
+      "elapsed_seconds": 0.3421618550000858,
+      "python_peak_rss_bytes": 23134208,
+      "sample_rate": 8000,
+      "sha256": "a6b4cdbafe4025655ac0abea8ddda146e0d82700232fe49dc7416faba599d778",
+      "complete_input_blocks": 18
+    },
+    {
+      "hours": 10,
+      "duration_seconds": 36000.0,
+      "frames": 288000000,
+      "file_bytes": 1152000044,
+      "container": "RIFF",
+      "elapsed_seconds": 1.2716989230000308,
+      "python_peak_rss_bytes": 23150592,
+      "sample_rate": 8000,
+      "sha256": "6715d75603a0b7063eb182139c76bfc2bf6c6bc540892cfa67525620a389cf15",
+      "complete_input_blocks": 60
+    }
+  ],
+  "neural_music_inference": "NOT_RUN",
+  "listening_quality": "NOT_RUN",
+  "runtime": "Linux x86_64, CPython 3.12, FFmpeg 7.1.5 Debian installed build",
+  "scope": "Synthetic/repeated fixture; actual local file generation; no neural inference, Windows or NVDA claim."
+}

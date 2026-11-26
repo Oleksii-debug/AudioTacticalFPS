@@ -1,0 +1,4 @@
+# CI-only Windows x64 FFmpeg adapter. Not automatically installed by the app.
+# Wheel: imageio_ffmpeg-0.6.0-py3-none-win_amd64.whl, independently downloaded
+# and SHA256 checked. Wrapper BSD-2-Clause; FFmpeg bundled build terms separate.
+imageio-ffmpeg==0.6.0 --hash=sha256:02fa47c83703c37df6bfe4896aab339013f62bf02c5ebf2dce6da56af04ffc0a

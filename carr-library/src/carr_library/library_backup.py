@@ -4,11 +4,15 @@ Backups include all workspaces, saved research, registered original files and
 the optional reading-state sidecar containing bookmarks and resume positions,
 plus saved narration copies and their recoverable drafts.
 Keyboard preferences and named OCR-language selections are included when present.
+Provider profiles are sanitized; the atomic cost ledger preserves reservations.
 Retained files from failed/unpublished imports are deliberately not included.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 extends that manifest with explicitly named, checksummed sidecars.
-Legacy version 1/2 backups and version 3 backups are accepted only for an exact
+Version 4 includes progress notification preferences, disconnected provider
+settings and a checked SQLite ledger, with no restored remote authorization or
+credential references.
+Legacy version 1/2/3 backups and version 4 backups are accepted only for an exact
 supported V3 or V4 database schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
@@ -47,6 +51,15 @@ from .keybindings import (
 from .extract.ocr_languages import (
     FILENAME as OCR_PRESETS, MAX_PRESET_BYTES, validate_presets_bytes,
 )
+from .providers import (
+    PROFILES_FILENAME, LEDGER_FILENAME, MAX_REQUEST as MAX_PROFILE_BYTES,
+    MAX_LEDGER_BYTES, snapshot_provider_files, validate_backup_profiles,
+    validate_ledger_snapshot,
+)
+from .progress import (
+    FILENAME as PROGRESS_SETTINGS, MAX_BYTES as MAX_PROGRESS_SETTINGS,
+    validate_progress_settings_payload,
+)
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -56,12 +69,22 @@ MAX_MANIFEST = 8 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
-MAX_SIDECARS = 3 + MAX_PROJECTS * 2
-MAX_SIDECAR_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS + MAX_PRESET_BYTES
+MAX_SIDECARS = 6 + MAX_PROJECTS * 2
+MAX_SIDECAR_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS
+                     + MAX_PRESET_BYTES + MAX_PROFILE_BYTES + MAX_LEDGER_BYTES
+                     + MAX_PROGRESS_SETTINGS)
 _SIMPLE_SIDECARS = {
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
 }
+_PROVIDER_SIDECARS = {
+    PROFILES_FILENAME: (MAX_PROFILE_BYTES, validate_backup_profiles),
+    LEDGER_FILENAME: (MAX_LEDGER_BYTES, validate_ledger_snapshot),
+}
+_V4_SIMPLE_SIDECARS = {
+    PROGRESS_SETTINGS: (MAX_PROGRESS_SETTINGS, validate_progress_settings_payload),
+}
+_V4_SIDECARS = _PROVIDER_SIDECARS | _V4_SIMPLE_SIDECARS
 
 
 def _destination(value, source):
@@ -86,7 +109,7 @@ def _sidecar_manifest(sidecars):
             for name, raw in sorted(sidecars.items())]
 
 
-def _sidecar_limit(name):
+def _sidecar_limit(name, *, version=4):
     # This is an allowlist, not a general folder backup. In particular, private
     # settings, credentials, caches and incomplete import journals cannot enter
     # a backup merely by appearing beside the research database.
@@ -94,6 +117,8 @@ def _sidecar_limit(name):
         return MAX_READING_STATE
     if name in _SIMPLE_SIDECARS:
         return _SIMPLE_SIDECARS[name][0]
+    if version >= 4 and name in _V4_SIDECARS:
+        return _V4_SIDECARS[name][0]
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return MAX_PROJECT_BYTES
     raise RestoreError('unsupported backup sidecar')
@@ -120,15 +145,28 @@ def _optional_sidecar(path, maximum):
     return raw
 
 
-def _snapshot_sidecars(root):
+def _snapshot_sidecars(root, *, live=False):
     raw = ReadingState(root).snapshot()
     sidecars = {} if raw is None else {READING_STATE: raw}
     sidecars.update(snapshot_narration_files(root))
-    for name, (maximum, validate) in _SIMPLE_SIDECARS.items():
+    for name, (maximum, validate) in (_SIMPLE_SIDECARS | _V4_SIMPLE_SIDECARS).items():
         raw = _optional_sidecar(Path(root) / name, maximum)
         if raw is not None:
             validate(raw)
             sidecars[name] = raw
+    if live:
+        # Profiles must be exported without vault references, and a live SQLite
+        # ledger must use its backup API rather than copying a possibly stale
+        # main file while newer committed operations reside in WAL pages.
+        sidecars.update(snapshot_provider_files(root))
+    else:
+        # A published backup already contains a sanitized closed snapshot.
+        # Verify its exact manifest bytes before trusting its contents; never
+        # sanitize or repair an archive while restoring it.
+        for name, (maximum, _) in _PROVIDER_SIDECARS.items():
+            raw = _optional_sidecar(Path(root) / name, maximum)
+            if raw is not None:
+                sidecars[name] = raw
     return sidecars
 
 
@@ -165,11 +203,14 @@ def _validate_sidecars(db, sidecars):
             elif name in _SIMPLE_SIDECARS:
                 _SIMPLE_SIDECARS[name][1](raw)
                 locations = set()
+            elif name in _V4_SIDECARS:
+                _V4_SIDECARS[name][1](raw)
+                locations = set()
             else:
                 project = validate_narration_payload(name, raw)
                 locations = {project.source_location} if project.source_location is not None else set()
         except (UnicodeError, ValueError) as exc:
-            raise RestoreError('invalid reading state, narration copy or preferences in backup') from exc
+            raise RestoreError('invalid reading state, narration copy, preferences or provider state in backup') from exc
         _validate_reading_locations(db, locations)
 
 
@@ -241,15 +282,19 @@ def create_backup(app, destination):
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-                sidecars = _snapshot_sidecars(app.root)
+                sidecars = _snapshot_sidecars(app.root, live=True)
                 _validate_sidecars(snapshot_storage.db, sidecars)
             _stage_sidecars(stage, sidecars)
-            manifest = dict(version=3 if sidecars else 2, kind='carr-library', schema_version=4,
+            extended_state = any(name in _V4_SIDECARS for name in sidecars)
+            manifest = dict(version=4 if extended_state else 3 if sidecars else 2,
+                kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
             if sidecars:
                 manifest['sidecars'] = _sidecar_manifest(sidecars)
+            if extended_state:
+                manifest['provider_restore_mode'] = 'LOCAL_ONLY'
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -287,18 +332,22 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3)):
+            or manifest['version'] not in (1, 2, 3, 4)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
     if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
-    if manifest['version'] == 3:
+    if manifest['version'] >= 3:
         fields.add('sidecars')
+    if manifest['version'] == 4:
+        fields.add('provider_restore_mode')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
+    if manifest['version'] == 4 and manifest['provider_restore_mode'] != 'LOCAL_ONLY':
+        raise RestoreError('restored provider state requires LOCAL ONLY mode')
     if manifest['version'] >= 2:
         fingerprint = manifest['schema_fingerprint']
         if (not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint)
@@ -335,7 +384,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
                 or not isinstance(entry['filename'], str)
                 or type(entry['size_bytes']) is not int
-                or not 0 < entry['size_bytes'] <= _sidecar_limit(entry['filename'])
+                or not 0 < entry['size_bytes'] <= _sidecar_limit(entry['filename'], version=manifest['version'])
                 or not isinstance(entry['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])
                 or entry['filename'] in names):
@@ -348,6 +397,8 @@ def _read_manifest(directory, expected_manifest_sha256):
             raise RestoreError('narration backup byte limit')
         if total > MAX_SIDECAR_BYTES:
             raise RestoreError('backup sidecar byte limit')
+    if manifest['version'] == 4 and not names.intersection(_V4_SIDECARS):
+        raise RestoreError('version 4 backup manifest has no version 4 state')
     _check_backup_namespace(directory, names)
     return manifest
 

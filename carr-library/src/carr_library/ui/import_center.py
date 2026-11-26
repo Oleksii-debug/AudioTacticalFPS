@@ -113,7 +113,8 @@ class ImportCenterActions:
         rows = (self.batch or {}).get('rows', ())
         self.details.SetValue(row_details(rows[index]) if 0 <= index < len(rows) else '')
 
-    def _job(self, title, operation, done, *, token=None, planning=False):
+    def _job(self, title, operation, done, *, token=None, planning=False,
+             progress_tracker=None, progress_outcome=None):
         if self.busy or self.frame.working:
             self.report('An operation is already running. Wait or choose Cancel operation.')
             return
@@ -121,6 +122,11 @@ class ImportCenterActions:
         token = token if token is not None else object()
         self._job_token = token
         self.planning = planning
+        from ..progress import ProgressTracker
+        tracker = progress_tracker or ProgressTracker(title)
+        view = getattr(self, 'progress_view', None)
+        if view is not None:
+            view.track(tracker)
         for control in self.mutable:
             control.Disable()
         self.cancel.Enable()
@@ -134,17 +140,25 @@ class ImportCenterActions:
                 control.Enable()
             self.cancel.Disable()
             if error is not None:
+                tracker.finish('cancelled' if self.frame.cancel_event.is_set() else 'failed', phase=str(error))
                 self.report(f'{title}: {error}')
             else:
                 try:
                     self._bound()
                     done(value)
+                    outcome = ('cancelled' if self.frame.cancel_event.is_set() else
+                               progress_outcome(value) if progress_outcome is not None else 'completed')
+                    tracker.finish(outcome, verified=outcome == 'completed')
                 except Exception as exc:
+                    tracker.finish('failed', phase=str(exc))
                     self.report(str(exc))
+            if view is not None:
+                view.refresh(force=True)
 
         try:
             self.frame.run_job(title, operation, lambda value: finish(value),
-                               failed=lambda exc: finish(error=exc))
+                               failed=lambda exc: finish(error=exc), progress_tracker=tracker,
+                               progress_outcome=progress_outcome)
         except Exception as exc:
             finish(error=exc)
 
@@ -222,17 +236,37 @@ class ImportCenterActions:
                 raise ValueError('Select a saved import batch first.')
             batch_id = self.batch['batch_id']
             token = object()
+            from ..progress import ProgressTracker
+            accepted_states = {'complete', 'duplicate', 'rejected', 'excluded'}
+            target_ids = {row['row_id'] for row in self.batch['rows']
+                          if row['state'] not in accepted_states
+                          and (retry or row['state'] not in ('failed', 'quarantined'))}
+            accepted_ids = set()
+            tracker = ProgressTracker('Importing saved batch', total=len(target_ids), unit='files resolved')
+            view = getattr(self, 'progress_view', None)
+
+            def record(batch):
+                if batch.get('batch_id') != batch_id:
+                    return
+                accepted_ids.update(row['row_id'] for row in batch['rows']
+                                    if row['row_id'] in target_ids and row['state'] in accepted_states)
+                tracker.update(phase=batch_summary(batch), completed=len(accepted_ids), total=len(target_ids))
 
             def progress(batch):
-                import wx
+                record(batch)
                 def apply():
                     if (not self.closed and self.busy and self.frame.library is self.library
                             and getattr(self, '_job_token', None) is token
                             and batch.get('batch_id') == batch_id):
                         self._display(batch)
-                wx.CallAfter(apply)
+                if view is not None:
+                    view.defer(apply)
+                else:
+                    import wx
+                    wx.CallAfter(apply)
 
             def done(batch):
+                record(batch)
                 self.refresh(selected=batch_id)
                 if self.frame.book is not None:
                     self.frame.book.GetPage(1).refresh()
@@ -240,9 +274,18 @@ class ImportCenterActions:
                             (' Continue with Start queued files when ready.'
                              if (self.batch or batch).get('counts', {}).get('queued') else ''))
 
+            def outcome(batch):
+                counts = batch.get('counts', {})
+                if counts.get('failed') or counts.get('quarantined'):
+                    return 'failed'
+                if counts.get('queued') or counts.get('running'):
+                    return 'cancelled'
+                return 'completed'
+
             self._job('Importing saved batch', lambda: self.library.run_import_batch(
                 self.workspace, batch_id, cancelled=self.frame.cancel_event.is_set,
-                retry_failed=retry, progress=progress), done, token=token)
+                retry_failed=retry, progress=progress), done, token=token,
+                progress_tracker=tracker, progress_outcome=outcome)
         except Exception as exc:
             self.report(str(exc))
 
@@ -304,6 +347,7 @@ def show_import_center(frame, workspace):
     import wx
     from ..extract.page_ocr import Config
     from .ocr_options import config_summary
+    from .progress_view import ProgressView
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
@@ -378,6 +422,13 @@ def show_import_center(frame, workspace):
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
             layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            self.progress_view = ProgressView(self, settings_root=self.library.root,
+                                              label='Import batch progress', wx_module=wx)
+            layout.Add(self.progress_view.panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            progress_id = int(wx.NewIdRef())
+            self.Bind(wx.EVT_MENU, self.progress_view.query, id=progress_id)
+            self.SetAcceleratorTable(wx.AcceleratorTable([
+                (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('P'), progress_id)]))
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
             self.status.SetName('Import Center status')
             layout.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
@@ -401,4 +452,5 @@ def show_import_center(frame, workspace):
         dialog.ShowModal()
     finally:
         dialog.closed = True
+        dialog.progress_view.close()
         dialog.Destroy()

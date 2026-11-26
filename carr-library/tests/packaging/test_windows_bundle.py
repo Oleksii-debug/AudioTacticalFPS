@@ -58,6 +58,56 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+    def audio_runtime(self):
+        from carr_library.audio import runtime
+        audio = self.root / "audio-input"
+        audio.mkdir()
+        inventory = {}
+        for name in runtime.ARCHIVE_MEMBERS:
+            raw = ("synthetic " + name).encode()
+            (audio / name).write_bytes(raw)
+            inventory[name] = (name, len(raw), hashlib.sha256(raw).hexdigest())
+        manifest = {"schema": 1, "archive_sha256": runtime.FFMPEG_ARCHIVE_SHA256,
+                    "source_commit": runtime.FFMPEG_SOURCE_COMMIT,
+                    "files": {name: {"bytes": row[1], "sha256": row[2]} for name, row in inventory.items()}}
+        (audio / "ffmpeg-runtime.json").write_text(json.dumps(manifest), encoding="utf-8")
+        return audio, inventory
+
+    def test_optional_audio_runtime_is_sealed_and_checked_by_installer(self):
+        from carr_library.audio import runtime
+        audio, inventory = self.audio_runtime()
+        with patch.object(runtime, "ARCHIVE_MEMBERS", inventory):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, audio_dir=audio)
+            installer.verify(self.output)
+            self.assertEqual(runtime.verify_bundle_audio(self.output), self.output / "audio-runtime/ffmpeg.exe")
+            sealed = self.output / "audio-runtime/ffmpeg.exe"
+            self.assertEqual(sealed.read_bytes(), (audio / "ffmpeg.exe").read_bytes())
+            sealed.write_bytes(b"modified")
+            with self.assertRaisesRegex(ValueError, "checksum"):
+                installer.verify(self.output)
+
+    def test_audio_runtime_changed_during_copy_never_publishes_bundle(self):
+        from carr_library.audio import runtime
+        audio, inventory = self.audio_runtime()
+        original_copy = builder.shutil.copyfile
+
+        def tamper_copy(source, destination, *args, **kwargs):
+            result = original_copy(source, destination, *args, **kwargs)
+            if Path(source) == audio / "ffmpeg.exe":
+                Path(destination).write_bytes(b"wrong bytes")
+            return result
+
+        with patch.object(runtime, "ARCHIVE_MEMBERS", inventory), patch.object(builder.shutil, "copyfile", tamper_copy):
+            with self.assertRaisesRegex(ValueError, "integrity"):
+                builder.build_bundle(self.app, self.wheels, self.lock, self.output, audio_dir=audio)
+        self.assertFalse(self.output.exists())
+
+    def test_unannounced_audio_runtime_is_rejected(self):
+        self.build()
+        (self.output / "audio-runtime").mkdir()
+        with self.assertRaisesRegex(ValueError, "unannounced audio"):
+            installer.verify(self.output)
+
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
         path.write_text(json.dumps({
