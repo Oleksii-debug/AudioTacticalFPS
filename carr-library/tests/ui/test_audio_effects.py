@@ -291,3 +291,41 @@ def test_huge_integer_in_later_preset_stage_fails_transactionally(controller, tm
     with pytest.raises(ValueError, match="finite number"):
         controller.load_preset(path)
     assert controller.rows is before
+
+
+@pytest.mark.parametrize("flags", ["..", "TS", "...", "TSC"])
+def test_native_filter_inventory_accepts_current_and_legacy_columns(monkeypatch, flags):
+    """FFmpeg 9.1 uses two flags; the supported Linux build uses three."""
+    from carr_library.audio import render
+    monkeypatch.setattr(render, "tool_path", lambda name, configured=None: name)
+    inventories = {
+        "-filters": "Filters:\n  T.. = Timeline support\n  .S. = Slice threading\n" +
+            "\n".join(f" {flags} {name:17s} A->A Local filter"
+                      for name in ("aresample", "alimiter", "volumedetect")),
+        "-encoders": "Encoders:\n A..... pcm_s16le PCM\n A..... flac FLAC\n",
+        "-muxers": "Muxers:\n  E  wav WAV\n  E  flac FLAC\n",
+        "-version": "Local ffprobe inventory fixture\n",
+    }
+    monkeypatch.setattr(render, "run_process",
+                        lambda args, **kwargs: (inventories[args[-1]], ""))
+    backend = EffectsBackend()
+    assert set(backend.capabilities()["formats"]) == {"wav", "flac"}
+    assert backend.effect_schema()["limiter"]["available"]
+    assert not backend.effect_schema()["loudness"]["available"]
+
+
+@pytest.mark.parametrize("flags", ["..", "..."])
+def test_filter_inventory_still_rejects_missing_verification_filter(monkeypatch, flags):
+    from carr_library.audio import render
+    monkeypatch.setattr(render, "tool_path", lambda name, configured=None: name)
+    inventories = {
+        "-filters": "\n".join(f" {flags} {name:17s} A->A Local filter"
+                             for name in ("aresample", "alimiter")),
+        "-encoders": " A..... pcm_s16le PCM\n",
+        "-muxers": "  E  wav WAV\n",
+        "-version": "Local ffprobe inventory fixture\n",
+    }
+    monkeypatch.setattr(render, "run_process",
+                        lambda args, **kwargs: (inventories[args[-1]], ""))
+    with pytest.raises(RuntimeError, match="volumedetect"):
+        EffectsBackend().capabilities()

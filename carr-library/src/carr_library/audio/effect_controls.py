@@ -55,7 +55,9 @@ class EffectsBackend:
         render.run_process([self.ffprobe, '-version'], cancelled=cancelled,
                            timeout_seconds=20)
         # These inventories describe the selected executable, not web metadata.
-        filters = set(re.findall(r'^\s*[TSC.]{3}\s+([A-Za-z0-9_]+)\s',
+        # FFmpeg 9.1 prints two filter flags; earlier supported releases print
+        # a third command-capability flag. Both are native inventory formats.
+        filters = set(re.findall(r'^\s*[T.][S.](?:[C.])?\s+([A-Za-z0-9_]+)\s',
                                  values['-filters'], re.M))
         encoders = set(re.findall(r'^\s*A[A-Z.]{5}\s+([A-Za-z0-9_]+)\s',
                                   values['-encoders'], re.M))
@@ -63,7 +65,8 @@ class EffectsBackend:
                                 values['-muxers'], re.M))
         required = {'aresample', 'alimiter', 'volumedetect'}
         if not required <= filters:
-            raise RuntimeError('The selected local FFmpeg lacks required conversion and verification filters.')
+            raise RuntimeError('The selected local FFmpeg lacks required conversion and verification filters: '
+                               + ', '.join(sorted(required - filters)) + '.')
         formats = tuple(extension[1:] for extension, (encoder, container)
                         in render._ENCODERS.items()
                         if encoder in encoders and container in muxers)
