@@ -18,6 +18,7 @@ class Control:
         self.index = -1
         self.value = ''
         self.focus = False
+        self.enabled = True
 
     def SetName(self, name): self.name = name
     def Bind(self, event, handler): pass
@@ -30,6 +31,8 @@ class Control:
     def GetValue(self): return self.value
     def SetValue(self, value): self.value = value
     def SetFocus(self): self.focus = True
+    def Enable(self, enabled): self.enabled = enabled
+    def IsEnabled(self): return self.enabled
 
 
 wx = types.SimpleNamespace(**{name: Control for name in (
