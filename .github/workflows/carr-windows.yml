@@ -389,6 +389,7 @@ jobs:
             'tests/ui/test_audio_studio.py',
             'tests/ui/test_api_connections.py',
             'tests/e2e/test_provider_gateway.py',
+            'tests/e2e/test_provider_ledger_lifetime.py',
             'tests/e2e/test_provider_transport_boundaries.py',
             'tests/e2e/test_audio_cli.py',
             'tests/packaging/test_audio_acquisition.py',
