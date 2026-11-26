@@ -77,3 +77,28 @@ def test_upstream_windows_nonroaming_logic(tmp_path):
     assert result.data == local / APP_NAME
     shell.assert_called_once_with('CSIDL_LOCAL_APPDATA')
     assert not local.exists() and not roaming.exists()
+
+
+@pytest.mark.parametrize('destination', ['install', 'data'])
+@pytest.mark.parametrize('linked', [False, True])
+def test_regular_file_ancestor(tmp_path, layout_root, monkeypatch, destination, linked):
+    blocked = tmp_path / 'existing file Ж'
+    blocked.write_bytes(b'preserve me')
+    ancestor = blocked
+    if linked:
+        ancestor = tmp_path / 'file link'
+        try:
+            ancestor.symlink_to(blocked)
+        except OSError as exc:
+            pytest.skip(f'symlinks not supported: {exc}')
+    impossible = ancestor / 'child' / 'release'
+    install = tmp_path / 'program'
+    if destination == 'data':
+        monkeypatch.setenv('XDG_DATA_HOME', str(impossible))
+    else:
+        install = impossible
+    with pytest.raises(ValueError, match='directory'):
+        resolve_layout(install)
+    assert blocked.read_bytes() == b'preserve me'
+    assert not (tmp_path / 'program').exists()
+    assert not layout_root.exists()
