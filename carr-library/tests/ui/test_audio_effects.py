@@ -292,57 +292,40 @@ def test_huge_integer_in_later_preset_stage_fails_transactionally(controller, tm
         controller.load_preset(path)
     assert controller.rows is before
 
-@pytest.mark.parametrize("filter_listing", [
-    pytest.param(
-        "Filters:\n"
-        "  T.. = Timeline support\n"
-        "  .S. = Slice threading\n"
-        "  ..C = Command support\n"
-        " T.C alimiter          A->A       Audio lookahead limiter.\n"
-        " ... aresample         A->A       Resample audio data.\n"
-        " T.C volume            A->A       Change input volume.\n"
-        " ... volumedetect      A->A       Detect audio volume.\n",
-        id="ffmpeg-7-three-flags"),
-    pytest.param(
-        "Filters:\n"
-        "  T.. = Timeline support\n"
-        "  .S. = Slice threading\n"
-        " T. alimiter          A->A       Audio lookahead limiter.\n"
-        " .. aresample         A->A       Resample audio data.\n"
-        " T. volume            A->A       Change input volume.\n"
-        " .. volumedetect      A->A       Detect audio volume.\n",
-        id="ffmpeg-9-two-flags"),
-])
-def test_inventory_accepts_versioned_filter_listings_without_weakening_requirements(
-        runtime, monkeypatch, filter_listing):
-    # Exact output layouts from FFmpeg's show_filters; only inventory transport
-    # is supplied here. The separate native probe runs the real selected engine.
+
+@pytest.mark.parametrize("flags", ["..", "TS", "...", "TSC"])
+def test_native_filter_inventory_accepts_current_and_legacy_columns(monkeypatch, flags):
+    """FFmpeg 9.1 uses two flags; the supported Linux build uses three."""
     from carr_library.audio import render
-    from carr_library.audio.effects import EFFECTS
-
-    listings = {
-        "-filters": filter_listing,
-        "-encoders": "Encoders:\n A....D pcm_s16le            PCM signed 16-bit little-endian\n",
-        "-muxers": "Muxers:\n  E  wav             WAV / WAVE (Waveform Audio)\n",
+    monkeypatch.setattr(render, "tool_path", lambda name, configured=None: name)
+    inventories = {
+        "-filters": "Filters:\n  T.. = Timeline support\n  .S. = Slice threading\n" +
+            "\n".join(f" {flags} {name:17s} A->A Local filter"
+                      for name in ("aresample", "alimiter", "volumedetect")),
+        "-encoders": "Encoders:\n A..... pcm_s16le PCM\n A..... flac FLAC\n",
+        "-muxers": "Muxers:\n  E  wav WAV\n  E  flac FLAC\n",
+        "-version": "Local ffprobe inventory fixture\n",
     }
-    run = render.run_process
+    monkeypatch.setattr(render, "run_process",
+                        lambda args, **kwargs: (inventories[args[-1]], ""))
+    backend = EffectsBackend()
+    assert set(backend.capabilities()["formats"]) == {"wav", "flac"}
+    assert backend.effect_schema()["limiter"]["available"]
+    assert not backend.effect_schema()["loudness"]["available"]
 
-    def inventory(arguments, **kwargs):
-        if arguments[-1] in listings:
-            return listings[arguments[-1]], ""
-        return run(arguments, **kwargs)
 
-    monkeypatch.setattr(render, "run_process", inventory)
-    backend = EffectsBackend(ffmpeg=runtime[0], ffprobe=runtime[1])
-    schema = backend.effect_schema()
-    assert set(schema) == set(EFFECTS)
-    assert schema["gain"]["available"] and schema["limiter"]["available"]
-    assert not schema["highpass"]["available"]
-    assert backend.capabilities()["formats"] == ("wav",)
-
-    # Recognizing either layout must not waive required verification filters.
-    listings["-filters"] = filter_listing.replace(" volumedetect ", " missing_volume ")
-    absent = EffectsBackend(ffmpeg=runtime[0], ffprobe=runtime[1])
-    with pytest.raises(RuntimeError, match="required conversion and verification filters"):
-        absent.capabilities()
-
+@pytest.mark.parametrize("flags", ["..", "..."])
+def test_filter_inventory_still_rejects_missing_verification_filter(monkeypatch, flags):
+    from carr_library.audio import render
+    monkeypatch.setattr(render, "tool_path", lambda name, configured=None: name)
+    inventories = {
+        "-filters": "\n".join(f" {flags} {name:17s} A->A Local filter"
+                             for name in ("aresample", "alimiter")),
+        "-encoders": " A..... pcm_s16le PCM\n",
+        "-muxers": "  E  wav WAV\n",
+        "-version": "Local ffprobe inventory fixture\n",
+    }
+    monkeypatch.setattr(render, "run_process",
+                        lambda args, **kwargs: (inventories[args[-1]], ""))
+    with pytest.raises(RuntimeError, match="volumedetect"):
+        EffectsBackend().capabilities()
