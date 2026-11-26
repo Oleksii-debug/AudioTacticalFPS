@@ -40,6 +40,13 @@ CREATE VIEW active_page AS SELECT p.*,r.workspace,r.edition,r.asset FROM page p
 PRAGMA user_version=1;
 '''
 
+
+def _sidecars(path):
+    # Same namespace guard as the CARR-10 restore candidate (PR #31).
+    return any(os.path.lexists(str(path) + suffix)
+               for suffix in ('-wal', '-shm', '-journal'))
+
+
 @dataclass(frozen=True)
 class Page:
     raw: str
@@ -133,15 +140,21 @@ class Storage:
 
         Requires a local filesystem supporting hard links. Interrupted processes
         may leave a staging directory, never an incomplete final snapshot.
+        The caller must own a stable private parent directory and exclude
+        concurrent namespace writers; these checks are not a hostile-directory lock.
         """
         path = Path(path)
-        if os.path.lexists(path):
+        if os.path.lexists(path) or _sidecars(path):
             raise FileExistsError(path)
         with TemporaryDirectory(prefix='.carr-backup-', dir=path.parent) as work:
             staged = Path(work) / 'snapshot.db'
             dst = sqlite3.connect(staged)
             try:
                 self.db.backup(dst)
+                # A backup of a WAL source may retain the WAL file format.
+                # Convert only the private snapshot to a standalone database.
+                if dst.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
+                    raise ValueError('snapshot journal mode is not DELETE')
             finally:
                 dst.close()
             copy = Storage(staged)
@@ -149,8 +162,12 @@ class Storage:
                 copy.check()
             finally:
                 copy.close()
+            if _sidecars(staged):
+                raise ValueError('snapshot has sidecars')
             with staged.open('r+b') as file:
                 os.fsync(file.fileno())
             # Atomic no-replace publication, including a competing writer.
             # Unsupported filesystems fail closed; no overwrite/copy fallback.
+            if _sidecars(path):
+                raise FileExistsError(path)
             os.link(staged, path)
