@@ -1,0 +1,96 @@
+diff --git a/.github/workflows/carr-windows.yml b/.github/workflows/carr-windows.yml
+--- a/.github/workflows/carr-windows.yml
++++ b/.github/workflows/carr-windows.yml
+@@ -171,5 +171,16 @@
+             'tests/extract/test_ocr_model_catalog.py',
+             'tests/storage/test_library_backup.py',
+-            'tests/storage/test_backup_schema_identity.py',
++            'tests/storage/test_backup_schema_identity.py',
++            'tests/storage/test_backup_v4_sidecars.py',
++            'tests/storage/test_backup_keyboard_drafts.py',
++            'tests/assistant/test_backup_receipt.py',
++            'tests/assistant/test_budget_resume.py',
++            'tests/assistant/test_complete_recovery.py',
++            'tests/citations/test_csl.py',
++            'tests/citations/test_bibliography_workbench.py',
++            'tests/research/test_bibtex_import.py',
++            'tests/ui/test_citation_styles_jobs.py',
++            'tests/reader/test_export_no_clobber.py',
++            'tests/packaging/test_delivery_archive.py',
+             'tests/storage/test_academic_migration.py',
+             'tests/research/test_academic_library.py',
+@@ -459,5 +470,20 @@
+           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
+           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+-          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
++          # Exercise all three real-key probes against the installed wheel.
++          # Keep the verified DLL directory handle alive; do not add a source override.
++          $nativeKeyboardProbes = @(
++            @{ Path='tests/ui/native_keyboard_settings_smoke.py'; Evidence='full-bundle-keyboard-main.txt' },
++            @{ Path='tests/ui/native_reader_keymap_smoke.py'; Evidence='full-bundle-keyboard-reader.txt' },
++            @{ Path='tests/ui/native_evidence_drafts_smoke.py'; Evidence='full-bundle-evidence-drafts.txt' }
++          )
++          $nativeKeyboardResults = @()
++          foreach ($probe in $nativeKeyboardProbes) {
++            & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; runtime_handle=activate_bundled_runtime(); assert runtime_handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path $probe.Path).Path --native 2>&1 | Tee-Object (Join-Path 'ci-results' $probe.Evidence)
++            $probeExit = $LASTEXITCODE
++            $nativeKeyboardResults += [pscustomobject]@{ probe=$probe.Path; exit_code=$probeExit }
++          }
++          $nativeKeyboardResults | ConvertTo-Json | Set-Content 'ci-results/full-bundle-keyboard-results.json'
++          if (@($nativeKeyboardResults | Where-Object { $_.exit_code -ne 0 }).Count -ne 0) { throw 'A required installed native keyboard or draft probe did not pass.' }
++          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+@@ -488,6 +514,23 @@
+               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
+           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
+-          import pytest
+-          # Keep the shared workflow list intact while exercising the additive
++          import hashlib, importlib
++          adopted_modules = (
++              'carr_library.library_backup',
++              'carr_library.backup_sidecars',
++              'carr_library.assistant.backup_receipt',
++              'carr_library.assistant.backup_state',
++              'carr_library.citations.csl',
++              'carr_library.citations.bibliography_workbench',
++              'carr_library.research.bibtex_import',
++          )
++          for name in adopted_modules:
++              component = importlib.import_module(name)
++              installed = pathlib.Path(component.__file__).resolve()
++              assert installed.is_relative_to(root / '.venv'), name + ' imported from outside the installed wheel'
++              expected = pathlib.Path.cwd() / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
++              assert hashlib.sha256(installed.read_bytes()).digest() == hashlib.sha256(expected.read_bytes()).digest(), name + ' differs from the source-verified wheel'
++          print(json.dumps({'adopted_installed_modules': list(adopted_modules), 'source_bytes': 'PASS'}), flush=True)
++          import pytest
++          # Keep the shared workflow list intact while exercising the additive
+           # contents reader in this same installed-package/native-runtime process.
+           contents_suites = ['tests/reader/test_ebook_contents.py',
+@@ -498,5 +541,16 @@
+                             'tests/acquisition/test_acquisition_cli.py',
+                             'tests/ui/test_native_acquisition.py']
+-          status = pytest.main([*sys.argv[2:], *contents_suites])
++          adopted_suites = [
++              'tests/storage/test_backup_v4_sidecars.py',
++              'tests/storage/test_backup_keyboard_drafts.py',
++              'tests/assistant/test_backup_receipt.py',
++              'tests/assistant/test_budget_resume.py',
++              'tests/assistant/test_complete_recovery.py',
++              'tests/citations/test_csl.py',
++              'tests/citations/test_bibliography_workbench.py',
++              'tests/research/test_bibtex_import.py',
++              'tests/reader/test_export_no_clobber.py',
++          ]
++          status = pytest.main([*sys.argv[2:], *contents_suites, *adopted_suites])
+           if status:
+               raise SystemExit(status)
+@@ -519,5 +573,7 @@
+           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+-          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
++          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); required={'test_backup_v4_sidecars','test_backup_keyboard_drafts','test_backup_receipt','test_budget_resume','test_complete_recovery','test_csl','test_bibliography_workbench','test_bibtex_import','test_export_no_clobber'}; present={part for case in cases for part in case.get('classname','').split('.')}; assert required<=present, sorted(required-present); assert all(case.find(tag) is None for case in cases for tag in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',required_installed_modules=sorted(required),nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-backup-bibliography.json'
++          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
++          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
+           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+           } finally {
