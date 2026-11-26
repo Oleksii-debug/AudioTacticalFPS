@@ -15,6 +15,8 @@ import shutil
 import stat
 import sys
 
+from .ocr_languages import valid_model_code
+
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
 MAX_FILES = 2048
@@ -193,9 +195,12 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         # The manifest cannot be changed between selecting and checking its files.
         if _read(root / MANIFEST, MAX_MANIFEST, remaining)[1] != manifest_hash:
             raise OcrRuntimeError('Portable OCR manifest changed during validation.')
-        languages = tuple(sorted(Path(name).stem for name in files
-                                 if PurePosixPath(name).parent == PurePosixPath(tessdata)
-                                 and name.endswith('.traineddata')))
+        languages = tuple(sorted(
+            str(PurePosixPath(name).relative_to(tessdata))[:-len('.traineddata')]
+            for name in files
+            if name.endswith('.traineddata') and PurePosixPath(name).is_relative_to(tessdata)
+            and valid_model_code(str(PurePosixPath(name).relative_to(tessdata))[:-len('.traineddata')])
+        ))
         return OcrRuntime(str(root / executable), root / tessdata, data['target'],
                           manifest_hash, tuple(hashes), languages, root)
     except (OSError, UnicodeError, ValueError, TypeError) as exc:
@@ -280,7 +285,7 @@ def check_runtime(*, timeout=30):
         raise OcrRuntimeError('The OCR engine returned an unexpected version.')
     report = run('--list-langs')
     languages = [line.strip() for line in report.splitlines()
-                 if re.fullmatch(r'[A-Za-z0-9_]+', line.strip())]
+                 if valid_model_code(line.strip())]
     if 'eng' not in languages:
         raise OcrRuntimeError('The OCR engine cannot load English language data.')
     try:

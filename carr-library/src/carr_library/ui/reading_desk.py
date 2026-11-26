@@ -209,6 +209,7 @@ class ReadingDialog:
                      wx.ACCEL_CTRL, ord('B'))
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
                      wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('B'))
+        self._button(bookmarks, 'Create editable reading copy...', self.edit_reading_copy)
         self._button(bookmarks, 'Reader keyboard guide', self.help, wx.ACCEL_NORMAL, wx.WXK_F1)
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
@@ -246,6 +247,18 @@ class ReadingDialog:
     def _error(self, error):
         self.status.ChangeValue(str(error))
         self.status.SetFocus()
+
+    def edit_reading_copy(self, event=None):
+        def opened(page):
+            from ..reader.narration import NarrationStore, new_project
+            from .narration_editor import open_narration_editor
+            store = NarrationStore(self.controller.desk.library.root)
+            project = new_project(page.raw_text,
+                title=f'{page.title} — {page.locator.display()}'[:200], source_location=page.location)
+            open_narration_editor(self.dialog, store, project, guard=self.controller.check)
+            self.controller.check()
+            self.text.SetFocus()
+        self._run('Preparing editable reading copy', self.controller.where, opened)
 
     def _run(self, title, operation, done):
         if self.closed:

@@ -219,6 +219,32 @@ interchange details.
 
 ## Research from the keyboard
 
+### Save work and prepare a reading copy
+
+**File, Save current changes**, or **Ctrl+S**, saves a pending research note.
+**Ctrl+Shift+S** saves all main-window changes. Dialogs keep their own contextual
+Save commands. The application reports an unsuccessful save and retains the
+draft instead of reporting completion.
+
+**File, New reading copy** opens an editable text project. Use **Import text as
+a reading copy** for a UTF-8 text file or **Open saved reading copy** to continue
+saved work. In the full-source reader, **Create editable reading copy** starts
+a separate project from the displayed page or segment. Its original text,
+source identity and revision are preserved. Normalization and pronunciation
+replacements require preview and explicit application; edited reading text is
+never approved as a quotation. See [reading copies](READING_COPIES.md).
+
+**Options, Keyboard shortcuts** changes main-window assignments and checks
+conflicts. **List current keyboard shortcuts** shows the active assignments;
+the guide below describes defaults. Preferences can be reset, exported and
+imported. See [keyboard settings](KEYBOARD_SETTINGS.md).
+
+Complete backups now include page bookmarks, resume positions, saved reading
+projects and recovery drafts, OCR language presets and keyboard settings when
+present. The manifest checks each file and its source bindings before restore.
+See [complete backup](COMPLETE_BACKUP.md) for the exact included state and the
+remaining exclusions.
+
 ### Search several libraries and manage saved criteria
 
 Press **Ctrl+Alt+F**, or choose **Research, Research Search Center...**.
