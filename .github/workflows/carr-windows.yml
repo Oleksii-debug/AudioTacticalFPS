@@ -102,12 +102,18 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native BibTeX and citation controls
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/native-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Verify pinned production source dependencies
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==47 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -177,6 +183,14 @@ jobs:
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
+            'tests/research/test_bibtex_import.py',
+            'tests/research/test_csl_author_boundaries.py',
+            'tests/citations/test_csl.py',
+            'tests/citations/test_custom_csl.py',
+            'tests/citations/test_bibliography_workbench.py',
+            'tests/citations/test_custom_workbench.py',
+            'tests/ui/test_citation_styles_jobs.py',
+            'tests/reader/test_export_no_clobber.py',
             'tests/e2e/test_academic_workflow.py',
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
@@ -495,6 +509,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -523,11 +539,15 @@ jobs:
           import carr_library.library_assistant, carr_library.backup_sidecars
           import carr_library.ui.keyboard_settings, carr_library.extract.document_formats
           import carr_library.audio.production, carr_library.providers
+          import carr_library.citations.csl, carr_library.citations.bibliography_workbench
+          import carr_library.research.bibtex_import, carr_library.ui.citation_styles_dialog
           for component in (carr_library.acquisition.service, carr_library.acquisition.transport,
                             carr_library.acquisition.providers, carr_library.ui.acquisition_dialog,
                             carr_library.library_assistant, carr_library.backup_sidecars,
                             carr_library.ui.keyboard_settings, carr_library.extract.document_formats,
-                            carr_library.audio.production, carr_library.providers):
+                            carr_library.audio.production, carr_library.providers,
+                            carr_library.citations.csl, carr_library.citations.bibliography_workbench,
+                            carr_library.research.bibtex_import, carr_library.ui.citation_styles_dialog):
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
@@ -545,7 +565,14 @@ jobs:
                             'tests/storage/test_backup_v4_sidecars.py',
                             'tests/storage/test_backup_keyboard_drafts.py',
                             'tests/storage/test_library_backup_reading_state.py',
-                            'tests/e2e/test_provider_transport_boundaries.py']
+                            'tests/e2e/test_provider_transport_boundaries.py',
+                            'tests/research/test_bibtex_import.py',
+                            'tests/research/test_csl_author_boundaries.py',
+                            'tests/citations/test_csl.py',
+                            'tests/citations/test_custom_csl.py',
+                            'tests/citations/test_bibliography_workbench.py',
+                            'tests/citations/test_custom_workbench.py',
+                            'tests/reader/test_export_no_clobber.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
