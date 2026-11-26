@@ -24,6 +24,7 @@ from ..data_paths import guard_data_directory
 
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
 MAX_CUES = 100_000  # A resource bound, not a duration ceiling.
+MAX_DRAFTS = 1024
 ID = re.compile(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\Z')
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 
@@ -61,8 +62,36 @@ def number(value, label, minimum, maximum):
     return value
 
 
+def local_path(value):
+    """Validate every existing ancestor before any local filesystem mutation."""
+    raw = os.fspath(value)
+    if (not isinstance(raw, str) or not raw or raw.startswith(('\\\\', '//'))
+            or '://' in raw or any(ord(char) < 32 for char in raw)):
+        raise ValueError('Audio state requires a direct local path.')
+    path = Path(raw).absolute()
+    if '..' in path.parts:
+        raise ValueError('Audio state paths cannot traverse parent directories.')
+    if os.name == 'nt':
+        import ctypes
+        get_drive_type = ctypes.windll.kernel32.GetDriveTypeW
+        get_drive_type.argtypes = (ctypes.c_wchar_p,)
+        get_drive_type.restype = ctypes.c_uint
+        if get_drive_type(path.anchor) == 4:
+            raise ValueError('Mapped network drives are unavailable for local audio state.')
+    for ancestor in (*reversed(path.parents), path):
+        try:
+            info = ancestor.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('Audio state paths cannot contain symbolic links or reparse points.')
+        if ancestor != path and not stat.S_ISDIR(info.st_mode):
+            raise ValueError('An audio state path ancestor is not a directory.')
+    return path
+
+
 def plain(path, *, directory=False, missing=False):
-    path = Path(path)
+    path = local_path(path)
     try:
         info = path.lstat()
     except FileNotFoundError:
@@ -76,7 +105,7 @@ def plain(path, *, directory=False, missing=False):
 
 
 def directory(path):
-    path = Path(path)
+    path = local_path(path)
     path.mkdir(mode=0o700, parents=True, exist_ok=True)
     plain(path, directory=True)
     return path
@@ -92,11 +121,16 @@ def _unique(pairs):
 
 
 def read_json(path, maximum=MAX_PROJECT_BYTES):
-    path = Path(path)
+    path = local_path(path)
     before = plain(path)
     if not 0 < before.st_size <= maximum:
         raise ValueError('Audio state file exceeds its resource budget.')
-    with path.open('rb') as stream:
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    with os.fdopen(descriptor, 'rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if (opened.st_dev, opened.st_ino, opened.st_nlink, opened.st_size, opened.st_mtime_ns) != (
+                before.st_dev, before.st_ino, before.st_nlink, before.st_size, before.st_mtime_ns):
+            raise ValueError('Audio state changed while being opened; retry the operation.')
         raw = stream.read(maximum + 1)
     after = plain(path)
     if (len(raw) != before.st_size or before.st_size != after.st_size
@@ -110,7 +144,7 @@ def read_json(path, maximum=MAX_PROJECT_BYTES):
 
 
 def atomic_json(path, value, *, replace_existing=True):
-    path = Path(path)
+    path = local_path(path)
     plain(path.parent, directory=True)
     plain(path, missing=True)
     raw = (canonical(value) + '\n').encode('utf-8')
@@ -118,7 +152,8 @@ def atomic_json(path, value, *, replace_existing=True):
         raise ValueError('Audio state exceeds its resource budget.')
     temporary = path.with_name('.' + uuid4().hex + '.tmp')
     try:
-        with temporary.open('xb') as stream:
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'wb') as stream:
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
@@ -447,7 +482,7 @@ class ProjectStore:
     """Short atomic state writes; render work never holds the state lock."""
 
     def __init__(self, root):
-        self.root = guard_data_directory(root)
+        self.root = guard_data_directory(local_path(root))
         directory(self.root)
         self.studio = directory(self.root / 'studio')
         self.projects = directory(self.studio / 'projects')
@@ -472,7 +507,7 @@ class ProjectStore:
         if type(project) is not Project or project.revision != 1:
             raise ValueError('Create a validated first project revision.')
         with self.transaction():
-            folder = self.projects / project.id
+            folder = local_path(self.projects / project.id)
             folder.mkdir(mode=0o700)
             for name in ('revisions', 'cache', 'jobs', 'assets'):
                 directory(folder / name)
@@ -485,12 +520,13 @@ class ProjectStore:
             raise ValueError('Project identity mismatch.')
         return value
 
-    def save(self, project):
+    def save(self, project, *, expected_fingerprint=None):
         if type(project) is not Project:
             raise ValueError('Save a validated audio project.')
         with self.transaction():
             before = self.load(project.id)
-            if project.revision != before.revision + 1:
+            if (project.revision != before.revision + 1
+                    or (expected_fingerprint is not None and before.fingerprint != expected_fingerprint)):
                 raise ValueError('This project changed in another window. Reopen it before saving.')
             folder = self.path(project.id)
             revision_path = folder / 'revisions' / f'{before.revision:08d}.json'
@@ -500,14 +536,9 @@ class ProjectStore:
             else:
                 atomic_json(revision_path, before.to_dict(), replace_existing=False)
             atomic_json(folder / 'project.json', project.to_dict())
-            draft_path=folder/'draft.json'
-            if draft_path.exists():
-                draft=read_json(draft_path)
-                if draft.get('script')==project.script and all((
-                        draft.get('title',project.title)==project.title,
-                        draft.get('language',project.roles[0].language)==project.roles[0].language,
-                        draft.get('format',project.settings.format)==project.settings.format)):
-                    draft_path.unlink()
+            # Legacy drafts have no window identity. Never delete another
+            # editor's recovery data, or turn cleanup failure into a false
+            # "project not saved" after the atomic commit has succeeded.
         return project
 
     def list_projects(self):
@@ -523,6 +554,47 @@ class ProjectStore:
     def validate_draft(value, *, standalone=False):
         if type(value) is not dict:
             raise ValueError('Invalid audio draft.')
+        if type(value.get('version')) is int and value['version'] == 3:
+            fields = {'version', 'id', 'project_id', 'script', 'title', 'language', 'format',
+                      'source', 'directives', 'base_revision', 'base_fingerprint', 'saved_at',
+                      'revision', 'sha256'}
+            if set(value) != fields:
+                raise ValueError('Unsupported per-window audio draft fields.')
+            if not isinstance(value['id'], str) or not re.fullmatch('[0-9a-f]{32}', value['id']):
+                raise ValueError('Invalid audio draft window identity.')
+            if value['project_id'] is not None:
+                identity(value['project_id'], 'draft project identity')
+            script = value['script']
+            if (not isinstance(script, str) or len(script) > MAX_PROJECT_BYTES
+                    or any(0xD800 <= ord(char) <= 0xDFFF for char in script)):
+                raise ValueError('Invalid recovery draft text.')
+            for key, maximum in (('title', 500), ('language', 80)):
+                if not isinstance(value[key], str) or len(value[key]) > maximum:
+                    raise ValueError('Invalid recovery draft metadata.')
+            Settings(format=value['format'])
+            text(value['saved_at'], 'draft date', 80)
+            if (type(value['revision']) is not int or not 1 <= value['revision'] < 2**63
+                    or type(value['base_revision']) is not int or not 0 <= value['base_revision'] < 2**63):
+                raise ValueError('Invalid recovery draft revision.')
+            fingerprint = value['base_fingerprint']
+            if fingerprint is not None and (not isinstance(fingerprint, str) or not DIGEST.fullmatch(fingerprint)):
+                raise ValueError('Invalid recovery draft base fingerprint.')
+            if value['project_id'] is None and (value['base_revision'] != 0 or fingerprint is not None):
+                raise ValueError('An unsaved project draft has no committed base.')
+            if value['project_id'] is not None and value['base_revision'] < 1:
+                raise ValueError('A project draft needs its committed base revision.')
+            source = value['source']
+            if (type(source) is not dict or set(source) - {'workspace','edition','revision','kind','index','text_sha256'}
+                    or any(type(item) not in (str, int) for item in source.values())
+                    or len(canonical(source)) > 4000 or type(value['directives']) is not bool
+                    or (source and value['directives'])):
+                raise ValueError('Invalid recovery draft source.')
+            if source.get('text_sha256') is not None and source['text_sha256'] != sha256(script.encode('utf-8')).hexdigest():
+                raise ValueError('The recovery draft must retain its exact original source text.')
+            payload = {key: item for key, item in value.items() if key != 'sha256'}
+            if value['sha256'] != digest(payload):
+                raise ValueError('Recovery draft checksum mismatch.')
+            return value
         legacy={'version','script','saved_at'}
         fields=legacy|{'base_revision','title','language','format'}
         if standalone:
@@ -550,9 +622,20 @@ class ProjectStore:
                 raise ValueError('Invalid unsaved draft source.')
         return value
 
-    def save_draft(self, project_id, script, *, title=None, language=None, format=None, base_revision=None):
+    def save_draft(self, project_id, script, *, title=None, language=None, format=None, base_revision=None,
+                   session_id=None, base_fingerprint=None, source=None, directives=None):
         with self.transaction():
             current=self.load(project_id)
+            if session_id is not None:
+                return self._save_window_draft(session_id, script, project_id=project_id,
+                    title=current.title if title is None else title,
+                    language=current.roles[0].language if language is None else language,
+                    format=current.settings.format if format is None else format,
+                    base_revision=current.revision if base_revision is None else base_revision,
+                    base_fingerprint=(current.fingerprint if base_revision in (None, current.revision)
+                                      and base_fingerprint is None else base_fingerprint),
+                    source=current.source if source is None else source,
+                    directives=not bool(current.source) if directives is None else directives)
             if base_revision is not None and base_revision!=current.revision:
                 raise ValueError('The project changed in another window. Its saved draft was not replaced.')
             draft={'version':2,'script':script,'saved_at':now(),'base_revision':current.revision,
@@ -562,27 +645,66 @@ class ProjectStore:
             atomic_json(self.path(project_id)/'draft.json',self.validate_draft(draft))
 
     def save_new_draft(self, draft_id, script, *, title, language, format, source=None, directives=True):
-        draft={'version':2,'id':draft_id,'script':script,'title':title,'language':language,'format':format,
-               'source':source or {},'directives':directives,'base_revision':0,'saved_at':now()}
-        self.validate_draft(draft,standalone=True)
         with self.transaction():
-            folder=directory(self.studio/'drafts')
-            atomic_json(folder/(draft_id+'.json'),draft)
+            draft = self._save_window_draft(draft_id, script, title=title, language=language,
+                format=format, source=source or {}, directives=directives)
         return draft
 
-    def new_drafts(self):
+    def _save_window_draft(self, session_id, script, *, title, language, format,
+                           project_id=None, base_revision=0, base_fingerprint=None,
+                           source=None, directives=True):
+        if not isinstance(session_id, str) or not re.fullmatch('[0-9a-f]{32}', session_id):
+            raise ValueError('Invalid audio draft window identity.')
+        folder = directory(self.studio / 'drafts')
+        path = folder / (session_id + '.json')
+        revision = 1
+        if os.path.lexists(path):
+            previous = self.validate_draft(read_json(path), standalone=True)
+            if previous.get('id') != session_id or previous.get('project_id') != project_id:
+                raise ValueError('An audio recovery window cannot overwrite a different project draft.')
+            revision = previous.get('revision', 0) + 1
+        payload = dict(version=3, id=session_id, project_id=project_id, script=script,
+                       title=title, language=language, format=format, source=source or {},
+                       directives=directives, base_revision=base_revision,
+                       base_fingerprint=base_fingerprint, saved_at=now(), revision=revision)
+        draft = {**payload, 'sha256': digest(payload)}
+        self.validate_draft(draft, standalone=True)
+        atomic_json(path, draft)
+        return draft
+
+    def _window_drafts(self):
         folder=self.studio/'drafts'
-        if not folder.exists():
+        local_path(folder)
+        if not os.path.lexists(folder):
             return ()
         plain(folder,directory=True)
         rows=[]
-        for path in folder.iterdir():
+        total = 0
+        for index, path in enumerate(folder.iterdir()):
+            if index >= MAX_DRAFTS * 2:
+                raise ValueError('Audio recovery draft directory exceeds its entry budget.')
             if re.fullmatch('[0-9a-f]{32}\\.json',path.name):
+                total += plain(path).st_size
+                if len(rows) >= MAX_DRAFTS or total > 128 * 1024**2:
+                    raise ValueError('Audio recovery drafts exceed their resource budget.')
                 value=self.validate_draft(read_json(path),standalone=True)
                 if value['id']!=path.stem:
                     raise ValueError('Unsaved draft identity mismatch.')
                 rows.append(value)
         return tuple(sorted(rows,key=lambda row:row['saved_at'],reverse=True))
+
+    def new_drafts(self):
+        with self.transaction():
+            return tuple(row for row in self._window_drafts() if row.get('project_id') is None)
+
+    def project_drafts(self, project_id):
+        identity(project_id, 'project identity')
+        with self.transaction():
+            rows = [row for row in self._window_drafts() if row.get('project_id') == project_id]
+            legacy = self.path(project_id) / 'draft.json'
+            if os.path.lexists(legacy):
+                rows.append(self.validate_draft(read_json(legacy)))
+            return tuple(sorted(rows, key=lambda row: row['saved_at'], reverse=True))
 
     def discard_new_draft(self, draft_id):
         if not isinstance(draft_id,str) or not re.fullmatch('[0-9a-f]{32}',draft_id):
@@ -592,6 +714,9 @@ class ProjectStore:
             if path.exists():
                 plain(path.parent,directory=True)
                 plain(path)
+                value = self.validate_draft(read_json(path), standalone=True)
+                if value['id'] != draft_id:
+                    raise ValueError('Recovery draft identity mismatch; nothing was discarded.')
                 path.unlink()
 
     def export(self, project_id, destination):
@@ -603,4 +728,11 @@ class ProjectStore:
     def import_project(self, path):
         project = Project.from_dict(read_json(path))
         # Import as a distinct editable project. Source identities remain unchanged.
-        return self.create(replace(project, id=uuid4().hex, revision=1, created_at=now()))
+        project_id = uuid4().hex
+        narration = {}
+        if project.narration:
+            from .narration import cue_derivative
+            for cue_id in project.narration:
+                original = cue_derivative(project, cue_id)
+                narration[cue_id] = replace(original, source_id=f'{project_id}:{cue_id}').to_dict()
+        return self.create(replace(project, id=project_id, revision=1, created_at=now(), narration=narration))

@@ -19,6 +19,7 @@ import sys
 import tempfile
 
 from .effects import number
+from .musicgen_worker import plain_local, validate_model_assets
 from .render import (RenderResult, _disk_budget, _encoder_options, _ffmpeg_base,
                      _frames, _settings, check_cancelled, convert_audio,
                      file_sha256, local_file, output_path, publish_audio,
@@ -127,14 +128,20 @@ def _procedural(spec, target, *, sample_rate, channels, cancelled, ffmpeg, ffpro
                                 estimated_pcm_bytes=estimate))
 
 
-def _worker_environment():
-    env = dict(os.environ)
-    for key in list(env):
-        if any(term in key.upper() for term in ('TOKEN', 'SECRET', 'PASSWORD', 'API_KEY')):
-            env.pop(key, None)
+def _worker_environment(stage):
+    # -I does not neutralize LD_PRELOAD or native library injection variables.
+    # Start from required OS paths, not the application's secrets and loader flags.
+    permitted = {'SYSTEMROOT', 'WINDIR', 'SYSTEMDRIVE', 'PATH', 'PATHEXT',
+                 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE',
+                 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE', 'CUDA_VISIBLE_DEVICES'}
+    env = {key: value for key, value in os.environ.items() if key.upper() in permitted}
+    cache = str(Path(stage) / 'private-cache')
     env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_HUB_DISABLE_TELEMETRY='1',
                HF_HUB_DISABLE_IMPLICIT_TOKEN='1', ORT_DISABLE_TELEMETRY='1',
-               DO_NOT_TRACK='1', TOKENIZERS_PARALLELISM='false')
+               DO_NOT_TRACK='1', TOKENIZERS_PARALLELISM='false',
+               HF_HOME=cache, HF_HUB_CACHE=cache, HUGGINGFACE_HUB_CACHE=cache,
+               TRANSFORMERS_CACHE=cache, TORCH_HOME=cache, XDG_CACHE_HOME=cache,
+               TEMP=str(stage), TMP=str(stage), TMPDIR=str(stage))
     return env
 
 
@@ -150,11 +157,11 @@ def music_runtime_identity(options=None):
     if config is not None:
         if not isinstance(config, MusicGenConfig):
             raise ValueError('Invalid installed MusicGen configuration.')
-        if file_sha256(local_file(config.manifest)) != config.manifest_sha256:
+        if file_sha256(plain_local(config.manifest)) != config.manifest_sha256:
             raise ValueError('Installed MusicGen manifest identity changed.')
         identity['musicgen'] = {'manifest_sha256': config.manifest_sha256,
                                'device': config.device,
-                               'python_sha256': file_sha256(tool_path('Python', config.python_executable))}
+                               'python_sha256': file_sha256(plain_local(tool_path('Python', config.python_executable)))}
     if options.get('soundfont'):
         identity['soundfont_sha256'] = file_sha256(local_file(options['soundfont']))
         identity['soundfont_license'] = options.get('soundfont_license')
@@ -176,7 +183,7 @@ def validate_musicgen_config(config, *, cancelled=None):
     """Bind every local model byte and installed worker version to an external manifest."""
     if not isinstance(config, MusicGenConfig):
         raise ValueError('Configure an explicitly installed MusicGen model and rights manifest first.')
-    manifest_path = local_file(config.manifest)
+    manifest_path = plain_local(config.manifest)
     if manifest_path.stat().st_size > 1024 * 1024:
         raise ValueError('MusicGen manifest is too large.')
     raw = manifest_path.read_bytes()
@@ -201,55 +208,19 @@ def validate_musicgen_config(config, *, cancelled=None):
             or manifest.get('weights_license') != 'CC-BY-NC-4.0'
             or manifest.get('code_license') != 'Apache-2.0'
             or not isinstance(manifest.get('model_id'), str)
-            or not manifest['model_id'].startswith('facebook/musicgen-')
-            or not re.fullmatch(r'[0-9a-f]{40,64}', str(manifest.get('revision', '')))
+            or not re.fullmatch(r'facebook/musicgen-(?:stereo-)?(?:small|medium|large)', manifest['model_id'])
+            or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', str(manifest.get('revision', '')))
             or any(not re.fullmatch(r'[0-9][A-Za-z0-9.+-]{1,40}', str(manifest.get(key, '')))
                    for key in ('transformers_version', 'torch_version'))):
         raise ValueError('Unsupported MusicGen model/rights/version manifest.')
-    root = Path(config.model_dir).absolute()
-    for directory in (root, *root.parents):
-        details = directory.lstat()
-        if (not stat.S_ISDIR(details.st_mode) or stat.S_ISLNK(details.st_mode)
-                or getattr(details, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-            raise ValueError('MusicGen model must be a plain local directory.')
-    root = root.resolve(strict=True)
+    root = plain_local(config.model_dir, directory=True)
     if manifest_path.is_relative_to(root):
         raise ValueError('Keep the approved model manifest outside the model directory.')
-    entries = manifest['files']
-    if not isinstance(entries, list) or not 1 <= len(entries) <= 2000:
-        raise ValueError('Invalid MusicGen model file inventory.')
-    expected = set()
-    has_weights = False
-    for entry in entries:
-        check_cancelled(cancelled)
-        if not isinstance(entry, dict) or set(entry) != {'path', 'sha256', 'size_bytes'}:
-            raise ValueError('Invalid model file record.')
-        relative = entry['path']
-        if (not isinstance(relative, str) or not re.fullmatch(r'[A-Za-z0-9_.\-/]{1,240}', relative)
-                or relative.startswith('/') or any(p in ('', '.', '..') for p in relative.split('/'))
-                or relative in expected or relative.lower().endswith(('.py', '.bin', '.pt', '.pth', '.pkl', '.pickle'))):
-            raise ValueError('Only passive local model files and safetensors weights are allowed.')
-        if type(entry['size_bytes']) is not int or not 0 < entry['size_bytes'] <= 32 * 1024**3:
-            raise ValueError('Invalid model file size.')
-        if not isinstance(entry['sha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', entry['sha256']):
-            raise ValueError('Invalid model checksum.')
-        path = local_file(root / relative)
-        if not path.is_relative_to(root) or path.stat().st_size != entry['size_bytes'] or file_sha256(path, cancelled) != entry['sha256']:
-            raise ValueError('Installed MusicGen model failed its file verification.')
-        expected.add(relative)
-        has_weights |= relative.endswith('.safetensors')
-    actual = set()
-    for path in root.rglob('*'):
-        details = path.lstat()
-        if stat.S_ISLNK(details.st_mode) or getattr(details, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
-            raise ValueError('Model directories must not contain links.')
-        if path.is_file():
-            actual.add(path.relative_to(root).as_posix())
-    if actual != expected or not has_weights or 'config.json' not in expected:
-        raise ValueError('MusicGen model inventory is incomplete or contains unexpected files.')
+    validate_model_assets(root, manifest, cancelled=lambda: check_cancelled(cancelled))
     if config.device != 'cpu' and not re.fullmatch(r'cuda(?::[0-7])?', config.device):
         raise ValueError('Choose CPU or an explicitly selected CUDA device.')
     python = tool_path('Python', config.python_executable)
+    plain_local(python)
     return root, manifest, python
 
 
@@ -258,6 +229,8 @@ def _musicgen(spec, target, *, config, sample_rate, channels, cancelled, ffmpeg,
     if spec.duration_seconds > 25:
         raise ValueError('Schedule MusicGen in chunks of at most 25 seconds; final projects may span many hours.')
     model, manifest, python = validate_musicgen_config(config, cancelled=cancelled)
+    validate_model_assets(model, manifest, cancelled=lambda: check_cancelled(cancelled), require_inference_assets=True)
+    plain_local(target.parent, directory=True)
     frames = _frames(spec.duration_seconds, sample_rate)
     estimate = _disk_budget(target, frames, sample_rate, channels, max_output_bytes)
     with tempfile.TemporaryDirectory(prefix='.carr-musicgen-', dir=target.parent) as temp:
@@ -268,10 +241,10 @@ def _musicgen(spec, target, *, config, sample_rate, channels, cancelled, ffmpeg,
                        result=str(response))
         request_file = stage / 'request.json'
         request_file.write_text(json.dumps(request, ensure_ascii=False), encoding='utf-8')
-        run_process([python, '-I', str(Path(__file__).with_name('musicgen_worker.py')),
+        run_process([python, '-I', '-B', str(Path(__file__).with_name('musicgen_worker.py')),
                      str(request_file)], cancelled=cancelled,
                     timeout_seconds=timeout_seconds if timeout_seconds is not None else config.timeout_seconds,
-                    env=_worker_environment())
+                    env=_worker_environment(stage))
         if not response.is_file() or response.stat().st_size > 65536:
             raise RuntimeError('MusicGen worker did not provide a valid output report.')
         report = json.loads(response.read_text(encoding='utf-8'))
@@ -318,9 +291,9 @@ def _fluidsynth(spec, target, *, soundfont, soundfont_license, fluidsynth_librar
                        output=str(raw), result=str(response))
         request_file = stage / 'request.json'
         request_file.write_text(json.dumps(request, ensure_ascii=False), encoding='utf-8')
-        run_process([sys.executable, '-I', str(Path(__file__).with_name('musicgen_worker.py')),
+        run_process([sys.executable, '-I', '-B', str(Path(__file__).with_name('musicgen_worker.py')),
                      str(request_file)], cancelled=cancelled, timeout_seconds=timeout_seconds,
-                    env=_worker_environment())
+                    env=_worker_environment(stage))
         if not raw.is_file() or raw.stat().st_size != frames * 4 or file_sha256(sf2, cancelled) != digest:
             raise RuntimeError('FluidSynth output length or SoundFont identity failed verification.')
         report = json.loads(response.read_text(encoding='utf-8'))

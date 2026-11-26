@@ -82,6 +82,8 @@ def _local_path(value):
             or raw.startswith(('\\\\', '//')) or '://' in raw):
         raise ValueError('Choose a local file path.')
     path = Path(raw).absolute()
+    from .render import _require_local_volume
+    _require_local_volume(path)
     for ancestor in (path.parent, *path.parent.parents):
         info = ancestor.lstat()
         if (stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode)

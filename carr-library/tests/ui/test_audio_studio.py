@@ -30,10 +30,12 @@ def test_unsaved_invalid_script_and_metadata_survive_restart(tmp_path,registry):
         reopened.save('New title',reopened.recovery_draft,'uk')
     assert len(first.store.new_drafts())==1
     project=reopened.save('New title','Narrator: Valid text.','en',settings=Settings(format='flac'))
-    assert project.settings.format=='flac' and not first.store.new_drafts()
+    assert project.settings.format=='flac'
+    assert reopened.draft_id != first.draft_id
+    assert [row['id'] for row in first.store.new_drafts()] == [first.draft_id]
 
 
-def test_existing_draft_keeps_unsaved_metadata_and_rejects_stale_writer(tmp_path,registry):
+def test_existing_draft_keeps_unsaved_metadata_and_preserves_stale_writer(tmp_path,registry):
     first=StudioController(tmp_path/'data',registry)
     project=first.save('Original','Narrator: Saved source.','en')
     first.save_draft('Changed title','Narrator: Changed draft.','sk','mp3')
@@ -41,8 +43,16 @@ def test_existing_draft_keeps_unsaved_metadata_and_rejects_stale_writer(tmp_path
     assert reopened.recovery_draft=='Narrator: Changed draft.'
     assert reopened.recovery_metadata['language']=='sk'
     reopened.save('Changed title',reopened.recovery_draft,'sk',settings=Settings(format='mp3'))
-    with pytest.raises(ValueError,match='changed in another window'):
-        first.save_draft('Stale','Lost draft','en','wav')
+    newer=reopened.project
+    reopened.save_draft('Second window','Other unsaved text','en','wav')
+    first.save_draft('Stale','Retained old-base draft','en','wav')
+    rows={row['id']:row for row in first.store.project_drafts(project.id)}
+    assert set(rows)=={first.draft_id,reopened.draft_id}
+    assert rows[first.draft_id]['script']=='Retained old-base draft'
+    assert rows[first.draft_id]['base_revision']==project.revision
+    assert rows[first.draft_id]['base_fingerprint']==project.fingerprint
+    assert rows[reopened.draft_id]['base_revision']==newer.revision
+    assert first.store.load(project.id)==newer
     assert not (first.store.path(project.id)/'draft.json').exists()
 
 

@@ -41,42 +41,90 @@ class StudioController:
         self.directives = not bool(self.source)
         self.recovery_draft=None
         self.recovery_metadata={}
-        self.draft_id=draft_id or uuid4().hex
+        self.recovery_candidates=()
+        self.recovery_selected=False
+        self.cleanup_warning=''
+        self.draft_id=uuid4().hex
+        self.base_revision=self.project.revision if self.project else 0
+        self.base_fingerprint=self.project.fingerprint if self.project else None
         if self.project:
-            draft_path=self.store.path(self.project.id)/'draft.json'
-            if draft_path.exists():
-                draft=self.store.validate_draft(read_json(draft_path))
-                if draft.get('base_revision')==self.project.revision and isinstance(draft.get('script'),str):
-                    self.recovery_draft=draft['script']
-                    self.recovery_metadata=draft
+            self.recovery_candidates=self.store.project_drafts(self.project.id)
+            if self.recovery_candidates:
+                # Discovery is data only. The native dialog requires a choice
+                # before putting any candidate into the current editor.
+                self.recovery_metadata=self.recovery_candidates[0]
+                self.recovery_draft=self.recovery_metadata['script']
+            if draft_id:
+                draft=next((row for row in self.recovery_candidates if row.get('id')==draft_id),None)
+                if draft is None:
+                    raise ValueError('The chosen recovery draft is no longer available.')
+                self.recover_draft(draft)
         elif draft_id:
             draft=next((row for row in self.store.new_drafts() if row['id']==draft_id),None)
             if draft is None:
                 raise ValueError('The recovered draft is no longer available.')
-            self.recovery_draft=draft['script']
-            self.recovery_metadata=draft
-            self.source,self.directives=draft['source'],draft['directives']
-            self.original_script=draft['script'] if self.source else None
+            self.recover_draft(draft)
+
+    def recover_draft(self, draft):
+        """Select plain editor data; never run an engine or alter saved source."""
+        self.store.validate_draft(draft, standalone='id' in draft)
+        if draft.get('project_id') not in (None, self.project.id if self.project else None):
+            raise ValueError('This draft belongs to another saved project.')
+        source=draft.get('source', self.project.source if self.project else {})
+        if self.project and source != self.project.source:
+            raise ValueError('Recovery cannot change a saved project source identity.')
+        if source.get('text_sha256') is not None:
+            from hashlib import sha256
+            if source['text_sha256'] != sha256(draft['script'].encode('utf-8')).hexdigest():
+                raise ValueError('Recovery must retain the exact original source text.')
+        self.source=source
+        self.directives=draft.get('directives', not bool(source))
+        self.original_script=draft['script'] if source else None
+        self.base_revision=draft.get('base_revision') or (self.project.revision if self.project else 0)
+        self.base_fingerprint=draft.get('base_fingerprint',
+            self.project.fingerprint if self.project and self.base_revision==self.project.revision else None)
+        self.recovery_metadata=draft
+        self.recovery_draft=draft['script']
+        self.recovery_selected=True
+        return draft
 
     def save(self, title, script, language='en', *, settings=None):
-        if not self.voices:
-            raise ValueError('No supported local voice was found. Install a Windows SAPI voice or configure a local voice runtime.')
-        project = parse_script(script, self.voices, title=title, language=language,
-            previous=self.project, settings=settings, directives=self.directives, source=self.source)
+        if self.project and self.base_revision != self.project.revision:
+            raise ValueError('This recovery draft is based on an older project revision. Its text is retained; reopen the saved project before committing changes.')
+        if self.project is not None and script == self.project.script:
+            # Exact source preservation includes imported/custom cues, scene
+            # music and accepted pronunciation history, not just role names.
+            project=replace(self.project,title=title,settings=settings or self.project.settings,
+                            revision=self.project.revision+1)
+        else:
+            if not self.voices:
+                raise ValueError('No supported local voice was found. Install a Windows SAPI voice or configure a local voice runtime.')
+            project = parse_script(script, self.voices, title=title, language=language,
+                previous=self.project, settings=settings, directives=self.directives, source=self.source)
         if self.project and language!=self.project.roles[0].language:
             previous_default=self.project.roles[0].language
             project=replace(project,roles=tuple(replace(role,language=language)
                 if role.language==previous_default else role for role in project.roles))
-        self.project = self.store.save(project) if self.project else self.store.create(project)
-        self.store.discard_new_draft(self.draft_id)
+        self.project = self.store.save(project,expected_fingerprint=self.base_fingerprint) if self.project else self.store.create(project)
+        self.base_revision,self.base_fingerprint=self.project.revision,self.project.fingerprint
+        self.cleanup_warning=''
+        try:
+            self.store.discard_new_draft(self.draft_id)
+        except (ValueError, OSError) as exc:
+            self.cleanup_warning='Project committed, but this window\'s recovery draft could not be removed: '+str(exc)
+            # Preserve the old artifact for recovery. A new identity prevents
+            # its old project binding or corruption from blocking later edits.
+            self.draft_id=uuid4().hex
         self.recovery_draft=None
         self.recovery_metadata={}
+        self.recovery_selected=False
         return self.project
 
     def save_draft(self,title,script,language,format):
         if self.project:
             self.store.save_draft(self.project.id,script,title=title,language=language,format=format,
-                base_revision=self.project.revision)
+                base_revision=self.base_revision,base_fingerprint=self.base_fingerprint,
+                session_id=self.draft_id,source=self.source,directives=self.directives)
         else:
             self.store.save_new_draft(self.draft_id,script,title=title,language=language,format=format,
                 source=self.source,directives=self.directives)
@@ -91,7 +139,8 @@ class StudioController:
         roles = tuple(replace(role, voice_id=voice_id, language=language,
             rate=rate, volume=volume, pan=pan) if role.id == role_id else role for role in self.project.roles)
         updated = replace(self.project, roles=roles, revision=self.project.revision + 1)
-        self.project = self.store.save(updated)
+        self.project = self.store.save(updated,expected_fingerprint=self.base_fingerprint)
+        self.base_revision,self.base_fingerprint=self.project.revision,self.project.fingerprint
         return self.project
 
     def plan_text(self):
@@ -129,7 +178,7 @@ class StudioDialog:
         self.closed = self.busy = self.dirty = False
         self.result, self.player = None, None
         project = controller.project
-        recovery=controller.recovery_metadata
+        recovery=controller.recovery_metadata if controller.recovery_selected else {}
         layout = wx.BoxSizer(wx.VERTICAL)
         details = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
         details.AddGrowableCol(1)
@@ -151,7 +200,7 @@ class StudioDialog:
         help_text.SetName('Audio production instructions')
         help_text.SetMinSize((-1,65))
         layout.Add(help_text,0,wx.EXPAND|wx.LEFT|wx.RIGHT,8)
-        self.script = wx.TextCtrl(self.dialog,value=script if script is not None else (controller.recovery_draft if controller.recovery_draft is not None else (project.script if project else '')),
+        self.script = wx.TextCtrl(self.dialog,value=script if script is not None else (controller.recovery_draft if controller.recovery_selected else (project.script if project else '')),
                                   style=wx.TE_MULTILINE|wx.TE_RICH2)
         self.script.SetName('Original script or narration text')
         if controller.source:
@@ -218,10 +267,39 @@ class StudioDialog:
         self.format.Bind(wx.EVT_CHOICE,self.changed)
         self.apply_button = apply_voice
         self.refresh()
-        if controller.recovery_draft is not None:
+        if controller.recovery_selected:
             self.dirty=True
             self.say('An autosaved draft was recovered. Ctrl+S validates it and saves a new revision.')
+        elif controller.recovery_candidates:
+            wx.CallAfter(self.offer_recovery)
         self.script.SetFocus()
+
+    def offer_recovery(self):
+        if self.closed:
+            return
+        wx=self.wx
+        rows=self.controller.recovery_candidates
+        chooser=wx.SingleChoiceDialog(self.dialog,
+            'Choose editor text to recover. This does not save a project or start production.',
+            'Recover audio draft', ['Keep the saved project; recover nothing'] + [
+                f'{row.get("title") or "Untitled"}; {row["saved_at"]}; base revision {row.get("base_revision", "unknown")}; window {row.get("id", "legacy")[:8]}'
+                for row in rows])
+        chooser.SetSelection(0)
+        try:
+            if chooser.ShowModal()!=wx.ID_OK or chooser.GetSelection()<1:
+                return
+            draft=self.controller.recover_draft(rows[chooser.GetSelection()-1])
+            self.script.ChangeValue(draft['script'])
+            self.title.ChangeValue(draft.get('title', self.title.GetValue()))
+            self.language.ChangeValue(draft.get('language', self.language.GetValue()))
+            self.format.SetStringSelection(draft.get('format', self.format.GetStringSelection()))
+            self.dirty=True
+            self.autosave()
+            self.say('Draft loaded into this window. Other windows\' drafts remain unchanged. Ctrl+S validates and commits the selected revision.',True)
+        except Exception as exc:
+            self.say('Draft could not be recovered: '+str(exc),True)
+        finally:
+            chooser.Destroy()
 
     def say(self,message,focus=False):
         if self.closed:
@@ -255,7 +333,8 @@ class StudioDialog:
             project = self.controller.save(self.title.GetValue(),self.script_text(),self.language.GetValue(),settings=settings)
             self.dirty = False
             self.refresh()
-            self.say(f'Project saved. Revision {project.revision}; {len(project.scenes)} chapters.',True)
+            warning='\n'+self.controller.cleanup_warning if self.controller.cleanup_warning else ''
+            self.say(f'Project saved. Revision {project.revision}; {len(project.scenes)} chapters.{warning}',True)
             return True
         except Exception as exc:
             try:
@@ -314,7 +393,9 @@ class StudioDialog:
             from .narration_editor import show_narration_editor
             updated=show_narration_editor(self.dialog,self.controller.project)
             if updated is not None:
-                self.controller.project=self.controller.store.save(updated)
+                self.controller.project=self.controller.store.save(updated,expected_fingerprint=self.controller.base_fingerprint)
+                self.controller.base_revision=self.controller.project.revision
+                self.controller.base_fingerprint=self.controller.project.fingerprint
                 self.refresh()
                 self.say('Reading copy saved. Generate uses these pronunciation edits; original text stays unchanged.',True)
         except Exception as exc:
@@ -447,12 +528,21 @@ class StudioDialog:
                 event.Veto()
             return
         if self.dirty:
+            self.autosave()
             choice=self.wx.MessageBox('Save your edited script before closing?', 'Unsaved audio script',
                 self.wx.YES_NO|self.wx.CANCEL|self.wx.ICON_QUESTION,parent=self.dialog)
             if choice==self.wx.CANCEL or (choice==self.wx.YES and not self.save()):
                 if event and hasattr(event,'Veto'):
                     event.Veto()
                 return
+            if choice==self.wx.NO:
+                try:
+                    self.controller.store.discard_new_draft(self.controller.draft_id)
+                except (ValueError, OSError) as exc:
+                    self.say('This window\'s draft could not be discarded: '+str(exc),True)
+                    if event and hasattr(event,'Veto'):
+                        event.Veto()
+                    return
         self.closed=True
         self.timer.Stop()
         if self.player:

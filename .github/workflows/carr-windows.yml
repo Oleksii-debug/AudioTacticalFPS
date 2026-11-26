@@ -118,6 +118,8 @@ jobs:
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_audio_studio_smoke.py 2>&1 | Tee-Object 'ci-results/native-audio-studio.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B tests/ui/native_audio_effects_smoke.py 2>&1 | Tee-Object 'ci-results/native-audio-effects.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B tests/assistant/native_credentials_probe.py 2>&1 | Tee-Object 'ci-results/native-provider-credentials.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B tests/ui/native_provider_settings_smoke.py 2>&1 | Tee-Object 'ci-results/native-provider-settings.json'
@@ -174,16 +176,21 @@ jobs:
             'tests/packaging/test_ci_check.py',
             'tests/e2e/test_offline_startup.py',
             'tests/audio/test_projects.py',
+            'tests/audio/test_project_recovery_boundaries.py',
             'tests/audio/test_voices.py',
             'tests/audio/test_pronunciation.py',
             'tests/audio/test_narration_integration.py',
             'tests/audio/test_playback.py',
             'tests/audio/test_render.py',
+            'tests/audio/test_windows_volume_boundary.py',
             'tests/audio/test_effects.py',
             'tests/audio/test_music.py',
+            'tests/audio/test_music_model_boundary.py',
             'tests/audio/test_director.py',
+            'tests/audio/test_director_path_identity.py',
             'tests/ui/test_provider_settings.py',
             'tests/ui/test_audio_studio.py',
+            'tests/ui/test_audio_effects.py',
             'tests/assistant/test_workflows.py',
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',

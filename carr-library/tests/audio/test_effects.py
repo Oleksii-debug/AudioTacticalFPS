@@ -8,6 +8,7 @@ from carr_library.audio.effects import Effect, PRESETS, compile_effects, effecte
 @pytest.mark.parametrize('kind,parameters', [
     ('amovie', {}), ('gain', {'gain_db': '0;amovie=http://example.invalid'}),
     ('gain', {'gain_db': math.nan}), ('gain', {'unknown': 1}),
+    ('gain', {'gain_db': 10 ** 400}),
     ('equalizer', {'q': -1}), ('delay', {'delay_ms': 10000000}),
     ('compressor', {'ratio': True}), ('declip', {'plugin': '/tmp/native.dll'}),
 ])

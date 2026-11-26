@@ -7,6 +7,7 @@ model. A completed status requires verified output files, not a model response.
 from dataclasses import asdict, replace
 from hashlib import sha256
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -227,10 +228,24 @@ class ProductionDirector:
             if path.exists() and meta_path.exists():
                 try:
                     metadata = read_json(meta_path, 256000)
+                    if (type(metadata) is not dict or set(metadata) != {
+                            'key', 'sha256', 'sample_rate', 'channels', 'frames',
+                            'duration_seconds', 'kind'}
+                            or metadata['kind'] != kind
+                            or any(type(metadata[name]) is not int or metadata[name] <= 0
+                                   for name in ('sample_rate', 'channels', 'frames'))
+                            or type(metadata['duration_seconds']) not in (int, float)
+                            or not math.isfinite(metadata['duration_seconds'])
+                            or metadata['duration_seconds'] <= 0):
+                        raise ValueError('Invalid completed audio checkpoint metadata.')
                     valid = metadata.get('key') == key and metadata.get('sha256') == file_sha256(path)
                     if valid:
                         measured = probe_audio(path)
-                        valid = metadata['sample_rate'] == measured.sample_rate and metadata['frames'] == measured.frames
+                        valid = (metadata['sample_rate'] == measured.sample_rate
+                            and metadata['frames'] == measured.frames
+                            and metadata['channels'] == measured.channels
+                            and abs(metadata['duration_seconds'] - measured.duration_seconds)
+                                <= 1 / measured.sample_rate)
                 except (OSError, ValueError, KeyError, RuntimeError):
                     valid = False
             if valid:
