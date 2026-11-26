@@ -79,14 +79,23 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
-def write_export(path, content, *, private_root):
+def write_export(path, content, *, private_root, cancelled=lambda: False):
     """Atomically write exact UTF-8 text to an explicitly selected destination.
 
     A normal existing file may be replaced after caller-side confirmation.
     Library paths, linked ancestors/targets and hard-linked files are rejected.
-    Failure before publication preserves an existing target and removes the
-    temporary file. CR, LF and CRLF sequences in ``content`` remain unchanged.
+    Failure or cancellation before publication preserves an existing target and
+    removes the temporary file. Once the atomic replacement completes, the save
+    is complete. CR, LF and CRLF sequences in ``content`` remain unchanged.
     """
+    if not callable(cancelled):
+        raise ValueError('An export cancellation callback is required.')
+
+    def check_cancelled():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+
+    check_cancelled()
     if not isinstance(content, str):
         raise ValueError('Text export required.')
     raw_path = os.fspath(path)
@@ -100,6 +109,7 @@ def write_export(path, content, *, private_root):
     target, parent_identity, previous = _destination(requested, private)
     temporary = None
     try:
+        check_cancelled()
         with NamedTemporaryFile(mode='wb', prefix='.research-export-',
                                 dir=target.parent, delete=False) as output:
             temporary = Path(output.name)
@@ -107,10 +117,12 @@ def write_export(path, content, *, private_root):
             output.flush()
             os.fsync(output.fileno())
 
+        check_cancelled()
         checked_target, checked_parent, current = _destination(requested, private)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
+        check_cancelled()
         os.replace(temporary, target)
         temporary = None
     finally:

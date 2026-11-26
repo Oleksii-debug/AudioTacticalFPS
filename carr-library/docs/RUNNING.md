@@ -100,6 +100,40 @@ file intact.
 
 ## Research from the keyboard
 
+### Library and collection tools
+
+Press **Ctrl+Shift+L**, or choose **Library, Library tools**. Choose the entire
+library or an active collection, then use the named buttons:
+
+- **Refresh report** shows source totals, missing catalog fields, extraction and
+  index readiness, collection coverage, and editions sharing identical retained
+  bytes. These are review candidates; the program does not merge or delete them.
+  A recorded extraction or review is not a new independent verification of text.
+- **Export bibliography** writes current source-catalog metadata as RIS, BibTeX,
+  or CSL JSON. This includes sources without saved quotations. Author names retain
+  their catalog order. Unknown publication dates, types and identifiers are not
+  invented. The bibliography does not contain quotations or research notes.
+- **Export source inventory** writes a CSV inventory for inspecting the selected
+  collection outside the application.
+- **Export review matrix** writes a CSV table of saved evidence from visible
+  research topics, with topic paths, tags, exact quotations, separate research
+  notes, source locators and immutable revision identifiers. Each page or logical
+  segment remains a separate row. Collection membership is current; citation
+  metadata stays as it was when the quotation was saved. Archived topic subtrees
+  are excluded. Every candidate saved item is authenticated before collection
+  filtering, so a damaged source or saved record stops export with an error.
+
+Report details state when only the first items are displayed; totals remain
+complete for the selected scope. Exports either finish completely or report a
+size, time or cancellation limit. They never silently return a partial table.
+CSV text columns ending in `_json` preserve exact Unicode using JSON encoding;
+array columns such as `topic_path_json` and `tags_json` retain separate values.
+This also prevents spreadsheet formula execution from source text or notes.
+Use **Cancel operation** to stop a long operation before publication. Export destinations
+use the same checked Save workflow as topic exports.
+
+### Search and source actions
+
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently
 chooses **Short quotations**, usually a source sentence around the match, or
