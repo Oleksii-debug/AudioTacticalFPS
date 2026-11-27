@@ -9,7 +9,7 @@ from carr_library.application import LibraryApp
 from carr_library.evidence_drafts import EvidenceDrafts
 from carr_library.keyboard_preferences import KeymapStore
 from carr_library.library_backup import create_backup, restore_backup, verify_backup
-from backup_compat_fixture import historical_backup
+from .backup_compat_fixture import historical_backup
 from carr_library.reader.narration import NarrationStore, new_project, revise
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState

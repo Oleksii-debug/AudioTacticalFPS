@@ -3,7 +3,7 @@ import shutil
 
 import pytest
 
-from test_pending_backup import app, _snapshot, _restore
+from .test_pending_backup import app, _snapshot, _restore
 
 
 @pytest.mark.skipif(shutil.which('tesseract') is None, reason='Actual local OCR engine required')

@@ -12,7 +12,7 @@ from carr_library.extract.page_ocr import Config
 from carr_library.ingest.writer_guard import WriterBusy
 from carr_library.keybindings import Command, KeybindingStore
 from carr_library.library_backup import restore_backup, INCOMPLETE
-from backup_compat_fixture import create_historical_backup as create_backup, historical_backup
+from .backup_compat_fixture import create_historical_backup as create_backup, historical_backup
 from carr_library.reader.narration import NarrationStore, new_project, revise
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState

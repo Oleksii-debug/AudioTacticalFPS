@@ -6,7 +6,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.library_backup import restore_backup
-from backup_compat_fixture import create_historical_backup as create_backup, historical_backup
+from .backup_compat_fixture import create_historical_backup as create_backup, historical_backup
 from carr_library.reader.narration import NarrationStore, new_project
 from carr_library.reader.reading_desk import ReadingDesk
 
