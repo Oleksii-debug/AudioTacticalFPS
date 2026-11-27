@@ -73,6 +73,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments[:1] == ['translation']:
+        from .assistant.translation_cli import main as translation_main
+        return translation_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])

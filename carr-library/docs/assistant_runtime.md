@@ -110,12 +110,49 @@ adapter. Profile exports clear credential references and disable restored
 connections. The new device must reconnect each account. No provider test is
 performed on save, open, import or application startup.
 
+## Request and review a local model proposal
+
+The existing **Local assistant** dialog defaults to guided commands and typed
+JSON. Its **Planning source** selector additionally lists enabled, explicitly
+local `openai-compatible` profiles with `llm.chat`. Create these in **AI and API
+connections**, using a numeric loopback endpoint and the model ID your already
+running server exposes. Opening either dialog does not contact or start a server.
+
+Choose a local profile and **Preview plan** to request a proposal. Only the goal
+text is sent; selected folder contents and library documents are not added.
+The shared provider gateway uses a 120-second request budget and an 8 MiB response
+limit for planning. Cancellation or a reached deadline may wait for the pending
+network read, whose timeout is at most 30 seconds. The result must pass the same typed tool, argument, workspace
+and path checks as a guided plan. The request is cancellable in the background.
+Editing the goal, selected scope or profile discards a pending response and
+invalidates a reviewed plan. **Run / resume** is a separate action that records
+and executes the reviewed plan through `AssistantService`.
+
+The CLI uses the same boundary. In PowerShell, for a configured profile named
+`chosen_local`, the two separate invocations are:
+
+```powershell
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --list-local-profiles
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "goal.txt" --allow-create --local-profile chosen_local | Set-Content -Encoding utf8 "reviewed-plan.json"
+# Open and review reviewed-plan.json, including every operation and its scope.
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "reviewed-plan.json" --allow-create --run
+```
+
+Repeat the exact workspace, input/output folders and permissions when executing
+the reviewed JSON. Scope changes are rejected. `--local-profile` cannot be
+combined with `--run` or `--resume`, so execution never regenerates a different
+model proposal. Listing profiles makes no model request. Provider errors produce
+no executable proposal. The protocol and native control fixtures validate this
+flow; an actual local model and its planning quality require separate acceptance.
+
 ## Implemented provider protocol adapters
 
 | Adapter | Operations | Protocol |
 | --- | --- | --- |
 | OpenAI-compatible | Text chat and proposed plans | Explicit endpoint plus `/chat/completions`; text messages, selected model, bounded tokens, optional JSON-object response |
 | Local llama-server-compatible | Optional local plan proposal | Same chat protocol, explicit `127.0.0.1` or `::1` endpoint; no automatic server launch or model download |
+| Google Cloud Translation Basic v2 | Plain-text translation and language inventory | Exact official endpoint; API-key header; selected NMT model |
+| Google Cloud Translation Advanced v3 | Plain-text translation, directional language inventory and existing glossaries | Exact project/region endpoint; short-lived OAuth bearer token; general/nmt |
 | ElevenLabs | Speech | Official `/v1/text-to-speech/{voice_id}`, selected model and text; MP3 response |
 | ElevenLabs | Instrumental music | Official `/v1/music`, explicit prompt/duration and instrumental flag; MP3 response |
 | ElevenLabs | Sound effect | Official `/v1/sound-generation`, selected prompt and duration; MP3 response |
@@ -170,6 +207,14 @@ The user must reconcile the existing output/charge before authorizing another
 operation. No real paid or external provider call is part of the automated tests.
 
 ## Verification scope
+
+Local planning tests exercise the real gateway through a synthetic HTTP server
+on `127.0.0.1`, actual CLI subprocesses, and the existing plan executor. They
+verify separate proposal/review/execution, exact profile and scope, cancellation,
+path and tool rejection, and that document contents are not included in a goal
+request. The native Windows probe uses real wx controls and focus with the same
+synthetic peer; it must pass on the installed candidate. These checks do not run
+an LLM or establish model quality, manual keyboard coverage or NVDA acceptance.
 
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create

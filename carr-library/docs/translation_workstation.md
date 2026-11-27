@@ -1,4 +1,4 @@
-# Optional selected-text and library-source translation
+# Optional translation: selected text and library sources
 
 Tools → Translate selected text and Tools → Translate selected book or source range
 use the existing provider profiles, Windows Credential Manager, permission
@@ -12,6 +12,7 @@ provider SDK is installed automatically.
    `https://translation.googleapis.com/language/translate/v2`, model `nmt` and
    capabilities `translation.text,translation.languages`. Add your API key and
    explicitly enable the account. Saving a profile makes no request.
+   Advanced v3 uses the separate setup below.
 2. Choose Translate selected text to paste text, or select a book in the library
    and choose Translate selected book or source range. Enter one source reading
    position or a range such as `2-5`. The initial `1-last` range selects the full
@@ -25,6 +26,7 @@ provider SDK is installed automatically.
    capability list has not been fetched. Selected text is not sent by language
    discovery. The returned list is tied to the exact account, endpoint and model.
 5. Choose a source code or `auto` and a target code from the fetched list.
+   Advanced v3 can also use an existing glossary in the same project and region.
    Enter the maximum total reservation and, optionally, your own current
    contract price per million characters for an estimate.
 6. Preview the character/call count. Translate asks explicit permission for
@@ -47,15 +49,103 @@ provider SDK is installed automatically.
 The shared Gateway defaults to LOCAL_ONLY. The dialog changes mode only for an
 explicitly approved operation. Unknown cost, wrong scope/request hash, expired
 approval and exhausted reservations fail before credential use or transmission.
-The API key travels in X-goog-api-key, never the URL. TLS authority is fixed;
+The Basic API key travels in X-goog-api-key, never the URL. Advanced uses an
+OAuth bearer token and the selected project for quota attribution. TLS authority is fixed;
 redirects are rejected. Provider responses are text, never executable commands.
 Completed saved work remains exportable offline when its account is unavailable;
-the selected text, languages and numeric budget must still match the saved job,
+the selected text, languages, glossary and numeric budget must still match the saved job,
 and library-source exports still require current source authorization.
 
 The local reservation and optional estimate are **not provider-enforced billing
 limits** or a live price quotation. Actual cost/quota remains the provider
 account's contract; no current price is invented by this application.
+
+## Advanced v3 setup and existing glossaries
+
+Choose `google-translation-v3` in the existing account editor. Enter:
+
+- Endpoint: `https://translation.googleapis.com/v3/projects/PROJECT_NUMBER/locations/LOCATION`.
+  Replace both placeholders; use your **numeric project number**, not its name or
+  project ID. This deliberately limited adapter can compare the returned model
+  and glossary resources exactly without guessing Google's ID-to-number mapping.
+- Model: `general/nmt`. Custom AutoML models and Translation LLM are not enabled by
+  this adapter. Choose `global` for ordinary NMT, or the region of your existing
+  glossary, such as `us-central1`.
+- Capabilities: `translation.text,translation.languages`.
+- Credential: a short-lived OAuth access token from your authorized IAM, gcloud
+  or ADC identity, plus its actual expiry with UTC offset. For example, the expiry
+  field accepts `2026-11-27T15:30:00Z`; enter the real future time, not this example.
+  The token is stored only in Windows Credential Manager, bound to the exact
+  endpoint. The application never reads ADC files, launches gcloud, discovers a
+  service account, refreshes tokens or falls back to an API key. Do not paste a
+  service-account JSON key or refresh token.
+
+Google's official authentication guide distinguishes gcloud credentials from
+ADC. Obtain the access token using your already authorized setup outside this
+application. Appropriate project/IAM permissions and Google billing/quota remain
+the account owner's responsibility. This adapter records the chosen project in
+`X-goog-user-project`; a different quota project is not silently substituted.
+
+The account's local configuration check displays the token's expiry. An expired
+token fails before a network call and leaves the attempt recorded as `not_sent`.
+Re-enter a current token and expiry while keeping the exact same account settings;
+the editor retains its opaque vault reference, allowing the existing saved job
+to resume within its original scope and budget. Accepted chunks are reused.
+Changing account/model/endpoint settings creates a different reference. This
+does not renew the job's separate 24-hour approval. An HTTP response already
+received with an error is an uncertain attempt and is never retried just because
+a new token was entered.
+
+Fetch languages explicitly. Advanced keeps Google's `supportSource` and
+`supportTarget` flags separately; a source-only language cannot be chosen as a
+target. Missing flags do not imply support.
+
+To apply terminology, enter an **existing** glossary resource in the translation
+window, in the form
+`projects/PROJECT_NUMBER/locations/LOCATION/glossaries/GLOSSARY_ID`. Choose an
+explicit source language and the same project/non-global region as the model.
+Matching is case sensitive. The exact glossary is shown in preview and transfer
+confirmation and included in the approved request hash. The gateway requires a
+`glossaryTranslations` response with the matching glossary configuration and
+model. A missing/different glossary never falls back to the ordinary result.
+Requested and reported resources are retained in chunk/export provenance.
+Creating/uploading glossaries and proving their language coverage are separate
+operations; this feature does not do them implicitly.
+
+## Command-line workflow
+
+The same service is available without wx through
+`python -m carr_library translation --data-dir LIBRARY COMMAND`.
+The library must already exist. No command accepts a secret on argv.
+
+1. `profiles` lists non-secret configured accounts.
+2. `languages --profile ACCOUNT` reads only the saved language inventory. Add
+   `--approve-remote` to approve a new metadata request; no source text is sent.
+3. `preview --profile ACCOUNT --input selected.txt --source en --target uk --budget 1`
+   reads bounded UTF-8 plain text and prints its character count, exact account,
+   endpoint, model, languages, cost reservation and `review_sha256`. Optionally
+   supply `--glossary RESOURCE`, `--title TITLE` and `--rate-per-million RATE`.
+4. Repeat the same arguments with `submit`, plus `--approve-remote` and
+   `--review-sha256 HASH`. The command rejects changed text/settings before saving
+   a job. It saves the approved source snapshot without sending it yet.
+5. `resume JOB_ID` runs that job's existing approval. Before creating the gateway
+   and before each outgoing request, it rereads the exact enabled account from
+   the current profile store. Removed, disabled or changed accounts stop new calls.
+   Ctrl+C requests a pause;
+   an in-flight bounded HTTP call may need to return or time out, and an uncertain
+   charge is not automatically retried. Paused exit status is 2, errors are 1.
+6. `jobs` lists saved statuses. `export JOB_ID --output NEW_DIRECTORY` publishes
+   the same original/translated/bilingual/reading-copy files and provenance as
+   the native window, with no overwrite. Completed work exports offline without
+   a current account, credential read or gateway; a library-source job still
+   requires current library/source authorization.
+
+CLI submission accepts selected text files. Source-range selection is available
+in the native translation workspace; its existing jobs also support authorized
+CLI resume/export.
+
+This is local bounded chunk scheduling of selected text, not Google's Cloud
+Storage batch service. It does not upload a document directory or buckets.
 
 ## Source lineage, interruption and recovery
 
@@ -115,7 +205,7 @@ the saved completed translation remains available for another explicit export.
 
 ## Supported limits and remaining qualification
 
-Basic v2 NMT selected **plain text**, including the full bounded reading text of
+Basic v2 and Advanced v3 NMT selected **plain text**, including the full bounded reading text of
 an imported document or an explicit source-position range, is implemented.
 The source and translated reading copy each support at most 2,000,000 characters.
 Requests contain at most 4,500 characters. Library-source jobs additionally bound
@@ -133,8 +223,8 @@ joins without altering the saved provider receipts. This preserves tested
 plain-text joins; it is not a claim of page layout, table, footnote or formatted
 document fidelity.
 
-Advanced v3 IAM/ADC, glossaries, automatic chapter-title interpretation, batch
-document selection, formatted-document preservation, local M2M100 inference,
+Automatic ADC discovery/token refresh, glossary creation, automatic chapter-title
+interpretation, batch document selection, formatted-document preservation, local M2M100 inference,
 canonical-135 translation mapping and independent linguistic quality review
 remain separate work. No offline failure causes a silent remote fallback or
 model download. Source text and receipts use the existing private local state
@@ -165,6 +255,14 @@ bounds, and native-dialog/menu callback contracts. Existing provider and
 source/reading regression suites remain required. Dialog doubles are not native
 Windows or NVDA evidence.
 
+The Advanced suite also exercises exact project/model/glossary consent, directional
+language capability, token expiry and explicit re-entry, unchanged accepted chunks,
+source-bound output receipts, stale CLI/UI reviews and current-account revocation.
+The CLI reopens the real library for source authorization and offline export.
+The required native probe is `scripts/windows_translation_v3_smoke.py`: it uses
+real wx controls, focus and temporary synthetic Windows Credential Manager data,
+with synthetic REST responses. It does not establish manual NVDA or live IAM access.
+
 Exact source, installed Windows and manual accessibility results belong to the
 candidate's validation record. This document does not transfer earlier test
 counts to a later source tree. No live Google request, user-document upload or
@@ -177,3 +275,13 @@ translation quality require separate explicit execution.
 - https://docs.cloud.google.com/translate/docs/reference/rest/v2/languages
 - https://docs.cloud.google.com/docs/authentication/api-keys-use
 - https://docs.cloud.google.com/translate/docs/translate-text
+
+- https://docs.cloud.google.com/translate/docs/authentication
+- https://docs.cloud.google.com/translate/docs/reference/rest/v3/projects.locations/translateText
+- https://docs.cloud.google.com/translate/docs/advanced/glossary
+- https://docs.cloud.google.com/translate/docs/reference/rest/v3/projects.locations/getSupportedLanguages
+
+The Advanced REST and authentication references were checked on 2026-11-27.
+The text-translation and glossary guides document the exact
+`translation.googleapis.com` authority selected by this adapter. Its fixed
+authority is not expanded to other regional endpoints automatically.

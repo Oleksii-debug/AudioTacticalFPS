@@ -1,8 +1,12 @@
 """Import/export provider configuration without credential values."""
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
+from datetime import datetime
 import ipaddress
 import json
+import math
 from pathlib import Path
+import re
+from time import time
 from urllib.parse import urlsplit
 
 from .credentials import validate_profile_id, validate_reference
@@ -12,7 +16,82 @@ from .state import atomic_json, read_json, regular
 
 CAPABILITIES = ('llm.chat', 'speech.synthesize', 'music.compose', 'sfx.generate',
                 'translation.text', 'translation.languages')
-ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2')
+ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2', 'google-translation-v3')
+
+
+def google_v3_parent(address):
+    """A fixed official authority and explicit project number/region.
+
+    Numeric project identities avoid guessing Google's ID-to-number response
+    normalization when verifying the selected model and glossary provenance.
+    """
+    target = endpoint(address)
+    if (target.hostname != 'translation.googleapis.com' or target.port not in (None, 443)
+            or not re.fullmatch(r'/v3/projects/[1-9][0-9]{0,19}/locations/[a-z][a-z0-9-]{0,62}', target.path)):
+        raise ValueError('Advanced v3 requires https://translation.googleapis.com/v3/projects/PROJECT_NUMBER/locations/LOCATION.')
+    return target.path[len('/v3/'):]
+
+
+def google_oauth_credential(token, expires, address):
+    """Prepare a short-lived IAM/ADC token record for the OS vault only."""
+    google_v3_parent(address)
+    if (not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9._~+/=-]{8,2200}', token)
+            or token.startswith('AIza')):
+        raise ValueError('Enter an OAuth access token from your authorized IAM/ADC account, not an API key or JSON key file.')
+    if isinstance(expires, str):
+        try:
+            stamp = datetime.fromisoformat(expires.replace('Z', '+00:00'))
+            if stamp.tzinfo is None:
+                raise ValueError()
+            expires = stamp.timestamp()
+        except (ValueError, OverflowError):
+            raise ValueError('Enter the token expiry with its UTC offset, for example 2026-11-27T15:30:00Z.') from None
+    if (type(expires) not in (float, int) or not time() < expires <= time() + 12 * 3600
+            or not math.isfinite(expires)):
+        raise ValueError('Enter the real future OAuth token expiry, at most 12 hours from now.')
+    return json.dumps({'schema': 'carr-google-oauth/1', 'access_token': token,
+                       'expires_at': expires, 'endpoint': address}, separators=(',', ':'))
+
+
+def google_oauth_token(record, address):
+    """Read only an explicitly supplied vault record; never discover/refresh ADC."""
+    try:
+        data = json.loads(record)
+        if (type(data) is not dict or set(data) != {'schema', 'access_token', 'expires_at', 'endpoint'}
+                or data['schema'] != 'carr-google-oauth/1' or data['endpoint'] != address):
+            raise ValueError()
+        google_oauth_credential(data['access_token'], data['expires_at'], address)
+        return data['access_token'], data['expires_at']
+    except (ValueError, TypeError, OverflowError):
+        raise ValueError('Advanced v3 OAuth token expired or is invalid for this endpoint. Re-enter a current token and its expiry in AI and API connections; no automatic refresh was attempted.') from None
+
+
+def save_google_token(store, vault, profile, token, expires, *, current=None):
+    """Explicit same-profile token renewal preserves paused-job references.
+
+    A changed account creates a new reference; no old job silently acquires new
+    endpoint/model authority. No secret is written to a profile/checkpoint file.
+    """
+    if profile.adapter != 'google-translation-v3':
+        raise ValueError('Choose the Advanced v3 adapter before storing an OAuth token.')
+    if current is not None and (current.id != profile.id or store.get(current.id) != current):
+        raise ValueError('The selected account changed. Reopen it before explicitly replacing its OAuth credential.')
+    record = google_oauth_credential(token, expires, profile.endpoint)
+    if current == profile and current.credential_ref:
+        # Atomic CredWrite under the same exact nonsecret profile preserves the
+        # approved job's identity. There is no subsequent profile write to fail.
+        vault.put(profile.id, record, reference=current.credential_ref)
+        return profile
+    reference = vault.put(profile.id, record)
+    updated = replace(profile, credential_ref=reference)
+    try:
+        store.save(updated)
+    except Exception:
+        vault.delete(profile.id, reference)
+        raise
+    if current is not None and current.credential_ref:
+        vault.delete(current.id, current.credential_ref)
+    return updated
 
 
 def endpoint(value, *, local=False):
@@ -78,6 +157,10 @@ class ProviderProfile:
                 raise ValueError('Google Translation credentials require its exact official HTTPS Basic v2 endpoint.')
             if self.model != 'nmt' or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities):
                 raise ValueError('This Google adapter supports Basic v2 NMT text and language discovery only; Advanced v3 requires IAM/ADC.')
+        if self.adapter == 'google-translation-v3':
+            google_v3_parent(self.endpoint)
+            if self.local or self.model != 'general/nmt' or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities):
+                raise ValueError('Advanced v3 uses an explicit remote NMT model (general/nmt) and an IAM/ADC OAuth token.')
         if self.credential_ref is not None:
             validate_reference(self.credential_ref, self.id)
         if self.voice is not None:

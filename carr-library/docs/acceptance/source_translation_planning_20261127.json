@@ -1,0 +1,132 @@
+{
+  "schema": "carr-component-verification/1",
+  "date_utc": "2026-11-27",
+  "component": "source-bound Google Basic/Advanced translation and reviewed local planning",
+  "integration_base": "6b0778dbd4642afb5247def5b7c2b6a9e23f963a",
+  "source_translation_checkpoint": {
+    "commit": "2568da0cbdf8f79d199b239ab0324ab7479eed72",
+    "tree": "51cc5d989adddd3561bd179d27b201cf27dd32c7"
+  },
+  "reuse": [
+    {
+      "pr": 165,
+      "commit": "5baee73ae94d860909152fb8c8434d5864c0e638",
+      "scope": "existing source translation, decoded receipts and saved-account guards"
+    },
+    {
+      "pr": 147,
+      "commit": "abb5de8d407df84caaf63cf8d8fbf97e55e7315a",
+      "scope": "selective Advanced v3, local planning, CLI and native probes; no competing ASR package or unrelated packaging"
+    }
+  ],
+  "source_git_blobs": {
+    "src/carr_library/assistant/llm.py": "ee73d023bc8bb8932239a4e569f6a5e812dcf1a5",
+    "src/carr_library/assistant/profiles.py": "68ebee4c87963b6c0728be5dc2e2e82f0c79d7fa",
+    "src/carr_library/assistant/providers.py": "595e750ceebf979ce4c7bc51393c24ebdce29bca",
+    "src/carr_library/assistant/service.py": "5d598202bb6ac9548c4191b531ed20fefa23a839",
+    "src/carr_library/assistant/translation.py": "186f6a7304f2011b4f0624847d23b40c6395c63f",
+    "src/carr_library/assistant/translation_cli.py": "7844beec79aac2121bfa39f870c685c92caea3c5",
+    "src/carr_library/ui/assistant_dialog.py": "280b57925c7b1392e585c5e1eb58cd7d3dff890a",
+    "src/carr_library/ui/translation_dialog.py": "9813df71a272e7a3c67af6795628b40433bf43fd",
+    "src/carr_library/studio/cli.py": "714af31ab62055f24ecbd04b0c8c95a202195d98"
+  },
+  "python": "3.12.14",
+  "platform": "Linux",
+  "strict_suites": [
+    {
+      "suite": "tests/assistant/test_translation.py",
+      "passed": 141,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/assistant/test_translation_v3.py",
+      "passed": 68,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/assistant/test_local_planning.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/assistant/test_planning_handlers.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "strict_total": {
+    "passed": 238,
+    "failed": 0,
+    "skipped": 0
+  },
+  "loopback": {
+    "suites": [
+      "tests/assistant/test_providers.py",
+      "tests/assistant/test_local_planning_loopback.py"
+    ],
+    "passed": 40,
+    "failed": 0,
+    "skipped": 0,
+    "expected_failures": false,
+    "protocol": "actual local HTTP server and child CLI, synthetic responses/credentials/model; parent connection guard permits numeric loopback only; no whole-machine network or LLM inference claim"
+  },
+  "regression_baseline": {
+    "suite": "tests/assistant/test_translation_v3.py",
+    "passed": 64,
+    "failed": 4,
+    "cause": "three revoked-account CLI cases still sent remaining requests; offline source export lacked LibraryApp authorization context",
+    "corrected": "current account checked before Gateway creation and at remote guards; existing LibraryApp bound for source export"
+  },
+  "logs_sha256": {
+    "advanced-cli-authorization-baseline.txt": "577192c4dd96b9999165ba8ed77baac44e9cdb2db28252e1f9b928fc13c51288",
+    "advanced-translation-fixed-strict.txt": "64c49278ba08d0bf2e9ad26e68536db1545d49150ab79bc561d211a19ca97d52",
+    "advanced-local-planning-loopback.xml": "538c3836b66a01a11688dd5987d3ede6881e91ec2656c540b66ccf076bf4d0ef"
+  },
+  "review": {
+    "mode": "independent source review by maintenance_audit",
+    "result": "no concrete blocker identified",
+    "preserved": "source/2 UUID and lineage, root identity, decoded output receipt, writer-guard export, exact account and approval, private-root export guards, allowlisted plan and separate run"
+  },
+  "workflow_addition": {
+    ".github/workflows/carr-windows.yml": {
+      "old_steps": 28,
+      "new_steps": 28,
+      "all_prior_steps_and_order_preserved": true,
+      "all_prior_suite_references_retained": true,
+      "new_suite_references": {
+        "tests/assistant/test_translation.py": 2,
+        "tests/assistant/test_translation_v3.py": 2,
+        "tests/assistant/test_local_planning.py": 2,
+        "tests/assistant/test_planning_handlers.py": 2
+      }
+    },
+    ".github/workflows/carr-v3.yml": {
+      "old_steps": 11,
+      "new_steps": 14,
+      "all_prior_steps_and_order_preserved": true,
+      "all_prior_suite_references_retained": true,
+      "new_suite_references": {
+        "tests/assistant/test_translation_v3.py": 2,
+        "tests/assistant/test_local_planning.py": 2,
+        "tests/assistant/test_planning_handlers.py": 2,
+        "tests/assistant/test_local_planning_loopback.py": 1
+      }
+    }
+  },
+  "required_followup": {
+    "installed_integrated_windows": "NOT_RUN for this component source",
+    "native_translation_and_planning": "NOT_RUN for this component source",
+    "manual_nvda": "NOT_RUN",
+    "live_google_access_billing_and_quality": "NOT_RUN",
+    "actual_local_model_quality": "NOT_RUN"
+  },
+  "official_references": [
+    "https://docs.cloud.google.com/translate/docs/translate-text",
+    "https://docs.cloud.google.com/translate/docs/authentication",
+    "https://docs.cloud.google.com/translate/docs/advanced/glossary"
+  ]
+}

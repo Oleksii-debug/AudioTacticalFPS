@@ -469,6 +469,10 @@ jobs:
                             'tests/transcription/test_runtime_interpreter.py',
                             'tests/storage/test_state_json_reader.py',
                             'tests/ui/test_academic_actions.py',
+                            'tests/assistant/test_translation.py',
+                            'tests/assistant/test_translation_v3.py',
+                            'tests/assistant/test_local_planning.py',
+                            'tests/assistant/test_planning_handlers.py',
                             'tests/packaging/test_native_checks.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -535,6 +539,10 @@ jobs:
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/assistant/test_translation.py',
+            'tests/assistant/test_translation_v3.py',
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_planning_handlers.py',
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
             'tests/e2e/test_offline_startup.py',
