@@ -284,6 +284,33 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_document_formats_text.py tests/extract/test_ocr_runtime.py tests/extract/test_ocr_languages.py 2>&1 | Tee-Object 'ci-results/platform-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Require transactional import ownership and migration before long suites
+        timeout-minutes: 10
+        run: |
+          $receiptSuites = @(
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/ingest/test_import_replay_identity.py',
+            'tests/ingest/test_worker_publication_boundary.py',
+            'tests/storage/test_academic_migration.py',
+            'tests/storage/test_pending_backup.py',
+            'tests/storage/test_complete_pending_backup.py',
+            'tests/storage/test_backup_schema_identity.py',
+            'tests/packaging/test_delivery_archive.py'
+          )
+          & $env:CARR_PYTHON -B scripts/ci_check.py --jobs 3 @receiptSuites 2>&1 | Tee-Object 'ci-results/import-ownership-early.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $checkReceiptCounts = @'
+          import json, pathlib, re
+          text = pathlib.Path('ci-results/import-ownership-early.txt').read_text(encoding='utf-8-sig')
+          observed = {name: int(count) for name, count in re.findall(r'^PASS: ([^\r\n]+): junit_passed=(\d+), failed=0, skipped=0, pytest_exit=0$', text, re.M)}
+          expected = {'tests/e2e/test_import_worker_publication.py': 34, 'tests/ingest/test_import_replay_identity.py': 22, 'tests/ingest/test_worker_publication_boundary.py': 29, 'tests/packaging/test_delivery_archive.py': 69}
+          assert all(observed.get(name) == count for name, count in expected.items()), (expected, observed)
+          assert set(observed) == set(['tests/e2e/test_import_worker_publication.py','tests/ingest/test_import_replay_identity.py','tests/ingest/test_worker_publication_boundary.py','tests/storage/test_academic_migration.py','tests/storage/test_pending_backup.py','tests/storage/test_complete_pending_backup.py','tests/storage/test_backup_schema_identity.py','tests/packaging/test_delivery_archive.py'])
+          print(json.dumps({'status': 'PASS', 'required_suites': len(observed), 'case_counts': observed}, sort_keys=True))
+          '@
+          $checkReceiptCounts | & $env:CARR_PYTHON -I -B - | Tee-Object 'ci-results/import-ownership-early.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
         timeout-minutes: 35
         run: |
@@ -496,6 +523,8 @@ jobs:
             'tests/storage/test_pending_backup.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/ingest/test_worker_publication_boundary.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/ingest/test_import_replay_identity.py',
             'tests/e2e/test_import_files_cancellation.py',
             'tests/transcription/test_supplied_worker_bridge.py',
             'tests/transcription/test_pr99_host.py',
@@ -604,8 +633,6 @@ jobs:
           '@
           $verifyWheel | & $env:CARR_PYTHON -I -B - $applicationWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $testedWheels = New-Item -ItemType Directory -Force 'ci-results/tested-application-wheel'
-          Copy-Item -LiteralPath $applicationWheel -Destination $testedWheels.FullName
           & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_CI_NATIVE_LAUNCHER --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $nativeBundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
@@ -772,6 +799,8 @@ jobs:
               'carr_library.transcription_cli',
               'carr_library.application',
               'carr_library.ingest.worker',
+              'carr_library.storage.revisions',
+              'carr_library.storage.schema_identity',
               'carr_library.pending_backup',
               'carr_library.durable_state',
               'carr_library.product_info',
@@ -922,6 +951,15 @@ jobs:
               'tests/storage/test_pending_backup.py',
               'tests/storage/test_complete_pending_backup.py',
               'tests/ingest/test_worker_publication_boundary.py',
+              'tests/e2e/test_import_worker_publication.py',
+              'tests/ingest/test_import_replay_identity.py',
+              'tests/storage/test_academic_migration.py',
+              'tests/storage/test_backup_schema_identity.py',
+              'tests/storage/test_saved_query_v4_upgrade.py',
+              'tests/catalog/test_application_metadata_integrity.py',
+              'tests/reader/test_reading_desk.py',
+              'tests/storage/test_finish_workspace_integrity.py',
+              'tests/storage/test_library_backup.py',
               'tests/e2e/test_import_files_cancellation.py',
               'tests/e2e/test_research_search_cli.py',
               'tests/transcription/test_supplied_worker_bridge.py',
@@ -965,6 +1003,60 @@ jobs:
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata','test_fresh_committed_import_reports_complete_after_late_cancel','test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environment','test_real_list_languages_uses_managed_model_directory','test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; required |= {'test_actual_partial_import_restores_original_and_resumes_same_job', 'test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes', 'test_backup_never_follows_symlinked_journal_ancestor', 'test_cancel_after_committed_text_leaves_next_original_unopened', 'test_cancel_during_pending_publication_leaves_no_completion_manifest', 'test_cancelled_receipt_stops_even_if_later_callback_is_clear', 'test_cancelled_snapshot_and_restore_are_explicit', 'test_canonical_state_and_pending_v4_remains_readable', 'test_changed_request_identity_cannot_authorize_reconciliation[asset]', 'test_changed_request_identity_cannot_authorize_reconciliation[configuration]', 'test_changed_request_identity_cannot_authorize_reconciliation[scope]', 'test_changed_request_identity_cannot_authorize_reconciliation[work]', 'test_cli_child_uses_current_distribution_without_writing_runtime_bytecode', 'test_competing_file_at_actual_publication_is_preserved[False]', 'test_competing_file_at_actual_publication_is_preserved[True]', 'test_complete_backup_preserves_prepared_request_before_first_worker_launch', 'test_complete_backup_survives_lost_original_and_resumes_identical_import', 'test_component_tampering_and_source_retargeting_rejected[extra]', 'test_component_tampering_and_source_retargeting_rejected[foreign_request]', 'test_component_tampering_and_source_retargeting_rejected[hash]', 'test_component_tampering_and_source_retargeting_rejected[retarget]', 'test_component_tampering_and_source_retargeting_rejected[size]', 'test_component_tampering_and_source_retargeting_rejected[symlink]', 'test_component_tampering_and_source_retargeting_rejected[traversal]', 'test_conflicting_operations_and_invalid_result_limit_fail_clearly', 'test_corrupt_library_database_fails_clearly_without_partial_json_or_replacing_it[list]', 'test_corrupt_library_database_fails_clearly_without_partial_json_or_replacing_it[search]', 'test_corrupted_retained_bytes_cannot_authorize_reconciliation', 'test_create_only_cleanup_after_publication_is_truthful[False]', 'test_create_only_cleanup_after_publication_is_truthful[True]', 'test_durable_publication_survives_stopped_worker[cancel-docx]', 'test_durable_publication_survives_stopped_worker[cancel-epub]', 'test_durable_publication_survives_stopped_worker[cancel-md]', 'test_durable_publication_survives_stopped_worker[cancel-pdf]', 'test_durable_publication_survives_stopped_worker[cancel-txt]', 'test_durable_publication_survives_stopped_worker[crash-docx]', 'test_durable_publication_survives_stopped_worker[crash-epub]', 'test_durable_publication_survives_stopped_worker[crash-md]', 'test_durable_publication_survives_stopped_worker[crash-pdf]', 'test_durable_publication_survives_stopped_worker[crash-txt]', 'test_durable_publication_survives_stopped_worker[timeout-docx]', 'test_durable_publication_survives_stopped_worker[timeout-epub]', 'test_durable_publication_survives_stopped_worker[timeout-md]', 'test_durable_publication_survives_stopped_worker[timeout-pdf]', 'test_durable_publication_survives_stopped_worker[timeout-txt]', 'test_empty_pending_component_and_no_unreferenced_retained_bytes', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[phrase]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[semantic]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[terms]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[thematic]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[word]', 'test_interrupted_error_is_acknowledged_cancellation_and_stops_selection', 'test_journal_online_backup_includes_committed_wal', 'test_journal_tampering_rejected_before_restore_publication[checkpoint_hash]', 'test_journal_tampering_rejected_before_restore_publication[checkpoint_locator]', 'test_journal_tampering_rejected_before_restore_publication[checkpoint_text]', 'test_journal_tampering_rejected_before_restore_publication[fake_complete]', 'test_journal_tampering_rejected_before_restore_publication[job_identity]', 'test_journal_tampering_rejected_before_restore_publication[schema]', 'test_journal_tampering_rejected_before_restore_publication[workspace]', 'test_list_libraries_and_search_only_explicit_selection_without_desktop', 'test_manifest_limits_and_exact_source_bindings', 'test_missing_last_library_or_corrupted_original_never_prints_partial_results', 'test_missing_library_selection_is_an_error_and_does_not_create_data', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[changed]', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[hardlink]', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[missing]', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[symlink]', 'test_noncanonical_and_duplicate_json_are_not_accepted', 'test_ordinary_file_error_does_not_cancel_later_valid_source', 'test_pdf_reconciliation_requires_its_exact_saved_job_and_config[configuration]', 'test_pdf_reconciliation_requires_its_exact_saved_job_and_config[job]', 'test_pending_component_bytes_count_in_complete_backup_budget', 'test_planned_batch_without_requests_captures_external_bytes_and_duplicates', 'test_precancelled_selection_opens_no_source', 'test_precommit_cancellation_remains_cancelled_without_publication', 'test_preexisting_replay_is_not_new_completion_after_cancel', 'test_prelaunch_cancellation_never_starts_or_recovers_a_worker', 'test_prepared_extended_format_survives_relocation_and_resumes[.eml-From: synthetic@example.invalid\\nTo: local@example.invalid\\nSubject: Retained evidence\\nContent-Type: text/plain; charset=utf-8\\n\\nEvidence survives.\\n]', 'test_prepared_extended_format_survives_relocation_and_resumes[.html-<html><body><p>Retained evidence survives.</p></body></html>]', 'test_prepared_extended_format_survives_relocation_and_resumes[.md-# Retained evidence\\n\\nEvidence survives.]', 'test_prepared_request_and_running_batch_remain_bound_after_restore', 'test_process_exit_immediately_after_create_only_publication[False]', 'test_process_exit_immediately_after_create_only_publication[True]', 'test_recovered_publication_survives_complete_backup_and_lost_original[docx]', 'test_recovered_publication_survives_complete_backup_and_lost_original[pdf]', 'test_recovered_publication_survives_complete_backup_and_lost_original[txt]', 'test_same_size_pending_change_with_coarse_timestamps_blocks_completion', 'test_unlisted_pending_bytes_block_enclosing_restore'}; expected_asr={'tests.transcription.test_supplied_worker_bridge': {'test_real_subprocess_preserves_original_and_exports_separate_edits': 1, 'test_duplicate_source_names_remain_separate': 1, 'test_optional_word_timestamps_keep_four_base_formats': 1, 'test_actual_child_guards_fail_closed': 3, 'test_worker_success_alone_does_not_publish_incomplete_results': 3, 'test_partial_batch_is_saved_and_can_resume_with_reviewed_engine': 1, 'test_stop_flag_cancellation_and_explicit_resume': 1, 'test_actual_child_timeout_is_failed_and_original_remains': 1, 'test_worker_change_requires_explicit_reconfiguration': 1, 'test_changed_retained_source_refuses_inference': 1, 'test_changed_output_and_stale_receipt_are_rejected': 1, 'test_restore_rebinds_retained_paths_without_modifying_recognition_receipts': 1, 'test_scope_archive_and_unknown_job_do_not_create_junk': 1, 'test_cancelled_intake_publishes_no_partial_job': 1, 'test_invalid_settings_fail_before_job_creation': 9, 'test_cli_and_application_share_one_durable_job_service': 1, 'test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files': 1, 'test_progress_observer_failure_during_actual_child_does_not_kill_recognition': 1, 'test_final_progress_observer_failure_cannot_reverse_durable_completed_result': 1, 'test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs': 1, 'test_progress_observer_failure_preserves_real_child_or_receipt_failure': 2, 'test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct': 1, 'test_partial_progress_requires_verified_resume_before_host_success': 1}, 'tests.transcription.test_pr99_host': {'test_stopped_receipt_deferral_respects_existing_monotonic_progress': 1, 'test_actual_fast_child_cannot_evade_final_staging_budget': 2, 'test_ready_job_backup_restores_retained_media_without_engine_execution': 1, 'test_foreign_edit_binding_blocks_backup_without_publication': 3, 'test_unknown_transcription_state_cannot_disappear_from_backup': 1, 'test_completed_backup_keeps_engine_receipts_and_omits_only_declared_cache': 1, 'test_running_job_backup_requires_stop_without_losing_originals': 1, 'test_escaped_edit_roundtrip_uses_serialized_json_limit': 1, 'test_malformed_engine_checksum_is_a_typed_backup_error': 3, 'test_live_worker_status_reader_allows_atomic_replacement': 1, 'test_completed_run_recheck_observes_stop_after_real_output_read': 1, 'test_worker_status_publication_handles_reader_lifetime': 2}}; observed_asr={module:{name:sum(c.get('classname')==module and c.get('name','').split('[',1)[0]==name for c in cases) for name in functions} for module,functions in expected_asr.items()}; assert observed_asr==expected_asr; expected_export={'tests.reader.test_export_content_identity': {'test_equal_length_edit_after_approval_with_unchanged_metadata_is_rejected': 2, 'test_equal_length_edit_after_real_staging_is_rejected': 4, 'test_unchanged_existing_destination_still_publishes_exact_bytes': 8, 'test_destination_digest_reads_actual_content_in_bounded_blocks': 1, 'test_destination_hash_cancellation_stops_between_real_read_blocks': 2, 'test_oversized_existing_destination_is_rejected_before_payload_read': 2, 'test_cancelled_capture_preserves_absent_or_existing_destination': 2}, 'tests.ui.test_export_destination': {'test_absent_destination_needs_no_native_import_and_remains_no_clobber': 1, 'test_declined_or_cancelled_confirmation_never_grants_approval': 2, 'test_yes_is_bound_to_state_before_question_not_after_it': 1, 'test_modal_failure_disposes_question_and_preserves_file': 1}, 'tests.ui.test_audio_studio': {'test_audio_export_approval_rejects_late_destination_change': 4, 'test_audio_export_captures_before_preparation': 4, 'test_project_save_detects_change_after_external_hash_check': 1, 'test_audio_save_dialog_binds_replace_answer': 6}}; observed_export={module:{name:sum(c.get('classname')==module and c.get('name','').split('[',1)[0]==name for c in cases) for name in functions} for module,functions in expected_export.items()}; assert observed_export==expected_export; expected_ocr={'test_native_script_inventory_keeps_canonical_portable_identity':1,'test_backslash_script_report_is_only_a_native_windows_spelling':1,'test_native_script_aliases_cannot_create_duplicate_inventory_entries':2,'test_native_report_normalization_does_not_admit_unsafe_paths':6}; observed_ocr={name:sum(c.get('classname')=='tests.extract.test_ocr_languages' and c.get('name','').split('[',1)[0]==name for c in cases) for name in expected_ocr}; assert observed_ocr==expected_ocr; audio_totals={'tests.audio.test_music':18,'tests.audio.test_production':18}; assert all(sum(c.get('classname')==module for c in cases)==count for module,count in audio_totals.items()); assert sum(c.get('classname')=='tests.audio.test_music' and c.get('name','').split('[',1)[0]=='test_actual_dense_score_uses_bounded_portable_filter_command' for c in cases)==2; export_totals={'tests.reader.test_export_content_identity': 21, 'tests.ui.test_export_destination': 5, 'tests.ui.test_audio_studio': 28}; assert all(sum(c.get('classname')==module for c in cases)==count for module,count in export_totals.items()); required.add('test_completed_run_recheck_observes_stop_after_real_output_read'); required.add('test_live_worker_status_reader_allows_atomic_replacement'); required.update({'test_worker_status_publication_handles_reader_lifetime[released-reader]', 'test_worker_status_publication_handles_reader_lifetime[persistent-reader]'}); assert required<={c.get('name') for c in cases} and passed>0 and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',persistent_semantic_cache='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',transcription_protocol='PASS',transcription_host='PASS',whisper_acoustic_inference='NOT_RUN',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $checkImportOwnership = @'
+          import json, xml.etree.ElementTree as E
+          cases = list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase'))
+          expected = {
+              "tests.e2e.test_import_worker_publication": {
+                  "test_barrier_leaves_other_processes_unchanged": 2,
+                  "test_stopped_child_reports_verified_fresh_commit": 9,
+                  "test_stopped_child_before_commit_never_reports_completion": 6,
+                  "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+                  "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+                  "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+                  "test_recovery_rechecks_candidate_source_and_authorization": 3,
+                  "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+                  "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+                  "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+              },
+              "tests.ingest.test_import_replay_identity": {
+                  "test_registration_failure_rolls_back_then_replay_adds_only_membership": 2,
+                  "test_replay_conflicting_identity_cannot_leave_catalog_or_membership": 8,
+                  "test_replay_after_metadata_edit_preserves_revision_and_validates_current_metadata": 4,
+                  "test_replay_rejects_checkpoint_text_that_differs_from_sealed_source": 2,
+                  "test_replay_rechecks_active_revision_before_registering": 2,
+                  "test_cancelled_replay_does_not_add_membership": 2,
+                  "test_fresh_post_commit_cancellation_returns_committed_source": 2
+              },
+              "tests.storage.test_academic_migration": {
+                  "test_previous_released_schema_fingerprints_are_unchanged": 1,
+                  "test_previous_backups_restore_unchanged_then_migrate_normally": 4,
+                  "test_invalid_previous_schema_is_not_upgraded_for_publication_receipts": 4,
+                  "test_process_exit_during_import_receipt_migration_preserves_exact_old_data": 8
+              },
+              "tests.storage.test_pending_backup": {
+                  "test_lost_parent_reply_backup_preserves_commit_but_discards_attempt_receipt": 1,
+                  "test_malformed_publication_candidate_cannot_enter_backup": 5
+              }
+          }
+          observed = {module: {name: sum(case.get('classname') == module and
+                       case.get('name', '').split('[', 1)[0] == name for case in cases)
+                       for name in functions} for module, functions in expected.items()}
+          assert observed == expected, (expected, observed)
+          totals = {'tests.e2e.test_import_worker_publication': 34, 'tests.ingest.test_import_replay_identity': 22,
+                    'tests.ingest.test_worker_publication_boundary': 29}
+          assert all(sum(case.get('classname') == module for case in cases) == count for module, count in totals.items())
+          assert any(case.get('classname') == 'tests.ingest.test_worker_publication_boundary' and
+                     case.get('name') == 'test_pdf_reconciliation_requires_its_exact_saved_job_and_config[missing_job]'
+                     for case in cases)
+          assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in cases)
+          print(json.dumps({'status': 'PASS', 'transactional_import_ownership': 'PASS',
+                            'old_schema_migration': 'PASS', 'pending_receipt_backup': 'PASS',
+                            'required_cases': observed}, sort_keys=True))
+          '@
+          $checkImportOwnership | & $python -I -B - | Tee-Object 'ci-results/import-ownership-installed.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           # The reviewed LGPL Windows FFmpeg build has no libflite. Exclude only
@@ -1023,6 +1115,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Retain only the exact source wheel after every installed gate and final seal.
+          # Reuse the reviewed canonical tested-wheel handoff; private runtimes stay local.
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installed acceptance.' }
+          $wheelKey = 'wheelhouse/' + $wheels[0].Name
+          $sealedWheel = Join-Path $bundle $wheelKey
+          $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheelProof = Get-Content -LiteralPath 'ci-results/source-wheel-proof.json' -Raw | ConvertFrom-Json
+          $sealedWheelHash = $completedManifest.files.PSObject.Properties[$wheelKey].Value
+          if (!$sealedWheelHash -or $wheelProof.wheel_sha256 -ne $sealedWheelHash) { throw 'Verified source wheel differs from the installed bundle seal.' }
+          $testedWheelDirectory = Join-Path 'ci-results' 'tested-application-wheel'
+          New-Item -ItemType Directory -Force $testedWheelDirectory | Out-Null
+          $testedWheel = Join-Path $testedWheelDirectory $wheels[0].Name
+          Copy-Item -LiteralPath $sealedWheel -Destination $testedWheel
+          if ((Get-FileHash -LiteralPath $testedWheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $wheelProof.wheel_sha256) {
+            Remove-Item -LiteralPath $testedWheel -Force
+            throw 'Tested application wheel copy differs.'
+          }
+          @{ status='PASS'; source_commit=$sourceCommit; source_tree=$wheelProof.source_tree; wheel=$wheels[0].Name; sha256=$wheelProof.wheel_sha256; installed_bundle='PASS' } | ConvertTo-Json | Set-Content 'ci-results/tested-application-wheel.json'
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
