@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import tarfile
+from time import monotonic
 
 import zstandard
 
@@ -19,11 +20,31 @@ spec.loader.exec_module(common)
 
 
 def run(args, output):
-    with output.open('xb') as stream:
-        result = subprocess.run([str(value) for value in args], stdin=subprocess.DEVNULL,
-            stdout=stream, stderr=subprocess.STDOUT, timeout=900, check=False)
-    if result.returncode:
-        raise ValueError('The pinned runtime could not be prepared: ' + str(result.returncode))
+    command = [str(value) for value in args]
+    receipt = output.with_name(output.stem + '-command.json')
+    details = dict(schema=1, status='RUNNING', argv=command, timeout_seconds=600)
+    started = monotonic()
+    receipt.write_text(json.dumps(details, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    print(json.dumps(details, sort_keys=True), flush=True)
+    try:
+        with output.open('xb') as stream:
+            result = subprocess.run(command, stdin=subprocess.DEVNULL,
+                stdout=stream, stderr=subprocess.STDOUT, timeout=600, check=False)
+        details['returncode'] = result.returncode
+        if result.returncode:
+            raise ValueError('The pinned runtime could not be prepared: ' + str(result.returncode))
+        details['status'] = 'PASS'
+    except BaseException as error:
+        details.update(status='FAIL', error_type=type(error).__name__, error=str(error)[:2000])
+        raise
+    finally:
+        details['elapsed_seconds'] = round(monotonic() - started, 3)
+        receipt.write_text(json.dumps(details, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        print(json.dumps(details, sort_keys=True), flush=True)
+        if details['status'] != 'PASS' and output.is_file():
+            with output.open('rb') as stream:
+                stream.seek(max(0, output.stat().st_size - 16000))
+                print(stream.read(16000).decode('utf-8', errors='replace'), flush=True)
 
 
 def artifact(name, pin, destination):
@@ -115,12 +136,30 @@ def main():
     lock = json.loads(lock_path.read_text(encoding='utf-8'))
     report = dict(schema=1, status='PREPARING', family=args.family,
                   lock_sha256=sha256(lock_path.read_bytes()).hexdigest(), native_fixtures='NOT_RUN')
+    def checkpoint(phase):
+        report['phase'] = phase
+        (root / 'preparation.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        print(json.dumps({'phase': phase, 'status': report['status'], 'family': args.family}, sort_keys=True), flush=True)
+    checkpoint('preflight')
     try:
+        payload = root / 'payload'
+        if args.family == 'calibre':
+            # Upstream v9.19.0 portable-installer.cpp opens a modal error and
+            # folder picker above 58 UTF-16 units, even with its argv[1] path.
+            # Refuse before downloading or starting that GUI. CI supplies a
+            # short, fresh owned directory under the runner's temporary root.
+            portable_path = str(payload / 'Calibre Portable')
+            units = len(portable_path.encode('utf-16-le')) // 2
+            report['portable_destination'] = portable_path
+            report['portable_destination_utf16_units'] = units
+            if units > 58:
+                raise ValueError('The fixed calibre portable installer needs a destination of at most 58 UTF-16 units; use a shorter fresh CI work directory.')
         key = {'calibre': 'calibre', 'djvu': 'djvulibre', 'chm': 'seven_zip'}[args.family]
         pin = lock[key]
         package = root / pin['url'].rsplit('/', 1)[1]
+        checkpoint('verify-publisher-artifact')
         report['artifact'] = artifact(key, pin, package)
-        payload = root / 'payload'
+        checkpoint('prepare-verified-runtime')
         if args.family == 'calibre':
             run([package, str(payload)], root / 'prepare-native.txt')
             matches = list(payload.rglob('ebook-convert.exe'))

@@ -137,6 +137,12 @@ pathlib.Path(__OUTPUT__).write_text(json.dumps({'isolated': bool(sys.flags.isola
         process = subprocess.run(arguments, cwd=checkout, env=env, stdin=subprocess.DEVNULL,
                                  stdout=log, stderr=subprocess.STDOUT, timeout=900, check=False)
     if process.returncode:
+        # Preserve the full raw file, and make a bounded actionable failure
+        # visible in the job log without a second artifact-reader job.
+        path = output / (mode + '-pytest.txt')
+        with path.open('rb') as stream:
+            stream.seek(max(0, path.stat().st_size - 24000))
+            print(stream.read(24000).decode('utf-8', errors='replace'), flush=True)
         raise ValueError(mode + ' optional-converter pytest failed: ' + str(process.returncode))
     result = strict_junit(output / (mode + '-junit.xml'), expected_functions)
     result['origins'] = json.loads(origins.read_text(encoding='utf-8'))

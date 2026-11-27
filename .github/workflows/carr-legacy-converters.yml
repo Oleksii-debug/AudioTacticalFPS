@@ -70,7 +70,9 @@ jobs:
       - name: Build and install an exact source-bound wheel
         timeout-minutes: 10
         run: |
-          $work = Join-Path $env:RUNNER_TEMP ("carr-legacy-converters-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT + "-" + $env:CARR_CONVERTER_FAMILY)
+          # The fixed calibre portable installer requires its final directory
+          # to stay within 58 UTF-16 units. The helper also enforces this before launch.
+          $work = Join-Path $env:RUNNER_TEMP ("lc-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
           if (Test-Path -LiteralPath $work) { throw 'Qualification environment must be fresh.' }
           $wheels = Join-Path $work 'wheels'
           New-Item -ItemType Directory $wheels -ErrorAction Stop | Out-Null
