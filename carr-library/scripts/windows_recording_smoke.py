@@ -42,6 +42,7 @@ def main():
 
 def _run_native(arguments):
     import ctypes
+    import wave
     from ctypes import wintypes
     import wx
     from carr_library.application import LibraryApp
@@ -49,6 +50,7 @@ def _run_native(arguments):
     from carr_library.audio.models import AudioCancelled
     import carr_library.audio.process as process_module
     import carr_library.audio.recording as recording_module
+    import carr_library.audio.recording_monitor as monitor_module
     import carr_library.ui.recording_dialog as dialog_module
     from carr_library.ui.desktop_app import DesktopFrame
 
@@ -70,7 +72,7 @@ def _run_native(arguments):
             raise AssertionError('External audio executable identity changed during native acceptance.')
         audio_proof.update(checked)
 
-    source_identity = binding.verify_installed_sources(process_module, recording_module, dialog_module)
+    source_identity = binding.verify_installed_sources(process_module, recording_module, monitor_module, dialog_module)
     check('exact current installed recording source', bool(source_identity))
 
     class ProbeApp(wx.App):
@@ -89,6 +91,25 @@ def _run_native(arguments):
     key_pending = False
     pressed_keys = {}
     original_factory = dialog_module.RecordingService
+    original_process, original_monitor_api = recording_module.run_process, monitor_module._api
+    segment_runs = []
+
+    def observed_process(command, **kwargs):
+        item = {'path': Path(command[-1]), 'active': True, 'pcm': None}
+        check('owned capture processes never overlap', not any(row['active'] for row in segment_runs))
+        segment_runs.append(item)
+        try:
+            result = original_process(command, **kwargs)
+            with wave.open(str(item['path']), 'rb') as reader:
+                item['pcm'] = reader.readframes(reader.getnframes())
+            return result
+        finally:
+            item['active'] = False
+
+    def forbidden_monitor():
+        raise AssertionError('Default-off monitoring opened an output.')
+    recording_module.run_process = observed_process
+    monitor_module._api = forbidden_monitor
 
     with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
@@ -215,15 +236,21 @@ def _run_native(arguments):
             refresh = control('Refresh microphones')
             start = control('Start recording')
             stop = control('Stop and save recording')
+            pause = control('Pause microphone recording')
+            resume = control('Resume microphone recording')
             cancel = control('Cancel unfinished recording')
             selection = control('Microphone device (explicit selection required)')
             saved = control('Saved recordings')
             status = control('Recording status')
             if stage == 0 and refresh.IsEnabled():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
-                gauges = [child for child in dialog.GetChildren() if isinstance(child, wx.Gauge)]
-                check('recording progress has a native accessible gauge', len(gauges) == 1
-                      and control('Recording operation progress') is gauges[0])
+                gauge = control('Recording operation progress')
+                check('recording progress has a native accessible gauge', isinstance(gauge, wx.Gauge)
+                      and wx.GetTopLevelParent(gauge) is dialog)
+                check('monitoring defaults off without selecting an output',
+                      not control('Enable dry input monitoring').GetValue()
+                      and control('Monitoring output (explicit selection required)').GetSelection() == wx.NOT_FOUND)
+                check('pause and resume remain unavailable before recording', not pause.IsEnabled() and not resume.IsEnabled())
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -236,14 +263,32 @@ def _run_native(arguments):
                 control('Recording title').SetValue('Native synthetic recording')
                 stage = 3
                 press(start)
-            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
+            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and pause.IsEnabled():
                 check('actual FFmpeg reports recorded PCM while UI remains responsive', captures[0]['active'])
+                stage = 31
+                press(pause)
+            elif stage == 31 and dialog.capture_state == 'paused' and resume.IsEnabled():
+                check('Pause acknowledges exited owned capture before allowing Resume',
+                      len(segment_runs) == 1 and not segment_runs[0]['active']
+                      and bool(segment_runs[0]['pcm']) and not pause.IsEnabled())
+                stage = 32
+                press(resume)
+            elif stage == 32 and len(segment_runs) == 2 and dialog.capture_state == 'recording' and stop.IsEnabled():
+                check('Resume starts a second owned segment after the first has closed',
+                      not segment_runs[0]['active'] and segment_runs[1]['active'])
                 stage = 4
                 press(stop)
             elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
                 check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
                     and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
                 check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                result = completed[0]
+                with wave.open(result['path'], 'rb') as reader:
+                    retained = reader.readframes(reader.getnframes())
+                check('Pause and Resume preserve the exact contiguous PCM of both segments',
+                      result['schema'] == 'carr-recording/2' and len(result['segments']) == 2
+                      and retained == b''.join(row['pcm'] for row in segment_runs)
+                      and not result['monitoring']['enabled'])
                 stage = 5
                 press(start)
             elif stage == 5 and len(captures) == 2 and captures[1]['seconds'] >= .1:
@@ -459,6 +504,8 @@ def _run_native(arguments):
                 raise AssertionError('\n'.join(errors))
         finally:
             dialog_module.RecordingService = original_factory
+            recording_module.run_process = original_process
+            monitor_module._api = original_monitor_api
             for key in tuple(pressed_keys):
                 simulator.KeyUp(key)
                 pressed_keys.pop(key, None)
@@ -472,7 +519,8 @@ def _run_native(arguments):
     verify_audio(runtime)
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
         'source_identity': source_identity,
-        'actual_ffmpeg_synthetic_capture': True, 'direct_parent_destruction': 'PASS',
+        'actual_ffmpeg_synthetic_capture': True, 'pause_resume_exact_pcm': 'PASS',
+        'monitoring_default_off': 'PASS', 'physical_monitor_output': 'NOT_RUN', 'direct_parent_destruction': 'PASS',
         'late_recording_progress_and_completion': 'PASS', 'audio_runtime': audio_proof, 'physical_microphone': 'NOT_RUN',
         'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}, ensure_ascii=False, indent=2))
 

@@ -240,6 +240,8 @@ def validate_collection(db, stage, entries, *, independent=True, cancelled=lambd
     if sum(bool(_EFFECT_PRESET.fullmatch(entry['filename'])) for entry in entries) > 256:
         raise RestoreError('The effect preset inventory exceeds its 256-record allowance.')
     backup_document_batches.validate_collection(stage, entries, cancelled=cancelled)
+    from . import backup_recordings
+    backup_recordings.validate_collection(stage, entries, cancelled=cancelled)
     canonical = tuple(entry for entry in entries
                       if backup_transcription.limit(entry['filename']) is not None)
     if canonical and not independent:

@@ -17,6 +17,7 @@ import re
 import shutil
 import stat
 import threading
+import time
 import wave
 from uuid import uuid4
 
@@ -29,6 +30,9 @@ _ID = re.compile(r'[0-9a-f]{32}')
 _HASH = re.compile(r'[0-9a-f]{64}')
 _MAX_RECORDINGS = 10000
 _MAX_RECORDING_ENTRIES = 30000
+MAX_RECORDING_SEGMENTS = 128
+MAX_PAUSED_SECONDS = 3600
+_FRAME_NOTICE = 'Retained PCM frames only; paused wall time is omitted. Review joins before use.'
 
 
 def _notice(result, message):
@@ -250,6 +254,17 @@ class RecordingOptions:
             raise ValueError('The selected recording duration exceeds its PCM byte allowance.')
 
 
+@dataclass(frozen=True)
+class RecordingState:
+    state: str
+    frames: int
+    sample_rate: int
+    segments: int
+    monitoring: bool = False
+    monitor_submitted_frames: int = 0
+    monitor_dropped_frames: int = 0
+
+
 def validate_recording_receipt(value, *, recording_id=None):
     """Validate a saved recording declaration without opening files or devices."""
     identity = value.get('id') if type(value) is dict else None
@@ -258,9 +273,12 @@ def validate_recording_receipt(value, *, recording_id=None):
         raise ValueError('Invalid recording receipt identity.')
     fields = {'schema', 'id', 'filename', 'title', 'created',
               'source', 'ffmpeg_sha256', 'audio', 'limits', 'completion'}
+    version = value.get('schema')
+    if version == 'carr-recording/2':
+        fields |= {'segments', 'monitoring', 'timeline'}
     if (set(value) not in (fields, fields | {'status'})
             or value.get('status', 'complete') not in ('prepared', 'complete')
-            or value['schema'] != 'carr-recording/1'
+            or version not in ('carr-recording/1', 'carr-recording/2')
             or value['filename'] != identity + '.wav'
             or type(value['limits']) is not dict
             or set(value['limits']) != {'max_seconds', 'sample_rate', 'channels', 'max_bytes'}
@@ -295,6 +313,35 @@ def validate_recording_receipt(value, *, recording_id=None):
             or type(audio['duration_seconds']) not in (int, float)
             or audio['duration_seconds'] != audio['frames'] / options.sample_rate):
         raise ValueError('Invalid recording audio receipt.')
+    if version == 'carr-recording/2':
+        segments = value['segments']
+        if (type(segments) is not list or not 1 <= len(segments) <= MAX_RECORDING_SEGMENTS
+                or value['timeline'] != _FRAME_NOTICE):
+            raise ValueError('Invalid recording segment receipt.')
+        position = 0
+        for index, segment in enumerate(segments):
+            if (type(segment) is not dict or set(segment) != {'start_frame', 'frames', 'pcm_sha256', 'ended_by'}
+                    or type(segment['start_frame']) is not int or segment['start_frame'] != position
+                    or type(segment['frames']) is not int or not 0 < segment['frames'] <= audio['frames'] - position
+                    or type(segment['pcm_sha256']) is not str or _HASH.fullmatch(segment['pcm_sha256']) is None
+                    or segment['ended_by'] not in ('paused', 'stopped', 'duration-limit', 'device-ended')
+                    or index < len(segments) - 1 and segment['ended_by'] != 'paused'):
+                raise ValueError('Invalid contiguous recording segment range.')
+            position += segment['frames']
+        if position != audio['frames']:
+            raise ValueError('Recording segments do not cover the retained PCM frames.')
+        monitoring = value['monitoring']
+        if (type(monitoring) is not dict or set(monitoring) != {
+                'enabled', 'output_identity', 'submitted_frames', 'dropped_frames'}
+                or type(monitoring['enabled']) is not bool
+                or any(type(monitoring[key]) is not int or not 0 <= monitoring[key] <= position
+                       for key in ('submitted_frames', 'dropped_frames'))
+                or monitoring['submitted_frames'] + monitoring['dropped_frames'] > position
+                or monitoring['enabled'] and (type(monitoring['output_identity']) is not str
+                    or _HASH.fullmatch(monitoring['output_identity']) is None)
+                or not monitoring['enabled'] and (monitoring['output_identity'] is not None
+                    or monitoring['submitted_frames'] or monitoring['dropped_frames'])):
+            raise ValueError('Invalid recording monitoring receipt.')
     return value
 
 
@@ -422,6 +469,41 @@ class _CaptureReservation:
         return True
 
 
+def verify_recording_segments(path, value, *, cancelled=lambda: False):
+    """Verify retained PCM ranges without opening an engine or native device."""
+    validate_recording_receipt(value, recording_id=value['id'])
+    if value['schema'] == 'carr-recording/1':
+        return
+    before = regular(path)
+    stamp = lambda info: (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+    with os.fdopen(os.open(path, flags), 'rb') as stream, wave.open(stream, 'rb') as reader:
+        if stamp(os.fstat(stream.fileno())) != stamp(before):
+            raise ValueError('The recording changed before segment verification.')
+        audio = value['audio']
+        if (reader.getcomptype() != 'NONE' or reader.getnframes() != audio['frames']
+                or reader.getframerate() != audio['sample_rate'] or reader.getnchannels() != audio['channels']
+                or reader.getsampwidth() != 2):
+            raise ValueError('Recording segment format differs from its retained PCM.')
+        width = audio['channels'] * 2
+        for segment in value['segments']:
+            digest, remaining = sha256(), segment['frames']
+            while remaining:
+                if cancelled():
+                    raise AudioCancelled('Recording segment verification cancelled.')
+                count = min(remaining, 32768)
+                data = reader.readframes(count)
+                if len(data) != count * width:
+                    raise ValueError('A retained recording segment is truncated.')
+                digest.update(data)
+                remaining -= count
+            if digest.hexdigest() != segment['pcm_sha256']:
+                raise ValueError('A retained recording segment differs from its frame hash.')
+        after = os.fstat(stream.fileno())
+    if stamp(before) != stamp(after) or stamp(before) != stamp(regular(path)):
+        raise ValueError('The recording changed during segment verification.')
+
+
 class RecordingService:
     def __init__(self, library_root, *, runtime=None, broker=None):
         self.library_root = local_path(library_root, exists=True)
@@ -473,14 +555,34 @@ class RecordingService:
         return ['-thread_queue_size', '128', '-rtbufsize', '16M', '-f', 'dshow',
                 '-i', 'audio=' + device.alternative]
 
+    @staticmethod
+    def monitoring_outputs(*, cancelled=lambda: False):
+        from .output_devices import output_devices
+        if cancelled():
+            raise AudioCancelled('Monitoring output discovery cancelled.')
+        outputs = output_devices()
+        if cancelled():
+            raise AudioCancelled('Monitoring output discovery cancelled.')
+        return outputs
+
     def capture(self, device_id, *, title='Microphone recording', options=None,
-                stop_requested=lambda: False, cancelled=lambda: False, progress=None):
+                stop_requested=lambda: False, cancelled=lambda: False, progress=None,
+                pause_requested=None, state_changed=None, monitor_output=None):
         options = options or RecordingOptions()
         if not isinstance(options, RecordingOptions):
             raise ValueError('Validated recording options are required.')
         _text(title, 'recording title')
         if not callable(stop_requested) or not callable(cancelled):
             raise ValueError('Recording requires explicit stop and cancel callbacks.')
+        if pause_requested is not None and not callable(pause_requested):
+            raise ValueError('Recording pause requires an explicit request callback.')
+        if state_changed is not None and not callable(state_changed):
+            raise ValueError('Recording state feedback must be a callback.')
+        if monitor_output is not None:
+            from .output_devices import OutputDevice
+            if type(monitor_output) is not OutputDevice:
+                raise ValueError('Monitoring requires an explicitly selected identifiable output.')
+        controlled = pause_requested is not None or monitor_output is not None
         device = self._devices.get(device_id)
         if device is None or self._engine_hash is None:
             raise ValueError('Refresh microphones and explicitly select a current device before Start.')
@@ -500,16 +602,17 @@ class RecordingService:
                     pcm = options.max_seconds * options.sample_rate * options.channels * 2 + 4096
                     request = ResourceRequest(cpu_slots=1,
                         memory_bytes=max(512 * 1024**2, 2 * budget.max_alloc_bytes),
-                        disk_bytes=2 * pcm + budget.reserve_disk_bytes, disk_path=self.root,
+                        disk_bytes=2 * pcm + budget.reserve_disk_bytes + (MAX_RECORDING_SEGMENTS * 4096 if controlled else 0), disk_path=self.root,
                         devices=('microphone:' + device.id,))
                     lease = admission.enter_context(broker.reserve(request,
                         operation_id='recording:' + uuid4().hex, cancelled=admission_cancelled,
-                        timeout=60, run_timeout=options.max_seconds + 20))
+                        timeout=60, run_timeout=options.max_seconds + (MAX_PAUSED_SECONDS if controlled else 0) + 20))
                     if admission_cancelled():
                         raise AudioCancelled('Recording stopped before opening the microphone.')
                     waiting = False  # Stop now finalizes PCM; cancellation still discards.
                     self._capture(device, title, options, stop_requested,
-                                  lease.cancelled, progress, reservation, completed)
+                                  lease.cancelled, progress, reservation, completed,
+                                  pause_requested, state_changed, monitor_output)
                 except AudioCleanupPending as exc:
                     reservation.retain(exc.cleanup_owner)
                     exc.recording_reservation = reservation
@@ -541,7 +644,8 @@ class RecordingService:
                         'metadata awaits normal cleanup.')
         return completed
 
-    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, completed):
+    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, completed,
+                 pause_requested=None, state_changed=None, monitor_output=None):
         identity = uuid4().hex
         output, receipt = self.root / (identity + '.wav'), self.root / (identity + '.json')
         if os.path.lexists(output) or os.path.lexists(receipt):
@@ -550,7 +654,9 @@ class RecordingService:
             raise ValueError('The FFmpeg runtime changed. Refresh microphones before recording.')
         budget = AudioBudget(timeout=options.max_seconds + 20, max_output_bytes=options.max_bytes,
                              max_log_bytes=512 * 1024, max_staging_files=4, threads=1)
-        if shutil.disk_usage(self.root).free < options.max_seconds * options.sample_rate * options.channels * 2 + budget.reserve_disk_bytes:
+        controlled = pause_requested is not None or monitor_output is not None
+        needed = options.max_seconds * options.sample_rate * options.channels * 2 * (2 if controlled else 1)
+        if shutil.disk_usage(self.root).free < needed + budget.reserve_disk_bytes + (MAX_RECORDING_SEGMENTS * 4096 if controlled else 0):
             raise AudioError('There is not enough free space for the selected recording allowance.')
 
         def report(seconds):
@@ -564,26 +670,29 @@ class RecordingService:
         parent_owner = regular(self.root, directory=True)
         temporary = reservation.staging(identity)
         staged = temporary / 'capture.wav'
-        command = [self.runtime.ffmpeg, '-hide_banner', '-loglevel', 'error', '-n', '-nostats',
-            '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1',
-            '-filter_threads', '1', '-filter_complex_threads', '1', '-stats_period', '0.1',
-            '-progress', 'pipe:1', *self._input_arguments(device), '-map', '0:a:0', '-vn',
-            '-c:a', 'pcm_s16le', '-ar', str(options.sample_rate), '-ac', str(options.channels),
-            '-t', str(options.max_seconds), '-f', 'wav', '-rf64', 'never', str(staged)]
-        result = run_process(command, budget=budget, cancelled=cancelled,
-            stop_requested=stop_requested, watch=(staged,), progress=report, cwd=temporary, owned_tree=True)
+        extra = {}
+        if controlled:
+            completion, extra = self._capture_segments(device, staged, options, stop_requested,
+                cancelled, report, pause_requested or (lambda: False), state_changed, monitor_output)
+        else:
+            result = run_process(self._command(device, staged, options, budget, options.max_seconds),
+                budget=budget, cancelled=cancelled, stop_requested=stop_requested,
+                watch=(staged,), progress=report, cwd=temporary, owned_tree=True)
         audio = self._audio(staged, options, cancelled)
+        if not controlled:
+            completion = ('stopped' if result.stopped else 'duration-limit'
+                          if audio['duration_seconds'] >= options.max_seconds - .1 else 'device-ended')
         if _digest(self.runtime.ffmpeg, cancelled) != self._engine_hash:
             raise ValueError('The FFmpeg runtime changed during recording; no result was published.')
-        value = {'schema': 'carr-recording/1', 'id': identity, 'filename': output.name,
+        value = {'schema': 'carr-recording/2' if controlled else 'carr-recording/1', 'id': identity, 'filename': output.name,
             'title': title, 'created': datetime.now(timezone.utc).isoformat(),
             'source': {'kind': 'microphone', 'backend': 'dshow', 'device_id': device.id, 'name': device.name},
             'ffmpeg_sha256': self._engine_hash, 'audio': audio, 'limits': asdict(options),
-            'completion': 'stopped' if result.stopped else 'duration-limit' if audio['duration_seconds'] >= options.max_seconds - .1 else 'device-ended',
-            'status': 'prepared'}
+            'completion': completion, 'status': 'prepared', **extra}
         # Prepared metadata precedes the create-only publication. Process
         # death can leave it prepared, but never invents a completed WAV.
         validate_recording_receipt(value, recording_id=identity)
+        verify_recording_segments(staged, value, cancelled=cancelled)
         atomic_json(receipt, value)
         owner = regular(staged)
         observed_parent = regular(local_path(self.root, exists=True), directory=True)
@@ -619,6 +728,234 @@ class RecordingService:
             _notice(completed, 'The recorded WAV is saved and verified. Its known temporary '
                     'link needs cleanup: ' + str(exc)[:1000])
         return completed
+
+    def _command(self, device, staged, options, budget, seconds, *, streaming=False):
+        return [self.runtime.ffmpeg, '-hide_banner', '-loglevel', 'error', '-n', '-nostats',
+            '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1',
+            '-filter_threads', '1', '-filter_complex_threads', '1', '-stats_period', '0.1',
+            '-progress', 'pipe:1', *self._input_arguments(device), '-map', '0:a:0', '-vn',
+            '-c:a', 'pcm_s16le', '-ar', str(options.sample_rate), '-ac', str(options.channels),
+            '-t', str(seconds), *(['-flush_packets', '1'] if streaming else []),
+            '-f', 'wav', '-rf64', 'never', str(staged)]
+
+    def _capture_segments(self, device, staged, options, stop_requested, cancelled,
+                          progress, pause_requested, state_changed, monitor_output):
+        from .cleanup import retained_temporary_directory
+        with retained_temporary_directory(prefix='.segments-', dir=staged.parent) as segment_root:
+            return self._capture_segments_owned(device, staged, options, stop_requested, cancelled,
+                progress, pause_requested, state_changed, monitor_output, Path(segment_root))
+
+    def _capture_segments_owned(self, device, staged, options, stop_requested, cancelled,
+                                progress, pause_requested, state_changed, monitor_output, segment_root):
+        """Close each owned capture before acknowledging Pause or opening another."""
+        from .recording_monitor import DryMonitor, RecordingMonitorTap, output_identity
+
+        parts, frames, paused_seconds, attempts = [], 0, 0.0, 0
+        maximum = options.max_seconds * options.sample_rate
+        monitoring = {'enabled': monitor_output is not None,
+            'output_identity': output_identity(monitor_output) if monitor_output is not None else None,
+            'submitted_frames': 0, 'dropped_frames': 0}
+        completion, last_reported, last_notice = 'device-ended', 0.0, None
+
+        def check():
+            if cancelled():
+                raise AudioCancelled('Recording cancelled; unfinished segments discarded.')
+
+        def notify(state, *, live_frames=None):
+            nonlocal state_changed, last_notice
+            if state_changed is not None:
+                notice = RecordingState(state, frames if live_frames is None else live_frames,
+                    options.sample_rate, len(parts), monitor_output is not None,
+                    monitoring['submitted_frames'], monitoring['dropped_frames'])
+                if notice == last_notice:
+                    return
+                last_notice = notice
+                try:
+                    state_changed(notice)
+                except Exception:
+                    state_changed = None  # Feedback cannot destroy captured samples.
+
+        while frames < maximum:
+            check()
+            if stop_requested():
+                completion = 'stopped'
+                break
+            if pause_requested():
+                notify('paused')
+                started = time.monotonic()
+                while pause_requested() and not stop_requested():
+                    check()
+                    if paused_seconds + time.monotonic() - started > MAX_PAUSED_SECONDS:
+                        raise AudioError('The take exceeded its one-hour total pause allowance; no recording was published.')
+                    time.sleep(.025)
+                paused_seconds += time.monotonic() - started
+                check()
+                if stop_requested():
+                    completion = 'stopped'
+                    break
+            if attempts >= MAX_RECORDING_SEGMENTS:
+                raise AudioError('The take exceeded its 128-segment allowance; stop and review a shorter take.')
+            # Device alternative identity is never replaced by a display name.
+            # FFmpeg must reopen that exact input; unplugging cannot select another.
+            if _digest(self.runtime.ffmpeg, cancelled) != self._engine_hash:
+                raise ValueError('The FFmpeg runtime changed before a recording segment.')
+            check()
+            if stop_requested():
+                completion = 'stopped'
+                break
+            segment_path = segment_root / f'segment-{attempts:03d}.wav'
+            attempts += 1
+            remaining = maximum - frames
+            budget = AudioBudget(timeout=remaining / options.sample_rate + 20,
+                max_output_bytes=options.max_bytes + MAX_RECORDING_SEGMENTS * 4096,
+                max_log_bytes=512 * 1024, max_staging_files=MAX_RECORDING_SEGMENTS + 1, threads=1)
+            pause_seen, live_state = False, 'opening'
+            monitor = tap = None
+            notify('opening')
+
+            def finish_segment():
+                nonlocal pause_seen, live_state
+                if stop_requested():
+                    return True
+                if pause_requested():
+                    pause_seen = True
+                    if live_state != 'pausing':
+                        live_state = 'pausing'
+                        notify('pausing', live_frames=max(frames, int(last_reported * options.sample_rate)))
+                return pause_seen
+
+            def measured(seconds):
+                nonlocal last_reported, live_state
+                check()
+                if tap is not None:
+                    tap.poll(cancelled=cancelled)
+                actual = min(maximum, frames + max(0, int(seconds * options.sample_rate)))
+                if live_state == 'opening':
+                    live_state = 'recording'
+                    notify('recording', live_frames=actual)
+                last_reported = max(last_reported, actual / options.sample_rate)
+                progress(last_reported)
+
+            pending_process = None
+            try:
+                if monitor_output is not None:
+                    monitor = DryMonitor()
+                    monitor.open(options.sample_rate, options.channels, monitor_output, cancelled=cancelled)
+                    tap = RecordingMonitorTap(segment_path, options.sample_rate, options.channels,
+                                              remaining, monitor)
+                check()
+                if stop_requested():
+                    completion = 'stopped'
+                    break
+                if pause_requested():
+                    continue  # No microphone is opened for an already requested pause.
+                result = run_process(self._command(device, segment_path, options, budget,
+                    remaining / options.sample_rate, streaming=monitor is not None),
+                    budget=budget, cancelled=cancelled, stop_requested=finish_segment,
+                    watch=(segment_root,), progress=measured, cwd=segment_root, owned_tree=True)
+            except AudioCleanupPending as exc:
+                pending_process = exc.cleanup_owner
+                raise
+            finally:
+                close_errors = []
+                for owned in (tap, monitor):
+                    if owned is not None:
+                        try:
+                            owned.close()
+                        except (Exception, KeyboardInterrupt) as exc:
+                            close_errors.append(exc)
+                if tap is not None:
+                    monitoring['submitted_frames'] += tap.submitted_frames
+                    monitoring['dropped_frames'] += tap.dropped_frames
+                if close_errors:
+                    from .cleanup import pending_cleanup
+                    def release_capture_outputs(tap=tap, monitor=monitor, process_owner=pending_process):
+                        stopped = process_owner.close() if process_owner is not None else True
+                        retry_errors = []
+                        for owned in (tap, monitor):
+                            if owned is not None:
+                                try:
+                                    owned.close()
+                                except (Exception, KeyboardInterrupt) as error:
+                                    retry_errors.append(error)
+                        if retry_errors:
+                            raise retry_errors[0]
+                        return stopped is not False
+                    raise pending_cleanup(release_capture_outputs,
+                        message='Monitoring cleanup is unconfirmed; capture files and resource ownership remain retained.') from close_errors[0]
+            # run_process has now acknowledged the whole owned tree's exit,
+            # and monitoring has confirmed buffer/handle release.
+            check()
+            with wave.open(str(segment_path), 'rb') as reader:
+                count = reader.getnframes()
+                if (reader.getcomptype() != 'NONE' or reader.getsampwidth() != 2
+                        or reader.getframerate() != options.sample_rate
+                        or reader.getnchannels() != options.channels or count > remaining):
+                    raise ValueError('A recording segment differs from the selected PCM frame allowance.')
+            ended_by = ('stopped' if stop_requested() else 'duration-limit' if frames + count >= maximum
+                        else 'paused' if pause_seen else 'device-ended')
+            if count:
+                audio = self._audio(segment_path, options, cancelled)
+                parts.append((segment_path, audio, ended_by))
+                frames += count
+            else:
+                segment_path.unlink()
+            if monitoring['submitted_frames'] + monitoring['dropped_frames'] > frames:
+                raise ValueError('Monitoring observed frames outside the finalized recording.')
+            progress(max(last_reported, frames / options.sample_rate))
+            if ended_by != 'paused':
+                completion = ended_by
+                break
+            notify('paused')
+
+        if not parts:
+            raise AudioCancelled('No microphone frames were retained; no recording was saved.')
+        notify('finalizing')
+        segments = self._join_segments(parts, staged, options, cancelled)
+        return completion, {'segments': segments, 'monitoring': monitoring, 'timeline': _FRAME_NOTICE}
+
+    @staticmethod
+    def _join_segments(parts, staged, options, cancelled):
+        """Stream unchanged sample frames, with a hash for every final range."""
+        ranges, position = [], 0
+        width = options.channels * 2
+        stamp = lambda info: (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        with Path(staged).open('xb') as output:
+            with wave.open(output, 'wb') as writer:
+                writer.setparams((options.channels, 2, options.sample_rate, 0, 'NONE', 'PCM'))
+                for path, audio, ended_by in parts:
+                    # The identity interval must cover both verification and
+                    # copying; a post-hash replacement cannot acquire a fresh
+                    # baseline and mint a new retained-frame receipt.
+                    before = regular(path)
+                    if _digest(path, cancelled) != audio['sha256']:
+                        raise ValueError('A completed recording segment changed before assembly.')
+                    digest, remaining = sha256(), audio['frames']
+                    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+                    with os.fdopen(os.open(path, flags), 'rb') as source, wave.open(source, 'rb') as reader:
+                        if stamp(os.fstat(source.fileno())) != stamp(before):
+                            raise ValueError('A recording segment changed before assembly.')
+                        while remaining:
+                            if cancelled():
+                                raise AudioCancelled('Recording assembly cancelled; no take was published.')
+                            if shutil.disk_usage(staged.parent).free < 32 * 1024 * 1024:
+                                raise AudioError('Recording assembly stopped to preserve its disk reserve.')
+                            count = min(remaining, 32768)
+                            data = reader.readframes(count)
+                            if len(data) != count * width:
+                                raise ValueError('A completed recording segment is truncated.')
+                            digest.update(data)
+                            writer.writeframesraw(data)
+                            remaining -= count
+                        after = os.fstat(source.fileno())
+                    if stamp(before) != stamp(after) or stamp(before) != stamp(regular(path)):
+                        raise ValueError('A recording segment changed during assembly.')
+                    ranges.append({'start_frame': position, 'frames': audio['frames'],
+                                   'pcm_sha256': digest.hexdigest(), 'ended_by': ended_by})
+                    position += audio['frames']
+            output.flush()
+            os.fsync(output.fileno())
+        return ranges
 
     @staticmethod
     def _audio(path, options, cancelled):
@@ -695,6 +1032,7 @@ class RecordingService:
             # Recovery only removes the known staging alias. Re-read the same
             # retained bytes after any cleanup attempt before finalizing metadata.
             _read_recording(output, value['audio'], options.max_bytes, cancelled)
+            verify_recording_segments(output, value, cancelled=cancelled)
             # Source metadata was valid before publication; a prepared receipt
             # is finalized only after reading the actual exact PCM again.
             if value.get('status') == 'prepared':

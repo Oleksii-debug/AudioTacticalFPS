@@ -10,7 +10,8 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.audio.models import AudioCancelled, AudioCleanupPending
-from carr_library.audio.recording import RecordingOptions
+from carr_library.audio.recording import RecordingOptions, RecordingState
+from carr_library.audio.output_devices import OutputDevice
 
 
 class Control:
@@ -28,6 +29,7 @@ class Control:
 class Progress:
     def __init__(self):
         self.ready, self.fail_on, self.holds, self.events = False, None, [], []
+        self.event = SimpleNamespace(state='idle', token=1)
     def hold_audio(self, *, recording=False):
         assert recording is True
         if self.fail_on == 'hold':
@@ -43,11 +45,17 @@ class Progress:
         return hold
     def start(self, *args, **kwargs):
         if self.fail_on == 'start': raise RuntimeError('Detached progress view')
+        self.event.state = 'running'
         return 1
+    def pause(self, *args, **kwargs):
+        self.event.state = 'paused'
+    def resume(self, *args, **kwargs):
+        self.event.state = 'running'
     def update(self, *args, **kwargs): pass
     def succeed(self, *args, **kwargs):
         if self.fail_on == 'succeed': raise RuntimeError('Detached progress view')
         self.events.append('completed')
+        self.event.state = 'succeeded'
     def fail(self, *args, **kwargs): self.events.append('failed')
     def cancel(self, *args, **kwargs): self.events.append('cancelled')
 
@@ -75,7 +83,7 @@ def handlers(values):
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
     names = {'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
              'start', 'close', 'stop_recording', 'cancel_recording', 'detach', 'on_destroy',
-             'report', 'preview', 'use', 'stop_playback'}
+             'report', 'preview', 'use', 'stop_playback', 'refresh_monitor', 'pause_recording', 'resume_recording'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names))
@@ -98,10 +106,13 @@ def view():
         if kwargs['cancelled'](): raise AudioCancelled('User cancelled before capture')
         kwargs['progress'](1.0)
         return result
-    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture)
-    buttons = {name: Control() for name in ('refresh', 'start', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
+    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture,
+                              monitoring_outputs=Mock(return_value=()))
+    buttons = {name: Control() for name in ('refresh', 'refresh_monitor', 'start', 'stop', 'cancel', 'pause', 'resume', 'preview', 'use', 'stop_preview', 'close')}
     values = dict(native_id=71, busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
         cleanup_owner=None, cleanup_future=None, cleanup_retry=None, hold_guard=threading.RLock(), frame=Mock(),
+        monitor_outputs=(), capture_phase='idle', current_token=None, paused=threading.Event(),
+        monitoring=Control(False), monitor_output=Control(selection=-1), library=object(),
         selected_result=None, on_selected=None, controllers=(progress, parent), progress=progress, player=Mock(),
         executor=executor, service=service, cancelled=threading.Event(), stopped=threading.Event(),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
@@ -109,6 +120,7 @@ def view():
         buttons=buttons, details=Control(), status=Control(), dialog=Mock(),
         wx=SimpleNamespace(NOT_FOUND=-1, ID_CANCEL=2, CallAfter=lambda callback: callback(),
                            CallLater=lambda delay, callback: deferred.append(callback)))
+    values['frame'].library = values['library']
     return SimpleNamespace(handlers=handlers(values), values=values, progress=progress, parent=parent,
         deferred=deferred, captures=captures, executor=executor, service=service, result=result)
 
@@ -372,3 +384,102 @@ def test_destroy_while_waiting_for_silence_prevents_capture_and_controls(view):
     view.deferred.pop(0)()
     assert not view.captures and not view.executor.pending
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_pause_and_resume_require_acknowledged_microphone_close_and_keep_quiet_holds(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    def capture(device_id, **options):
+        options['state_changed'](RecordingState('recording', 2400, 24000, 0))
+        assert view.values['buttons']['pause'].enabled
+        view.handlers.pause_recording()
+        assert options['pause_requested']() and view.progress.event.state == 'running'
+        assert not view.values['buttons']['resume'].enabled
+        options['state_changed'](RecordingState('pausing', 2400, 24000, 0))
+        assert view.progress.event.state == 'running'
+        options['state_changed'](RecordingState('paused', 3000, 24000, 1))
+        assert view.progress.event.state == 'paused'
+        assert view.values['buttons']['resume'].enabled
+        assert all(not hold.closed for hold in (*view.progress.holds, *view.parent.holds))
+        view.handlers.resume_recording()
+        assert not options['pause_requested']() and view.progress.event.state == 'paused'
+        options['state_changed'](RecordingState('opening', 3000, 24000, 1))
+        assert view.progress.event.state == 'running'
+        options['state_changed'](RecordingState('recording', 6000, 24000, 1))
+        return view.result
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert view.progress.events == ['completed']
+    assert view.values['dialog'].capture_state == 'idle'
+
+
+def test_stop_while_paused_finishes_without_accepting_resume(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    def capture(device_id, **options):
+        options['state_changed'](RecordingState('recording', 2400, 24000, 0))
+        view.handlers.pause_recording()
+        options['state_changed'](RecordingState('paused', 2400, 24000, 1))
+        view.handlers.stop_recording()
+        view.handlers.resume_recording()
+        assert options['stop_requested']() and not options['pause_requested']()
+        options['state_changed'](RecordingState('finalizing', 2400, 24000, 1))
+        assert view.progress.event.state == 'running'
+        assert not view.values['buttons']['resume'].enabled
+        return view.result
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert view.progress.events == ['completed']
+
+
+def test_monitoring_is_default_off_worker_discovery_explicit_output_and_immutable_start_selection(view):
+    discovered(view)
+    selected = OutputDevice(1, 'interface-one', 'Chosen headphones', channels=2)
+    view.service.monitoring_outputs.return_value = (selected,)
+    assert view.values['monitoring'].GetValue() is False
+    assert view.service.monitoring_outputs.call_count == 0
+    view.handlers.refresh_monitor()
+    assert view.service.monitoring_outputs.call_count == 0
+    view.executor.finish()
+    assert view.service.monitoring_outputs.call_count == 1
+    assert view.values['monitor_output'].GetSelection() == -1
+    assert view.values['monitoring'].GetValue() is False
+    view.values['monitoring'].SetValue(True)
+    view.handlers.start()
+    assert view.executor.pending == [] and 'Select a monitoring output' in view.values['status'].value
+    view.values['monitor_output'].SetSelection(0)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.values['monitoring'].SetValue(False)
+    view.values['monitor_output'].SetSelection(-1)
+    view.executor.finish()
+    assert view.captures[0][1]['monitor_output'] is selected
+
+
+@pytest.mark.parametrize('invalidate', ['detach', 'library_changed'])
+def test_queued_capture_state_cannot_touch_destroyed_or_replaced_library_view(view, invalidate):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    queued = []
+    view.values['wx'].CallAfter = queued.append
+    def capture(device_id, **options):
+        options['state_changed'](RecordingState('recording', 2400, 24000, 0))
+        options['state_changed'](RecordingState('paused', 2400, 24000, 1))
+        return view.result
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert len(queued) == 3
+    if invalidate == 'detach':
+        view.handlers.detach()
+    else:
+        view.values['frame'].library = object()
+    before = view.values['status'].value
+    for callback in queued[:2]:
+        callback()
+    assert view.values['status'].value == before
+    if invalidate == 'detach':
+        queued[2]()
+        assert view.values['status'].value == before

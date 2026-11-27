@@ -51,6 +51,45 @@ input retention API, binding the returned `audio.sha256`; they do not grant
 authority to an arbitrary saved path. Recordings are inputs, so generated-audio
 exclusion does not discard them. This adds no second backup format or DSP engine.
 
+## Pause, resume and explicit monitoring
+
+**Pause microphone recording** requests graceful completion of the current
+segment. The UI enables **Resume microphone recording** only after the owned
+capture and any monitoring output have confirmed closure. Resume reopens the
+same selected DirectShow identity; a changed FFmpeg executable or missing device
+is an error. Pause time does not create silent PCM. Stop while paused saves the
+retained frames without reopening the input; Cancel discards only this unfinished
+take. There are at most 128 segments and one hour of total paused time, within the
+existing three-hour recorded-duration and byte bounds.
+
+The current UI produces `carr-recording/2` receipts. Each segment has a contiguous
+frame range, exact PCM SHA-256 and completion reason. Joining streams the actual
+frames unchanged and verifies every source before and after the copy. Joins are
+not a gapless-performance or acoustic-quality claim: review the resulting take
+before use. Existing `carr-recording/1` receipts remain readable and direct
+capture without controls retains that original schema.
+
+**Enable dry input monitoring** starts off. **Refresh monitoring outputs** only
+lists outputs; the user must choose one explicitly before enabling monitored
+capture. Monitoring reads bounded appended PCM from the same private capture,
+without opening a second microphone or changing saved samples. The selected
+Windows output is revalidated on each opening. Four 50 ms waveOut buffers bound
+the queued output to 200 ms; end-to-end latency is not qualified. Slow monitoring
+drops old monitoring frames, recorded separately as submitted/dropped counts in
+the receipt. These counters do not prove audible delivery or listening quality.
+Use headphones to avoid feeding playback back into the selected microphone.
+
+A failed output close retains native headers and their PCM memory until retry
+confirms release. If capture-process cleanup is also pending, one combined
+cleanup owner retains both resources, private segment files, capture locks,
+shared admission and quiet holds. No new capture is admitted while that owner
+still needs cleanup. The same existing owner may retry after the window closes.
+
+Backup validates whole-file PCM and v2 segment hashes without running an engine.
+Receiptless WAV originals and prepared receipts without a published WAV remain
+inert recovery data. A completed receipt requires its exact retained audio.
+Restoration does not approve capture, monitoring, playback or an output device.
+
 ## Verification boundaries
 
 `tests/audio/test_recording.py` runs actual FFmpeg with a fixed synthetic source
@@ -75,7 +114,7 @@ until performed on a selected Windows device.
 
 `scripts/windows_recording_smoke.py` must run with the installed interpreter,
 `-I -B`, real wx MainLoop and a staged FFmpeg build. It dispatches native keys
-for explicit source selection, Start, Stop, Cancel and Escape, checks actual
+for explicit source selection, Start, Pause, Resume, Stop, Cancel and Escape, checks actual
 retained PCM, and confirms cleanup. The probe's fixed synthetic source never
 discovers or opens physical microphone hardware. Its existence is not a native
 PASS claim; the platform job must execute it.
@@ -83,3 +122,14 @@ PASS claim; the platform job must execute it.
 Device interface: <https://ffmpeg.org/ffmpeg-devices.html#dshow>.
 Windows lifetime contract:
 <https://learn.microsoft.com/windows/win32/procthread/job-objects>.
+
+The added `test_recording_controls.py` exercises actual FFmpeg segment shutdown,
+retained-frame joins, passive backup/restore and combined cleanup ownership.
+`test_recording_monitor.py` exercises the bounded native buffer protocol with
+a controlled WinMM API and real growing WAV files. Those tests do not constitute
+a physical output-device run. The native probe retains exact installed-source
+and external-audio executable bindings plus direct and parent destruction cases.
+New source checkpoints are NOT_RUN until their recorded CI run has completed.
+
+Native buffer release contract:
+<https://learn.microsoft.com/windows/win32/api/mmeapi/nf-mmeapi-waveoutunprepareheader>.
