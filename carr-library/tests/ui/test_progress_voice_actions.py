@@ -7,14 +7,17 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+import carr_library
 
 from carr_library.speech.progress_speech import activate_progress_voice, play_when_quiet
 from carr_library.speech.runtime import Voice, VoiceRegistry
 
+UI_ROOT = Path(carr_library.__file__).resolve().parent / 'ui'
+
 
 def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=False):
     """Retain the real nested callback bodies and their mutable closure cells."""
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui' / filename
+    source = UI_ROOT / filename
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body
                   if isinstance(node, ast.FunctionDef) and node.name == window_name)
@@ -147,7 +150,7 @@ def reader(tmp_path, monkeypatch):
         source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock(),
-        unregister=Mock(), owned_registries=set())
+        unregister=Mock(), owned_registries=set(), navigation_host=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
@@ -204,11 +207,13 @@ def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(read
     if termination == 'stop':
         reader.handlers.stop_audio()
         reader.values['player'].stop.assert_called_once()
+        reader.values['navigation_host'].invalidate.assert_called_once_with()
     else:
         reader.handlers.closing(None)
         reader.values['dialog'].EndModal.assert_called_once_with(1)
         # Execute the real outer finally block when the simulated modal unwinds.
         reader.handlers.cleanup()
+        reader.values['navigation_host'].close.assert_called_once_with()
         reader.values['player'].close.assert_called_once()
     reader.progress.ready = True
     reader.scheduler.tick()
@@ -443,4 +448,17 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
     reader.values['audio_files'].cleanup.assert_called_once()
     reader.values['dialog'].Destroy.assert_called_once()
     assert any('Progress observer detached' in message for message in reader.reports)
+    assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+def test_reader_navigation_close_failure_does_not_abandon_owned_cleanup(reader):
+    reader.values['navigation_host'].close.side_effect = RuntimeError('Synthetic navigation timer close failure')
+    reader.handlers.cleanup()
+    reader.values['navigation_host'].close.assert_called_once_with()
+    reader.values['player'].close.assert_called_once_with()
+    reader.values['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    reader.values['audio_files'].cleanup.assert_called_once_with()
+    reader.values['dialog'].Destroy.assert_called_once_with()
+    assert ('unregister', 'main', True) in reader.progress.events
+    assert any('Synthetic navigation timer close failure' in message for message in reader.reports)
     assert not hasattr(reader.parent, '_reader_playback_retained')

@@ -9,6 +9,33 @@ from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
+from .playback_navigation import PlaybackNavigationHost
+
+
+def _cursor_character_offset(control, text):
+    """Read a native cursor as an exact Python offset in the displayed copy."""
+    position, last = control.GetInsertionPoint(), control.GetLastPosition()
+    if type(position) is not int or not 0 <= position <= last or control.GetValue() != text:
+        raise ValueError('The reading copy changed while locating its cursor.')
+    prefix, suffix = control.GetRange(0, position), control.GetRange(position, last)
+    if prefix + suffix != text:
+        raise ValueError('The native cursor does not identify an exact reading-copy position.')
+    return len(prefix)
+
+
+def _restore_character_cursor(control, text, offset):
+    """Reader-session v1 stores character offsets, never native wx positions."""
+    from .ebook_model import native_position
+    if type(offset) is not int or not 0 <= offset <= len(text):
+        raise ValueError('The saved cursor is outside the reading copy.')
+    displayed, prefix = control.GetValue(), text[:offset]
+    if displayed != text:
+        # A legacy/programmatically saved copy can retain CRLF or CR while wx
+        # presents LF. Map that known transformation without changing the copy.
+        if text.replace('\r\n', '\n').replace('\r', '\n') != displayed:
+            raise ValueError('The displayed reading copy differs from the saved cursor source.')
+        prefix = prefix.replace('\r\n', '\n').replace('\r', '\n')
+    control.SetInsertionPoint(native_position(control, displayed, len(prefix)))
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
@@ -36,6 +63,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     playback_generation = 0
     save_path = None
     last_audio = None
+    navigation_host = None
     source_loaded = source_loader is None
     draft_store = None
     recovered = None
@@ -112,9 +140,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
     seek = wx.Button(dialog, label='Seek to &time')
+    navigation_button = wx.Button(dialog, label='Playback navigation...')
+    navigation_button.SetName('Playback navigation: skip, percentage, repeat and sleep')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
+    find_button = wx.Button(dialog, label='&Find and replace')
+    find_button.SetName('Find and replace')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, cleanup, close):
+    for control in (seek, navigation_button, cleanup, find_button, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -138,15 +170,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         for button in (read, cursor, export_audio):
             button.Enable(bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
+        find_button.Enable(source_loaded and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
 
-    def run(work, on_done):
+    def run(work, on_done, *, on_failed=None):
         nonlocal busy
         if busy:
             report('A speech operation is running. Stop it before starting another.', focus=True)
-            return
+            return False
         busy = True
         cancel.clear()
         capabilities()
@@ -161,9 +194,22 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             try:
                 on_done(future.result())
             except Exception as exc:
-                report(f'Operation did not complete. {exc}', focus=True)
+                if on_failed is not None:
+                    on_failed(exc)
+                else:
+                    report(f'Operation did not complete. {exc}', focus=True)
             capabilities()
-        executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+        try:
+            executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+        except Exception as exc:
+            busy = False
+            reload_button.Enable(); capabilities()
+            if on_failed is not None:
+                on_failed(exc)
+            else:
+                report(f'Operation did not start. {exc}', focus=True)
+            return False
+        return True
 
     def select_progress_voice(event=None):
         selected = voice_choice.GetSelection()
@@ -231,12 +277,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     + ' This is a separate narration copy; it does not approve quotations. '
                     + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
+            if recovered is not None:
+                _restore_character_cursor(editor, document.text, min(recovered.cursor, len(document.text)))
             if voices:
                 selected = next((i for i, voice in enumerate(voices)
                                  if recovered is not None and voice.id == recovered.voice_id), 0)
                 voice_choice.SetSelection(selected)
-                if recovered is not None:
-                    editor.SetInsertionPoint(min(recovered.cursor, len(editor.GetValue())))
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
@@ -263,7 +309,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else ''
         position = player.position_seconds if last_audio is not None else 0
-        cursor_offset = min(editor.GetInsertionPoint(), len(document.text))
+        cursor_offset = _cursor_character_offset(editor, document.text)
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
                      round(position, 1))
         if not force and signature == last_recovery_signature:
@@ -282,9 +328,91 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def selected_text(from_cursor=False):
         sync_document()
         if from_cursor:
-            return editor.GetValue()[editor.GetInsertionPoint():]
+            return document.text[_cursor_character_offset(editor, document.text):]
         selected = editor.GetStringSelection()
         return selected or editor.GetValue()
+
+    def find_replace(event=None):
+        try:
+            if busy or not source_loaded:
+                raise ValueError('Wait for the reader operation to finish before finding or replacing text.')
+            from ..durable_state import local_path
+            from .ebook_model import native_position
+            from .find_replace_dialog import ReadingSnapshot, apply_replacement, create_find_replace_dialog
+            selected_library = parent.library
+            selected_root = local_path(selected_library.root, exists=True)
+
+            def guard():
+                if (not alive or getattr(parent, '_closing', False) or parent.library is not selected_library
+                        or local_path(parent.library.root, exists=True) != selected_root):
+                    raise ValueError('The library changed or the reader closed. Reopen Find and replace.')
+                source_guard()
+
+            def capture():
+                guard(); sync_document()
+                native_start, native_end = editor.GetSelection()
+                prefix, selected = editor.GetRange(0, native_start), editor.GetRange(native_start, native_end)
+                start, end = len(prefix), len(prefix) + len(selected)
+                if not document.text.startswith(prefix) or document.text[start:end] != selected:
+                    raise ValueError('The native selection changed. Select the reading range again.')
+                return ReadingSnapshot.capture(document, (start, end))
+
+            def select(expected, selection):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy or selection changed. Find again.')
+                start, end = selection
+                document._range(start, end)
+                first = native_position(editor, document.text, start)
+                last = native_position(editor, document.text, end)
+                editor.SetSelection(first, last)
+                if editor.GetRange(first, last) != document.text[start:end]:
+                    raise ValueError('The text control could not select the exact matching passage.')
+
+            def synchronize():
+                nonlocal last_audio, playback_generation
+                playback_generation += 1; last_audio = None
+                if navigation_host is not None:
+                    navigation_host.invalidate()
+                editor.ChangeValue(document.text); sync_document()
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
+                return ''
+
+            def apply(preview):
+                guard(); current = capture()
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                apply_replacement(document, preview, current)
+                warning = synchronize()
+                return capture(), warning
+
+            def undo_replace(expected):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed after applying. Use the reader undo history explicitly.')
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                if not document.undo():
+                    raise ValueError('The find/replace edit is no longer available to undo.')
+                return synchronize()
+
+            review = create_find_replace_dialog(dialog, capture=capture, select=select, apply=apply,
+                undo=undo_replace, guard=guard, run=run, cancel=cancel)
+            try:
+                review.ShowModal()
+            finally:
+                if review.alive:
+                    review.finish_close()
+                review.Destroy()
+            if alive:
+                capabilities(); editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def speak(event=None, *, from_cursor=False, destination=None):
         nonlocal last_audio, playback_generation
@@ -296,6 +424,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             voice = voices[voice_choice.GetSelection()]
             settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
             playback_generation += 1
+            if navigation_host is not None:
+                navigation_host.invalidate()
             player.stop()
             if progress is not None:
                 progress.refresh_audio_state()
@@ -309,6 +439,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         return
                     def playing():
                         player.play(result.path)
+                        if navigation_host is not None:
+                            navigation_host.bind()
                         report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '
                                'Word highlighting is unavailable for this voice.')
                     start_playback(playing)
@@ -346,6 +478,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def stop_audio(event=None):
         nonlocal playback_generation
         playback_generation += 1
+        if navigation_host is not None:
+            navigation_host.invalidate()
         cancel.set()
         try:
             player.stop()
@@ -357,19 +491,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def seek_audio(event=None):
         try:
-            if last_audio is None:
-                raise ValueError('Read text once before seeking within its recording.')
+            if navigation_host is None or not navigation_host.controller.snapshot()['active']:
+                raise ValueError('Start or resume this recording before seeking; navigation never starts stopped audio.')
             with wx.TextEntryDialog(dialog, f'Seconds from 0 to {player.duration_seconds:.1f}',
                                     'Seek playback', str(round(player.position_seconds, 1))) as entry:
                 if entry.ShowModal() == wx.ID_OK:
-                    seconds = float(entry.GetValue())
-                    def sought():
-                        player.seek(seconds)
-                        report(f'Playback at {player.position_seconds:.1f} seconds.'
-                               + (' Position is approximate on this playback backend.' if player.position_is_approximate else ''))
-                    start_playback(sought)
+                    navigation_host.controller.seek_seconds(float(entry.GetValue()))
         except Exception as exc:
             report(str(exc), focus=True)
+
+    def playback_navigation(event=None):
+        try:
+            if navigation_host is not None:
+                navigation_host.show()
+        except Exception as exc:
+            report(f'Playback navigation could not be opened. {exc}', focus=True)
 
     def save_project(event=None, *, choose=False):
         nonlocal save_path
@@ -404,7 +540,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path, draft_store, recovery_notice
+        nonlocal document, save_path, draft_store, recovery_notice, playback_generation, last_audio
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -431,6 +567,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if source_loader is not None and (not source_loaded or loaded.source_anchor is None
                     or loaded.source_anchor != document.source_anchor):
                 raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
+            playback_generation += 1; last_audio = None
+            if navigation_host is not None:
+                navigation_host.invalidate()
             player.stop()
             if progress is not None:
                 progress.refresh_audio_state()
@@ -516,13 +655,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (save_all_button, save_all), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
-        (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing)):
+        (original, compare), (seek, seek_audio), (navigation_button, playback_navigation),
+        (cleanup, clean), (find_button, find_replace), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)
     accelerators = []
     for flags, key, handler in ((wx.ACCEL_CTRL, ord('S'), save_project),
         (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), lambda event: save_project(choose=True)),
+        (wx.ACCEL_CTRL, ord('F'), find_replace), (wx.ACCEL_CTRL, ord('H'), find_replace),
         (0, wx.WXK_F6, speak), (0, wx.WXK_F7, pause_audio), (0, wx.WXK_F8, stop_audio)):
         identifier = wx.NewIdRef()
         accelerators.append((flags, key, int(identifier)))
@@ -544,6 +685,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     dirty=unsaved, save=save_registered, focus=editor.SetFocus)
                   if coordinator is not None else lambda: None)
     try:
+        navigation_host = PlaybackNavigationHost(dialog, player, generation=lambda: playback_generation,
+            alive=lambda: alive, stop_current=stop_audio, progress=(progress,), report=report)
         capabilities()
         reload()
         autosave_timer.Start(5000)
@@ -561,6 +704,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 autosave_timer.Stop()
             except (OSError, RuntimeError) as exc:
                 notices.append(f'Reading-draft timer could not be stopped: {exc}')
+            if navigation_host is not None:
+                try:
+                    navigation_host.close()
+                except (OSError, RuntimeError) as exc:
+                    notices.append(f'Playback navigation timer could not be stopped: {exc}')
             try:
                 player.close()
                 silence_confirmed = True

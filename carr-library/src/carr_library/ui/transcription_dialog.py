@@ -3,7 +3,7 @@ from pathlib import Path
 import threading
 
 
-def show_transcription(frame):
+def show_transcription(frame, *, job_id=None):
     import wx
     from .save_all import SaveResult, coordinator_for
 
@@ -17,6 +17,8 @@ def show_transcription(frame):
     bound_library, bound_workspace = frame.library, active[0]
     bound_root = bound_library.root
     service = bound_library.transcription(bound_workspace)
+    if job_id is not None:
+        service.get(job_id)  # Scoped saved-job handoff; never starts recognition.
     coordinator = coordinator_for(frame)
     dialog = wx.Dialog(frame, title='Транскрипція — локальний Whisper', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -414,7 +416,7 @@ def show_transcription(frame):
                     dirty=unsaved, save=lambda completed: save(completed=completed), focus=text.SetFocus)
                   if coordinator is not None else lambda: None)
     try:
-        refresh()
+        refresh(job_id)
         controls()
         if not busy:
             jobs.SetFocus()

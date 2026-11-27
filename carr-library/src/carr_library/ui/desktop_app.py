@@ -26,6 +26,7 @@ from .page_context_dialog import show_page_context
 from .search_model import Hit
 from .catalog_metadata_dialog import edit_selected_book
 from .catalog_tools_dialog import show_catalog_tools
+from .acquisition_dialog import show_acquisition_dialog
 from .desktop_evidence_panel import DesktopEvidencePanel
 from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
@@ -560,7 +561,8 @@ class DesktopFrame(WorkspaceFrame):
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
-                ('Add selected book to academic library', self.add_selected_book_reference)]),
+                ('Add selected book to academic library', self.add_selected_book_reference),
+                ('DOI and ISBN lookup and open-access sources...', lambda event: show_acquisition_dialog(self))]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
@@ -605,6 +607,8 @@ class DesktopFrame(WorkspaceFrame):
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
+        from .operations_dialog import install_operations_actions
+        install_operations_actions(self)
         install_keyboard_settings(self)
 
     def build_advanced_query(self, event=None):

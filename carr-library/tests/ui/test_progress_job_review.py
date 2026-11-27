@@ -431,13 +431,14 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('unregister', 'autosave_timer', 'cancel', 'player', 'progress', 'parent',
-                                      'executor', 'audio_files', 'dialog')}
+                                      'executor', 'audio_files', 'dialog', 'navigation_host')}
     registries = [Mock(), Mock()]
     env['owned_registries'] = registries
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['unregister'].assert_called_once_with()
+    env['navigation_host'].close.assert_called_once_with()
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
@@ -504,7 +505,7 @@ class StudioOptionControl:
 
 def studio_output_fixture():
     N = SimpleNamespace
-    rows, calls, reports, decisions, prompts, saves, entries = [], [], [], [], [], [], []
+    rows, calls, reports, decisions, prompts, saves, entries, reviews = [], [], [], [], [], [], [], []
     project = N(id='p', original_script='test', title='Test')
 
     class Dialog:
@@ -531,8 +532,13 @@ def studio_output_fixture():
         calls.append(identity)
         return {'destination': 'synthetic'}
 
+    def reviewed_inputs(identity):
+        reviews.append(identity)
+        return ()  # This output-settings fixture has no external audio inputs.
+
     service = N(submit=submit, run=run_job, get=lambda i: rows[int(i)],
-                jobs=lambda: rows, projects=N(load=lambda i: project))
+                jobs=lambda: rows, projects=N(load=lambda i: project),
+                restored_inputs_to_review=reviewed_inputs)
 
     def save():
         saves.append(project)
@@ -546,7 +552,7 @@ def studio_output_fixture():
                controller=N(project=project), editor=StudioOptionControl('test'),
                title=StudioOptionControl('Test'), controls=lambda: None,
                run=lambda op, done, **kw: done(op(lambda _: None)),
-               rows=rows, calls=calls, reports=reports, decisions=decisions,
+               rows=rows, calls=calls, reports=reports, decisions=decisions, reviews=reviews,
                prompts=prompts, saves=saves, entries=entries)
     path = UI_ROOT / 'studio_dialog.py'
     source = path.read_text(encoding='utf-8')
@@ -563,6 +569,7 @@ def test_studio_unchanged_output_reuses_job():
     f.render()
     f.render()
     assert f.calls == ['0', '0'] and len(f.rows) == 1
+    assert f.reviews == f.calls
 
 
 @pytest.mark.parametrize('option', ['format', 'stems'])
@@ -576,6 +583,7 @@ def test_studio_changed_output_creates_explicit_new_job(option):
         f.stems.SetValue(False)
     f.render()
     assert len(f.rows) == 2 and f.calls == ['0', '1'] and f.rows[0] == old
+    assert f.reviews == f.calls
     assert f.rows[1]['format'] == ('flac' if option == 'format' else 'wav')
     assert f.rows[1]['stems'] == (option == 'format')
     assert 'NEW production job' in f.prompts[-1]
@@ -601,6 +609,7 @@ def test_studio_changed_options_cancel_preserves_prior_job_and_settings():
     f.decisions.append(0)
     f.render()
     assert len(f.rows) == 1 and f.calls == ['0'] and len(f.saves) == 1
+    assert f.reviews == f.calls
     assert (f.format_choice.GetSelection(), f.stems.GetValue()) == (0, True)
     f.render()
     assert f.calls == ['0', '0']
@@ -632,3 +641,13 @@ def test_studio_distinct_job_labels_include_durable_options_and_identity():
     assert len(f.entries) == 2 and len(set(f.entries)) == 2
     assert 'wav; separate stems: Yes; job 0' in f.entries[0]
     assert 'flac; separate stems: No; job 1' in f.entries[1]
+
+
+def test_studio_input_review_failure_prevents_render_and_keeps_saved_job():
+    f = studio_output_fixture()
+    f.service.restored_inputs_to_review = Mock(side_effect=ValueError('Synthetic restored input review failure'))
+    f.render()
+    f.service.restored_inputs_to_review.assert_called_once_with('0')
+    assert len(f.rows) == 1 and not f.calls
+    assert f.rows[0]['format'] == 'wav' and f.rows[0]['stems'] is True
+    assert 'Synthetic restored input review failure' in f.reports[-1][0]

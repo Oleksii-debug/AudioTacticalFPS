@@ -200,6 +200,7 @@ def test_same_metadata_model_change_restarts_only_the_changed_warm_worker(
 
 def _fingerprint_studio(tmp_path, voices):
     from types import SimpleNamespace
+    from carr_library.audio import AudioBudget
     from carr_library.studio.render import ProductionService
 
     # Cancellation happens before any audio operation. Supply regular byte
@@ -213,6 +214,7 @@ def _fingerprint_studio(tmp_path, voices):
     service = ProductionService(tmp_path / 'state', voices=voices,
         runtime_factory=lambda *_args, **_kwargs: SimpleNamespace(
             **executables,
+            budget=AudioBudget(threads=1), music_models={},
             capabilities=lambda: {'fixture': 'fingerprint boundary; no audio engine'}))
     output = tmp_path / 'output'
     output.mkdir()

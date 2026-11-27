@@ -1,8 +1,8 @@
 """Local application services composed from the reviewed CARR components.
 
 Every public operation opens a fresh workspace-authorized transaction. Originals,
-historical quotations and mutable research notes remain separate. No network is
-used by this module; model installation is an explicit build-time operation.
+historical quotations and mutable research notes remain separate. Identifier lookup
+and source acquisition require explicit consent; ordinary library operations stay offline.
 """
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
@@ -338,6 +338,38 @@ class LibraryApp:
         """Read one exact edition in a fresh authorized catalog snapshot."""
         with self.read(workspace) as db:
             return get_edition(Catalog(db, workspace), edition_id)
+
+    def lookup_doi(self, workspace, doi, *, online_allowed=False, providers=('crossref',),
+                   unpaywall_email='', cancelled=lambda: False):
+        """Preview exact DOI metadata; never transmit source text or research notes."""
+        from .acquisition.service import service_for
+        return service_for(self).lookup(workspace, doi, online_allowed=online_allowed,
+            providers=providers, unpaywall_email=unpaywall_email, cancelled=cancelled)
+
+    def save_doi_reference(self, workspace, preview, *, cancelled=lambda: False):
+        from .acquisition.service import service_for
+        return service_for(self).save_reference(workspace, preview, cancelled=cancelled)
+
+    def lookup_isbn(self, workspace, isbn, *, online_allowed=False, cancelled=lambda: False):
+        """Preview one exact book ISBN through an explicitly approved metadata request."""
+        from .acquisition.service import service_for
+        return service_for(self).lookup_isbn(workspace, isbn, online_allowed=online_allowed,
+            cancelled=cancelled)
+
+    def apply_doi_metadata(self, workspace, edition_id, preview, *, expected_metadata,
+                           cancelled=lambda: False):
+        from .acquisition.service import service_for
+        return service_for(self).apply_metadata(workspace, edition_id, preview,
+            expected_metadata=expected_metadata, cancelled=cancelled)
+
+    def acquire_doi_source(self, workspace, preview, source_index, destination, *,
+                           online_allowed=False, rights_confirmed=False, collection=None,
+                           cancelled=lambda: False):
+        from .acquisition.service import service_for
+        return service_for(self).acquire(workspace, preview, source_index, destination,
+            online_allowed=online_allowed, rights_confirmed=rights_confirmed,
+            collection=collection, cancelled=cancelled)
+
 
     def catalog_report(self, workspace, *, collection=None, cancelled=lambda: False):
         """Inspect catalog completeness without granting source verification."""

@@ -51,6 +51,8 @@ def native_view(tmp_path, monkeypatch):
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetRange(self, start, end): self.native(); return self.value[start:end]
         def GetParent(self): self.native(); return self.parent
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
@@ -77,10 +79,12 @@ def native_view(tmp_path, monkeypatch):
     wx = SimpleNamespace(Dialog=Dialog, TextCtrl=Control, StaticText=Control, Choice=Control,
         SpinCtrl=Control, Button=Control, BoxSizer=Control, WrapSizer=Control, Timer=Control, Gauge=Control, CheckBox=Control,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
+        CallLater=lambda delay, callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101, ID_CLOSE=5102,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
-        EVT_CHOICE='choice', EVT_TEXT='text', EVT_CLOSE='close', EVT_TIMER='timer')
+        EVT_CHOICE='choice', EVT_TEXT='text', EVT_CLOSE='close', EVT_TIMER='timer',
+        EVT_WINDOW_DESTROY='destroy')
     for name in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT', 'TOP',
             'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'YES_NO', 'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT',

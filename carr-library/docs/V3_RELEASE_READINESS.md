@@ -9,7 +9,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 
 **Final composed Windows acceptance remains pending.** The authoritative
 [requirement snapshot of 27 November 2026](RESONANCE_REQUIREMENT_STATUS_20261127.md)
-audits source `ca143218cf24108b47798175e763f8b1ddb726eb` and separates source
+includes local composition `d32d0436e7924f8a37bbea8689d8aef28d22b837` and separates source
 integration, exact component execution, runtime qualification and distribution.
 The evidence below does not promote those independent states to a final PASS.
 
@@ -18,12 +18,14 @@ The evidence below does not promote those independent states to a final PASS.
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
-| Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
+| Reading and voices | Source-preserving reading derivatives, reviewed literal/regex Find/Replace, local voice discovery, playback, skip/percentage/A–B/sleep controls and SAPI5 native COM worker | Snapshot E8/E10 adds strict reader, native-position and lifetime regressions; earlier real Windows SAPI PCM and local Flite evidence stays separate. Final new native controls, output devices and other engine assets require qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats; explicit microphone capture and retained clip trim/placement/gain/pan/fades | Actual synthetic FFmpeg recording, mix and cleanup tests are recorded in snapshot E3/E4; physical microphone, monitoring, listening and final Windows acceptance remain open. Historical 1/3/10-hour fixtures do not establish full-length neural inference |
 | Synchronized publishing | Source-bound EPUB3/SMIL from measured narration or retained audio clips, verified MP3 and new-file publication | Snapshot E5/E6 records actual EPUBCheck 5.3.0 on three generated publications and publication handlers; external readers, DAISY/Braille and human accessibility remain unqualified |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
+| Academic acquisition | Exact DOI/ISBN lookup, five explicit metadata-provider choices, reviewed bibliography/book-metadata updates and separately approved OA PDF acquisition through the existing import service | Snapshot E11 exercises provider fixtures, consent, public-host/TLS boundaries, transfer budgets, retained-source authority and ambiguous-edition refusal. Existing DOI JSON export remains. Real provider behavior and final installed native acceptance remain separate |
 | Recovery | Manifest-bound backups include pending import bytes, settings, projects and personal reading positions/bookmarks; exact V3/V4 catalogs migrate transactionally to V5 | Real backup/restore and resumed import tests; transaction-bound request/attempt receipts identify the first publisher. A stopped replay without a new receipt requires explicit resume. External audio and OS credential secrets remain separate |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; operation-owned playback/recording quieting and settings backup | Existing native key/progress regressions and snapshot E3 cleanup tests; complete composed Windows, human NVDA and recording contamination/listening review remain required |
+| Keyboard and progress | Configurable menu keys, existing-registry command palette, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; operation-owned playback/recording quieting and settings backup | Existing native key/progress regressions and snapshot E3/E8/E10; complete composed Windows, human NVDA and recording contamination/listening review remain required |
+| Tasks and resources | A shared saved-job view, scoped handoff to the original transcription window and cooperative CPU/RAM/GPU/disk admission around the existing Studio/ASR services | Snapshot E9/E10 includes actual process/lock contention, cleanup, post-wait authorization and retained-source checks. Saved counts do not certify outputs; declared budgets do not establish measured hardware capacity. Installed native qualification remains pending |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, optional enabled local model proposals through the existing review/executor boundary, local-only default, protected credential references and per-request consent/budget | Snapshot E7 identifies the integrated proposal adapter; an actual local model and planner quality require separate qualification. Provider protocol tests do not claim paid or live account execution |
 | Translation | Optional Google Basic v2 and Advanced v3 for selected text or an authorized retained document/range; explicit OAuth profile, existing glossary, consent, source/ledger receipts, resume and new bilingual exports | Snapshot E1 records real service/CLI/handler objects with synthetic responses and owned loopback; live Google accounts, quality, local translation models and final native acceptance remain unqualified |
@@ -88,7 +90,7 @@ The following cannot be labelled DONE by passing the current core tests:
 
 This short list does not replace the snapshot's complete U/G/V3/ASR trace.
 Its open format, editor, backup/encryption, corpus-performance, academic/sync,
-shared resource/operation, plugin and security requirements remain open as well.
+remaining resource/operation coverage, plugin and security requirements remain open as well.
 
 The supplied Whisper Transcribe V4.3 implementation has been received, reviewed
 and connected through the existing shared jobs and native transcription window.

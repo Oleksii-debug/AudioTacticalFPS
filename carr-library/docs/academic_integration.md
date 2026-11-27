@@ -303,6 +303,40 @@ available when citation formatting cannot find it.
 
 ## Acceptance evidence
 
+### DOI/ISBN acquisition in the existing library
+
+**Academic > DOI and ISBN lookup and open-access sources** uses the same active
+library, reference store and importer. Select DOI or ISBN, explicitly enable the
+lookup, then review the returned source, edition, version and license statements.
+DOI providers are Crossref, Europe PMC, OpenAlex and optionally Unpaywall with
+your contact email. ISBN uses Open Library. No document or private note is uploaded.
+**Save bibliographic reference** preserves an existing matching DOI/equivalent
+ISBN reference; **Apply metadata to selected book** separately confirms an
+unchanged selected book and preserves its original bytes and historical quotations.
+
+An additional source download requires a provider-reported OA PDF, a separate
+rights confirmation and a new local folder. It saves `document.pdf` and
+`provenance.json` before calling the existing isolated importer. A pending import
+keeps those verified files for Import Center; ambiguous identical-byte editions
+require manual review and do not receive an automatic link or collection assignment.
+Opening the dialog is offline. Cancel and pending-close use the current background
+operation boundary. The existing DOI preview and preview-JSON export remain available.
+
+For headless use, select exactly one library and explicit consent:
+
+```text
+research-library --data-dir LIBRARY --workspace ID --lookup-doi 10.5555/example --allow-online-doi
+research-library --data-dir LIBRARY --workspace ID --lookup-isbn 9780306406157 --allow-online-isbn
+```
+
+Use `--save-doi-reference` or `--save-isbn-reference` to retain metadata. DOI source
+download additionally requires the exact reviewed `--download-source-url`, a new
+`--acquisition-folder` and `--confirm-source-rights`. An incomplete import returns
+exit code 2 with its retained result. This integration does not qualify live
+provider availability, the final installed Windows build or manual NVDA acceptance.
+
+### Citation processor checks
+
 Run `python -m pytest -q tests/academic_integration` with actual Node installed.
 Tests run the vendored processor for every bundled style and verify actual
 names, dates, publication page extents, verified pinpoints, disambiguation,

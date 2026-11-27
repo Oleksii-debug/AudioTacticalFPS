@@ -192,6 +192,34 @@ def transcript_view(native_view, tmp_path, monkeypatch):
         pool.shutdown(wait=True, cancel_futures=True)
 
 
+def test_tasks_handoff_selects_requested_saved_job_without_running_it(transcript_view, monkeypatch):
+    state = transcript_view
+    newer = state.transcription.submit(state.originals, title='Newer queued job')
+    def no_recognition(*args, **kwargs):
+        pytest.fail('Opening a saved job must not start or resume recognition.')
+    monkeypatch.setattr(state.transcription, 'run', no_recognition)
+    originals = {path: path.read_bytes() for path in state.originals}
+    def drive(dialog):
+        state.ready()
+        jobs = state.named('Збережені завдання')
+        assert jobs.GetSelection() == 1
+        assert jobs.items[jobs.GetSelection()].startswith('Editable derivative versions — completed')
+        assert state.named('Текст:').GetValue() == state.recognized
+    state.drive = drive
+    transcription_dialog.show_transcription(state.parent, job_id=state.job)
+    assert state.transcription.get(newer)['status'] == 'ready'
+    assert not (state.transcription._path(newer) / 'job_config.json').exists()
+    assert {path: path.read_bytes() for path in originals} == originals
+
+
+def test_tasks_handoff_rejects_archived_library_before_constructing_editor(transcript_view):
+    state = transcript_view
+    state.app.archive_workspace(state.workspace)
+    with pytest.raises(ValueError, match='archived'):
+        transcription_dialog.show_transcription(state.parent, job_id=state.job)
+    assert not state.controls and not state.pending
+
+
 @pytest.fixture
 def folder_view(transcript_view, tmp_path, monkeypatch):
     state = transcript_view

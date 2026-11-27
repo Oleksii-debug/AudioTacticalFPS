@@ -732,9 +732,11 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     assert len(saved) == 1 and read_json(saved[0])['run_id'] == worker['run_id']
     assert len(list((path / 'results').rglob('*.*'))) == 6
     assert len(list((path / 'input').iterdir())) == 2
+    assert calls[0] == (None, None, 'Waiting for shared local transcription resources.')
+    worker_calls = calls[1:]
     if live_counts:
-        measured = [done for done, total, _ in calls]
-        assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+        measured = [done for done, total, _ in worker_calls]
+        assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in worker_calls)
         assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
         assert calls[-1] == (1, 2, 'stopped')
     else:

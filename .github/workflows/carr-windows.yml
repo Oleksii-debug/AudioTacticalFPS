@@ -601,6 +601,12 @@ jobs:
           $previousProgramDirectory = $env:CARR_PROGRAM_DIR
           try {
             $env:CARR_PROGRAM_DIR = $bundle
+            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path tests/ui/native_operations_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-operations-native.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_command_palette_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-command-palette-native.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_playback_navigation_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-playback-navigation-native.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_translation_v3_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_recording_smoke.py).Path --ffmpeg (Join-Path $bundle 'audio/bin/ffmpeg.exe') --ffprobe (Join-Path $bundle 'audio/bin/ffprobe.exe') 2>&1 | Tee-Object 'ci-results/full-bundle-recording-native.txt'
@@ -648,6 +654,15 @@ jobs:
               'carr_library.studio.project', 'carr_library.studio.render',
               'carr_library.studio.publishing', 'carr_library.ui.recording_dialog',
               'carr_library.ui.studio_clips', 'carr_library.ui.publishing_dialog',
+              'carr_library.operations', 'carr_library.operations.broker',
+              'carr_library.operations.facade', 'carr_library.ui.operations_dialog',
+              'carr_library.ui.transcription_dialog', 'carr_library.ui.desktop_app',
+              'carr_library.ui.command_palette', 'carr_library.ui.find_replace_dialog',
+              'carr_library.ui.playback_navigation', 'carr_library.ui.speech_dialog',
+              'carr_library.acquisition', 'carr_library.acquisition.models',
+              'carr_library.acquisition.providers', 'carr_library.acquisition.service',
+              'carr_library.acquisition.transport', 'carr_library.acquisition.cli',
+              'carr_library.ui.acquisition_dialog',
           )
           def installed_origins():
               result = {name: str(pathlib.Path(importlib.import_module(name).__file__).resolve())
@@ -707,6 +722,31 @@ jobs:
               'tests/academic_integration/test_formatting.py',
               'tests/integrations/test_dordiai_convergence.py',
               'tests/ui/test_keyboard_settings.py',
+              'tests/ui/test_desktop_handlers.py',
+              'tests/ui/test_command_palette.py',
+              'tests/ui/test_native_palette_driver.py',
+              'tests/ui/test_playback_navigation.py',
+              'tests/operations/test_canonical_asr_admission.py',
+              'tests/operations/test_facade.py',
+              'tests/operations/test_lock_preflight.py',
+              'tests/operations/test_production_admission.py',
+              'tests/operations/test_resource_backup.py',
+              'tests/operations/test_resources.py',
+              'tests/operations/test_worker_start_cleanup.py',
+              'tests/ui/test_operations_dialog.py',
+              'tests/ui/test_operations_policy.py',
+              'tests/acquisition/test_providers.py',
+              'tests/acquisition/test_acquisition_security.py',
+              'tests/acquisition/test_identifier_lookup_security.py',
+              'tests/acquisition/test_acquisition_workflow.py',
+              'tests/acquisition/test_acquisition_cli.py',
+              'tests/ui/test_native_acquisition.py',
+              'tests/ui/native_acquisition_windows.py',
+              'tests/speech/test_find_replace.py',
+              'tests/speech/test_find_replace_handlers.py',
+              'tests/speech/test_find_replace_reader_hook.py',
+              'tests/speech/test_reader_cursor.py',
+              'tests/speech/test_playback_reader_hook.py',
               'tests/ui/test_desktop_evidence_jobs.py',
               'tests/ui/test_save_all.py',
               'tests/ui/test_save_all_views.py',
@@ -1116,6 +1156,30 @@ jobs:
             'tests/integrations/test_dordiai_convergence.py',
             'tests/academic_integration/test_formatting.py',
             'tests/ui/test_keyboard_settings.py',
+            'tests/ui/test_command_palette.py',
+            'tests/ui/test_native_palette_driver.py',
+            'tests/ui/test_playback_navigation.py',
+            'tests/operations/test_canonical_asr_admission.py',
+            'tests/operations/test_facade.py',
+            'tests/operations/test_lock_preflight.py',
+            'tests/operations/test_production_admission.py',
+            'tests/operations/test_resource_backup.py',
+            'tests/operations/test_resources.py',
+            'tests/operations/test_worker_start_cleanup.py',
+            'tests/ui/test_operations_dialog.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/acquisition/test_providers.py',
+            'tests/acquisition/test_acquisition_security.py',
+            'tests/acquisition/test_identifier_lookup_security.py',
+            'tests/acquisition/test_acquisition_workflow.py',
+            'tests/acquisition/test_acquisition_cli.py',
+            'tests/ui/test_native_acquisition.py',
+            'tests/ui/native_acquisition_windows.py',
+            'tests/speech/test_find_replace.py',
+            'tests/speech/test_find_replace_handlers.py',
+            'tests/speech/test_find_replace_reader_hook.py',
+            'tests/speech/test_reader_cursor.py',
+            'tests/speech/test_playback_reader_hook.py',
             'tests/ui/test_desktop_evidence_jobs.py',
             'tests/ui/test_save_all.py',
             'tests/ui/test_save_all_views.py',
@@ -1166,7 +1230,7 @@ jobs:
             'tests/studio/test_publishing_cli.py',
             'tests/assistant/test_translation.py',
             'tests/assistant/test_translation_v3.py',
-            'tests/ingest/test_catalog_asset_copy.py',
+            'tests/ingest/test_catalog_asset_copy.py'
           )
           $previousSourcePath = $env:PATH
           try {

@@ -221,6 +221,14 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetRange(self, start, end): self.native(); return self.value[start:end]
+        def XYToPosition(self, column, row):
+            self.native()
+            lines = self.value.split('\n')
+            if not 0 <= row < len(lines) or not 0 <= column <= len(lines[row]):
+                return -1
+            return sum(len(line) + 1 for line in lines[:row]) + column
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
         def SetFocus(self): self.native(); assert self.enabled
@@ -272,10 +280,11 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         TextCtrl=Control, StaticText=Control, Choice=Control, SpinCtrl=Control,
         Button=Control, BoxSizer=Control, WrapSizer=Control, Timer=Control,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
+        CallLater=lambda delay, callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
-        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer')
+        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_WINDOW_DESTROY='destroy')
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
