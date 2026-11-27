@@ -178,6 +178,12 @@ class OfflineSemanticRanker:
         identities = []
         cached = {}
         if cache is not None:
+            from .semantic_cache import model_identity
+            # A caller-supplied cache cannot choose the model namespace. Ignore
+            # incompatible derived data without touching it or switching roots.
+            if cache.model != model_identity(APPROVED_MANIFEST):
+                cache = None
+        if cache is not None:
             from .semantic_cache import content_identity
             identities = [content_identity(cache.model, query)]
             identities.extend(content_identity(cache.model, text, key) for key, text in candidates)
