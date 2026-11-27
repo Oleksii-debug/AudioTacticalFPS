@@ -1,5 +1,7 @@
 """Actual native task controls and responsive host-executor initialization."""
+import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import threading
 import time
 import traceback
@@ -36,7 +38,15 @@ def run_native_operations(frame, directory):
         if current.IsModal():
             current.EndModal(wx.ID_CANCEL)
 
+    def modal_timeout(current, phase):
+        errors.append('Timed out waiting for the native ' + phase + ' dialog to close.')
+        current.controller.dispose()
+        if current.IsModal():
+            current.EndModal(wx.ID_CANCEL)
+
     def while_blocked():
+        if dialog.controller.closed:
+            return
         try:
             assert time.monotonic() < deadline, 'Native task initialization did not stop.'
             state['foreground_ticks'] += 1
@@ -64,13 +74,17 @@ def run_native_operations(frame, directory):
             fail(dialog)
 
     wx.CallAfter(begin)
+    modal_watchdog = wx.CallLater(30000, modal_timeout, dialog, 'initialization')
     try:
         dialog.ShowModal()
     finally:
+        modal_watchdog.Stop()
         dialog.controller.dispose()
-        frame.executor.submit(lambda: None).result(timeout=10)
-        dialog.Destroy()
-        wx.YieldIfNeeded()
+        try:
+            frame.executor.submit(lambda: None).result(timeout=10)
+        finally:
+            dialog.Destroy()
+            wx.YieldIfNeeded()
     if errors:
         raise AssertionError('\n'.join(errors))
     assert state.get('close_dispatched_during_initialization')
@@ -79,6 +93,8 @@ def run_native_operations(frame, directory):
     actual = create_operations_dialog(frame)
 
     def loaded():
+        if actual.controller.closed:
+            return
         try:
             assert time.monotonic() < deadline, 'Native resource policy did not load.'
             state['foreground_ticks'] += 1
@@ -97,6 +113,8 @@ def run_native_operations(frame, directory):
             fail(actual)
 
     def saved():
+        if actual.controller.closed:
+            return
         try:
             assert time.monotonic() < deadline, 'Native resource policy did not save.'
             if actual.controller.busy:
@@ -116,14 +134,19 @@ def run_native_operations(frame, directory):
         except BaseException:
             fail(actual)
 
+    deadline = time.monotonic() + 30
     wx.CallAfter(begin_actual)
+    modal_watchdog = wx.CallLater(30000, modal_timeout, actual, 'policy')
     try:
         actual.ShowModal()
     finally:
+        modal_watchdog.Stop()
         actual.controller.dispose()
-        frame.executor.submit(lambda: None).result(timeout=10)
-        actual.Destroy()
-        wx.YieldIfNeeded()
+        try:
+            frame.executor.submit(lambda: None).result(timeout=10)
+        finally:
+            actual.Destroy()
+            wx.YieldIfNeeded()
     if errors:
         raise AssertionError('\n'.join(errors))
     assert state.get('policy_saved')
@@ -165,3 +188,32 @@ def run_native_operations(frame, directory):
             'native_close_during_initialization': 'PASS',
             'named_controls_and_policy_save': 'PASS', 'native_destruction': 'PASS',
             'manual_nvda': 'NOT_RUN', 'measured_hardware_capacity': 'NOT_RUN'}
+
+
+def main():
+    """Launch against the installed package; never add a source checkout to sys.path."""
+    import wx
+    from carr_library.application import LibraryApp
+    from carr_library.ui.desktop_app import DesktopFrame
+
+    application = wx.App(False)
+    with TemporaryDirectory(prefix='resonance-native-operations-') as temporary:
+        root = Path(temporary)
+        library = LibraryApp(root / 'library')
+        library.create_workspace('Native tasks and resource acceptance')
+        frame = DesktopFrame(library)
+        frame.Show()
+        try:
+            result = run_native_operations(frame, root / 'fixture')
+        finally:
+            frame._closing = True
+            frame.cancel_event.set()
+            frame.executor.shutdown(wait=True, cancel_futures=True)
+            frame.Destroy()
+            application.ProcessPendingEvents()
+        print(json.dumps(result))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
