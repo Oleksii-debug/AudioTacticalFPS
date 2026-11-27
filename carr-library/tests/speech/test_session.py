@@ -64,3 +64,34 @@ def test_reader_draft_is_in_complete_library_backup(tmp_path):
     assert restored.document.source_text == 'Original unchanged'
     assert restored.document.text == 'Spoken unchanged'
     assert restored.voice_id == 'flite:awb' and restored.volume == 60
+
+
+def test_bound_reading_draft_retains_exact_lineage_through_complete_backup(tmp_path):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import restore_backup
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech.source import read_source_range
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Bound reading recovery')
+    original = 'First original.\r\nОригінал.\fSecond original.'
+    imported = app.add_text(workspace, 'Source', original)
+    source = read_source_range(ReadingDesk(app, workspace, imported['edition']), 1, 2)
+    document = source.reading_document()
+    document.replace(0, 5, 'Narrated')
+    store = ReaderDraftStore(app.root, slot='source-fixture')
+    store.save(ReaderResume(document, 'fixture:voice', volume=60, cursor=3))
+    checksum = app.backup(tmp_path / 'backup')
+    restored_root = tmp_path / 'restored'
+    restore_backup(tmp_path / 'backup', restored_root, expected_manifest_sha256=checksum)
+    restored_app = LibraryApp(restored_root)
+    recovered = ReaderDraftStore(restored_root, slot='source-fixture').load()
+    current = read_source_range(ReadingDesk(restored_app, workspace, imported['edition']), 1, 2)
+    assert recovered.document.source_anchor == document.source_anchor == current.reading_document().source_anchor
+    assert recovered.document.source_text == source.text
+    assert recovered.document.text == document.text and recovered.document.can_undo
+    assert restored_app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
+    first, second = recovered.document.source_anchor['positions']
+    # Undo restores exact source text but never turns the inserted join into evidence.
+    assert recovered.document.undo()
+    assert not recovered.document.source_span(first['end'], second['start']).exact
+    assert recovered.document.source_anchor['quotation_authority'] is False

@@ -171,7 +171,7 @@ def reader(tmp_path, monkeypatch):
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
-        source_guard=lambda: None, recovered=None, recovery_notice='', editor=Mock(),
+        source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
         unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
