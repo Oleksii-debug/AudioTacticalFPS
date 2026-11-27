@@ -112,7 +112,13 @@ def prove(result, source, before):
 def test_real_calibre_unprotected_format_retains_original_and_bound_text(tmp_path, suffix):
     source = book(tmp_path, suffix)
     before = source.read_bytes()
-    result = convert(tmp_path, source, 'calibre')
+    try:
+        result = convert(tmp_path, source, 'calibre')
+    except ConversionError:
+        if suffix == '.tcr':
+            diagnose = runpy.run_path(str(Path(__file__).with_name('native_diagnostics.py')))['diagnose_selected_fixture']
+            diagnose('calibre', source, selected('calibre'), tmp_path / 'reading-output')
+        raise
     assert 'FIRST CALIBRE READING PAGE' in result.path.read_text(encoding='utf-8')
     assert 'SECOND SOURCE PARAGRAPH.' in result.path.read_text(encoding='utf-8')
     assert result.report['engine'] == 'selected-calibre-' + suffix[1:]

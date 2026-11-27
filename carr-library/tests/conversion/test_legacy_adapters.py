@@ -277,7 +277,11 @@ def test_chm_truncated_member_publishes_no_complete_worker_report(tmp_path, monk
     assert not (stage / 'reading.txt').exists() and not (stage / 'details.json').exists()
 
 
-@pytest.mark.parametrize('operation', ['outside_read', 'outside_write', 'socket', 'process', 'allowed_output'])
+@pytest.mark.parametrize('operation', [
+    'outside_read', 'outside_write', 'socket', 'process', 'allowed_output',
+    'cleanup_file', 'cleanup_directory', 'cleanup_outside_file', 'cleanup_outside_directory',
+    'cleanup_program', 'cleanup_unknown',
+])
 def test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs(tmp_path, operation):
     stage, root = tmp_path / 'stage', tmp_path / 'runtime'
     stage.mkdir()
@@ -292,11 +296,18 @@ def test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs(tm
     sentinel.write_text('PRIVATE_MARKER', encoding='utf-8')
     program = r'''
 import os, pathlib, runpy, socket, subprocess, sys, types
-for name in ('calibre', 'calibre.ebooks', 'calibre.ebooks.conversion', 'calibre.ebooks.conversion.cli', 'calibre.constants'):
+for name in ('calibre', 'calibre.ebooks', 'calibre.ebooks.conversion', 'calibre.ebooks.conversion.cli',
+             'calibre.constants', 'calibre.utils', 'calibre.utils.safe_atexit'):
     module = types.ModuleType(name)
     module.__path__ = []
     sys.modules[name] = module
 sys.modules['calibre.constants'].__version__ = '9.19.0'
+cleanup = sys.modules['calibre.utils.safe_atexit']
+cleanup.worker = None
+cleanup.RMTREE_ACTION, cleanup.UNLINK_ACTION, cleanup.RUN_PROGRAM_ACTION = 'rmtree', 'unlink', 'run_program'
+def unexpected_cleanup_worker(*args):
+    raise AssertionError('The generic vendor cleanup worker must not start.')
+cleanup._send_command = unexpected_cleanup_worker
 operation, private = sys.argv[1:3]
 def convert(args):
     if operation == 'outside_read':
@@ -307,6 +318,24 @@ def convert(args):
         socket.socket()
     elif operation == 'process':
         subprocess.run([sys.executable, '-c', 'pass'], check=True)
+    elif operation.startswith('cleanup_'):
+        local = pathlib.Path(args[2]).parent / 'calibre-temp'
+        local.mkdir()
+        child = local / 'still-owned.tmp'
+        child.write_text('RETAIN UNTIL NATIVE EXIT', encoding='utf-8')
+        if operation == 'cleanup_file':
+            cleanup._send_command('unlink', str(child))
+        elif operation == 'cleanup_directory':
+            cleanup._send_command('rmtree', str(local))
+        elif operation == 'cleanup_outside_file':
+            cleanup._send_command('unlink', private)
+        elif operation == 'cleanup_outside_directory':
+            cleanup._send_command('rmtree', str(pathlib.Path(private).parent))
+        elif operation == 'cleanup_program':
+            cleanup._send_command('run_program', [sys.executable, '-c', 'pass'])
+        else:
+            cleanup._send_command('unreviewed', str(child))
+        assert child.read_text(encoding='utf-8') == 'RETAIN UNTIL NATIVE EXIT'
     pathlib.Path(args[2]).write_text('Allowed output', encoding='utf-8')
     return 0
 sys.modules['calibre.ebooks.conversion.cli'].main = convert
@@ -317,9 +346,11 @@ runpy.run_path(sys.argv[0], run_name='__main__')
     result = subprocess.run([sys.executable, '-I', '-B', '-c', program, operation, str(sentinel),
         str(helper), str(source), str(target), str(root), '1024'],
         cwd=stage, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15, check=False)
-    if operation == 'allowed_output':
+    if operation in ('allowed_output', 'cleanup_file', 'cleanup_directory'):
         assert result.returncode == 0, result.stderr.decode('utf-8', 'replace')
         assert target.read_text() == 'Allowed output'
+        if operation.startswith('cleanup_'):
+            assert (stage / 'calibre-temp' / 'still-owned.tmp').read_text() == 'RETAIN UNTIL NATIVE EXIT'
     else:
         assert result.returncode != 0
         assert target.read_bytes() == b''

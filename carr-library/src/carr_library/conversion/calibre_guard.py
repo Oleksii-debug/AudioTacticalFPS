@@ -9,6 +9,36 @@ from pathlib import Path
 import sys
 
 
+def _owned_temp_cleanup(module, stage):
+    """Keep calibre's persistent temp cleanup with the existing stage owner.
+
+    The pinned helper's two deferred-deletion registrations need no separate
+    program: the enclosing conversion worker already removes its whole private
+    stage after native settlement, including forced cancellation. Program
+    launch registrations and paths outside that stage remain forbidden.
+    """
+    if (module.worker is not None or module.RMTREE_ACTION != 'rmtree'
+            or module.UNLINK_ACTION != 'unlink' or module.RUN_PROGRAM_ACTION != 'run_program'
+            or not callable(module._send_command)):
+        raise ValueError('Unsupported calibre temporary-cleanup protocol.')
+
+    def register(action, payload):
+        if action not in ('rmtree', 'unlink'):
+            raise PermissionError('Additional programs are disabled in this reading conversion.')
+        if type(payload) is not str or not 0 < len(payload) <= 32768 or '\0' in payload:
+            raise PermissionError('Invalid calibre temporary-cleanup path.')
+        path = Path(payload)
+        if not path.is_absolute() or '..' in path.parts:
+            raise PermissionError('Calibre cleanup requires an owned temporary path.')
+        path = path.resolve()
+        if path == stage or not path.is_relative_to(stage):
+            raise PermissionError('Calibre cleanup cannot own an unselected path.')
+        # No unlink/rmtree, atexit task, helper process or retained registration
+        # is created here. This file remains under the enclosing stage's owner.
+
+    module._send_command = register
+
+
 def main():
     if len(sys.argv) != 5:
         raise ValueError('Invalid fixed calibre conversion arguments.')
@@ -59,6 +89,8 @@ def main():
     from calibre.constants import __version__
     if __version__ != '9.19.0':
         raise ValueError('This fixed wrapper has not been qualified for the selected calibre version.')
+    from calibre.utils import safe_atexit
+    _owned_temp_cleanup(safe_atexit, stage)
     if source.suffix == '.lit':
         # Upstream's freely generated level-1 LIT uses an all-zero content key.
         # A personalized bookplate or EUL license is never passed to its reader.

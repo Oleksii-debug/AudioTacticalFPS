@@ -54,7 +54,8 @@ def main():
         report['installed_identity'] = base.installed_identity(args.wheel)
         report['runtime_files'] = base.inventory(root)
         helpers = [Path(__file__), HERE / 'conversion_acceptance.py', oracle_path,
-                   checkout / 'tests/conversion/legacy_fixtures.py']
+                   checkout / 'tests/conversion/legacy_fixtures.py',
+                   checkout / 'tests/conversion/native_diagnostics.py']
         tests = {checkout / (name.replace('.', '/') + '.py') for name in plan['portable']}
         tests.update(checkout / (name.replace('.', '/') + '.py') for name in native)
         report['source_files'] = {str(path.relative_to(checkout)): base.digest(path)
@@ -65,7 +66,7 @@ def main():
         actual.mkdir()
         for mode in ('source', 'installed'):
             report[mode] = base.run_population(mode, checkout, boundaries, plan['portable'])
-            if report[mode]['cases'] != 173:
+            if report[mode]['cases'] != 179:
                 raise ValueError('Legacy conversion boundary population is incomplete.')
         report['native_fixtures'] = {}
         for mode in ('source', 'installed'):
@@ -78,7 +79,7 @@ def main():
             raise ValueError('Selected native runtime changed during legacy qualification.')
         if {str(path.relative_to(checkout)): base.digest(path) for path in (*helpers, *sorted(tests))} != report['source_files']:
             raise ValueError('A qualification helper or fixture changed during execution.')
-        report.update(status='PASS', portable_source_cases=173, portable_installed_cases=173,
+        report.update(status='PASS', portable_source_cases=179, portable_installed_cases=179,
                       native_source_cases=count, native_installed_cases=count,
                       required_functions=native)
     except BaseException as error:
