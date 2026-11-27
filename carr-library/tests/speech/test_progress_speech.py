@@ -12,8 +12,20 @@ import pytest
 
 from carr_library.runtime_settings import load_settings, save_settings
 from carr_library.speech import FliteProvider, NativeSapiProvider, Voice, VoiceRegistry
-from carr_library.speech.progress_speech import LocalProgressSpeech, activate_progress_voice
-from carr_library.ui.operation_progress import ProgressEvent, WindowsProgressSound
+from carr_library.speech.progress_speech import LocalProgressSpeech, SnapshotProgressSpeech, activate_progress_voice
+from carr_library.progress import ProgressHub
+from carr_library.progress_feedback import ProgressFeedback
+from carr_library.progress_preferences import ProgressPreferences
+
+
+def ProgressEvent(*, state='running', percent=None, phase=''):
+    task = ProgressHub().start('Explicit selected voice', total=100 if percent is not None else None)
+    task.update(completed=percent or 0, phase=phase)
+    if state == 'cancelled':
+        task.cancelled()
+    else:
+        assert state == 'running'
+    return task.snapshot()
 
 
 class PCMProvider:
@@ -260,11 +272,16 @@ def test_copy_selection_keeps_independent_cancellation_for_two_native_views():
 
 def test_actual_registry_notification_runs_on_existing_feedback_worker():
     speech, provider, player = selected()
-    sound = WindowsProgressSound(backend=None)
-    sound.set_speech_provider(speech)
-    assert sound.speak('Existing worker and registry.', volume=.2)
-    sound._thread.join(3)
-    assert not sound._thread.is_alive()
-    assert sound.last_error is None and sound.quiescent
-    assert len(provider.calls) == len(player.played) == 1
-    sound.close()
+    sound = ProgressFeedback(ProgressPreferences(mode='speech', volume=20),
+                             speech_provider=SnapshotProgressSpeech(speech))
+    try:
+        assert sound.update(ProgressHub().start('Existing worker and registry.').snapshot())
+        assert player.started.wait(3)
+        with sound._condition:
+            assert sound._condition.wait_for(lambda: sound.quiescent, timeout=3)
+        assert sound.last_error == '' and sound.quiescent
+        assert len(provider.calls) == len(player.played) == 1
+    finally:
+        sound.close()
+        sound._worker.join(3)
+    assert not sound._worker.is_alive()

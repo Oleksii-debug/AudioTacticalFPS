@@ -178,11 +178,11 @@ def show_translation(frame):
             service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
             identity = current_job
             def translate():
-                progress = getattr(frame, 'operation_progress', None)
-                token = progress.event.token if progress is not None else None
+                from ..progress import current_progress
+                progress = current_progress()
                 def advanced(done, total, phase):
                     if progress is not None:
-                        progress.update(done, total, phase, token=token)
+                        progress.update(completed=done, total=total, phase=phase)
                     wx.CallAfter(report, f'{done}/{total}: {phase}')
                 return service.resume(identity,
                     cancelled=lambda: cancel.is_set() or frame.cancel_event.is_set(), progress=advanced)
@@ -248,5 +248,8 @@ def install_translation_actions(frame):
     if menu is None:
         raise RuntimeError('Install the shared Tools menu before translation actions.')
     identity = wx.NewIdRef()
-    menu.Append(identity, 'Translate selected te&xt...')
+    item = menu.Append(identity, 'Translate selected te&xt...')
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('tools.translation', 'Translate selected text'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_translation(frame), id=int(identity))

@@ -70,9 +70,13 @@ def show_conversion_formats(frame):
 
 def install_conversion_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = wx.Menu()
     for label, handler in [('Convert &documents for reading...', convert_selected_documents),
                            ('Supported document &formats...', show_conversion_formats)]:
         item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, lambda event, handler=handler: handler(frame), item)
+        command = "conversion.run" if handler is convert_selected_documents else "conversion.formats"
+        register_menu_command(frame, CommandSpec(command, label.replace("&", "")), item)
     frame.menu_bar.Append(menu, '&Convert')

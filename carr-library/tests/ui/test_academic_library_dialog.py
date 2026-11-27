@@ -109,6 +109,24 @@ def test_pinned_controller_rechecks_library_authorization(controller):
     assert controller.get(row.id) == row
 
 
+def test_academic_controller_captures_destination_before_render(controller, tmp_path, monkeypatch):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Approved previous export')
+    original = controller.export
+
+    def render(**kwargs):
+        content = original(**kwargs)
+        target.write_bytes(b'Independent work saved while rendering')
+        return content
+
+    monkeypatch.setattr(controller, 'export', render)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == b'Independent work saved while rendering'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_import_dialog_selection_is_explicit_and_failed_batch_is_atomic(controller):
     data = json.dumps([
         {'type': 'book', 'title': 'First imported reference'},

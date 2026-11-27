@@ -8,7 +8,8 @@ from pathlib import Path
 import threading
 
 from ..research.academic_library import AcademicLibrary
-from ..research.export_file import write_export
+from ..research.export_file import capture_export_destination, write_export
+from .export_destination import confirm_export_destination
 
 
 PAGE_SIZE = 200
@@ -94,10 +95,12 @@ class AcademicController:
             return AcademicLibrary(db, self.workspace).export(
                 None if identity is None else (identity,), format=format, include_notes=include_notes)
 
-    def export_to(self, destination, *, identity=None, format='text', include_notes=False):
-        # The native Save dialog obtains overwrite confirmation first.
+    def export_to(self, destination, *, identity=None, format='text', include_notes=False,
+                  approval=None):
+        if approval is None:
+            approval = capture_export_destination(destination, private_root=self.library.root)
         content = self.export(identity=identity, format=format, include_notes=include_notes)
-        write_export(destination, content, private_root=self.library.root)
+        write_export(destination, content, private_root=self.library.root, approval=approval)
         return content
 
     def books(self):
@@ -606,6 +609,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 ('duplicates', 'Find &duplicates', self.on_duplicates),
                 ('statistics', 'Reading &overview', self.on_statistics),
                 ('document', 'Open linked &document', self.on_document),
+                ('styles', 'Citation &styles', self.on_styles),
             ):
                 button = wx.Button(self, label=caption)
                 button.Bind(wx.EVT_BUTTON, handler)
@@ -896,8 +900,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 report(self.status, f'Bibliography not copied: {exc}')
 
         def on_import(self, event=None):
-            chooser = wx.FileDialog(self, 'Choose a RIS or CSL JSON bibliography',
-                                   wildcard='Bibliography (*.ris;*.json)|*.ris;*.json|RIS (*.ris)|*.ris|CSL JSON (*.json)|*.json',
+            chooser = wx.FileDialog(self, 'Choose a RIS, BibTeX or CSL JSON bibliography',
+                                   wildcard='Bibliography (*.ris;*.bib;*.json)|*.ris;*.bib;*.json|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSL JSON (*.json)|*.json',
                                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
                 if chooser.ShowModal() != wx.ID_OK:
@@ -906,9 +910,9 @@ def create_academic_dialog(parent, controller, *, executor=None):
             finally:
                 chooser.Destroy()
             try:
-                format = {'.ris': 'ris', '.json': 'csl-json'}.get(path.suffix.lower())
+                format = {'.ris': 'ris', '.bib': 'bibtex', '.json': 'csl-json'}.get(path.suffix.lower())
                 if format is None:
-                    raise ValueError('Choose a .ris or .json bibliography file.')
+                    raise ValueError('Choose a .ris, .bib or .json bibliography file.')
                 with path.open('rb') as stream:
                     data = stream.read(MAX_IMPORT_BYTES + 1)
                 if len(data) > MAX_IMPORT_BYTES:
@@ -927,6 +931,24 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     dialog.Destroy()
             except Exception as exc:
                 report(self.status, f'Bibliography import not completed: {exc}')
+
+        def on_styles(self, event=None):
+            dialog = None
+            try:
+                from .citation_styles_dialog import create_citation_styles_dialog
+                try:
+                    identity = self.selected().id
+                except ValueError:
+                    identity = None
+                dialog = create_citation_styles_dialog(self, self.controller,
+                    selected_identity=identity, executor=self.executor)
+                dialog.ShowModal()
+                self.references.SetFocus()
+            except Exception as exc:
+                report(self.status, f'Citation styles could not be opened: {exc}')
+            finally:
+                if dialog is not None:
+                    dialog.Destroy()
 
         def _export_options(self):
             dialog = wx.Dialog(self, title='Export bibliography', size=(560, 320))
@@ -956,8 +978,9 @@ def create_academic_dialog(parent, controller, *, executor=None):
             finally:
                 dialog.Destroy()
 
-        def export_to(self, path, *, format='text', identity=None, include_notes=False):
-            content = self.controller.export_to(path, identity=identity, format=format, include_notes=include_notes)
+        def export_to(self, path, *, format='text', identity=None, include_notes=False, approval=None):
+            content = self.controller.export_to(path, identity=identity, format=format,
+                                                include_notes=include_notes, approval=approval)
             report(self.status, f'Bibliography exported to {path}. '
                    + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
             return content
@@ -971,16 +994,21 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 dialog = wx.FileDialog(self, 'Save academic bibliography',
                                        defaultFile='academic-bibliography.' + extension,
                                        wildcard=f'{label} (*.{extension})|*.{extension}',
-                                       style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                                       style=wx.FD_SAVE)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
                     path = Path(dialog.GetPath())
                 finally:
                     dialog.Destroy()
-                self.export_to(path, format=format, identity=identity, include_notes=include_notes)
+                approval = confirm_export_destination(self, path,
+                    private_root=self.controller.library.root, wx_module=wx)
+                if approval is None:
+                    return
+                self.export_to(path, format=format, identity=identity,
+                               include_notes=include_notes, approval=approval)
             except Exception as exc:
-                report(self.status, f'Bibliography not exported: {exc}')
+                report(self.status, f'Bibliography export: {exc}')
 
     return AcademicDialog()
 

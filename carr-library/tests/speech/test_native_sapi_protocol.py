@@ -94,3 +94,48 @@ def test_native_worker_source_uses_only_fixed_sapi_classes_and_plain_text_flags(
     assert "clsctx=comtypes.CLSCTX_INPROC_SERVER" in source
     assert 'flags = 16 | (64 if' in source
     assert 'powershell' not in source.lower().split('"""', 2)[-1]
+
+
+
+def test_native_sapi_child_preserves_existing_runtime_bytecode(tmp_path, monkeypatch):
+    """Run the actual provider transport with a synthetic, file-only COM reply."""
+    import importlib.util
+    import py_compile
+
+    sealed = tmp_path / 'sealed-runtime'
+    sealed.mkdir()
+    module = sealed / 'bytecode_probe.py'
+    module.write_text("marker = 'old'\n", encoding='utf-8')
+    py_compile.compile(str(module), doraise=True,
+                       invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
+    module.write_text("marker = 'current approved source'\n", encoding='utf-8')
+    before = {path.relative_to(sealed): path.read_bytes()
+              for path in sealed.rglob('*') if path.is_file()}
+    helper = tmp_path / 'sapi_native_worker.py'
+    helper.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(sealed)!r})\n"
+        "import bytecode_probe\n"
+        "import json, struct\n"
+        "from pathlib import Path\n"
+        "value = dict(version=1, architecture=str(struct.calcsize('P') * 8), "
+        "adapter='native-comtypes', voices=[], marker=bytecode_probe.marker, "
+        "dont_write=sys.dont_write_bytecode, isolated=sys.flags.isolated)\n"
+        "Path(sys.argv[2]).write_text(json.dumps(value), encoding='utf-8')\n",
+        encoding='utf-8')
+    real_find_spec = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec',
+                        lambda name, *args, **kwargs: object() if name == 'comtypes'
+                        else real_find_spec(name, *args, **kwargs))
+    monkeypatch.setattr(runtime, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(runtime, '__file__', str(tmp_path / 'runtime.py'))
+    monkeypatch.delattr(sys, 'frozen', raising=False)
+    # Isolated mode ignores this environment flag; the child must carry -B.
+    monkeypatch.setenv('PYTHONDONTWRITEBYTECODE', '1')
+    provider = NativeSapiProvider()
+    result = provider._request({'operation': 'voices'}, timeout=10)
+
+    assert result['marker'] == 'current approved source'
+    assert {path.relative_to(sealed): path.read_bytes()
+            for path in sealed.rglob('*') if path.is_file()} == before
+    assert result['dont_write'] is True and result['isolated'] == 1
