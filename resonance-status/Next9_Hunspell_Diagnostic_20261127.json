@@ -1,0 +1,128 @@
+{
+  "schema": "resonance-hunspell-diagnostic-gate/1",
+  "status": "DRAFT_NOT_RUN",
+  "base_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "source_manifest": "bd330ba5e6cdeb27da93a575da9919bc1e09f4f9",
+  "shared_hooks": "d7686bcecec464b4ecc23c92a9db84562a355c0e",
+  "files": [
+    {
+      "path": ".github/workflows/carr-hunspell-diagnostic.yml",
+      "sha": "28963eac813998d66fa4f0a8dcefd87f02340069",
+      "preimage": null,
+      "readback": "EXACT"
+    }
+  ],
+  "branch_filter": "carr/ci-next9-hunspell-*",
+  "concurrency_group": "carr-hunspell-diagnostic-${{ github.ref }}",
+  "whole_modules": [
+    {
+      "path": "tests/speech/test_spelling.py",
+      "static_expected_cases": 54
+    },
+    {
+      "path": "tests/speech/test_spelling_handlers.py",
+      "static_expected_cases": 20
+    },
+    {
+      "path": "tests/speech/test_spelling_reader_hook.py",
+      "static_expected_cases": 9
+    },
+    {
+      "path": "tests/packaging/test_hunspell_build.py",
+      "static_expected_cases": 31
+    }
+  ],
+  "expected_static_cases": 114,
+  "headless": {
+    "source_checks": 28,
+    "origins": 12,
+    "required": [
+      "exact selected native library hash",
+      "actual C API, UTF-8 dictionary and affix expansion",
+      "exact Unicode/CRLF reading offsets",
+      "selected-text scope with original character positions",
+      "overlong tokens are explicitly uncheckable",
+      "actual native result remains review-only",
+      "explicit correction preserves source and one undo",
+      "external dictionary bytes remain unchanged",
+      "declared legacy encoding with no replacement decoding",
+      "same-size changed dictionary is rejected before use",
+      "malformed dictionary cannot report a complete review",
+      "actual mid-staging/check cancellation reaps and removes private copies",
+      "actual owned deadline wrapper reaps and removes private copies",
+      "shared spelling reservations released after native cleanup",
+      "native engine bytes remain unchanged",
+      "installed sources unchanged after actual C API acceptance"
+    ]
+  },
+  "native": {
+    "checks": 28,
+    "origins": 20,
+    "required": [
+      "all twenty application module bytes and requested installed origins match",
+      "actual native DesktopFrame and Windows controls",
+      "spelling uses the current semantic command identity",
+      "profile starts empty without loading a native library",
+      "native Review hashes the exact three selected files without execution",
+      "profile identity is displayed in a read-only native control",
+      "actual Hunspell C API returns UTF8 affix and Unicode results",
+      "checking alone never edits the retained reading copy",
+      "native selection preserves the Unicode source character range",
+      "native Preview remains a non-mutating read-only review",
+      "explicit native Apply changes exactly the reviewed word",
+      "reading recovery preserves original source and non-authorizing lineage",
+      "spelling never overwrites the original library asset",
+      "one native Undo restores the exact reading copy",
+      "changed dictionary cannot reuse its earlier native profile",
+      "native check retains its private request and shared reservation",
+      "actual Cancel reaps the native Job before releasing staging and admission",
+      "Close is available while the existing spelling worker is active",
+      "retained source loads through the existing reader worker",
+      "spelling needs no installed voice or audio endpoint",
+      "late native completion after modal destruction is safely discarded",
+      "native CtrlS saves only the unchanged reading derivative",
+      "all spelling and source work uses the one existing reader worker",
+      "reader cleanup closes the metadata-only voice owner exactly once",
+      "native spell check leaves selected runtime and dictionaries unchanged",
+      "retained source remains byte-exact after every native action",
+      "actual host and existing owner finalizers close cleanly",
+      "application bytes remain exact after native work and cleanup"
+    ],
+    "watchdog_seconds": 180
+  },
+  "build": {
+    "source_pin": "10c4d69a72a5d1b2cf4a373a176d694b4687a1d2",
+    "upstream_commit": "2969be996acad84b91ab3875b1816636fe61a40e",
+    "exact_files": 38,
+    "exact_bytes": 3332658,
+    "helper": "42326e61656be7496e4bfb239b4a77c309bad4bb",
+    "selection": "Installed VS2022 via explicit vswhere, selected default VC tools version, greatest complete installed Windows10 SDK; helper binds exact msbuild/cl/link/rc hashes.",
+    "automatic_application_download": false,
+    "acquisition_before_firewall": true,
+    "compiler_seconds": 300
+  },
+  "scope": {
+    "source_only": true,
+    "installed_wheel_qualification": false,
+    "final_bundle_qualification": false,
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "dictionary_quality": "NOT_RUN",
+    "binary_artifact_retention": false,
+    "no_ref_mutation": true
+  },
+  "policy": {
+    "strict_ci_check": true,
+    "exact_case_counts": true,
+    "source_and_native_failures_remain_required": true,
+    "exact_program_outbound_block": true,
+    "owned_firewall_readback_and_finally_cleanup": true,
+    "source_and_application_hashes_verified": true
+  },
+  "evidence": {
+    "artifacts": "Only selected public source/notices and .json/.txt/compiler log text; DLL/EXE/LIB/PDB/WHL/ZIP rejected.",
+    "parser": "NOT_RUN_EXECUTOR_UNAVAILABLE",
+    "execution": "NOT_RUN",
+    "static_text_checks": "2/2 heredocs,6 unique named steps,required names/origins present,no unresolved placeholders,no shared main/V3 concurrency group"
+  }
+}

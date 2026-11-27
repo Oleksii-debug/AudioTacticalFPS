@@ -80,6 +80,7 @@ VOICE_READER_COMMANDS = (
     CommandSpec('voice_reader.clipboard', 'Read clipboard once', 'voice_reader'),
     CommandSpec('voice_reader.dictionary', 'Pronunciation dictionary', 'voice_reader'),
     CommandSpec('voice_reader.find', 'Find and replace', 'voice_reader', 'Ctrl+F'),
+    CommandSpec('voice_reader.spelling', 'Spelling review with Hunspell', 'voice_reader'),
     CommandSpec('voice_reader.tools', 'Bookmarks and paragraph tools', 'voice_reader'),
     CommandSpec('voice_reader.appearance', 'Reading appearance', 'voice_reader'),
     CommandSpec('voice_reader.voice_preferences', 'Voice preferences', 'voice_reader'),

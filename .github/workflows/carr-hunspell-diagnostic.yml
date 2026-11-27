@@ -1,0 +1,336 @@
+name: CARR optional Hunspell source and native diagnostic
+
+on:
+  push:
+    branches: ['carr/ci-next9-hunspell-*']
+    paths: ['carr-library/**', '.github/workflows/carr-hunspell-diagnostic.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-hunspell-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-native:
+    name: Windows source Hunspell / exact official C API and Reader
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_HUNSPELL_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare exact source and the existing pinned native dependencies
+        id: dependencies
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path 'ci-hunspell-results' | Out-Null
+          $actual = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:CARR_HUNSPELL_EXPECTED_HEAD) { throw 'The actual checkout differs from the triggered immutable candidate.' }
+          $actual | Set-Content -Encoding utf8 'ci-hunspell-results/tested-commit.txt'
+          $python = (python -I -B -c "import sys; print(sys.executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'The selected x64 CPython could not start.' }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned application dependencies could not be installed.' }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { throw 'Existing test-only dependencies could not be installed.' }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { throw 'Application command metadata preparation failed.' }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Prepared dependency closure is inconsistent.' }
+          "CARR_HUNSPELL_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_HUNSPELL_REPORTS=$((Resolve-Path -LiteralPath 'ci-hunspell-results').Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # The later probes explicitly bind imports to checkout/src. This local
+          # metadata install supplies no tested-wheel or distribution claim.
+      - name: Require all four complete spelling and build-contract suites
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        timeout-minutes: 15
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = $env:CARR_HUNSPELL_PYTHON
+          $expected = @{
+            'tests/speech/test_spelling.py' = 54
+            'tests/speech/test_spelling_handlers.py' = 20
+            'tests/speech/test_spelling_reader_hook.py' = 9
+            'tests/packaging/test_hunspell_build.py' = 31
+          }
+          $suites = @(
+            'tests/speech/test_spelling.py',
+            'tests/speech/test_spelling_handlers.py',
+            'tests/speech/test_spelling_reader_hook.py',
+            'tests/packaging/test_hunspell_build.py'
+          )
+          & $python scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-hunspell-results/source-tests.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required whole Hunspell source modules failed.' }
+          foreach ($entry in $expected.GetEnumerator()) {
+            $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+            if (@(Select-String -LiteralPath 'ci-hunspell-results/source-tests.txt' -Pattern $pattern).Count -ne 1) { throw ('Required exact source case inventory differs: ' + $entry.Key) }
+          }
+          @{ status='PASS'; source_only=$true; suite_counts=$expected; source_commit=$env:CARR_HUNSPELL_EXPECTED_HEAD; strict_source_runner='Current ci_check.py; unchanged socket denial, default deadline and cleanup' } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-hunspell-results/source-counts.json'
+      - name: Acquire pinned official source and build the separate selected DLL
+        id: hunspell
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = $env:CARR_HUNSPELL_PYTHON
+          $work = Join-Path $env:RUNNER_TEMP ('carr-hunspell-' + $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT)
+          if (Test-Path -LiteralPath $work) { throw 'The selected Hunspell work directory must be new.' }
+          New-Item -ItemType Directory -Path $work | Out-Null
+          $env:CARR_HUNSPELL_SOURCE = Join-Path $work 'upstream'
+          $env:CARR_HUNSPELL_BUILD = Join-Path $work 'build'
+          $acquireHunspell = @'
+          from hashlib import sha1, sha256
+          import json, os
+          from pathlib import Path, PurePosixPath
+          import urllib.request
+          pin_path = Path('scripts/hunspell-1.7.2-source.json')
+          raw = pin_path.read_bytes()
+          assert sha256(raw).hexdigest() == 'f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc'
+          pin = json.loads(raw)
+          assert pin['repository'] == 'https://github.com/hunspell/hunspell'
+          assert pin['commit'] == '2969be996acad84b91ab3875b1816636fe61a40e'
+          assert len(pin['files']) == 38 and sum(e['bytes'] for e in pin['files']) == 3332658
+          root = Path(os.environ['CARR_HUNSPELL_SOURCE'])
+          root.mkdir(parents=False, exist_ok=False)
+          observed = []
+          for entry in pin['files']:
+              relative = PurePosixPath(entry['path'])
+              assert relative.as_posix() == entry['path'] and not relative.is_absolute()
+              assert '..' not in relative.parts and '\\' not in entry['path'] and ':' not in entry['path']
+              assert type(entry['bytes']) is int and 0 <= entry['bytes'] <= 4 * 1024 * 1024
+              url = 'https://raw.githubusercontent.com/hunspell/hunspell/' + pin['commit'] + '/' + relative.as_posix()
+              request = urllib.request.Request(url, headers={'User-Agent': 'Resonance-pinned-Hunspell-CI'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  assert response.status == 200 and response.geturl() == url
+                  payload = response.read(entry['bytes'] + 1)
+              assert len(payload) == entry['bytes'], relative.as_posix()
+              actual = sha1(('blob ' + str(len(payload)) + '\0').encode('ascii') + payload).hexdigest()
+              assert actual == entry['git_blob'], relative.as_posix()
+              target = root.joinpath(*relative.parts)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              with target.open('xb') as stream:
+                  stream.write(payload)
+              observed.append(dict(entry, sha256=sha256(payload).hexdigest()))
+          evidence = {'status': 'ACQUIRED', 'source_commit': pin['commit'],
+                      'source_manifest_sha256': sha256(raw).hexdigest(),
+                      'files': observed, 'license_files': pin['license_files'],
+                      'scope': 'Exact official source inventory only; no native or distribution qualification'}
+          output = Path(os.environ['CARR_HUNSPELL_REPORTS']) / 'acquisition.json'
+          with output.open('x', encoding='utf-8') as stream:
+              json.dump(evidence, stream, ensure_ascii=True, indent=2)
+          print(json.dumps({'status': 'ACQUIRED', 'files': len(observed), 'bytes': sum(e['bytes'] for e in observed)}), flush=True)
+          '@
+          
+          $acquireHunspell | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned official Hunspell source acquisition failed.' }
+          $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+          if (!$programFilesX86) { throw 'The installed Windows build-tool root is missing.' }
+          $vswhere = Join-Path $programFilesX86 'Microsoft Visual Studio/Installer/vswhere.exe'
+          if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) { throw 'The installed Visual Studio locator is missing.' }
+          $vsRows = @(& $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.Component.MSBuild Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
+          if ($LASTEXITCODE -ne 0 -or $vsRows.Count -ne 1) { throw 'Select one installed VS2022 with MSBuild and x64 C++ tools.' }
+          $vs = [IO.Path]::GetFullPath($vsRows[0].Trim())
+          $msbuild = Join-Path $vs 'MSBuild/Current/Bin/MSBuild.exe'
+          $vcVersionFile = Join-Path $vs 'VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt'
+          $vcVersion = (Get-Content -LiteralPath $vcVersionFile -Raw).Trim()
+          if ($vcVersion -notmatch '^14\.\d+\.\d+$') { throw 'The selected installed VC tools version is not explicit v143.' }
+          $vc = Join-Path $vs ('VC/Tools/MSVC/' + $vcVersion)
+          $sdk = Join-Path $programFilesX86 'Windows Kits/10'
+          $sdkVersions = @(Get-ChildItem -LiteralPath (Join-Path $sdk 'Include') -Directory |
+            Where-Object { $_.Name -match '^10\.0\.\d+\.\d+$' -and
+              (Test-Path -LiteralPath (Join-Path $_.FullName 'um/Windows.h') -PathType Leaf) -and
+              (Test-Path -LiteralPath (Join-Path $sdk ('Lib/' + $_.Name + '/um/x64/kernel32.lib')) -PathType Leaf) -and
+              (Test-Path -LiteralPath (Join-Path $sdk ('bin/' + $_.Name + '/x64/rc.exe')) -PathType Leaf) } |
+            Sort-Object { [version]$_.Name } -Descending)
+          if ($sdkVersions.Count -eq 0) { throw 'No complete installed x64 Windows10 SDK was selected.' }
+          $sdkVersion = $sdkVersions[0].Name
+          try {
+            & $python -B -X utf8 scripts/build_hunspell_msvc.py --source $env:CARR_HUNSPELL_SOURCE --output $env:CARR_HUNSPELL_BUILD --msbuild $msbuild --vc-tools-dir $vc --sdk-dir $sdk --sdk-version $sdkVersion 2>&1 | Tee-Object (Join-Path $env:CARR_HUNSPELL_REPORTS 'build-stdout.txt')
+            if ($LASTEXITCODE -ne 0) { throw 'The pinned Hunspell MSVC build failed.' }
+          } finally {
+            foreach ($name in @('build-report.json', 'build.log')) {
+              $evidence = Join-Path $env:CARR_HUNSPELL_BUILD $name
+              if (Test-Path -LiteralPath $evidence -PathType Leaf) { Copy-Item -LiteralPath $evidence -Destination (Join-Path $env:CARR_HUNSPELL_REPORTS $name) }
+            }
+          }
+          $dll = Join-Path $env:CARR_HUNSPELL_BUILD 'bin/libhunspell.dll'
+          if (!(Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'The actual build did not produce its selected DLL.' }
+          "CARR_HUNSPELL_DLL=$dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_HUNSPELL_BUILD=$env:CARR_HUNSPELL_BUILD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require actual source C API and native Reader with owned offline rules
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.hunspell.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = $env:CARR_HUNSPELL_PYTHON
+          $env:PYTHONPATH = Join-Path (Get-Location) 'src'
+          $sourceRoot = (Resolve-Path -LiteralPath 'src').Path
+          $basePython = (& $python -I -B -c "import sys; print(getattr(sys, '_base_executable', sys.executable))").Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'The actual diagnostic interpreter identity is unavailable.' }
+          $programs = @($python, $basePython)
+          foreach ($candidate in @($python, $basePython)) {
+            $windowed = Join-Path (Split-Path -Parent $candidate) 'pythonw.exe'
+            if (Test-Path -LiteralPath $windowed -PathType Leaf) { $programs += $windowed }
+          }
+          $programs = @($programs | ForEach-Object { (Resolve-Path -LiteralPath $_).Path } | Select-Object -Unique)
+          $rules = [System.Collections.Generic.List[string]]::new()
+          $failures = [System.Collections.Generic.List[object]]::new()
+          $verifyHunspell = @'
+          from hashlib import sha256
+          import importlib, json, os
+          from pathlib import Path
+          import subprocess
+          import sys
+          mode, report_name = sys.argv[1:3]
+          assert mode in ('source', 'installed', 'native-source', 'native-installed')
+          reports = Path(os.environ['CARR_HUNSPELL_REPORTS']).resolve(strict=True)
+          source_root = Path('src').resolve(strict=True)
+          build_root = Path(os.environ['CARR_HUNSPELL_BUILD']).resolve(strict=True)
+          dll = Path(os.environ['CARR_HUNSPELL_DLL']).resolve(strict=True)
+          assert dll.samefile(build_root / 'bin' / 'libhunspell.dll')
+          pin_raw = Path('scripts/hunspell-1.7.2-source.json').read_bytes()
+          assert sha256(pin_raw).hexdigest() == 'f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc'
+          pin = json.loads(pin_raw)
+          build = json.loads((build_root / 'build-report.json').read_text(encoding='utf-8'))
+          assert build['schema'] == 'resonance-hunspell-msvc-build/1' and build['status'] == 'BUILT'
+          assert build['source_commit'] == pin['commit'] == '2969be996acad84b91ab3875b1816636fe61a40e'
+          assert build['source_manifest_sha256'] == sha256(pin_raw).hexdigest()
+          assert build['source_bytes_modified'] is False and build['bundled'] is False
+          assert build['native_api'] == 'NOT_RUN' and build['distribution_clearance'] == 'NOT_GRANTED'
+          assert build['build']['exit_code'] == 0 and build['dll']['machine'] == 'AMD64'
+          assert build['dll']['c_api'] == 'NOT_RUN'
+          dll_raw = dll.read_bytes()
+          assert len(dll_raw) == build['dll']['bytes'] and sha256(dll_raw).hexdigest() == build['dll']['sha256']
+          assert Path(build['dll']['path']).resolve(strict=True).samefile(dll)
+          source_files = build['source_files']
+          assert len(source_files) == len(pin['files']) == 38
+          assert build['license_files'] == pin['license_files']
+          for actual, expected in zip(source_files, pin['files'], strict=True):
+              assert all(actual[key] == expected[key] for key in ('path', 'bytes', 'git_blob'))
+              raw = (build_root / 'source' / actual['path']).read_bytes()
+              assert len(raw) == actual['bytes'] and sha256(raw).hexdigest() == actual['sha256']
+          build_log = (build_root / 'build.log').read_bytes()
+          assert len(build_log) == build['build']['log_bytes'] and sha256(build_log).hexdigest() == build['build']['log_sha256']
+          report = json.loads((reports / report_name).read_text(encoding='utf-8'))
+          native = mode.startswith('native-')
+          installed = mode.endswith('installed')
+          expected_fields = {"status":"PASS","actual_hunspell_c_api":"PASS","actual_reader_worker":"PASS","native_review_apply_undo":"PASS","native_cancel_and_close":"PASS","owned_child_invocations":4,"speech_audio":"NOT_RUN","manual_nvda":"NOT_RUN","dictionary_quality":"NOT_RUN","distribution_clearance":"NOT_GRANTED"} if native else {"status":"PASS","actual_c_api":"PASS","child_and_resource_cleanup":"PASS","native_windows":"EXECUTED","manual_nvda":"NOT_RUN","distribution_clearance":"NOT_GRANTED"}
+          for key, value in expected_fields.items():
+              assert type(report.get(key)) is type(value) and report[key] == value, (key, report.get(key))
+          assert report['native_library_sha256'] == build['dll']['sha256']
+          if not native:
+              assert report['native_library_bytes'] == build['dll']['bytes']
+          checks = report['checks']
+          required = ["all twenty application module bytes and requested installed origins match","actual native DesktopFrame and Windows controls","spelling uses the current semantic command identity","profile starts empty without loading a native library","native Review hashes the exact three selected files without execution","profile identity is displayed in a read-only native control","actual Hunspell C API returns UTF8 affix and Unicode results","checking alone never edits the retained reading copy","native selection preserves the Unicode source character range","native Preview remains a non-mutating read-only review","explicit native Apply changes exactly the reviewed word","reading recovery preserves original source and non-authorizing lineage","spelling never overwrites the original library asset","one native Undo restores the exact reading copy","changed dictionary cannot reuse its earlier native profile","native check retains its private request and shared reservation","actual Cancel reaps the native Job before releasing staging and admission","Close is available while the existing spelling worker is active","retained source loads through the existing reader worker","spelling needs no installed voice or audio endpoint","late native completion after modal destruction is safely discarded","native CtrlS saves only the unchanged reading derivative","all spelling and source work uses the one existing reader worker","reader cleanup closes the metadata-only voice owner exactly once","native spell check leaves selected runtime and dictionaries unchanged","retained source remains byte-exact after every native action","actual host and existing owner finalizers close cleanly","application bytes remain exact after native work and cleanup"] if native else (["installed origin: carr_library.speech.spelling","installed origin: carr_library.speech.spelling_worker","installed origin: carr_library.speech.reading","installed origin: carr_library.speech._io","installed origin: carr_library.ui.spelling_dialog","installed origin: carr_library.ui.pronunciation_dialog","installed origin: carr_library.audio.models","installed origin: carr_library.audio.process","installed origin: carr_library.audio.cleanup","installed origin: carr_library.operations.broker","installed origin: carr_library.operations.models","installed origin: carr_library.durable_state","exact module bytes: carr_library.speech.spelling","exact module bytes: carr_library.speech.spelling_worker","exact module bytes: carr_library.speech.reading","exact module bytes: carr_library.speech._io","exact module bytes: carr_library.ui.spelling_dialog","exact module bytes: carr_library.ui.pronunciation_dialog","exact module bytes: carr_library.audio.models","exact module bytes: carr_library.audio.process","exact module bytes: carr_library.audio.cleanup","exact module bytes: carr_library.operations.broker","exact module bytes: carr_library.operations.models","exact module bytes: carr_library.durable_state","exact selected native library hash","actual C API, UTF-8 dictionary and affix expansion","exact Unicode/CRLF reading offsets","selected-text scope with original character positions","overlong tokens are explicitly uncheckable","actual native result remains review-only","explicit correction preserves source and one undo","external dictionary bytes remain unchanged","declared legacy encoding with no replacement decoding","same-size changed dictionary is rejected before use","malformed dictionary cannot report a complete review","actual mid-staging/check cancellation reaps and removes private copies","actual owned deadline wrapper reaps and removes private copies","shared spelling reservations released after native cleanup","native engine bytes remain unchanged","installed sources unchanged after actual C API acceptance"] if installed else ["exact module bytes: carr_library.speech.spelling","exact module bytes: carr_library.speech.spelling_worker","exact module bytes: carr_library.speech.reading","exact module bytes: carr_library.speech._io","exact module bytes: carr_library.ui.spelling_dialog","exact module bytes: carr_library.ui.pronunciation_dialog","exact module bytes: carr_library.audio.models","exact module bytes: carr_library.audio.process","exact module bytes: carr_library.audio.cleanup","exact module bytes: carr_library.operations.broker","exact module bytes: carr_library.operations.models","exact module bytes: carr_library.durable_state","exact selected native library hash","actual C API, UTF-8 dictionary and affix expansion","exact Unicode/CRLF reading offsets","selected-text scope with original character positions","overlong tokens are explicitly uncheckable","actual native result remains review-only","explicit correction preserves source and one undo","external dictionary bytes remain unchanged","declared legacy encoding with no replacement decoding","same-size changed dictionary is rejected before use","malformed dictionary cannot report a complete review","actual mid-staging/check cancellation reaps and removes private copies","actual owned deadline wrapper reaps and removes private copies","shared spelling reservations released after native cleanup","native engine bytes remain unchanged","installed sources unchanged after actual C API acceptance"])
+          assert isinstance(checks, list) and all(isinstance(x, str) for x in checks)
+          assert len(checks) == len(set(checks)) == len(required) and set(checks) == set(required), checks
+          origins = report['installed_modules'] if native else report['application_modules']
+          names = ["carr_library.speech.spelling","carr_library.speech.spelling_worker","carr_library.speech.reading","carr_library.speech.source","carr_library.speech.session","carr_library.speech._io","carr_library.ui.spelling_dialog","carr_library.ui.pronunciation_dialog","carr_library.ui.speech_dialog","carr_library.ui.reading_shortcuts","carr_library.ui.builtin_keyboard_commands","carr_library.ui.desktop_app","carr_library.ui.worker_lifetime","carr_library.ui.worker_cleanup","carr_library.audio.process","carr_library.audio.windows_job","carr_library.audio.cleanup","carr_library.operations.broker","carr_library.operations.models","carr_library.native_runtime"] if native else ["carr_library.speech.spelling","carr_library.speech.spelling_worker","carr_library.speech.reading","carr_library.speech._io","carr_library.ui.spelling_dialog","carr_library.ui.pronunciation_dialog","carr_library.audio.models","carr_library.audio.process","carr_library.audio.cleanup","carr_library.operations.broker","carr_library.operations.models","carr_library.durable_state"]
+          assert isinstance(origins, dict) and set(origins) == set(names)
+          for name in names:
+              evidence = origins[name]
+              actual = Path(evidence['path']).resolve(strict=True)
+              expected = source_root.joinpath(*name.split('.')).with_suffix('.py')
+              digest = sha256(expected.read_bytes()).hexdigest()
+              committed = subprocess.check_output(['git', 'show', 'HEAD:carr-library/src/' + name.replace('.', '/') + '.py'])
+              assert sha256(committed).hexdigest() == digest
+              assert evidence['sha256'] == digest and sha256(actual.read_bytes()).hexdigest() == digest
+              if installed:
+                  assert evidence['installed'] is True and not actual.is_relative_to(source_root)
+              else:
+                  assert actual.samefile(expected) and evidence['installed'] is False
+          identity = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert identity == os.environ['CARR_HUNSPELL_EXPECTED_HEAD']
+          qualification = {'status': 'PASS', 'mode': mode, 'source_commit': identity,
+              'checks': len(checks), 'module_origins': len(names), 'library_sha256': build['dll']['sha256'],
+              'source_inventory_sha256': build['source_manifest_sha256'],
+              'qualification': 'Exact source-only execution; no installed-wheel qualification' if not installed else 'Exact installed package and selected external C API only',
+              'dictionary_quality': 'NOT_RUN', 'manual_nvda': 'NOT_RUN', 'distribution_clearance': 'NOT_GRANTED'}
+          with (reports / (mode + '-qualification.json')).open('x', encoding='utf-8') as stream:
+              json.dump(qualification, stream, ensure_ascii=True, indent=2)
+          print(json.dumps(qualification, ensure_ascii=True), flush=True)
+          '@
+          
+          try {
+            foreach ($program in $programs) {
+              $name = 'CARR-Hunspell-source-' + [Guid]::NewGuid().ToString('N')
+              $rules.Add($name)
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+              $rule = Get-NetFirewallRule -Name $name -ErrorAction Stop
+              $filter = @($rule | Get-NetFirewallApplicationFilter -ErrorAction Stop)
+              if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block' -or $filter.Count -ne 1 -or [IO.Path]::GetFullPath($filter[0].Program) -ne [IO.Path]::GetFullPath($program)) { throw 'The required exact-program offline rule was not admitted.' }
+            }
+            @{ status='ACTIVE'; programs=$programs; rules=$rules.ToArray(); direction='Outbound'; action='Block'; qualification='Acquisition completed before these rules' } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-hunspell-results/firewall.json'
+            try {
+              & $python -B -X utf8 scripts/hunspell_acceptance.py --library $env:CARR_HUNSPELL_DLL --source-root $sourceRoot --output 'ci-hunspell-results/source-api.json' 2>&1 | Tee-Object 'ci-hunspell-results/source-api.txt'
+              if ($LASTEXITCODE -ne 0) { throw 'Actual source-bound Hunspell C API acceptance failed.' }
+              $verifyHunspell | & $python -I -B -X utf8 - source source-api.json
+              if ($LASTEXITCODE -ne 0) { throw 'The actual source C API report is incomplete or mismatched.' }
+            } catch {
+              $failures.Add([pscustomobject]@{ phase='source-c-api'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED HUNSPELL FAILURE [source-c-api]: ' + $_.Exception.Message)
+            }
+            try {
+              & $python -B -X utf8 scripts/windows_hunspell_smoke.py --library $env:CARR_HUNSPELL_DLL --source-root $sourceRoot --output 'ci-hunspell-results/native-source.json' 2>&1 | Tee-Object 'ci-hunspell-results/native-source.txt'
+              if ($LASTEXITCODE -ne 0) { throw 'Actual source-bound native Hunspell Reader acceptance failed.' }
+              $verifyHunspell | & $python -I -B -X utf8 - native-source native-source.json
+              if ($LASTEXITCODE -ne 0) { throw 'The native source report is incomplete or mismatched.' }
+            } catch {
+              $failures.Add([pscustomobject]@{ phase='native-source'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED HUNSPELL FAILURE [native-source]: ' + $_.Exception.Message)
+            }
+            @{ status=$(if ($failures.Count -eq 0) { 'PASS' } else { 'FAIL' }); source_only=$true; failures=$failures.ToArray(); qualification='Both actual C API and source Reader phases required; no installed-wheel or delivery qualification' } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-hunspell-results/native-summary.json'
+            if ($failures.Count -ne 0) { throw 'Required actual Hunspell source/native phases failed.' }
+          } finally {
+            $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+            foreach ($name in $rules) {
+              try { Remove-NetFirewallRule -Name $name -ErrorAction Stop } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            if ($cleanupFailures.Count -ne 0) { throw ('Owned Hunspell firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          }
+      - name: Retain public text diagnosis and the exact source notices only
+        if: ${{ always() }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:CARR_HUNSPELL_BUILD -and (Test-Path -LiteralPath (Join-Path $env:CARR_HUNSPELL_BUILD 'source') -PathType Container)) {
+            $pin = Get-Content -LiteralPath 'scripts/hunspell-1.7.2-source.json' -Raw | ConvertFrom-Json
+            foreach ($entry in $pin.files) {
+              $source = Join-Path (Join-Path $env:CARR_HUNSPELL_BUILD 'source') $entry.path
+              $target = Join-Path 'ci-hunspell-results/upstream-source' $entry.path
+              New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
+              Copy-Item -LiteralPath $source -Destination $target
+            }
+          }
+          $forbidden = @(Get-ChildItem -LiteralPath 'ci-hunspell-results' -Recurse -File | Where-Object { $_.Extension -in @('.dll', '.exe', '.lib', '.pdb', '.whl', '.zip') })
+          if ($forbidden.Count -ne 0) { throw 'The diagnostic artifact may contain only public text evidence and source notices.' }
+      - name: Save source-only diagnostic evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hunspell-source-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-hunspell-results/
+          if-no-files-found: error
