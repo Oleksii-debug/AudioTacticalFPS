@@ -340,6 +340,7 @@ def run_native(options, report):
                   and recovered.document.source_text == raw
                   and recovered.document.source_anchor == snapshot.document.source_anchor)
             active['reader'], active['player'], active['navigation'] = reader, player, reader.reader_navigation
+            active['host'] = host
             before = len(calls)
             entered, release = threading.Event(), threading.Event()
             def waiting(*args, **kwargs):
@@ -356,8 +357,10 @@ def run_native(options, report):
                 check('Close cancels this request while retaining the active modal until completion',
                       host.busy() and host.cancelled() and reader.IsModal())
                 release.set()
+                # EndModal hides the dialog; IsModal stays true until this
+                # callback returns and the surrounding ShowModal unwinds.
                 check('Close never begins the cancelled scoped narration',
-                      pump(lambda: not reader.IsModal() and not host.busy()) and len(calls) == before)
+                      pump(lambda: not reader.IsShown() and not host.busy()) and len(calls) == before)
             finally:
                 release.set()
                 reader_navigation.unit_range = original_locate
@@ -391,6 +394,9 @@ def run_native(options, report):
             if errors:
                 raise errors[0]
             gui.Yield()
+            check('the returned modal has revoked its reader host after worker completion',
+                  not active['host'].alive() and not active['host'].busy()
+                  and active['host'].cancelled())
             check('reader shutdown leaves no retained playback or listening owner',
                   active['player'].state == 'stopped'
                   and not getattr(frame, '_reader_playback_retained', ())

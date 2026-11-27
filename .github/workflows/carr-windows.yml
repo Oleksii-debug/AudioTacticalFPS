@@ -493,6 +493,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-preparation' }
           if ($failures.Count) { throw ('Required native reading preparation failures: ' + ($failures -join ', ')) }
 
+      - name: Require native voice preferences and fresh inventory review
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_preferences_smoke.py --source . --report ci-results/source-voice-preferences.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-voice-preferences' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_preferences_smoke.py --expect-installed --report ci-results/installed-voice-preferences.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-voice-preferences' }
+          if ($failures.Count) { throw ('Required native voice preference failures: ' + ($failures -join ', ')) }
+
       - name: Require native Word review and current-reader assistant controls
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
         timeout-minutes: 16
@@ -609,6 +620,12 @@ jobs:
             'tests/audio/test_legacy_owned_process.py',
             'tests/speech/test_preparation.py',
             'tests/ui/test_reader_preparation.py',
+            'tests/conversion/test_conversion.py',
+            'tests/conversion/test_conversion_ownership.py',
+            'tests/ui/test_document_conversion_admission.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/ui/test_voice_preferences_dialog.py',
+            'tests/storage/test_voice_preferences_backup.py',
             'tests/speech/test_navigation.py',
             'tests/ui/test_reader_navigation.py',
             'tests/extract/test_language_detection.py',
@@ -1417,6 +1434,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --expect-installed --report ci-results/bundle-reading-preparation.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_voice_preferences_smoke.py --expect-installed --report ci-results/bundle-voice-preferences.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle voice preferences failed' }
           foreach ($style in @('apa', 'chicago-notes')) {
             & $installedPython -I -B -X utf8 scripts/windows_word_citations_smoke.py --expect-installed --mode modeled --style $style --report (Join-Path 'ci-results' ('bundle-word-' + $style + '.json'))
             if ($LASTEXITCODE -ne 0) { throw ('bundle Word controls failed: ' + $style) }
@@ -1605,6 +1624,12 @@ jobs:
               'tests/audio/test_legacy_owned_process.py',
               'tests/speech/test_preparation.py',
               'tests/ui/test_reader_preparation.py',
+            'tests/conversion/test_conversion.py',
+            'tests/conversion/test_conversion_ownership.py',
+            'tests/ui/test_document_conversion_admission.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/ui/test_voice_preferences_dialog.py',
+            'tests/storage/test_voice_preferences_backup.py',
               'tests/audio/test_director_path_identity.py',
               'tests/audio/test_voices.py',
               'tests/audio/test_model_voices.py',

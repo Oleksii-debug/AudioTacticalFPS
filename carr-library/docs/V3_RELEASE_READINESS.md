@@ -22,14 +22,14 @@ named predecessors; it does not qualify newly composed code.
 
 | Requirement area | Current implementation contribution | Execution and remaining dependency |
 | --- | --- | --- |
-| V3-01/02 | Explicit OCR language controls and finite reviewed reading preparation | At 23d64013 the original/read-copy checks passed; native choice acceptance failed. The successor probe repair requires execution. Language/voice quality remains separate. |
-| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard and opt-in global/tray controls, measured progress | Required source/installed/native gates remain. The queue timeout has bounded diagnostics, not a guessed device fix. Manual Windows 11/NVDA remains open. |
-| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion, existing clip/player/Director contracts | Current batch dispatch and reader cleanup corrections require successor execution. Neural long-form quality and physical audio acceptance are independent. |
+| V3-01/02 | Explicit OCR language controls and finite reviewed reading preparation | At7471d045 language choice, Preview and Apply pass; Ctrl+Z fails. The successor connects fixed editor keys to existing history. Fresh native execution and language/voice quality remain separate. |
+| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard and opt-in global/tray controls, measured progress | Favorites, exact-language defaults and named profiles extend current engine settings and typed backup. Typed MCI OPEN and original navigation gates require execution. Manual Windows11/NVDA remains open. |
+| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion, existing clip/player/Director contracts | Actual native Book source+installed controls pass at7471d045; the new conversion/reader changes require successor execution. Neural long-form quality and physical audio acceptance remain separate. |
 | V3-06/08 | Incremental backup plus authenticated local portable snapshots over canonical format5/schema6 | Native encrypted source+installed review/restore passed at 23d64013. This successor needs its own gates. This does not establish cloud/WebDAV service or shared live databases. |
-| V3-07 | Explicit streamed UTF-8 originals up to a selected 128 MiB, bounded fragments, current original/quotation/backup authority; scoped/ranked source windows and federated continuation | Real greater-than-64-MiB suites and native intake/literal/ranked/federated controls passed at 23d64013. Two pagination fixture expectations are corrected in the successor. Ranking is local to each source window. An optional fresh-process measurement tool is integrated; scale execution and multi-gigabyte PDF remain open. |
+| V3-07 | Explicit streamed UTF-8 originals up to a selected 128 MiB, bounded fragments, current original/quotation/backup authority; scoped/ranked source windows and federated continuation | Real greater-than-64-MiB suites and native intake/literal/ranked/federated controls passed at 23d64013. Two pagination fixture expectations are corrected in the successor. Ranking is local to each source window. Actual Linux measurements through50,000pages and Windows through10,000 are retained; Windows50,000 setup is incomplete. Performance acceptance and multi-gigabyte PDF remain open. |
 | V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | All four modeled source/installed APA/Chicago native review sequences passed at 23d64013. Actual Microsoft Word, publisher deployment and human interaction remain separate. |
 | V3-09 | Typed current-reader and Book/batch assistant routes through existing services/stores | Bounded state-I/O suites and both native domain routes passed at 23d64013. Successor gates remain required. Deterministic tools do not certify a local LLM or grant model output shell authority. |
-| V3-21 | Owner reference creation/lifecycle and authenticated protected profile export/import using the same Sync crypto and package publisher | Native reference controls and protected backend/UI suites passed at 23d64013. Protected native input failed at a simulator argument; the successor fixes that probe and requires rerun. Real rights/model/language quality remains unqualified. |
+| V3-21 | Owner reference creation/lifecycle and authenticated protected profile export/import using the same Sync crypto and package publisher | Native reference controls and protected backend/UI suites passed at 23d64013. At7471d045 native transfer/password actions pass, then Close revocation fails; the successor fixes that lifetime gap and requires rerun. Real rights/model/language quality remains unqualified. |
 | V3-16/17 | Existing integrity/cleanup/publication boundaries plus exact cryptography/cffi/pycparser pins and supplemental SBOM records | Reviewed publisher hashes and actual earlier dependency installation are separate from final package/signature and per-profile distribution clearance. |
 | V3-11/12/13/14/15/18/22 | Existing provider, production, model, language, update and entitlement contracts remain in scope | Their prior implementation/evidence is preserved. New provider credentials, private authority/signing, real weights/inference and independent quality evidence are not invented or substituted. |
 
@@ -42,35 +42,50 @@ application archive excludes the separately set up audio runtime. No final
 private archive, signed installer or whole-platform completion is claimed.
 
 
-## Latest measured checkpoint — 2026-11-27, 19:44 UTC
+## Latest measured checkpoint — 2026-11-27, 20:24 UTC
 
-Product `23d64013` completed 230 portable module suites: **223 passed and seven
-failed**. Native DAISY, modeled Word review, Assistant, reference profiles,
-encrypted Sync, large TXT, literal/ranked/federated continuation, recording
-Pause/Resume, conversion, incremental backup and metadata passed in actual
-source and installed modes. Reading choice input, protected-password simulator
-input and BookBatch completion still failed. The successor corrects those
-observed issues and the seven stale/incomplete fixture expectations, with exact
-source readbacks and focused independent review; **successor execution is pending**.
+Product `7471d045` passed **231/231 Linux module suites**. Its actual source and
+installed Windows Book production, metadata and backup controls now pass.
+Reading language selection, Preview and Apply pass; the next native predicate
+exposes the missing Ctrl+Z hook. Protected voice transfer passes its cryptographic
+and rights actions, then exposes a completed-review revocation problem on Close.
+The long Windows source selection timed out at its unchanged 25-minute bound;
+separate13/13 clip/monitor and14/14 reading/process module blocks pass.
 
-The BookBatch traces identify repeated disk-accounting/control-file work.
-Polling intervals now begin after completed I/O, local cancellation remains
-immediate and publication guards force current identity/authority checks.
-Deadlines and forced quotas are unchanged. The current source benchmark adds
-explicit bounded fresh-process measurements; it does not assert a scale result.
+This successor adds fixed current-editor Ctrl+Z/Y through existing history,
+Python-only Close revocation, the focus-scrollable Import Center, typed Unicode
+MCI OPEN, and retained native failure diagnostics. Original success predicates
+and deadlines remain. It adds favorites, exact-language defaults and named voice
+profiles through the existing engine settings, fresh inventory review and typed
+passive backups; see [VOICE_PREFERENCES.md](VOICE_PREFERENCES.md).
+Every new control and composed source still requires its own exact-head run.
 
-On ordinary evaluation `023de461`, compatibility, bibliography and both launcher
-builds passed. Windows transcription failed its existing 1.5-second pause-stop
-requirement; bounded failure-only diagnostics are added for the next run.
-The full Windows capture gate already failed: the same VM reported current-user
-microphone consent `Deny` and WASAPI `E_ACCESSDENIED`. Policy and consent remain
-unchanged. Full aggregate/V3 execution was still in progress at this checkpoint.
+Ordinary import admission passed98cases in each of four source/installed
+Windows/Linux focused modes at `24202756`. A further independently reviewed
+between-polls cancellation repair and two actual committed-import cases are
+running at `e4ca449c`. Document conversion now borrows the captured library's
+existing broker and retains native owners/staging until quiet. These additions
+have separate source, installed and native selectors in the successor.
 
-The [current ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md) records exact
-run IDs, artifact digest, source changes and evidence boundaries. No eligible
-retained wheel or final private application archive exists at this checkpoint.
-The builder includes the linked monitoring guide and verifies its sealed bytes;
-the final application bundle continues to exclude the separate audio runtime.
+The [actual scale report](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md) retains
+Linux measurements through50,000pages and explicitly incomplete Windows50,000
+setup, plus all measured smaller Windows cases and raw receipts. Small samples
+do not establish performance acceptance or exhaustive retrieval.
+
+On ordinary evaluation `45b59638`, compatibility, bibliography, both launcher
+builds and Linux transcription pass. Windows transcription passes the earlier
+pause module but fails a different resume test under its unchanged5s worker
+budget. Full Windows capture and several native/fixture stages fail; runtime
+and V3 completion were still pending at this checkpoint. The preceding same-VM
+read-only capture diagnosis recorded current-user microphone consent Deny and
+WASAPI E_ACCESSDENIED. Consent and policy remain unchanged.
+
+The [integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md) gives exact
+heads, runs, artifact digests, current changes and proof limits. Only a retained
+wheel from a successful full Windows aggregate with all six ordinary workflows
+green on the same exact head is eligible. No such wheel, final private archive,
+manual NVDA verdict or full-platform completion is claimed. The final application
+bundle continues to exclude the separately installed audio runtime.
 
 ## Observed failure reconciliation — 2026-11-27, 19:09 UTC
 

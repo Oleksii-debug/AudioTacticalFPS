@@ -1,4 +1,5 @@
 """Canonical WavePlayer guards reused from PR149, without its alternate facade."""
+import ctypes
 from types import SimpleNamespace
 import wave
 
@@ -22,6 +23,7 @@ def windows_player(chunk, monkeypatch):
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
     player.path, player.duration_seconds = chunk, .2
     player._open, player._state, player._offset = True, 'paused', .05
+    player._mci_open = lambda path: player._mci(f'open "{path}" type waveaudio alias {player._alias}')
     return player
 
 
@@ -105,3 +107,114 @@ def test_ffplay_keeps_canonical_sanitized_environment_and_owned_launch(chunk, mo
     assert options['stdin'] == implementation.subprocess.DEVNULL
     player.close()
     assert closed == [child] and player._process is None
+
+
+class OpenParameters(ctypes.Structure):
+    """Independent packed Win32 MCI_OPEN_PARMSW wire contract."""
+    _pack_ = 1
+    _fields_ = [('callback', ctypes.c_size_t), ('device', ctypes.c_uint32),
+                ('kind', ctypes.c_wchar_p), ('element', ctypes.c_wchar_p),
+                ('alias', ctypes.c_wchar_p)]
+
+
+class OpenCommand:
+    def __init__(self, code=0):
+        self.code, self.calls = code, []
+
+    def __call__(self, device, message, flags, address):
+        assert (device, message, flags) == (0, 0x0803, 0x2602)
+        assert self.argtypes == (ctypes.c_uint, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t)
+        assert self.restype is ctypes.c_uint
+        value = ctypes.cast(address, ctypes.POINTER(OpenParameters)).contents
+        self.calls.append((value.callback, value.kind, value.element, value.alias))
+        value.device = 27
+        return self.code
+
+
+def typed_windows_player(monkeypatch, *, code=0):
+    send, commands = OpenCommand(code), []
+    monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(implementation.ctypes, 'windll',
+        SimpleNamespace(winmm=SimpleNamespace(mciSendCommandW=send)), raising=False)
+    player = implementation.WavePlayer()
+    player._mci = lambda command: commands.append(command) or ''
+    return player, send, commands
+
+
+@pytest.mark.parametrize('leaf', ['f' * 64 + '.audio', 'Український запис — spaces.wav'])
+def test_typed_open_preserves_admitted_unicode_element_and_packed_pointer_width(
+        tmp_path, monkeypatch, leaf):
+    source = tmp_path / leaf
+    with wave.open(str(source), 'wb') as stream:
+        stream.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+        stream.writeframes(b'\x01\x00' * 1600)
+    original = source.read_bytes()
+    pointer = ctypes.sizeof(ctypes.c_void_p)
+    layout = implementation._MciOpenParameters
+    assert ctypes.sizeof(layout) == pointer * 4 + 4
+    assert [getattr(layout, name).offset for name in
+            ('dwCallback', 'wDeviceID', 'lpstrDeviceType', 'lpstrElementName', 'lpstrAlias')] == [
+                0, pointer, pointer + 4, pointer * 2 + 4, pointer * 3 + 4]
+    player, send, commands = typed_windows_player(monkeypatch)
+    try:
+        player.play(source)
+        assert send.calls == [(0, 'waveaudio', str(source.resolve()), player._alias)]
+        assert player._open and player._state == 'playing' and player.backend == 'Windows MCI'
+        assert commands == [f'set {player._alias} time format milliseconds',
+                            f'play {player._alias} from 0']
+        assert not any(command.startswith('open ') for command in commands)
+    finally:
+        player.close()
+    assert commands[-2:] == [f'stop {player._alias}', f'close {player._alias}']
+    assert not player._open and source.read_bytes() == original
+
+
+@pytest.mark.parametrize('code', [304, 320])
+def test_typed_open_native_denial_is_visible_without_fallback_or_false_alias_ownership(
+        chunk, monkeypatch, code):
+    original = chunk.read_bytes()
+    player, send, commands = typed_windows_player(monkeypatch, code=code)
+    with pytest.raises(RuntimeError, match=f'MCI {code}') as error:
+        player.play(chunk)
+    assert len(send.calls) == 1 and commands == []
+    assert str(chunk) not in str(error.value)
+    assert not player._open and player._state == 'stopped'
+    assert player._wave is None and player._process is None
+    player.close()
+    assert commands == [] and chunk.read_bytes() == original
+
+
+@pytest.mark.parametrize('rejected', ['set ', 'play '])
+def test_successful_typed_open_keeps_alias_owned_through_later_control_failure(
+        chunk, monkeypatch, rejected):
+    player, send, commands = typed_windows_player(monkeypatch)
+    def control(command):
+        commands.append(command)
+        if command.startswith(rejected):
+            raise RuntimeError('Synthetic post-open device denial')
+        return ''
+    player._mci = control
+    with pytest.raises(RuntimeError, match='post-open device denial'):
+        player.play(chunk)
+    assert len(send.calls) == 1
+    assert commands[-2:] == [f'stop {player._alias}', f'close {player._alias}']
+    assert not player._open and player._process is None and player._wave is None
+
+
+def test_failed_close_after_typed_open_retains_exact_alias_for_acknowledged_retry(chunk, monkeypatch):
+    player, send, commands = typed_windows_player(monkeypatch)
+    def control(command):
+        commands.append(command)
+        if command.startswith('set '):
+            raise RuntimeError('Synthetic format denial')
+        if command.startswith('close '):
+            raise RuntimeError('Synthetic close unacknowledged')
+        return ''
+    player._mci = control
+    with pytest.raises(RuntimeError, match='close unacknowledged'):
+        player.play(chunk)
+    assert player._open and len(send.calls) == 1
+    player._mci = lambda command: commands.append(command) or ''
+    player.close()
+    assert not player._open and len(send.calls) == 1
+    assert commands.count(f'close {player._alias}') == 2

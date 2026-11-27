@@ -335,7 +335,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
         EVT_CHOICE='choice', EVT_CLOSE='close', EVT_WINDOW_DESTROY='destroy',
-        EVT_TIMER='timer', EVT_CHECKBOX='checkbox')
+        EVT_TIMER='timer', EVT_CHECKBOX='checkbox', EVT_CHAR_HOOK='char_hook')
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',

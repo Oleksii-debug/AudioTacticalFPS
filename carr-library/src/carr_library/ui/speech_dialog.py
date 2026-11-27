@@ -166,8 +166,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     focus_button.SetName('Reading focus and approximate audio follow')
     keyboard_button = wx.Button(dialog, label='Reader &keyboard shortcuts...')
     keyboard_button.SetName('Voice reader keyboard shortcuts')
+    voice_preferences_button = wx.Button(dialog, label='Voice preferences...')
+    voice_preferences_button.SetName('Voice preferences')
+    dialog.voice_preferences_button = voice_preferences_button
     for control in (find_button, replace_button, pronunciation_button, preparation_button,
-                    assistant_button, spelling_button, appearance_button, focus_button, keyboard_button):
+                    assistant_button, spelling_button, appearance_button, focus_button, keyboard_button,
+                    voice_preferences_button):
         tools_row.Add(control, 0, wx.ALL, 4)
     layout.Add(tools_row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -246,6 +250,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         if reader_tabs is not None:
             reader_tabs.set_busy(busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
+        voice_preferences_button.Enable(reader_root is not None and alive and source_loaded and not busy)
         if event is not None and current:
             remembered_voice_id = current.id
             report(f'{current.name}; {current.language}; {current.engine}. '
@@ -362,6 +367,61 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                        'local engine. ' + ' '.join(registry.notices), focus=True)
         run(lambda: (discover_configured(),
                      source_loader(cancel.is_set) if not source_loaded else None), loaded)
+
+    def choose_voice_preferences(event=None):
+        from ..runtime_settings import load_voice_preferences, review_voice_preference
+        from ..language_qualification.catalog import canonical_language_tag
+        from .voice_preferences import show_voice_preferences
+        try:
+            playback_guard()
+            if reader_root is None or busy or not source_loaded:
+                raise ValueError('Open an idle reader in this library before editing voice preferences.')
+            current_registry, current_voices = registry, tuple(voices)
+            index = voice_choice.GetSelection()
+            current = voices[index] if 0 <= index < len(voices) else None
+            try:
+                language = canonical_language_tag(current.language, adapter_underscores=True) if current else ''
+            except ValueError:
+                language = ''
+            selected = {'voice_id': current.id if current else remembered_voice_id,
+                        'language': language, 'rate': rate.GetValue(), 'volume': volume.GetValue()}
+
+            def guard():
+                playback_guard()
+                if registry is not current_registry or tuple(voices) != current_voices:
+                    raise ValueError('The reader voice inventory changed. Reopen preferences.')
+
+            def apply_selection(value):
+                nonlocal remembered_voice_id
+                guard()
+                if cancel.is_set():
+                    raise InterruptedError('Voice selection was cancelled.')
+                selected_index = next((i for i, item in enumerate(voices) if item.id == value['voice_id']), None)
+                if selected_index is None:
+                    raise ValueError('The selected voice is no longer available. Reload reader voices.')
+                voice_choice.SetSelection(selected_index)
+                rate.SetValue(value['rate'])
+                volume.SetValue(value['volume'])
+                remembered_voice_id = value['voice_id']
+                capabilities()
+                save_recovery(force=True)
+
+            def review(value, **kwargs):
+                return review_voice_preference(Path(reader_root) / 'state', current_registry,
+                                               value, **kwargs)
+
+            def opened(preferences):
+                guard()
+                if cancel.is_set():
+                    raise InterruptedError('Voice preference loading was cancelled.')
+                show_voice_preferences(dialog, state_root=Path(reader_root) / 'state',
+                    voices=current_voices, preferences=preferences, selected=selected,
+                    execute=run, guard=guard, apply_selection=apply_selection,
+                    review_selection=review, cancelled=cancel.is_set)
+
+            run(lambda: load_voice_preferences(Path(reader_root) / 'state'), opened)
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def sync_document():
         document.set_text(editor.GetValue())
@@ -594,15 +654,41 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
     def history(event=None, *, forward=False):
+        nonlocal playback_generation, last_audio, last_reading_audio
+        if not alive or dialog_destroyed:
+            return False
         try:
+            if busy or not source_loaded:
+                raise ValueError('Wait for the current reader operation before changing reading history.')
+            playback_guard()
             sync_document()
+            available = document.can_redo if forward else document.can_undo
+            if available:
+                playback_generation += 1
+                player.stop()
+                last_audio, last_reading_audio = None, None
+                if progress is not None:
+                    progress.refresh_audio_state()
             changed = document.redo() if forward else document.undo()
             editor.ChangeValue(document.text)
             sync_document()
             report(f'Reading revision {document.revision}.' if changed else 'No further reading edit.')
             editor.SetFocus()
+            return changed
         except Exception as exc:
             report(str(exc), focus=True)
+            return False
+
+    def history_key(event):
+        # TextCtrl.ChangeValue deliberately has no native Undo entry. Route the
+        # fixed editing chords to the same reading history as the two buttons.
+        # The active editor can change when a manual reading tab is selected.
+        if (not alive or dialog_destroyed or wx.Window.FindFocus() is not editor
+                or event.GetModifiers() != wx.MOD_CONTROL
+                or event.GetKeyCode() not in (ord('Z'), ord('Y'))):
+            event.Skip()
+            return
+        history(event, forward=event.GetKeyCode() == ord('Y'))
 
     def clean(event=None):
         try:
@@ -1004,6 +1090,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         button.Bind(wx.EVT_BUTTON, lambda event, selected=unit:
                     navigate_unit(unit=selected, read_aloud=True))
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
+    dialog.Bind(wx.EVT_CHAR_HOOK, history_key)
+    voice_preferences_button.Bind(wx.EVT_BUTTON, choose_voice_preferences)
     dialog.Bind(wx.EVT_CLOSE, closing)
     dialog.Bind(wx.EVT_WINDOW_DESTROY, owner_destroyed)
     keyboard = VoiceReaderKeyboardAdapter(dialog, parent, {

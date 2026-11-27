@@ -52,6 +52,7 @@ def queued(recordings, monkeypatch):
     monkeypatch.setattr(module, 'os', SimpleNamespace(name='nt'))
     mci = Mci()
     value._mci = mci
+    value._mci_open = lambda path: mci(f'open "{path}" type waveaudio alias {value._alias}')
     value.set_playlist(prepare_playlist(recordings))
     yield value, mci
     value.close()
@@ -59,6 +60,7 @@ def queued(recordings, monkeypatch):
 
 def test_review_has_exact_pcm_hash_and_never_opens_a_playback_device(recordings, monkeypatch):
     monkeypatch.setattr(module.WavePlayer, '_mci', lambda *args: pytest.fail('review played audio'))
+    monkeypatch.setattr(module.WavePlayer, '_mci_open', lambda *args: pytest.fail('review opened audio'))
     items = prepare_playlist(recordings)
     assert tuple(row.path for row in items) == tuple(recordings)
     for item, path in zip(items, recordings):

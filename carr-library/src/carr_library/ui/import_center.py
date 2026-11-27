@@ -439,6 +439,7 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
+    from wx.lib.scrolledpanel import ScrolledPanel
     from ..extract.page_ocr import Config
     from .ocr_options import config_summary
 
@@ -450,8 +451,12 @@ def show_import_center(frame, workspace):
             self.busy = self.closed = False
             self.batch, self.summaries = None, ()
             self.mutable = []
+            outer = wx.BoxSizer(wx.VERTICAL)
+            self.form = ScrolledPanel(self, style=wx.TAB_TRAVERSAL | wx.VSCROLL)
+            self.form.SetName('Import Center scrollable form')
+            self.form.SetMinSize((0, 200))
             layout = wx.BoxSizer(wx.VERTICAL)
-            introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
+            introduction = wx.StaticText(self.form, label='Prepare a file or folder import, review the plan, then start. '
                        'Saved queues can be continued after restarting the program.')
             introduction.Wrap(750)
             layout.Add(introduction, 0, wx.ALL, 8)
@@ -462,59 +467,59 @@ def show_import_center(frame, workspace):
             for number, (identity, name) in enumerate(self.library.collections(workspace), 1):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
-            self.collection = wx.Choice(self, choices=collection_labels)
+            self.collection = wx.Choice(self.form, choices=collection_labels)
             self.collection.SetSelection(0)
             self.ocr_config = Config()
-            self.languages = wx.TextCtrl(self, value=config_summary(self.ocr_config),
+            self.languages = wx.TextCtrl(self.form, value=config_summary(self.ocr_config),
                                          style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 40))
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
-                options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                options.Add(wx.StaticText(self.form, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
             self.mutable.append(self.collection)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            models = wx.Button(self, label='Choose installed or managed OCR &models...')
+            models = wx.Button(self.form, label='Choose installed or managed OCR &models...')
             models.SetName('Choose installed or managed OCR models for new plans')
             models.Bind(wx.EVT_BUTTON, self.choose_languages)
             self.mutable.append(models)
             layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-            self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
+            self.recursive = wx.CheckBox(self.form, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
             layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
                                    ('Refresh saved &queues', self.refresh)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(self.form, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
             streamed = wx.BoxSizer(wx.HORIZONTAL)
-            self.stream_mib = wx.SpinCtrl(self, min=1, max=128, initial=128)
+            self.stream_mib = wx.SpinCtrl(self.form, min=1, max=128, initial=128)
             self.stream_mib.SetName('Maximum bytes for one streamed UTF-8 text, in MiB')
-            streamed.Add(wx.StaticText(self, label='Streamed UTF-8 source limit (MiB)'),
+            streamed.Add(wx.StaticText(self.form, label='Streamed UTF-8 source limit (MiB)'),
                          0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
             streamed.Add(self.stream_mib, 0, wx.RIGHT, 8)
-            large_text = wx.Button(self, label='Import large UTF-8 te&xt...')
+            large_text = wx.Button(self.form, label='Import large UTF-8 te&xt...')
             large_text.SetName('Import selected UTF-8 text in bounded logical fragments')
             large_text.Bind(wx.EVT_BUTTON, self.choose_streamed_text)
             streamed.Add(large_text, 0)
             self.mutable.extend((self.stream_mib, large_text))
             layout.Add(streamed, 0, wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.batches = wx.ListBox(self, size=(-1, 65))
+            layout.Add(wx.StaticText(self.form, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.batches = wx.ListBox(self.form, size=(-1, 65))
             self.batches.SetName('Saved import batches')
             self.batches.Bind(wx.EVT_LISTBOX, self.select_batch)
             self.mutable.append(self.batches)
             layout.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.rows = wx.ListBox(self, size=(-1, 100))
+            layout.Add(wx.StaticText(self.form, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.rows = wx.ListBox(self.form, size=(-1, 100))
             self.rows.SetName('Files and import status')
             self.rows.Bind(wx.EVT_LISTBOX, self.select_row)
             layout.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
-            self.details = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
+            self.details = wx.TextCtrl(self.form, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
             self.details.SetName('Selected file details')
             layout.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             actions = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
@@ -523,14 +528,17 @@ def show_import_center(frame, workspace):
             for label, handler in [('&Start queued files', self.run),
                     ('&Retry failed or reviewed files', lambda event: self.run(event, retry=True)),
                     ('&Exclude or include selected file', self.toggle_row), ('Save re&port...', self.save_report)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(self.form, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
             layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            self.form.SetSizer(layout)
+            self.form.SetupScrolling(scroll_x=False, scroll_y=True, scrollIntoView=True)
+            outer.Add(self.form, 1, wx.EXPAND)
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
             self.status.SetName('Import Center status')
-            layout.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            outer.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             bottom = wx.BoxSizer(wx.HORIZONTAL)
             self.cancel = wx.Button(self, label='&Cancel operation')
             self.cancel.Disable()
@@ -539,8 +547,8 @@ def show_import_center(frame, workspace):
             close = wx.Button(self, wx.ID_CANCEL, 'Cl&ose')
             close.Bind(wx.EVT_BUTTON, self.close)
             bottom.Add(close)
-            layout.Add(bottom, 0, wx.ALL, 8)
-            self.SetSizer(layout)
+            outer.Add(bottom, 0, wx.ALL, 8)
+            self.SetSizer(outer)
             self.SetMinSize((800, 650))
             self.Bind(wx.EVT_CLOSE, self.close)
             self.refresh()

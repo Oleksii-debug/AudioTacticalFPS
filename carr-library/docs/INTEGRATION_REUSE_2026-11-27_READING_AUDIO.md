@@ -6,8 +6,9 @@ This checkpoint follows root AGENTS.md `080bb9104d3224749e9317c2273d803c0ac37835
 the current finalization specification `db8adbdc483a03c262885928c7ed214ca70bbaa7`,
 and the detailed reading/audio requirements `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
 It extends the existing Resonance application in `carr-library/`.
-The canonical integration parent is `a44fac04072389caa40e0d6e799b13797712f797`;
-the previous composed product head is `a9da9c4ba591895a78c207eb683499e33c922d63`.
+Canonical source is `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`;
+the current composition parent is `7471d0455549b5598248b4e51d67ad613f86f5ca`.
+Historical parents and checkpoint results are retained below with their own dates.
 
 Status: **implemented source, reviewed within the scopes below, composed execution
 NOT_RUN at creation of this checkpoint**. This is not whole-platform DONE, a
@@ -15,7 +16,135 @@ release, manual NVDA acceptance, speech quality, or evidence that every requeste
 language/model/device works. Exact workflow head SHAs and results are authoritative;
 older component runs do not qualify the newly composed code.
 
-## Current failure reconciliation — 2026-11-27, 19:44 UTC
+## Current composition and evidence — 2026-11-27, 20:24 UTC
+
+Canonical `carr-library` was rechecked at
+`e5c64a5245583f8f8b404a0f042f6ca438c24d7f`; root AGENTS and both technical
+specification blobs above are unchanged. The product parent is
+`7471d0455549b5598248b4e51d67ad613f86f5ca`; ordinary evaluation of that same
+application source is `45b5963842f03de629974ce24057d2ec2e7b93b7`.
+This successor preserves every earlier integrated change. Its additional code
+and installed package require fresh exact-head execution.
+
+### Actual completed predecessor evidence
+
+- [Preflight 46058816017](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46058816017)
+  completed **231 Linux module suites, 231 PASS, zero FAIL**. Its native Windows
+  Book production, metadata and backup controls now pass in source and installed
+  modes. The actual reading language choice, Preview and Apply also pass, but
+  Ctrl+Z fails to undo the accepted transformation. Protected transfer passes
+  rights/password/encryption/wrong-password controls and fails its final
+  destroyed-review cleanup predicate.
+- The same Windows preflight completed its separate clip/monitoring
+  **13/13** module block and reading/device/process **14/14** block. The long
+  reading/production source block exceeded its unchanged 25-minute watchdog;
+  it is incomplete and cannot be counted as PASS. Final diagnostic artifact
+  `15230190378` has SHA256
+  `c47e304495edd2b7c1c042c56ae6c386b74b528610e00faa13f0288ef569e0cc`;
+  earlier native artifact `15228805314` has SHA256
+  `80f6c29aebc070b0d4a4c3264a0f7c6f2374e16f10a6af470b6a6d6d641bcdbf`.
+- Ordinary compatibility, bibliography, both native launcher compilers and
+  Linux transcription pass on `45b59638`. Windows transcription passes the
+  original 14-case pause/admission module, including its unchanged 1.5-second
+  stop requirement, but a different rebind/resume case exceeds the existing
+  five-second worker budget. This is **19/20 module PASS**, not a protocol pass.
+  The successor adds bounded failure-only phase/process observations, with
+  exact delegates and no retry, deadline increase or acceptance change.
+- The ordinary full Windows capture, managed-OCR fixture, preparation,
+  protected-close, Import Center, reader/player and bundled-control stages have
+  failed; the long final runtime selection and V3 remained in progress at this
+  snapshot. No eligible delivery wheel exists. The preceding exact-VM read-only
+  capture evidence recorded current-user microphone consent Deny and WASAPI
+  E_ACCESSDENIED. The selected-device success requirement, consent and policy
+  remain unchanged.
+
+### Integration through current services
+
+**Reader and native lifetime.** Fixed Ctrl+Z/Ctrl+Y operate only on the current
+reader editor and call its existing ReadingDocument history. Other controls,
+nested dialogs and reserved command-registry editing keys retain native
+behavior. Live-source/busy checks precede history access; existing playback must
+stop before an available Undo/Redo changes the text. All original preparation
+tests remain, with 21 real-document/actual-handler controls added. Protected
+profile Close revokes generation and both in-memory approvals before existing
+owner cleanup, including the deferred native Destroy ordering; six additive
+cases and the unchanged real native cleanup predicate cover it.
+
+The Import Center form uses native focus-scrolling while status and Cancel/Close
+remain fixed; its action handlers are unchanged. The navigation fixture observes
+modal hiding inside its callback and verifies the final idle/cancelled owner
+after ShowModal has actually unwound. Reader playback opens the exact admitted
+Unicode filename through documented typed MCI OPEN parameters, preserving the
+same alias, player, device-error handling and owned Close. The native queue and
+EPUB deadlines remain. This is a candidate repair for observed MCI304, not a
+claimed successful Windows playback result.
+
+**Voice preferences (V3-03).** Reconciled donor PR152 functionality uses an
+optional strictly validated voice_preferences field in the existing
+state/audio/engines.json schema1. It creates no competing voice-settings file.
+Favorites, exact canonical-language defaults and named rate/volume profiles are
+inert selections; unavailable IDs remain visible without substitution. Passive
+CAS saves preserve declarations, runtime seals and restore_requires_revalidation.
+Existing engine revalidation still compares full settings; concurrent edits
+require review again. Selection uses the reader's current serial worker and an
+independently owned fresh registry, compares the exact voice fingerprint and
+rechecks settings before updating existing controls. It starts no audio.
+The exact reader composition includes the Undo fix above.
+
+Existing typed format5/schema6 recovery and supported flat4 compatibility both
+validate the optional field without opening engines, preserving restored passive
+authority. A real keyboard sidecar selects format5 in that fixture; its bytes
+are tested in both round trips. Three new selectors plus a real native
+source/installed/complete-bundle control probe are required. The
+[voice preference guide](VOICE_PREFERENCES.md) is included in sealed bundle guides;
+the actual builder/manifest/tamper regression covers its bytes.
+
+**Shared resource admission.** Ordinary bounded PDF/OCR/DOCX/EPUB import now uses
+the same ResourceBroker path already used for streamed input, including current
+source/request identity and terminal reconciliation. Actual focused run
+[46061506028](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46061506028)
+at `2420275643509d5cb0a9cde0207158cd48ebee3e` passed **98 cases in each of
+Windows source, Windows installed, Linux source and Linux installed**.
+It covers the pre-admission cancellation repair: old attempt/publication hints
+are revoked and a concurrently changed request is never rewritten.
+
+Independent review then identified cancellation arriving between the two lease
+polls after a child may have committed. The successor catches only
+ResourceCancelled in that checkpoint, follows normal stop/reap/settlement, and
+preserves a verified publication. Two new ordinary/streamed actual-child cases
+retain one-revision, original-byte, lease-release and no-second-child terminal
+replay assertions. Focused successor
+`e4ca449c43bae9db35a2b69fa8b59855ed885854`,
+[run 46063011782](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063011782),
+was running at this snapshot; the prior 98-case result does not qualify it.
+
+Document conversion borrows the captured active library's broker, never one
+inferred from the chosen output directory. Existing parser/Pandoc/Tesseract
+children use the existing owned-process boundary, and the same reservation and
+retained staging span verification and create-only publication of text and
+provenance. Source/output identity is checked again after admission. Direct or
+causally wrapped pending cleanup keeps its stage and lease until the real owner
+is quiet. Existing standalone per-operation bounds remain. Thirteen ownership
+and twelve actual-handler cases extend the existing conversion tests.
+
+**Measured scale and evidence retention.** Actual Linux source and installed
+samples completed at 1,000/10,000/50,000 retained logical pages. Both Windows
+modes completed 1,000/10,000 and timed out while building the 50,000-page corpus;
+there is no 50,000-page Windows query result. Raw parsed receipts, original
+member hashes, archive identities, p50/p95/RSS and explicit sampling limits are
+retained in the [measurement report](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md)
+and its JSON. This does not establish performance acceptance, full corpus
+exhaustion, cold disk, multi-gigabyte PDF or native/human acceptance.
+
+Every previous required selector is retained. Main/preflight/V3 include the
+new preference and conversion selectors in their actual source/installed
+lanes. No device gate, output assertion, deadline, skip rule, ownership check,
+cryptographic check, model provenance or runtime seal is weakened. New source
+remains **INTEGRATED / NOT_RUN** until its own exact-head results complete.
+No final private application archive, signed distribution, manual NVDA,
+private-model inference or whole-platform completion is claimed.
+
+## Historical failure reconciliation — 2026-11-27, 19:44 UTC
 
 The immediately preceding product is `23d6401341d2d0f9415cef699a687394368f4b7b`;
 its ordinary evaluation composition is `023de4612e3490b5c9dc4f9abb5f9ca3887ca29e`.

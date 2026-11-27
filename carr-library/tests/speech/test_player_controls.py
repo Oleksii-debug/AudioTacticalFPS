@@ -89,6 +89,8 @@ def transport(tmp_path, monkeypatch, request):
     player._executable = 'purpose-written-process-fixture'
     native = Native(clock, 2.0)
     monkeypatch.setattr(player, '_mci', native.send)
+    monkeypatch.setattr(player, '_mci_open',
+        lambda path: native.send(f'open "{path}" type waveaudio alias {player._alias}'))
     def starts():
         return len([command for command in native.commands if command.startswith('play ')]) \
             if request.param == 'mci' else len(processes)

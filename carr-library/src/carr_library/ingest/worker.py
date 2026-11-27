@@ -914,14 +914,16 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         # before publication reconciliation. A late stop cannot undo a commit.
         return _settle_request(root, request_id, identity, result)
 
-    if profile is None:
-        return execute(cancelled)
+    from ..catalog.intake import MAX_BYTES
     from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
     broker = ResourceBroker.for_app(root)
-    # Same existing broker; declared source/checkpoint/catalog/scratch capacity.
-    # This is finite admission, not measured RSS or an OS memory sandbox.
+    # Every isolated document parser shares admission with the other heavy
+    # operations. Legacy requests keep their existing 64 MiB source allowance;
+    # only an explicit streamed profile can increase it.
+    # This is declared capacity, not measured RSS or an OS memory sandbox.
+    maximum_bytes = profile.maximum_bytes if profile is not None else MAX_BYTES
     request = ResourceRequest(cpu_slots=1, memory_bytes=512 * 1024**2,
-        disk_bytes=10 * profile.maximum_bytes + 128 * 1024**2,
+        disk_bytes=10 * maximum_bytes + 128 * 1024**2,
         disk_path=Path(root).resolve())
     try:
         with broker.reserve(request, operation_id='document:' + request_id,
@@ -931,13 +933,32 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             def stopped():
                 if lease.cancelled():
                     return True
-                lease.checkpoint()
+                try:
+                    lease.checkpoint()
+                except ResourceCancelled:
+                    # Cancellation may arrive between these two checks. Keep
+                    # the supervisor's normal stop/reap/publication-reconcile
+                    # path instead of misclassifying a running child as a
+                    # cancellation that happened before resource admission.
+                    return True
                 return False
             return execute(stopped)
     except ResourceCancelled:
+        current = load_request(root, request_id)
+        if request_identity(current) != identity:
+            raise ValueError('The import request changed while waiting for shared resources.')
         result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
                       request_id=request_id, isolated=True)
-        record_progress(root, request_id, state='cancelled', result=result)
+        stopped_state = dict(state='cancelled', result=result,
+                             publication=None, publication_candidate=None)
+        if any(current.get(key) is not None for key in
+               ('attempt', 'attempt_id', 'publication', 'publication_candidate')):
+            # No new child ran, but an earlier attempt must not remain an
+            # authority for this cancelled dispatch. Preserve committed catalog
+            # rows; explicit later recovery still verifies their actual receipt.
+            attempt = uuid4().hex
+            stopped_state.update(attempt=attempt, attempt_id=attempt)
+        record_progress(root, request_id, **stopped_state)
         return result
 
 

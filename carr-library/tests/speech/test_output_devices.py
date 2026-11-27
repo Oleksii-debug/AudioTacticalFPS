@@ -263,6 +263,8 @@ def transport(tmp_path, monkeypatch, inventory):
     monkeypatch.setattr(playback, 'os', SimpleNamespace(name='nt'))
     player, native = playback.WavePlayer(), MCI()
     monkeypatch.setattr(player, '_mci', native.send)
+    monkeypatch.setattr(player, '_mci_open',
+        lambda path: native.send(f'open "{path}" type waveaudio alias {player._alias}'))
     value = SimpleNamespace(player=player, native=native, source=source, inventory=inventory)
     yield value
     player.close()
@@ -380,6 +382,8 @@ def test_explicit_default_clears_only_this_readers_selection(transport, monkeypa
     t = transport
     other, native = playback.WavePlayer(), MCI()
     monkeypatch.setattr(other, '_mci', native.send)
+    monkeypatch.setattr(other, '_mci_open',
+        lambda path: native.send(f'open "{path}" type waveaudio alias {other._alias}'))
     other.set_output_device(t.inventory.rows[0])
     t.player.set_output_device(t.inventory.rows[1])
     t.player.play(t.source)

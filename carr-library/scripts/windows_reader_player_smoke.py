@@ -443,6 +443,23 @@ def native_controls(player, check, commands, selected_output, private_root, runt
                         queue_native_events.append({'operation': command.partition(' ')[0], 'ok': True})
                     return result
                 owner.player._mci = queue_mci
+                actual_queue_open = owner.player._mci_open
+                def queue_open(path):
+                    event = {'operation': 'open', 'api': 'mciSendCommandW',
+                             'filename_utf16_units': len(str(path).encode('utf-16-le')) // 2,
+                             'suffix': Path(path).suffix}
+                    try:
+                        result = actual_queue_open(path)
+                    except BaseException as error:
+                        event['error'] = type(error).__name__ + ': ' + str(error)[:512]
+                        if len(queue_native_events) < 24:
+                            queue_native_events.append(event)
+                        raise
+                    event['ok'] = True
+                    if len(queue_native_events) < 24:
+                        queue_native_events.append(event)
+                    return result
+                owner.player._mci_open = queue_open
                 check('fresh standalone player does not borrow document playback',
                       owner.player is not player and owner.player.path is None)
                 actual_prepare = owner.player.prepare_playlist
@@ -503,6 +520,10 @@ def native_controls(player, check, commands, selected_output, private_root, runt
                             diagnostic[name] = type(error).__name__ + ': ' + str(error)[:512]
                     raise RuntimeError('Actual queue playback did not advance: ' +
                                        json.dumps(diagnostic, sort_keys=True)) from exc
+                check('retained queue PCM opens through the typed Unicode MCI element',
+                      owner.player.backend == 'Windows MCI'
+                      and any(event.get('api') == 'mciSendCommandW' and event.get('ok')
+                              and event.get('suffix') == '.audio' for event in queue_native_events))
                 press(find(popup, 'Pause or resume recording'))
                 check('actual queue pause keeps the retained original frame', owner.player.state == 'paused')
                 press(find(popup, 'Save playback queue'))

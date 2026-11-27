@@ -269,6 +269,7 @@ def owned_player(pcm, monkeypatch, driver):
     monkeypatch.setattr(module, 'os', SimpleNamespace(name='nt'))
     mci = Mci()
     value._mci = mci
+    value._mci_open = lambda path: mci(f'open "{path}" type waveaudio alias {value._alias}')
     value.play(pcm)
     yield value, mci
     driver.fail = None
