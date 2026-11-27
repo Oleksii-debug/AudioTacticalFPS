@@ -281,7 +281,7 @@ def test_reader_document_replacement_invalidates_deferred_previous_audio(
     assert not any('Playback did not start' in report for report in reader.reports)
 
 
-@pytest.mark.parametrize('binding', ['same', 'legacy_same', 'unbound', 'different', 'pending'])
+@pytest.mark.parametrize('binding', ['same', 'legacy_same', 'pre_release_same', 'unbound', 'different', 'pending'])
 def test_source_bound_reader_open_project_preserves_lineage_before_replacing_playback(
         reader, tmp_path, binding):
     from carr_library.application import LibraryApp
@@ -311,6 +311,14 @@ def test_source_bound_reader_open_project_preserves_lineage_before_replacing_pla
         record.pop('source_anchor')
         record['source_origin'] = replacement.source_origin
         path.write_bytes(encode(record))
+    elif binding == 'pre_release_same':
+        record = replacement.to_dict()
+        anchor = record['source_anchor']
+        anchor['schema'] = 'carr.narration-source.v1'
+        anchor['derived_separators'] = []
+        for position in anchor['positions']:
+            position['text_verified_at_read'] = position.pop('text_verified_at_capture')
+        path.write_bytes(encode(record))
     else:
         replacement.save(path)
     before = path.read_bytes()
@@ -333,7 +341,7 @@ def test_source_bound_reader_open_project_preserves_lineage_before_replacing_pla
     handlers.start_playback(started)
     assert reader.scheduler.pending and not reader.progress.holds[0].closed
     handlers.open_project()
-    accepted = binding in ('same', 'legacy_same')
+    accepted = binding in ('same', 'legacy_same', 'pre_release_same')
     if accepted:
         values['player'].stop.assert_called_once()
         values['editor'].ChangeValue.assert_called_with('Portable edited narration.')
@@ -350,6 +358,9 @@ def test_source_bound_reader_open_project_preserves_lineage_before_replacing_pla
         started.assert_called_once()
     assert not reader.scheduler.pending and all(hold.closed for hold in reader.progress.holds)
     assert current.text == current.source_text and path.read_bytes() == before
+    if binding == 'pre_release_same':
+        assert any('pre-release reading-project format' in message and 'Save As' in message
+                   for message in reader.reports)
 
 
 def test_studio_explicit_voice_selection_creates_independent_parent_selection(reader):

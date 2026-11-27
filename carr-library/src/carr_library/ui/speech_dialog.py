@@ -45,6 +45,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 document = recovered.document
                 text = document.text
                 recovery_notice = 'Recovered your saved reading draft and voice settings. '
+            if document.format_notice:
+                recovery_notice += document.format_notice
+                # The earlier dialect is imported in memory; retain its saved
+                # recovery bytes until the user explicitly writes a new copy.
+                draft_store = None
     except (OSError, ValueError, RuntimeError) as exc:
         recovery_notice = f'Reading-draft recovery is unavailable: {exc}. Save As remains available. '
         draft_store = None
@@ -203,14 +208,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 detached = False
                 if draft_store is not None:
                     from .research_actions import NativeDialogs
-                    recovered, draft_store, detached = open_source_draft(source, draft_store,
-                        guard=source_guard, choose=lambda: NativeDialogs().choose(dialog,
+
+                    def choose_source_draft():
+                        nonlocal recovery_notice
+                        recovery_notice += ('Previous draft has no matching source lineage and was preserved. '
+                                            'Use Save As for this new copy. ')
+                        return NativeDialogs().choose(dialog,
                             'Recover saved reading draft',
                             'The saved draft has a different or unrecorded source identity. '
                             'Choose how to continue. The saved draft stays unchanged; '
                             'recovering it never attaches it to the current source.',
                             ('Open saved draft as a separate reading copy',
-                             'Read the current source and keep the saved draft')))
+                             'Read the current source and keep the saved draft'))
+
+                    recovered, draft_store, detached = open_source_draft(source, draft_store,
+                        guard=source_guard, choose=choose_source_draft)
                     document = recovered.document
                 else:
                     document = source.reading_document()
@@ -221,6 +233,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     source_loader = None
                     recovery_notice = ('Recovered the saved draft separately. Its original recovery file '
                                        'is unchanged. Use Save As to keep a portable reading project. ')
+                if document.format_notice:
+                    recovery_notice += document.format_notice
+                    # Resolve exact source identity before disabling recovery:
+                    # the imported draft remains readable without replacing it.
+                    draft_store = None
                 editor.ChangeValue(document.text)
                 source_loaded = True
                 if detached:
@@ -413,7 +430,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path, playback_generation
+        nonlocal document, save_path, playback_generation, draft_store, recovery_notice
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -445,10 +462,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
+            if document.format_notice:
+                draft_store = None
+                save_path = None
+                recovery_notice = document.format_notice
             editor.ChangeValue(document.text)
             sync_document()
             editor.SetFocus()
-            report('Reading copy opened. Original text is retained separately; no quotation was approved.')
+            report(recovery_notice + 'Reading copy opened. Original text is retained separately; no quotation was approved.')
         except Exception as exc:
             report(str(exc), focus=True)
 
