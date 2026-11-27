@@ -68,6 +68,65 @@ def save_all(frame, event=None):
     return started
 
 
+
+_EDIT_COMMANDS = (
+    ('edit.undo', '&Undo', 'Undo'), ('edit.redo', '&Redo', 'Redo'),
+    ('edit.cut', 'Cu&t', 'Cut'), ('edit.copy', '&Copy', 'Copy'),
+    ('edit.paste', '&Paste', 'Paste'), ('edit.select_all', 'Select &all', 'SelectAll'),
+)
+
+
+def recover_current_note(frame, event=None):
+    """Open the existing scoped recovery review; never commit a recovered draft."""
+    if getattr(frame, '_closing', False):
+        return False
+    panel = getattr(frame, 'evidence', None)
+    recover = getattr(panel, 'recover_draft', None)
+    if not callable(recover):
+        frame.report('Open the saved evidence whose research note you want to recover.')
+        return False
+    recover()
+    return True
+
+
+def edit_current_text(frame, action, event=None):
+    """Route an explicit menu command to this window's focused native control."""
+    if action not in {entry[2] for entry in _EDIT_COMMANDS}:
+        raise ValueError('Choose an existing native text-editing action.')
+    if getattr(frame, '_closing', False):
+        return False
+    import wx
+    try:
+        target = wx.Window.FindFocus()
+        owner, seen = target, set()
+        while owner is not None and owner is not frame and id(owner) not in seen:
+            seen.add(id(owner))
+            parent = getattr(owner, 'GetParent', None)
+            owner = parent() if callable(parent) else None
+        if owner is not frame:
+            frame.report('Choose a text control in this window before using Edit.')
+            return False
+        method = getattr(target, action, None)
+        if not callable(method):
+            frame.report('This command is available in a text control that supports it.')
+            return False
+        if action in {'Undo', 'Redo', 'Cut', 'Paste'}:
+            editable = getattr(target, 'IsEditable', None)
+            if not callable(editable) or not editable():
+                frame.report('The selected text is read only. Its contents were kept.')
+                return False
+        available = getattr(target, 'Can' + action, None)
+        if callable(available) and not available():
+            frame.report('This editing action is not available for the current selection.')
+            return False
+        method()
+        return True
+    except RuntimeError as error:
+        # A destroyed native control cannot acquire another window's focus.
+        frame.report('The selected text control is no longer available: ' + str(error))
+        return False
+
+
 @dataclass
 class MenuBinding:
     command: Command
@@ -289,19 +348,31 @@ def install_productivity_actions(frame):
         return install_keyboard_settings(frame)
     import wx
 
-    def append(menu, label, handler):
+    def append(menu, label, handler, *, identity=None):
         item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, handler, item)
+        if identity is not None:
+            from .command_registry import CommandSpec
+            from .keyboard_settings import register_menu_command
+            register_menu_command(frame, CommandSpec(identity, label.replace('&', ''), 'main'), item)
+        return item
 
     narration = NarrationActions(frame)
     file_menu = wx.Menu()
     append(file_menu, '&Save current changes\tCtrl+S', lambda event: save_current(frame, event))
     append(file_menu, 'Save &all changes\tCtrl+Shift+S', lambda event: save_all(frame, event))
+    append(file_menu, 'Recover research-note draft...', lambda event: recover_current_note(frame, event),
+           identity='file.recover_note')
     file_menu.AppendSeparator()
     append(file_menu, '&New reading copy...', narration.new)
     append(file_menu, '&Import text as a reading copy...', narration.import_text)
     append(file_menu, '&Open saved reading copy...', narration.reopen)
     frame.menu_bar.Insert(0, file_menu, '&File')
+    edit_menu = wx.Menu()
+    for identity, label, action in _EDIT_COMMANDS:
+        append(edit_menu, label, lambda event, action=action: edit_current_text(frame, action, event),
+               identity=identity)
+    frame.menu_bar.Insert(1, edit_menu, '&Edit')
     reading = frame.menu_bar.FindMenu('Reading')
     if reading >= 0:
         menu = frame.menu_bar.GetMenu(reading)
