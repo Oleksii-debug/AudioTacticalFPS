@@ -295,19 +295,29 @@ def export_bibliography(frame):
             format = ('csl-json', 'ris', 'bibtex')[index]
         finally:
             dialog.Destroy()
-        if not _current_scope(frame, library, workspace):
-            raise ValueError('Library selection changed. Open the bibliography command again.')
+        def selected_scope():
+            if not _current_scope(frame, library, workspace):
+                raise ValueError('Library selection changed. Open the bibliography command again.')
+
+        selected_scope()
         approval = NativeDialogs().approve_export(frame, path, private_root=library.root, wx_module=wx)
         if approval is None:
             return
+        selected_scope()
+
+        def export_cancelled():
+            selected_scope()
+            return frame.cancel_event.is_set()
 
         def operation():
+            selected_scope()
             text = library.export_bibliography(workspace, collection=collection, format=format,
                                                cancelled=frame.cancel_event.is_set)
+            selected_scope()
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
             return write_export(path, text, private_root=library.root,
-                                cancelled=frame.cancel_event.is_set, approval=approval)
+                                cancelled=export_cancelled, approval=approval)
 
         def done(result):
             if _current_scope(frame, library, workspace):
@@ -333,18 +343,28 @@ def export_research_outline(frame):
             path = Path(dialog.GetPath())
         finally:
             dialog.Destroy()
-        if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
-            raise ValueError('Topic selection changed. Open the outline command again.')
+        def selected_scope():
+            if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
+                raise ValueError('Topic selection changed. Open the outline command again.')
+
+        selected_scope()
         approval = NativeDialogs().approve_export(frame, path, private_root=library.root, wx_module=wx)
         if approval is None:
             return
+        selected_scope()
+
+        def export_cancelled():
+            selected_scope()
+            return frame.cancel_event.is_set()
 
         def operation():
+            selected_scope()
             text = library.export_outline(workspace, topic, cancelled=frame.cancel_event.is_set)
+            selected_scope()
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
             return write_export(path, text, private_root=library.root,
-                                cancelled=frame.cancel_event.is_set, approval=approval)
+                                cancelled=export_cancelled, approval=approval)
 
         def done(result):
             if frame.library is library and frame.active == (workspace, topic):
