@@ -171,21 +171,22 @@ def run_native(source=None, timeout=120):
                           all(not Path(origin).is_relative_to(checkout) for origin in origins.values()))
 
                 menu = wx.Menu()
-                action = menu.Append(wx.ID_ANY, test_caption + '\tCtrl+Shift+J')
+                action = menu.Append(wx.ID_ANY, test_caption + '\tCtrl+Shift+F7')
                 frame.GetMenuBar().Append(menu, '&Probe')
                 frame.Bind(wx.EVT_MENU, lambda event: calls.append(event.GetId()), action)
                 manager = frame.keyboard_commands
-                manager.register_menu_command(CommandSpec(test_id, test_caption, 'main', 'Ctrl+Shift+J'), action)
+                manager.register_menu_command(CommandSpec(test_id, test_caption, 'main', 'Ctrl+Shift+F7'), action)
                 check('extension command uses the production stable-ID registry', manager.available(test_id))
                 keymap = manager.store.path
 
-                def host_key(letter):
+                # Function keys have no text-control character fallback when unassigned.
+                def host_key(keycode):
                     frame.Raise()
                     frame._restore_note_focus()
                     focus(frame.evidence.note)
-                    press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                    press(keycode, wx.MOD_CONTROL | wx.MOD_SHIFT)
 
-                host_key('J')
+                host_key(wx.WXK_F7)
                 check('actual default shortcut dispatches the current native menu handler',
                       pump(lambda: len(calls) == 1) and calls == [action.GetId()])
 
@@ -221,39 +222,39 @@ def run_native(source=None, timeout=120):
                     return result
 
                 def remap(dialog):
-                    dialog.shortcut.SetValue('Ctrl+Shift+K')
+                    dialog.shortcut.SetValue('Ctrl+Shift+F8')
                     activate(button(dialog.dialog, caption='Assign shortcut'))
                     check('native Assign edits a draft before persistence',
-                          dialog.draft[test_id] == 'Ctrl+Shift+K'
-                          and manager.shortcut(test_id) == 'Ctrl+Shift+J' and not keymap.exists())
+                          dialog.draft[test_id] == 'Ctrl+Shift+F8'
+                          and manager.shortcut(test_id) == 'Ctrl+Shift+F7' and not keymap.exists())
                     activate(button(dialog.dialog, identifier=wx.ID_OK))
 
                 check('native Save closes the settings dialog successfully', settings_session(remap))
                 check('saved native settings persist a semantic command ID and update the menu',
-                      KeymapStore(keymap).load()[test_id] == 'Ctrl+Shift+K'
-                      and action.GetItemLabel().endswith('\tCtrl+Shift+K'))
-                host_key('J')
+                      KeymapStore(keymap).load()[test_id] == 'Ctrl+Shift+F8'
+                      and action.GetItemLabel().endswith('\tCtrl+Shift+F8'))
+                host_key(wx.WXK_F7)
                 check('old native menu accelerator stops after remapping', len(calls) == 1)
-                host_key('K')
+                host_key(wx.WXK_F8)
                 check('new native menu accelerator dispatches exactly once', pump(lambda: len(calls) == 2))
 
                 action.Enable(False)
-                host_key('K')
+                host_key(wx.WXK_F8)
                 check('actual shortcut cannot dispatch a disabled native menu item',
                       len(calls) == 2 and not manager.available(test_id))
                 action.Enable(True)
                 before = keymap.read_bytes()
 
                 def cancel(dialog):
-                    dialog.shortcut.SetValue('Ctrl+Alt+J')
+                    dialog.shortcut.SetValue('Ctrl+Alt+F7')
                     activate(button(dialog.dialog, caption='Assign shortcut'))
                     check('cancel probe has an unapplied native settings draft',
-                          dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                          dialog.draft[test_id] == 'Ctrl+Alt+F7' and manager.shortcut(test_id) == 'Ctrl+Shift+F8')
                     press(wx.WXK_ESCAPE)
 
                 check('actual Escape cancels the native settings dialog', not settings_session(cancel))
                 check('Cancel preserves saved bindings and the complete unsaved evidence note',
-                      keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K' and preserved())
+                      keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+F8' and preserved())
 
                 def conflict(dialog):
                     dialog.shortcut.SetValue('Ctrl+N')
@@ -262,7 +263,7 @@ def run_native(source=None, timeout=120):
                           dialog.dialog.IsModal() and 'not saved' in dialog.status.GetValue().lower()
                           and 'both' in dialog.status.GetValue().lower())
                     check('failed native Save preserves the previous file, binding, source, and note',
-                          keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K'
+                          keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+F8'
                           and preserved())
                     press(wx.WXK_ESCAPE)
 
@@ -274,7 +275,7 @@ def run_native(source=None, timeout=120):
 
                 check('native settings support explicit unassignment', settings_session(unassign)
                       and manager.shortcut(test_id) == '' and '\t' not in action.GetItemLabel())
-                host_key('K')
+                host_key(wx.WXK_F8)
                 check('unassigned native accelerator no longer dispatches', len(calls) == 2)
 
                 launcher_errors = []
@@ -308,14 +309,14 @@ def run_native(source=None, timeout=120):
                 def reset(dialog):
                     activate(button(dialog.dialog, caption='Reset selected'))
                     check('native reset selects the original command shortcut',
-                          dialog.shortcut.GetValue() == 'Ctrl+Shift+J')
+                          dialog.shortcut.GetValue() == 'Ctrl+Shift+F7')
                     activate(button(dialog.dialog, identifier=wx.ID_OK))
 
                 check('native settings save the reset shortcut', settings_session(reset)
-                      and manager.shortcut(test_id) == 'Ctrl+Shift+J')
-                host_key('K')
+                      and manager.shortcut(test_id) == 'Ctrl+Shift+F7')
+                host_key(wx.WXK_F8)
                 check('reset removes the previously custom native accelerator', len(calls) == 3)
-                host_key('J')
+                host_key(wx.WXK_F7)
                 check('reset restores the original native accelerator', pump(lambda: len(calls) == 4))
                 focus(frame.evidence.note)
                 frame.evidence.note.SetSelection(0, 0)
