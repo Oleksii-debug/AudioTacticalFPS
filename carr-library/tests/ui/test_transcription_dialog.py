@@ -304,7 +304,8 @@ def test_closed_view_drops_queued_progress_and_completion(setup):
     setup.controller.start()
     pending = setup.host.launch()
     pending[2].join(3)
-    setup.controller.closed = True
+    setup.controller.dispose()
+    assert setup.controller.closed and setup.controller._token is None
     status = setup.controller.status
     for callback in setup.progress:
         callback()
@@ -467,3 +468,23 @@ def test_cancel_during_post_run_validation_returns_unverified_metadata_promptly(
     assert setup.service.record['status'] == 'complete'
     assert setup.controller.record['status'] == 'unverified'
     assert setup.controller.outputs == []
+
+
+
+def test_dispose_requests_background_stop_and_never_touches_view_again(setup):
+    ready(setup)
+    setup.service.wait_for_stop = True
+    setup.controller.start()
+    pending = setup.host.launch()
+    assert setup.service.started.wait(1)
+    setup.controller.dispose()
+    changes = list(setup.changes)
+    assert not setup.host.cancel_event.is_set()
+    result = setup.host.finish(pending)['value']
+    for callback in setup.progress:
+        callback()
+    assert result['status'] == 'cancelled'
+    assert setup.service.record['status'] == 'cancelled'
+    assert setup.service.controls == ['run']
+    assert setup.controller.closed and setup.controller._token is None
+    assert setup.controller.record is None and setup.changes == changes
