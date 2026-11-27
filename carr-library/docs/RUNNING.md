@@ -83,6 +83,40 @@ python -m carr_library --data-dir "D:\Research data"
 `--self-test` uses a temporary synthetic library. It does not import or upload
 your documents. Search and library data remain on the local computer.
 
+## Import and read additional document formats
+
+Choose **Library, Import books** or press **Ctrl+I** for individual files.
+**Library, Import Center: files, folders and queues** also prepares folder plans
+and saves queues for continuation after interruption. Supported additional
+inputs are HTML/HTM/XHTML, Markdown, EML, FB2/FB3, ODT/ODS/ODP, PPTX and XLSX.
+Select an imported book and press **Ctrl+R** to read its logical text segments;
+normal library search uses the same stored text.
+
+The import details explain actual omissions, such as email attachments, formulas
+and hidden spreadsheet content. These formats retain byte-exact originals and
+unverified extracted text. They do not enable verified quotation commands or
+invent printed pagination. Active-content originals are not launched in external
+viewers; use Reading Desk. **Help, Document formats** and
+[the format guide](DOCUMENT_FORMATS_V3.md) describe the supported subsets and
+the current 64 MiB source limit. Legacy converters and unsupported formats are
+not downloaded automatically.
+
+## Look up identifiers and obtain an open source
+
+Choose **Academic, DOI and ISBN lookup and open-access sources**. Select one
+identifier and explicitly enable its metadata request; network access starts
+disabled. Review the returned fields and provider provenance before saving a
+reference or applying suggestions to an existing book. ISBN lookup requests
+book metadata only. DOI lookup can also offer a provider-reported open-access
+PDF. Downloading requires separate confirmation of the source and your right
+to obtain it, plus a new local destination folder.
+
+The source download and normal library import have separate results. If import
+needs review or fails, the PDF and provenance remain available for Import
+Center without another download. A metadata record never verifies quotations.
+[The acquisition guide](ACADEMIC_ACQUISITION.md) documents the provider choices,
+headless commands, privacy boundaries and recovery steps.
+
 ## Open original sources and export research
 
 The **Bibliography** menu adds reviewed local RIS/CSL-JSON metadata intake and

@@ -159,6 +159,21 @@ def test_invalid_configuration_is_rejected_without_network(settings):
     assert not transport.requests
 
 
+@pytest.mark.parametrize('setting', ['timeout', 'cache_seconds', 'min_interval_seconds'])
+@pytest.mark.parametrize('sign', [-1, 1])
+def test_giant_integer_configuration_is_rejected_without_float_overflow(setting, sign):
+    transport = Transport()
+    with pytest.raises(ValueError):
+        DoiMetadataClient(transport=transport, **{setting: sign * 10**400})
+    assert not transport.requests
+
+
+@pytest.mark.parametrize('sign', [-1, 1])
+def test_giant_integer_transport_timeout_is_a_validation_error(sign):
+    with pytest.raises(ValueError):
+        MetadataRequest('crossref', DOI, timeout=sign * 10**400)
+
+
 @pytest.mark.parametrize(("given", "expected"), [
     ("  DOI:10.5555/Mixed.Case  ", "10.5555/mixed.case"),
     ("https://doi.org/10.5555%2FMixed.Case", "10.5555/mixed.case"),

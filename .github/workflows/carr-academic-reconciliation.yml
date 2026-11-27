@@ -80,12 +80,18 @@ jobs:
             tests/extract/test_document_formats_text.py \
             tests/extract/test_document_formats_xml.py \
             tests/e2e/test_extended_document_workflows.py \
+            tests/acquisition/test_acquisition_cli.py \
+            tests/acquisition/test_acquisition_security.py \
+            tests/acquisition/test_acquisition_workflow.py \
+            tests/acquisition/test_identifier_lookup_security.py \
+            tests/acquisition/test_providers.py \
             tests/storage/test_library_backup_reading_state.py \
             tests/storage/test_v3_state_backup.py \
             tests/storage/test_state_backup_portability.py \
             tests/storage/test_pending_backup.py \
             tests/storage/test_complete_pending_backup.py \
             tests/storage/test_studio_input_authority.py \
+            tests/storage/test_durable_state_read.py \
             tests/storage/test_backup_v4_review.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

@@ -62,14 +62,65 @@ def _unique(pairs):
     return value
 
 
+def _open_windows_read(path):
+    """Keep atomic publishers independent of the lifetime of a JSON reader."""
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = (wintypes.HANDLE,)
+    close.restype = wintypes.BOOL
+    # GENERIC_READ; share read/write/delete; OPEN_EXISTING. Opening the reparse
+    # point itself prevents a final-component link swap from following a link.
+    handle = create(str(path), 0x80000000, 0x00000007, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(
+            handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+    except BaseException:
+        close(handle)
+        raise
+    # open_osfhandle transfers ownership: only the CRT descriptor may close the
+    # handle now, including when construction of the Python stream fails.
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _open_json_read(path):
+    return _open_windows_read(path) if os.name == 'nt' else path.open('rb')
+
+
 def read_json(path):
     path = local_path(path, exists=True)
     if regular(path).st_size > MAX_JSON_BYTES:
         raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
+    with _open_json_read(path) as stream:
+        opened = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(opened.st_mode)
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or opened.st_nlink not in (0, 1)):
+            raise ValueError('State must use regular local files, without links.')
+        if opened.st_size > MAX_JSON_BYTES:
+            raise ValueError('State exceeds its configured JSON budget.')
         raw = stream.read(MAX_JSON_BYTES + 1)
+        finished = os.fstat(stream.fileno())
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')
+    # A replacement may unlink this old snapshot while it is open. Its path,
+    # link count and change time can change; its bytes and file identity cannot.
+    fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
+    if any(getattr(opened, name) != getattr(finished, name) for name in fields):
+        raise ValueError('State changed while it was being read.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
 

@@ -135,8 +135,8 @@ class MetadataRequest:
         if self.provider not in _HOSTS:
             raise ValueError("Select Crossref or Unpaywall explicitly.")
         object.__setattr__(self, "doi", normalize_doi(self.doi))
-        if (type(self.timeout) not in (float, int) or not math.isfinite(self.timeout)
-                or not 0.1 <= self.timeout <= 60):
+        if (type(self.timeout) not in (float, int) or not 0.1 <= self.timeout <= 60
+                or not math.isfinite(self.timeout)):
             raise ValueError("The DOI request time budget must be between 0.1 and 60 seconds.")
         if type(self.max_response_bytes) is not int or not 1024 <= self.max_response_bytes <= 8_000_000:
             raise ValueError("The DOI response budget must be between 1024 and 8000000 bytes.")
@@ -729,7 +729,7 @@ class DoiMetadataClient:
             MetadataRequest(provider, "10.5555/validation", timeout, max_response_bytes,
                             email if provider == "unpaywall" else None)
         for value, maximum in ((cache_seconds, 86_400), (min_interval_seconds, 60)):
-            if type(value) not in (float, int) or not math.isfinite(value) or not 0 <= value <= maximum:
+            if type(value) not in (float, int) or not 0 <= value <= maximum or not math.isfinite(value):
                 raise ValueError("Invalid DOI cache or request-spacing setting.")
         if transport is not None and not callable(transport):
             raise ValueError("The metadata transport must be callable.")
