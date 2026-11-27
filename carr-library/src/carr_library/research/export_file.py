@@ -210,11 +210,17 @@ def _recheck_scope(path, private_root, snapshot):
         raise ValueError('The export destination changed. Choose the destination again.')
 
 
-def _destination(path, private_root, *, cancelled=lambda: False, reject_existing=None):
+def _destination(path, private_root, *, cancelled=lambda: False, reject_existing=None,
+                 expected=None):
     if cancelled():
         raise TimeoutError('Export cancelled; the destination was not changed.')
     snapshot = _inspect_destination(path, private_root)
     target, parent_identity, state = snapshot
+    if expected is not None:
+        if ((target, parent_identity) != expected[:2]
+                or (state is None) != (expected[2] is None)
+                or (state is not None and state != expected[2][:len(state)])):
+            raise ValueError('The export destination changed. Choose the destination again.')
     if state is None:
         return snapshot
     # Create-only admission permits metadata checks, never reading a competing
@@ -224,7 +230,11 @@ def _destination(path, private_root, *, cancelled=lambda: False, reject_existing
     info = target.lstat()
     if _file_state(info) != state or _linked(info):
         raise ValueError('The export destination changed. Choose the destination again.')
+    # The reviewed file's basic identity must match before opening native
+    # metadata; a native ChangeTime mismatch likewise grants no content read.
     native = (_windows_change_time(target),) if os.name == 'nt' else ()
+    if expected is not None and (*state, *native) != expected[2][:-1]:
+        raise ValueError('The export destination changed. Choose the destination again.')
     fingerprint = _content_fingerprint(target, info, cancelled=cancelled,
         check_scope=lambda: _recheck_scope(path, private_root, snapshot))
     _recheck_scope(path, private_root, snapshot)
@@ -331,8 +341,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         reject_existing = ValueError('The export destination changed. Choose the destination again.')
     elif require_absent:
         reject_existing = FileExistsError('The export destination already exists; replacement was not authorized.')
+    expected = ((approval.target, approval.parent_identity, approval.state)
+                if approval is not None else None)
     target, parent_identity, previous = _destination(requested, private, cancelled=cancelled,
-                                                     reject_existing=reject_existing)
+                                                     reject_existing=reject_existing, expected=expected)
     # Absence cannot authorize replacement of a competitor created later.
     require_absent = require_absent or previous is None
     if approval is not None:
@@ -358,7 +370,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         reject_existing = (ValueError('The export destination changed. Choose the destination again.')
                            if require_absent else None)
         checked_target, checked_parent, current = _destination(requested, private, cancelled=cancelled,
-                                                               reject_existing=reject_existing)
+            reject_existing=reject_existing, expected=(target, parent_identity, previous))
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
