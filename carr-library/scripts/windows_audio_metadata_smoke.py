@@ -207,6 +207,19 @@ def _run_native(arguments):
             check('native key and modifiers released', simulator.KeyUp(*held[0]))
             held[0] = None
 
+    def current_metadata_dialog(parent):
+        """Select the live modal, excluding a previous owner's pending native deletion."""
+        matches = [window for window in wx.GetTopLevelWindows()
+            if window and isinstance(window, wx.Dialog)
+            and window.GetTitle() == 'Audio metadata and cover'
+            and window.GetParent() is parent and window.IsModal()
+            and not getattr(window, '_destroy_requested', False)
+            and getattr(window, 'metadata_controller', None) is not None
+            and not window.metadata_controller.closed]
+        if len(matches) != 1:
+            raise AssertionError('Expected exactly one live metadata modal for this owner.')
+        return matches[0]
+
     def metadata_dialog():
         return next((window for window in wx.GetTopLevelWindows() if isinstance(window, wx.Dialog)
                      and window.GetTitle() == 'Audio metadata and cover' and window.GetParent() is frame), None)
@@ -501,9 +514,7 @@ def _run_native(arguments):
                     def begin():
                         nonlocal window
                         try:
-                            window = next(item for item in wx.GetTopLevelWindows()
-                                if isinstance(item, wx.Dialog) and item.GetTitle() == 'Audio metadata and cover'
-                                and item.GetParent() is host)
+                            window = current_metadata_dialog(host)
                             controller = window.metadata_controller
                             native_id = window.GetId()
                             notify = controller.notify
