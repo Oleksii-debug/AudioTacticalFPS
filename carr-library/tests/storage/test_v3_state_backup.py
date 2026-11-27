@@ -403,3 +403,53 @@ def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_pat
     with pytest.raises(FileNotFoundError, match='disappeared'):
         backup_sidecars._capture(root)
     assert probes == 2
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_production_operation_identity_roundtrips_exact_receipt(tmp_path, legacy):
+    app = LibraryApp(tmp_path / 'data')
+    app.create_workspace('Synthetic recovery')
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    service = ProductionService(app.root / 'state/studio', voices=InventoryOnly())
+    project = service.create('Narrator: Preserve the original options.', voice_ids=('test:inventory',))
+    job = service.submit(project, outputs, format='flac', stems=True)
+    receipt = service.jobs_root / job / 'job.json'
+    saved = service.get(job)
+    assert saved['status'] == 'pending'
+    assert len(saved['operation_sha256']) == 64
+    if legacy:
+        del saved['operation_sha256']
+        atomic_json(receipt, saved, replace=True)
+    raw = receipt.read_bytes()
+    relative = receipt.relative_to(app.root)
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    assert (folder / relative).read_bytes() == raw
+    recovered = restore_backup(folder, tmp_path / 'restored', digest)
+    assert (recovered / relative).read_bytes() == raw
+    reopened = ProductionService(recovered / 'state/studio', voices=InventoryOnly())
+    assert reopened.get(job) == saved
+    assert receipt.read_bytes() == raw
+
+
+@pytest.mark.parametrize('change', [{'format': 'wav'}, {'stems': False},
+                                   {'operation_sha256': '0' * 64},
+                                   {'operation_sha256': None}])
+def test_production_operation_identity_rejects_invalid_backup(tmp_path, change):
+    app = LibraryApp(tmp_path / 'data')
+    app.create_workspace('Synthetic recovery')
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    service = ProductionService(app.root / 'state/studio', voices=InventoryOnly())
+    project = service.create('Narrator: Preserve the original options.', voice_ids=('test:inventory',))
+    job = service.submit(project, outputs, format='flac', stems=True)
+    receipt = service.jobs_root / job / 'job.json'
+    saved = service.get(job)
+    atomic_json(receipt, {**saved, **change}, replace=True)
+    raw = receipt.read_bytes()
+    folder = tmp_path / 'backup'
+    with pytest.raises(ValueError, match='operation options changed|digest'):
+        create_backup(app, folder)
+    assert not folder.exists()
+    assert receipt.read_bytes() == raw
