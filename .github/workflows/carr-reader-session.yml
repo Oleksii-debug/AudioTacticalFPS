@@ -152,9 +152,10 @@ jobs:
         run: |
           $ruleName = "CARR-Reader-Session-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Program $env:CARR_READER_SESSION_PYTHON -Profile Any -Enabled True -ErrorAction Stop | Out-Null
-          $rule = Get-NetFirewallRule -Name $ruleName -ErrorAction Stop
+          $rule = Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleName -ErrorAction Stop
           $filter = $rule | Get-NetFirewallApplicationFilter -ErrorAction Stop
-          $enabled = @((Get-NetFirewallProfile -ErrorAction Stop) | Where-Object { -not $_.Enabled }).Count -eq 0
+          $profiles = @(Get-NetFirewallProfile -PolicyStore ActiveStore -ErrorAction Stop)
+          $enabled = $profiles.Count -eq 3 -and @($profiles | Where-Object { $_.Enabled.ToString() -ne 'True' }).Count -eq 0
           if ($rule.Enabled.ToString() -ne 'True' -or $rule.Action.ToString() -ne 'Block' -or $rule.Direction.ToString() -ne 'Outbound' -or $filter.Program -ne $env:CARR_READER_SESSION_PYTHON -or -not $enabled) { throw 'Historical reader firewall policy was not applied.' }
           @{ status = 'PASS'; enabled = $true; profiles_enabled = $enabled; direction = 'Outbound'; action = 'Block'; program = $filter.Program; name = $ruleName } |
             ConvertTo-Json | Set-Content -Encoding utf8 reader-session-ci-results/native-firewall.json
@@ -181,6 +182,36 @@ jobs:
         run: |
           & $env:CARR_READER_SESSION_PYTHON -I -B -X utf8 scripts/windows_legacy_reader_session_smoke.py --native 2>&1 | Tee-Object 'reader-session-ci-results/native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Release and verify this run's exact native firewall rule
+        id: offline-cleanup
+        if: always()
+        timeout-minutes: 3
+        run: |
+          $ruleName = "CARR-Reader-Session-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $qualified = Test-Path -LiteralPath 'reader-session-ci-results/native-firewall.json'
+          try {
+            try {
+              if ($qualified) {
+                $rule = @(Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction Stop | Where-Object { $_.Name -eq $ruleName })
+                if ($rule.Count -ne 1) { throw 'The exact native rule disappeared or became ambiguous during qualification.' }
+                $filter = $rule[0] | Get-NetFirewallApplicationFilter -ErrorAction Stop
+                $profiles = @(Get-NetFirewallProfile -PolicyStore ActiveStore -ErrorAction Stop)
+                if ($rule[0].Enabled.ToString() -ne 'True' -or $rule[0].Action.ToString() -ne 'Block' -or $rule[0].Direction.ToString() -ne 'Outbound' -or $filter.Program -ne $env:CARR_READER_SESSION_PYTHON -or $profiles.Count -ne 3 -or @($profiles | Where-Object { $_.Enabled.ToString() -ne 'True' }).Count -ne 0) { throw 'Native firewall identity or enabled profiles changed during qualification.' }
+              }
+            } finally {
+              $owned = @(Get-NetFirewallRule -PolicyStore PersistentStore -ErrorAction Stop | Where-Object { $_.Name -eq $ruleName })
+              if ($owned.Count -gt 0) { Remove-NetFirewallRule -PolicyStore PersistentStore -Name $ruleName -ErrorAction Stop }
+              $remaining = @(Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction Stop | Where-Object { $_.Name -eq $ruleName })
+              if ($remaining.Count -ne 0) { throw 'The run-owned native firewall rule is still active.' }
+            }
+            @{ status = 'PASS'; qualified_applied = [bool]$qualified; rule_name = $ruleName; absent = $true } |
+              ConvertTo-Json | Set-Content -Encoding utf8 'reader-session-ci-results/native-firewall-cleanup.json'
+          } catch {
+            @{ status = 'FAIL'; qualified_applied = [bool]$qualified; rule_name = $ruleName; absent = $false; reason = $_.Exception.Message } |
+              ConvertTo-Json | Set-Content -Encoding utf8 'reader-session-ci-results/native-firewall-cleanup.json'
+            throw
+          }
 
       - name: Require every exact source installed and native receipt
         if: always()
@@ -215,5 +246,3 @@ jobs:
         run: |
           $work = Join-Path $env:RUNNER_TEMP ("carr-reader-session-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
           if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
-          $ruleName = "CARR-Reader-Session-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction Continue
