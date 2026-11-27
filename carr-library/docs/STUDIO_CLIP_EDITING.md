@@ -131,3 +131,16 @@ Physical device and human NVDA/listening acceptance remain separate.
 Markers, loop preview, dry/wet controls, a complete effects-chain editor and
 recording pause/monitoring retain their own requirements. The added operations
 do not close the entire professional-studio acceptance group.
+
+## Saved effects and output rate
+
+Project schema 3 adds separately reviewed clip, speaking-role, scene and master
+chains. Use their named buttons in the clip editor to open the same native
+ordered-effects controls as audio conversion. **Preview without clip effects**
+keeps the saved selection/gain/pan/fades but bypasses only its effect chain.
+Split/join require bypassed processing; join additionally requires matching
+chains, source, gain/pan and contiguous boundaries. Undo retains the chain and
+publishes a new project revision. **Set master sample rate** validates all saved
+filter frequencies before saving. Opus requires 48000 Hz explicitly.
+See [audio_engine.md](audio_engine.md) for processing order, stem semantics,
+legacy-project identity and measured candidate acceptance checks.

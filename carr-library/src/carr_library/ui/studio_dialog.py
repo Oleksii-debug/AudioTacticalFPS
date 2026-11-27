@@ -58,23 +58,28 @@ class StudioController:
                                    mode=previous_project.mode if previous_project else 'faithful',
                                    project_id=previous_project.id if previous_project else None)
         if previous_project and text != previous_project.original_script:
-            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues}
+            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues or scene.effects}
             current = {scene.id: scene for scene in project.scenes}
             if any(identity not in current or current[identity].title != old.title
                    for identity, old in attached.items()):
                 raise ValueError('A scene with attached audio changed its identity. '
                                  'Move or remove its clips in the scene audio editor before changing scene structure.')
-            scenes = tuple(replace(scene, cues=attached[scene.id].cues)
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues,
+                                   effects=attached[scene.id].effects)
                            if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
+            current_roles = {role.name.casefold() for role in project.roles}
+            if any(role.effects and name not in current_roles for name, role in previous.items()):
+                raise ValueError('A speaking role with saved effects was removed. Clear its effects in the scene editor before removing that role.')
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
                                   pan=previous[role.name.casefold()].pan,
                                   gain_db=previous[role.name.casefold()].gain_db,
                                   rate=previous[role.name.casefold()].rate,
-                                  volume=previous[role.name.casefold()].volume)
+                                  volume=previous[role.name.casefold()].volume,
+                                  effects=previous[role.name.casefold()].effects)
                           if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, scenes=scenes,
+            project = replace(project, roles=roles, scenes=scenes, effects=previous_project.effects,
                               sample_rate=previous_project.sample_rate,
                               schema=previous_project.schema, revision=previous_project.revision)
         if previous_project and project.to_dict() != previous_project.to_dict():

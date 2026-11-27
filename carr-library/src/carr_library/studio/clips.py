@@ -10,7 +10,7 @@ from ..audio.models import AudioBudget, AudioCancelled, finite
 from ..audio.process import publish_file
 from ..durable_state import local_path, regular, state_lock
 from .backup_inputs import _checked_digest, _stamp
-from .project import Cue, Project, Scene
+from .project import Cue, Project, Scene, _timeline_effects
 from .render import ProductionService
 
 
@@ -49,7 +49,8 @@ class ClipEditor:
         raise ValueError('Select a scene from this project.')
 
     def _save(self, project, scene):
-        updated = replace(project, schema=2, revision=project.revision + 1,
+        schema = max(project.schema, 3 if scene.effects or any(cue.effects for cue in scene.cues) else 2)
+        updated = replace(project, schema=schema, revision=project.revision + 1,
             scenes=tuple(scene if old.id == scene.id else old for old in project.scenes))
         return self._publish(project, updated)
 
@@ -192,11 +193,11 @@ class ClipEditor:
             source.id: replace(source, cues=remaining, minimum_duration=minimum),
             destination.id: replace(destination, cues=(*destination.cues, cue)),
         }
-        updated = replace(project, schema=2, revision=project.revision + 1,
+        updated = replace(project, schema=max(project.schema, 2), revision=project.revision + 1,
                           scenes=tuple(replacements.get(scene.id, scene) for scene in project.scenes))
         return self._publish(project, updated)
 
-    def preview(self, project, scene_id, clip_id, *, cancelled=lambda: False):
+    def preview(self, project, scene_id, clip_id, *, dry=False, cancelled=lambda: False):
         from ..audio.models import Track
         project = self._current(project)
         scene = self._scene(project, scene_id)
@@ -205,12 +206,54 @@ class ClipEditor:
             raise ValueError('Select an existing clip in this scene.')
         source = self.service._cue_source(cue)
         runtime = self.service._runtime()
+        if type(dry) is not bool:
+            raise ValueError('Choose explicitly whether to bypass clip effects for preview.')
         output = self.service.cache / ('clip-preview-' + uuid4().hex + '.wav')
         runtime.mix((Track(source, gain_db=cue.gain_db, pan=cue.pan, role=cue.role,
             trim_start=cue.trim_start, duration=cue.duration,
-            fade_in=cue.fade_in, fade_out=cue.fade_out),), output,
+            fade_in=cue.fade_in, fade_out=cue.fade_out,
+            effects=() if dry else cue.effects),), output,
             sample_rate=project.sample_rate, cancelled=cancelled)
         return output
+
+
+
+    def set_effects(self, project, scope, effects, *, scene_id=None, clip_id=None, role_id=None,
+                    cancelled=lambda: False):
+        """Persist one reviewed chain through the same revision/CAS/history owner."""
+        project = self._current(project)
+        chain = _timeline_effects(effects, project.sample_rate)
+        self._cancel(cancelled)
+        if scope == 'master':
+            updated = replace(project, schema=3, effects=chain)
+        elif scope == 'role':
+            if role_id not in {role.id for role in project.roles}:
+                raise ValueError('Choose an existing speaking role.')
+            updated = replace(project, schema=3, roles=tuple(
+                replace(role, effects=chain) if role.id == role_id else role for role in project.roles))
+        elif scope in ('scene', 'clip'):
+            scene = self._scene(project, scene_id)
+            if scope == 'scene':
+                changed = replace(scene, effects=chain)
+            else:
+                selected = self._selected(scene, clip_id)
+                changed = replace(scene, cues=tuple(
+                    replace(cue, effects=chain) if cue.id == selected.id else cue for cue in scene.cues))
+            updated = replace(project, schema=3, scenes=tuple(
+                changed if item.id == scene.id else item for item in project.scenes))
+        else:
+            raise ValueError('Choose clip, role, scene or master effects.')
+        if updated == project:
+            return project
+        self._cancel(cancelled)
+        return self._publish(project, replace(updated, revision=project.revision + 1))
+
+    def sample_rate(self, project, value):
+        project = self._current(project)
+        updated = replace(project, sample_rate=value)
+        if updated == project:
+            return project
+        return self._publish(project, replace(updated, revision=project.revision + 1))
 
 
     def _publish(self, before, after):
@@ -275,6 +318,8 @@ class ClipEditor:
         project = self._current(project)
         scene = self._scene(project, scene_id)
         cue = self._selected(scene, clip_id)
+        if any(effect.enabled for effect in cue.effects):
+            raise ValueError('Bypass the clip effect chain before splitting so its processing state is not reset silently.')
         if len(scene.cues) >= AudioBudget().max_inputs - 2:
             raise ValueError('This scene has reached its simultaneous audio input allowance.')
         info = self._validate_selection(cue, cancelled=cancelled)
@@ -302,6 +347,8 @@ class ClipEditor:
             raise ValueError('Choose two different clips to join.')
         selected = (self._selected(scene, first_id), self._selected(scene, second_id))
         left, right = sorted(selected, key=lambda item: (item.start, item.id))
+        if left.effects != right.effects or any(effect.enabled for effect in (*left.effects, *right.effects)):
+            raise ValueError('Join requires matching bypassed effect chains; active processing cannot be merged silently.')
         first = self._validate_selection(left, cancelled=cancelled)
         second = self._validate_selection(right, cancelled=cancelled)
         left_length = first.duration - left.trim_start if left.duration is None else left.duration
@@ -336,7 +383,7 @@ class ClipEditor:
                 if cue not in existing:
                     self._validate_selection(cue, cancelled=cancelled)
         self._cancel(cancelled)
-        restored = replace(snapshot, schema=2, revision=project.revision + 1)
+        restored = replace(snapshot, schema=max(project.schema, snapshot.schema, 2), revision=project.revision + 1)
         saved = self.service.projects.save(restored, expected_revision=project.revision,
                                           expected_fingerprint=project.fingerprint)
         stack.pop()

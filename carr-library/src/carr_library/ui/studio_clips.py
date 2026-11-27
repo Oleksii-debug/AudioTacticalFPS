@@ -25,6 +25,7 @@ class ClipDialog(wx.Dialog):
         self.editor = editor or ClipEditor(frame.library.root)
         self.library_root = frame.library.root
         self._destroy_when_closed = False
+        self._editor_closed = False
         self.projects = ()
         self.project = None
         self.pending = self.closing = self.closed = False
@@ -66,6 +67,8 @@ class ClipDialog(wx.Dialog):
         self.role = field('Track role', choices=list(ROLES))
         self.role.SetSelection(0)
         self.minimum = field('Minimum scene duration, seconds', wx.TextCtrl, value='1')
+        self.master_rate = field('Master sample rate in Hz: 16000, 22050, 24000, 44100 or 48000',
+                                 wx.TextCtrl, value='24000')
         self.status = field('Clip editing status', wx.TextCtrl,
             value='Choose a project or create one. No audio starts automatically.',
             style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 70))
@@ -81,6 +84,12 @@ class ClipDialog(wx.Dialog):
              ('paste', 'Paste copied clip...', self.paste_clip)),
             (('split', 'Split selected clip...', self.split_clip), ('join', 'Join adjacent clips...', self.join_clips),
              ('undo', 'Undo clip edit', self.undo), ('redo', 'Redo clip edit', self.redo)),
+            (('clip_effects', 'Clip effects...', self.clip_effects),
+             ('role_effects', 'Speaking role effects...', self.role_effects),
+             ('scene_effects', 'Scene effects...', self.scene_effects),
+             ('master_effects', 'Master effects...', self.master_effects)),
+            (('dry_preview', 'Preview without clip effects', self.preview_dry),
+             ('sample_rate', 'Set master sample rate', self.set_sample_rate)),
             (('stop', 'S&top playback', self.stop), ('cancel', 'Cancel operation', self.cancel),
              ('close', '&Close', self.close))):
             row = wx.BoxSizer(wx.HORIZONTAL)
@@ -117,6 +126,7 @@ class ClipDialog(wx.Dialog):
 
     def cancelled(self):
         return (self.frame.cancel_event.is_set() or self.closed or self.closing
+                or getattr(self.frame, '_closing', False)
                 or self.frame.library.root != self.library_root)
 
     def _run(self, title, operation, done):
@@ -159,6 +169,11 @@ class ClipDialog(wx.Dialog):
                 return operation()
             except AudioCancelled as exc:
                 raise InterruptedError(str(exc)) from exc
+            finally:
+                # Desktop shutdown suppresses UI completion callbacks. The
+                # worker still owns teardown after its operation has stopped.
+                if self.closing or self.closed or getattr(self.frame, '_closing', False):
+                    self._close_editor()
         try:
             self.frame.run_job(title, work, lambda result: finish(result), lambda error: finish(error=error))
             if self.pending and not self.frame.working:
@@ -214,6 +229,7 @@ class ClipDialog(wx.Dialog):
     def select_project(self, event=None):
         index = self.project_choice.GetSelection()
         self.project = self.projects[index] if 0 <= index < len(self.projects) else None
+        self.master_rate.ChangeValue(str(self.project.sample_rate if self.project else 24000))
         scenes = self.project.scenes if self.project else ()
         self.scene_choice.Set([scene.title for scene in scenes])
         self.scene_choice.SetSelection(0 if scenes else wx.NOT_FOUND)
@@ -436,7 +452,85 @@ class ClipDialog(wx.Dialog):
         self._run('Redoing the last clip edit', lambda: self.editor.history(
             project, forward=True, cancelled=self.cancelled), self._accept)
 
-    def preview(self, event=None):
+
+    def set_sample_rate(self, event=None):
+        try:
+            project = self.project
+            self._scene()
+            value = int(self.master_rate.GetValue())
+            return self._run('Saving master sample rate',
+                lambda: self.editor.sample_rate(project, value), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def clip_effects(self, event=None):
+        return self._effects('clip')
+
+    def role_effects(self, event=None):
+        return self._effects('role')
+
+    def scene_effects(self, event=None):
+        return self._effects('scene')
+
+    def master_effects(self, event=None):
+        return self._effects('master')
+
+    def _effects(self, scope):
+        try:
+            project, scene = self.project, self._scene()
+            arguments = {}
+            if scope == 'clip':
+                cue = self._clip()
+                initial = cue.effects
+                arguments = {'scene_id': scene.id, 'clip_id': cue.id}
+            elif scope == 'scene':
+                initial, arguments = scene.effects, {'scene_id': scene.id}
+            elif scope == 'master':
+                initial = project.effects
+            elif scope == 'role':
+                if not project.roles:
+                    raise ValueError('This project has no speaking roles.')
+                picker = wx.SingleChoiceDialog(self, 'Choose the speaking role whose effects will change.',
+                    'Speaking role effects', [role.name for role in project.roles])
+                try:
+                    if picker.ShowModal() != wx.ID_OK:
+                        return
+                    role = project.roles[picker.GetSelection()]
+                finally:
+                    picker.Destroy()
+                initial, arguments = role.effects, {'role_id': role.id}
+            else:
+                raise ValueError('Choose an existing effect scope.')
+
+            def inspect():
+                self.editor._current(project)
+                return self.editor.service._runtime().capabilities()['effects']
+
+            def reviewed(available):
+                from .effects_dialog import show_effect_chain
+                try:
+                    # Tempo would change the saved subtitle/clip timeline.
+                    # It remains available in the separate conversion workflow.
+                    available = tuple(kind for kind in available if kind != 'tempo')
+                    value = show_effect_chain(self, self.library_root, initial,
+                                              sample_rate=project.sample_rate, available=available)
+                    if value is None or self.cancelled():
+                        return
+                    self._run('Saving reviewed ' + scope + ' effects',
+                        lambda: self.editor.set_effects(project, scope, value,
+                            cancelled=self.cancelled, **arguments), self._accept)
+                except (ValueError, OSError, RuntimeError) as exc:
+                    self.message(exc)
+
+            return self._run('Checking installed ' + scope + ' effects', inspect, reviewed)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def preview_dry(self, event=None):
+        return self.preview(event, dry=True)
+
+
+    def preview(self, event=None, *, dry=False):
         try:
             project, scene, cue = self.project, self._scene(), self._clip()
             def play(path):
@@ -451,9 +545,13 @@ class ClipDialog(wx.Dialog):
                 play_when_quiet((progress,), lambda: self.player.play(path), schedule=wx.CallLater,
                     alive=lambda: not self.closed and not self.closing and generation == self.playback_generation,
                     on_error=lambda error: self.message(error))
-                self.message('Previewing saved clip settings without the leading scene silence. Stop ends playback.')
+                self.message(('Previewing with clip effects bypassed. ' if dry else 'Previewing saved clip effects. ')
+                             + 'Timing, gain, pan and fades are retained. Stop ends playback.')
+            options = {'cancelled': self.cancelled}
+            if dry:
+                options['dry'] = True
             self._run('Rendering saved clip preview', lambda: self.editor.preview(project, scene.id, cue.id,
-                cancelled=self.cancelled), play)
+                **options), play)
         except (ValueError, OSError) as exc:
             self.message(exc)
 
@@ -466,6 +564,11 @@ class ClipDialog(wx.Dialog):
         if self.pending:
             self.frame.cancel_event.set()
             self.message('Cancellation requested; waiting for the owned audio operation to finish.')
+
+    def _close_editor(self):
+        if not getattr(self, '_editor_closed', False):
+            self.editor.close()
+            self._editor_closed = True
 
     def close(self, event=None):
         if self.closed:
@@ -484,7 +587,7 @@ class ClipDialog(wx.Dialog):
                 event.Veto()
             return
         try:
-            self.editor.close()
+            self._close_editor()
         except Exception as exc:
             self.message(f'The editor has not completed cleanup: {exc}. Try Close again.')
             if event is not None and getattr(event, 'CanVeto', lambda: False)():

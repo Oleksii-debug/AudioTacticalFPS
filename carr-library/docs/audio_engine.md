@@ -126,6 +126,48 @@ keyboard actions, numeric/preset dialogs and the existing asynchronous audio
 conversion. These new gates need evidence from the exact candidate revision;
 their presence alone is not a completed Windows/NVDA or listening assessment.
 
+## Saved track, scene and master chains
+
+Open **Audio Studio → Edit scene audio clips**, then choose a saved Studio
+project. **Clip effects**, **Speaking role effects**, **Scene effects** and
+**Master effects** use the same ordered chain editor. Speaking-role effects
+process synthesized PCM before its placement; the accepted raw voice chunk
+stays reusable. Clip effects process the retained selection. Scene effects
+process that scene's mix; master effects process the assembled final mix.
+
+These saved chains use project schema 3. Schemas 1 and 2 keep their exact old
+serialized fields and fingerprints. Editing timing, moving/copying a clip,
+changing a script without removing its attached processing, undo/redo and full
+library backup retain schema-3 settings. Every edit uses the existing project
+revision and fingerprint check. A role or scene carrying effects cannot silently
+disappear when its script structure is changed.
+
+Track stems include their own processing, while scene and master chains apply
+only to their respective mixes. Delivered chapter WAVs are exact selections
+from the processed master when a master chain is active. Text, measured line
+boundaries, subtitles and source references stay unchanged. Timeline chains
+preserve duration: perform a tempo change in **Convert audio and apply effects**
+before adding that audio to a scene.
+
+**Preview saved clip** includes the clip chain. **Preview without clip effects**
+bypasses only that chain, keeping the same trim, gain, position and fades. Both
+are explicit playback actions and use the existing player/quiet-mode owner.
+Stop confirms device closure before an editing operation or preview cleanup.
+Split and join require bypassed clip processing so a stateful filter is not
+silently restarted or merged at the cut; join also requires matching chains.
+
+The same dialog exposes **Master sample rate**. Choose one of the supported
+project rates before rendering; existing filter frequencies are revalidated.
+Opus export requires choosing 48000 Hz explicitly. Original retained audio
+continues to use its own measured source rate.
+
+`tests/studio/test_project_effects.py` checks exact legacy identities, typed
+round trips, stale edits, actual FFmpeg clip/scene/master levels, dry comparison,
+chapter consistency, actual SAPI/Flite synthesis reuse and full backup/restore
+after deleting the original input. The native clip gate exercises the new
+effect controls through real keyboard events. These are candidate checks until
+a named exact-commit execution result records their outcome.
+
 ## Local music and sound effects
 
 The default `procedural` engine produces real PCM using a deterministic note
