@@ -681,6 +681,7 @@ class LibraryApp:
                         # source was actually published. Never reactivate an old
                         # revision when current metadata has superseded it.
                         with storage.transaction():
+                            self._authorize(storage.db, workspace)
                             published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
@@ -694,6 +695,8 @@ class LibraryApp:
                                 raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 

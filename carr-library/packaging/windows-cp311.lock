@@ -1,3 +1,5 @@
+comtypes==1.5.0 \
+    --hash=sha256:c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5
 defusedxml==0.7.1 \
     --hash=sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61
 filelock==3.29.0 \
