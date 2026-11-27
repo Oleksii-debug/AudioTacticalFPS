@@ -9,6 +9,7 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
 
@@ -38,7 +39,9 @@ def _include(path, generated):
 
 
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, include_paths=None):
+    if include_paths is not None:
+        include_paths = frozenset(relative_name(name).as_posix() for name in include_paths)
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
@@ -57,7 +60,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             for name in sorted(files):
                 source = Path(directory) / name
                 relative = source.relative_to(root)
-                if _include(relative, include_generated):
+                if (_include(relative, include_generated)
+                        and (include_paths is None or relative.as_posix() in include_paths)):
                     found[relative] = _stamp(regular(source))
                     if len(found) > MAX_STATE_FILES:
                         raise ValueError('Application state exceeds the file budget.')
@@ -98,7 +102,61 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    # PR141: equal-size Windows writes can retain the observed timestamps.
+    # Reauthenticate every selected source byte before successful publication.
+    for entry in entries:
+        if cancelled():
+            raise InterruptedError('Backup cancelled.')
+        relative = Path(entry['filename'])
+        source = root / relative
+        expected_stamp = before_inventory[relative]
+        if _stamp(regular(source)) != expected_stamp:
+            raise ValueError('Application state changed during backup; retry after saving.')
+        digest, count = sha256(), 0
+        with source.open('rb') as read:
+            if _stamp(os.fstat(read.fileno())) != expected_stamp:
+                raise ValueError('Application state changed during backup; retry after saving.')
+            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+                if cancelled():
+                    raise InterruptedError('Backup cancelled.')
+                count += len(block)
+                if count > entry['size_bytes']:
+                    raise ValueError('Application state grew during backup; retry after saving.')
+                digest.update(block)
+            if _stamp(os.fstat(read.fileno())) != expected_stamp:
+                raise ValueError('Application state changed during backup; retry after saving.')
+        if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
+                or _stamp(regular(source)) != expected_stamp):
+            raise ValueError('Application state changed during backup; retry after saving.')
+    if inventory() != before_inventory:
+        raise ValueError('Application state changed during backup; retry after saving.')
+    # PR145: the writer must obey the same portable namespace as its reader.
+    validate_state(entries)
     return sorted(entries, key=lambda entry: entry['filename'])
+
+
+def validate_portable_paths(values):
+    """Reject NFC/case aliases, including ancestors and file/directory overlap."""
+    names, directories, portable_paths = set(), set(), {}
+    for value in values:
+        path = relative_name(value)
+        name = path.as_posix()
+        key = unicodedata.normalize('NFC', name).casefold()
+        if key in names:
+            raise ValueError('Duplicate application state filename.')
+        names.add(key)
+        for component in (path, *path.parents):
+            current = str(component)
+            if current == '.':
+                continue
+            portable = unicodedata.normalize('NFC', current).casefold()
+            previous = portable_paths.setdefault(portable, current)
+            if previous != current:
+                raise ValueError('Application state paths collide on a portable filesystem.')
+            if component != path:
+                directories.add(portable)
+    if names & directories:
+        raise ValueError('Application state file and directory paths collide.')
 
 
 def validate_state(entries):
@@ -117,6 +175,7 @@ def validate_state(entries):
         total += item['size_bytes']
     if total > MAX_STATE_BYTES:
         raise ValueError('Application state manifest exceeds its byte budget.')
+    validate_portable_paths(item['filename'] for item in entries)
 
 
 def restore_state(source, target, entries):

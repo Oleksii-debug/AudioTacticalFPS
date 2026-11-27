@@ -4,7 +4,7 @@ import json
 import pytest
 
 from carr_library.speech import ReadingDocument
-from carr_library.speech.session import ReaderDraftStore, ReaderResume
+from carr_library.speech.session import ReaderDraftStore, ReaderResume, decode_reader_resume
 
 
 def test_complete_reading_draft_survives_restart(tmp_path):
@@ -64,3 +64,60 @@ def test_reader_draft_is_in_complete_library_backup(tmp_path):
     assert restored.document.source_text == 'Original unchanged'
     assert restored.document.text == 'Spoken unchanged'
     assert restored.voice_id == 'flite:awb' and restored.volume == 60
+
+
+@pytest.fixture
+def bound_session(tmp_path):
+    from carr_library.application import LibraryApp
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech.source import read_source_range
+    app = LibraryApp(tmp_path / 'bound-library')
+    workspace = app.create_workspace('Bound reading drafts')
+    imported = app.add_text(workspace, 'Exact source', 'First 🚂.\r\n\fSecond Ω.\r\n')
+    source = read_source_range(ReadingDesk(app, workspace, imported['edition']), 1, 2)
+    document = ReadingDocument(source.text)
+    document.replace(0, 5, 'Edited')
+    store = ReaderDraftStore(app.root, slot='explicitly-bound')
+    store.save(ReaderResume(document, 'explicit:voice', cursor=6, source_locations=source.locations))
+    return store, source, document
+
+
+def test_v2_draft_preserves_typed_source_bindings_exact_map_and_original_bytes(bound_session):
+    store, source, document = bound_session
+    record = json.loads(store.path.read_bytes())
+    assert record['schema'] == 'carr.reader-session.v2'
+    recovered = store.load()
+    assert recovered.source_locations == source.locations
+    assert recovered.document.to_dict() == document.to_dict()
+    assert recovered.document.source_text == 'First 🚂.\r\n\n\nSecond Ω.\r\n'
+    assert recovered.document.undo() and recovered.document.text == source.text
+
+
+@pytest.mark.parametrize('damage', ['empty', 'duplicate', 'reversed', 'foreign', 'boolean_index', 'v1_with_binding'])
+def test_v2_source_envelope_rejects_ambiguous_or_implicit_scope(bound_session, damage):
+    store, _source, _document = bound_session
+    record = json.loads(store.path.read_bytes())
+    if damage == 'empty':
+        record['source_locations'] = []
+    elif damage == 'duplicate':
+        record['source_locations'][1] = record['source_locations'][0]
+    elif damage == 'reversed':
+        record['source_locations'].reverse()
+    elif damage == 'foreign':
+        record['source_locations'][1]['workspace'] = 'unrelated-workspace'
+    elif damage == 'boolean_index':
+        record['source_locations'][0]['index'] = True
+    else:
+        record['schema'] = 'carr.reader-session.v1'
+    before = store.path.read_bytes()
+    with pytest.raises(ValueError):
+        decode_reader_resume(record)
+    assert store.path.read_bytes() == before
+
+
+def test_unbound_legacy_v1_remains_explicitly_unbound(tmp_path):
+    store = ReaderDraftStore(tmp_path, slot='workspace/edition/looks-bound-but-is-not')
+    store.save(ReaderResume(ReadingDocument('Independent text')))
+    record = json.loads(store.path.read_bytes())
+    assert record['schema'] == 'carr.reader-session.v1' and 'source_locations' not in record
+    assert decode_reader_resume(record).source_locations == ()

@@ -1,6 +1,8 @@
 """Explicit local engine configuration; no installers, remote fallback or secrets."""
 from dataclasses import asdict
+import math
 from pathlib import Path
+from time import monotonic
 
 from .durable_state import atomic_json, local_path, read_json
 
@@ -51,18 +53,37 @@ def save_settings(state_root, value):
     atomic_json(path, value, replace=path.exists())
 
 
-def voice_registry(state_root):
+def voice_registry(state_root, *, cancelled=lambda: False, timeout_seconds=60):
     from .speech import VoiceRegistry, PiperProvider, LocalHelperProvider
+    from .speech._io import check_cancelled
+    from .speech.dordiai import DordiaiProvider, configuration
+    if (type(timeout_seconds) not in (float, int) or not math.isfinite(timeout_seconds)
+            or not 0 < timeout_seconds <= 3600):
+        raise ValueError('Set a positive voice discovery timeout of at most 3600 seconds.')
+    deadline = monotonic() + timeout_seconds
+    def check():
+        check_cancelled(cancelled)
+        if monotonic() >= deadline:
+            raise TimeoutError('Local voice discovery exceeded its overall time budget.')
+        return False
+    check()
     value = load_settings(state_root)
-    registry = VoiceRegistry.discover(ffmpeg=value['ffmpeg'])
+    providers = []
     for item in value['piper']:
+        check()
         if set(item) != {'executable', 'models'}:
             raise ValueError('Invalid Piper configuration fields.')
-        registry.add_provider(PiperProvider(item['executable'], item['models']))
+        providers.append(PiperProvider(item['executable'], item['models'], cancelled=check))
     for item in value['voice_helpers']:
+        check()
         if item.get('enabled') is True:
-            registry.add_provider(LocalHelperProvider(**item))
-    return registry
+            providers.append(LocalHelperProvider(**item))
+    library_root = Path(state_root).absolute().parent
+    if configuration(library_root)['enabled']:
+        providers.append(DordiaiProvider(library_root))
+    check()
+    return VoiceRegistry.discover(ffmpeg=value['ffmpeg'], cancelled=check,
+        timeout_seconds=max(.001, deadline - monotonic()), extra_providers=providers)
 
 
 def audio_runtime(directory, *, state_root, input_roots=(), budget=None):

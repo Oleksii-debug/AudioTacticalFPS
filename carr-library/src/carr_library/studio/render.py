@@ -18,6 +18,21 @@ from .project import Project, ProjectStore, parse_script, _id
 ENGINE_SCHEMA = 'studio-local-dag-v1'
 
 
+def production_runtime_identity(runtime, capabilities, *, cancelled=lambda: False):
+    """Bind reusable nodes to executable and implementation bytes, not banners."""
+    from ..audio import dsp, models, music, process
+    from ..speech._io import digest
+    modules = {'production': Path(__file__), 'audio': Path(dsp.__file__),
+               'models': Path(models.__file__), 'music': Path(music.__file__),
+               'process': Path(process.__file__)}
+    identity = {'capabilities': capabilities,
+                'executables': {name: digest(getattr(runtime, name), cancelled=cancelled)
+                                for name in ('ffmpeg', 'ffprobe')},
+                'implementation': {name: digest(path, cancelled=cancelled)
+                                   for name, path in modules.items()}}
+    return sha256(encode(identity)).hexdigest()
+
+
 def music_installation_identity(runtime, engine):
     """Bind cached scores to the explicitly installed weights and runtime code."""
     if engine in ('musicgen', 'ace-step'):
@@ -178,7 +193,6 @@ class ProductionService:
             capabilities = runtime.capabilities()
             # Engine inventory is part of the node identity. A different installed
             # FFmpeg/voice version must not silently reuse incompatible work.
-            runtime_identity = sha256(encode(capabilities)).hexdigest()
             state['runtime'] = capabilities
             state['status'], state['error'] = 'running', ''
             control = job_root / 'control.json'
@@ -193,13 +207,15 @@ class ProductionService:
                 if stopping():
                     raise InterruptedError('Production paused or cancelled; completed chunks are retained.')
 
+            runtime_identity = production_runtime_identity(runtime, capabilities, cancelled=stopping)
+
             def report(message):
                 state['progress'] = message
                 self._save(state)
                 if progress is not None:
                     progress(message)
 
-            def node(kind, identity, operation):
+            def node(kind, identity, operation, *, cached_check=None):
                 check()
                 key = sha256(encode({'engine': ENGINE_SCHEMA, 'runtime': runtime_identity,
                                      'kind': kind, 'input': identity})).hexdigest()
@@ -214,6 +230,8 @@ class ProductionService:
                     candidate = local_path(self.cache / receipt['file'], root=self.cache)
                     if candidate.is_file() and digest_file(candidate) == receipt.get('sha256'):
                         info = runtime.inspect(candidate)
+                        if cached_check is not None:
+                            cached_check()
                         state['nodes'][key] = {'kind': kind, 'sha256': receipt['sha256'], 'reused': True}
                         self._save(state)
                         return candidate, info
@@ -260,12 +278,22 @@ class ProductionService:
                             voice_identity = json_safe(voice_data)
                             fingerprint = getattr(self.voices, 'fingerprint', None)
                             if callable(fingerprint):
-                                voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id))
+                                voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id, cancelled=stopping))
                             settings = SpeechSettings(rate=role.rate, volume=role.volume)
+
+                            def verify_voice(role=role, expected=voice_identity.get('runtime_fingerprint')):
+                                if callable(fingerprint) and fingerprint(role.voice_id, cancelled=stopping) != expected:
+                                    raise ValueError('The installed voice changed before accepting cached speech. Retry with its current identity.')
+
+                            def speak(target, line=line, role=role, settings=settings,
+                                      expected=voice_identity.get('runtime_fingerprint')):
+                                options = {'settings': settings, 'cancelled': stopping}
+                                if expected is not None:
+                                    options['expected_fingerprint'] = expected
+                                return self.voices.synthesize(line.text, role.voice_id, target, **options)
+
                             speech, info = node('speech', [line.text, voice_identity, asdict(settings)],
-                                lambda target, line=line, role=role, settings=settings:
-                                self.voices.synthesize(line.text, role.voice_id, target,
-                                    settings=settings, cancelled=stopping))
+                                speak, cached_check=verify_voice)
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
                             clip, clip_info = node('voice placement', [digest_file(speech), duration,
                                                    role.pan, role.gain_db, project.sample_rate],

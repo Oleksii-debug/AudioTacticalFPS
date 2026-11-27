@@ -473,6 +473,79 @@ def test_worker_player_registration_and_removal_are_marshaled_to_ui(native):
     assert not native.sound.muted and not controller.timer.IsRunning()
 
 
+def test_live_media_waits_for_finite_progress_cue_without_interrupting_it(native):
+    entered, finished = threading.Event(), threading.Event()
+    calls = []
+    def play(raw, flags):
+        calls.append((raw, flags))
+        entered.set()
+        assert finished.wait(2)
+    backend = SimpleNamespace(PlaySound=play, SND_MEMORY=4, SND_NODEFAULT=2, SND_NOSTOP=16)
+    controller = native.controller
+    controller.sound = WindowsProgressSound(backend=backend)
+    controller.configure(ProgressPreferences(mode='beep'))
+    bridge = native.frame.live_media_feedback
+    assert bridge is controller.live_media_feedback and bridge.quiescent
+    assert controller.sound.play(25, volume=.2)
+    assert entered.wait(1)
+    try:
+        release = bridge.hold(lambda: True)
+        assert controller.sound.muted and bridge.busy
+        assert not bridge.quiescent
+        assert not controller.sound.play(50, volume=.2)
+    finally:
+        finished.set()
+        controller.sound._thread.join(2)
+    assert bridge.quiescent and len(calls) == 1
+    assert isinstance(calls[0][0], bytes)  # No global PlaySound(None).
+    release()
+    controller.refresh_audio_state()
+    assert not bridge.busy and not controller.sound.muted
+
+
+def test_live_media_leases_cover_pause_cleanup_and_release_off_thread_after_close(native):
+    controller = native.controller
+    controller.configure(ProgressPreferences(mode='beep'))
+    bridge = controller.live_media_feedback
+    activity = {'paused': True, 'cleanup': True}
+    first = bridge.hold(lambda: activity['paused'])
+    second = bridge.hold(lambda: activity['cleanup'])
+    first()
+    first()
+    controller.refresh_audio_state()
+    assert bridge.busy and native.sound.muted
+    controller.close()
+    calls_before = len(native.sound.calls)
+    activity['cleanup'] = False
+    worker = threading.Thread(target=second)
+    worker.start()
+    worker.join(2)
+    assert not worker.is_alive() and not bridge.busy
+    assert native.queue == [] and native.sound.closed
+    assert len(native.sound.calls) == calls_before
+
+
+def test_unknown_media_state_stays_quiet_and_explicit_overlap_policy_is_respected(native):
+    controller = native.controller
+    controller.configure(ProgressPreferences(mode='beep'))
+    def unknown():
+        raise RuntimeError('Cleanup has not acknowledged completion')
+    release = controller.live_media_feedback.hold(unknown)
+    controller.refresh_audio_state()
+    assert native.sound.muted and controller.live_media_feedback.busy
+    assert not controller.live_media_feedback.quiescent  # Undeclared backend state.
+    controller.configure(ProgressPreferences(mode='beep', mute_during_audio=False))
+    assert not native.sound.muted and controller.live_media_feedback.quiescent
+    release()
+    controller.configure(ProgressPreferences(mode='beep'))
+    native.frame.progress_media_busy = lambda: True
+    controller.refresh_audio_state()
+    assert native.sound.muted
+    native.frame.progress_media_busy = lambda: False
+    controller.refresh_audio_state()
+    assert not native.sound.muted
+
+
 def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch):
     from carr_library.ui.keyboard_settings import KeyboardSettings
     items = []

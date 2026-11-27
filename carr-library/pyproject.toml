@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "universal-research-library"
-version = "0.2.0.dev1"
+version = "0.3.0.dev1"
 description = "Offline academic libraries, reading plans and exact source quotations with accessible desktop controls"
 readme = "docs/RUNNING.md"
 requires-python = ">=3.11"
@@ -67,6 +67,8 @@ Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/ca
 include-package-data = true
 packages = [
   "carr_library",
+  "carr_library.integrations",
+  "carr_library.backup_compat",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",

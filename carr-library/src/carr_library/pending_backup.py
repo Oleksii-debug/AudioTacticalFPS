@@ -682,9 +682,10 @@ def snapshot_pending(app, target, *, cancelled=lambda: False):
 
 
 def _component_name(name):
+    suffixes = '|'.join(re.escape(suffix) for suffix in sorted(set(SUFFIXES.values())))
     return isinstance(name, str) and bool(re.fullmatch(
         r'imports\.sqlite|import-requests/(?:reviews/)?[0-9a-f]{32}\.json|'
-        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}\.(?:txt|pdf|docx|epub)', name))
+        rf'import-batches/[0-9a-f]{{32}}\.json|originals/[0-9a-f]{{64}}(?:{suffixes})', name))
 
 
 def validate_pending(metadata):

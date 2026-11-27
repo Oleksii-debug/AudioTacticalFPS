@@ -11,6 +11,7 @@ import threading
 import wx
 
 from ..application import LibraryApp
+from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
@@ -484,7 +485,8 @@ class DesktopFrame(WorkspaceFrame):
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
-            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help), ('Document formats', self.document_formats),
+                       ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -823,7 +825,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
+            wildcard=file_dialog_wildcard(),
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -1138,6 +1140,9 @@ class DesktopFrame(WorkspaceFrame):
     def add_selected_book_reference(self, event):
         from .academic_library_dialog import add_selected_book_reference
         add_selected_book_reference(self)
+
+    def document_formats(self, event=None):
+        show_text(self, 'Document formats', supported_formats_text())
 
     def help(self, event):
         show_text(self, 'Keyboard guide',

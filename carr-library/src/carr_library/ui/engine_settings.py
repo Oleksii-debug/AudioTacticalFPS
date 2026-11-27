@@ -16,15 +16,23 @@ def show_engine_settings(frame):
     layout.Add(status, 1, wx.EXPAND | wx.ALL, 6)
 
     def describe():
+        from ..speech.dordiai import configuration
+        try:
+            dordiai_status = 'Enabled; resource discovery is explicit' if configuration(frame.library.root)['enabled'] else 'Disabled'
+        except (OSError, ValueError) as exc:
+            dordiai_status = 'Configuration unavailable: ' + str(exc)
         status.ChangeValue('All paths below refer to local installations. No download or remote API is started.\n'
             'FFmpeg: ' + str(settings['ffmpeg'] or 'Discover installed executable') + '\n'
             'FFprobe: ' + str(settings['ffprobe'] or 'Discover installed executable') + '\n'
             f'Piper registrations: {len(settings["piper"])}\n'
             f'Explicit voice helpers: {len(settings["voice_helpers"])}\n'
+            'Dordiai-voices: ' + dordiai_status + '\n'
             'Neural music configurations: ' + ', '.join(model['engine'] for model in settings['music_models']) + '\n'
             'MusicGen is optional for private noncommercial use with separately reviewed weights. '
             'Configured assets are distinct from tested inference. A missing runtime fails clearly.\n'
-            'Voice helper registrations use our JSON contract; an unknown dordiai-voices/SAPI4 installation is not presumed compatible.')
+            'Voice helper registrations use our JSON contract. The separate dordiai-voices connection '
+            'uses its reviewed public worker bridge; installed resources do not establish acoustic quality. '
+            'An unknown SAPI4 installation is not presumed compatible.')
 
     def executable(key):
         picker = wx.FileDialog(dialog, 'Choose installed ' + key, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
@@ -65,8 +73,15 @@ def show_engine_settings(frame):
         if wx.MessageBox('Remove local engine overrides? Installed files will remain on disk.', 'Reset configuration',
                          wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
             return
+        from .dordiai_settings import disable_runtime
+        disable_runtime(frame.library.root)
         settings.update(ffmpeg=None, ffprobe=None, piper=[], voice_helpers=[], music_models=[], fluidsynth=None)
         save_settings(state_root, settings)
+        describe()
+
+    def dordiai(event):
+        from .dordiai_settings import show_dordiai_settings
+        show_dordiai_settings(frame, parent=dialog)
         describe()
 
     for label, callback in [('Choose FFmpeg executable', lambda event: executable('ffmpeg')),
@@ -74,6 +89,7 @@ def show_engine_settings(frame):
         ('Register a local Piper voice manifest', lambda event: register('piper')),
         ('Register a MusicGen or ACE-Step installation', lambda event: register('music_models')),
         ('Register a reviewed local voice helper', lambda event: register('voice_helpers')),
+        ('Connect or disable dordiai-voices', dordiai),
         ('Reset overrides', reset)]:
         button = wx.Button(dialog, label=label)
         button.Bind(wx.EVT_BUTTON, callback)

@@ -421,7 +421,10 @@ def safe_markup(value: str) -> tuple[str, str]:
 
 
 def _node_binary(value: Path | str | None) -> str:
-    path = Path(value) if value else Path(shutil.which('node') or '')
+    if value is None:
+        from ..bundled_engines import bundled_executable, executable_on_path
+        value = bundled_executable('node') or executable_on_path('node')
+    path = Path(value) if value else Path('')
     if not str(path) or str(path) == '.' or not path.is_file():
         raise CitationError('Local citation formatting requires an installed Node.js 18 or newer runtime.')
     return str(path.resolve())
