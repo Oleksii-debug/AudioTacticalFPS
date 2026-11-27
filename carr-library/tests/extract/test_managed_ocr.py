@@ -154,7 +154,7 @@ def test_real_list_languages_uses_managed_model_directory(real_models, monkeypat
     monkeypatch.setenv('TESSDATA_PREFIX', str(tmp_path / 'missing'))
     result = run_ocr(runtime, [runtime.executable, '--list-langs'], remaining=lambda: 10)
     report = result.stdout.decode('utf-8')
-    assert str(runtime.tessdata) in report and '\neng\n' in report and '\nosd\n' in report
+    assert str(runtime.tessdata) in report and report.splitlines()[1:] == ['eng', 'osd']
 
 
 def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance(real_models, monkeypatch, tmp_path):
@@ -427,3 +427,29 @@ def test_real_staged_system_ocr_retains_relative_environment_models(real_models,
     assert sha256(source.read_bytes()).hexdigest() == source_hash
     assert sha256((models_dir / 'eng.traineddata').read_bytes()).hexdigest() == expected
     assert list(temporary.iterdir()) == []
+
+
+def test_relative_unicode_model_directory_uses_the_original_child_cwd(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    root = tmp_path / 'engine'
+    models = root / 'моделі'
+    models.mkdir(parents=True)
+    runtime = OcrRuntime('tesseract', root=root)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    command, cwd, report_directory = ocr_process.prepare_ocr_query(runtime,
+        ['tesseract', '--list-langs', '--tessdata-dir', 'моделі'])
+    assert cwd == report_directory == models
+    assert command == ['tesseract', '--list-langs', '--tessdata-dir', '.']
+    source = root / 'input.png'
+    source.write_bytes(b'path-binding fixture; native inference is separate')
+    calls = []
+    def execute(command, cwd, remaining):
+        calls.append((command, cwd))
+        return subprocess.CompletedProcess(command, 0, b'', b'')
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    ocr_process.run_ocr(runtime,
+        ['tesseract', 'input.png', 'stdout', '--tessdata-dir', 'моделі'],
+        remaining=lambda: 1)
+    assert len(calls) == 1 and calls[0][1] == models
+    assert (models / calls[0][0][1]).samefile(source)

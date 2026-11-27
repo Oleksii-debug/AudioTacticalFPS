@@ -51,7 +51,8 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime', 'bundled_audio_runtime'}
+            or value.keys() - required - {'source_commit', 'bundled_native_runtime', 'bundled_audio_runtime',
+                                         'bundled_native_launcher'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
@@ -62,6 +63,15 @@ def _manifest(root):
         raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
     if ('bundled_audio_runtime' in value and type(value['bundled_audio_runtime']) is not bool):
         raise ValueError('The bundled_audio_runtime installation flag must be a boolean.')
+    if ('bundled_native_launcher' in value and type(value['bundled_native_launcher']) is not bool):
+        raise ValueError('The bundled_native_launcher installation flag must be a boolean.')
+    launcher_files = {'ResearchLibrary.exe', 'launcher-provenance.json'}
+    present_launcher = launcher_files & value['files'].keys()
+    if (value.get('bundled_native_launcher') and
+            (present_launcher != launcher_files or not value['bundled_python'])):
+        raise ValueError('The native launcher requires its sealed executable, provenance and bundled Python.')
+    if present_launcher and not value.get('bundled_native_launcher'):
+        raise ValueError('The native launcher inventory must be explicitly declared.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')

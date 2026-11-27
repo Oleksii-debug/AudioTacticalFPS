@@ -129,6 +129,10 @@ def _positions(command):
 
 
 def _relative(path, cwd):
+    # An already ASCII absolute filename stays safe for the engine even when
+    # its model directory uses Unicode. Do not introduce parent traversal.
+    if str(path).isascii():
+        return str(path)
     try:
         value = os.path.relpath(path, cwd)
     except ValueError:  # Different Windows drives.
@@ -188,7 +192,7 @@ def prepare_ocr_query(runtime, argv):
     option = _option(command, '--tessdata-dir')
     if option is None:
         return command, runtime.root, None
-    directory = _directory(Path(option[2]))
+    directory = _directory(Path(runtime.root or Path.cwd()) / Path(option[2]))
     bound = _replace_option(command, option, '--tessdata-dir', '.')
     if not all(arg.isascii() for arg in bound[1:]):
         raise OcrRuntimeError('Unsupported Unicode OCR option.')
@@ -217,7 +221,8 @@ def run_ocr(runtime, argv, *, remaining):
     if sys.platform != 'win32' or all(arg.isascii() for arg in command[1:]):
         return _execute(command, runtime.root, remaining)
     model_option = _option(command, '--tessdata-dir')
-    model_directory = _directory(Path(model_option[2])) if model_option else None
+    model_directory = (_directory(Path(runtime.root or Path.cwd()) / Path(model_option[2]))
+                       if model_option else None)
     if _INFORMATIONAL.intersection(command):
         bound, cwd, report_directory = prepare_ocr_query(runtime, argv)
         result = _execute(bound, cwd, remaining)
@@ -252,6 +257,8 @@ def run_ocr(runtime, argv, *, remaining):
         if model_option:
             bound = _replace_option(bound, model_option, '--tessdata-dir', '.')
         if relative_input is None or relative_output is None:
+            if model_directory is None:
+                raise OcrRuntimeError('Unicode OCR staging requires an explicitly bound model directory.')
             cwd = staging
             relative_input, relative_output = 'input.png', 'stdout' if stdout else 'result'
             if model_directory is not None:

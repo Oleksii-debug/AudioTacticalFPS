@@ -331,7 +331,7 @@ jobs:
             'tests/ui/test_citation_styles_jobs.py',
             'tests/reader/test_export_no_clobber.py',
             'tests/audio/test_input_asset_backup.py',
-            'tests/audio/test_reading_copy_backup.py',
+            'tests/audio/test_reading_copy_backup.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

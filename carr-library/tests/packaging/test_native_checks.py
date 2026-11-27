@@ -150,7 +150,7 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag', 'string_audio_flag',
+    'string_native_flag', 'string_audio_flag', 'string_launcher_flag',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -174,12 +174,49 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['bundled_native_runtime'] = 'false'
     elif change == 'string_audio_flag':
         manifest['bundled_audio_runtime'] = 'false'
+    elif change == 'string_launcher_flag':
+        manifest['bundled_native_launcher'] = 'true'
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]
     elif change == 'bad_json':
         raw = '{'
     (tmp_path / 'bundle-manifest.json').write_text(raw, encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'installation manifest'
+    assert not events
+
+
+def test_native_launcher_manifest_reaches_actual_native_dependency_gate(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest['bundled_native_launcher'] = True
+    manifest['files'].update({'ResearchLibrary.exe': 'c' * 64, 'launcher-provenance.json': 'd' * 64})
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert all(name in events for _, name in native_checks.NATIVE_MODULES)
+    assert report['windows_nvda'] == report['native_gui'] == 'NOT_RUN'
+
+
+@pytest.mark.parametrize('change', ['missing_executable', 'missing_provenance', 'unannounced', 'no_python'])
+def test_incomplete_launcher_manifest_fails_before_loading_native_modules(tmp_path, monkeypatch, change):
+    manifest = bundle(tmp_path)
+    manifest['bundled_native_launcher'] = True
+    manifest['files'].update({'ResearchLibrary.exe': 'c' * 64, 'launcher-provenance.json': 'd' * 64})
+    if change == 'missing_executable':
+        del manifest['files']['ResearchLibrary.exe']
+    elif change == 'missing_provenance':
+        del manifest['files']['launcher-provenance.json']
+    elif change == 'unannounced':
+        manifest['bundled_native_launcher'] = False
+    else:
+        manifest['bundled_python'] = False
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
     events = []
     controlled_imports(monkeypatch, events)
     report = native_checks.check_native_dependencies(tmp_path)

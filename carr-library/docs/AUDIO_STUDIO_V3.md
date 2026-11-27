@@ -173,9 +173,11 @@ automated success. The complete-bundle workflow also checks the sealed optional
 audio runtime with outbound firewall rules active for its executable and the
 Windows speech helpers. CI does not call commercial APIs or publish generated audio.
 
-Full V3 acceptance still requires the remaining specification: complete
-Balabolka workflow parity, all optional formats, multilingual OCR model manager,
-language-specific prosody quality, microphone/device controls, full effects and
-player parity, CSL/Word/synchronization, large-library scale benchmarks, general
-local LLM tool planning, real optional models and independent manual Windows/NVDA
-acceptance. This implemented audio slice is not a claim that all V3 gates are done.
+The integrated library now includes managed multilingual OCR profiles, reviewed
+document-format readers, local CSL formatting and bibliography DOCX export.
+Full Resonance acceptance still requires the finite requested reading/synthesis
+workflow checklist, remaining formats, language-specific prosody quality,
+microphone/device and professional editing controls, synchronized publishing,
+large-library scale measurements, qualified local LLM planning, supplied
+transcription integration, actual optional engines and independent Windows/NVDA
+and listening evidence. This audio module does not close those platform gates.
