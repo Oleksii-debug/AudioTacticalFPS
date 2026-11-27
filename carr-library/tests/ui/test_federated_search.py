@@ -150,9 +150,23 @@ def center(tmp_path):
     app.add_text(hidden, 'Unselected source', 'Railway history hidden from this search.')
     frame, view, dialogs = Frame(app, one, local_topic), View(), Dialogs(choice=1)
     controller = SearchCenter(frame, view, dialogs=dialogs)
-    return SimpleNamespace(app=app, one=one, two=two, hidden=hidden, local_topic=local_topic,
+    state = SimpleNamespace(app=app, one=one, two=two, hidden=hidden, local_topic=local_topic,
         destination=destination, root=root, first=first, second=second, frame=frame,
         view=view, dialogs=dialogs, controller=controller)
+    service = controller.service
+    try:
+        yield state
+    finally:
+        # The real view owns these private SQLite handles until disposal.
+        # Complete any genuinely queued cancellation before releasing them.
+        controller.dispose()
+        while frame.pending:
+            frame.finish()
+        assert not controller.running
+        service.clear()
+        assert service._cursor_owner.close()
+        assert all(owner.close() for owner in service._retired_cursor_owners)
+        assert app.close_search()
 
 
 def search(state, **options):
@@ -827,7 +841,7 @@ def test_native_library_checklist_uses_distinct_choices_without_reordering(monke
     wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate((
         'VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL',
         'LEFT', 'RIGHT', 'TE_PROCESS_ENTER', 'LB_SINGLE', 'TE_READONLY',
-        'TE_MULTILINE', 'ALIGN_RIGHT'))})
+        'TE_MULTILINE', 'ALIGN_RIGHT', 'EVT_BUTTON'))})
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer', 'CheckListBox',
                  'TextCtrl', 'Choice', 'Button', 'ListBox'):
         setattr(wx, name, Mock(side_effect=lambda *args, **kwargs: Mock()))

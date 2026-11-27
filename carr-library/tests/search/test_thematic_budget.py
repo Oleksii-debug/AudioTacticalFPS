@@ -17,7 +17,7 @@ def test_invalid_limit(limit):
         thematic.search('A', [page()], 'railway', limit=limit)
 
 
-@pytest.mark.parametrize('timeout', [True, 0, -1, float('nan'), float('inf'), 61])
+@pytest.mark.parametrize('timeout', [True, 0, -1, float('nan'), float('inf'), 86401])
 def test_invalid_timeout(timeout):
     with pytest.raises(ValueError):
         thematic.search('A', [page()], 'railway', timeout=timeout)
@@ -83,3 +83,17 @@ def test_success_preserves_raw_quote_and_score():
     expected = thematic.search('A', [p], 'railway')
     assert thematic.search('A', [p], 'railway', timeout=60) == expected
     assert expected[0]['raw_quote'] == p.raw_page
+
+
+@pytest.mark.parametrize('timeout', [61, 300, 86400])
+def test_configured_longer_budget_preserves_scores_and_its_exact_deadline(monkeypatch, timeout):
+    expected = thematic.search('A', [page()], 'railway')
+    assert thematic.search('A', [page()], 'railway', timeout=timeout) == expected
+    now = 0.0
+    monkeypatch.setattr(thematic, 'monotonic', lambda: now)
+    def passages():
+        nonlocal now
+        yield page()
+        now = timeout + 1.0
+    with pytest.raises(TimeoutError):
+        thematic.search('A', passages(), 'railway', timeout=timeout)

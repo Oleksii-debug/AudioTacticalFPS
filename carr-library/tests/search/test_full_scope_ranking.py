@@ -133,7 +133,7 @@ def test_derived_cache_is_revalidated_or_rebuilt_without_authorizing_foreign_tex
     if damage == "bad_sqlite":
         cache.write_bytes(b"Not a database.")
     else:
-        with sqlite3.connect(cache) as db:
+        with closing(sqlite3.connect(cache)) as db, db:
             page_id, text = db.execute("SELECT id,text FROM source").fetchone()
             if damage == "extra_trigger":
                 db.execute("CREATE TRIGGER unexpected AFTER INSERT ON source BEGIN DELETE FROM source; END")
@@ -269,7 +269,7 @@ def test_private_order_cannot_be_replaced_or_escape_current_catalog_filter(libra
     else:
         with app.read(workspace) as db:
             wrong = db.execute("SELECT id FROM active_page WHERE workspace=? AND edition='b'", (workspace,)).fetchone()[0]
-        with sqlite3.connect(order.path) as db:
+        with closing(sqlite3.connect(order.path)) as db, db:
             db.execute("UPDATE result SET page_id=? WHERE position=2", (wrong,))
         # Even an injected trusted-looking file stamp cannot substitute catalog
         # authority. This exercises the independent fresh filter check itself.
@@ -309,7 +309,8 @@ def test_actual_ranker_small_scope_matches_existing_hybrid_and_excerpt_behavior(
     workspace = app.create_workspace("Small exact hybrid oracle")
     app.add_text(workspace, "One", "ordinary " * 300 + "The distinct railway archive.",
                  edition_id="a", work_id="one")
-    app.add_text(workspace, "Another edition", "A railway source.", edition_id="b", work_id="one")
+    app.add_text(workspace, "One", "A railway source.", edition_id="b", work_id="one",
+                 edition="Another edition of the same work")
     app.add_text(workspace, "Another work", "Railway bridge source.", edition_id="c", work_id="two")
     try:
         old = app.search(workspace, "distinct railway archive", mode="semantic")
