@@ -1,0 +1,44 @@
+name: Isolated Windows by-name metadata diagnostic
+
+on:
+  push:
+    branches: [carr/diag-windows-by-name-137c]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-by-name:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Validate exact unchanged production tree
+        shell: pwsh
+        run: |
+          git diff --exit-code 8fa68b9d9041dd2f4f501f4084a5c9c50998c6f9 -- carr-library/src carr-library/tests
+          if ($LASTEXITCODE -ne 0) { throw 'Production/test source differs from exact8fa' }
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+      - name: Measure by-name policies, live growth, reparses and50-replacement children
+        shell: pwsh
+        run: |
+          python -B -X utf8 scripts/windows_by_name_probe/probe_windows.py --output by-name-diagnostic.json --repetitions 10
+          if ($LASTEXITCODE -ne 0) { throw 'By-name diagnostic has an observed failure; inspect raw report' }
+      - name: Preserve exact diagnostic output even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-by-name-${{ github.sha }}
+          path: by-name-diagnostic.json
+          if-no-files-found: error
+          retention-days: 7
