@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/academic-search-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/academic-search-20261126, carr/resonance-final-bc067-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -766,6 +766,7 @@ jobs:
               'tests/assistant/test_planning_handlers.py',
               'tests/audio/test_recording.py',
               'tests/audio/test_owned_process_tree.py',
+              'tests/audio/test_publication_fsync.py',
               'tests/audio/test_cleanup_ownership.py',
               'tests/speech/test_wave_player_cleanup.py',
               'tests/ui/test_recording_dialog.py',
@@ -1217,6 +1218,7 @@ jobs:
             'tests/assistant/test_planning_handlers.py',
             'tests/audio/test_recording.py',
             'tests/audio/test_owned_process_tree.py',
+            'tests/audio/test_publication_fsync.py',
             'tests/audio/test_cleanup_ownership.py',
             'tests/speech/test_wave_player_cleanup.py',
             'tests/ui/test_recording_dialog.py',
