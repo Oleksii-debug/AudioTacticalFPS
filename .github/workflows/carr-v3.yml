@@ -216,7 +216,7 @@ jobs:
       - name: Require Advanced translation permission and checkpoint regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/assistant/test_translation_v3.py 2>&1 | Tee-Object 'ci-v3-results/strict-translation-v3.txt'
+          python scripts/ci_check.py tests/assistant/test_translation_v3.py tests/ui/test_translation_selection.py 2>&1 | Tee-Object 'ci-v3-results/strict-translation-v3.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require local proposal scope and review regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
