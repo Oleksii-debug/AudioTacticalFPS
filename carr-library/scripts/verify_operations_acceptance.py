@@ -79,6 +79,7 @@ SUITES = [
     "tests/transcription/test_v5_worker_profile.py",
     "tests/transcription/test_runtime_interpreter.py",
     "tests/studio/test_production_cancellation_outcomes.py",
+    "tests/assistant/test_library_transcription.py",
     "tests/assistant/test_local_planning.py",
     "tests/assistant/test_planning_handlers.py",
     "tests/assistant/test_translation.py",
