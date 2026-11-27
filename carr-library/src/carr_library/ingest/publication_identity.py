@@ -29,10 +29,11 @@ def _hex(value, length):
 
 
 def _manifest(value):
-    from ..ingest.retained_assets import MAX_BYTES, SUFFIXES
+    from ..ingest.retained_assets import SUFFIXES
+    from ..catalog.streaming_pdf import valid_original_size
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or value['mime'] not in SUFFIXES or type(value['size']) is not int
-            or not 0 < value['size'] <= MAX_BYTES):
+            or not valid_original_size(value['mime'], value['size'])):
         raise ValueError('Invalid publication source manifest.')
     _hex(value['sha256'], 64)
     return dict(value)
@@ -77,10 +78,13 @@ def validate_configuration(value):
 
 
 def _request(value):
-    if (not isinstance(value, dict) or set(value) != REQUEST_FIELDS
+    if (not isinstance(value, dict) or set(value) not in (REQUEST_FIELDS, REQUEST_FIELDS | {'pdf_max_bytes'})
             or type(value['version']) is not int or value['version'] != 1):
         raise ValueError('Invalid publication request schema.')
     result = dict(value)
+    if 'pdf_max_bytes' in value:
+        from ..catalog.streaming_pdf import pdf_budget
+        pdf_budget(value['pdf_max_bytes'])
     _hex(value['request_id'], 32)
     _identity(value['workspace'])
     for name in ('data_dir', 'source'):
@@ -104,6 +108,8 @@ def request_identity(record):
                  workspace=record['workspace'], metadata=record['metadata'],
                  config=record['config'], expected_manifest=record.get('expected_manifest'),
                  pinned_asset=record.get('asset_sha256'), resume_job=record.get('job'))
+    if 'pdf_max_bytes' in record:
+        value['pdf_max_bytes'] = record['pdf_max_bytes']
     result = _canonical(_request(value))
     if len(result.encode('utf-8')) > MAX_IDENTITY:
         raise ValueError('Publication request identity exceeds its limit.')

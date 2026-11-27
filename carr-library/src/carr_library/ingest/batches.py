@@ -21,6 +21,7 @@ from uuid import uuid4
 from filelock import FileLock, Timeout
 
 from ..catalog.intake import MAX_BYTES
+from ..catalog.streaming_pdf import valid_original_size
 from ..catalog.membership import Catalog
 from ..extract.page_ocr import Config
 from ..extract.document_formats import MIME_SUFFIXES
@@ -143,7 +144,7 @@ class ImportBatchStore:
                     or not isinstance(manifest['sha256'], str)
                     or not re.fullmatch('[0-9a-f]{64}', manifest['sha256'])
                     or manifest['mime'] not in _MIMES
-                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= MAX_BYTES):
+                    or not valid_original_size(manifest['mime'], manifest['size'])):
                 raise ValueError('Invalid import batch source manifest.')
         counts = dict.fromkeys(STATES, 0)
         counts.update(Counter(row['state'] for row in record['rows']))

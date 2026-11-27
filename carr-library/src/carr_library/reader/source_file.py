@@ -11,7 +11,8 @@ from pathlib import Path
 import stat
 from uuid import uuid4
 
-from ..catalog.intake import IntakeError, snapshot
+from ..catalog.intake import IntakeError
+from ..catalog.streaming_pdf import FileAsset, snapshot_original
 from ..citations.anchors import Identity, Locator
 from ..ingest.retained_assets import RetainedAssets, SUFFIXES
 from ..ingest.writer_guard import exclusive_writer
@@ -50,7 +51,7 @@ def _regular(path):
         raise ValueError('Source viewing requires an unlinked regular file.')
 
 
-def _original(app, db, workspace, ref, revision):
+def _original(app, db, workspace, ref, revision, cancelled=lambda: False):
     _, identity, locator, _, metadata = app._selected(db, workspace, ref, revision)
     row = db.execute('SELECT a.mime,a.size FROM catalog_edition e '
         'JOIN catalog_asset a ON a.digest=e.asset WHERE e.workspace=? AND e.id=? AND e.asset=?',
@@ -64,7 +65,7 @@ def _original(app, db, workspace, ref, revision):
     path = RetainedAssets(assets).resolve(identity.asset_sha256)
     if path.suffix != SUFFIXES[row[0]]:
         raise ValueError('The original source format changed.')
-    original = snapshot(assets, path.name)
+    original = snapshot_original(assets, path.name, cancelled=cancelled)
     _regular(path)
     if (original.digest, original.mime, original.size) != (identity.asset_sha256, row[0], row[1]):
         raise ValueError('The original source differs from its catalog record.')
@@ -81,12 +82,12 @@ def _views(app, *, create=False):
     return directory
 
 
-def _view_matches(directory, path, original):
+def _view_matches(directory, path, original, cancelled=lambda: False):
     if path.parent != directory or path.suffix != SUFFIXES[original.mime]:
         raise ValueError('Invalid source viewing path.')
     _regular(path)
     try:
-        copied = snapshot(directory, path.name)
+        copied = snapshot_original(directory, path.name, cancelled=cancelled)
     except IntakeError:
         # A viewer may have saved a different format. Preserve that regular file
         # and allow prepare_source_file to create a fresh exact copy elsewhere.
@@ -110,13 +111,13 @@ def prepare_source_file(app, workspace, ref, revision, *, authorized_topic=None,
         with app.read(workspace) as db:
             if authorized_topic is not None:
                 TopicTree(db,workspace)._visible(authorized_topic)
-            identity, locator, title, original = _original(app, db, workspace, ref, revision)
+            identity, locator, title, original = _original(app, db, workspace, ref, revision, cancelled)
             if cancelled():
                 raise InterruptedError('Opening the original was cancelled.')
             directory = _views(app, create=True)
             path = directory / (original.digest + SUFFIXES[original.mime])
             if os.path.lexists(path):
-                if _view_matches(directory, path, original):
+                if _view_matches(directory, path, original, cancelled):
                     if cancelled():
                         raise InterruptedError('Opening the original was cancelled.')
                     return SourceFile(path, identity, locator, ref, title, original.mime)
@@ -124,12 +125,16 @@ def prepare_source_file(app, workspace, ref, revision, *, authorized_topic=None,
             # No hard links: an external editor must never gain the original inode.
             created = False
             try:
-                with path.open('xb') as stream:
+                if isinstance(original, FileAsset):
+                    original.copy_to(path, cancelled=cancelled)
                     created = True
-                    stream.write(original.data)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                if not _view_matches(directory, path, original):
+                else:
+                    with path.open('xb') as stream:
+                        created = True
+                        stream.write(original.data)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                if not _view_matches(directory, path, original, cancelled):
                     raise ValueError('The source viewing copy could not be verified.')
                 if cancelled():
                     raise InterruptedError('Opening the original was cancelled.')
@@ -159,11 +164,11 @@ def launch_source_file(app, source, opener, *, authorized_topic=None,
         if authorized_topic is not None:
             TopicTree(db,source.identity.workspace)._visible(authorized_topic)
         identity, locator, _, original = _original(app, db, source.identity.workspace,
-            source.ref, source.identity.revision)
+            source.ref, source.identity.revision, cancelled)
         if identity != source.identity or locator != source.locator or original.mime != source.mime:
             raise ValueError('The selected source changed. Search again before opening it.')
         directory = _views(app)
-        if not _view_matches(directory, source.path, original):
+        if not _view_matches(directory, source.path, original, cancelled):
             raise ValueError('The source viewing copy changed. Open the source again.')
         if cancelled():
             raise InterruptedError('Opening the original was cancelled.')

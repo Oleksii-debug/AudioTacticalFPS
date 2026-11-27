@@ -21,6 +21,7 @@ import sqlite3
 import time
 
 from .catalog.intake import MAX_BYTES, classify
+from .catalog.streaming_pdf import (FileAsset, MAX_PDF_BYTES, pdf_budget, valid_original_size)
 from .backup_files import local_path, regular, sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
@@ -41,7 +42,7 @@ _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
 _REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
-                     'attempt', 'publication_candidate'}
+                     'attempt', 'publication_candidate', 'pdf_max_bytes'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -141,6 +142,13 @@ def _copy(source, target, entry, cancelled):
         raise ValueError('Pending import backup size mismatch.')
     target = local_path(target)
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if source.suffix == '.pdf' and entry['size_bytes'] > MAX_BYTES:
+        from .audio.jobs import file_identity
+        original = FileAsset.capture(source, cancelled=cancelled,
+            expected_manifest=dict(sha256=entry['sha256'], mime='application/pdf', size=entry['size_bytes']),
+            expected_identity=file_identity(before))
+        original.copy_to(target, cancelled=cancelled)
+        return
     hashed, size = sha256(), 0
     with source.open('rb') as read, target.open('xb') as write:
         if _stamp(os.fstat(read.fileno())) != _stamp(before):
@@ -163,6 +171,10 @@ def _copy(source, target, entry, cancelled):
 
 def _entry(path, name, cancelled):
     before = regular(path)
+    if Path(path).suffix == '.pdf' and before.st_size > MAX_BYTES:
+        from .audio.jobs import file_identity
+        original = FileAsset.capture(path, cancelled=cancelled, expected_identity=file_identity(before))
+        return dict(filename=name, size_bytes=original.size, sha256=original.digest)
     hashed, size = sha256(), 0
     with Path(path).open('rb') as stream:
         if _stamp(os.fstat(stream.fileno())) != _stamp(before):
@@ -181,7 +193,7 @@ def _entry(path, name, cancelled):
 def _manifest(value):
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or not _hash(value['sha256']) or value['mime'] not in SUFFIXES
-            or type(value['size']) is not int or not 0 < value['size'] <= MAX_BYTES):
+            or not valid_original_size(value['mime'], value['size'])):
         raise ValueError('Invalid pending source manifest.')
     return value
 
@@ -271,6 +283,8 @@ def _request(record, request_id, data_dir, db):
     _workspace(db, record['workspace'])
     _metadata(record['metadata'], db, record['workspace'])
     _config(record['config'])
+    if 'pdf_max_bytes' in record:
+        pdf_budget(record['pdf_max_bytes'])
     if 'expected_manifest' in record:
         _manifest(record['expected_manifest'])
     for key in ('asset_sha256', 'job'):
@@ -583,6 +597,19 @@ def _references(requests, batches):
                 yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None
 
 
+def _original_payload(path, asset, cancelled):
+    """Verify every byte; only bounded text/office formats return a bytes value."""
+    if asset['mime'] == 'application/pdf' and asset['size_bytes'] > MAX_BYTES:
+        FileAsset.capture(path, cancelled=cancelled,
+            expected_manifest=dict(sha256=asset['sha256'], mime=asset['mime'], size=asset['size_bytes']))
+        return None
+    raw = _read(path, MAX_BYTES)
+    if (len(raw) != asset['size_bytes'] or classify(raw, Path(asset['filename']).suffix) != asset['mime']
+            or sha256(raw).hexdigest() != asset['sha256']):
+        raise ValueError('Pending original MIME or checksum mismatch.')
+    return raw
+
+
 def _source_checkpoints(asset, raw, jobs, journal):
     """A TXT checkpoint is verifiable against original bytes without parsing."""
     for job in jobs.values():
@@ -708,7 +735,8 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                     if any(os.path.lexists(path) for path in candidates):
                         retained = app.assets.resolve(wanted)
                 try:
-                    incoming = planned_snapshot(local_path(retained or source, exists=True)) if retained or source else None
+                    incoming = planned_snapshot(local_path(retained or source, exists=True),
+                                                cancelled=cancelled) if retained or source else None
                 except FileNotFoundError as exc:
                     raise ValueError('Pending import source bytes are missing; restore the selected original before a complete backup.') from exc
                 if incoming is None:
@@ -716,7 +744,13 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
                 name = incoming.digest + SUFFIXES[incoming.mime]
-                entry = _write(target / 'originals' / name, incoming.data)
+                if isinstance(incoming, FileAsset):
+                    destination = target / 'originals' / name
+                    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                    incoming.copy_to(destination, cancelled=cancelled)
+                    entry = _entry(destination, name, cancelled)
+                else:
+                    entry = _write(target / 'originals' / name, incoming.data)
                 entry['filename'] = name
                 entry['mime'] = incoming.mime
                 assets[incoming.digest] = entry
@@ -733,7 +767,8 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                 bindings.append(dict(filename=name, row_id=row_id, source=source, asset_sha256=asset_hash))
             for asset in assets.values():
                 _check(cancelled)
-                _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
+                raw = _original_payload(target / 'originals' / asset['filename'], asset, cancelled)
+                _source_checkpoints(asset, raw, jobs, journal)
         if _inventory(root) != before:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
     finally:
@@ -771,7 +806,8 @@ def validate_pending(metadata):
                 or not _hash(item['sha256']) or type(item['size_bytes']) is not int or item['size_bytes'] <= 0):
             raise ValueError('Invalid pending import file manifest.')
         name = item['filename']
-        limit = MAX_JOURNAL if name == 'imports.sqlite' else MAX_BYTES if name.startswith('originals/') else (
+        original_limit = MAX_PDF_BYTES if name.endswith('.pdf') else MAX_BYTES
+        limit = MAX_JOURNAL if name == 'imports.sqlite' else original_limit if name.startswith('originals/') else (
             MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST)
         if item['size_bytes'] > limit:
             raise ValueError('Pending import file exceeds its byte budget.')
@@ -784,7 +820,7 @@ def validate_pending(metadata):
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256', 'mime'}
                 or not _hash(item['sha256']) or item['mime'] not in SUFFIXES
                 or item['filename'] != item['sha256'] + SUFFIXES[item['mime']]
-                or item['sha256'] in assets or type(item['size_bytes']) is not int or not 0 < item['size_bytes'] <= MAX_BYTES):
+                or item['sha256'] in assets or not valid_original_size(item['mime'], item['size_bytes'])):
             raise ValueError('Invalid pending original manifest.')
         expected = dict(filename='originals/' + item['filename'], size_bytes=item['size_bytes'], sha256=item['sha256'])
         if files.get(expected['filename']) != expected:
@@ -861,10 +897,7 @@ def _validated_contents(source, catalog_path, metadata, *, journal_path, cancell
                 raise ValueError('Pending backup contains missing or unreferenced original bytes.')
             for asset in assets.values():
                 _check(cancelled)
-                raw = _read(source / 'originals' / asset['filename'], MAX_BYTES)
-                if (classify(raw, Path(asset['filename']).suffix) != asset['mime']
-                        or sha256(raw).hexdigest() != asset['sha256']):
-                    raise ValueError('Pending original MIME or checksum mismatch.')
+                raw = _original_payload(source / 'originals' / asset['filename'], asset, cancelled)
                 _source_checkpoints(asset, raw, jobs, journal)
             return requests, batches, assets, bindings
     finally:
@@ -972,9 +1005,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
         _check(cancelled)
         target = stage / 'originals' / asset['filename']
         if os.path.lexists(target):
-            raw = _read(target, MAX_BYTES)
-            if len(raw) != asset['size_bytes'] or sha256(raw).hexdigest() != asset['sha256']:
-                raise ValueError('Pending original conflicts with a catalog original.')
+            _original_payload(target, asset, cancelled)
         else:
             _copy(verified / 'originals' / asset['filename'], target, asset, cancelled)
             added.append(dict(asset))

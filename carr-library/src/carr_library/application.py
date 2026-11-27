@@ -539,7 +539,8 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0,
+                    pdf_max_bytes=None):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
@@ -555,8 +556,9 @@ class LibraryApp:
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
-        return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
+                               cancelled=cancelled, timeout=timeout, pdf_max_bytes=pdf_max_bytes)
+        return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config,
+                                 pdf_max_bytes=pdf_max_bytes)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
         """Resume a durable native import from retained bytes and its existing job."""
@@ -628,7 +630,7 @@ class LibraryApp:
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
                      _request_id=None, _resume_job=None, _expected_manifest=None,
-                     _publication_attempt=None):
+                     _publication_attempt=None, pdf_max_bytes=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -642,11 +644,14 @@ class LibraryApp:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
+        from .catalog.streaming_pdf import FileAsset, MAX_PDF_BYTES, snapshot_original
+        pdf_limit = MAX_PDF_BYTES if pdf_max_bytes is None else pdf_max_bytes
         if _expected_manifest is None:
-            asset = snapshot(path.parent, path.name)
+            asset = snapshot_original(path.parent, path.name, pdf_max_bytes=pdf_limit,
+                                      cancelled=cancelled)
         else:
             from .ingest.batch_scan import planned_snapshot
-            asset = planned_snapshot(path)
+            asset = planned_snapshot(path, pdf_max_bytes=pdf_limit, cancelled=cancelled)
         if _expected_manifest is not None and asset.manifest() != _expected_manifest:
             raise ValueError('Source changed after import planning; plan this file again.')
         record = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,
@@ -658,7 +663,9 @@ class LibraryApp:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
-                retained = self.assets.retain(asset.data, asset.mime, asset.digest)
+                retained = (self.assets.retain_file(asset, cancelled=cancelled)
+                            if isinstance(asset, FileAsset) else
+                            self.assets.retain(asset.data, asset.mime, asset.digest))
                 from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
                                             record_publication_candidate)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
@@ -718,7 +725,10 @@ class LibraryApp:
                                        'printed pages are unknown. ' + (
                                            FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
-                extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
+                extra = (dict(reviews=load_reviews(self.root, _request_id),
+                              review_asset=(FileAsset.capture(retained, cancelled=cancelled,
+                                            expected_manifest=asset.manifest())
+                                            if isinstance(asset, FileAsset) else asset.data))
                          if asset.mime == 'application/pdf' else {})
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
@@ -732,9 +742,13 @@ class LibraryApp:
                         if previous['state'] in ('failed', 'cancelled', 'quarantined'):
                             ingest.retry(workspace, job)
                     else:
-                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                        options = dict(pdf_max_bytes=pdf_limit, cancelled=cancelled) if isinstance(asset, FileAsset) else {}
+                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name,
+                                           settings, **options)
                     record_progress(self.root, _request_id, job=job)
-                    result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
+                    options = dict(pdf_max_bytes=pdf_limit) if isinstance(asset, FileAsset) else {}
+                    result = ingest.run(workspace, job, self.assets_dir, retained.name, settings,
+                                        cancelled=cancelled, **options)
                     if result['state'] in ('complete', 'superseded'):
                         # A terminal journal state is not proof of publication.
                         # Validate the sealed source and active/result identity
@@ -829,7 +843,8 @@ class LibraryApp:
         if row is None:
             raise ValueError('Source is outside the selected library.')
         mime, size = row
-        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+        from .catalog.streaming_pdf import valid_original_size
+        if mime not in SUFFIXES or not valid_original_size(mime, size):
             raise ValueError('Invalid original source catalog manifest.')
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
@@ -837,8 +852,8 @@ class LibraryApp:
         if checked_assets is not None and key in checked_assets:
             return checked_assets[key], mime, size
         # Existing retention resolution checks regular-file/link rules, the
-        # 64 MiB size bound, and the complete original-byte SHA256.
-        path = self.assets.resolve(identity.asset_sha256)
+        # format-specific byte budget, and the complete original-byte SHA256.
+        path = self.assets.resolve(identity.asset_sha256, cancelled=cancelled)
         if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -856,8 +871,16 @@ class LibraryApp:
             raise InterruptedError('Source verification cancelled.')
         return original.data
 
+    def _asset_original(self, db, workspace, identity, *, cancelled=lambda: False):
+        from .catalog.streaming_pdf import FileAsset, snapshot_original
+        path, mime, size = self._retained_source(db, workspace, identity, cancelled=cancelled)
+        original = snapshot_original(self.assets_dir, path.name, cancelled=cancelled)
+        if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
+            raise ValueError('The original source differs from its catalog manifest.')
+        return original if isinstance(original, FileAsset) else original.data
+
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
-        resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
+        resolve_asset = lambda identity: self._asset_original(db, workspace, identity, cancelled=cancelled)
         text = strict_text_attestor(db, workspace, resolve_asset)
 
         def review(identity, physical):
@@ -1185,7 +1208,7 @@ class LibraryApp:
             _, identity, locator, raw, _ = self._selected(db, workspace, ref, revision)
             if locator.kind != 'physical_page':
                 raise ValueError('This review workflow is for physical PDF pages only.')
-            data = self._asset_bytes(db, workspace, identity)
+            data = self._asset_original(db, workspace, identity)
             renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
             raw_hash = sha256(raw.encode('utf-8')).hexdigest()
         check()

@@ -14,7 +14,9 @@ import json
 import sqlite3
 import tempfile
 
-from carr_library.catalog.intake import snapshot, IntakeError
+from carr_library.catalog.intake import IntakeError
+from carr_library.catalog.streaming_pdf import (FileAsset, MAX_PDF_BYTES, original_stream,
+                                               snapshot_original)
 from carr_library.extract.page_ocr import Config, extract_page
 from carr_library.storage.revisions import Page
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
@@ -89,10 +91,11 @@ class Ingest:
             settings = dict(adapter='strict-utf8-v1', kind='logical_segment')
         elif asset.mime == 'application/pdf':
             from pypdf import PdfReader
-            reader = PdfReader(BytesIO(asset.data))
-            if reader.is_encrypted:
-                raise IngestError('encrypted PDF')
-            count = len(reader.pages)
+            with original_stream(asset) as stream:
+                reader = PdfReader(stream)
+                if reader.is_encrypted:
+                    raise IngestError('encrypted PDF')
+                count = len(reader.pages)
             settings = dict(adapter='page_ocr-v1', kind='physical_page', config=asdict(config),
                             pypdf=importlib.metadata.version('pypdf'),
                             pdfium=importlib.metadata.version('pypdfium2'))
@@ -103,15 +106,16 @@ class Ingest:
             raise IngestError('invalid segment count')
         return count, canonical(settings), segments
 
-    def dry_run(self, root, relative, config=Config()):
-        asset = snapshot(root, relative)
+    def dry_run(self, root, relative, config=Config(), *, pdf_max_bytes=MAX_PDF_BYTES):
+        asset = snapshot_original(root, relative, pdf_max_bytes=pdf_max_bytes)
         count, settings, _ = self._plan(asset, config)
         return dict(asset.manifest(), segments=count, extraction=json.loads(settings))
 
-    def start(self, workspace, edition, root, relative, config=Config()):
+    def start(self, workspace, edition, root, relative, config=Config(), *,
+              pdf_max_bytes=MAX_PDF_BYTES, cancelled=lambda: False):
         if not all(isinstance(v, str) and v for v in (workspace, edition)):
             raise IngestError('missing scope or edition')
-        asset = snapshot(root, relative)
+        asset = snapshot_original(root, relative, pdf_max_bytes=pdf_max_bytes, cancelled=cancelled)
         count, settings, _ = self._plan(asset, config)
         job = digest(canonical([workspace, edition, asset.digest, settings]))
         with self.transaction():
@@ -181,7 +185,8 @@ class Ingest:
                 self.db.execute('DELETE FROM checkpoint WHERE job=? AND ordinal=?', (job, len(records)))
             self._set(job, 'pending')
 
-    def run(self, workspace, job, root, relative, config=Config(), *, max_steps=1001, cancelled=lambda: False):
+    def run(self, workspace, job, root, relative, config=Config(), *, max_steps=1001,
+            cancelled=lambda: False, pdf_max_bytes=MAX_PDF_BYTES):
         """Run bounded sequential steps. Resume checks same input and configuration.
 
         max_steps includes the final publish step; checkpoint writes are durable
@@ -190,14 +195,21 @@ class Ingest:
         if not 1 <= max_steps <= 1001:
             raise IngestError('invalid step limit')
         row = self._job(workspace, job)
-        asset = snapshot(root, relative)
+        asset = snapshot_original(root, relative, pdf_max_bytes=pdf_max_bytes, cancelled=cancelled)
         count, settings, segments = self._plan(asset, config)
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
         with tempfile.TemporaryDirectory(prefix='carr-ingest-') as tmp:
             staged = Path(tmp) / ('source.pdf' if segments is None else 'source.txt')
-            staged.write_bytes(asset.data)
-            if hash_file(staged) != asset.digest:
+            if isinstance(asset, FileAsset):
+                asset.copy_to(staged, cancelled=cancelled)
+            else:
+                staged.write_bytes(asset.data)
+            staged_original = None
+            if isinstance(asset, FileAsset):
+                staged_original = FileAsset.capture(staged, cancelled=cancelled,
+                                                    expected_manifest=asset.manifest())
+            elif hash_file(staged) != asset.digest:
                 raise IngestError('staging digest mismatch')
             for _ in range(max_steps):
                 try:
@@ -217,7 +229,10 @@ class Ingest:
                                 break
                             if any(not self._eligible(p) for p in records):
                                 raise IngestError('unverified checkpoint')
-                            if hash_file(staged) != asset.digest:
+                            if staged_original is not None:
+                                with staged_original.open(cancelled=cancelled):
+                                    pass
+                            elif hash_file(staged) != asset.digest:
                                 raise IngestError('staging digest mismatch')
                             if self._active(workspace, row['edition']) != row['expected_active']:
                                 self._set(job, 'conflict', 'active_revision_changed')
@@ -229,7 +244,8 @@ class Ingest:
                             break
                         i = len(records) + 1
                         if segments is None:
-                            p = extract_page(staged, i, config)
+                            p = (extract_page(staged_original, i, config, cancelled=cancelled)
+                                 if staged_original is not None else extract_page(staged, i, config))
                         else:
                             p = dict(physical_index=None, printed_label=None, printed_label_verified=False,
                                      raw_text=segments[i-1], status='candidate', blocks=[], warnings=[],

@@ -36,12 +36,14 @@ def _hash(path, limit=256 * 1024 * 1024, remaining=lambda: None):
 
 def _source_hashes():
     from . import language_manager
+    from ..catalog import streaming_pdf
     root = Path(__file__).parent
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py',
              'model_catalog.py', 'ocr_model_store.py', 'managed_ocr.py',
              'ocr_model_catalog.py', 'ocr-model-catalog.json', 'ocr_process.py')
     return {**{name: _hash(root / name) for name in names},
+            'streaming_pdf.py': _hash(streaming_pdf.__file__),
             'ocr_runtime.py': _hash(ocr_runtime.__file__),
             'language_manager.py': _hash(language_manager.__file__)}
 

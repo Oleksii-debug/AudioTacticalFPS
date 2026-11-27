@@ -7,6 +7,7 @@ expose this all-workspace operation directly to unscoped UI.
 """
 import os
 from pathlib import Path
+from ..catalog.streaming_pdf import FileAsset
 
 from carr_library.ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets, RetentionError
 
@@ -50,7 +51,7 @@ def verify_revision_assets(db, store, *, include_all_workspaces=False,
 
 
 def copy_revision_assets(db, source, destination, *, include_all_workspaces=False,
-                         max_assets=10000, max_bytes=8*1024**3):
+                         max_assets=10000, max_bytes=8*1024**3, cancelled=lambda: False):
     """Copy referenced originals once to a fresh directory, never overwrite.
 
     Existing retention handles hash validation and per-file atomic publication.
@@ -68,6 +69,14 @@ def copy_revision_assets(db, source, destination, *, include_all_workspaces=Fals
     target = RetainedAssets(destination)
     mime_for_suffix = {suffix: mime for mime, suffix in SUFFIXES.items()}
     for path in paths:
+        if cancelled():
+            raise InterruptedError('Original backup copy cancelled.')
+        if path.suffix == '.pdf' and path.stat().st_size > MAX_BYTES:
+            asset = FileAsset.capture(path, cancelled=cancelled)
+            if asset.digest != path.stem:
+                raise RetentionError('Original backup digest changed.')
+            target.retain_file(asset, cancelled=cancelled)
+            continue
         with path.open('rb') as stream:
             data = stream.read(MAX_BYTES + 1)
         target.retain(data, mime_for_suffix[path.suffix], path.stem)

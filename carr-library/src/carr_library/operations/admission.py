@@ -77,12 +77,16 @@ def production_request(plan, root, limits, *, music_devices=(), sound_seconds=No
         gpu_device=gpu, gpu_memory_bytes=capacity, disk_bytes=disk, disk_path=root)
 
 
-def document_request(root, scratch, limits):
+def document_request(root, scratch, limits, *, original_bytes=0):
     """Use the existing native parser's 3 GiB limit as a declared allowance.
 
     Windows has time/process isolation, not a claimed address-space sandbox.
     Disk estimates cover retained sources/checkpoints and separate parser
     scratch; they do not replace the existing format and extraction budgets.
     """
+    from ..catalog.streaming_pdf import MAX_PDF_BYTES
+    if type(original_bytes) is not int or not 0 <= original_bytes <= MAX_PDF_BYTES:
+        raise ValueError('Invalid document original byte reservation.')
     return ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=3 * 1024 ** 3,
-        disk_bytes=1024 * MIB, disk_path=root, additional_disks=((scratch, 512 * MIB),))
+        disk_bytes=max(1024 * MIB, original_bytes + 256 * MIB), disk_path=root,
+        additional_disks=((scratch, max(512 * MIB, original_bytes + 64 * MIB)),))

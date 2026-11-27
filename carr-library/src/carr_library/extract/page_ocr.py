@@ -103,7 +103,7 @@ class Config:
             raise ValueError('invalid resource limit')
 
 
-def extract_page(asset, physical_index, config=Config()):
+def extract_page(asset, physical_index, config=Config(), *, cancelled=lambda: False):
     """Return a candidate, never a verified printed label or corrected quote.
 
     Baseline OCR TSV coordinates are pixels in the original rendered image.
@@ -111,13 +111,18 @@ def extract_page(asset, physical_index, config=Config()):
     Parser isolation and durable job checkpoints belong to the ingest runner.
     """
     deadline = time.monotonic() + config.timeout
+    from ..catalog.streaming_pdf import FileAsset, original_stream, snapshot_original
+    original = (asset if isinstance(asset, FileAsset) else
+                snapshot_original(Path(asset).parent, Path(asset).name, cancelled=cancelled))
+    with original_stream(original, cancelled=cancelled) as stream:
+        return _extract_original_page(original, stream, physical_index, config, deadline, cancelled)
+
+
+def _extract_original_page(original, stream, physical_index, config, deadline, cancelled):
     from pypdf import PdfReader
     import pypdfium2 as pdfium
-    with Path(asset).open('rb') as f:
-        data = f.read(64 * 1024 * 1024 + 1)
-    if len(data) > 64 * 1024 * 1024:
-        raise ValueError('source too large')
-    reader = PdfReader(BytesIO(data))
+    from ..catalog.streaming_pdf import pdf_document
+    reader = PdfReader(stream)
     if reader.is_encrypted or not 1 <= len(reader.pages) <= 1000:
         raise ValueError('encrypted or oversized PDF')
     if type(physical_index) is not int or not 1 <= physical_index <= len(reader.pages):
@@ -126,11 +131,11 @@ def extract_page(asset, physical_index, config=Config()):
     native = source.extract_text() or ''
     result = dict(physical_index=physical_index, printed_label=None,
                   printed_label_verified=False, raw_text=native, blocks=[], warnings=[],
-                  provenance=dict(asset_sha256=sha256(data).hexdigest(), native_text=native,
+                  provenance=dict(asset_sha256=original.digest, native_text=native,
                                   native_engine='pypdf', native_version=metadata.version('pypdf'),
                                   rotation=source.rotation, config=vars(config).copy()))
     provenance = result['provenance']
-    with pdfium.PdfDocument(data) as doc:
+    with pdf_document(original, cancelled=cancelled) as doc:
         if len(doc) != len(reader.pages):
             raise ValueError('parser page count disagreement')
         with closing(doc[physical_index - 1]) as page:
