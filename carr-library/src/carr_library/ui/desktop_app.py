@@ -590,6 +590,8 @@ class DesktopFrame(WorkspaceFrame):
         install_operations_actions(self)
         install_reading_import_actions(self)
         install_portable_sync_actions(self)
+        from .about_dialog import install_about_actions
+        install_about_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
