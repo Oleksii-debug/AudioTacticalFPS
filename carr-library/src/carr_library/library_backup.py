@@ -413,7 +413,8 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
                     legacy_state = canonical_live_layout(app.root)
                 except (ValueError, TypeError, KeyError) as exc:
                     raise RestoreError('application state requires compatibility review: ' + str(exc)) from exc
-                sidecars = _snapshot_sidecars(app.root, live=True, preserve_legacy=legacy_state)
+                sidecars = (_snapshot_sidecars(app.root, live=True, preserve_legacy=True)
+                            if legacy_state else _snapshot_sidecars(app.root, live=True))
                 _validate_sidecars(snapshot_storage.db, sidecars)
             _check_cancelled(cancelled)
             sidecar_bytes = sum(len(raw) for raw in sidecars.values())

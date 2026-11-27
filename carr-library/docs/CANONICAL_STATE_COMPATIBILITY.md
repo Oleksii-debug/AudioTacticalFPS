@@ -118,13 +118,42 @@ layout, not permission to accept unknown layouts.
 
 The isolated source workflow includes the existing library, pending-import,
 provider, translation, assistant, reading-state and ASR backup suites. It
-supplements installed Windows acceptance. Until an exact completed workflow
-result is recorded, new compatibility execution is NOT_RUN.
+supplements installed Windows acceptance. The exact ea85d19d checkpoint ran on
+Linux in Actions 45941173243: all 71 new compatibility cases passed. The complete
+gate did not pass: two existing translation budget cases exposed an ordinary
+call-signature compatibility issue, and one real OCR case lacked Tesseract.
+The successor retains the ordinary sidecar call signature and installs that
+existing OCR prerequisite. Its result must be recorded separately.
 
-Current checkpoint limitation: canonical V5 lost-parent publication candidates
-use a different digest recipe from root candidates. Family-bound pending
-validation and the real-producer interruption regression remain under review.
-This checkpoint is not completed acceptance for that interrupted-import case.
+## Interrupted canonical publication
+
+The current canonical worker includes source/data-directory paths in its
+publication digest; the reviewed worker binds retained source bytes instead.
+The SQLite receipt itself remains immutable historical evidence. Pending
+restore already validates candidate shape, attempt, retained source and journal
+relations, then clears the old process attempt and candidate before explicit
+resume. It does not reinterpret the historical digest or transfer execution
+authority. No alternate digest validator or weaker ownership path is added.
+
+The interruption regression uses additional unchanged 1eff producer sources:
+
+| Module | Exact public blob |
+| --- | --- |
+| application.py | 747c692692f191161b1ca6b5c212abdf0e17345a |
+| ingest/worker.py | e219ff740c54b6280fc0dc6a09e53da1671a4dc7 |
+| pending_backup.py | c039d5d7000ac5a4adafdc631820933c420dba84 |
+
+It launches the real canonical supervisor and child with public synthetic text.
+Scheduling instrumentation stops the child after its SQLite publication, or
+stops the supervisor after the real worker returns, before request finalization.
+The former leaves a pending extraction journal and the latter a complete one.
+In both cases the request remains running with the actual committed candidate.
+The original source/library are removed before restore. The test then requires
+passive restore, cancellation without child launch, explicit real-worker resume,
+unchanged original bytes, one sealed revision and the identical old SQLite
+receipt. Separate source, attempt and journal tampering cases retain the
+existing rejection boundary. The new interruption cases are NOT_RUN until their
+exact workflow result is recorded. Native Windows remains separate acceptance.
 
 ## Desktop integration
 

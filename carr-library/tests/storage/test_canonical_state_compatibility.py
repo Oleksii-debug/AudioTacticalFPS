@@ -1,6 +1,6 @@
 """Real canonical producer -> reviewed root preservation boundary.
 
-The two producer fixtures are exact public source blobs from canonical184dd83d.
+Producer fixtures are exact public source blobs from canonical184dd and 1eff.
 They run against actual SQLite/catalog/original files, with no external engine,
 provider, private document or model. Opaque state is never a resumability claim.
 """
@@ -35,6 +35,9 @@ PRODUCER_BLOBS = {
     'canonical_state_backup.py': '0224cf450d7d3790876bee9b03ad0573f70ba173',
     'canonical_v5_library_backup.py': '8adc760d1ea99f87ecb7c577e2a9b264e1a3d812',
     'canonical_v5_state_backup.py': 'a6b01f762dc362dfd23544c6f5f374fddd210787',
+    'canonical_v5_application.py': '747c692692f191161b1ca6b5c212abdf0e17345a',
+    'canonical_v5_worker.py': 'e219ff740c54b6280fc0dc6a09e53da1671a4dc7',
+    'canonical_v5_pending_backup.py': 'c039d5d7000ac5a4adafdc631820933c420dba84',
 }
 
 
@@ -480,4 +483,185 @@ def test_schema_number_and_signed_fingerprint_do_not_replace_actual_sqlite_ident
     monkeypatch.setattr(backup, 'Storage', lambda *a, **k: pytest.fail('Wrong SQLite layout reached writable Storage.'))
     with pytest.raises(RestoreError, match='schema'):
         backup.restore_backup(folder, tmp_path / 'rejected', checksum)
+    assert not (tmp_path / 'rejected').exists()
+
+
+def make_canonical_committed_candidate(tmp_path, monkeypatch, boundary):
+    """Actual canonical supervisor/child; interrupt only after a durable event."""
+    for filename in ('canonical_v5_application.py', 'canonical_v5_worker.py',
+                     'canonical_v5_pending_backup.py'):
+        raw = (FIXTURES / filename).read_bytes().replace(b'\r\n', b'\n')
+        assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == PRODUCER_BLOBS[filename]
+    root = tmp_path / 'canonical-source-library'
+    source = tmp_path / 'canonical-original.txt'
+    source.write_bytes('Railway source.\r\nТочний оригінал.\fSecond segment.'.encode('utf-8'))
+    observed = tmp_path / 'producer-observation.json'
+    committed = tmp_path / 'child-committed'
+    # The fixture sources keep their exact bytes. Only the trusted test child
+    # bootstrap selects those sources and adds an after-publication barrier.
+    roots = [str(Path(application.__file__).resolve().parents[1]),
+             str(Path(application.__file__).resolve().parents[2])]
+    loader = f"""
+import importlib.util, json, os, sys
+from pathlib import Path
+sys.path[:0] = {roots!r}
+import carr_library, carr_library.ingest
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+worker = load('carr_library.ingest.worker', {str(FIXTURES / 'canonical_v5_worker.py')!r})
+carr_library.ingest.worker = worker
+application = load('carr_library.application', {str(FIXTURES / 'canonical_v5_application.py')!r})
+carr_library.application = application
+"""
+    child = loader
+    if boundary == 'after-publication':
+        child += f"""
+publish = application._CatalogPublisher.publish_revision
+def stop_after_commit(self, *args, **kwargs):
+    result = publish(self, *args, **kwargs)
+    Path({str(committed)!r}).write_text('durable publication observed', encoding='utf-8')
+    os._exit(7)
+application._CatalogPublisher.publish_revision = stop_after_commit
+"""
+    child += "\nraise SystemExit(worker.main())\n"
+    script = loader + f"""
+from carr_library.extract.page_ocr import Config
+app = application.LibraryApp({str(root)!r})
+workspace = app.create_workspace('Actual canonical committed candidate')
+popen = worker.subprocess.Popen
+def launch(command, **options):
+    command = list(command)
+    if '-c' in command:
+        index = command.index('-c') + 1
+        if (index < len(command)
+                and "runpy.run_module('carr_library.ingest.worker'" in command[index]):
+            command[index] = {child!r}
+    return popen(command, **options)
+worker.subprocess.Popen = launch
+invoke = worker._invoke
+def abandon_parent(*args, **kwargs):
+    result = invoke(*args, **kwargs)
+    Path({str(observed)!r}).write_text(json.dumps(dict(workspace=workspace, result=result)),
+                                         encoding='utf-8')
+    # Exit after the actual worker has stopped, before the supervisor can
+    # reconcile or write a final request status. No subprocess is left alive.
+    os._exit(9)
+worker._invoke = abandon_parent
+worker.run_request(app.root, workspace, {str(source)!r},
+    dict(title='Actual canonical original', authors=['Synthetic author'], language='uk',
+         edition='First', volume=None, collections=[], work_id='canonical-work',
+         edition_id='canonical-edition'), Config(), timeout=12.0)
+raise AssertionError('The test supervisor should have stopped before finalization.')
+"""
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c', script],
+                            capture_output=True, text=True, timeout=25)
+    assert result.returncode == 9, result.stdout + result.stderr
+    observation = json.loads(observed.read_bytes())
+    expected = 'failed' if boundary == 'after-publication' else 'complete'
+    assert observation['result']['state'] == expected, observation
+    assert committed.exists() is (boundary == 'after-publication')
+    request_path, = (root / 'import-requests').glob('*.json')
+    record = json.loads(request_path.read_bytes())
+    assert record['state'] == 'running' and 'result' not in record
+    assert record['publication_candidate']['attempt'] == record['attempt']
+    with sqlite3.connect(root / 'imports.sqlite') as db:
+        assert db.execute('SELECT state FROM job').fetchone()[0] == (
+            'pending' if boundary == 'after-publication' else 'complete')
+    app = LibraryApp(root)
+    with app.read(observation['workspace']) as db:
+        receipt = tuple(db.execute('SELECT revision,request_id,attempt,sha256 '
+                                   'FROM import_publication').fetchone())
+        assert receipt == (record['publication_candidate']['revision'], record['request_id'],
+                           record['attempt'], record['publication_candidate']['sha256'])
+        from carr_library.ingest import worker as reviewed_worker
+        # Same actual publication, different historical digest recipe. Pending
+        # restore discards this process hint; it does not reinterpret the hash.
+        state = reviewed_worker._publication_state(db, record, receipt[0])
+        assert state['sha256'] != receipt[3]
+        assert db.execute('SELECT count(*) FROM sealed').fetchone()[0] == 1
+    folder = tmp_path / 'canonical-candidate-backup'
+    with monkeypatch.context() as actual_producer:
+        load_producer('carr_library.state_backup', 'canonical_v5_state_backup.py', actual_producer)
+        load_producer('carr_library.pending_backup', 'canonical_v5_pending_backup.py', actual_producer)
+        producer = load_producer('carr_library._canonical_candidate_backup',
+                                 'canonical_v5_library_backup.py', actual_producer)
+        checksum = producer.create_backup(app, folder)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    assert manifest['version'] == 4 and manifest['schema_version'] == 5
+    assert manifest['pending']['data_dir'] == str(root)
+    return SimpleNamespace(root=root, source=source, folder=folder, checksum=checksum,
+                           manifest=manifest, record=record, receipt=receipt,
+                           workspace=observation['workspace'])
+
+
+@pytest.mark.parametrize('boundary', ['after-publication', 'after-worker-return'])
+def test_actual_canonical_lost_parent_candidate_restores_and_explicitly_resumes(
+        tmp_path, monkeypatch, boundary):
+    from carr_library.ingest import worker
+
+    data = make_canonical_committed_candidate(tmp_path, monkeypatch, boundary)
+    original = data.source.read_bytes()
+    before = file_bytes(data.folder)
+    data.source.unlink()
+    shutil.rmtree(data.root)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Restore or an already cancelled attempt must not launch a worker.')
+    with monkeypatch.context() as passive:
+        passive.setattr(subprocess, 'Popen', forbidden)
+        target = backup.restore_backup(data.folder, tmp_path / 'restored', data.checksum)
+        restored = LibraryApp(target)
+        record = worker.load_request(target, data.record['request_id'])
+        assert record['state'] == 'running' and 'result' not in record
+        assert 'attempt' not in record and 'publication_candidate' not in record
+        assert record['data_dir'] == str(target)
+        assert Path(record['source']).parent == target / 'originals'
+        assert Path(record['source']).read_bytes() == original
+        cancelled = restored.resume_import(data.workspace, record['request_id'],
+                                          cancelled=lambda: True)
+        assert cancelled['state'] == 'cancelled'
+        assert not cancelled.get('publication_recovered')
+    with restored.read(data.workspace) as db:
+        assert tuple(db.execute('SELECT revision,request_id,attempt,sha256 '
+                                'FROM import_publication').fetchone()) == data.receipt
+    result = restored.resume_import(data.workspace, record['request_id'], timeout=15)
+    assert result['state'] == 'complete' and result['id'] == data.receipt[0], result
+    assert result['isolated'] is True
+    after = worker.load_request(target, record['request_id'])
+    assert after['attempt'] != data.record['attempt']
+    assert after['publication_candidate'] is None
+    with restored.read(data.workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM sealed').fetchone()[0] == 1
+        assert tuple(db.execute('SELECT revision,request_id,attempt,sha256 '
+                                'FROM import_publication').fetchone()) == data.receipt
+    assert restored.search(data.workspace, 'Точний')[0].quote == 'Точний'
+    assert restored.assets.resolve(record['asset_sha256']).read_bytes() == original
+    assert file_bytes(data.folder) == before
+
+
+@pytest.mark.parametrize('tampering', ['foreign-source', 'foreign-attempt', 'foreign-job'])
+def test_canonical_committed_candidate_keeps_existing_pending_identity_checks(
+        tmp_path, monkeypatch, tampering):
+    data = make_canonical_committed_candidate(tmp_path, monkeypatch, 'after-publication')
+    name = 'import-requests/' + data.record['request_id'] + '.json'
+    record = json.loads((data.folder / 'pending' / name).read_bytes())
+    candidate = record['publication_candidate']
+    if tampering == 'foreign-source':
+        candidate['manifest']['sha256'] = '0' * 64
+    elif tampering == 'foreign-attempt':
+        candidate['attempt'] = 'f' * 32
+    else:
+        candidate['revision'] = 'e' * 64
+    write_json(data.folder / 'pending' / name, record)
+    raw = (data.folder / 'pending' / name).read_bytes()
+    entry = next(item for item in data.manifest['pending']['files'] if item['filename'] == name)
+    entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    checksum = resign(data.folder, data.manifest)
+    with pytest.raises(ValueError, match='candidate|foreign'):
+        backup.restore_backup(data.folder, tmp_path / 'rejected', checksum)
     assert not (tmp_path / 'rejected').exists()
