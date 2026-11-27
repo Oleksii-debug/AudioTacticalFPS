@@ -128,6 +128,11 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             shutil.copyfile(HERE / name, stage / name)
         shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
         shutil.copyfile(HERE.parent / 'docs' / 'START_V3_UK.txt', stage / 'START_V3_UK.txt')
+        guides = stage / 'guides'
+        guides.mkdir(exist_ok=True)
+        transcription_guide = HERE.parent / 'docs' / 'TRANSCRIPTION.md'
+        regular(transcription_guide)
+        shutil.copyfile(transcription_guide, guides / 'TRANSCRIPTION.md')
         (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
         for origin in (HERE / 'wheel-notices').iterdir():
             regular(origin)

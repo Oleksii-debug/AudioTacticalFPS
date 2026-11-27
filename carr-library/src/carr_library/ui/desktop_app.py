@@ -527,6 +527,8 @@ class DesktopFrame(WorkspaceFrame):
         install_save_actions(self)
         install_citation_actions(self)
         install_operation_progress(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
         install_keyboard_settings(self)
 
     def make_evidence_panel(self,parent,services):
@@ -621,6 +623,7 @@ class DesktopFrame(WorkspaceFrame):
 
     def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
         from concurrent.futures import CancelledError
+        from ..audio.models import AudioCancelled
         if self._closing:
             return
         if self.working:
@@ -698,7 +701,7 @@ class DesktopFrame(WorkspaceFrame):
                     if done is not None:
                         done(result)
                 except Exception as exc:
-                    finish_progress('cancelled' if isinstance(exc, (InterruptedError, CancelledError)) else 'failed')
+                    finish_progress('cancelled' if isinstance(exc, (InterruptedError, CancelledError, AudioCancelled)) else 'failed')
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)

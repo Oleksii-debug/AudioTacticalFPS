@@ -409,6 +409,10 @@ jobs:
           # Test dependencies are installed only after production installation passes.
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The native transcription probe reuses the synthetic protocol test
+          # fixtures, so run it only after the offline test dependencies exist.
+          & $python -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_transcription_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-transcription-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
@@ -455,6 +459,11 @@ jobs:
                             'tests/ui/test_export_destination.py',
                             'tests/storage/test_durable_state_publication.py',
                             'tests/ui/test_profile_project_exports.py',
+                            'tests/ingest/test_batch_scan.py',
+                            'tests/transcription/test_supplied_worker_bridge.py',
+                            'tests/transcription/test_v5_worker_profile.py',
+                            'tests/transcription/test_runtime_interpreter.py',
+                            'tests/storage/test_state_json_reader.py',
                             'tests/ui/test_academic_actions.py',
                             'tests/packaging/test_native_checks.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
@@ -649,7 +658,11 @@ jobs:
             'tests/reader/test_export_no_clobber.py',
             'tests/ui/test_export_destination.py',
             'tests/storage/test_durable_state_publication.py',
-            'tests/ui/test_profile_project_exports.py'
+            'tests/ui/test_profile_project_exports.py',
+            'tests/transcription/test_supplied_worker_bridge.py',
+            'tests/transcription/test_v5_worker_profile.py',
+            'tests/transcription/test_runtime_interpreter.py',
+            'tests/storage/test_state_json_reader.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

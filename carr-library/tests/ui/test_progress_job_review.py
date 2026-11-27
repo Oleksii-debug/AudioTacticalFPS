@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from carr_library.audio.models import AudioCancelled
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 
 
@@ -231,8 +232,9 @@ def test_receipt_classifier_failure_preserves_successful_publication(desktop, mo
     assert not any(event.percent == 100 for event in frame.operation_progress.history)
 
 
-@pytest.mark.parametrize('worker_error', [InterruptedError('Worker cancelled'), OSError('Commit failed')],
-                         ids=['acknowledged-cancel', 'real-commit-failure'])
+@pytest.mark.parametrize('worker_error', [InterruptedError('Worker cancelled'),
+    AudioCancelled('Transcription intake cancelled'), OSError('Commit failed')],
+                         ids=['acknowledged-cancel', 'audio-cancel', 'real-commit-failure'])
 def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, worker_error):
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
@@ -245,7 +247,7 @@ def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, 
     done.assert_not_called()
     failed.assert_called_once_with(worker_error)
     assert frame.operation_progress.tracker.event.state == (
-        'cancelled' if isinstance(worker_error, InterruptedError) else 'failed')
+        'cancelled' if isinstance(worker_error, (InterruptedError, AudioCancelled)) else 'failed')
     assert str(worker_error) in reports[-1] and not frame.working
 
 

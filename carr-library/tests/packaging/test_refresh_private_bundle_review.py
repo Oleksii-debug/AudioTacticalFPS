@@ -68,7 +68,7 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices').mkdir()
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
-    for name in ('RUNNING.md', 'START_V3_UK.txt'):
+    for name in ('RUNNING.md', 'START_V3_UK.txt', 'TRANSCRIPTION.md'):
         (project / 'docs' / name).write_text('Synthetic current installation guidance.\n')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
@@ -163,6 +163,7 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     assert manifest['parent_source_commit'] == 'a' * 40
     assert manifest['use_scope'] == 'private-personal-installation'
     assert report['manifest_sha256'] == sha256((bundle.output / 'bundle-manifest.json').read_bytes()).hexdigest()
+    assert (bundle.output / 'guides' / 'TRANSCRIPTION.md').read_bytes() == b'Synthetic current installation guidance.\n'
     for name, raw in bundle.protected.items():
         assert (bundle.output / name).read_bytes() == raw
     assert not (bundle.output / 'unlisted-private.txt').exists()
