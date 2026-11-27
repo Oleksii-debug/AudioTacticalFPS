@@ -167,7 +167,16 @@ def test_save_all_has_stable_main_id_and_keeps_editor_save_context_separate(mana
 
 
 def test_save_all_discovery_and_invocation_keep_original_native_menu_id(manager, monkeypatch):
-    from test_keyboard_manager import Frame, MenuItem
+    from importlib.util import module_from_spec, spec_from_file_location
+    from pathlib import Path
+
+    # Installed acceptance uses pytest importlib mode and an empty pythonpath.
+    # Load only this sibling test fixture; never expose the product source tree.
+    spec = spec_from_file_location('_carr_keyboard_test_fixtures',
+                                   Path(__file__).with_name('test_keyboard_manager.py'))
+    fixtures = module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    Frame, MenuItem = fixtures.Frame, fixtures.MenuItem
     frame, seen = Frame(), []
     frame.items.append(MenuItem(77, 'Save All\tCtrl+S'))
     frame.GetEventHandler = lambda: SimpleNamespace(
