@@ -361,7 +361,7 @@ def _production_music_manifest(root, reference, engine_name, *, resolver, cancel
 
 def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False,
                    on_status=lambda message: None, music_manifest_resolver=None,
-                   broker=None, operation_id=None):
+                   broker=None, operation_id=None, trust_controller=None):
     """Render actual local audio and checkpoints; successful chunks survive errors.
 
     The desktop supplies its shared library broker. Standalone callers can pass
@@ -376,7 +376,8 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
     with project_lock(root):
         if broker is None:
             return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg, cancelled=cancelled,
-                                  on_status=on_status, music_manifest_resolver=music_manifest_resolver)
+                                  on_status=on_status, music_manifest_resolver=music_manifest_resolver,
+                                  trust_controller=trust_controller)
         from ..operations import ResourceBroker, ResourceCancelled, ResourceConflict
         from ..operations.admission import production_request
         if not isinstance(broker, ResourceBroker):
@@ -417,12 +418,13 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
                         raise ResourceConflict('A selected sound changed while waiting for resources.')
                 return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg,
                     cancelled=lease.cancelled, on_status=on_status,
-                    music_manifest_resolver=admitted_music)
+                    music_manifest_resolver=admitted_music, trust_controller=trust_controller)
         except ResourceCancelled as exc:
             raise InterruptedError('Audio production stopped while waiting for shared resources.') from exc
 
 
-def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None):
+def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None,
+                   trust_controller=None):
     cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
                        budget_root=root)
     cache.reserve(0)
@@ -502,6 +504,11 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 'message': 'Verified previously published production.'})
             on_status('This exact production is already complete; verified its output checksums.')
             return _public_result(previous, output_dir)
+    from ..security.admission import admit_new_operation
+    authorization = admit_new_operation(trust_controller, 'audio.render')
+    # Exact completed outputs above remain readable without a new grant. Keep
+    # this immutable admission throughout synthesis; no expiry polling occurs.
+    if output_dir.exists():
         quarantine = checked_directory(root / 'quarantine', create=True)
         output_dir.rename(quarantine / (run_key + '.' + uuid.uuid4().hex))
     journal = root / 'render-journal.json'

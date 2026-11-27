@@ -174,8 +174,8 @@ try {
     # the existing full bundle, its manifest, or its current local audio proof.
     $arguments = @('-I', '-B', 'packaging/build_windows_bundle.py',
         '--wheel', $applicationWheel, '--wheelhouse', $wheelhouse,
-        '--lock', 'packaging/windows-semantic-cp311.lock',
-        '--sbom', 'packaging/windows-semantic-sbom.cdx.json',
+        '--lock', 'packaging/windows-integrated-cp311.lock',
+        '--sbom', 'packaging/windows-integrated-sbom.cdx.json',
         '--python-archive', $pythonArchive,
         '--model-dir', $env:CARR_CI_MODEL_DIR, '--model-manifest', $env:CARR_CI_MODEL_MANIFEST,
         '--ocr-dir', $env:CARR_CI_OCR_DIR, '--ocr-source-archive', $ocrSource,
@@ -308,15 +308,15 @@ def digest(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 report = json.loads((evidence / 'native.json').read_text(encoding='utf-8'))
-checks = ['failed-bootstrap-preserves-previous', 'install', 'repair', 'uninstall', 'failed-environment-preserved']
-true_flags = ['old_process_survived_repair', 'failed_bootstrap_preserves_previous_registration',
+checks = ['active-application-blocks-uninstall', 'failed-bootstrap-preserves-previous', 'install', 'repair', 'uninstall', 'failed-environment-preserved']
+true_flags = ['old_process_survived_repair', 'active_application_blocks_uninstall', 'failed_bootstrap_preserves_previous_registration',
               'failed_environment_preserved', 'research_and_unknown_files_preserved',
               'one_start_menu_entry', 'native_install_repair_uninstall', 'actual_installed_app_self_test']
 false_flags = ['authenticode_verified', 'nvda_verified']
 assert set(report) == set(['schema', 'status', 'source_commit', 'installer_sha256',
                           'manifest_sha256', 'failed_installer_sha256', 'checks'] + true_flags + false_flags)
 assert type(report['schema']) is int and report['schema'] == 1 and report['status'] == 'passed'
-assert type(report['checks']) is list and len(report['checks']) == 5
+assert type(report['checks']) is list and len(report['checks']) == 6
 assert all(type(item) is str for item in report['checks']) and Counter(report['checks']) == Counter(checks)
 assert all(report[name] is True for name in true_flags)
 assert all(report[name] is False for name in false_flags)
@@ -336,7 +336,7 @@ assert digest(full_manifest) == full_hash
 inputs = json.loads((evidence / 'inputs.json').read_text(encoding='utf-8-sig'))
 assert inputs['source_commit'] == source and inputs['source_tree'] == tree
 assert inputs['compiler_sha256'] == compiler_hash and inputs['existing_full_manifest_sha256'] == full_hash
-report.update(source_tree=tree, check_count=5, compiler_sha256=compiler_hash,
+report.update(source_tree=tree, check_count=6, compiler_sha256=compiler_hash,
               compiler_version=inputs['compiler_version'], existing_full_sealed_payload_unchanged=True,
               probe_interpreter='existing-installed-application', audio_transfer_guard='ENFORCED',
               source_files_sha256={name: digest(project / name) for name in (
@@ -359,7 +359,8 @@ finally {
     foreach ($name in @('install-setup.log', 'install-process.log', 'install-shortcut.txt',
                          'failed-bootstrap-setup.log', 'failed-bootstrap-process.log',
                          'repair-setup.log', 'repair-process.log', 'repair-shortcut.txt',
-                         'uninstall-setup.log', 'uninstall-process.log')) {
+                         'uninstall-setup.log', 'uninstall-process.log',
+                         'blocked-uninstall-setup.log', 'blocked-uninstall-process.log')) {
         $log = Join-Path $probeWork $name
         if (Test-Path -LiteralPath $log -PathType Leaf) {
             try {

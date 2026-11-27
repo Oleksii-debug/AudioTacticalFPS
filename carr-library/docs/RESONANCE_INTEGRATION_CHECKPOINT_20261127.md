@@ -1,6 +1,141 @@
 # Resonance integration checkpoint — 27 November 2026
 
-## Composed acceptance candidate r4 — source review, execution pending
+## Composed acceptance candidate r5 — current source, execution required
+
+The technical contract remains `UNIVERSAL_SCOPE_V3_FINALIZATION.md` at canonical
+`4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`. The r5 composition includes the
+reviewed base `08aaa4a85cc9d85b01f81cdc3bbce775d462f8ba`, the final admission,
+pagination and About changes below, and one shared acceptance workflow.
+This document does **not** declare the complete V3 product or release qualified.
+A source review, an expected case count and a successful earlier commit are
+distinct from passing execution on the present composed commit.
+
+### Included changes
+
+| Source | Resulting behavior | Evidence at composition |
+| --- | --- | --- |
+| `7a656d6281e92c7656725d55008a75321966d10f` | Canonical Windows ledger paths and actual publication fault seams | Reviewed corrections to the r4 failures; current broad replay pending |
+| `ad87fad496213ca6eb2dce683ff36c7611be84fb` and `32fac9fa3493f2639414632ba88faf6e152e5fb2` | Actual Windows state-replacement seam, binary child readiness, enabled fake controls, typed PDF backup compatibility, owned pronunciation child and bounded import publication fixtures | Independent source reviews; existing assertions retained, PDF current/historical coverage adds one case |
+| `7ac6cec1e08bf544a50f17ebe4afdf0c13a1f440` | Recording Pause/Resume through the existing owned capture, verified PCM parts, one reservation and original/retake backup; stale-host modal cleanup | **115 strict source cases and 50 installed native keyboard checks PASS** on this exact commit |
+| `5c357542de0000be0998241fe19301cf5941c916` | Current vault-backed signed entitlement, real TUF package authority, bounded explicit renewal/polling, managed-layout guard, shared installation lifetime lease and active-app uninstall refusal | Independent source reviews; 174 security and 39 lease cases expected; current execution pending |
+| `9a192f25ea46acc0f17badd03e9d2c7ed9c1fe94` | One explicitly injected controller admits only fresh mapped audio/ASR/planning work; retained operation leases and saved data remain usable; foreign nested controllers and injected service rebinding refused | Two independent source reviews; 46 source-derived cases, execution pending |
+| `bd2b5edc8b4ecf9b3e3589ad098753f123cceabc` | Explicit Word working copy, current CSL snapshot and stable citation IDs, native controls/endnotes, worker-owned COM apartment and proxy release | 36 backend, 9 UI and 4 profile cases expected; actual Word qualification remains separate |
+| `41c2abd5875ffec2da6ff71a06a0c43ca442ae0c` | Native About component catalogue and bounded read-only actual installed notices using current background host | 27 catalogue and 14 UI cases expected; execution pending |
+| `afdd5ece72cfad789db9c221efaf23d682a47a28` | Bounded search continuation across more than 500 editions and 20 libraries, literal keyset past 10,000 matches, native Next/Previous and CLI/assistant cursor parity | Independent source review; 49 search, 11 UI and 9 end-to-end cases plus 21 native checks expected |
+
+No parallel capture, process supervisor, credential vault, publication mechanism,
+installer layout, model transport or document store is introduced. Existing
+protected user-data operations remain independent of optional entitlement
+availability. The default private installation has no configured production
+licensing authority or automatic remote endpoint.
+
+Pause acknowledges only after the actual owned capture has closed. Resume
+rechecks the selected local executable and microphone and keeps the original
+reservation and media quieting. Final audio streams verified PCM parts without
+inserting pause silence or decoding/re-encoding; the final typed receipt binds
+both parts and the whole PCM. Pending cleanup cannot release the reservation or
+claim a paused state. The exact r5 composition must replay these assertions.
+
+Pagination retains existing source adapters and selected-library order. Literal
+enumeration is complete under the unchanged snapshot; ranked pages explicitly
+retain within-batch order and do not promise a global score. Page cursors bind the
+current query, filters, catalogue revision, library/workspace and selected library
+order. Current-page handles are bounded and a new page retires only that query's
+prior handles. Native source actions still reverify retained originals.
+The synthetic 503-edition, 25-library and 10,003-match tests are not a claim about
+1k/10k/50k real-corpus performance.
+
+The optional Word profile uses the reviewed official pywin32 312 platform wheel.
+COM is initialized and all wrappers are released inside the same actual worker
+apartment. The native probe also releases its own proxies before uninitializing.
+The user's original document is never saved or replaced; the explicit new copy
+remains the mutation target. Installed pywin32 ABI/origin/STA checks are mandatory,
+while an unavailable Word application is recorded as **NOT_RUN**, not a passed
+Office workflow.
+
+### Shared dependency profile and exact current gates
+
+The integrated Windows profile preserves every version, accepted wheel hash,
+component identity and original dependency edge in the 53-package semantic
+profile. It adds only python-tuf 7.0.1, securesystemslib 1.6.0 and pywin32 312,
+giving 56 packages and 56 SBOM components. Prior resolver provenance is retained
+only for the prior inventory; this additive composition is not presented as a new
+uv resolution. Actual component notices retain Apache/MIT alternatives, vendored
+CC0 terms and the upstream mixed Word/Win32 notices.
+
+The prepared r5 workflow selects **285 strict source suites** and the separate
+**14-case numeric-loopback local-planning fixture**. Installed execution selects
+**146 content selectors plus the existing 14 explicit workflows**. Additive exact
+oracles require **441 cases in 25 source modules** and **395 cases in 22 installed
+modules**. These overlap other gates and must not be added as unique test totals.
+Source counts are derived from the unchanged test functions/parameters; installed
+JUnit gates additionally require each exact function count and zero errors/skips.
+
+Existing exact ASR466, Advanced/planning135 and bounded-inventory10 gates remain.
+Recording/process/monitor/playback/UI/pause expectations now total157. Native
+checks retain the former gates and add recording50, trust15 and pagination21.
+Source, initial wheel, full sealed bundle and native probes retain installed-origin
+and immutable-source checks. Only the separate synthetic local HTTP fixture can
+use numeric loopback TCP; the sealed bundle still executes under outbound
+Windows Firewall blocks.
+
+The standard installer driver uses the same integrated56 profile and fresh,
+independently sealed audio-free distribution. Its six exact native checks include
+refusing uninstall while the actual managed application holds its lease, followed
+by repair and preservation checks. A genuine different-release standard A-to-B
+update transaction is a separate workline; this repair probe is not relabelled as
+an A-to-B upgrade.
+
+### Completed r4 evidence — exact old head only
+
+The completed r4 head was `28a4e5428a035af8d2f9edd89ebd4ae3802d1f5b`.
+Its results are recorded here to explain the required corrections, not transferred
+to r5.
+
+| Windows lane | Exact result | Run / job |
+| --- | --- | --- |
+| Integrated source | **FAIL**:260 strict suites,252 suite PASS/8 suite FAIL;6616 passed/35 failed/0 skipped cases | [45954388978 /140357389698](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45954388978/job/140357389698) |
+| Audio | **FAIL**:879 passed/5 failed/7 explicit device/platform skips;22 subtests | [45954388910 /140357389183](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45954388910/job/140357389183) |
+| Native commands/drafts | **PASS**:270 strict cases, actual native Main35/Reader23/drafts15/SaveAll27/Operations35 | [45954388978 /140357389487](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45954388978/job/140357389487) |
+| Portable sync | **PASS**:320 source,154 installed and44 actual native checks | [45954388929 /140357389225](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45954388929/job/140357389225) |
+| Bibliography | **PASS**:1018 strict cases across28 suites,108 installed native checks | [45954389218 /140357390587](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45954389218/job/140357390587) |
+
+The detailed 260-row source evidence is retained in
+`evidence/windows-r4-main-20261127.json`. Main artifact15180380896 has SHA256
+`72e3ea40428a84333717b60feda0bfc3a9dfb6604ad92e766fbdec18de92f50f`.
+Later r4 main sealed-installed/native/loopback/Inno stages were **NOT_RUN** after
+the strict source failure. All eight failed groups have reviewed corrections in
+the r5 source; that statement is not an execution verdict.
+
+### Exact recording Pause/Resume acceptance
+
+[Run45960506050 / job140376949230](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45960506050/job/140376949230)
+completed successfully on `7ac6cec1e08bf544a50f17ebe4afdf0c13a1f440`,
+tree `85d8ed4187db79656192580012c74515b014717a`.
+It passed115 strict source cases with zero failures/skips and50 real installed
+native keyboard checks. Artifact15180398342 SHA256 is
+`ba9f4f2624c32192d0b580796f8a6e35bed0980349c206c2b9885813929c0d2b`.
+The full receipt is `evidence/recording-pause-7ac6-20261127.json`.
+This qualifies the synthetic actual-FFmpeg/native-control scenario; physical
+microphone, physical monitor output, listening quality and NVDA remain **NOT_RUN**.
+
+### Remaining qualification boundaries
+
+Real private-worker interoperability, actual Whisper/model/voice/music quality,
+production provider/account credentials, actual Office availability, physical
+audio devices/listening, NVDA, real large-corpus benchmarks, signing and final
+distribution rights are not inferred from synthetic or source-only tests.
+No private worker, model, recording, transcript, credential or private path is
+published. The current execution-host outage does not justify weakening these
+requirements or fabricating a release qualification.
+
+## Historical r4 composition record
+
+The following is the earlier preparation record. Its "pending" statements and
+expected counts describe r4 before its completed results above; they are not
+the status or selected counts for r5.
+
+### Earlier r4 source-review record
 
 The technical entry point is `UNIVERSAL_SCOPE_V3_FINALIZATION.md`, rechecked
 against canonical commit `4b6f8169986c4a58b43e4a23bc081fbefadbbdcb` (unchanged specification bytes).

@@ -17,7 +17,7 @@ _KEYS = {
     'library.catalog': (set(), {'after', 'limit', 'title', 'author', 'language'}),
     'library.import': ({'path'}, set()),
     'library.import_folder': ({'path'}, set()),
-    'library.search': ({'query'}, {'mode', 'limit', 'title', 'author', 'language'}),
+    'library.search': ({'query'}, {'mode', 'limit', 'title', 'author', 'language', 'cursor'}),
     'library.extract': ({'edition', 'name'}, set()),
     'library.backup': ({'name'}, set()),
     'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems', 'language', 'input_kind'}),
@@ -40,6 +40,9 @@ def validate_arguments(step):
         elif key == 'stems':
             if type(value) is not bool:
                 raise ValueError('The stems option must be true or false.')
+        elif key == 'cursor':
+            from ..search.pagination import MAX_CURSOR_BYTES
+            text(value, 'search continuation', maximum=MAX_CURSOR_BYTES)
         elif key == 'limit':
             if type(value) is not int or not 1 <= value <= (500 if step.tool == 'library.catalog' else 100):
                 raise ValueError('Invalid result page size.')

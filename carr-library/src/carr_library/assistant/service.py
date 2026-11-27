@@ -376,8 +376,12 @@ class AssistantService:
             return {'batch_id': intent['batch'], 'counts': batch['counts'],
                     'editions': [r['edition_id'] for r in batch['rows'] if r['state'] == 'complete']}
         if step.tool == 'library.search':
-            return {'results': _plain(self.app.search(workspace, cancelled=cancelled,
-                                                      timeout=min(60.0, scope.max_seconds), **args)),
+            page = self.app.search_page(workspace, cancelled=cancelled,
+                timeout=min(60.0, scope.max_seconds), **args)
+            return {'results': _plain(page.results), 'next_cursor': page.next_cursor,
+                    'page_number': page.page_number, 'ordering': page.ordering,
+                    'source_pages_examined': page.source_pages_examined,
+                    'total_source_pages': page.total_source_pages,
                     'notice': 'Search excerpts retain source verification status; assistant output does not approve quotations.'}
         if step.tool == 'library.extract':
             from ..reader.reading_desk import ReadingDesk
@@ -459,7 +463,17 @@ class AssistantService:
             def production_progress(message):
                 if progress:
                     progress(index, len(record['steps']), message)
-            result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
+            from ..security.admission import operation_context, admitted_operation
+            from .production import LocalProduction
+            authority = getattr(self.app, 'trust_controller', None)
+            with operation_context(authority):
+                if isinstance(self.production, LocalProduction) and self.production._default_renderer:
+                    # The actual renderer first verifies a completed-output
+                    # replay, then admits only a new synthesis operation.
+                    result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
+                else:
+                    with admitted_operation(authority, 'audio.render'):
+                        result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
             if not isinstance(result, dict) or not result.get('artifacts'):
                 raise RuntimeError('Audio production did not return completed audio artifacts.')
             return result

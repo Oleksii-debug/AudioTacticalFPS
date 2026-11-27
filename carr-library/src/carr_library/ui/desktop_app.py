@@ -100,8 +100,25 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.bound_library = frame.library
         self.bound_workspace,self.bound_topic = services.workspace,services.topic
         self.results = {}
+        from .search_paging import PageHistory
+        self.paging = PageHistory()
         super().__init__(parent, services.search, services.load_context,
                          verified_copy=services.verified_copy)
+        navigation = wx.BoxSizer(wx.HORIZONTAL)
+        self.previous_page_button = wx.Button(self, label='&Previous results page')
+        self.next_page_button = wx.Button(self, label='&Next results page')
+        self.previous_page_button.SetName('Previous results page')
+        self.next_page_button.SetName('Next results page')
+        navigation.Add(self.previous_page_button, 0, wx.ALL, 3)
+        navigation.Add(self.next_page_button, 0, wx.ALL, 3)
+        self.GetSizer().Insert(7, navigation, 0, wx.EXPAND)
+        self.previous_page_button.MoveAfterInTabOrder(self.go)
+        self.next_page_button.MoveAfterInTabOrder(self.previous_page_button)
+        self.previous_page_button.Bind(wx.EVT_BUTTON,
+                                       lambda event: self.on_search(event, direction='previous'))
+        self.next_page_button.Bind(wx.EVT_BUTTON,
+                                   lambda event: self.on_search(event, direction='next'))
+        self._page_controls()
         self.retrieval.SetItems(['Exact phrase', 'Whole word', 'All words on one page',
                                  'Thematic (local keywords)', 'Semantic (local model)',
                                  'Advanced (AND, OR, NOT, NEAR)'])
@@ -153,6 +170,17 @@ class DesktopSearchPanel(PagedSearchPanel):
         for control in (self.query, *self.filters.values()):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
 
+    def _page_controls(self):
+        if hasattr(self, 'previous_page_button'):
+            ready = not self.frame.working
+            self.previous_page_button.Enable(ready and self.paging.can_previous)
+            self.next_page_button.Enable(ready and self.paging.can_next)
+
+    def set_workspace(self, workspace):
+        self.paging.reset()
+        super().set_workspace(workspace)
+        self._page_controls()
+
     def on_build_query(self, event=None):
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
@@ -178,6 +206,8 @@ class DesktopSearchPanel(PagedSearchPanel):
 
     def on_options_changed(self, event=None):
         """Discard old results when query, filters or presentation change."""
+        self.paging.reset()
+        self._page_controls()
         self._context_epoch += 1
         self.model.clear()
         self.results.clear()
@@ -200,17 +230,20 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.results.clear()
         self.grid.refresh()
         self.details.ChangeValue('')
+        self.paging.reset()
+        self._page_controls()
         self.status.ChangeValue('Collections refreshed. Search again using the current selection.' if selected in self.collection_ids else
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
-    def on_search(self, event):
+    def on_search(self, event=None, *, direction='first'):
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
         workspace = self.model.workspace
         query = self.query.GetValue().strip()
-        if not workspace or workspace != self.bound_workspace or not query:
-            self.status.ChangeValue('Select a library and enter a query.')
+        if (not workspace or workspace != self.bound_workspace or not query
+                or self.frame.library is not self.bound_library):
+            self.status.ChangeValue('Select the current library and enter a query.')
             self.query.SetFocus()
             return
         retrieval = self.retrieval.GetSelection()
@@ -241,6 +274,13 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.collection.SetFocus()
             return
         options['collection'] = self.collection_ids[index]
+        try:
+            requested_cursor = self.paging.request(direction)
+        except ValueError as exc:
+            self.status.ChangeValue(str(exc))
+            self.status.SetFocus()
+            return
+        library = self.bound_library
         self._context_epoch += 1
         epoch = self._context_epoch
         self.model.clear()
@@ -249,18 +289,26 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.details.ChangeValue('')
         notes = []
 
-        def done(rows):
-            if self._context_epoch != epoch or self.model.workspace != workspace:
+        def done(page):
+            if (self._context_epoch != epoch or self.model.workspace != workspace
+                    or self.frame.library is not library):
                 return
+            self.paging.accept(direction, requested_cursor, page.next_cursor, page.page_number)
+            self._page_controls()
+            rows = page.results
             self.results = {r.ref: r for r in rows}
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
                 r.author, r.edition, r.page, r.quote, r.citation) for r in rows))
             self.grid.refresh()
-            info = f'{len(rows)} results.' if rows else 'No results. Change the query or source filters.'
+            info = (f'Page {page.page_number}: {len(rows)} current results. '
+                    f'Source pages examined: {page.source_pages_examined} of {page.total_source_pages}; '
+                    f'{page.total_editions} matching catalog editions. ')
+            info += ('Continue to the next source batch. ' if page.next_cursor
+                     else 'All selected source batches examined. ')
+            info += page.ordering + self.paging.history_notice
             if rows:
                 info += (' Short source quotations.' if result_mode == 'short' else
                          ' Expanded source excerpts from the matching page or text segment.')
-                info += ' Showing excerpts from up to 100 matches. Use source filters to focus the search.'
             if notes:
                 info += ' ' + ' '.join(dict.fromkeys(notes))
             if mode == 'advanced':
@@ -276,9 +324,18 @@ class DesktopSearchPanel(PagedSearchPanel):
             else:
                 self.status.SetFocus()
 
-        self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
+        def failed(error):
+            if (self._context_epoch == epoch and self.model.workspace == workspace
+                    and self.frame.library is library):
+                self._page_controls()
+                self.status.ChangeValue('Search page not completed: ' + str(error))
+                self.status.SetFocus()
+
+        self.frame.run_job('Searching the selected library', lambda: library.search_page(
             workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
-            authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
+            authorized_topic=self.bound_topic, on_status=notes.append,
+            cursor=requested_cursor, **options), done, failed)
+        self._page_controls()
 
     def on_more(self, event):
         if self.frame.working:
@@ -496,8 +553,15 @@ class DesktopSearchPanel(PagedSearchPanel):
 
 class DesktopFrame(WorkspaceFrame):
     def __init__(self, library, remember_data_dir=None, *, trust_controller=None):
+        from ..security.admission import checked_controller
+        trust_controller = checked_controller(trust_controller)
         self.library = library
-        self.trust_controller = trust_controller
+        configured = checked_controller(getattr(library, 'trust_controller', None))
+        if trust_controller is not None and configured is not None and trust_controller is not configured:
+            raise ValueError('The desktop and library must share their configured authority.')
+        self.trust_controller = trust_controller if trust_controller is not None else configured
+        if self.trust_controller is not None:
+            library.trust_controller = self.trust_controller
         self.remember_data_dir = remember_data_dir
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
         self.cancel_event = threading.Event()
@@ -593,6 +657,8 @@ class DesktopFrame(WorkspaceFrame):
         install_reading_import_actions(self)
         install_portable_sync_actions(self)
         install_trust_actions(self)
+        from .about_dialog import install_about_actions
+        install_about_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -829,7 +895,8 @@ class DesktopFrame(WorkspaceFrame):
             raise ValueError('Choose an existing research-library data folder containing library.sqlite.')
         if not self._confirm():
             return False
-        candidate = LibraryApp(path,semantic_ranker=self.library.semantic_ranker)
+        candidate = LibraryApp(path,semantic_ranker=self.library.semantic_ranker,
+            **({'trust_controller': self.trust_controller} if getattr(self, 'trust_controller', None) is not None else {}))
         if self.remember_data_dir is not None:
             self.remember_data_dir(candidate.root)
         self._drop()

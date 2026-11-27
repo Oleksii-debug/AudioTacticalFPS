@@ -101,7 +101,9 @@ class StudioController:
     """Project lifecycle, explicit reading changes and cancellable local renders."""
 
     def __init__(self, *, private_root, registry=None, parser=None, renderer=None,
-                 ffmpeg=None, loading_budget=64 * 1024 * 1024):
+                 ffmpeg=None, loading_budget=64 * 1024 * 1024, trust_controller=None):
+        from ..security.admission import checked_controller
+        self.trust_controller = checked_controller(trust_controller)
         self.private_root = Path(private_root).absolute()
         self.registry = registry
         self._owns_registry = registry is None
@@ -485,8 +487,16 @@ class StudioController:
                 from ..operations import ResourceBroker
                 options['broker'] = ResourceBroker.for_app(self.private_root, cancelled=cancelled)
                 options['operation_id'] = 'studio:' + self.project_id
-            result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
-                              cancelled=cancelled, on_status=on_status, **options)
+                if self.trust_controller is not None:
+                    options['trust_controller'] = self.trust_controller
+            if self.renderer is not None:
+                from ..security.admission import admitted_operation
+                with admitted_operation(self.trust_controller, 'audio.render'):
+                    result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
+                                      cancelled=cancelled, on_status=on_status, **options)
+            else:
+                result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
+                                  cancelled=cancelled, on_status=on_status, **options)
             if not isinstance(result, dict) or result.get('status') != 'complete':
                 raise ValueError('The production service did not confirm a complete audio render.')
             output = _local_path(result.get('output', ''), 'rendered audio file')
@@ -547,6 +557,19 @@ class AudioStudioDialog:
     def __init__(self, parent, controller):
         import wx
         self.wx, self.parent, self.controller = wx, parent, controller
+        from ..security.admission import checked_controller
+        from .operation_progress import operation_progress_for
+        self.operation_progress = operation_progress_for(parent)
+        owner = self.operation_progress.frame if self.operation_progress is not None else parent
+        configured = getattr(owner, 'trust_controller', None)
+        if configured is None:
+            configured = getattr(getattr(owner, 'library', None), 'trust_controller', None)
+        configured = checked_controller(configured)
+        current = checked_controller(getattr(controller, 'trust_controller', None))
+        if configured is not None and current is not None and current is not configured:
+            raise ValueError('Audio Studio must retain its host authority.')
+        if configured is not None:
+            controller.trust_controller = configured
         self.dialog = wx.Dialog(parent, title='Audio Studio — Local only', size=(940, 760),
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
@@ -555,8 +578,6 @@ class AudioStudioDialog:
         self.editing_dirty = False
         self._script_dirty = False
         self.playback = LocalPlayback(progress_hub=getattr(parent, 'progress_hub', None))
-        from .operation_progress import operation_progress_for
-        self.operation_progress = operation_progress_for(parent)
         self._content_request = None
         self._progress_unregister_player = (self.operation_progress.register_player(self.playback)
             if self.operation_progress is not None else lambda: None)

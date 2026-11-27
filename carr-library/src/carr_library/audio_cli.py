@@ -40,7 +40,7 @@ def validate_audio_arguments(args, parser):
         parser.error('Supply both --piper-executable and --piper-manifest.')
 
 
-def run_audio(args):
+def run_audio(args, *, trust_controller=None):
     from .audio.engines import default_registry
     from .audio.runtime import resolve_ffmpeg
     from .audio.models import ProductionPlan
@@ -76,7 +76,8 @@ def run_audio(args):
     try:
         result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
             cancelled=stopped.is_set,
-            on_status=lambda text: print(text, file=sys.stderr, flush=True))
+            on_status=lambda text: print(text, file=sys.stderr, flush=True),
+            **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     except (RenderCancelled, InterruptedError) as exc:
         print(json.dumps({'status': 'cancelled', 'message': str(exc),
             'resume': 'Run the same command; verified completed chunks will be reused.'},

@@ -35,6 +35,7 @@ def probe():
     from carr_library.citations.word_com import WordBridge, _WordApplication, _BEFORE
 
     native, owned, checks = None, False, []
+    original = document = None
     pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED)
     try:
         try:
@@ -50,7 +51,11 @@ def probe():
 
         @contextmanager
         def connector():
-            yield _WordApplication(native)
+            session = _WordApplication(native)
+            try:
+                yield session
+            finally:
+                session._release()
 
         with tempfile.TemporaryDirectory(prefix='CARR Word synthetic Ω ') as temporary:
             root = Path(temporary).resolve(strict=True)
@@ -134,6 +139,9 @@ def probe():
                 'actual_nvda': 'NOT_RUN', 'controlled_boundary': False,
                 'checks': len(checks), 'check_names': checks}
     finally:
+        # Detach the probe's remaining document proxies before leaving its
+        # own COM apartment; production session wrappers do the same.
+        document = original = None
         try:
             if native is not None and owned:
                 native.Quit(SaveChanges=0)

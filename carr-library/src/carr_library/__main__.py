@@ -66,11 +66,11 @@ from .installation_lease import installed_entrypoint
 
 
 @installed_entrypoint(allow_bootstrap_self_test=True)
-def main(argv=None):
+def main(argv=None, *, trust_controller=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
-        return transcription_main(arguments[1:])
+        return transcription_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     if arguments and arguments[0] == 'sync':
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])
@@ -79,7 +79,7 @@ def main(argv=None):
         return operations_main(arguments[1:])
     if arguments and arguments[0] == 'assistant':
         from .assistant.cli import main as assistant_main
-        return assistant_main(arguments[1:])
+        return assistant_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance — offline libraries, reading and audio')
     parser.add_argument('--version', action='version', version=__version__)
@@ -127,7 +127,11 @@ def main(argv=None):
     parser.add_argument('--language', help='Exact language code filter for --search')
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
-                        help='Maximum results from each selected library, 1 to 100')
+                        help='Results per library in legacy search, or per continuation page, 1 to 100')
+    parser.add_argument('--search-page', action='store_true',
+                        help='Return one bounded search page and a continuation cursor for all selected sources')
+    parser.add_argument('--search-cursor',
+                        help='Continue a prior --search-page with exactly the same query, scope and options')
     from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
     add_audio_arguments(parser)
     args = parser.parse_args(arguments)
@@ -151,6 +155,8 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
+    if (args.search_page or args.search_cursor is not None) and args.search is None:
+        parser.error('--search-page and --search-cursor require --search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and args.lookup_doi is None:
@@ -164,7 +170,7 @@ def main(argv=None):
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
         if audio_requested(args):
-            return run_audio(args)
+            return run_audio(args, **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         if ocr_operation:
             from .extract.model_catalog import models, profile_provenance
             from .extract.ocr_model_store import OcrModelStore
@@ -222,7 +228,8 @@ def main(argv=None):
                 ranker = OfflineSemanticRanker(args.model_dir, args.model_manifest)
             except (ImportError, ValueError, RuntimeError, OSError) as exc:
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
-        app = LibraryApp(args.data_dir, semantic_ranker=ranker)
+        app = LibraryApp(args.data_dir, semantic_ranker=ranker,
+                         **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
         if args.lookup_doi is not None:
             from .acquisition.cli import run
@@ -233,17 +240,27 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
-            session = FederatedSearch(app).search(args.workspaces, args.search,
+            service = FederatedSearch(app)
+            paged = args.search_page or args.search_cursor is not None
+            search = service.search_page if paged else service.search
+            continuation = {'cursor': args.search_cursor} if paged else {}
+            session = search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, on_status=notices.append, **continuation)
+            page_info = ({'next_cursor': session.next_cursor, 'page_number': session.page_number,
+                          'libraries_examined': session.libraries_examined,
+                          'total_libraries': session.total_libraries,
+                          'source_pages_examined': session.source_pages_examined,
+                          'total_source_pages': session.total_source_pages,
+                          'ordering': session.ordering} if paged else {})
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
                 'ordering': 'Selected libraries in selection order; relevance is local to each library.',
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}
-                              for group in session.groups]}, ensure_ascii=False, indent=2))
+                              for group in session.groups], **page_info}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
             checksum = app.backup(args.backup)
@@ -256,7 +273,8 @@ def main(argv=None):
         from .ui.desktop_app import DesktopFrame
         from .preferences import remember_directory
         desktop = wx.App(False)
-        frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        frame = DesktopFrame(app, remember_data_dir=remember_directory,
+                             **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         frame.Show()
         desktop.MainLoop()
         return 0

@@ -6,11 +6,14 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import time
 from types import MappingProxyType
+from uuid import uuid4
 
-from ..delivery_contract import EntitlementBoundary, IntegrationContext
+from ..delivery_contract import (EntitlementBoundary, IntegrationContext, EntitlementRequest,
+                                 DecisionState, USER_DATA_ACTIONS)
 from ._files import TrustError, read_bytes
 from .boundary import ClientEntitlementProvider, ClientUpdateProvider
-from .entitlements import MAX_ENVELOPE, EntitlementStore, private_status
+from .entitlements import (MAX_ENVELOPE, PROTECTED, EntitlementStore, OperationLease, ReviewRequired,
+                           private_status)
 
 
 def _date(value):
@@ -28,7 +31,8 @@ class GrantReview:
 class TrustController:
     def __init__(self, *, entitlement=None, refresh=None, updates=None, target=None, terms=None,
                  context=None, automatic_refresh=False, automatic_updates=False,
-                 update_repository=None, update_interval=3600.0, update_timeout=20.0):
+                 update_repository=None, update_interval=3600.0, update_timeout=20.0,
+                 premium_features=None):
         if (entitlement is not None or updates is not None) and type(context) is not IntegrationContext:
             raise TrustError('Configured clients require an explicit installation context.')
         if type(automatic_refresh) is not bool or (automatic_refresh and refresh is None):
@@ -39,6 +43,24 @@ class TrustController:
             raise TrustError('The update client belongs to another product or channel.')
         if type(automatic_updates) is not bool or (automatic_updates and update_repository is None):
             raise TrustError('Automatic update checks require an explicitly selected signed repository.')
+        from .admission import FRESH_OPERATION_ACTIONS, _action
+        if premium_features is not None and type(premium_features) is not dict:
+            raise TrustError('Explicit owner feature mappings must be an ordinary mapping.')
+        mapping = dict(premium_features or {})
+        if len(mapping) > 256:
+            raise TrustError('The configured feature map exceeds its allowance.')
+        if mapping and not isinstance(entitlement, EntitlementStore):
+            raise TrustError('Managed operation admission requires the explicitly configured signed store.')
+        for action, feature in mapping.items():
+            _action(action)
+            if action in PROTECTED:
+                raise TrustError('User data, settings and active completion cannot require an entitlement.')
+            if action not in FRESH_OPERATION_ACTIONS:
+                raise TrustError('This application has no admission hook for the configured operation.')
+            if (type(feature) is not str or feature in PROTECTED
+                    or feature not in entitlement.policy.features):
+                raise TrustError('Map new work only to an independently configured premium feature.')
+        self.premium_features = MappingProxyType(mapping)
         self.context, self.automatic_refresh = context, automatic_refresh
         self.entitlement, self.refresh, self.updates, self.target = entitlement, refresh, updates, target
         self.entitlement_provider = ClientEntitlementProvider(context, entitlement) if entitlement is not None else None
@@ -57,6 +79,22 @@ class TrustController:
             from .polling import IdleUpdatePollHost
             self.update_poll = IdleUpdatePollHost(self, update_repository, enabled=automatic_updates,
                                                   interval=update_interval, timeout=update_timeout)
+
+    def begin_operation(self, action):
+        """Admit only explicitly mapped new work through the same local verifier."""
+        from .admission import _action
+        action = _action(action)
+        if action in USER_DATA_ACTIONS or action not in self.premium_features:
+            return OperationLease(action, 0)
+        feature = self.premium_features[action]
+        request = EntitlementRequest(self.context, uuid4().hex, feature)
+        decision = self.entitlement_boundary.decide(request)
+        if decision.state is not DecisionState.ALLOWED:
+            raise ReviewRequired('This new managed operation needs valid permission. '
+                                 'Existing work, reading, saving and exports remain available.')
+        # The final begin captures the existing store's immutable sequence and
+        # closes a possible expiry/revocation change before work actually starts.
+        return self.entitlement.begin(feature)
 
     def status_text(self):
         status = self.entitlement.status() if self.entitlement is not None else private_status()

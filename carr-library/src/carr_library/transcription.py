@@ -886,6 +886,9 @@ class TranscriptionService:
             if job['status'] == 'completed':
                 self.verify(identity, cancelled=cancelled)
                 return job
+            from .security.admission import admit_new_operation
+            authorization = admit_new_operation(getattr(self.app, 'trust_controller', None),
+                                                 'transcription.run')
             config = self.configuration(verify=True)
             if config['protocol'] != job['protocol']:
                 raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')

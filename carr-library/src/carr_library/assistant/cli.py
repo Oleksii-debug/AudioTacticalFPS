@@ -27,7 +27,7 @@ from ..installation_lease import installed_entrypoint
 
 
 @installed_entrypoint
-def main(argv=None):
+def main(argv=None, *, trust_controller=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant: preview first; explicit --run executes')
     parser.add_argument('--data-dir', type=Path)
     source = parser.add_mutually_exclusive_group(required=True)
@@ -78,7 +78,8 @@ def main(argv=None):
                 raise ValueError('Instruction file exceeds its byte budget.')
             instruction = text(raw.decode('utf-8-sig'), 'assistant instruction',
                                maximum=64 * 1024 if args.local_profile is not None else maximum)
-        app = LibraryApp(_data_directory(args.data_dir))
+        app = LibraryApp(_data_directory(args.data_dir),
+                         **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         production = LocalProduction(app.root, cancelled=stopped.is_set)
         service = AssistantService(app, production=production)
         if args.list_local_profiles:
