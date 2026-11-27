@@ -1,10 +1,11 @@
 """Exercise immutable-runtime launch policy without claiming a Windows install.
 
 The subprocess harness runs the installer file unchanged. Only Windows platform
-identification and environment creation/package installation are simulated; real
+identification, environment/package setup and native dependency results are simulated; real
 Python imports, bytecode writes and the production manifest verifier are used.
 A separate test runs real venv/ensurepip bootstrap processes on the test host.
 """
+import ast
 import hashlib
 import importlib.util
 import json
@@ -25,21 +26,45 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 INSTALL_HARNESS = r'''
-import collections, hashlib, importlib.machinery, importlib.util, json
+import ast, collections, hashlib, importlib.machinery, importlib.util, json
 import logging, os, pathlib, platform, runpy, shlex, shutil, stat
 import subprocess, sys, sysconfig, types
 root = pathlib.Path(sys.argv[1])
 real_run = subprocess.run
 
-def probe(flags, name, environment, arguments=()):
-    code = ('import importlib, json, sys; sys.path.insert(0, '
-            + repr(str(root / 'runtime' / 'Lib'))
-            + '); importlib.import_module(' + repr(name) + '); '
-            + 'print(json.dumps({"dont_write": sys.dont_write_bytecode, '
-              '"isolated": bool(sys.flags.isolated)}))')
+def probe(flags, name, environment, arguments=(), *, native_code=None):
+    code = ('import importlib, json, sys\n'
+            'sys.path.insert(0, ' + repr(str(root / 'runtime' / 'Lib')) + ')\n'
+            'importlib.import_module(' + repr(name) + ')\n'
+            'native_exit = None\n')
+    if native_code is not None:
+        # Run the installer's actual inline pre-readiness command. Only its
+        # dependency result is synthetic; its status handling must remain real.
+        code += ('import os, types\n'
+            'package = types.ModuleType("carr_library")\n'
+            'package.__path__ = []\n'
+            'native = types.ModuleType("carr_library.native_checks")\n'
+            'def check_native_dependencies(selected):\n'
+            '    assert str(selected) == ' + repr(str(root)) + '\n'
+            '    return {"status": "FAIL" if os.environ.get("CARR_TEST_FAIL_NATIVE") == "1" else "PASS"}\n'
+            'native.check_native_dependencies = check_native_dependencies\n'
+            'sys.modules["carr_library"] = package\n'
+            'sys.modules["carr_library.native_checks"] = native\n'
+            'sys.argv = ["-c", ' + repr(str(root)) + ']\n'
+            'try:\n'
+            '    exec(' + repr(native_code) + ')\n'
+            'except SystemExit as error:\n'
+            '    native_exit = error.code\n'
+            'else:\n'
+            '    raise AssertionError("The native pre-readiness command did not return its verdict.")\n')
+    code += ('print(json.dumps({"dont_write": sys.dont_write_bytecode, '
+             '"isolated": bool(sys.flags.isolated), "native_exit": native_exit}))\n'
+             'raise SystemExit(0 if native_exit is None else native_exit)\n')
     completed = real_run([sys.executable, *flags, '-c', code],
-                         env=environment, capture_output=True, text=True, check=True)
-    record = json.loads(completed.stdout)
+                         env=environment, capture_output=True, text=True, check=False)
+    if completed.returncode and native_code is None:
+        completed.check_returncode()
+    record = json.loads(completed.stdout.splitlines()[-1])
     record['stage'] = name
     record['flags'] = flags
     record['arguments'] = arguments
@@ -48,6 +73,8 @@ def probe(flags, name, environment, arguments=()):
         if key in environment}
     with (root / 'child-processes.jsonl').open('a', encoding='utf-8') as stream:
         stream.write(json.dumps(record) + '\n')
+    # Match subprocess.run(check=True) after recording the actual child verdict.
+    completed.check_returncode()
     return completed
 
 class ProbeBuilder:
@@ -76,15 +103,26 @@ class VenvFinder:
                 submodule_search_locations=[str(source.parent)])
 
 def package_process(command, **kwargs):
-    marker = command.index('-m')
-    stage = {'ensurepip': 'bootstrap_runtime_probe', 'pip': 'pip_runtime_probe',
-             'carr_library.native_checks': 'native_runtime_probe',
-             'carr_library': 'application_runtime_probe'}[command[marker + 1]]
-    result = probe(command[1:marker], stage, kwargs['env'],
-                   command[marker:] if command[marker + 1] == 'ensurepip' else ())
-    if stage == 'native_runtime_probe' and kwargs['env'].get('CARR_TEST_FAIL_NATIVE') == '1':
-        raise subprocess.CalledProcessError(1, command)
-    return result
+    native_code = None
+    if '-c' in command:
+        marker = command.index('-c')
+        assert command[marker + 2:] == [str(root)]
+        assert kwargs['cwd'] == root
+        native_code = command[marker + 1]
+        imports = [node for node in ast.walk(ast.parse(native_code))
+                   if isinstance(node, ast.ImportFrom)
+                   and node.module == 'carr_library.native_checks']
+        assert len(imports) == 1
+        assert [(name.name, name.asname) for name in imports[0].names] == [
+            ('check_native_dependencies', None)]
+        stage = 'native_runtime_probe'
+    else:
+        marker = command.index('-m')
+        stage = {'ensurepip': 'bootstrap_runtime_probe', 'pip': 'pip_runtime_probe',
+                 'carr_library': 'application_runtime_probe'}[command[marker + 1]]
+    return probe(command[1:marker], stage, kwargs['env'],
+                 command[marker:] if command[marker + 1] == 'ensurepip' else (),
+                 native_code=native_code)
 
 # Keep pathlib bound to the host filesystem while the installer's Windows gate
 # sees the intended target. No native Windows execution is represented here.
@@ -211,13 +249,14 @@ def _worker_runtime_fixture(tmp_path, cache_kind):
 
 
 @pytest.mark.parametrize('cache_kind', ['cold', 'stale'])
-@pytest.mark.parametrize('worker', ['pronunciation', 'doi', 'native-sapi'])
+@pytest.mark.parametrize('worker', ['pronunciation', 'acquisition', 'native-sapi'])
 def test_product_worker_keeps_sealed_runtime_bytes(tmp_path, monkeypatch, cache_kind, worker):
     """Real child imports and worker protocols must preserve the sealed runtime.
 
-    Regex substitution runs normally. DOI and SAPI use invalid input that their
-    real workers reject before networking or COM. Only the SAPI parent's host
-    and dependency preflight are doubled so its launch path runs on every host.
+    Regex substitution runs normally. Acquisition and SAPI use invalid input
+    that their real workers reject before networking or COM. Acquisition keeps
+    its actual parent launch and uses a missing private output directory; only
+    the SAPI parent's host/dependency preflight is doubled across test hosts.
     """
     bundle, source, report, instrument = _worker_runtime_fixture(tmp_path, cache_kind)
     monkeypatch.setenv('PYTHONDONTWRITEBYTECODE', '')
@@ -237,15 +276,31 @@ def test_product_worker_keeps_sealed_runtime_bytes(tmp_path, monkeypatch, cache_
             reading.PronunciationRule(r'(\d+) kg', r'\1 kilograms', regex=True)], timeout=10)
         assert document.text == 'The parcel weighs 12 kilograms.'
         assert document.source_text == 'The parcel weighs 12 kg.'
-    elif worker == 'doi':
-        from carr_library.academic_integration import doi
-        request, reply = tmp_path / 'doi-request.json', tmp_path / 'doi-reply.json'
-        # No valid MetadataRequest can be constructed from this envelope.
-        request.write_text('{}', encoding='utf-8')
-        result = subprocess.run(instrument(doi._worker_argv(request, reply)),
-            env=dict(os.environ), capture_output=True, timeout=10, check=False)
-        assert result.returncode == 0, result.stderr.decode('utf-8', errors='replace')
-        assert json.loads(reply.read_bytes()) == {'error': 'connection'}
+    elif worker == 'acquisition':
+        from contextlib import nullcontext
+        from carr_library.acquisition import transport
+        real_popen = transport.subprocess.Popen
+        launches = []
+
+        def launch(command, **options):
+            launches.append(tuple(command))
+            return real_popen(instrument(command), **options)
+
+        # The canonical worker rejects this nonexistent private destination
+        # before constructing a transport or resolving any network address.
+        missing = tmp_path / 'missing-worker-output'
+        monkeypatch.setattr(transport.subprocess, 'Popen', launch)
+        monkeypatch.setattr(transport, 'TemporaryDirectory',
+                            lambda **options: nullcontext(str(missing)))
+        owner = transport.SafeTransport(transport.NetworkConsent(
+            True, 'metadata', ('api.crossref.org',), 4096, 10.0))
+        request = types.SimpleNamespace(provider='crossref',
+            endpoint='https://api.crossref.org/works/10.5555/sealed-runtime', query=())
+        with pytest.raises(transport.AcquisitionNetworkError, match='secure transfer failed'):
+            owner(request)
+        assert owner.requests == 0 and not missing.exists()
+        assert len(launches) == 1
+        assert Path(launches[0][-1]) == Path(transport.__file__).with_name('network_worker.py')
     else:
         from carr_library.speech import runtime
         real_find = importlib.util.find_spec
@@ -297,6 +352,7 @@ class InstallBytecodeTests(unittest.TestCase):
                              ['bootstrap_runtime_probe', 'pip_runtime_probe',
                               'native_runtime_probe', 'application_runtime_probe'])
             self.assertTrue(all(row['dont_write'] for row in records), records)
+            self.assertEqual(records[2]['native_exit'], 0)
             self.assertFalse(list((root / 'runtime').rglob('*.pyc')))
             second = self.run_installer(root, flags)
             self.assertEqual(second.returncode, 1, second.stdout + second.stderr)
@@ -321,6 +377,7 @@ class InstallBytecodeTests(unittest.TestCase):
                        (root / 'child-processes.jsonl').read_text().splitlines()]
             self.assertEqual([row['stage'] for row in records],
                              ['bootstrap_runtime_probe', 'pip_runtime_probe', 'native_runtime_probe'])
+            self.assertEqual(records[-1]['native_exit'], 1)
             installer_module().verify(root)
 
     def test_application_and_diagnostic_launchers_do_not_modify_runtime(self):
@@ -416,7 +473,19 @@ def test_install_completion_lifecycle(tmp_path, fail_stage):
 
     def run(command, **kwargs):
         assert not marker.exists()
-        stage = command[command.index('-m') + 1]
+        if '-c' in command:
+            marker_index = command.index('-c')
+            assert command[marker_index + 2:] == [str(root)]
+            assert kwargs['cwd'] == root
+            imports = [node for node in ast.walk(ast.parse(command[marker_index + 1]))
+                       if isinstance(node, ast.ImportFrom)
+                       and node.module == 'carr_library.native_checks']
+            assert len(imports) == 1
+            assert [(name.name, name.asname) for name in imports[0].names] == [
+                ('check_native_dependencies', None)]
+            stage = 'carr_library.native_checks'
+        else:
+            stage = command[command.index('-m') + 1]
         calls.append(stage)
         if stage == fail_stage:
             raise subprocess.CalledProcessError(1, command)
