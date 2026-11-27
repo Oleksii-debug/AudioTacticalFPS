@@ -5,7 +5,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.delivery_contract import CONTRACT_VERSION, Capability, ProviderCapabilities
-from carr_library.security._files import TrustError
+from carr_library.security._files import BusyError, TrustError
 from carr_library.security.entitlements import EntitlementStore
 from carr_library.security.refresh import IdleRenewalHost, RefreshWorker
 from .conftest import MemoryAnchor, REFERENCE, RenewalProvider, accept, envelope, grant
@@ -18,6 +18,22 @@ def wait_until(predicate):
             return
         time.sleep(.005)
     assert predicate()
+
+
+def current_after_worker(store, worker):
+    observed = []
+    def observe():
+        if worker.running:
+            return False
+        try:
+            current = store.current()
+        except BusyError:
+            # The live periodic host may begin another read after running=False.
+            return False
+        observed.append(current)
+        return True
+    wait_until(observe)
+    return observed[0]
 
 
 def test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt_in(
@@ -43,15 +59,13 @@ def test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt
         assert not called.wait(.05)  # An active user job has not signalled idle.
         host.set_idle(True)
         assert called.wait(1)
-        wait_until(lambda: not worker.running)
-        assert store.current().sequence == 2
+        assert current_after_worker(store, worker).sequence == 2
         assert calls[0][1] != threading.get_ident()
         assert calls[0][0].credential_profile_id == 'trust-test'
         called.clear()
         clock.now += 7 * 86400
         assert called.wait(1)  # The periodic host checks without another UI action.
-        wait_until(lambda: not worker.running)
-        assert store.current().sequence == 3 and len(calls) == 2
+        assert current_after_worker(store, worker).sequence == 3 and len(calls) == 2
     finally:
         host.close()
     assert not host._thread.is_alive() and not worker.running
