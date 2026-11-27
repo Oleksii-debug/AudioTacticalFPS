@@ -115,6 +115,12 @@ def test_ci_child_opts_out_before_fake_runtime_import(tmp_path):
         (tmp_path / name).mkdir()
     runner = tmp_path / 'scripts' / 'ci_check.py'
     shutil.copyfile(ROOT / 'scripts' / 'ci_check.py', runner)
+    # Match the standalone runner's real stdlib-only native-family owner.
+    # It loads these files under its private tooling namespace.
+    owners = tmp_path / 'src' / 'carr_library' / 'audio'
+    owners.mkdir(parents=True)
+    for name in ('capture_process.py', 'capture_types.py', 'cleanup.py', 'windows_job.py'):
+        shutil.copyfile(ROOT / 'src' / 'carr_library' / 'audio' / name, owners / name)
     fake_runtime = tmp_path / 'src' / 'onnxruntime.py'
     fake_runtime.write_text(textwrap.dedent('''
         import os
