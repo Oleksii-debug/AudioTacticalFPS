@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import PurePosixPath
 import urllib.request
 import zipfile
@@ -12,11 +13,12 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46009379630,
-    "commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
-    "id": 15205168290,
-    "sha256": "d97b44b8fbd128e4e530b598a637f30b15f41817e39be0bd1c97ab8d97a0ecb7",
-    "kind": "translation-qualified"
+    "run": 46063451376,
+    "commit": "ed90ab81b85893b893e441d2fe12ec4fe2d33133",
+    "id": 15230765620,
+    "sha256": "912fe0dfd52cd26500d3b02552db605350c543c146e5b57e9fb2d2e571844dad",
+    "bytes": 5720404,
+    "kind": "office-fixed-four-xls-event-diagnostic-only"
   }
 ]
 
@@ -57,16 +59,21 @@ wanted = {
     'native-selected-advanced.txt', 'native-selected-advanced.json',
     'native-document.txt', 'native-document.json', 'native-chapter.txt',
     'native-chapter.json', 'native-batch.txt', 'native-batch.json',
+    'local-translation-gate.json', 'native-local-selected.json', 'native-local-selected.txt',
+    'native-local-document.json', 'native-local-document.txt',
+    'native-local-chapter.json', 'native-local-chapter.txt',
+    'native-local-batch.json', 'native-local-batch.txt',
     'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
     if (metadata['id'] != pin['id'] or metadata['workflow_run']['id'] != pin['run']
             or metadata['workflow_run']['head_sha'] != pin['commit']
-            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']):
+            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']
+            or metadata['size_in_bytes'] != pin['bytes']):
         raise ValueError('Existing artifact provenance differs.')
     raw = read(base + '/zip', 8 * 1024 * 1024)
-    if hashlib.sha256(raw).hexdigest() != pin['sha256']:
+    if len(raw) != pin['bytes'] or hashlib.sha256(raw).hexdigest() != pin['sha256']:
         raise ValueError('Existing artifact archive failed its recorded digest.')
     print('ARTIFACT', json.dumps({**pin, 'bytes': len(raw), 'name': metadata['name']}), flush=True)
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -75,7 +82,13 @@ for pin in ARTIFACTS:
         if (len(names) != len(set(names)) or len(names) > 10000
                 or sum(member.file_size for member in members) > 512 * 1024 * 1024):
             raise ValueError('Ambiguous or oversized artifact inventory.')
-        selected = [name for name in names if PurePosixPath(name).name in wanted]
+        event_names = [name for name in names
+                       if len(PurePosixPath(name).parts) >= 2
+                       and PurePosixPath(name).parts[-2] == 'office-stage-events'
+                       and re.fullmatch(r'event-[0-9]+-[0-9]+\.json', PurePosixPath(name).name)]
+        if len(event_names) > 256 or any(archive.getinfo(name).file_size > 4096 for name in event_names):
+            raise ValueError('Office event diagnostics exceed the fixed eight-child bound.')
+        selected = [name for name in names if PurePosixPath(name).name in wanted or name in event_names]
         print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected}), flush=True)
         for name in selected:
             entry = archive.getinfo(name)
@@ -110,6 +123,9 @@ for pin in ARTIFACTS:
                         'suffix_counts': dict(Counter(PurePosixPath(key).suffix.casefold() for key in code)),
                         'canonical_sha256': hashlib.sha256(json.dumps(code, sort_keys=True,
                             separators=(',', ':')).encode()).hexdigest()}), flush=True)
-                print(name, json.dumps(brief(value), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
+                rendered = json.dumps(brief(value), sort_keys=True, ensure_ascii=False)
+                if len(rendered) > 256 * 1024:
+                    raise ValueError('Bounded diagnostic JSON exceeds its printing budget.')
+                print(name, rendered, flush=True)
             else:
                 print(name, content.decode('utf-8', errors='replace')[-48000:], flush=True)
