@@ -7,6 +7,9 @@ from dataclasses import replace
 from hashlib import sha256
 import json
 import math
+import os
+import subprocess
+import sys
 from pathlib import Path
 import shutil
 import struct
@@ -342,13 +345,19 @@ def test_prepared_receipt_recovers_completed_bytes_after_finalization_failure(so
     monkeypatch.setattr(publishing, 'atomic_json', fail_final)
     output = tmp_path / 'retained.epub'
     publisher = PublicationService(service)
-    with pytest.raises(RuntimeError, match='Publication receipt:'):
-        publisher.export_epub(state['id'], output)
-    assert output.exists()
+    result = publisher.export_epub(state['id'], output)
+    assert result['status'] == 'complete' and result['receipt_status'] == 'prepared'
+    assert result['receipt_finalized'] is False and result['warnings']
+    assert output.exists() and result['artifact']['sha256'] == sha256(output.read_bytes()).hexdigest()
     receipt = next(publisher.receipts.glob('*.json'))
     pending = read_json(receipt); assert pending['status'] == 'prepared'
     monkeypatch.setattr(publishing, 'atomic_json', original_write)
-    completed = publisher.verify(pending['id'])
+    # Reopen the service, as after restart. Recovery verifies existing bytes
+    # without parsing the original job or rendering/encoding another artifact.
+    restarted = PublicationService(ProductionService(service.root))
+    monkeypatch.setattr(AudioRuntime, 'convert',
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed output must not be encoded again.')))
+    completed = restarted.verify(pending['id'])
     assert completed['status'] == 'complete' and read_json(receipt)['status'] == 'complete'
     output.write_bytes(b'Externally edited')
     with pytest.raises(ValueError, match='receipt'):
@@ -383,13 +392,13 @@ def test_file_change_between_receipt_hash_and_zip_parse_is_rejected(source_job, 
     output = tmp_path / 'verified-then-changed.epub'
     publisher = PublicationService(service)
     result = publisher.export_epub(state['id'], output)
-    original = publishing.inspect_epub
-    def changed_after_parse(path, **kwargs):
-        provenance = original(path, **kwargs)
-        with Path(path).open('ab') as stream:
+    original = publishing._inspect_epub_archive
+    def changed_after_parse(archive, check, maximum):
+        provenance = original(archive, check, maximum)
+        with output.open('ab') as stream:
             stream.write(b'Changed after the first receipt hash')
         return provenance
-    monkeypatch.setattr(publishing, 'inspect_epub', changed_after_parse)
+    monkeypatch.setattr(publishing, '_inspect_epub_archive', changed_after_parse)
     with pytest.raises(ValueError, match='changed during structural'):
         publisher.verify(result['id'])
 
@@ -491,7 +500,8 @@ def test_cancelled_epub_admission_creates_no_staging_and_launches_no_decoder(sou
     assert service.get(state['id']) == state
 
 
-def test_actual_pending_epub_child_retains_stage_job_lock_and_broker(source_job, tmp_path, monkeypatch):
+@pytest.mark.parametrize('kind', ('epub', 'daisy-2.02'))
+def test_actual_pending_epub_child_retains_stage_job_lock_and_broker(source_job, tmp_path, monkeypatch, kind):
     import os
     import sys
     import threading
@@ -518,12 +528,16 @@ def test_actual_pending_epub_child_retains_stage_job_lock_and_broker(source_job,
             budget=AudioBudget(timeout=20, reserve_disk_bytes=0),
             owned_tree=True, cancelled=ready.exists)
     monkeypatch.setattr(AudioRuntime, 'inspect', pending)
-    output = tmp_path / 'not-accepted.epub'
+    output = tmp_path / ('not-accepted.epub' if kind == 'epub' else 'not-accepted.zip')
     competitor = FileLock(service.jobs_root / state['id'] / '.render.lock', timeout=0)
     owner, stages = None, []
     try:
         with pytest.raises(AudioCleanupPending) as failure:
-            PublicationService(service).export_epub(state['id'], output)
+            publisher = PublicationService(service)
+            if kind == 'epub':
+                publisher.export_epub(state['id'], output)
+            else:
+                publisher.export_daisy(state['id'], output, publisher='Synthetic explicit publisher')
         owner = failure.value.cleanup_owner
         released = threading.Event()
         owner.add_quiescent_callback(released.set)
@@ -574,3 +588,309 @@ def test_publication_inventory_closes_bounded_scandir_without_materializing_dire
         publisher.publications(cancelled=lambda: cancel and len(seen) == 2)
     assert len(seen) == (2 if cancel else 10001)
     assert closed == [True]
+
+
+@pytest.mark.parametrize('stop', ('cancel', 'timeout'))
+def test_late_stop_after_actual_publication_retains_verified_success(source_job, tmp_path, monkeypatch, stop):
+    service, state = source_job
+    target = tmp_path / 'late-stop.epub'
+    linked = False
+    original_publish, original_clock = publishing.publish_file, publishing.monotonic
+
+    def publish_then_stop(staged, output, **kwargs):
+        nonlocal linked
+        original_publish(staged, output, **kwargs)
+        assert os.path.samefile(staged, output)
+        linked = True
+
+    monkeypatch.setattr(publishing, 'publish_file', publish_then_stop)
+    if stop == 'timeout':
+        monkeypatch.setattr(publishing, 'monotonic',
+            lambda: original_clock() + (7200 if linked else 0))
+    publisher = PublicationService(service)
+    result = publisher.export_epub(state['id'], target, cancelled=lambda: linked and stop == 'cancel')
+    assert linked and result['status'] == 'complete'
+    assert result['artifact']['sha256'] == sha256(target.read_bytes()).hexdigest()
+    assert read_json(publisher.receipts / (result['id'] + '.json')) == result
+    assert inspect_epub(target)['publication_id'] == result['id']
+    assert not list(tmp_path.glob('.pending-epub-*'))
+
+
+@pytest.mark.parametrize('interruption', (OSError, KeyboardInterrupt))
+def test_writer_error_after_actual_link_cannot_replace_verified_publication(
+        source_job, tmp_path, monkeypatch, interruption):
+    service, state = source_job
+    target = tmp_path / 'linked-before-error.epub'
+    original = publishing.publish_file
+
+    def publish_then_report_error(staged, output, **kwargs):
+        original(staged, output, **kwargs)
+        assert os.path.samefile(staged, output)
+        raise interruption('Synthetic post-link directory acknowledgement failure')
+
+    monkeypatch.setattr(publishing, 'publish_file', publish_then_report_error)
+    publisher = PublicationService(service)
+    result = publisher.export_epub(state['id'], target)
+    assert result['status'] == 'complete' and result['warnings']
+    assert result['artifact']['sha256'] == sha256(target.read_bytes()).hexdigest()
+    assert inspect_epub(target)['publication_id'] == result['id']
+    assert publisher.verify(result['id'])['status'] == 'complete'
+    assert not list(tmp_path.glob('.pending-epub-*'))
+
+
+@pytest.mark.parametrize('cleanup', ('staging-link', 'temporary-directory'))
+def test_owned_cleanup_failure_does_not_report_a_completed_epub_as_failed(
+        source_job, tmp_path, monkeypatch, cleanup):
+    service, state = source_job
+    target = tmp_path / 'cleanup-warning.epub'
+    observed = []
+    if cleanup == 'staging-link':
+        original = Path.unlink
+
+        def unlink(path, *args, **kwargs):
+            if path.name == 'publication.epub' and target.exists() and not observed:
+                observed.append(path)
+                raise PermissionError('Synthetic delayed staging-link cleanup')
+            return original(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, 'unlink', unlink)
+    else:
+        original = publishing.TemporaryDirectory.cleanup
+
+        def remove(temporary):
+            original(temporary)
+            if Path(temporary.name).name.startswith('.pending-epub-') and not observed:
+                observed.append(temporary.name)
+                raise OSError('Synthetic cleanup acknowledgement failure')
+
+        monkeypatch.setattr(publishing.TemporaryDirectory, 'cleanup', remove)
+    publisher = PublicationService(service)
+    result = publisher.export_epub(state['id'], target)
+    assert observed and result['status'] == 'complete' and result['warnings']
+    assert result['artifact']['sha256'] == sha256(target.read_bytes()).hexdigest()
+    assert inspect_epub(target)['publication_id'] == result['id']
+    assert PublicationService(ProductionService(service.root)).verify(result['id'])['status'] == 'complete'
+    assert not list(tmp_path.glob('.pending-epub-*'))
+
+
+def test_complete_receipt_written_before_error_is_reported_from_actual_readback(source_job, tmp_path, monkeypatch):
+    service, state = source_job
+    original_write = publishing.atomic_json
+
+    def write_then_report_error(path, record, **kwargs):
+        result = original_write(path, record, **kwargs)
+        if record.get('schema') == 'resonance-publication/1' and record.get('status') == 'complete':
+            raise OSError('Synthetic receipt acknowledgement failure after replacement')
+        return result
+
+    monkeypatch.setattr(publishing, 'atomic_json', write_then_report_error)
+    publisher = PublicationService(service)
+    target = tmp_path / 'completed-receipt.epub'
+    result = publisher.export_epub(state['id'], target)
+    saved = read_json(publisher.receipts / (result['id'] + '.json'))
+    assert result['status'] == result['receipt_status'] == saved['status'] == 'complete'
+    assert result['receipt_finalized'] is True and result['warnings']
+    assert result['artifact'] == saved['artifact']
+    assert result['artifact']['sha256'] == sha256(target.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('writer_outcome', ('occupied', 'false-return'))
+def test_equal_competing_bytes_are_not_this_attempts_publication(
+        source_job, tmp_path, monkeypatch, writer_outcome):
+    service, state = source_job
+    target = tmp_path / 'foreign-copy.epub'
+    foreign = []
+
+    def different_inode(staged, output, **kwargs):
+        shutil.copyfile(staged, output)
+        assert not os.path.samefile(staged, output)
+        foreign.append(Path(output).read_bytes())
+        if writer_outcome == 'occupied':
+            raise FileExistsError('Synthetic competitor published before this writer')
+
+    monkeypatch.setattr(publishing, 'publish_file', different_inode)
+    publisher = PublicationService(service)
+    with pytest.raises((FileExistsError, RuntimeError), match='Publication receipt:'):
+        publisher.export_epub(state['id'], target)
+    assert foreign and target.read_bytes() == foreign[0]
+    receipt, = publisher.publications()
+    assert receipt['status'] == 'prepared'
+    assert not list(tmp_path.glob('.pending-epub-*'))
+
+
+def test_actual_post_link_corruption_is_not_misclassified_as_late_cancellation(
+        source_job, tmp_path, monkeypatch):
+    service, state = source_job
+    target = tmp_path / 'changed-after-link.epub'
+    original = publishing.publish_file
+    changed = []
+
+    def publish_then_change(staged, output, **kwargs):
+        original(staged, output, **kwargs)
+        with Path(output).open('ab') as stream:
+            stream.write(b'External mutation after publication')
+        changed.append(Path(output).read_bytes())
+
+    monkeypatch.setattr(publishing, 'publish_file', publish_then_change)
+    publisher = PublicationService(service)
+    with pytest.raises(RuntimeError, match='Publication receipt:'):
+        publisher.export_epub(state['id'], target, cancelled=lambda: bool(changed))
+    assert target.read_bytes() == changed[0]
+    pending, = publisher.publications()
+    assert pending['status'] == 'prepared'
+    with pytest.raises(ValueError, match='receipt'):
+        publisher.verify(pending['id'])
+    assert target.read_bytes() == changed[0]
+
+
+def test_verify_success_is_retained_when_only_receipt_update_fails(source_job, tmp_path, monkeypatch):
+    service, state = source_job
+    publisher = PublicationService(service)
+    target = tmp_path / 'verified-with-receipt-warning.epub'
+    exported = publisher.export_epub(state['id'], target)
+    original = target.read_bytes()
+
+    def failed_write(*args, **kwargs):
+        raise OSError('Synthetic receipt-only update failure')
+
+    monkeypatch.setattr(publishing, 'atomic_json', failed_write)
+    verified = PublicationService(ProductionService(service.root)).verify(exported['id'])
+    assert verified['status'] == 'complete' and verified['warnings']
+    assert verified['artifact'] == exported['artifact']
+    assert target.read_bytes() == original
+
+
+def test_resource_release_error_is_visible_without_undoing_verified_output(
+        source_job, tmp_path, monkeypatch):
+    from carr_library.operations import ResourceLease
+    service, state = source_job
+    original = ResourceLease.release
+    observed = []
+
+    def release_then_report(lease):
+        original(lease)
+        if lease.operation_id.startswith('studio-publication:') and not observed:
+            observed.append(lease.id)
+            raise OSError('Synthetic resource release acknowledgement failure')
+
+    monkeypatch.setattr(ResourceLease, 'release', release_then_report)
+    result = PublicationService(service).export_epub(state['id'], tmp_path / 'released.epub')
+    assert observed and result['status'] == 'complete'
+    assert any('Synthetic resource release acknowledgement failure' in item for item in result['warnings'])
+    assert service.broker.snapshot()['leases'] == []
+
+
+def test_publication_cannot_write_inside_another_private_library_state_root(source_job):
+    service, state = source_job
+    target = service.root.parent / 'untracked-export.epub'
+    with pytest.raises(ValueError, match='outside private library state'):
+        PublicationService(service).export_epub(state['id'], target)
+    assert not target.exists()
+
+
+@pytest.mark.parametrize('boundary', ('before-link', 'after-link'))
+def test_real_child_exit_requires_exact_saved_epub_and_recovers_residual_link(
+        source_job, tmp_path, monkeypatch, boundary):
+    service, state = source_job
+    target = tmp_path / 'native-process-publication.epub'
+    marker = tmp_path / 'publication-child.json'
+    originals = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+                 for row in state['artifacts']}
+    child = r'''
+import json, os, sys
+from pathlib import Path
+from carr_library.studio import publishing
+from carr_library.studio.render import ProductionService
+
+root, job_id, destination, marker, boundary, expected_origin = sys.argv[1:]
+origin = Path(publishing.__file__).resolve()
+assert origin == Path(expected_origin).resolve(), (origin, expected_origin)
+original = publishing.publish_file
+def exit_at_publication(staged, output, **options):
+    if boundary == 'after-link':
+        original(staged, output, **options)
+        assert os.path.samefile(staged, output)
+    Path(marker).write_text(json.dumps({'module': str(origin), 'staged': str(staged)}),
+                            encoding='utf-8')
+    os._exit(73)
+publishing.publish_file = exit_at_publication
+publishing.PublicationService(ProductionService(root)).export_epub(job_id, destination)
+raise AssertionError('The native publication boundary was not reached.')
+'''
+    # Ordinary Python import resolution from the already selected package root:
+    # source runs use src; installed runs use site-packages. No sys.path mutation
+    # or process-launch interception can substitute another product here.
+    process = subprocess.run(
+        [sys.executable, '-B', '-c', child, str(service.root), state['id'], str(target),
+         str(marker), boundary, str(Path(publishing.__file__).resolve())],
+        cwd=Path(publishing.__file__).resolve().parents[2],
+        capture_output=True, text=True, timeout=90, check=False)
+    assert process.returncode == 73, (process.returncode, process.stdout, process.stderr)
+    observed = json.loads(marker.read_text(encoding='utf-8'))
+    assert Path(observed['module']) == Path(publishing.__file__).resolve()
+    publisher = PublicationService(ProductionService(service.root))
+    saved, = publisher.publications()
+    assert saved['status'] == 'prepared'
+    receipt = publisher.receipts / (saved['id'] + '.json')
+
+    def no_encoding(*args, **kwargs):
+        raise AssertionError('Saved publication verification must not encode audio.')
+
+    monkeypatch.setattr(AudioRuntime, 'convert', no_encoding)
+    if boundary == 'before-link':
+        assert not target.exists()
+        with pytest.raises(FileNotFoundError):
+            publisher.verify(saved['id'])
+        assert read_json(receipt)['status'] == 'prepared'
+    else:
+        staged = Path(observed['staged'])
+        assert target.stat().st_nlink == 2 and os.path.samefile(target, staged)
+        original_bytes = target.read_bytes()
+        with pytest.raises(ValueError, match='without links'):
+            inspect_epub(target)
+        result = publisher.verify(saved['id'])
+        assert result['status'] == 'complete' and result['artifact'] == saved['artifact']
+        assert any('additional hard link' in item for item in result['warnings'])
+        assert read_json(receipt)['status'] == 'complete'
+        assert target.read_bytes() == original_bytes
+        assert target.stat().st_nlink == 2 and os.path.samefile(target, staged)
+
+        # Explicit saved-receipt verification also accepts an identical copied
+        # EPUB. This proves its bytes/source identity, not a new export attempt.
+        copied = tmp_path / 'explicit-identical-copy.epub'
+        shutil.copyfile(target, copied)
+        assert not os.path.samefile(target, copied) and copied.stat().st_nlink == 1
+        copy_result = publisher.verify(saved['id'], output=copied)
+        assert copy_result['status'] == 'complete' and copy_result['artifact'] == saved['artifact']
+        assert copy_result['output'] == str(copied)
+        assert read_json(receipt) == copy_result
+
+        # A surviving alias can mutate the published bytes. Such a file no
+        # longer satisfies the receipt and must not be relabeled complete.
+        with staged.open('ab') as stream:
+            stream.write(b'Changed through the residual hard link')
+        with pytest.raises(ValueError, match='receipt'):
+            publisher.verify(saved['id'], output=target)
+        assert read_json(receipt) == copy_result
+        assert copied.read_bytes() == original_bytes
+        assert target.stat().st_nlink == 2 and staged.exists()
+    assert originals == {name: sha256(Path(name).read_bytes()).hexdigest() for name in originals}
+
+
+def test_late_keyboard_interrupt_in_observer_returns_verified_output_after_resource_release(
+        source_job, tmp_path):
+    service, state = source_job
+    target = tmp_path / 'late-observer-interruption.epub'
+
+    def late_observer(message):
+        if message == 'EPUB saved and its exact bytes verified':
+            raise KeyboardInterrupt('Synthetic notification interruption after publication')
+
+    publisher = PublicationService(service)
+    result = publisher.export_epub(state['id'], target, progress=late_observer)
+    assert result['status'] == 'complete'
+    assert result['artifact']['sha256'] == sha256(target.read_bytes()).hexdigest()
+    assert read_json(publisher.receipts / (result['id'] + '.json'))['status'] == 'complete'
+    assert any('later notification or cleanup' in item for item in result['warnings'])
+    assert 'resource_release_confirmed' not in result
+    assert service.broker.snapshot()['leases'] == []

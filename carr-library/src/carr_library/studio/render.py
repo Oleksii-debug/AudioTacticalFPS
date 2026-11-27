@@ -30,7 +30,8 @@ def production_runtime_identity(runtime, capabilities, *, cancelled=lambda: Fals
                'models': Path(models.__file__), 'music': Path(music.__file__),
                'process': Path(process.__file__),
                'windows_job': Path(process.__file__).with_name('windows_job.py'),
-               'cleanup': Path(process.__file__).with_name('cleanup.py')}
+               'cleanup': Path(process.__file__).with_name('cleanup.py'),
+               'audiobook': Path(dsp.__file__).with_name('audiobook.py')}
     identity = {'capabilities': capabilities,
                 'executables': {name: digest(getattr(runtime, name), cancelled=cancelled)
                                 for name in ('ffmpeg', 'ffprobe')},
@@ -272,7 +273,7 @@ class ProductionService:
             self.projects.save(project)
             state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
                      'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
-                     'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
+                     'stems': stems, 'artifact_version': 2, 'nodes': {}, 'artifacts': [], 'progress': '',
                      'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
             atomic_json(existing_path, state)
         return job_id
@@ -281,6 +282,9 @@ class ProductionService:
         state = read_json(self.jobs_root / _id(job_id) / 'job.json')
         if state.get('schema') != 1 or state.get('id') != job_id:
             raise ValueError('Invalid production job.')
+        version = state.get('artifact_version', 1)
+        if type(version) is not int or version not in (1, 2):
+            raise ValueError('Unsupported production artifact version.')
         project = Project.from_dict(state['project'])
         if state.get('fingerprint') != project.fingerprint:
             raise ValueError('The saved production plan changed.')
@@ -394,6 +398,9 @@ class ProductionService:
             if state['status'] == 'complete':
                 self._verify_artifacts(state, cancelled=cancelled)
                 return state
+            # Explicit Run/Resume may produce the current output contract.
+            # Already completed legacy jobs above remain byte-for-byte unchanged.
+            state['artifact_version'] = 2
             project = Project.from_dict(state['project'])
             control = job_root / 'control.json'
             if control.exists():
@@ -797,7 +804,11 @@ class ProductionService:
                     publish(path, f'chapters/{index:04d}-{_output_name(scene.title)}.wav')
                 if state['format'] != 'wav':
                     # Codec selection is delegated to the verified local runtime inventory.
-                    key = sha256(encode([digest_file(master), state['format'], runtime_identity])).hexdigest()
+                    encoding_identity = [digest_file(master), state['format'], runtime_identity]
+                    if state['format'] == 'm4b':
+                        encoding_identity.append({'schema': 'measured-m4b-chapters/1',
+                                                  'title': project.title, 'chapters': chapter_data})
+                    key = sha256(encode(encoding_identity)).hexdigest()
                     encoded = self.cache / (key + '.' + state['format'])
                     receipt = self.cache / (key + '-encoded.json')
                     try:
@@ -811,8 +822,17 @@ class ProductionService:
                     if not (cached and encoded.exists() and digest_file(encoded) == cached.get('sha256')):
                         if encoded.exists():
                             encoded = self.cache / (key + '-' + uuid4().hex[:10] + '.' + state['format'])
-                        generate(encoded, lambda target: runtime.convert(master, target,
-                            sample_rate=project.sample_rate, cancelled=stopping))
+                        if state['format'] == 'm4b':
+                            def audiobook_warning(message):
+                                state.setdefault('warnings', []).append(str(message)[:1800])
+                                report(str(message))
+                            generate(encoded, lambda target: runtime.audiobook(master, target,
+                                chapters=chapter_data, title=project.title,
+                                sample_rate=project.sample_rate, cancelled=stopping,
+                                warning=audiobook_warning))
+                        else:
+                            generate(encoded, lambda target: runtime.convert(master, target,
+                                sample_rate=project.sample_rate, cancelled=stopping))
                         atomic_json(receipt, {'sha256': digest_file(encoded), 'file': encoded.name}, replace=receipt.exists())
                     publish(encoded, 'audiobook.' + state['format'])
                 for role_id, paths in stem_scenes.items():
@@ -851,8 +871,10 @@ class ProductionService:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
+                from ..audio.audiobook import line_lrc
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
+                                  ('script.lrc', line_lrc(timeline).encode('utf-8')),
                                   ('timeline.json', encode(metadata)),
                                   ('project.json', encode(project.to_dict()))]:
                     source = job_root / name
@@ -891,10 +913,42 @@ class ProductionService:
         if cancelled():
             raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
+        version = state.get('artifact_version', 1)
+        if type(version) is not int or version not in (1, 2):
+            raise ValueError('Unsupported production artifact version.')
+        required = set()
+        if state['status'] == 'complete':
+            # A receipt with a shortened (or empty) artifact list must not
+            # turn a damaged production into a successful committed replay.
+            project = Project.from_dict(state['project'])
+            if read_json(root / 'production-owner.json') != {
+                    'job': state['id'], 'fingerprint': state['fingerprint']}:
+                raise ValueError('The production output owner receipt changed.')
+            required = {'master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json'}
+            if version == 2:
+                required.add('script.lrc')
+            required.update(f'chapters/{index:04d}-{_output_name(scene.title)}.wav'
+                            for index, scene in enumerate(project.scenes, 1))
+            if state['format'] != 'wav':
+                required.add('audiobook.' + state['format'])
+            if state['stems']:
+                required.update('stems/' + role.id + '.wav' for role in project.roles)
+                if any(scene.music is not None for scene in project.scenes):
+                    required.add('stems/music.wav')
+                if project.schema >= 2:
+                    required.update('stems/clips/' + cue.role + '.wav'
+                                    for scene in project.scenes for cue in scene.cues)
+        seen = set()
         for artifact in state['artifacts']:
             path = local_path(artifact['path'], root=root, exists=True)
+            name = path.relative_to(root).as_posix()
+            if name in seen:
+                raise ValueError('Duplicate production artifact receipt.')
+            seen.add(name)
             if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
+        if required - seen:
+            raise ValueError('The completed production receipt is missing required artifacts.')
 
     def assistant_callback(self, arguments, output_directory, cancelled, progress):
         if set(arguments) - {'script', 'text', 'title', 'format', 'stems', 'voice_ids', 'operation_id'}:

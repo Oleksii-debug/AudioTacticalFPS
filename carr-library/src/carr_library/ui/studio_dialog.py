@@ -845,7 +845,7 @@ def install_studio_actions(frame):
             ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
             ('audio.clips', 'Edit scene audio clips...', '', lambda e: show_clip_editor(frame)),
             ('audio.recording', 'Record microphone...', '', lambda e: show_recording(frame)),
-            ('audio.publishing', 'Publish synchronized EPUB3...', '', lambda e: show_publishing(frame)),
+            ('audio.publishing', 'Publish synchronized EPUB3 or DAISY...', '', lambda e: show_publishing(frame)),
             ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
             ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)

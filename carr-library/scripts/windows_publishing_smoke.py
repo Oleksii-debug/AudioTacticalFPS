@@ -1,4 +1,4 @@
-"""Installed wx/FFmpeg EPUB publishing acceptance; synthetic tones, no reader/NVDA claim."""
+"""Installed wx/FFmpeg EPUB, DAISY and M4B acceptance; synthetic tones, no reader/NVDA claim."""
 from pathlib import Path
 from hashlib import file_digest
 import json
@@ -25,6 +25,8 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library.studio.render import ProductionService
     from carr_library.studio.publishing import inspect_epub
+    from carr_library.studio.daisy import inspect_daisy
+    from carr_library.audio.audiobook import inspect_chapters
     from carr_library.ui import publishing_dialog as ui
     from carr_library.ui.desktop_app import DesktopFrame
     errors, checks, audio_proof = [], [], {}
@@ -87,11 +89,19 @@ def main():
             library = LibraryApp(root/'library')
             service = ProductionService(library.root/'state'/'studio', voices=SyntheticTones())
             verify_audio(service._runtime())
-            script = '[Scene: Original]\nNarrator: Preserve <source> & exact text.\n[Pause: 0.2]\nReader: The second line.'
+            script = '[Scene: Original]\nNarrator: Preserve <source> & exact text.\n[Pause: 0.2]\n[Scene: Second]\nReader: The second line.'
             project = service.create(script, title='Native EPUB fixture', voice_ids=('synthetic-tone',))
-            source_id = service.submit(project, root, stems=False)
+            source_id = service.submit(project, root, format='m4b', stems=False)
             completed = service.run(source_id)
             check('actual FFmpeg produced a completed Studio fixture', completed['status'] == 'complete')
+            rendered = Path(completed['destination'])
+            runtime = service._runtime(reviewed_roots=(rendered,))
+            embedded = inspect_chapters(runtime, rendered / 'audiobook.m4b')
+            check('actual M4B contains the two measured chapter titles',
+                  [row['tags']['title'] for row in embedded['chapters']] == ['Original', 'Second'])
+            check('LRC preserves measured line text without word alignment',
+                  (rendered / 'script.lrc').read_text(encoding='utf-8').splitlines() ==
+                  ['[00:00.00]Preserve <source> & exact text.', '[00:00.40]The second line.'])
             frame = DesktopFrame(library); frame.Show(); gui.SetTopWindow(frame)
             dialog = ui.create_publishing_dialog(frame); dialog.Show()
             def destruction_case(parent):
@@ -141,6 +151,9 @@ def main():
                     check('real native main loop is active', gui.GetMainLoop() is not None)
                     check('export controls have native accessible names', isinstance(dialog.job_choice,wx.Choice)
                           and 'Completed Studio job' in dialog.job_choice.GetName()
+                          and isinstance(dialog.format_choice, wx.Choice)
+                          and dialog.format_choice.GetName() == 'Publication format'
+                          and 'required for DAISY' in dialog.publisher.GetName()
                           and isinstance(dialog.status,wx.TextCtrl) and 'Publication status' in dialog.status.GetName())
                     press(dialog.buttons['refresh']); until(lambda: not dialog.busy)
                     check('completed job is listed without implicit selection',len(dialog.jobs)==1 and dialog.job_choice.GetSelection()==wx.NOT_FOUND)
@@ -161,12 +174,42 @@ def main():
                     original = target.read_bytes(); press(dialog.buttons['export']); until(lambda: not dialog.busy)
                     check('native duplicate export cannot overwrite completed bytes',target.read_bytes()==original
                           and 'not be overwritten' in dialog.status.GetValue())
+                    daisy_target = root / 'publication.zip'
+                    dialog.format_choice.SetSelection(1)
+                    dialog.output.ChangeValue(str(daisy_target))
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('DAISY requires explicit publisher metadata before queuing',
+                          not daisy_target.exists() and 'publisher metadata' in dialog.status.GetValue())
+                    dialog.publisher.ChangeValue('Explicit native synthetic publisher')
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('native DAISY export uses the same durable receipt service',
+                          daisy_target.exists() and len(dialog.receipts) == 2
+                          and dialog.receipts[-1]['format'] == 'daisy-2.02'
+                          and 'DAISY saved and its bytes verified' in dialog.status.GetValue())
+                    daisy_provenance = inspect_daisy(daisy_target)
+                    check('DAISY retains exact original script and measured line coverage',
+                          daisy_provenance['original_script'] == script
+                          and daisy_provenance['publisher'] == 'Explicit native synthetic publisher'
+                          and sum(row['kind'] == 'line' for row in daisy_provenance['intervals']) == 2)
+                    dialog.format_choice.SetSelection(0)
+                    press(dialog.buttons['verify']); until(lambda: not dialog.busy)
+                    check('native verification follows the saved DAISY receipt format',
+                          'Verified exact saved DAISY bytes' in dialog.status.GetValue())
+                    daisy_original = daisy_target.read_bytes()
+                    dialog.format_choice.SetSelection(1)
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('native DAISY retry preserves both completed publications',
+                          daisy_target.read_bytes() == daisy_original and target.read_bytes() == original
+                          and 'not be overwritten' in dialog.status.GetValue())
                     press(dialog.buttons['close'])
                     check('native keyboard close completes', not dialog.alive)
                     destruction_case(False)
                     destruction_case(True)
                     check('native destruction preserves completed EPUB and receipt',
                           target.read_bytes() == original and inspect_epub(target) == provenance)
+                    check('native destruction preserves completed DAISY and receipt',
+                          daisy_target.read_bytes() == daisy_original
+                          and inspect_daisy(daisy_target) == daisy_provenance)
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
@@ -192,7 +235,9 @@ def main():
         if errors: raise RuntimeError('\n'.join(errors))
     print(json.dumps({'result':'PASS','checks':checks,'audio':'Synthetic PCM tones through actual FFmpeg',
         'audio_runtime':audio_proof,'native_keyboard':'PASS','epubcheck':'NOT_RUN',
-        'reader_interoperability':'NOT_RUN','manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
+        'reader_interoperability':'NOT_RUN','full_daisy_rule_conformance':'NOT_RUN',
+        'braille_output':'NOT_RUN','acoustic_sentence_alignment':'NOT_RUN',
+        'manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
     return 0
 
 
