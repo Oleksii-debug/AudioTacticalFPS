@@ -193,7 +193,8 @@ def cli(app, *arguments):
     return result, json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def test_actual_cli_requires_local_approval_and_keeps_completed_work_offline(tmp_path, server):
+@pytest.mark.parametrize('newline', ['\n', '\r\n'], ids=['lf', 'crlf'])
+def test_actual_cli_requires_local_approval_and_keeps_completed_work_offline(tmp_path, server, newline):
     app = LibraryApp(tmp_path / 'library')
     app.create_workspace('CLI local translator')
     ProfileStore(app.root / 'state/providers').save(server.profile)
@@ -202,8 +203,10 @@ def test_actual_cli_requires_local_approval_and_keeps_completed_work_offline(tmp
     result, rows = cli(app, 'languages', '--profile', server.profile.id, '--approve-local')
     assert result.returncode == 0 and rows[0]['targets'] == ['uk'], result.stderr
     selected = tmp_path / 'selected.txt'
-    original = 'First paragraph. ' * 350 + '\nSecond paragraph 🙂.'
-    selected.write_text(original, encoding='utf-8')
+    original = 'First paragraph. ' * 350 + newline + 'Second paragraph 🙂.'
+    # Own the exact reviewed UTF-8 bytes on both platforms; text-mode output
+    # would translate LF to CRLF before the application ever sees the input.
+    selected.write_bytes(original.encode('utf-8'))
     options = ['--profile', server.profile.id, '--input', selected, '--source', 'en',
                '--target', 'uk', '--budget', '0']
     result, review = cli(app, 'preview', *options)
