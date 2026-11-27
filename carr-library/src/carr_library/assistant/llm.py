@@ -1,7 +1,5 @@
 """Optional local llama-server planning: proposals still require scoped review."""
-import json
-
-from .models import Plan, SCHEMA, Scope, text
+from .models import Plan, SCHEMA, Scope, strict_json_loads, text
 from .profiles import ProviderProfile
 
 
@@ -36,18 +34,9 @@ class LocalPlanClarification(ValueError):
     """Non-executable clarification from the selected local model."""
 
 
-def _unique_object(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError('Duplicate JSON keys in local model proposal.')
-        result[key] = value
-    return result
-
-
 def _parse_local_proposal(value, scope):
     text(value, 'plan JSON', maximum=8 * 1024 * 1024)
-    parsed = json.loads(value, object_pairs_hook=_unique_object)
+    parsed = strict_json_loads(value)
     if (type(parsed) is dict and set(parsed) == {'schema', 'steps', 'summary'}
             and parsed['schema'] == SCHEMA and parsed['steps'] == []):
         summary = text(parsed['summary'], 'local model clarification', maximum=2048)

@@ -23,6 +23,32 @@ def canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False)
 
 
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate JSON keys in assistant JSON.')
+        result[key] = value
+    return result
+
+
+def _nonfinite_constant(_):
+    raise ValueError('Non-finite number in assistant JSON.')
+
+
+def _finite_float(raw):
+    value = float(raw)
+    if not math.isfinite(value):
+        raise ValueError('Non-finite number in assistant JSON.')
+    return value
+
+
+def strict_json_loads(value):
+    """Decode existing assistant JSON without ambiguous keys or non-finite numbers."""
+    return json.loads(value, object_pairs_hook=_unique_object,
+                      parse_constant=_nonfinite_constant, parse_float=_finite_float)
+
+
 def text(value, label, *, maximum=8192, empty=False):
     if not isinstance(value, str) or (not value.strip() and not empty) or len(value) > maximum:
         raise ValueError(f'Invalid {label}.')
@@ -185,7 +211,7 @@ class Plan:
     @classmethod
     def from_json(cls, value, *, scope=None):
         text(value, 'plan JSON', maximum=8 * 1024 * 1024)
-        return cls.from_dict(json.loads(value), scope=scope)
+        return cls.from_dict(strict_json_loads(value), scope=scope)
 
 
 @dataclass(frozen=True)
