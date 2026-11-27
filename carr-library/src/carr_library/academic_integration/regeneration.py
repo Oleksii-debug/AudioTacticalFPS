@@ -60,7 +60,7 @@ def _restore_clusters(values, ids):
 
 def regenerate_citation_docx(source, destination, *, references=None, citations=None,
                              paragraphs=None, changed_reference_ids=(), style_path=None,
-                             node_path=None, cancelled=None, timeout=30):
+                             node_path=None, cancelled=None, timeout=30, private_root=None):
     """Reformat the embedded CARR snapshot into a new, non-overwriting DOCX.
 
     Visible edits made in Word are not imported. By default the saved title,
@@ -153,4 +153,5 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
         return False
 
     return export_citation_docx(result, destination, title=document['title'],
-        paragraphs=body if paragraphs is None else paragraphs, cancelled=final_check)
+        paragraphs=body if paragraphs is None else paragraphs, cancelled=final_check,
+        private_root=private_root)

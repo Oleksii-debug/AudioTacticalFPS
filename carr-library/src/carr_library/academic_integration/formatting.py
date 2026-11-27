@@ -1,8 +1,8 @@
-"""Offline CSL formatting with the pinned, unmodified citeproc-js processor.
+"""Citation-document compatibility using the canonical bounded QuickJS formatter.
 
-Only CSL JSON and XML cross the fixed worker boundary. Neither metadata nor
-style XML is interpreted as JavaScript. Node is an explicit local dependency;
-this module never downloads an engine, a style, a locale or a reference.
+The existing typed citation requests and OOXML snapshots remain supported.
+Rendering delegates to carr_library.citations.csl; no external executable,
+second processor bundle, network fallback or independent style registry exists.
 """
 from __future__ import annotations
 
@@ -11,24 +11,20 @@ from hashlib import sha256
 from html import escape
 from html.parser import HTMLParser
 import json
-import os
 from pathlib import Path
 import re
-import shutil
-import signal
-import subprocess
-import tempfile
-import time
 from typing import Callable, Iterable, Mapping, Sequence
 
 from lxml import etree
 
-_ROOT = Path(__file__).resolve().parent
+from ..citations import csl
+
+_ROOT = csl._ROOT
 _CSL = '{http://purl.org/net/xbiblio/csl}'
 _MAX_BYTES = 16_000_000
 _MAX_REFERENCES = 1000
 _MAX_CLUSTERS = 5000
-_LOCALES = ('en-US', 'uk-UA', 'sk-SK')
+_LOCALES = csl.LOCALES
 _LABELS = frozenset(('page', 'chapter', 'section', 'paragraph', 'line', 'volume',
                      'issue', 'book', 'part', 'verse', 'column', 'folio',
                      'figure', 'note', 'sub-verbo', 'timestamp'))
@@ -140,18 +136,30 @@ class FormattedCitations:
 
 
 def _manifest() -> dict:
-    try:
-        return json.loads((_ROOT / 'UPSTREAM.json').read_text(encoding='utf-8'))
-    except (OSError, ValueError) as exc:
-        raise CitationError('The installed citation bundle is incomplete.') from exc
+    """Identity of the one installed formatter, including its pinned resources.
+
+    These hashes detect changed local source/style identities. They are not a
+    signature or independent authorization for a quotation or locator.
+    """
+    processor = {
+        'name': 'citeproc-js', 'version': csl.PROCESSOR_REPORTED_VERSION,
+        'package_version': csl.PROCESSOR_PACKAGE_VERSION,
+        'sha256': csl._HASHES['_vendor_citeproc/citeproc.js'],
+        'chosen_license': 'CPAL-1.0', 'runtime': 'quickjs-ng',
+        'document_adapter': 2,
+        'bridge_sha256': sha256(csl._BRIDGE.encode('utf-8')).hexdigest(),
+        'resources': dict(sorted(csl._HASHES.items())),
+    }
+    styles = []
+    for item in csl.available_styles():
+        styles.append(dict(id=item.id, title=item.title, kind=item.kind,
+            filename=item.filename, sha256=csl._HASHES['styles/' + item.filename],
+            source='bundled:citations/styles/' + item.filename, license='CC-BY-SA-3.0'))
+    return {'processor': processor, 'styles': styles, 'attribution': csl.ATTRIBUTION}
 
 
 def processor_attribution() -> str:
-    """Return the installed processor's exact retained attribution notice."""
-    value = _manifest().get('attribution')
-    if not isinstance(value, str) or not value.strip():
-        raise CitationError('The installed citation attribution is missing.')
-    return value
+    return csl.ATTRIBUTION
 
 
 def available_styles() -> tuple[StyleInfo, ...]:
@@ -295,83 +303,51 @@ def _clusters(values: Iterable[CitationCluster | CitationRequest], ids: set[str]
     return result
 
 
-def _xml(raw: bytes, *, style: bool) -> str:
-    if len(raw) > 1_000_000 or re.search(br'<!\s*(?:DOCTYPE|ENTITY)\b', raw, re.IGNORECASE):
-        raise CitationError('CSL XML must be bounded and must not contain a DTD or entities.')
-    parser = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False,
-                             huge_tree=False, remove_comments=False)
+def _assets(style: str, style_path: Path | str | None, locale: str):
+    if locale not in csl.LOCALES:
+        raise CitationError('Choose an installed locale: ' + ', '.join(csl.LOCALES) + '.')
     try:
-        root = etree.fromstring(raw, parser)
-    except (ValueError, etree.XMLSyntaxError) as exc:
-        raise CitationError('The CSL XML is invalid.') from exc
-    expected = _CSL + ('style' if style else 'locale')
-    if root.tag != expected or sum(1 for _ in root.iter()) > 20_000:
-        raise CitationError('The CSL XML has an invalid root or exceeds its element budget.')
-    if style:
-        if root.find(_CSL + 'citation') is None or root.find(_CSL + 'bibliography') is None:
-            raise CitationError('Choose an independent CSL style containing citations and a bibliography.')
-        macros = {}
-        for node in root.findall(_CSL + 'macro'):
-            name = node.get('name')
-            if not name or name in macros:
-                raise CitationError('CSL macros need distinct names.')
-            macros[name] = {x.get('macro') for x in node.iter() if x.get('macro')}
-        for node in root.iter():
-            if node.get('macro') and node.get('macro') not in macros:
-                raise CitationError('The CSL style refers to an unknown macro.')
-        checked = set()
-        def visit(name, active):
-            if name in active or len(active) > 100:
-                raise CitationError('Recursive or excessively nested CSL macros are not supported.')
-            if name in checked:
-                return
-            for child in macros[name]:
-                visit(child, active | {name})
-            checked.add(name)
-        for name in macros:
-            visit(name, set())
-    try:
-        return raw.decode('utf-8-sig')
-    except UnicodeError as exc:
-        raise CitationError('CSL files must use UTF-8.') from exc
-
-
-def _assets(style: str, style_path: Path | str | None, locale: str) -> tuple[StyleInfo, str, dict]:
-    manifest = _manifest()
-    if locale not in _LOCALES:
-        raise CitationError('Choose an installed locale: en-US, uk-UA or sk-SK.')
-    if style_path is None:
-        entry = next((x for x in manifest['styles'] if x['id'] == style), None)
-        if entry is None:
-            raise CitationError('The selected CSL style is not installed.')
-        raw = (_ROOT / 'styles' / entry['filename']).read_bytes()
-        if sha256(raw).hexdigest() != entry['sha256']:
-            raise CitationError('The installed CSL style failed its integrity check.')
-        info = StyleInfo(**{key: entry[key] for key in StyleInfo.__dataclass_fields__})
-    else:
-        from carr_library.durable_state import local_path, regular
-        path = local_path(style_path, exists=True)
-        if regular(path).st_size > 1_000_000:
-            raise CitationError('The selected local style exceeds its size budget.')
-        raw = path.read_bytes()
-        _xml(raw, style=True)
-        node = etree.fromstring(raw, etree.XMLParser(resolve_entities=False, no_network=True))
-        title = node.findtext(_CSL + 'info/' + _CSL + 'title') or path.stem
-        kind = node.get('class', '')
-        if kind not in ('note', 'in-text'):
-            raise CitationError('The selected style needs a valid CSL citation class.')
-        info = StyleInfo('local-' + sha256(raw).hexdigest()[:16], title, kind,
-                         sha256(raw).hexdigest(), 'local:' + path.name,
-                         'User-installed; consult style rights metadata')
-    style_xml = _xml(raw, style=True)
-    locales = {}
-    for language in _LOCALES:
-        filename = f'locales-{language}.xml'
-        raw = (_ROOT / 'locales' / filename).read_bytes()
-        if sha256(raw).hexdigest() != manifest['locales'][filename]:
-            raise CitationError('An installed CSL locale failed its integrity check.')
-        locales[language] = _xml(raw, style=False)
-    return info, style_xml, locales
+        if style_path is None:
+            entry = next((row for row in _manifest()['styles'] if row['id'] == style), None)
+            if entry is None:
+                raise CitationError('The selected CSL style is not installed. Choose a current named style.')
+            raw = csl._resource('styles/' + entry['filename']).encode('utf-8')
+            info = StyleInfo(**{key: entry[key] for key in StyleInfo.__dataclass_fields__})
+            selected = style
+        else:
+            from ..durable_state import local_path, regular
+            path = local_path(style_path, exists=True)
+            before = regular(path)
+            if before.st_size > csl.MAX_CUSTOM_STYLE_BYTES:
+                raise CitationError('The selected local style exceeds its size budget.')
+            with path.open('rb') as stream:
+                raw = stream.read(csl.MAX_CUSTOM_STYLE_BYTES + 1)
+            after = regular(path)
+            if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
+                    after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                raise CitationError('The selected style changed while reading it.')
+            selected = csl.load_custom_style(raw)
+            info = StyleInfo(selected.info.id, selected.info.title, selected.info.kind,
+                             selected.sha256, 'local:' + path.name,
+                             'User-installed; consult style rights metadata')
+        # Bibliography paragraph layout comes from the same validated style
+        # snapshot. The text and typography still come only from csl.render.
+        root = etree.fromstring(raw, etree.XMLParser(
+            resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False))
+        bibliography = root.find(_CSL + 'bibliography')
+        parameters = {}
+        if bibliography is not None:
+            parameters['hangingindent'] = bibliography.get('hanging-indent') == 'true'
+            parameters['second-field-align'] = bibliography.get('second-field-align')
+            for attribute, key in (('line-spacing', 'linespacing'), ('entry-spacing', 'entryspacing')):
+                value = bibliography.get(attribute)
+                if value is not None and re.fullmatch(r'[0-9]{1,3}', value):
+                    parameters[key] = int(value)
+        return info, selected, parameters
+    except CitationError:
+        raise
+    except (ValueError, RuntimeError, OSError, etree.XMLSyntaxError) as exc:
+        raise CitationError(str(exc)) from exc
 
 
 class _SafeHTML(HTMLParser):
@@ -428,121 +404,78 @@ def safe_markup(value: str) -> tuple[str, str]:
     return ''.join(parser.plain).strip(), ''.join(parser.parts).strip()
 
 
-def _node_binary(value: Path | str | None) -> str:
-    path = Path(value) if value else Path(shutil.which('node') or '')
-    if not str(path) or str(path) == '.' or not path.is_file():
-        raise CitationError('Local citation formatting requires an installed Node.js 18 or newer runtime.')
-    return str(path.resolve())
-
-
-def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[], bool] | None,
-         timeout: float) -> dict:
+def _run(references, clusters, selected_style, locale, *, cancelled, timeout):
     if cancelled and cancelled():
         raise CitationCancelled('Citation formatting was cancelled.')
-    if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not 0.1 <= timeout <= 60:
-        raise CitationError('The processor timeout must be between 0.1 and 60 seconds.')
-    raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
-    if len(raw) > _MAX_BYTES:
-        raise CitationError('The combined CSL input exceeds its processing budget.')
-    binary = _node_binary(node_path)
-    env = {k: v for k, v in os.environ.items() if k in (
-        'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'PATH', 'TEMP', 'TMP', 'TMPDIR',
-        'LANG', 'LC_ALL', 'HOME', 'USERPROFILE')}
-    with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:
-        directory = Path(directory)
-        (directory / 'input.json').write_bytes(raw)
-        output_path, error_path = directory / 'output.json', directory / 'error.txt'
-        with (directory / 'input.json').open('rb') as source, output_path.open('wb') as output, error_path.open('wb') as errors:
-            try:
-                process = subprocess.Popen([binary, '--max-old-space-size=256', '--disable-proto=throw',
-                    str(_ROOT / 'csl_worker.cjs')], stdin=source, stdout=output, stderr=errors,
-                    cwd=directory, env=env, shell=False, start_new_session=os.name != 'nt',
-                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
-            except OSError as exc:
-                raise CitationError('The configured local Node.js runtime could not be started.') from exc
-            deadline = time.monotonic() + timeout
-            try:
-                while process.poll() is None:
-                    if cancelled and cancelled():
-                        raise CitationCancelled('Citation formatting was cancelled.')
-                    if time.monotonic() > deadline:
-                        raise CitationError('The local citation processor exceeded its time budget.')
-                    if output_path.stat().st_size > _MAX_BYTES or error_path.stat().st_size > 1_000_000:
-                        raise CitationError('The local citation processor exceeded its output budget.')
-                    time.sleep(0.025)
-            finally:
-                if process.poll() is None:
-                    if os.name != 'nt':
-                        try:
-                            os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
-                    else:
-                        process.kill()
-                    process.wait(timeout=5)
-            if process.returncode:
-                raise CitationError('The local CSL processor could not format this input; check the runtime and style.')
-        if output_path.stat().st_size > _MAX_BYTES:
-            raise CitationError('The local citation processor exceeded its output budget.')
-        try:
-            return json.loads(output_path.read_text(encoding='utf-8'))
-        except (OSError, ValueError) as exc:
-            raise CitationError('The citation processor returned invalid output.') from exc
+    try:
+        result = csl.render(references, style=selected_style,
+            citations=[cluster['items'] for cluster in clusters], locale=locale,
+            output='html', budget=csl.RenderBudget(max_records=_MAX_REFERENCES,
+                max_citations=_MAX_CLUSTERS, max_input_bytes=8_000_000,
+                max_output_bytes=_MAX_BYTES, cpu_seconds=timeout))
+    except (ValueError, RuntimeError) as exc:
+        if cancelled and cancelled():
+            raise CitationCancelled('Citation formatting was cancelled.') from exc
+        raise CitationError(str(exc)) from exc
+    if cancelled and cancelled():
+        raise CitationCancelled('Citation formatting was cancelled.')
+    return result
 
 
 def render_citations(csl_items: Sequence[Mapping], *, style: str = 'apa', locale: str = 'en-US',
                      citations: Iterable[CitationCluster | CitationRequest] = (),
                      style_path: Path | str | None = None, node_path: Path | str | None = None,
                      cancelled: Callable[[], bool] | None = None, timeout: float = 30) -> FormattedCitations:
-    """Format references locally, with verified pinpoints supplied separately.
+    """Format a source-immutable document through the existing local CSL service.
 
-    Publication ``page`` metadata describes the publication extent and never
-    becomes a citation locator. Omitted source fields stay omitted. Private
-    notes, abstracts and non-CSL fields are excluded from the processing copy.
-    Caller-owned dictionaries and source records are never mutated.
+    A locator remains an explicit caller assertion. Publication page extents
+    never become pinpoints. Cancellation is checked before and after the
+    bounded QuickJS evaluation and always before export publication.
     """
+    if cancelled is not None and not callable(cancelled):
+        raise CitationError('Cancellation must be a callable.')
+    if cancelled and cancelled():
+        raise CitationCancelled('Citation formatting was cancelled.')
+    if node_path is not None:
+        raise CitationError('External Node.js runtimes are no longer used. Use the installed QuickJS citation service.')
+    if type(timeout) not in (int, float) or not 0.1 <= timeout <= 60:
+        raise CitationError('The processor timeout must be between 0.1 and 60 seconds.')
     if not isinstance(csl_items, (list, tuple)) or not 1 <= len(csl_items) <= _MAX_REFERENCES:
         raise CitationError('Supply between 1 and 1000 CSL JSON references.')
     references = [_reference(item) for item in csl_items]
-    ids = {x['id'] for x in references}
+    ids = {item['id'] for item in references}
     if len(ids) != len(references):
         raise CitationError('Reference IDs must be unique.')
     clusters = _clusters(citations, ids)
-    info, style_xml, locales = _assets(style, style_path, locale)
-    payload = {'references': references, 'style_xml': style_xml, 'locale': locale,
-               'locales': locales, 'clusters': clusters}
-    result = _run(payload, node_path=node_path, cancelled=cancelled, timeout=timeout)
+    info, selected_style, parameters = _assets(style, style_path, locale)
+    if info.kind == 'note' and any(cluster['note_index'] not in (None, index + 1)
+                                  for index, cluster in enumerate(clusters)):
+        raise CitationError('Native endnote documents need consecutive note numbers starting at 1.')
+    rendered = _run(references, clusters, selected_style, locale,
+                    cancelled=cancelled, timeout=timeout)
+    if rendered.style_sha256 != info.sha256:
+        raise CitationError('The selected style identity changed while formatting.')
+    bibliography, output = [], []
+    for identifiers, entry in zip(rendered.entry_ids, rendered.entries, strict=True):
+        text, html = safe_markup(entry)
+        bibliography.append(BibliographyEntry(identifiers, text, html))
+    for cluster, entry in zip(clusters, rendered.citations, strict=True):
+        text, html = safe_markup(entry)
+        output.append(RenderedCitation(cluster['id'], tuple(item['id'] for item in cluster['items']),
+                                       text, html, cluster['note_index']))
+    warnings = tuple(rendered.warnings)
     manifest = _manifest()
-    if result.get('processor_version') != manifest['processor']['version']:
-        raise CitationError('The local processor version does not match the pinned bundle.')
-    bibliography, rendered = [], []
-    try:
-        entries = result['bibliography']
-        entry_ids = result['parameters']['entry_ids']
-        if len(entries) != len(entry_ids) or len(result['citations']) != len(clusters):
-            raise CitationError('The processor returned inconsistent citation counts.')
-        for identifiers, markup in zip(entry_ids, entries):
-            if not identifiers or any(x not in ids for x in identifiers):
-                raise CitationError('The processor returned unknown bibliography IDs.')
-            text, html = safe_markup(markup)
-            bibliography.append(BibliographyEntry(tuple(identifiers), text, html))
-        for cluster, markup in zip(clusters, result['citations']):
-            text, html = safe_markup(markup)
-            rendered.append(RenderedCitation(cluster['id'], tuple(x['id'] for x in cluster['items']),
-                                            text, html, cluster['note_index']))
-        warnings = tuple(_text(x, 'Processor warning', 2000) for x in result.get('warnings', ()))
-        if result['parameters'].get('bibliography_errors'):
-            warnings += ('The CSL processor reported an incomplete bibliography entry; review source metadata.',)
-    except (KeyError, TypeError, AttributeError) as exc:
-        raise CitationError('The citation processor returned an invalid result shape.') from exc
     interchange = {'schema': 1, 'references': references, 'clusters': clusters, 'locale': locale,
-        'style': {k: getattr(info, k) for k in StyleInfo.__dataclass_fields__},
-        'processor': manifest['processor'], 'attribution': manifest['attribution'],
-        'bibliography_parameters': {k: result['parameters'].get(k) for k in (
-            'hangingindent', 'linespacing', 'entryspacing', 'second-field-align')},
-        'bibliography': [{'reference_ids': list(x.reference_ids), 'text': x.text, 'html': x.html} for x in bibliography],
-        'citations': [{'cluster_id': x.cluster_id, 'reference_ids': list(x.reference_ids), 'text': x.text,
-                       'html': x.html, 'note_index': x.note_index} for x in rendered], 'warnings': list(warnings)}
-    return FormattedCitations(info, locale, tuple(bibliography), tuple(rendered), warnings,
-                              manifest['attribution'], json.dumps(interchange, ensure_ascii=False,
-                                                                  sort_keys=True, allow_nan=False))
+        'style': {key: getattr(info, key) for key in StyleInfo.__dataclass_fields__},
+        'processor': manifest['processor'], 'attribution': rendered.attribution,
+        'bibliography_parameters': parameters,
+        'bibliography': [{'reference_ids': list(row.reference_ids), 'text': row.text, 'html': row.html}
+                         for row in bibliography],
+        'citations': [{'cluster_id': row.cluster_id, 'reference_ids': list(row.reference_ids),
+                       'text': row.text, 'html': row.html, 'note_index': row.note_index}
+                      for row in output], 'warnings': list(warnings)}
+    encoded = json.dumps(interchange, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    if len(encoded.encode('utf-8')) > _MAX_BYTES:
+        raise CitationError('The citation document snapshot exceeds its size budget.')
+    return FormattedCitations(info, locale, tuple(bibliography), tuple(output),
+                              warnings, rendered.attribution, encoded)

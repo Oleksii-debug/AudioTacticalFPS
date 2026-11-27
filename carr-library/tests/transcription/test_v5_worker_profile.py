@@ -388,10 +388,21 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
     assert service.run(identity, timeout=10)['status'] == 'completed'
 
 
+
+def remove_backup_fixture_instrumentation(service, identity):
+    """Fixture controls/cache have no product schema; retain all real ASR bytes."""
+    path = service._path(identity)
+    for name in ('fixture-mode.json', 'fixture-runs.json'):
+        (path / name).unlink(missing_ok=True)
+    cache = path / 'logs' / 'cache_v5' / 'synthetic-retained.txt'
+    assert cache.read_text(encoding='utf-8') == 'Synthetic cache; no inference.'
+    cache.unlink()
+
 def test_v5_completed_results_restore_and_remain_readable_without_engine(v5, tmp_path):
     app, workspace, service, _, runtime, _ = v5
     identity, result = run(v5)
     assert result['status'] == 'completed', result['last_error']
+    remove_backup_fixture_instrumentation(service, identity)
     checksum = app.backup(tmp_path / 'backup')
     for name in ('worker.py','local_models.py','transcript_features.py'):
         (runtime / name).unlink()
@@ -415,6 +426,7 @@ def test_v5_partial_backup_preserves_receipts_and_resumes_only_retained_sources(
     original_manifest = (old_path / manifest_name).read_bytes()
     source_bytes = {item['filename']: (old_path / 'input' / item['filename']).read_bytes()
                     for item in partial['sources']}
+    remove_backup_fixture_instrumentation(service, identity)
     checksum = app.backup(tmp_path / 'partial-backup')
     source.unlink()
     second.unlink()

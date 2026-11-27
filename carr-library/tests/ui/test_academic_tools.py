@@ -14,25 +14,16 @@ from carr_library.ui.literature_matrix import MatrixCommand
 
 @pytest.fixture(autouse=True)
 def confirmation(monkeypatch):
-    """Exercise the shared confirmation helper with a controlled modal answer."""
+    """Exercise the native message-box protocol with a controlled answer."""
     wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4,
-                         ID_YES=10, ID_NO=11, answer=10, questions=[])
-
-    class MessageDialog:
-        def __init__(self, parent, message, title, style):
-            self.parent, self.message, self.title, self.style = parent, message, title, style
-            self.destroyed = False
-            wx.questions.append(self)
-
-        def ShowModal(self):
-            return wx.answer
-
-        def Destroy(self):
-            self.destroyed = True
-
-    wx.MessageDialog = MessageDialog
+                         YES=10, NO=11, ID_YES=10, ID_NO=11, answer=10, questions=[])
+    def message_box(message, title, style, parent):
+        wx.questions.append(SimpleNamespace(parent=parent, message=message, title=title, style=style))
+        return wx.answer
+    wx.MessageBox = Mock(side_effect=message_box)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     return wx
+
 
 
 @pytest.fixture
@@ -286,7 +277,7 @@ def test_declined_export_replacement_never_queues_or_renders(
     assert not frame.jobs
     render.assert_not_called()
     question, = confirmation.questions
-    assert question.destroyed and question.style & confirmation.NO_DEFAULT
+    assert question.style & confirmation.NO_DEFAULT
     assert output.name in question.message
     assert output.read_bytes() == b'Existing work'
 
@@ -300,7 +291,7 @@ def test_confirmed_unchanged_destination_receives_real_research_export(
     actions._export(AcademicScope(frame.library, *frame.active), kind=kind,
                     format='markdown', include_descendants=True, tag_filter=None)
     question, = confirmation.questions
-    assert question.destroyed and question.style & confirmation.NO_DEFAULT
+    assert question.style & confirmation.NO_DEFAULT
     assert output.read_bytes() == b'Existing work'
     frame.complete()
     assert 'Exact original quotation.' in output.read_text(encoding='utf-8')
@@ -313,11 +304,11 @@ def test_library_change_during_replacement_question_does_not_queue_export(
     output.write_bytes(b'Existing work')
     frame, actions, _ = make_actions(research, save_path=output)
 
-    def switch_scope(dialog):
+    def switch_scope(*args):
         frame.active = research[2], None
         return confirmation.ID_YES
 
-    monkeypatch.setattr(confirmation.MessageDialog, 'ShowModal', switch_scope)
+    monkeypatch.setattr(confirmation, 'MessageBox', switch_scope)
     actions.outline()
     assert not frame.jobs
     assert 'changed' in frame.report.call_args.args[0]
@@ -366,3 +357,35 @@ def test_declined_scope_change_does_not_replace_the_existing_note_editor(researc
     actions.open_evidence(AcademicScope(frame.library, *frame.active), selected)
     frame._open_workspace.assert_called_once_with(research[1], research[4])
     frame.evidence.refresh.assert_not_called()
+
+
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_queued_academic_export_preserves_changed_destination(
+        research, tmp_path, kind, existing):
+    output = tmp_path / 'approved.md'
+    if existing:
+        output.write_bytes(b'Previously approved export')
+    frame, actions, _ = make_actions(research, save_path=output)
+    scope = AcademicScope(frame.library, *frame.active)
+    actions._export(scope, kind=kind, format='markdown',
+                    include_descendants=True, tag_filter=None)
+    assert len(frame.jobs) == 1
+    independent = b'Independent work saved while the export was queued'
+    output.write_bytes(independent)
+    with pytest.raises(ValueError, match='destination changed'):
+        frame.complete()
+    assert output.read_bytes() == independent
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_declined_academic_replacement_never_starts_render(
+        research, tmp_path, confirmation):
+    output = tmp_path / 'approved.md'
+    output.write_bytes(b'Keep existing work')
+    confirmation.answer = confirmation.NO
+    frame, actions, _ = make_actions(research, save_path=output)
+    actions.outline()
+    assert not frame.jobs
+    assert output.read_bytes() == b'Keep existing work'
+    assert 'cancelled' in frame.report.call_args.args[0].lower()

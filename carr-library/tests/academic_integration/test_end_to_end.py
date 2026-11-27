@@ -4,10 +4,13 @@ import json
 import pytest
 
 from carr_library.academic_integration import (
-    CitationError, CitationParagraph, CitationRequest, DoiMetadataClient,
+    CitationError, CitationParagraph, CitationRequest,
     export_citation_docx, read_citation_docx, render_citations,
 )
-from carr_library.academic_integration.doi import MetadataResponse
+from carr_library.acquisition.service import AcquisitionService
+from carr_library.application import LibraryApp
+from carr_library.ui.academic_library_dialog import AcademicController
+from carr_library.ui.citation_formatting import CitationFormattingController
 
 
 def test_metadata_preview_formats_locally_without_inventing_a_verified_pinpoint(tmp_path):
@@ -19,29 +22,44 @@ def test_metadata_preview_formats_locally_without_inventing_a_verified_pinpoint(
         'volume': '12', 'issue': '3', 'page': '100-125',
     }}
     raw = json.dumps(source).encode()
-    def transport(request, *, cancelled):
-        requests.append(request.public_url)
-        return MetadataResponse(200, {'Content-Type': 'application/json'}, raw, request.url)
-    preview = DoiMetadataClient(allow_network=True, transport=transport).lookup('10.5555/local-fixture')
-    assert len(requests) == 1
-    assert preview.review_required
-    assert not preview.licenses
-    assert preview.csl_item['page'] == '100-125'
+    def transfers(permission):
+        assert permission.allowed is True and permission.purpose == 'metadata'
+        def transport(request, *, cancelled):
+            assert not cancelled()
+            requests.append(request)
+            return raw
+        return transport
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Explicit metadata preview')
+    app._acquisition_service = AcquisitionService(app, transport_factory=transfers)
+    academic = AcademicController(app, workspace)
+    with pytest.raises(PermissionError):
+        app.lookup_doi(workspace, '10.5555/local-fixture')
+    assert requests == []
+    preview = app.lookup_doi(workspace, '10.5555/local-fixture', online_allowed=True)
+    assert len(requests) == 1 and academic.list() == ()
+    assert preview.sources == () and preview.metadata.pages == '100-125'
+    reference = app.save_doi_reference(workspace, preview)
+    controller = CitationFormattingController(app, workspace)
+    snapshot = controller.load()
+    assert snapshot.references[0]['author'] == [{'literal': 'Jane Doe'}]
     with pytest.raises(CitationError, match='Verify'):
-        render_citations([preview.csl_item], citations=[CitationRequest(preview.reference_id, '112')])
-    result = render_citations([preview.csl_item], citations=[CitationRequest(preview.reference_id)])
-    assert result.citations[0].text == '(Doe, 2023)'
+        controller.render(snapshot, citations=[CitationRequest(reference.id, '112')])
+    result = controller.render(snapshot, citations=[CitationRequest(reference.id)])
+    assert result.citations[0].text == '(Jane Doe, 2023)'
     assert '12(3), 100–125' in result.bibliography[0].text
-    path = export_citation_docx(result, tmp_path / 'metadata-citations.docx',
-        paragraphs=[CitationParagraph('The publication reports these findings.', ('citation-1',))])
-    stored = read_citation_docx(path)
-    assert stored['references'][0]['id'] == preview.reference_id
+    receipt = controller.export_docx(snapshot, result, tmp_path / 'metadata-citations.docx')
+    assert receipt.cleanup_warning is None
+    stored = read_citation_docx(receipt.path)
+    assert stored['references'][0]['id'] == reference.id
     assert stored['references'][0]['DOI'] == '10.5555/local-fixture'
     assert stored['clusters'][0]['locator_evidence'][0]['locator_verified'] is None
+    assert stored['processor']['runtime'] == 'quickjs-ng'
+    assert academic.get(reference.id) == reference
     assert len(requests) == 1  # Formatting/export never contacts a service.
 
 
-@pytest.mark.parametrize('style', ['apa', 'chicago-notes'])
+@pytest.mark.parametrize('style', ['apa', 'chicago-note'])
 @pytest.mark.parametrize(('author', 'literal'), [
     ('{Research and Development, Inc.}', 'Research and Development, Inc.'),
     (', Jr., John', ', Jr., John'),
@@ -77,7 +95,7 @@ def test_reviewed_bibtex_uses_existing_csl_document_workflow(tmp_path, style, au
     result = controller.render(snapshot, style=style, citations=[CitationRequest(identity)])
     assert literal in result.bibliography[0].text
     assert 'BibTeX import provenance' not in result.bibliography[0].text
-    output = controller.export_docx(snapshot, result, tmp_path / (style + '.docx'))
+    output = controller.export_docx(snapshot, result, tmp_path / (style + '.docx')).path
     embedded = read_citation_docx(output)
     assert embedded['references'][0]['author'] == [{'literal': literal}]
     assert embedded['references'][0]['id'] == identity

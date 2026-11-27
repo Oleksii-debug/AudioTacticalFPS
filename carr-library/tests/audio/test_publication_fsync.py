@@ -56,3 +56,38 @@ def test_flush_failure_preserves_staging_and_prevents_publication(tmp_path, monk
         process.publish_file(staged, target)
     assert staged.read_bytes() == content
     assert not target.exists()
+
+
+def test_cancellation_during_flush_does_not_publish(tmp_path, monkeypatch):
+    staged, target = tmp_path / 'staged.wav', tmp_path / 'published.wav'
+    staged.write_bytes(b'Synthetic rendered bytes')
+    actual_fsync = os.fsync
+    cancelled = False
+
+    def cancel_during_flush(descriptor):
+        nonlocal cancelled
+        actual_fsync(descriptor)
+        cancelled = True
+
+    monkeypatch.setattr(process.os, 'fsync', cancel_during_flush)
+    with pytest.raises(process.AudioCancelled, match='before publication'):
+        process.publish_file(staged, target, cancelled=lambda: cancelled)
+    assert staged.read_bytes() == b'Synthetic rendered bytes'
+    assert not target.exists()
+
+
+def test_cancellation_after_link_does_not_reclassify_committed_output(tmp_path, monkeypatch):
+    staged, target = tmp_path / 'staged.wav', tmp_path / 'published.wav'
+    staged.write_bytes(b'Synthetic rendered bytes')
+    actual_link = os.link
+    cancelled = False
+
+    def cancel_after_link(source, destination, **kwargs):
+        nonlocal cancelled
+        actual_link(source, destination, **kwargs)
+        cancelled = True
+
+    monkeypatch.setattr(process.os, 'link', cancel_after_link)
+    process.publish_file(staged, target, cancelled=lambda: cancelled)
+    assert cancelled
+    assert target.read_bytes() == staged.read_bytes()

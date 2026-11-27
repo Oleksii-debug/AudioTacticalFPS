@@ -338,6 +338,17 @@ def test_reading_export_decline_stops_before_state_render(source, tmp_path, monk
     assert not frame.jobs and target.read_bytes() == b'Preserved reading state'
 
 
+def test_reading_export_preserves_file_created_while_job_is_queued(source, tmp_path):
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading.json'
+    frame = Frame(app, workspace)
+    frame.before_operation = lambda: target.write_bytes(b'Independent new file')
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_bytes() == b'Independent new file'
+    assert 'destination changed' in frame.messages[-1]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_path):
     app, workspace, book, desk, _ = source
     state = ReadingState(app.root)

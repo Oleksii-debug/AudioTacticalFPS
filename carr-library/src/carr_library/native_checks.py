@@ -17,6 +17,8 @@ import re
 import stat
 import sys
 
+from .installation_lease import installed_entrypoint
+
 MAX_MANIFEST = 8 * 1024 * 1024
 MAX_FILES = 50000
 TARGET = 'Windows x64 / CPython 3.11'
@@ -50,7 +52,7 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
-    optional_flags = {'bundled_native_runtime', 'bundled_audio',
+    optional_flags = {'bundled_native_runtime', 'bundled_audio_runtime', 'bundled_audio',
                       'bundled_citation_runtime', 'bundled_launcher'}
     provenance = {'source_commit', 'source_tree', 'parent_source_commit',
                   'parent_manifest_sha256', 'use_scope'}
@@ -154,6 +156,7 @@ def check_native_dependencies(bundle_root):
     return report
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-root', required=True, type=Path)

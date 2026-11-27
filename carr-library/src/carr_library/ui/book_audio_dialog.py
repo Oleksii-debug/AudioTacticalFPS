@@ -459,6 +459,8 @@ def show_book_audio(frame):
 
 def install_book_audio_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     bar = frame.GetMenuBar()
     menu = next((bar.GetMenu(index) for index in range(bar.GetMenuCount())
                  if bar.GetMenuLabelText(index) == 'Audio Studio'), None)
@@ -466,3 +468,4 @@ def install_book_audio_actions(frame):
         raise ValueError('Install the existing Audio Studio menu before Book audio.')
     item = menu.Append(wx.ID_ANY, 'Book audio: split and render...')
     frame.Bind(wx.EVT_MENU, lambda event: show_book_audio(frame), item)
+    register_menu_command(frame, CommandSpec('studio.book_audio', 'Book audio: split and render'), item)

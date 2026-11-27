@@ -52,7 +52,7 @@ jobs:
       - name: Verify retained inputs, actual child protocol, recovery and CLI
         shell: pwsh
         run: |
-          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/ui/test_progress_job_review.py tests/storage/test_durable_state_read.py tests/storage/test_state_replacement.py tests/storage/test_durable_state_publication.py
+          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/storage/test_backup_transcription.py tests/ui/test_progress_job_review.py tests/storage/test_durable_state_read.py tests/storage/test_state_replacement.py tests/storage/test_durable_state_publication.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require actual Windows JSON sharing and native handle ownership
         if: runner.os == 'Windows'

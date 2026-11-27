@@ -7,6 +7,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
+from carr_library.progress_preferences import ProgressPreferences, ProgressPreferenceStore
 
 
 def test_full_v4_roundtrip_published_and_pending_assets_and_settings(tmp_path):
@@ -25,9 +26,9 @@ def test_full_v4_roundtrip_published_and_pending_assets_and_settings(tmp_path):
             stop = True
     partial = app.run_import_batch(workspace, planned['batch_id'], cancelled=lambda: stop, progress=progress)
     assert partial['counts']['complete'] == 1 and partial['counts']['queued'] == 2
-    settings = app.root / 'state/ui/progress.json'
-    settings.parent.mkdir(parents=True)
-    settings.write_text('{"private-setting":"preserved"}\n', encoding='utf-8')
+    settings = app.root / 'progress-preferences.json'
+    preferences = ProgressPreferences(mode='beep', interval_seconds=17, volume=23, muted=True)
+    ProgressPreferenceStore(settings).save(preferences)
     backup = tmp_path / 'backup'
     saved_hash = create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_bytes())
@@ -37,7 +38,8 @@ def test_full_v4_roundtrip_published_and_pending_assets_and_settings(tmp_path):
     for path in paths:
         path.unlink()
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', saved_hash))
-    assert (restored.root / 'state/ui/progress.json').read_bytes() == settings.read_bytes()
+    assert (restored.root / settings.name).read_bytes() == settings.read_bytes()
+    assert ProgressPreferenceStore(restored.root / settings.name).load() == preferences
     assert len(tuple(restored.assets_dir.iterdir())) == 3
     assert all(path.stat().st_nlink == 1 for path in restored.assets_dir.iterdir())
     final = restored.run_import_batch(workspace, planned['batch_id'])

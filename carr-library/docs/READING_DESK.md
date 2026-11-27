@@ -77,20 +77,21 @@ an old position never silently jumps to a newer revision. Damaged state or a
 location that does not match the saved source stops the backup or restore before
 publication, keeping the existing data intact.
 
-Older version-one and version-two backups remain readable; they do not contain
-personal reading state. For those backups, keep the separate reading-state
-export when moving to another computer. A restored library retains the same
-source identities; a different library cannot accept the export. No cloud
-account or network retrieval is involved.
+The common writer now uses backup format four for supported typed application
+state, personal reading state and pending-import recovery. Each declared file
+has an exact byte count and SHA256. Historical formats one through five remain
+readable according to their exact manifest shapes; both historical version-three
+layouts are distinguished by their declared fields. Unknown or incomplete
+manifests fail before a new data directory is published.
 
-The same backup also preserves the existing application-state and pending-import
-records. When personal reading state exists, version five binds those records and
-the reading sidecar in one manifest. Without a reading sidecar, the existing
-version-two, version-three or version-four format is retained. Both historical
-version-three layouts remain readable: application state and reading-state-only
-backups are distinguished by their exact declared fields. A mixed or incomplete
-manifest is rejected. Generated audio remains an explicit backup option; pending
-source inputs needed to resume an import remain part of the checked snapshot.
+Older version-one and version-two backups do not contain personal reading state.
+Use their separate reading-state export when moving those bookmarks. Restore
+does not reactivate archived libraries, move old bookmarks to a new revision,
+or start saved work automatically. Generated audio is an explicit backup option;
+retained inputs required to recover supported jobs remain part of the checked
+snapshot. External exported audio, installed models and credential vault secrets
+need their own appropriate handling. No cloud account or network retrieval is
+involved.
 
 ## Implementation and primary references
 

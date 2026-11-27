@@ -47,7 +47,7 @@ def test_docx_contains_editable_unicode_runs_bookmarks_and_intact_provenance(tmp
 
 
 def test_notes_style_creates_actual_native_endnotes(tmp_path, formatted):
-    result = render_citations(list(formatted.references), style='chicago-notes', citations=[
+    result = render_citations(list(formatted.references), style='chicago-note', citations=[
         CitationRequest('stable-reference-7', '12', locator_verified=True),
         CitationRequest('stable-reference-7', '18', locator_verified=True)])
     path = export_citation_docx(result, tmp_path / 'notes.docx', paragraphs=[

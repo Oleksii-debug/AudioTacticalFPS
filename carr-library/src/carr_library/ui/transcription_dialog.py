@@ -245,11 +245,15 @@ def show_transcription(frame, *, selected_job=None):
             report('Спочатку додайте записи або оберіть збережене завдання.')
             return
         def operation():
-            progress = getattr(frame, 'operation_progress', None)
-            token = progress.event.token if progress is not None else None
+            from ..progress import current_progress
+            progress = current_progress()
             def advanced(done, total, phase):
                 if progress is not None:
-                    progress.update(done, total, phase, token=token)
+                    try:
+                        progress.update(completed=done, total=total, phase=phase)
+                    except Exception as error:
+                        wx.CallAfter(report, 'Progress reporting is unavailable: ' + str(error)
+                                     + '. The saved task result is reported separately.')
                 wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
                             'підтверджені результати показані у стані завдання.')
             return service.run(identity, cancelled=cancelled, progress=advanced)
@@ -363,3 +367,6 @@ def install_transcription_actions(frame):
         except (ValueError, OSError, RuntimeError) as exc:
             frame.report(str(exc))
     frame.Bind(wx.EVT_MENU, open_dialog, item)
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('transcription.open', 'Transcription: local audio and video'), item)

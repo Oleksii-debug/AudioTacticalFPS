@@ -28,8 +28,13 @@ def test_configuration_rejects_paths_controls_options_and_empty_selections(selec
         Config(languages=selection)
 
 
-@pytest.mark.parametrize('selection', ['script/Latin', 'eng+script/Cyrillic', 'fra', 'eng+eng'])
-def test_script_support_does_not_expand_existing_pinned_policy(selection):
-    with pytest.raises(ValueError, match='unsupported pinned OCR language'):
+@pytest.mark.parametrize(('selection', 'message'), [
+    pytest.param('script/Latin', 'unsupported pinned OCR language', id='script/Latin'),
+    pytest.param('eng+script/Cyrillic', 'unsupported pinned OCR language', id='eng+script/Cyrillic'),
+    pytest.param('fra', 'unsupported pinned OCR language', id='fra'),
+    pytest.param('eng+eng', 'duplicate or oversized language selection', id='eng+eng'),
+])
+def test_script_support_does_not_expand_existing_pinned_policy(selection, message):
+    with pytest.raises(ValueError, match=f'^{message}$'):
         Config(languages=selection, model_policy=POLICY)
     assert Config(languages='eng+ukr+slk', model_policy=POLICY).model_policy == POLICY

@@ -9,7 +9,7 @@ import pytest
 from carr_library import runtime_settings as settings
 from carr_library.integrations import dordiai_speech
 from carr_library.speech import SpeechSettings, VoiceRegistry
-from test_dordiai_voices import ACTOR, runtime
+from .test_dordiai_voices import ACTOR, runtime
 
 
 def configured(runtime):

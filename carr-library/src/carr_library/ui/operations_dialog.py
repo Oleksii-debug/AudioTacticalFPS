@@ -474,3 +474,6 @@ def install_operations_actions(frame):
         frame.menu_bar.Append(menu, '&Tools')
     item = menu.Append(wx.ID_ANY, 'Tasks and &resources...')
     frame.Bind(wx.EVT_MENU, lambda event: show_operations(frame), item)
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('operations.open', 'Tasks and resources'), item)

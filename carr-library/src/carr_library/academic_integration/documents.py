@@ -16,8 +16,8 @@ from zipfile import BadZipFile, ZipFile
 
 from lxml import etree
 
-from carr_library.durable_state import atomic_bytes, local_path, regular
-from carr_library.research.export_file import _filename
+from carr_library.durable_state import local_path, regular
+from carr_library.research.export_file import _filename, capture_export_destination, write_binary_export
 from .formatting import CitationCancelled, CitationError, FormattedCitations, _text
 
 _NAMESPACE = 'urn:carr:citations:1'
@@ -84,15 +84,15 @@ def _json(value):
                       allow_nan=False, separators=(',', ':')).encode('utf-8')
 
 
-def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
-                         title: str = 'Citations and bibliography',
-                         paragraphs: Sequence[CitationParagraph | str] | None = None,
-                         cancelled: Callable[[], bool] | None = None) -> Path:
-    """Write a new DOCX without overwriting any existing file.
+def citation_docx_bytes(result: FormattedCitations, *,
+                        title: str = 'Citations and bibliography',
+                        paragraphs: Sequence[CitationParagraph | str] | None = None,
+                        cancelled: Callable[[], bool] | None = None) -> bytes:
+    """Render native runs/endnotes and the source snapshot without publishing.
 
     Paragraph citation IDs refer to ``result.citations[].cluster_id``. Citation
     strings remain editable; originals and research-library records are never
-    modified. The embedded metadata supports later regeneration in CARR.
+    modified. The caller retains its destination and source authorization.
     """
     from docx import Document
     from docx.oxml import OxmlElement
@@ -108,13 +108,6 @@ def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
     title = _text(title, 'Document title', 255)
     if not title.strip():
         raise CitationError('Choose a nonblank document title.')
-    path = local_path(destination)
-    _filename(path.name)
-    if path.suffix.lower() != '.docx':
-        raise CitationError('Choose a new .docx destination.')
-    if path.exists():
-        raise FileExistsError('The citation document destination already exists.')
-    regular(path.parent, directory=True)
     def check():
         if cancelled and cancelled():
             raise CitationCancelled('Citation document export was cancelled.')
@@ -250,7 +243,41 @@ def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
     content = output.getvalue()
     if len(content) > _MAX_DOCUMENT:
         raise CitationError('The citation document exceeds its size budget.')
-    return atomic_bytes(path, content, replace=False)
+    return content
+
+
+def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
+                         title: str = 'Citations and bibliography',
+                         paragraphs: Sequence[CitationParagraph | str] | None = None,
+                         cancelled: Callable[[], bool] | None = None,
+                         private_root: str | Path | None = None) -> Path:
+    """Publish a new document with captured destination identity.
+
+    A standalone caller has no library scope: by default its protected root is
+    this installed package. Library callers supply their data root and retain
+    their own source/scope check through the cancellation callback.
+    """
+    path = local_path(destination)
+    _filename(path.name)
+    if path.suffix.lower() != '.docx':
+        raise CitationError('Choose a new .docx destination.')
+    if path.exists():
+        raise FileExistsError('The citation document destination already exists.')
+    regular(path.parent, directory=True)
+    protected = Path(__file__).resolve().parents[1] if private_root is None else private_root
+    def check():
+        if cancelled and cancelled():
+            raise CitationCancelled('Citation document export was cancelled.')
+        return False
+    check()
+    approval = capture_export_destination(path, private_root=protected)
+    content = citation_docx_bytes(result, title=title, paragraphs=paragraphs,
+                                  cancelled=cancelled)
+    receipt = write_binary_export(path, content, private_root=protected,
+                                  cancelled=check, require_absent=True, approval=approval)
+    # Shared publication reports a completed file even if staging cleanup needs
+    # attention; its receipt warning is also logged for path-only API callers.
+    return receipt.path
 
 
 def read_citation_docx(source: str | Path) -> dict:

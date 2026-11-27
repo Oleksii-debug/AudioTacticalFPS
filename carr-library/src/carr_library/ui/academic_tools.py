@@ -298,9 +298,16 @@ def install_academic_actions(frame):
         ('Check catalog quality', lambda event: open_catalog_quality(frame,
             edit_edition=lambda workspace, edition: edit_catalog_edition(frame, workspace, edition))),
     )
-    for title, handler in commands:
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    identities = ('academic.compare_sources', 'academic.filtered_outline',
+                  'academic.import_references', 'academic.catalog_quality')
+    for identity, (title, handler) in zip(identities, commands, strict=True):
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
+        caption, _, shortcut = title.partition('\t')
+        register_menu_command(frame, CommandSpec(identity, caption.replace('&', ''),
+                                                'main', shortcut), item)
     # Extend the existing academic library menu without replacing its entries
     # or registering a second Alt+A menu. Installation is idempotent.
     frame.academic_actions = actions

@@ -55,7 +55,7 @@ def rewrite_snapshot(path, change, *, checksum=True):
     path.write_bytes(output.getvalue())
 
 
-@pytest.mark.parametrize('style', ['harvard', 'chicago-notes'])
+@pytest.mark.parametrize('style', ['harvard', 'chicago-note'])
 def test_real_roundtrip_preserves_snapshot_paragraphs_ids_pins_and_endnotes(tmp_path, style):
     source, _ = document(tmp_path, style=style)
     original = source.read_bytes()
@@ -65,7 +65,7 @@ def test_real_roundtrip_preserves_snapshot_paragraphs_ids_pins_and_endnotes(tmp_
     assert source.read_bytes() == original
     with ZipFile(source) as old, ZipFile(target) as new:
         assert new.read('word/document.xml') == old.read('word/document.xml')
-        if style == 'chicago-notes':
+        if style == 'chicago-note':
             assert new.read('word/endnotes.xml') == old.read('word/endnotes.xml')
 
 
@@ -151,7 +151,7 @@ def test_metadata_checksum_corruption_is_rejected(tmp_path):
 
 
 def test_native_note_gaps_are_rejected_without_silent_renumbering(tmp_path):
-    source, _ = document(tmp_path, style='chicago-notes')
+    source, _ = document(tmp_path, style='chicago-note')
     rewrite_snapshot(source, lambda s: s['clusters'][1].update(note_index=8))
     with pytest.raises(CitationError, match='consecutive'):
         regenerate_citation_docx(source, tmp_path / 'wrong-notes.docx')
@@ -196,3 +196,18 @@ def test_custom_style_requires_explicit_file_and_exact_saved_bytes(tmp_path):
     style.write_bytes(style.read_bytes() + b'\n')
     with pytest.raises(CitationError, match='identity changed'):
         regenerate_citation_docx(source, tmp_path / 'different-style.docx', style_path=style)
+
+
+def test_legacy_external_engine_snapshot_never_silently_migrates_processor_identity(tmp_path):
+    source, _ = document(tmp_path)
+    original_processor = read_citation_docx(source)['processor']
+    def legacy(snapshot):
+        snapshot['processor'] = {
+            'name': 'citeproc-js', 'version': '1.4.61',
+            'sha256': original_processor['sha256'], 'chosen_license': 'CPAL-1.0'}
+    rewrite_snapshot(source, legacy)
+    source_bytes = source.read_bytes()
+    with pytest.raises(CitationError, match='processor identity changed'):
+        regenerate_citation_docx(source, tmp_path / 'unreviewed-migration.docx')
+    assert source.read_bytes() == source_bytes
+    assert not (tmp_path / 'unreviewed-migration.docx').exists()

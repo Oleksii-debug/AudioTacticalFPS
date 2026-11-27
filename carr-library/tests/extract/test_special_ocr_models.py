@@ -1,14 +1,10 @@
 """Special OCR detectors stay inventoried but cannot become reading languages."""
-import sys
-from types import SimpleNamespace
-
 import pytest
 
 from carr_library.extract import language_manager
 from carr_library.extract.language_manager import LanguageModel, installed_languages, language_selection
 from carr_library.extract.ocr_runtime import OcrRuntime, OcrRuntimeError
 from carr_library.extract.page_ocr import Config
-from carr_library.ui import ocr_options
 
 
 def _runtime(*, portable=True):
@@ -70,30 +66,6 @@ def test_valid_language_script_and_separate_orientation_remain_usable():
     assert selected == 'eng+script/Latin'
     config = Config(languages=selected, orientation=True)
     runtime.require_languages(config.languages, orientation=config.orientation)
-
-
-def test_existing_native_picker_offers_only_actual_reading_models(monkeypatch):
-    monkeypatch.setattr(language_manager, 'discover_ocr_runtime', lambda: _runtime())
-    observed = {}
-
-    class Dialog:
-        def __init__(self, parent, message, title, labels):
-            observed['labels'] = labels
-        def SetSelections(self, selected):
-            observed['initial'] = selected
-        def ShowModal(self):
-            return 1
-        def GetSelections(self):
-            return [0, 1]
-        def Destroy(self):
-            observed['destroyed'] = True
-
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(MultiChoiceDialog=Dialog, ID_OK=1))
-    config = ocr_options.choose_installed_languages(None)
-    assert observed['labels'] == ['English (eng)', 'Script: Latin (script/Latin)']
-    assert observed['initial'] == [0]
-    assert observed['destroyed']
-    assert config.languages == 'eng+script/Latin'
 
 
 def test_special_reading_preset_is_rejected_without_persisting_state(tmp_path):

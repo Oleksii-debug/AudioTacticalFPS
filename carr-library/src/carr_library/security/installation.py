@@ -27,6 +27,10 @@ from .anchors import Anchor, AnchorStore
 from .updates import Release, UpdatePolicy, VerifiedPackage, _cancel, relative_path, require_verified_package
 
 
+class ActivationCleanupError(TrustError):
+    """Native activation child exit is uncertain; do not move or roll back."""
+
+
 class BundleAdapter(Protocol):
     def verify(self, root: Path) -> None: ...
     def prepare(self, root: Path, release: Release) -> None: ...
@@ -189,6 +193,85 @@ def unpack(package, destination, policy, *, cancelled=lambda: False):
     return destination
 
 
+# Private fixed health operation. It cannot dispatch desktop/library commands
+# and does not bypass the shared lease on any public CLI. The update host owns
+# the exclusive installation lease while this synthetic check runs.
+_HEALTH_PROGRAM = """\
+from importlib.metadata import version
+from pathlib import Path
+import sys
+import carr_library
+root = Path(sys.argv[1]).resolve(strict=True)
+environment = root / '.venv'
+if not Path(carr_library.__file__).resolve(strict=True).is_relative_to(environment):
+    raise RuntimeError('Update health imported a package outside the installed environment.')
+if version('universal-research-library') != sys.argv[2]:
+    raise RuntimeError('The installed application version differs from the signed release.')
+from carr_library.native_runtime import activate_bundled_runtime
+handle = activate_bundled_runtime()
+try:
+    from carr_library.__main__ import self_test
+    result = self_test()
+    if type(result) is not dict or result.get('status') != 'PASS':
+        raise RuntimeError('The isolated application self-test did not pass.')
+finally:
+    if handle is not None:
+        handle.close()
+"""
+
+
+def _run_owned(command, *, cwd, env, timeout):
+    """Use the existing installer Job owner for all native activation children."""
+    if os.name != 'nt':
+        return subprocess.run(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
+    from ..audio.windows_process import WindowsJobProcess
+    try:
+        process = WindowsJobProcess(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except BaseException as error:
+        # A constructor may fail after native creation but before returning its
+        # exact handle. The external activation owner must retain its veto.
+        raise ActivationCleanupError(
+            'Native activation launch cleanup is unconfirmed. Preserve the program, '
+            'previous installation, backup and owner receipt for recovery.') from error
+    try:
+        return subprocess.CompletedProcess(command, process.wait(timeout=timeout))
+    finally:
+        cleanup_error = None
+        try:
+            process._carr_job.stop_and_wait(int(process._handle))
+        except BaseException as error:
+            cleanup_error = error
+        finally:
+            try:
+                process._carr_job.close()
+            except BaseException as error:
+                if cleanup_error is None:
+                    cleanup_error = error
+            finally:
+                try:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=5)
+                except BaseException as error:
+                    if cleanup_error is None:
+                        cleanup_error = error
+                finally:
+                    try:
+                        process._handle.Close()
+                    except BaseException as error:
+                        if cleanup_error is None:
+                            cleanup_error = error
+        if cleanup_error is not None:
+            # Asynchronous fallback Job termination is safety cleanup, never
+            # permission to displace an installation or clear the owner veto.
+            raise ActivationCleanupError(
+                'Native activation child cleanup is unconfirmed. No further '
+                'program movement or rollback is safe; preserve the owner receipt '
+                'and retained installation for recovery.') from cleanup_error
+
+
 class WindowsBundleAdapter:
     """Use the installed, reviewed packaging verifier and signed bundle installer.
 
@@ -204,12 +287,16 @@ class WindowsBundleAdapter:
         self.timeout = timeout
 
     def verify(self, root):
+        from ..portable_entry import managed_layout
+        if managed_layout(root):
+            raise TrustError('Managed updates require an authenticated setup handoff that preserves Repair and Uninstall ownership.')
         self.verify_bundle(root)
 
-    def _verify_release(self, root, release):
+    def _verify_release(self, root, release, *, manifest_bytes=None):
         # Bind the trusted verifier to the same bounded manifest snapshot whose
         # source identity we compare with the authenticated TUF target metadata.
-        raw = read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
+        raw = (read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
+               if manifest_bytes is None else manifest_bytes)
         manifest = json_value(raw, maximum=16 * 1024**2)
         if type(manifest) is not dict or manifest.get('source_commit') != release.source_commit:
             raise TrustError('The bundle source commit differs from the signed release.')
@@ -239,6 +326,9 @@ class WindowsBundleAdapter:
         return env
 
     def prepare(self, root, release):
+        from ..portable_entry import managed_layout
+        if managed_layout(root):
+            raise TrustError('Managed updates require an authenticated setup handoff that preserves Repair and Uninstall ownership.')
         if os.name != 'nt':
             raise TrustError('The production bundle installer requires native Windows.')
         self._verify_release(root, release)
@@ -260,9 +350,8 @@ class WindowsBundleAdapter:
         python = root / 'runtime' / 'python.exe'
         if not python.is_file():
             python = self.bootstrap_python
-        result = subprocess.run([str(python), '-I', '-B', '-X', 'utf8', str(root / 'install_windows.py')],
-            cwd=root, env=self._environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=self.timeout)
+        result = _run_owned([str(python), '-I', '-B', '-X', 'utf8', str(root / 'install_windows.py')],
+                            cwd=root, env=self._environment(), timeout=self.timeout)
         if result.returncode or not (root / '.venv' / '.installation-complete').is_file():
             raise TrustError('The offline installer did not complete. The installed application is unchanged.')
 
@@ -270,16 +359,10 @@ class WindowsBundleAdapter:
         python = root / '.venv' / 'Scripts' / 'python.exe'
         file_info(python)
         self._verify_release(root, release)
-        result = subprocess.run([str(python), '-I', '-B', '-X', 'utf8', '-m', 'carr_library', '--self-test'],
-            cwd=root, env=self._environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=min(180, self.timeout))
-        if result.returncode:
-            return False
-        identity = subprocess.run([str(python), '-I', '-B', '-X', 'utf8', '-c',
-            "from importlib.metadata import version; import sys; sys.exit(version('universal-research-library') != sys.argv[1])",
-            release.version], cwd=root, env=self._environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=min(60, self.timeout))
-        return identity.returncode == 0
+        result = _run_owned([str(python), '-I', '-B', '-X', 'utf8', '-c', _HEALTH_PROGRAM,
+                             str(root), release.version],
+                            cwd=root, env=self._environment(), timeout=min(180, self.timeout))
+        return result.returncode == 0
 
 
 class UpdateTransaction:
@@ -357,6 +440,15 @@ class UpdateTransaction:
             sync_directory(self.installed.parent)
         elif not self.installed.is_dir():
             raise TrustError('Previous installation is unavailable. Keep the backup and ask the owner to recover.')
+        else:
+            # Existence cannot prove rollback: the current directory may still
+            # be B after a crash, or may have changed independently. Only an
+            # adapter holding an independently retained A identity can accept
+            # this exceptional no-previous case, including loss during apply.
+            verify_original = getattr(self.adapter, 'verify_rollback_current', None)
+            if not callable(verify_original):
+                raise TrustError('Previous installation is unavailable and current A cannot be independently verified. Preserve the backup for owner recovery.')
+            verify_original(self.installed)
         self._write(record, 'rolled-back')
 
     def recover(self):
@@ -428,6 +520,11 @@ class UpdateTransaction:
                     self._write(record, 'health-checked')
                     replacement = Anchor(release.build, release.sha256, max(before.max_utc, now))
                     self.anchor.compare_and_set(before, replacement)
+                except ActivationCleanupError:
+                    # A descendant may still hold or modify program files.
+                    # Keep the current journal/backup/previous paths untouched.
+                    # The external owner receipt also vetoes a later recovery.
+                    raise
                 except Exception:
                     # A committed anchor must never be rolled back after a
                     # final-journal write failure. Recover() can finalize it.

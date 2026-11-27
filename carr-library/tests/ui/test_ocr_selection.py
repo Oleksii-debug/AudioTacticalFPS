@@ -378,3 +378,20 @@ def test_inventory_dialog_runs_future_off_ui_thread_and_can_cancel(wx, monkeypat
     wx.on_show = cancel
     assert selection._discover_with_dialog(None) is None
     assert wx.dialogs[-1].destroyed
+
+
+def test_current_native_picker_preserves_special_model_filter_and_mixed_selection(wx):
+    def choose(dialog):
+        assert len(dialog.entries.items) == 2
+        assert 'eng' in dialog.entries.items[0]
+        assert 'script/Latin' in dialog.entries.items[1]
+        assert dialog.entries.checked == {0}
+        assert dialog.entries.focused
+        dialog.entries.Check(1)
+        dialog.accept()
+    wx.on_show = choose
+    result = selection._choose_languages(None, 'installed',
+        ('eng', 'equ', 'osd', 'script/Latin'), Config())
+    assert result.languages == 'eng+script/Latin'
+    assert not result.orientation
+    assert wx.dialogs[-1].destroyed

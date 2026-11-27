@@ -169,6 +169,9 @@ def install_trust_actions(frame):
         raise ValueError('The host Help menu is unavailable.')
     item = menu_bar.GetMenu(help_index).Append(wx.ID_ANY, 'License and signed updates')
     frame.Bind(wx.EVT_MENU, lambda event: show_trust_status(frame), item)
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('trust.status', 'License and signed updates'), item)
     controller = getattr(frame, 'trust_controller', None)
     if controller is None:
         return

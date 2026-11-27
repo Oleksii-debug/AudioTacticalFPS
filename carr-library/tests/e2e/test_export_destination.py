@@ -1,8 +1,7 @@
-"""Actual desktop export handler with real saved research and controlled dialogs.
+"""Actual desktop export handler with real saved research and a controlled dialog.
 
 No window is created. Native wx is imported so this checks the shipped handler,
-while the dialogs supply deterministic synthetic paths and explicit approval
-without user interaction. Native keyboard confirmation has its own smoke probe.
+while the dialog supplies deterministic synthetic paths without user interaction.
 """
 from types import SimpleNamespace
 from threading import Event
@@ -48,19 +47,11 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
-
-    class MessageDialog:
-        def __init__(self, parent, message, title, style):
-            assert destination.name in message and title == 'Replace export'
-            assert style == desktop_app.wx.YES_NO | desktop_app.wx.NO_DEFAULT | desktop_app.wx.ICON_QUESTION
-
-        def ShowModal(self):
-            return desktop_app.wx.ID_YES
-
-        def Destroy(self):
-            pass
-
-    monkeypatch.setattr(desktop_app.wx, 'MessageDialog', MessageDialog)
+    def approve(message, title, style, parent):
+        assert destination.name in message and title == 'Replace export'
+        assert style == desktop_app.wx.YES_NO | desktop_app.wx.NO_DEFAULT | desktop_app.wx.ICON_QUESTION
+        return desktop_app.wx.YES
+    monkeypatch.setattr(desktop_app.wx, 'MessageBox', approve)
     reports = []
 
     def run_job(title, operation, done=None, failed=None):

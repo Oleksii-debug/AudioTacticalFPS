@@ -77,6 +77,23 @@ managed activation still requires an external restart supervisor. See
 [TRUSTED_CLIENT.md](TRUSTED_CLIENT.md) for the supported boundary and remaining
 qualification.
 
+## Optional local audio setup
+
+The transferable library archive excludes the reviewed FFmpeg binary runtime.
+Windows voice reading and WAV synthesis remain available. Audio Studio needs
+local FFmpeg and ffprobe. After installing the library, open `SetupLocalAudio.cmd`
+to review and explicitly confirm acquisition of the three pinned public inputs.
+Without confirmation the helper only displays its plan. It prepares a fresh
+folder outside the program installation; it does not modify the bundle seal,
+select engines, download voices or download models.
+
+In **Local audio, voice and music engines**, use **Choose FFmpeg executable**
+and **Choose FFprobe executable** to select the two paths printed by setup.
+Reopen the studio after saving those choices. Existing intentionally installed
+tools may be selected through the same controls. The preparation helper checks
+integrity, not audio quality or a redistribution grant. New delivery archives
+must continue to exclude these locally prepared audio payloads.
+
 ## Installation from a source checkout
 
 Use Python 3.11 or later. From the `carr-library` directory:
@@ -237,7 +254,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS or CSL JSON files through a preview. Select the records to keep;
+Import RIS, BibTeX or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -246,9 +263,18 @@ never automatically merged or deleted. Archive and restore retain their IDs.
 Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
-readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+readable reference list. The separate **Citation styles** action uses a real,
+pinned, offline CSL processor for APA 7, Chicago author-date or notes,
+MLA, Harvard, Vancouver/NLM and IEEE, or an explicitly loaded independent
+custom CSL file. It previews citations and bibliography
+entries and exports text, formatted HTML or an editable Word document. Author
+names stay literal by default; choose the explicit **Family, Given, optional
+Suffix** convention to format personal initials and inverted names. Braced
+organisation names remain literal. Formatting does not approve source text or
+convert a publication's page range into a verified quotation pinpoint.
+See [citation styles and BibTeX import](V3_BIBLIOGRAPHY.md) for the keyboard and
+headless workflows, supported metadata and current acceptance evidence.
+Entering a DOI or URL alone does not send a network request or download an attachment.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -257,13 +283,40 @@ first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
 
-Full library backups also include personal page bookmarks and reading resume
-positions for every library. Restore preserves their exact source revision,
-names and timestamps in the new data folder. The backup checksums cover this
-reading state as well as the database and retained originals. Older backups
-without reading state still restore; use a separate reading-state export to
-transfer those older bookmarks. Interrupted import queues are not part of the
-backup. See [reading desk](READING_DESK.md) for historical-position handling.
+## Full-library backup and reading recovery
+
+Choose **Library, Back up all libraries** to save all libraries, including archived ones,
+their registered originals, immutable source revisions, research evidence,
+notes, topics, tags, saved queries and academic references. The current common
+backup format is 4; it also includes the supported typed application state and
+pending-import recovery records. Catalog schema 5 retains the transaction-owned
+import publication receipts. Reading state, introduced in backup format 3,
+includes page bookmarks and resume positions in `reading-state.json`. If no
+reading state has been saved, the manifest records its absence explicitly.
+
+The database and reading state are captured under the same library writer lock.
+Each included file is bound by size and SHA256, and saved reading places are
+checked against the copied edition, revision, page or segment and source hashes.
+Corrupt, mismatched or linked reading state causes the operation to stop without
+silently leaving bookmarks out. The reader still checks the current source when
+opening a restored place; an old revision is reported as stale instead of being
+redirected to a newer one.
+
+Keep the returned manifest SHA256 separately from the backup folder. Use
+**Library, Restore backup to a new folder** to validate the complete supported
+backup and create a new data directory; it
+does not overwrite or merge an existing library. Formats 1 and 2 remain
+compatible but do not contain reading state. Their separately exported reading
+bookmarks can be imported after restoring the matching library.
+
+Format 4 additionally preserves its supported application settings, reading
+copies, audio projects, assistant job state and pending-import journals under
+explicit typed sidecar rules. Restored work is not started automatically;
+process-specific worker attempt hints are discarded before an explicit resume.
+Audio exported outside the library data directory needs its own copy. Model
+installations outside that directory and Windows Credential Manager secrets
+are not transferred as ordinary application state. Historical backup formats
+remain readable only with the data that their own manifests declared.
 
 ## Review the source catalog
 
@@ -365,7 +418,7 @@ Nearby fields accept one literal word or phrase per line. Build the expression,
 choose Use query, then press Enter in Search. The explicit Advanced search mode
 supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
 through NEAR/100 within one page or text segment. Existing search modes keep
-their original meanings. See `docs/ADVANCED_SEARCH.md` in the source repository
+their original meanings. See `docs/ACADEMIC_SEARCH.md` in the source repository
 for syntax, examples, scope and limits.
 
 Choose a library or research topic, then **Open selected scope**. In Search,

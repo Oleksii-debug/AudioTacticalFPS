@@ -1,8 +1,8 @@
-"""Native, keyboard-accessible CSL export and opt-in DOI metadata previews.
+"""Native citation documents using the canonical local QuickJS formatter.
 
-Controllers bind to one LibraryApp and workspace.  Native wx classes are lazy
-so actual SQLite/CSL/DOCX integration can be tested without a desktop.  Neither
-workflow changes reference records, saved quotations, or source approvals.
+Controllers bind to one LibraryApp and workspace. Native wx classes are lazy
+so actual SQLite/CSL/DOCX integration can be tested without a desktop.
+Reference records, saved quotations and source approvals remain immutable.
 """
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
@@ -13,16 +13,17 @@ import threading
 from uuid import uuid4
 
 from ..academic_integration import (
-    CitationCancelled, CitationCluster, CitationRequest, DoiMetadataClient,
-    available_styles, export_citation_docx, render_citations,
+    CitationCancelled, CitationCluster, CitationRequest,
+    available_styles, citation_docx_bytes, render_citations,
 )
-from ..durable_state import atomic_bytes, local_path, regular
-from ..research.export_file import _filename
+from ..durable_state import local_path, regular
+from ..research.export_file import _filename, capture_export_destination, write_binary_export
 from ..research.academic_library import AcademicLibrary
 from .academic_library_dialog import AcademicController
 
 
-LOCALES = (("en-US", "English (United States)"), ("uk-UA", "Українська"), ("sk-SK", "Slovenčina"))
+LOCALES = (("en-US", "English (United States)"), ("en-GB", "English (United Kingdom)"),
+           ("uk-UA", "Українська"), ("sk-SK", "Slovenčina"))
 LOCATORS = (("page", "Page"), ("chapter", "Chapter"), ("section", "Section"),
             ("paragraph", "Paragraph"), ("line", "Line"), ("volume", "Volume"))
 
@@ -118,29 +119,22 @@ class CitationFormattingController:
         self._result, self._result_snapshot = result, snapshot.sha256
         return result
 
-    def export_docx(self, snapshot, result, destination, *, title="Citations and bibliography", cancelled=lambda: False):
+    def export_docx(self, snapshot, result, destination, *, title="Citations and bibliography",
+                    cancelled=lambda: False, approval=None):
         if result is not self._result or self._result_snapshot != getattr(snapshot, "sha256", None):
             raise ValueError("Format this library's bibliography before exporting the document.")
         self._check(snapshot, cancelled)
         target = _new_destination(destination, ".docx", self.library.root)
-        return export_citation_docx(result, target, title=title, cancelled=cancelled)
-
-    def lookup_doi(self, client, doi, *, cancelled=lambda: False, refresh=False):
-        self.require_access()
-        _cancel(cancelled)
-        result = client.lookup(doi, cancelled=cancelled, refresh=refresh)
-        self.require_access()
-        _cancel(cancelled)
-        return result
-
-    def save_doi_preview(self, preview, destination, *, cancelled=lambda: False):
-        self.require_access()
-        target = _new_destination(destination, ".json", self.library.root)
-        raw = (json.dumps(preview.to_dict(), ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
-        if len(raw) > 8_000_000:
-            raise ValueError("The metadata preview exceeds its export byte limit.")
-        _cancel(cancelled)
-        return atomic_bytes(target, raw, replace=False)
+        approved = approval if approval is not None else capture_export_destination(
+            target, private_root=self.library.root)
+        content = citation_docx_bytes(result, title=title, cancelled=cancelled)
+        def authorized():
+            # Publication rechecks the actual source snapshot, including
+            # edition/source bindings, during the shared atomic writer.
+            self._check(snapshot, cancelled)
+            return False
+        return write_binary_export(target, content, private_root=self.library.root,
+            cancelled=authorized, require_absent=True, approval=approved)
 
 
 def _new_destination(destination, suffix, private_root):
@@ -212,34 +206,6 @@ def reconcile_citations(previous_snapshot, snapshot, clusters):
     return retained, changed
 
 
-def metadata_preview_text(preview):
-    sections = ["Metadata preview — review the publication and license before a separate import or document acquisition.",
-                reference_summary(preview.csl_item), "DOI: " + preview.doi]
-    if preview.csl_item.get("issued"):
-        sections.append("Publication date as supplied: " + json.dumps(preview.csl_item["issued"], ensure_ascii=False))
-    sections.append("Reported open access: " + ("Unknown" if preview.open_access is None else "Yes" if preview.open_access else "No")
-                    + "\nReported status: " + (preview.oa_status or "Unknown"))
-    if preview.licenses:
-        sections.append("License declarations; permissions still require review\n\n" + "\n\n".join(
-            f"{row.provider}: {row.identifier or row.url or 'Unknown terms'}\n"
-            f"Applies to: {row.applies_to or 'Not supplied'}\nStart date: {row.start_date or 'Not supplied'}"
-            + (f"\nCopy: {row.location_url}" if row.location_url else "") for row in preview.licenses))
-    else:
-        sections.append("License: no usable declaration. Permissions are unknown.")
-    if preview.locations:
-        sections.append("Location previews; none is opened automatically\n\n" + "\n\n".join(
-            f"{number}. {row.url}\nSource: {row.provider}; host: {row.host_type or 'Not supplied'}; "
-            f"version: {row.version or 'Not supplied'}\nLicense: {row.license or 'Review separate declarations'}; "
-            f"embargoed: {'Yes' if row.embargoed else 'Not reported'}"
-            for number, row in enumerate(preview.locations, 1)))
-    sections.append("Metadata sources" + (" (cached; original retrieval times retained)" if preview.from_cache else "")
-                    + "\n\n" + "\n\n".join(f"{row.provider}\nRetrieved: {row.retrieved_at}\n{row.endpoint}"
-                                               for row in preview.sources))
-    if preview.warnings:
-        sections.append("Review notes\n" + "\n".join(preview.warnings))
-    return "\n\n".join(sections)
-
-
 def _scope(frame):
     if getattr(frame, "_closing", False):
         raise ValueError("The library is closing.")
@@ -306,6 +272,13 @@ def _native_types():
             self.stop.Enable(self.pending)
 
         def run(self, title, operation, completed):
+            if not self._alive:
+                return
+            try:
+                _guard(self.GetParent(), self.controller.library, self.controller.workspace)
+            except ValueError as error:
+                self.report(str(error))
+                return
             if self.pending:
                 self.report("An operation is already running. Use Cancel operation first.")
                 return
@@ -360,7 +333,7 @@ def _native_types():
 
     class CitationDialog(TaskDialog):
         def __init__(self, parent, controller):
-            super().__init__(parent, title="Format bibliography and citations", size=(940, 760),
+            super().__init__(parent, title="Citation document with endnotes", size=(940, 760),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.initialize_tasks(controller)
             self.snapshot = None
@@ -404,19 +377,8 @@ def _native_types():
             self.locale.SetSelection(0)
             style_row.Add(self.locale, 0, wx.ALL, 5)
             first.Add(style_row, 0, wx.EXPAND)
-            runtime_row = wx.BoxSizer(wx.HORIZONTAL)
-            runtime_row.Add(wx.StaticText(reference_page, label="Local &Node.js executable; blank uses installed runtime"), 0,
-                            wx.ALL | wx.ALIGN_CENTER_VERTICAL, 7)
-            self.node = wx.TextCtrl(reference_page)
-            self.node.SetName("Local Node.js executable, optional")
-            runtime_row.Add(self.node, 1, wx.ALL, 5)
-            self.browse_node = wx.Button(reference_page, label="&Browse")
-            runtime_row.Add(self.browse_node, 0, wx.ALL, 5)
-            first.Add(runtime_row, 0, wx.EXPAND)
-            self.browse_node.Bind(wx.EVT_BUTTON, self.choose_node)
             self.style.Bind(wx.EVT_CHOICE, self.invalidate)
             self.locale.Bind(wx.EVT_CHOICE, self.invalidate)
-            self.node.Bind(wx.EVT_TEXT, self.invalidate)
             reference_page.SetSizer(first)
 
             citation_page = wx.Panel(self.tabs)
@@ -478,7 +440,7 @@ def _native_types():
             self.export_button.Bind(wx.EVT_BUTTON, self.export)
             self.add_footer(layout, (self.format_button, self.export_button))
             self.controls.extend((self.references_box, self.all_button, self.none_button, self.reload_button, self.style,
-                self.locale, self.node, self.browse_node, self.citation_reference, self.locator_kind, self.locator,
+                self.locale, self.citation_reference, self.locator_kind, self.locator,
                 self.verified, self.add_citation, self.citation_list, self.remove_citation, self.move_up, self.move_down,
                 self.document_title, self.format_button, self.export_button))
             command = int(wx.NewIdRef())
@@ -540,11 +502,6 @@ def _native_types():
             for index in range(len(self.references)):
                 self.references_box.Check(index, checked)
             self.invalidate()
-
-        def choose_node(self, event=None):
-            with wx.FileDialog(self, "Choose the installed local Node.js executable", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
-                if dialog.ShowModal() == wx.ID_OK:
-                    self.node.SetValue(dialog.GetPath())
 
         def reset_verification(self, event=None):
             self.verified.SetValue(False)
@@ -617,7 +574,6 @@ def _native_types():
                 return
             style = self.styles[self.style.GetSelection()].id
             locale = LOCALES[self.locale.GetSelection()][0]
-            node = self.node.GetValue().strip() or None
             clusters = tuple(replace(cluster, note_index=index) for index, cluster in enumerate(self.clusters, 1))
             snapshot = self.snapshot
             self.result = None
@@ -634,7 +590,7 @@ def _native_types():
                 self.preview.SetFocus()
 
             self.run("Formatting citations locally", lambda: self.controller.render(snapshot, reference_ids=selected,
-                style=style, locale=locale, citations=clusters, node_path=node, cancelled=self.cancel_event.is_set), ready)
+                style=style, locale=locale, citations=clusters, cancelled=self.cancel_event.is_set), ready)
 
         def export(self, event=None):
             if self.pending or self.result is None:
@@ -644,130 +600,30 @@ def _native_types():
                 if dialog.ShowModal() != wx.ID_OK:
                     return
                 destination = dialog.GetPath()
+            parent = self.GetParent()
+            try:
+                _guard(parent, self.controller.library, self.controller.workspace)
+                target = _new_destination(destination, ".docx", self.controller.library.root)
+                approval = capture_export_destination(target, private_root=self.controller.library.root)
+            except Exception as error:
+                self.report("The export destination was not approved. " + str(error))
+                return
             title = self.document_title.GetValue()
             result, snapshot = self.result, self.snapshot
-            self.run("Saving the citation document", lambda: self.controller.export_docx(snapshot, result, destination,
-                title=title, cancelled=self.cancel_event.is_set), lambda path: self.report(f"Saved the editable citation document: {path}"))
+            def authorized_cancel():
+                if not self._alive:
+                    raise InterruptedError("Citation document window closed.")
+                _guard(parent, self.controller.library, self.controller.workspace)
+                return self.cancel_event.is_set()
+            def completed(receipt):
+                message = f"Saved the editable citation document: {receipt.path}"
+                if receipt.cleanup_warning:
+                    message += "\n" + receipt.cleanup_warning
+                self.report(message)
+            self.run("Saving the citation document", lambda: self.controller.export_docx(snapshot, result, target,
+                title=title, cancelled=authorized_cancel, approval=approval), completed)
 
-    class DoiDialog(TaskDialog):
-        def __init__(self, parent, controller):
-            super().__init__(parent, title="Preview DOI metadata", size=(860, 760),
-                             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-            self.initialize_tasks(controller)
-            self.result = None
-            self.client = None
-            self.client_config = None
-            layout = wx.BoxSizer(wx.VERTICAL)
-            self.identifier = labelled(self, layout, "&DOI or doi.org URL", wx.TextCtrl(self))
-            self.network = wx.CheckBox(self, label="&Enable public metadata requests for this dialog")
-            self.network.SetName("Enable public metadata requests for this dialog, off by default")
-            layout.Add(self.network, 0, wx.ALL, 7)
-            self.provider = labelled(self, layout, "&Metadata services", wx.Choice(self,
-                choices=["Crossref", "Crossref and Unpaywall", "Unpaywall"]))
-            self.provider.SetSelection(0)
-            self.email = labelled(self, layout, "Your contact &email; required only for Unpaywall", wx.TextCtrl(self))
-            help_text = wx.StaticText(self, label="Crossref receives the entered DOI. Unpaywall receives the DOI and your contact email. "
-                "These actions retrieve metadata only; source documents stay on this computer. The email is kept only for this dialog.")
-            help_text.Wrap(800)
-            layout.Add(help_text, 0, wx.ALL, 7)
-            self.refresh = wx.CheckBox(self, label="Fetch &fresh metadata instead of using this dialog's cache")
-            layout.Add(self.refresh, 0, wx.ALL, 7)
-            self.preview = labelled(self, layout, "Metadata, source, version, license and review notes", wx.TextCtrl(self,
-                style=wx.TE_READONLY | wx.TE_MULTILINE), proportion=1)
-            self.lookup_button = wx.Button(self, label="&Look up metadata")
-            self.lookup_button.SetDefault()
-            self.lookup_button.Bind(wx.EVT_BUTTON, self.lookup)
-            self.save_button = wx.Button(self, label="&Save preview JSON")
-            self.save_button.Bind(wx.EVT_BUTTON, self.save_preview)
-            self.add_footer(layout, (self.lookup_button, self.save_button))
-            self.controls.extend((self.identifier, self.provider, self.email, self.refresh, self.lookup_button, self.save_button))
-            self.network.Bind(wx.EVT_CHECKBOX, self.network_changed)
-            self.provider.Bind(wx.EVT_CHOICE, self.settings_changed)
-            self.identifier.Bind(wx.EVT_TEXT, self.settings_changed)
-            self.email.Bind(wx.EVT_TEXT, self.settings_changed)
-            self.SetSizer(layout)
-            self.SetMinSize((640, 550))
-            self.update_controls()
-            self.report("Online metadata is disabled. Enter a DOI and explicitly enable the selected services to request a preview.", focus=False)
-            self.identifier.SetFocus()
-
-        def update_controls(self):
-            super().update_controls()
-            enabled = self.network.GetValue()
-            self.email.Enable(enabled and self.provider.GetSelection() in (1, 2) and not self.pending)
-            self.lookup_button.Enable(enabled and bool(self.identifier.GetValue().strip()) and not self.pending)
-            self.save_button.Enable(self.result is not None and not self.pending)
-
-        def settings_changed(self, event=None):
-            self.result = None
-            self.update_controls()
-            if event is not None:
-                event.Skip()
-
-        def network_changed(self, event=None):
-            if not self.network.GetValue():
-                self.cancel_event.set()
-                if self.client is not None:
-                    self.client.allow_network = False
-                self.report("Further online metadata requests are disabled; any running request is being cancelled.", focus=False)
-            self.update_controls()
-
-        def lookup(self, event=None):
-            if self.pending:
-                return
-            if not self.network.GetValue():
-                self.report("Enable the selected public metadata services before making a request.")
-                return
-            choices = (("crossref",), ("crossref", "unpaywall"), ("unpaywall",))
-            providers = choices[self.provider.GetSelection()]
-            email = self.email.GetValue().strip() if "unpaywall" in providers else None
-            try:
-                configuration = (providers, email)
-                if self.client is None or self.client_config != configuration:
-                    self.client = DoiMetadataClient(allow_network=True, providers=providers, unpaywall_email=email)
-                    self.client_config = configuration
-                else:
-                    self.client.allow_network = True
-            except ValueError as error:
-                self.report(str(error))
-                return
-            identifier = self.identifier.GetValue()
-            refresh = self.refresh.GetValue()
-            client = self.client
-            self.result = None
-
-            def ready(preview):
-                self.result = preview
-                self.preview.ChangeValue(metadata_preview_text(preview))
-                self.preview.SetInsertionPoint(0)
-                self.report("Metadata preview ready. Review the source, edition, version and license. "
-                            "Save preview JSON records the metadata without importing a document.", focus=False)
-                self.preview.SetFocus()
-
-            self.run("Requesting the selected DOI metadata", lambda: self.controller.lookup_doi(client, identifier,
-                cancelled=self.cancel_event.is_set, refresh=refresh), ready)
-
-        def save_preview(self, event=None):
-            if self.pending or self.result is None:
-                return
-            with wx.FileDialog(self, "Save a new metadata preview", defaultFile="doi-metadata-preview.json",
-                               wildcard="JSON metadata (*.json)|*.json", style=wx.FD_SAVE) as dialog:
-                if dialog.ShowModal() != wx.ID_OK:
-                    return
-                destination = dialog.GetPath()
-            preview = self.result
-            self.run("Saving the metadata preview", lambda: self.controller.save_doi_preview(preview, destination,
-                cancelled=self.cancel_event.is_set), lambda path: self.report(f"Saved metadata and provenance for review: {path}"))
-
-        def shutdown(self):
-            super().shutdown()
-            if self.client is not None:
-                self.client.allow_network = False
-                self.client = None
-            self.email.ChangeValue("")
-            self.client_config = None
-
-    return CitationDialog, DoiDialog
+    return CitationDialog
 
 
 def show_citation_formatter(frame):
@@ -775,7 +631,7 @@ def show_citation_formatter(frame):
     try:
         library, workspace = _scope(frame)
         controller = CitationFormattingController(library, workspace)
-        CitationDialog, _ = _native_types()
+        CitationDialog = _native_types()
         dialog = CitationDialog(frame, controller)
         dialog.ShowModal()
     except Exception as error:
@@ -787,26 +643,18 @@ def show_citation_formatter(frame):
 
 
 def show_doi_preview(frame):
-    dialog = None
-    try:
-        library, workspace = _scope(frame)
-        controller = CitationFormattingController(library, workspace)
-        _, DoiDialog = _native_types()
-        dialog = DoiDialog(frame, controller)
-        dialog.ShowModal()
-    except Exception as error:
-        frame.report("DOI metadata preview could not open. " + str(error))
-    finally:
-        if dialog is not None:
-            dialog.shutdown()
-            dialog.Destroy()
+    """Compatibility entry point into the one current acquisition workflow."""
+    from .acquisition_dialog import show_acquisition_dialog
+    return show_acquisition_dialog(frame)
 
 
 def install_citation_actions(frame):
-    """Append two native Academic menu actions; call once during frame setup."""
+    """Register one document action with the existing semantic command manager."""
     if getattr(frame, "_carr_citation_actions_installed", False):
         return
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     bar = frame.GetMenuBar()
     if bar is None:
         raise ValueError("Install the native menu bar before citation actions.")
@@ -820,8 +668,8 @@ def install_citation_actions(frame):
         bar.Append(menu, "&Academic")
     elif menu.GetMenuItemCount():
         menu.AppendSeparator()
-    item = menu.Append(wx.ID_ANY, "Format bibliography and citations...\tCtrl+Alt+C")
+    item = menu.Append(wx.ID_ANY, "Citation document with endnotes...\tCtrl+Alt+C")
     frame.Bind(wx.EVT_MENU, lambda event: show_citation_formatter(frame), item)
-    item = menu.Append(wx.ID_ANY, "Preview DOI metadata (opt-in)...")
-    frame.Bind(wx.EVT_MENU, lambda event: show_doi_preview(frame), item)
+    register_menu_command(frame, CommandSpec("academic.citation_document",
+        "Citation document with endnotes", "main", "Ctrl+Alt+C"), item)
     frame._carr_citation_actions_installed = True

@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import shutil
+import sys
 import time
 
 import pytest
@@ -13,6 +14,7 @@ from carr_library.academic_integration import (
     available_styles, render_citations,
 )
 from carr_library.academic_integration import formatting
+from carr_library.citations import csl
 
 
 @pytest.fixture
@@ -24,8 +26,6 @@ def references():
 
 @pytest.fixture(scope='module')
 def real_results():
-    if not shutil.which('node'):
-        pytest.skip('Actual CSL acceptance requires locally installed Node.js 18 or newer.')
     items = [dict(id='book-doe', type='book', title='The Book of Science',
                   author=[{'family': 'Doe', 'given': 'Jane'}],
                   issued={'date-parts': [[2020]]}, publisher='Example Press', page='1-400')]
@@ -37,7 +37,7 @@ def real_results():
 @pytest.mark.parametrize('style,expected_bibliography,expected_citation', [
     ('apa', 'Doe, J. (2020). The Book of Science (pp. 1–400). Example Press.', '(Doe, 2020, p. 12)'),
     ('chicago-author-date', 'Doe, Jane. 2020. The Book of Science. Example Press.', '(Doe 2020, 12)'),
-    ('chicago-notes', 'Doe, Jane. The Book of Science. Example Press, 2020.',
+    ('chicago-note', 'Doe, Jane. The Book of Science. Example Press, 2020.',
      'Jane Doe, The Book of Science (Example Press, 2020), 12.'),
     ('mla', 'Doe, Jane. The Book of Science. Example Press, 2020, pp. 1–400.', '(Doe 12)'),
     ('harvard', 'Doe, J. (2020) The Book of Science. Example Press, pp. 1–400.', '(Doe, 2020, p. 12)'),
@@ -55,16 +55,18 @@ def test_real_styles_preserve_page_extent_and_apply_the_actual_rules(
 
 
 def test_upstream_pins_licenses_and_all_asset_digests():
-    root = formatting._ROOT
-    manifest = json.loads((root / 'UPSTREAM.json').read_text())
-    raw = (root / 'vendor/citeproc.js').read_bytes()
-    assert sha256(raw).hexdigest() == manifest['processor']['sha256']
+    manifest = formatting._manifest()
+    upstream = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text())
+    assert manifest['processor']['runtime'] == 'quickjs-ng'
+    assert manifest['processor']['package_version'] == upstream['processor']['package_version']
+    assert manifest['processor']['version'] == upstream['processor']['reported_engine_version']
     assert manifest['processor']['chosen_license'] == 'CPAL-1.0'
-    assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text()
-    for style in manifest['styles']:
-        assert sha256((root / 'styles' / style['filename']).read_bytes()).hexdigest() == style['sha256']
-    for name, digest in manifest['locales'].items():
-        assert sha256((root / 'locales' / name).read_bytes()).hexdigest() == digest
+    assert 'ATTRIBUTION' in (csl._ROOT / '_vendor_citeproc/CPAL').read_text()
+    assert manifest['processor']['resources'] == csl._HASHES
+    assert manifest['processor']['sha256'] == csl._HASHES['_vendor_citeproc/citeproc.js']
+    for name, digest in csl._HASHES.items():
+        assert sha256((csl._ROOT / name).read_bytes()).hexdigest() == digest
+    assert [style.id for style in available_styles()] == [style.id for style in csl.available_styles()]
 
 
 def test_no_pinpoint_is_inferred_from_publication_page_extent(references):
@@ -122,7 +124,7 @@ def test_real_journal_volume_issue_doi_and_pinpoint_are_distinct():
 
 
 def test_cluster_group_and_repeated_notes_use_real_processor_state(references):
-    result = render_citations(references, style='chicago-notes', citations=[
+    result = render_citations(references, style='chicago-note', citations=[
         CitationCluster((CitationRequest('book-doe', '12', locator_verified=True),), 'first', 1),
         CitationCluster((CitationRequest('book-doe', '18', locator_verified=True),), 'second', 2)])
     assert result.citations[0].text == 'Jane Doe, The Book of Science (Example Press, 2020), 12.'
@@ -169,11 +171,11 @@ def test_local_style_is_explicit_offline_and_no_macro_cycles(tmp_path, reference
     path.write_text(template.format(macro=''), encoding='utf-8')
     result = render_citations(references, style_path=path, citations=[CitationRequest('book-doe')])
     assert result.citations[0].text == 'The Book of Science'
-    assert result.style.id.startswith('local-')
+    assert result.style.id == 'urn:test:local'
     assert result.style.source == 'local:local.csl'
     assert str(tmp_path) not in json.dumps(result.interchange)
     path.write_text(template.format(macro='<macro name="loop"><text macro="loop"/></macro>'), encoding='utf-8')
-    with pytest.raises(CitationError, match='Recursive'):
+    with pytest.raises(CitationError, match='recursive'):
         render_citations(references, style_path=path)
     path.write_text('<!DOCTYPE style [<!ENTITY leak SYSTEM "file:///etc/passwd">]>' + template.split('?>')[1].format(macro=''), encoding='utf-8')
     with pytest.raises(CitationError, match='DTD'):
@@ -183,9 +185,8 @@ def test_local_style_is_explicit_offline_and_no_macro_cycles(tmp_path, reference
 def test_tampered_packaged_style_is_rejected(tmp_path, references, monkeypatch):
     source = formatting._ROOT
     (tmp_path / 'styles').mkdir()
-    shutil.copy(source / 'UPSTREAM.json', tmp_path)
     (tmp_path / 'styles/apa.csl').write_text('tampered')
-    monkeypatch.setattr(formatting, '_ROOT', tmp_path)
+    monkeypatch.setattr(csl, '_ROOT', tmp_path)
     with pytest.raises(CitationError, match='integrity'):
         render_citations(references)
 
@@ -201,20 +202,29 @@ def test_actual_engine_timeout_is_bounded(references):
     references = [dict(references[0], id=f'reference-{index}', title=f'Source {index}')
                   for index in range(1000)]
     start = time.monotonic()
-    with pytest.raises(CitationError, match='time budget'):
+    with pytest.raises(CitationError, match='resource budget'):
         render_citations(references, timeout=0.1)
     assert time.monotonic() - start < 3
 
 
-def test_actual_worker_cancels_after_launch(references):
-    calls = 0
-    def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+def test_actual_engine_cancellation_after_evaluation_does_not_publish_a_result(references, monkeypatch):
+    actual = csl.render
+    evaluated = False
+    def render(*args, **kwargs):
+        nonlocal evaluated
+        result = actual(*args, **kwargs)
+        evaluated = True
+        return result
+    monkeypatch.setattr(csl, 'render', render)
     with pytest.raises(CitationCancelled):
-        render_citations(references, cancelled=cancelled)
-    assert calls >= 2
+        render_citations(references, cancelled=lambda: evaluated)
+    assert evaluated
+
+
+def test_missing_quickjs_has_explicit_offline_failure(references, monkeypatch):
+    monkeypatch.setitem(sys.modules, 'quickjs', None)
+    with pytest.raises(CitationError, match='no online fallback'):
+        render_citations(references)
 
 
 def test_runtime_ignores_node_options_preload_injection(tmp_path, references, monkeypatch):
@@ -225,3 +235,22 @@ def test_runtime_ignores_node_options_preload_injection(tmp_path, references, mo
     result = render_citations(references)
     assert result.bibliography[0].reference_id == 'book-doe'
     assert not marker.exists()
+
+
+@pytest.mark.parametrize('style', ['apa', 'chicago-author-date', 'chicago-note', 'mla', 'harvard', 'vancouver', 'ieee'])
+def test_document_adapter_uses_the_canonical_ordered_citation_engine(references, style):
+    clusters = [CitationCluster((CitationRequest('book-doe', '12', locator_verified=True),), 'first', 1),
+                CitationCluster((CitationRequest('book-doe', '18', locator_verified=True),), 'second', 2)]
+    result = render_citations(references, style=style, citations=clusters)
+    canonical = csl.render(references, style=style, output='html',
+        citations=[[{'id': 'book-doe', 'locator': page, 'label': 'page'}] for page in ('12', '18')])
+    assert tuple(row.html for row in result.citations) == tuple(
+        formatting.safe_markup(value)[1] for value in canonical.citations)
+    assert tuple(row.html for row in result.bibliography) == tuple(
+        formatting.safe_markup(value)[1] for value in canonical.entries)
+    assert tuple(row.reference_ids for row in result.bibliography) == canonical.entry_ids
+    assert result.style.sha256 == canonical.style_sha256
+    assert [row.cluster_id for row in result.citations] == ['first', 'second']
+    assert [row.note_index for row in result.citations] == [1, 2]
+    assert all(cluster['locator_evidence'][0]['locator_verified'] is True
+               for cluster in result.interchange['clusters'])

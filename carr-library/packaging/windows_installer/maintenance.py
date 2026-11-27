@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import configparser
-from contextlib import nullcontext
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
@@ -30,6 +30,10 @@ MAX_MANIFEST = 32 * 1024 * 1024
 MAX_FILES = 100000
 MAINTENANCE = ('ResonanceSetup.exe', 'maintenance.py', 'installation_lease.py',
                'bundle_verifier.py', 'windows_process.py')
+
+
+class BootstrapCleanupError(RuntimeError):
+    """The installer cannot acknowledge exit of all its actual native children."""
 
 
 def _module(name, path):
@@ -165,6 +169,10 @@ def bundle(root, expected, *, allow_installed=False):
     if hashlib.sha256(raw).hexdigest() != digest(expected):
         raise ValueError('The bundle differs from this installer identity.')
     document = json.loads(raw, object_pairs_hook=unique)
+    if (os.path.lexists(root / 'portable-update.ini')
+            or any(type(name) is str and name.casefold() == 'portable-update.ini'
+                   for name in document.get('files', {}))):
+        raise ValueError('Standard setup cannot wrap an opted-in portable-update bundle. Build a separate standard bundle without that sealed profile.')
     if document.get('bundled_python') is not True or document.get('bundled_launcher') is not True:
         raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')
     if not re.fullmatch('[0-9a-f]{40}', str(document.get('source_commit', ''))):
@@ -272,6 +280,44 @@ def preflight(root, expected, setup_hash):
     return root
 
 
+@contextmanager
+def _bootstrap_owner(program):
+    """Retain a durable veto across native bootstrap and abrupt helper death."""
+    program = Path(program).absolute()
+    root = program.parent
+    if program.name.casefold() != 'app':
+        raise ValueError('Managed bootstrap requires the selected application directory.')
+    plain(program, directory=True)
+    try:
+        lease_module.require_clean_bootstrap(root)
+    except RuntimeError as error:
+        raise BootstrapCleanupError(str(error)) from error
+    identity = marker(root)
+    receipt = root / lease_module.BOOTSTRAP_OWNER
+    record = dict(schema='carr-managed-bootstrap-owner/1', id=uuid.uuid4().hex,
+                  program=str(program), owner_pid=os.getpid(),
+                  bundle_sha256=identity['bundle_sha256'],
+                  setup_sha256=identity['setup_sha256'])
+    raw = (json.dumps(record, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
+    write(receipt, raw)
+    uncertain = False
+    try:
+        yield
+    except BootstrapCleanupError:
+        uncertain = True
+        raise
+    finally:
+        if not uncertain:
+            try:
+                if read(receipt, 8192) != raw:
+                    raise ValueError('The bootstrap owner receipt changed.')
+                receipt.unlink()
+            except BaseException as error:
+                raise BootstrapCleanupError(
+                    'Bootstrap owner cleanup could not be recorded. Preserve this '
+                    'program folder, retained application and recovery receipts.') from error
+
+
 def _bootstrap(program):
     if os.name != 'nt':
         raise RuntimeError('Actual offline installation requires Windows; source tests use an explicit synthetic runner.')
@@ -282,20 +328,59 @@ def _bootstrap(program):
     process_api = _module('resonance_installer_owned_process', process_source)
     command = [str(program / 'runtime/python.exe'), '-I', '-B', '-X', 'utf8',
                str(program / 'install_windows.py')]
-    child = process_api.WindowsJobProcess(command, cwd=program, env=environment,
-                                         stdin=subprocess.DEVNULL)
+    try:
+        child = process_api.WindowsJobProcess(command, cwd=program, env=environment,
+                                             stdin=subprocess.DEVNULL)
+    except BaseException as error:
+        # Creation can fail after the native child exists but before its exact
+        # handle is returned. Keep the bootstrap receipt even if Job close was
+        # attempted inside the constructor.
+        raise BootstrapCleanupError(
+            'Native bootstrap launch cleanup is unconfirmed. Preserve the '
+            'program folder, retained application and bootstrap owner receipt.') from error
     try:
         result = child.wait(timeout=1800)
         if result:
             raise subprocess.CalledProcessError(result, command)
     finally:
-        child._carr_job.close()
-        child.wait(timeout=5)
+        cleanup_error = None
+        try:
+            child._carr_job.stop_and_wait(int(child._handle))
+        except BaseException as error:
+            cleanup_error = error
+        finally:
+            try:
+                child._carr_job.close()
+            except BaseException as error:
+                if cleanup_error is None:
+                    cleanup_error = error
+            finally:
+                try:
+                    if child.poll() is None:
+                        child.kill()
+                    child.wait(timeout=5)
+                except BaseException as error:
+                    if cleanup_error is None:
+                        cleanup_error = error
+                finally:
+                    try:
+                        child._handle.Close()
+                    except BaseException as error:
+                        if cleanup_error is None:
+                            cleanup_error = error
+        if cleanup_error is not None:
+            # Fallback Job termination is asynchronous. It cannot authorize
+            # rollback, file removal or clearing a durable bootstrap owner.
+            raise BootstrapCleanupError(
+                'Native bootstrap child cleanup is unconfirmed. No further '
+                'program movement is safe; preserve the retained application '
+                'and bootstrap owner receipt for recovery.') from cleanup_error
 
 
 def check(root, expected, setup_hash, *, owner=None):
     root = location(root)
     with installation_lease(root, exclusive=True, owner=owner):
+        lease_module.require_clean_bootstrap(root)
         info = marker(root)
         if info['bundle_sha256'] != expected or info['setup_sha256'] != setup_hash:
             raise ValueError('This folder belongs to a different installation identity.')
@@ -323,6 +408,7 @@ def install(payload, root, expected, setup_hash, *, owner=None, runner=_bootstra
     bundle(payload, expected)
     root = preflight(root, expected, setup_hash)
     with installation_lease(root, exclusive=True, owner=owner):
+        lease_module.require_clean_bootstrap(root)
         info = marker(root)
         if info['state'] == 'complete':
             owned(root, expected, setup_hash)  # Metadata must be trustworthy; changed app files are retained.
@@ -378,7 +464,8 @@ def install(payload, root, expected, setup_hash, *, owner=None, runner=_bootstra
                 previous_moved = True
             stage.rename(program)
             new_published = True
-            runner(program)
+            with _bootstrap_owner(program):
+                runner(program)
             if not (program / '.venv/.installation-complete').is_file():
                 raise ValueError('The existing offline installer did not publish completion.')
             verifier.verify(program)
@@ -393,6 +480,10 @@ def install(payload, root, expected, setup_hash, *, owner=None, runner=_bootstra
                 raise ValueError('Owned-file receipt exceeds its budget.')
             write(root / OWNER, raw)
             set_marker(root, 'complete', expected, setup_hash, hashlib.sha256(raw).hexdigest())
+        except BootstrapCleanupError:
+            # The owned descendant tree was not acknowledged. Preserve both
+            # application directories and all original receipts in place.
+            raise
         except BaseException:
             if new_published and program.exists():
                 failed = root.parent / (root.name + '-incomplete-' + uuid.uuid4().hex)
@@ -421,6 +512,7 @@ def install(payload, root, expected, setup_hash, *, owner=None, runner=_bootstra
 def uninstall(root, expected, setup_hash, *, owner=None):
     root = location(root)
     with installation_lease(root, exclusive=True, owner=owner):
+        lease_module.require_clean_bootstrap(root)
         record = owned(root, expected, setup_hash)
         program = root / 'app'
         current, directories = inventory(program)

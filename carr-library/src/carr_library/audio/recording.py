@@ -112,6 +112,39 @@ class RecordingOptions:
             raise ValueError('The selected recording duration exceeds its PCM byte allowance.')
 
 
+def validate_recording_receipt(value, identity):
+    if not isinstance(identity, str) or _ID.fullmatch(identity) is None:
+        raise ValueError('Invalid recording identity.')
+    if (not isinstance(value, dict) or set(value) != {'schema', 'id', 'filename', 'title', 'created',
+            'source', 'ffmpeg_sha256', 'audio', 'limits', 'completion'}
+            or value['schema'] != 'carr-recording/1' or value['id'] != identity
+            or value['filename'] != identity + '.wav' or not isinstance(value['limits'], dict)
+            or not isinstance(value['ffmpeg_sha256'], str) or _HASH.fullmatch(value['ffmpeg_sha256']) is None
+            or value['completion'] not in ('stopped', 'duration-limit', 'device-ended')):
+        raise ValueError('Invalid recording receipt.')
+    _text(value['title'], 'recording title')
+    source = value['source']
+    if (not isinstance(source, dict) or set(source) != {'kind', 'backend', 'device_id', 'name'}
+            or source['kind'] != 'microphone' or source['backend'] != 'dshow'
+            or not isinstance(source['device_id'], str) or _HASH.fullmatch(source['device_id']) is None):
+        raise ValueError('Invalid recording source receipt.')
+    _text(source['name'], 'recording device name')
+    options = RecordingOptions(**value['limits'])
+    _text(value['created'], 'recording timestamp', 100)
+    audio = value['audio']
+    if (not isinstance(audio, dict) or set(audio) != {'sha256', 'size_bytes', 'sample_rate',
+            'channels', 'frames', 'sample_width', 'duration_seconds'}
+            or not isinstance(audio['sha256'], str) or _HASH.fullmatch(audio['sha256']) is None
+            or any(type(audio[key]) is not int for key in ('size_bytes', 'sample_rate', 'channels', 'frames', 'sample_width'))
+            or not 44 <= audio['size_bytes'] <= options.max_bytes
+            or audio['sample_rate'] != options.sample_rate or audio['channels'] != options.channels
+            or audio['sample_width'] != 2 or not 0 < audio['frames'] <= options.max_seconds * options.sample_rate
+            or type(audio['duration_seconds']) not in (int, float)
+            or audio['duration_seconds'] != audio['frames'] / options.sample_rate):
+        raise ValueError('Invalid recording audio receipt.')
+    return value
+
+
 class RecordingService:
     def __init__(self, library_root, *, runtime=None):
         self.library_root = local_path(library_root, exists=True)
@@ -256,35 +289,7 @@ class RecordingService:
     def _receipt(self, identity):
         if not isinstance(identity, str) or _ID.fullmatch(identity) is None:
             raise ValueError('Invalid recording identity.')
-        value = read_json(self.root / (identity + '.json'))
-        if (not isinstance(value, dict) or set(value) != {'schema', 'id', 'filename', 'title', 'created',
-                'source', 'ffmpeg_sha256', 'audio', 'limits', 'completion'}
-                or value['schema'] != 'carr-recording/1' or value['id'] != identity
-                or value['filename'] != identity + '.wav' or not isinstance(value['limits'], dict)
-                or not isinstance(value['ffmpeg_sha256'], str) or _HASH.fullmatch(value['ffmpeg_sha256']) is None
-                or value['completion'] not in ('stopped', 'duration-limit', 'device-ended')):
-            raise ValueError('Invalid recording receipt.')
-        _text(value['title'], 'recording title')
-        source = value['source']
-        if (not isinstance(source, dict) or set(source) != {'kind', 'backend', 'device_id', 'name'}
-                or source['kind'] != 'microphone' or source['backend'] != 'dshow'
-                or not isinstance(source['device_id'], str) or _HASH.fullmatch(source['device_id']) is None):
-            raise ValueError('Invalid recording source receipt.')
-        _text(source['name'], 'recording device name')
-        options = RecordingOptions(**value['limits'])
-        _text(value['created'], 'recording timestamp', 100)
-        audio = value['audio']
-        if (not isinstance(audio, dict) or set(audio) != {'sha256', 'size_bytes', 'sample_rate',
-                'channels', 'frames', 'sample_width', 'duration_seconds'}
-                or not isinstance(audio['sha256'], str) or _HASH.fullmatch(audio['sha256']) is None
-                or any(type(audio[key]) is not int for key in ('size_bytes', 'sample_rate', 'channels', 'frames', 'sample_width'))
-                or not 44 <= audio['size_bytes'] <= options.max_bytes
-                or audio['sample_rate'] != options.sample_rate or audio['channels'] != options.channels
-                or audio['sample_width'] != 2 or not 0 < audio['frames'] <= options.max_seconds * options.sample_rate
-                or type(audio['duration_seconds']) not in (int, float)
-                or audio['duration_seconds'] != audio['frames'] / options.sample_rate):
-            raise ValueError('Invalid recording audio receipt.')
-        return value
+        return validate_recording_receipt(read_json(self.root / (identity + '.json')), identity)
 
     def get(self, identity, *, cancelled=lambda: False):
         value = self._receipt(identity)

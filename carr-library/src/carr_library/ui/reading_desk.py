@@ -13,9 +13,9 @@ import threading
 from ..reader.reading_desk import ReadingDesk
 from ..reader.reading_state import MAX_BYTES, ReadingState
 from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
-from .export_destination import confirm_export_destination
 
 
 def _chosen(index, values):
@@ -180,6 +180,7 @@ class ReadingDialog:
         self.closed = self.busy = False
         self._audio_dialog = None
         self.buttons = []
+        self.command_buttons = {}
         self.accelerators = []
         self._accelerator_ids = []
         layout = wx.BoxSizer(wx.VERTICAL)
@@ -192,27 +193,33 @@ class ReadingDialog:
         layout.Add(self.text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         navigation = wx.WrapSizer(wx.HORIZONTAL)
         self._button(navigation, 'Previous source location', lambda _: self.navigate(-1),
-                     wx.ACCEL_CTRL, wx.WXK_PAGEUP)
+                     command_id='reader.previous')
         self._button(navigation, 'Next source location', lambda _: self.navigate(1),
-                     wx.ACCEL_CTRL, wx.WXK_PAGEDOWN)
-        self._button(navigation, 'Go to reading position...', self.go_to, wx.ACCEL_CTRL, ord('G'))
-        self._button(navigation, 'Start at first source location', lambda _: self.go_first())
+                     command_id='reader.next')
+        self._button(navigation, 'Go to reading position...', self.go_to, command_id='reader.goto')
+        self._button(navigation, 'Start at first source location', lambda _: self.go_first(),
+                     command_id='reader.first')
         layout.Add(navigation, 0, wx.EXPAND | wx.ALL, 4)
         history = wx.BoxSizer(wx.HORIZONTAL)
         self._button(history, 'Back in reading session', lambda _: self.history(-1),
-                     wx.ACCEL_ALT, wx.WXK_LEFT)
+                     command_id='reader.back')
         self._button(history, 'Forward in reading session', lambda _: self.history(1),
-                     wx.ACCEL_ALT, wx.WXK_RIGHT)
+                     command_id='reader.forward')
         self._button(history, 'Where am I?', self.where,
-                     wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('L'))
+                     command_id='reader.where')
         layout.Add(history, 0, wx.EXPAND | wx.ALL, 4)
         bookmarks = wx.BoxSizer(wx.HORIZONTAL)
         self._button(bookmarks, 'Add named page bookmark...', self.add_bookmark,
-                     wx.ACCEL_CTRL, ord('B'))
+                     command_id='reader.bookmark_add')
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
-                     wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('B'))
-        self._button(bookmarks, 'Reader keyboard guide', self.help, wx.ACCEL_NORMAL, wx.WXK_F1)
-        self._button(bookmarks, 'EPUB synchronized recorded audio...', self.open_audio)
+                     command_id='reader.bookmarks')
+        self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
+        self._button(bookmarks, 'EPUB synchronized recorded audio...', self.open_audio,
+                     command_id='reader.audio')
+        self._button(bookmarks, 'Find a reader command...', lambda event: self.keyboard.commands(event),
+                     command_id='reader.commands')
+        self._button(bookmarks, 'Reader keyboard shortcuts...', lambda event: self.keyboard.settings(event),
+                     command_id='reader.settings')
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Reading operation status')
@@ -229,17 +236,20 @@ class ReadingDialog:
         layout.Add(footer, 0, wx.ALIGN_RIGHT)
         self.dialog.SetSizer(layout)
         self.dialog.SetEscapeId(wx.ID_CANCEL)
-        self.dialog.SetAcceleratorTable(wx.AcceleratorTable(self.accelerators))
+        from .reading_shortcuts import ReaderKeyboardAdapter
+        self.keyboard = ReaderKeyboardAdapter(self, getattr(parent, 'keyboard_commands', None))
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
 
-    def _button(self, sizer, label, handler, modifier=None, key=None):
+    def _button(self, sizer, label, handler, modifier=None, key=None, *, command_id=None):
         wx = self.wx
         button = wx.Button(self.dialog, label=label)
         button.SetName(label)
         button.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(button, 0, wx.ALL, 3)
         self.buttons.append(button)
-        if modifier is not None:
+        if command_id is not None:
+            self.command_buttons[command_id] = (button, handler)
+        elif modifier is not None:
             identifier = wx.NewIdRef()
             self._accelerator_ids.append(identifier)
             self.dialog.Bind(wx.EVT_MENU, handler, id=int(identifier))
@@ -301,8 +311,10 @@ class ReadingDialog:
         # Only this UI-thread acceptance can change resume/history. A worker
         # completed after cancellation or close never reaches this point.
         self.controller.accept(navigation)
+        help_shortcut = self.keyboard.shortcut('reader.help') if hasattr(self, 'keyboard') else 'F1'
         self.status.ChangeValue(self.controller.save_warning or
-            'Source location loaded. Page-level resume saved. Use F1 for reader shortcuts.')
+            ('Source location loaded. Page-level resume saved. '
+             + (f'Use {help_shortcut} for reader shortcuts.' if help_shortcut else 'Choose Reader keyboard guide for shortcuts.')))
         self.text.SetFocus()
 
     def navigate(self, direction):
@@ -361,7 +373,9 @@ class ReadingDialog:
     def manage_bookmarks(self, event=None):
         def choose(rows):
             if not rows:
-                self._message('This book has no page bookmarks yet. Use Ctrl+B to add one.')
+                shortcut = self.keyboard.shortcut('reader.bookmark_add') if hasattr(self, 'keyboard') else 'Ctrl+B'
+                self._message('This book has no page bookmarks yet. '
+                              + (f'Use {shortcut} to add one.' if shortcut else 'Choose Add named page bookmark.'))
                 return
             labels = [f'{item.label}; {item.location.kind.replace("_", " ")} '
                       f'{item.location.index}; source revision {item.location.revision[:12]}' for item in rows]
@@ -408,7 +422,7 @@ class ReadingDialog:
                     raise ValueError('The source reading selection changed. Open recorded audio again.')
             from .ebook_audio_dialog import EbookAudioDialog
             reader = EbookAudioDialog(self.dialog, self.controller.desk, page.ordinal, guard,
-                progress=getattr(self.parent, 'operation_progress', None))
+                progress=getattr(self.parent, 'progress_panel', None))
             self._audio_dialog = reader
             try:
                 reader.show()
@@ -422,20 +436,16 @@ class ReadingDialog:
     def help(self, event=None):
         if self.busy:
             return
+        shortcuts = (self.keyboard.guide() if hasattr(self, 'keyboard') else
+                     'Use the named reader buttons for navigation and bookmarks.')
         self.dialogs.show(self.dialog, 'Reader keyboard guide',
             'Tab and Shift+Tab move among named native controls.\n'
             'The full source text is read-only; use your usual screen-reader text navigation.\n'
-            'Ctrl+PageDown: next source page or text segment.\n'
-            'Ctrl+PageUp: previous source page or text segment.\n'
-            'Ctrl+G: go to a reading position in source order.\n'
-            'Alt+Left and Alt+Right: back and forward in this reading session.\n'
-            'Ctrl+B: add a named page bookmark.\n'
-            'Ctrl+Shift+B: open, rename or delete page bookmarks.\n'
-            'Ctrl+Shift+L: focus the current source location and verification status.\n'
+            + shortcuts + '\n'
             'Escape: close this reader and return to the library.\n\n'
             'EPUB synchronized recorded audio opens authored local SMIL/audio for the current source section. '
-            'Nothing plays until Play is chosen. Pause, Resume, Stop and previous/next recorded segments '
-            'remain native keyboard controls; source text and quotation authority are unchanged.\n\n'
+            'Nothing plays until Play is chosen. Pause, Resume, Stop and recorded-segment navigation '
+            'keep the original text and quotation authority unchanged.\n\n'
             'Resume and bookmarks save the current source page or text segment, not the NVDA cursor. '
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
@@ -452,6 +462,8 @@ class ReadingDialog:
                 return
         self.closed = True
         self.cancelled.set()
+        if hasattr(self, 'keyboard'):
+            self.keyboard.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -596,8 +608,7 @@ class ReadingActions:
             path = self.dialogs.path(self.frame, save=True)
             if path is None:
                 return
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root,
-                                                   title='Replace reading positions and bookmarks')
+            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
             if approval is None:
                 return
             self._guard(scope)
@@ -606,12 +617,13 @@ class ReadingActions:
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
-                return self._run(scope, lambda: write_export(path, content, private_root=scope.library.root,
-                                                             approval=approval))
+                return self._run(scope, lambda: write_export(path, content,
+                    private_root=scope.library.root, approval=approval,
+                    cancelled=self.frame.cancel_event.is_set))
             self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
                 lambda _: self.frame.report('Reading positions and page bookmarks exported.'))
         except Exception as exc:
-            self.frame.report(f'Reading state was not exported: {exc}')
+            self.frame.report(f'Reading state export: {exc}')
 
     def import_state(self, event=None):
         try:

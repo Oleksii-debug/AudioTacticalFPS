@@ -262,6 +262,31 @@ def record_publication(root, request_id, workspace, registration, revision, conf
     record_progress(root, request_id, result=receipt)
 
 
+def _validate_recovery_settings(record, config, mime, revision):
+    """Bind retained format and parser configuration to this exact request."""
+    from ..extract.document_formats import FORMAT_BY_MIME
+
+    settings = json.loads(config)
+    if not isinstance(settings, dict) or canonical(settings) != config:
+        raise ValueError('Stopped import extraction configuration changed.')
+    if mime == 'application/pdf':
+        if (record.get('job') != revision or settings.get('adapter') != 'page_ocr-v1'
+                or settings.get('kind') != 'physical_page'
+                or settings.get('config') != record['config']):
+            raise ValueError('Stopped PDF import has a different job or configuration.')
+    else:
+        adapter = ('strict-utf8-v1' if mime == 'text/plain' else
+                   'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
+                   'epub-spine-v1' if mime == 'application/epub+zip' else
+                   'ordered-document-v1')
+        if settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment':
+            raise ValueError('Stopped import has a different document adapter.')
+        if mime in FORMAT_BY_MIME and settings.get('format') != FORMAT_BY_MIME[mime].name:
+            raise ValueError('Stopped import has a different document format.')
+        if record.get('job') is not None and record['job'] != revision:
+            raise ValueError('Stopped import has a different saved job.')
+
+
 def _recover_publication(root, request_id, attempt, request_digest):
     """Bounded read-only validation after the stopped child has been reaped.
 
@@ -372,6 +397,7 @@ def _recover_publication(root, request_id, attempt, request_digest):
                     or expected['mime'] not in SUFFIXES or type(expected['size']) is not int
                     or not 0 < expected['size'] <= MAX_BYTES):
                 raise ValueError('Stopped import source manifest changed.')
+            _validate_recovery_settings(record, config, expected['mime'], revision)
             count, size = db.execute('SELECT count(*),sum(length(CAST(raw AS BLOB))) FROM page '
                                      'WHERE revision=?', (revision,)).fetchone()
             if count != receipt['completed'] or size is None or size > MAX_RECOVERY_TEXT:
@@ -403,6 +429,7 @@ def _recover_publication(root, request_id, attempt, request_digest):
             fingerprint = lambda info: (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
                                         info.st_size, info.st_mtime_ns, info.st_ctime_ns)
             hashed, size = sha256(), 0
+            retained_text = bytearray() if expected['mime'] == 'text/plain' else None
             with source.open('rb') as stream:
                 if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
                     raise ValueError('Stopped import original changed during read.')
@@ -412,11 +439,22 @@ def _recover_publication(root, request_id, attempt, request_digest):
                     if size > expected['size']:
                         raise ValueError('Stopped import original grew during read.')
                     hashed.update(block)
+                    if retained_text is not None:
+                        retained_text.extend(block)
                 if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
                     raise ValueError('Stopped import original changed during read.')
             if (fingerprint(regular(source)) != fingerprint(before) or size != expected['size']
                     or hashed.hexdigest() != receipt['asset']):
                 raise ValueError('Stopped import original checksum changed.')
+            if retained_text is not None:
+                expected_pages = retained_text.decode('utf-8-sig').split('\f')
+                if len(expected_pages) != count:
+                    raise ValueError('Stopped import text no longer matches its retained original.')
+                for index, (raw,) in enumerate(db.execute(
+                        'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (revision,))):
+                    check()
+                    if raw != expected_pages[index]:
+                        raise ValueError('Stopped import text no longer matches its retained original.')
             check()
             return dict(state='complete', workspace=workspace, edition=edition, id=revision,
                 asset=receipt['asset'], completed=count, total=count,
@@ -698,6 +736,131 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
                             request_id=request_id, new=new)
 
 
+
+def _publication_watermark(app, workspace):
+    """Release the read snapshot before starting the native worker."""
+    with app.read(workspace) as db:
+        # Revision rows are append-only in the accepted schema. A scalar is
+        # bounded even after many metadata revisions of the same edition.
+        return db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
+
+
+def _published_after_stop(app, initial, watermark, *, revision=None):
+    """Independently verify the exact revision after its owned receipt is checked.
+
+    A stopped process may have committed before returning its stdout receipt.
+    Existing/replayed revisions are not proof that this invocation completed.
+    This read never resumes parsing, changes a journal, or approves quotations.
+    It supplements the transaction receipt; fresh row IDs alone do not prove
+    which process attempt committed an otherwise identical source.
+    """
+    from ..catalog.membership import _metadata
+    from ..extract.document_formats import FORMAT_BY_MIME
+
+    try:
+        request = load_request(app.root, initial['request_id'])
+        identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
+                    'metadata', 'config', 'expected_manifest')
+        if any(request.get(key) != initial.get(key) for key in identity):
+            return None
+        metadata = request['metadata']
+        digest = request.get('asset_sha256')
+        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
+                or not isinstance(metadata, dict) or set(metadata) != FIELDS):
+            return None
+        workspace, edition = request['workspace'], metadata['edition_id']
+        with app.read(workspace) as db:
+            rows = db.execute(
+                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size, '
+                'w.title,e.language,e.edition AS edition_label,e.volume '
+                'FROM revision r JOIN sealed s ON s.revision=r.id '
+                'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
+                'JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
+                'JOIN catalog_asset c ON c.digest=e.asset '
+                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
+                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? '
+                'AND (? IS NULL OR r.id=?) LIMIT 2',
+                (workspace, edition, digest, watermark, revision, revision)).fetchall()
+            if len(rows) != 1:
+                return None
+            row = rows[0]
+            if (row['work'] != metadata['work_id'] or row['active'] is None
+                    or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
+                    or not 0 < row['size'] <= 64 * 1024 * 1024
+                    or not isinstance(row['config'], str)
+                    or len(row['config'].encode('utf-8')) > 4 * 1024 * 1024):
+                return None
+            settings = json.loads(row['config'])
+            if (not isinstance(settings, dict) or canonical(settings) != row['config']
+                    or sha256(canonical([workspace, edition, digest, row['config']])
+                              .encode('utf-8')).hexdigest() != row['id']):
+                return None
+            mime = row['mime']
+            _validate_recovery_settings(request, row['config'], mime, row['id'])
+            manifest = dict(sha256=digest, mime=mime, size=row['size'])
+            if request.get('expected_manifest') not in (None, manifest):
+                return None
+            original = app.assets.resolve(digest)
+            if original.suffix != MIME_SUFFIXES[mime] or original.stat().st_size != row['size']:
+                return None
+            title = _metadata(metadata['title']) or Path(request['source']).stem
+            authors = tuple(_metadata(value) for value in metadata['authors'])
+            # Citation display joins authors. Preserve their separate identities
+            # and all catalog fields before accepting a concurrent publication.
+            catalog_authors = tuple(author[0] for author in db.execute(
+                'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
+                (workspace, metadata['work_id'])))
+            if (row['title'] != title or catalog_authors != authors
+                    or (row['language'], row['edition_label'], row['volume']) != tuple(
+                        _metadata(metadata[field]) for field in ('language', 'edition', 'volume'))):
+                return None
+            source_metadata = db.execute(
+                'SELECT author,title,volume,edition_label FROM source_metadata '
+                'WHERE workspace=? AND edition=? AND revision=?',
+                (workspace, edition, row['id'])).fetchone()
+            expected = ('; '.join(authors) or None, title or 'Unknown title',
+                        _metadata(metadata['volume']), _metadata(metadata['edition']))
+            if source_metadata is None or tuple(source_metadata) != expected:
+                return None
+            for collection in metadata['collections']:
+                if not db.execute(
+                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
+                        (workspace, edition, collection)).fetchone():
+                    return None
+            count, text_bytes, nonempty = 0, 0, False
+            expected_text = (original.read_bytes().decode('utf-8-sig').split('\f')
+                             if mime == 'text/plain' else None)
+            for page in db.execute(
+                    'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
+                    'FROM page p LEFT JOIN indexed i ON i.id=p.id '
+                    'WHERE p.revision=? ORDER BY p.ordinal', (row['id'],)):
+                count += 1
+                raw = page['raw']
+                if not isinstance(raw, str) or '\x00' in raw:
+                    return None
+                encoded = raw.encode('utf-8')
+                text_bytes += len(encoded)
+                if (count > 10000 or text_bytes > 64 * 1024 * 1024
+                        or page['ordinal'] != count
+                        or page['digest'] != sha256(encoded).hexdigest()
+                        or page['printed'] is not None or page['verified'] != 0
+                        or page['physical'] != (count if mime == 'application/pdf' else None)
+                        or (row['active'] == row['id'] and page['indexed'] != raw)):
+                    return None
+                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
+                    return None
+                nonempty = nonempty or bool(raw.strip())
+            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
+                return None
+            return dict(state='complete' if row['active'] == row['id'] else 'superseded',
+                        workspace=workspace, edition=edition, id=row['id'], asset=digest,
+                        completed=count, total=count, verified=mime == 'text/plain',
+                        recovered_publication=True)
+    except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
+        # An absent, ambiguous or damaged binding grants no completion authority.
+        return None
+
+
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
                  timeout, request_id, new):
     if (not callable(cancelled) or type(timeout) not in (int, float)
@@ -712,6 +875,15 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
+        if record.get('attempt') is not None or record.get('publication_candidate') is not None:
+            # Explicit resume invalidates the previous process hint before
+            # resource admission can stop us. Fresh queued requests still have
+            # no execution attempt until admitted; a completed replay returned
+            # above without changing its durable result or resource ownership.
+            record = dict(record, state='pending', attempt=uuid4().hex,
+                          publication_candidate=None)
+            record.pop('result', None)
+            _store(root, request_id, record)
     from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled, ResourceError, ResourceTimeout
     with ExitStack() as reservations:
         try:
@@ -736,12 +908,19 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
 
 
 def _run_admitted_request(root, record, *, request_id, timeout, cancelled):
+    started = False
+
+    def worker_started():
+        nonlocal started
+        started = True
+
     attempt, request_digest = uuid4().hex, _request_digest(record)
     record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None,
                     result=dict(state='running', attempt=attempt, request_sha256=request_digest))
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled)
-    if result.get('state') in ('cancelled', 'timed_out', 'failed'):
+                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
+                     on_started=worker_started)
+    if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
         try:
             recovered = _recover_publication(root, request_id, attempt, request_digest)
         except (ValueError, OSError, sqlite3.Error, TypeError, KeyError):
@@ -749,13 +928,13 @@ def _run_admitted_request(root, record, *, request_id, timeout, cancelled):
                           'It may have published data. Resume this request to check its saved identity.')
         else:
             if recovered is not None:
-                result = recovered
+                result = dict(recovered, recovered_publication=True, worker_state=result['state'])
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False):
+def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
@@ -784,6 +963,8 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                                            stdin=input_stream, stdout=output, stderr=errors,
                                            env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
                                            **options)
+                if on_started is not None:
+                    on_started()
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled():

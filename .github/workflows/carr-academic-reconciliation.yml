@@ -19,7 +19,7 @@ concurrency:
 jobs:
   reconciled-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: carr-library
@@ -49,7 +49,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
       - name: Verify every reconciled path with strict isolated suites
-        timeout-minutes: 8
+        timeout-minutes: 20
         run: |
           set -euo pipefail
           python -m compileall -q src bootstrap
@@ -64,6 +64,14 @@ jobs:
             tests/extract/test_ocr_model_store.py \
             tests/extract/test_managed_ocr.py \
             tests/extract/test_ocr_languages.py \
+            tests/extract/test_special_ocr_models.py \
+            tests/ui/test_ocr_selection.py \
+            tests/citations/test_csl.py \
+            tests/academic_integration/test_formatting.py \
+            tests/academic_integration/test_documents.py \
+            tests/academic_integration/test_regeneration.py \
+            tests/academic_integration/test_citation_ui.py \
+            tests/academic_integration/test_end_to_end.py \
             tests/e2e/test_managed_ocr_import.py \
             tests/search/test_advanced_search.py \
             tests/search/test_federated_advanced.py \
@@ -93,6 +101,24 @@ jobs:
             tests/storage/test_studio_input_authority.py \
             tests/storage/test_durable_state_read.py \
             tests/storage/test_backup_v4_review.py \
+            tests/storage/test_backup_schema_identity.py \
+            tests/storage/test_backup_v4_sidecars.py \
+            tests/storage/test_backup_primary_producers.py \
+            tests/storage/test_backup_translation.py \
+            tests/storage/test_backup_transcription.py \
+            tests/storage/test_backup_book_plan_bindings.py \
+            tests/storage/test_backup_generated_audio.py \
+            tests/storage/test_backup_keyboard_drafts.py \
+            tests/storage/test_backup_pending_common4.py \
+            tests/reader/test_export_no_clobber.py \
+            tests/ingest/test_worker_publication_boundary.py \
+            tests/ingest/test_import_publication_point.py \
+            tests/e2e/test_import_worker_publication.py \
+            tests/ui/test_keyboard_manager.py \
+            tests/ui/test_studio_keyboard_registration.py \
+            tests/ui/test_studio_progress_results.py \
+            tests/ui/test_worker_cleanup.py \
+            tests/storage/test_keyboard_preferences.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.
 
@@ -150,7 +176,6 @@ jobs:
             tests/ui/test_operations_policy.py tests/e2e/test_operations_cli.py \
             tests/operations/test_resources_posix.py \
             tests/storage/test_state_replacement.py \
-            tests/packaging/test_refresh_private_bundle_review.py \
             tests/packaging/test_windows_bundle.py tests/packaging/test_prepare_publication_tools.py 2>&1 | tee ci-production-results/offline.txt
       - name: Verify actual loopback transport, approved jobs and signed client boundaries
         run: |
@@ -158,7 +183,8 @@ jobs:
           # Actual synthetic sockets run outside ci_check's global network denial.
           # The one Windows vault case is required separately by both native gates.
           python -B -m pytest -q -o addopts= -o xfail_strict=true \
-            tests/assistant tests/security -k 'not test_real_windows_vault_anchor_roundtrip' \
+            tests/assistant tests/security --ignore=tests/security/test_activation_lifetime_windows.py \
+            -k 'not test_real_windows_vault_anchor_roundtrip' \
             --junitxml=ci-production-results/providers-trust.xml 2>&1 | tee ci-production-results/providers-trust.txt
           python -B - <<'PY'
           import json, xml.etree.ElementTree as ET

@@ -1,4 +1,4 @@
-"""Headless native-action controllers against real SQLite, Node CSL and DOCX."""
+"""Headless native-action controllers against real SQLite, canonical QuickJS CSL and DOCX."""
 from dataclasses import replace
 import json
 from types import SimpleNamespace
@@ -7,12 +7,11 @@ from zipfile import ZipFile
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.academic_integration import CitationCluster, CitationRequest, CitationError, DoiMetadataClient, read_citation_docx
-from carr_library.academic_integration.doi import MetadataResponse
+from carr_library.academic_integration import CitationCluster, CitationRequest, CitationError, read_citation_docx
 from carr_library.ui.academic_library_dialog import AcademicController
 from carr_library.ui.citation_formatting import (
     CitationFormattingController, _scope, _guard, formatted_preview_text,
-    metadata_preview_text, reconcile_citations,
+    reconcile_citations,
 )
 
 
@@ -44,7 +43,9 @@ def test_actual_workspace_to_csl_to_docx_without_mutating_source_or_private_note
     assert "p. 12" in result.citations[0].text and "1–400" in result.bibliography[0].text
     preview = formatted_preview_text(result)
     assert result.attribution in preview and "Excluded other library" not in preview
-    destination = controller.export_docx(snapshot, result, tmp_path / "citation-document.docx")
+    receipt = controller.export_docx(snapshot, result, tmp_path / "citation-document.docx")
+    assert receipt.cleanup_warning is None
+    destination = receipt.path
     recovered = read_citation_docx(destination)
     assert recovered["references"][0]["id"] == reference.id
     with ZipFile(destination) as archive:
@@ -63,7 +64,7 @@ def test_bibliography_only_is_a_real_supported_export(prepared, tmp_path):
     snapshot = controller.load()
     result = controller.render(snapshot, reference_ids=(reference.id,), style="ieee")
     assert not result.citations and result.bibliography[0].text.startswith("[1]")
-    target = controller.export_docx(snapshot, result, tmp_path / "bibliography.docx")
+    target = controller.export_docx(snapshot, result, tmp_path / "bibliography.docx").path
     assert target.exists() and read_citation_docx(target)["clusters"] == []
 
 
@@ -149,33 +150,15 @@ def test_controller_cancellation_does_not_publish_or_modify_reference(prepared, 
     assert not (tmp_path / "cancelled.docx").exists()
 
 
-def test_doi_preview_controller_exports_only_review_metadata_and_never_imports(prepared, tmp_path):
+def test_legacy_doi_entrypoint_routes_to_the_existing_acquisition_workflow(prepared, monkeypatch):
+    from carr_library.ui import acquisition_dialog, citation_formatting
     library, workspace, _, academic, reference, _ = prepared
-    controller = CitationFormattingController(library, workspace)
+    frame = SimpleNamespace(library=library, active=(workspace, None))
     calls = []
-    body = json.dumps({"status": "ok", "message-type": "work", "message": {
-        "DOI": "10.5555/preview", "type": "journal-article", "title": ["External metadata"],
-        "author": [{"given": "Jane", "family": "Example"}], "issued": {"date-parts": [[2026]]}}}).encode()
-
-    def transport(request, *, cancelled):
-        calls.append(request)
-        return MetadataResponse(200, {"Content-Type": "application/json"}, body, request.url)
-
-    disabled = DoiMetadataClient(transport=transport)
-    with pytest.raises(PermissionError):
-        controller.lookup_doi(disabled, "10.5555/preview")
-    assert not calls
-    client = DoiMetadataClient(allow_network=True, transport=transport)
-    preview = controller.lookup_doi(client, "10.5555/preview")
-    text = metadata_preview_text(preview)
-    assert "External metadata" in text and "Permissions are unknown" in text
-    target = controller.save_doi_preview(preview, tmp_path / "preview.json")
-    stored = json.loads(target.read_text())
-    assert stored["review_required"] is True and stored["schema"] == "carr-doi-preview/1"
+    monkeypatch.setattr(acquisition_dialog, 'show_acquisition_dialog', lambda parent: calls.append(parent))
+    citation_formatting.show_doi_preview(frame)
+    assert calls == [frame]
     assert academic.list() == (reference,)
-    assert len(calls) == 1
-    with pytest.raises(FileExistsError):
-        controller.save_doi_preview(preview, target)
 
 
 def test_entrypoint_guard_requires_same_active_library_object_and_scope(prepared):
@@ -196,3 +179,37 @@ def test_entrypoint_guard_requires_same_active_library_object_and_scope(prepared
     frame.working = True
     with pytest.raises(ValueError, match="current operation"):
         _scope(frame)
+
+
+@pytest.mark.parametrize('mutation', ['new-destination', 'metadata', 'cancel', 'archived-scope'])
+def test_render_to_publication_rechecks_authority_and_never_clobbers(prepared, tmp_path, monkeypatch, mutation):
+    from carr_library.ui import citation_formatting
+    from carr_library.research.export_file import capture_export_destination
+    library, workspace, _, academic, reference, _ = prepared
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    result = controller.render(snapshot)
+    destination = tmp_path / 'reviewed.docx'
+    approval = capture_export_destination(destination, private_root=library.root)
+    cancelled = [False]
+    actual = citation_formatting.citation_docx_bytes
+    def render(*args, **kwargs):
+        content = actual(*args, **kwargs)
+        if mutation == 'new-destination':
+            destination.write_bytes(b'New unrelated user content')
+        elif mutation == 'metadata':
+            academic.update(reference, {'title': 'Independently changed title'})
+        elif mutation == 'archived-scope':
+            library.archive_workspace(workspace)
+        else:
+            cancelled[0] = True
+        return content
+    monkeypatch.setattr(citation_formatting, 'citation_docx_bytes', render)
+    with pytest.raises((ValueError, FileExistsError, InterruptedError, TimeoutError)):
+        controller.export_docx(snapshot, result, destination, approval=approval,
+                               cancelled=lambda: cancelled[0])
+    if mutation == 'new-destination':
+        assert destination.read_bytes() == b'New unrelated user content'
+    else:
+        assert not destination.exists()
+    assert not list(tmp_path.glob('.*.tmp'))

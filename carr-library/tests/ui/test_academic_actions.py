@@ -79,15 +79,14 @@ def module(monkeypatch):
     wx.CallAfter = wx.callbacks.append
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
-    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.ID_YES, None, []
-    class MessageDialog(Control):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            wx.overwrites.append(self)
-        def ShowModal(self):
-            if wx.overwrite_hook: wx.overwrite_hook()
-            return wx.overwrite_result
-    wx.MessageDialog = MessageDialog
+    wx.YES, wx.NO = wx.ID_YES, wx.ID_NO
+    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.YES, None, []
+    def message_box(message, title, style, parent):
+        wx.overwrites.append(SimpleNamespace(message=message, title=title, style=style, parent=parent))
+        if wx.overwrite_hook:
+            wx.overwrite_hook()
+        return wx.overwrite_result
+    wx.MessageBox = Mock(side_effect=message_box)
     root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
 
     def load(name, path):
@@ -507,4 +506,29 @@ def test_declining_overwrite_stops_before_render_and_queue(module, edition, tmp_
     assert not frame.jobs and destination.read_bytes() == b'Keep this work'
     library.export_bibliography.assert_not_called()
     library.export_outline.assert_not_called()
-    assert module.wx.overwrites[0].destroyed
+    assert module.wx.overwrites[0].style & module.wx.NO_DEFAULT
+
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_changed_destination_during_academic_render_is_preserved(
+        module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected.txt'
+    destination.write_bytes(b'Approved previous export')
+    choose(module, monkeypatch, path=destination)
+
+    def render(*args, **kwargs):
+        destination.write_bytes(b'Independent work saved during rendering')
+        return 'New export must not overwrite independent work'
+
+    if action == 'bibliography':
+        library.export_bibliography.side_effect = render
+        module.export_bibliography(frame)
+    else:
+        library.export_outline.side_effect = render
+        module.export_research_outline(frame)
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Independent work saved during rendering'
+    assert not list(tmp_path.glob('.research-export-*'))

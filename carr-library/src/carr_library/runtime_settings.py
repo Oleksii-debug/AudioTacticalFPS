@@ -82,10 +82,23 @@ def save_settings(state_root, value):
     atomic_json(path, value, replace=path.exists())
 
 
+def _selected_audio_tools(settings):
+    """Use the sealed installation for defaults; retain explicit selections.
+
+    The existing verifier checks the complete inner/outer runtime identity.
+    An invalid declared bundle must fail before ordinary PATH discovery.
+    """
+    from .audio_runtime import bundled_audio_tools
+    bundled = bundled_audio_tools()
+    return tuple(settings[name] if settings[name] is not None or bundled is None
+                 else bundled[name] for name in ('ffmpeg', 'ffprobe'))
+
+
 def voice_registry(state_root, *, cancelled=lambda: False):
     from .speech import VoiceRegistry, PiperProvider, LocalHelperProvider
     value = load_settings(state_root)
-    registry = VoiceRegistry.discover(ffmpeg=value['ffmpeg'], cancelled=cancelled)
+    ffmpeg, _ffprobe = _selected_audio_tools(value)
+    registry = VoiceRegistry.discover(ffmpeg=ffmpeg, cancelled=cancelled)
     try:
         from .integrations.dordiai_speech import install_dordiai_provider
         install_dordiai_provider(registry, value['dordiai'], cancelled=cancelled)
@@ -106,7 +119,8 @@ def audio_runtime(directory, *, state_root, input_roots=(), budget=None):
     from .audio import AudioRuntime
     from .audio.models import LocalModelConfig
     value = load_settings(state_root)
-    runtime = AudioRuntime(directory, ffmpeg=value['ffmpeg'], ffprobe=value['ffprobe'],
+    ffmpeg, ffprobe = _selected_audio_tools(value)
+    runtime = AudioRuntime(directory, ffmpeg=ffmpeg, ffprobe=ffprobe,
                            input_roots=input_roots, budget=budget)
     for item in value['music_models']:
         runtime.configure_music_model(LocalModelConfig(**item))

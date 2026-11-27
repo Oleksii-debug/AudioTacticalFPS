@@ -3,8 +3,9 @@
 Locations bind the source, exact revision and page bytes. A reader must resolve
 them against the authorized library before showing a page. This module neither
 approves extracted text nor changes the research database. It stores a bounded
-JSON sidecar using the same cooperative writer lock as the library. Full library
-backups retain this state; explicit workspace exports support selective transfer.
+JSON sidecar using the same cooperative writer lock as the library. Explicit
+workspace exports provide portable reading-state backups. Full-library backups
+can snapshot the validated sidecar under the same library writer lock.
 """
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -174,6 +175,32 @@ def _encode(positions, bookmarks, *, workspace=None):
     return text
 
 
+def _decode_bytes(raw):
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_BYTES:
+        raise ValueError('Reading-state file is empty or exceeds its size limit.')
+    try:
+        text = raw.decode('utf-8')
+    except UnicodeError as exc:
+        raise ValueError('Reading state must be valid UTF-8. The existing file was kept.') from exc
+    return _decode(text)
+
+
+def snapshot_locations(raw):
+    """Validate an exact sidecar snapshot and return its distinct locations.
+
+    This checks the complete bounded file, including labels and timestamps.
+    The backup service must separately bind these locations to its copied
+    database. Parsing a bookmark never authorizes a source or changes its
+    saved revision, including when that revision has become historical.
+    """
+    positions, bookmarks, _ = _decode_bytes(raw)
+    locations = {row[0] for row in positions.values()} | {
+        bookmark.location for bookmark in bookmarks.values()}
+    return tuple(sorted(locations, key=lambda item: (
+        item.workspace, item.edition, item.revision, item.kind, item.index,
+        item.text_sha256, item.asset_sha256)))
+
+
 def _file_identity(info):
     return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
@@ -192,13 +219,12 @@ class ReadingState:
         self.root = _private_root(root)
         self.path = self.root / FILENAME
 
-    def _read_validated(self):
-        """Read one stable snapshot, retaining its exact bytes for full backups."""
+    def _snapshot(self):
         _regular_if_present(self.path)
         try:
             before = self.path.lstat()
         except FileNotFoundError:
-            return None, {}, {}, None
+            return None, None
         if not 0 < before.st_size <= MAX_BYTES:
             raise ValueError('Reading-state file is empty or exceeds its size limit.')
         flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
@@ -210,16 +236,35 @@ class ReadingState:
             raw = stream.read(MAX_BYTES + 1)
         if len(raw) != before.st_size or _file_identity(self.path.lstat()) != _file_identity(before):
             raise ValueError('Reading-state file changed while reading.')
-        try:
-            text = raw.decode('utf-8')
-        except UnicodeError as exc:
-            raise ValueError('Reading state must be valid UTF-8. The existing file was kept.') from exc
-        positions, bookmarks, _ = _decode(text)
-        return raw, positions, bookmarks, _file_identity(before)
+        return raw, _file_identity(before)
+
+    def snapshot_bytes(self):
+        """Return the validated exact file bytes, or None when no state exists.
+
+        Callers taking a database-and-sidecar snapshot hold exclusive_writer
+        around both reads. This method does not acquire a second nested lock.
+        It rejects linked, replaced, malformed or oversized state rather than
+        omitting it from an otherwise successful backup.
+        """
+        raw, _ = self._snapshot()
+        if raw is not None:
+            snapshot_locations(raw)
+        return raw
+
+    def _read_validated(self):
+        """Compatibility for callers retaining an exact validated snapshot."""
+        raw, identity = self._snapshot()
+        if raw is None:
+            return None, {}, {}, None
+        positions, bookmarks, _ = _decode_bytes(raw)
+        return raw, positions, bookmarks, identity
 
     def _read(self):
-        _, positions, bookmarks, previous = self._read_validated()
-        return positions, bookmarks, previous
+        raw, identity = self._snapshot()
+        if raw is None:
+            return {}, {}, None
+        positions, bookmarks, _ = _decode_bytes(raw)
+        return positions, bookmarks, identity
 
     def _publish(self, positions, bookmarks, previous, *, cancelled=lambda: False):
         _check_cancelled(cancelled)

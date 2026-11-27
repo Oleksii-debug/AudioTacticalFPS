@@ -102,111 +102,105 @@ def panel(classes):
     return value
 
 
-def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collision(classes, monkeypatch, tmp_path):
-    from carr_library.ui.keyboard_settings import KeyboardSettings
-
+def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collision(classes, monkeypatch):
+    from carr_library.ui.keyboard_settings import register_menu_command
     env, _ = classes
     value = frame(classes)
     value.host, value.layout, value.Bind, value.SetMenuBar = Mock(), Mock(), Mock(), Mock()
-    value.library = SimpleNamespace(root=tmp_path)
-    value.SetAcceleratorTable = Mock()
-    menus = {}
+    value.progress_panel = Mock()
+    menus, install_order = {}, []
     identities = iter(range(200, 1000))
 
     class Item:
         def __init__(self, title):
             self.title, self.identity = title, next(identities)
         def GetItemLabel(self): return self.title
-        def SetItemLabel(self, title): self.title = title
         def GetId(self): return self.identity
         def GetSubMenu(self): return None
         def IsSeparator(self): return False
 
     class Menu:
-        def __init__(self):
-            self.items = []
-
+        def __init__(self): self.items = []
         def Append(self, identity, title):
             item = Item(title)
             self.items.append(item)
             return item
-
-        def GetMenuItems(self):
-            return self.items
+        def GetMenuItems(self): return self.items
 
     env['wx'].Menu = Menu
     env['wx'].MenuBar = lambda: SimpleNamespace(
-        Append=lambda menu, label: menus.update({label: menu}),
-        GetMenuCount=lambda: len(menus),
-        GetMenuLabel=lambda index: list(menus)[index],
-        GetMenu=lambda index: list(menus.values())[index])
-    env['wx'].ACCEL_CTRL, env['wx'].ACCEL_ALT, env['wx'].ACCEL_SHIFT = 1, 2, 4
-    env['wx'].AcceleratorTable = tuple
-    for index in range(1, 25):
-        setattr(env['wx'], 'WXK_F' + str(index), 1000 + index)
+        Append=lambda menu, label: menus.update({label: menu}))
     env['wx'].Button = Mock(return_value=Mock())
     env['wx'].ID_ANY, env['wx'].ALL = -1, 1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
-        'install_academic_tools',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions',
+        'install_academic_comparison_actions', 'install_library_assistant_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
-    new_installers, install_order = [], []
+    new_installers = []
     for module, installer in [('speech_dialog', 'install_speech_actions'),
-                              ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions'),
                               ('studio_dialog', 'install_studio_actions'),
                               ('book_audio_dialog', 'install_book_audio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
+                              ('save_actions', 'install_save_actions'),
                               ('document_conversion', 'install_conversion_actions'),
-                              ('keyboard_settings', 'install_keyboard_settings'),
+                              ('language_matrix', 'install_language_actions'),
+                              ('translation_dialog', 'install_translation_actions'),
                               ('citation_formatting', 'install_citation_actions'),
-                              ('operation_progress', 'install_operation_progress'),
                               ('transcription_dialog', 'install_transcription_actions'),
-                              ('command_palette', 'install_command_palette'),
                               ('trust_status', 'install_trust_actions'),
-                              ('operations_dialog', 'install_operations_actions'),
-                              ('save_actions', 'install_save_actions')]:
+                              ('operations_dialog', 'install_operations_actions')]:
         callback = Mock(side_effect=lambda frame, name=installer: install_order.append(name))
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
                             SimpleNamespace(**{installer: callback}))
+    keyboard = Mock(side_effect=lambda frame: install_order.append('install_keyboard_settings'))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
+                        SimpleNamespace(install_keyboard_settings=keyboard,
+                                        register_menu_command=register_menu_command))
+    progress = Mock(side_effect=lambda frame: install_order.append('install_progress_panel'))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.progress_panel',
+                        SimpleNamespace(install_progress_panel=progress))
 
     value._menus()
-
-    # Use the real preference controller: a label with a path separator must
-    # fail here, just as it does during actual desktop startup.
-    keyboard = KeyboardSettings(value, wx_module=env['wx'])
-    acquisition, = [command for command in keyboard.commands
-                   if command.action == 'academic/doi and isbn lookup and open-access sources']
-    assert acquisition.original_label == 'DOI and ISBN lookup and open-access sources...'
-    assert any(call.args[2].GetId() == acquisition.menu_id for call in value.Bind.call_args_list)
-    value.SetAcceleratorTable.assert_called_once()
 
     labels = [item.title for menu in menus.values() for item in menu.items]
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'Import Center: files, folders and queues' in labels
+    registered = {spec.command_id: (spec, item) for spec, item in value._pending_keyboard_commands}
+    assert set(registered) == {'research.advanced_query', 'academic.acquisition'}
+    advanced, advanced_item = registered['research.advanced_query']
+    assert advanced.default_shortcut == 'Ctrl+Alt+Q'
+    assert advanced_item.title.startswith('Build advanced query')
+    acquisition, acquisition_item = registered['academic.acquisition']
+    assert acquisition.default_shortcut == ''
+    assert acquisition_item.title == 'DOI and ISBN lookup and open-access sources...'
+    for registered_item in (advanced_item, acquisition_item):
+        assert any(call.args[2] is registered_item for call in value.Bind.call_args_list)
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, *new_installers):
+    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress):
         installer.assert_called_once_with(value)
-    assert install_order[-1] == 'install_keyboard_settings'
+    assert install_order[-2:] == ['install_keyboard_settings', 'install_progress_panel']
     assert install_order.index('install_studio_actions') < install_order.index('install_book_audio_actions')
     assert install_order.index('install_book_audio_actions') < install_order.index('install_keyboard_settings')
-    assert install_order.index('install_transcription_actions') < install_order.index('install_command_palette')
+    assert install_order.index('install_transcription_actions') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_operations_actions') < install_order.index('install_keyboard_settings')
+    assert value.operation_progress is value.progress_panel
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
     assert 'Library, Import Center' in guide
     assert 'Ctrl+Shift+B opens Import Center' not in guide
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
+    assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
     assert 'Ctrl+Shift+P opens Help, Find a command' in guide
     assert 'Book audio Prepare starts no speech' in guide
@@ -667,7 +661,7 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     f._drop,f.refresh_scopes = Mock(),Mock()
     f.scopes = []
     f.remember_data_dir = Mock()
-    f.keyboard_settings, f.operation_progress = Mock(), Mock()
+    f.keyboard_commands, f.progress_panel = Mock(), Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
     candidate = SimpleNamespace(root=tmp_path,list_scopes=Mock(return_value=()))
     classes[0]['LibraryApp'].return_value = candidate
@@ -675,8 +669,8 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     assert f.library is candidate
     f.remember_data_dir.assert_called_once_with(tmp_path)
     f._drop.assert_called_once()
-    f.keyboard_settings.reload.assert_called_once_with()
-    f.operation_progress.reload_preferences.assert_called_once_with()
+    f.keyboard_commands.change_root.assert_called_once_with(tmp_path)
+    f.progress_panel.change_root.assert_called_once_with(tmp_path)
 
 
 def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
@@ -825,6 +819,30 @@ def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, moda
     p.frame.run_job.assert_not_called()
     p.frame.library.save_hit.assert_not_called()
 
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'),
+    ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+])
+@pytest.mark.parametrize('index', [0, 1])
+def test_save_presentation_equivalent_topic_labels(classes, names, index):
+    import unicodedata
+    p = panel(classes)
+    p.frame.active = ('a', None)
+    p.frame.library.topics.return_value = tuple(
+        SimpleNamespace(id=f'topic-{i}', name=name)
+        for i, name in enumerate(names))
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = index
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', x).split())
+                for x in labels}) == 2
+    p.frame.run_job.call_args.args[1]()
+    p.frame.library.save_hit.assert_called_once_with(
+        'a', f'topic-{index}', 'hit', 'revision',
+        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
 
 @pytest.mark.parametrize('names', [
     ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
@@ -864,31 +882,6 @@ def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(c
     assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
     assert app.evidence(workspace, topics[0].id) == ()
     assert tuple(app.topics(workspace)) == topics
-    chooser.return_value.Destroy.assert_called_once()
-
-@pytest.mark.parametrize('names', [
-    ('Café', 'Cafe\u0301'),
-    ('Історія', 'Історія '),
-    ('Research  methods', 'Research methods'),
-])
-@pytest.mark.parametrize('index', [0, 1])
-def test_save_presentation_equivalent_topic_labels(classes, names, index):
-    import unicodedata
-    p = panel(classes)
-    p.frame.active = ('a', None)
-    p.frame.library.topics.return_value = tuple(
-        SimpleNamespace(id=f'topic-{i}', name=name)
-        for i, name in enumerate(names))
-    chooser = classes[0]['wx'].SingleChoiceDialog
-    chooser.return_value.GetSelection.return_value = index
-    p.save_selected(None)
-    labels = chooser.call_args.args[3]
-    assert len({' '.join(unicodedata.normalize('NFC', x).split())
-                for x in labels}) == 2
-    p.frame.run_job.call_args.args[1]()
-    p.frame.library.save_hit.assert_called_once_with(
-        'a', f'topic-{index}', 'hit', 'revision',
-        authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
     chooser.return_value.Destroy.assert_called_once()
 
 

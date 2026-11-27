@@ -11,6 +11,7 @@ import pytest
 
 from carr_library.audio.models import AudioCancelled
 from carr_library.audio.recording import RecordingOptions
+from carr_library.progress import ProgressHub, ProgressState, bind_progress, current_progress
 
 
 class Control:
@@ -28,6 +29,7 @@ class Control:
 class Progress:
     def __init__(self):
         self.ready, self.fail, self.holds, self.events = False, None, [], []
+        self.hub, self.active_task = ProgressHub(), None
     def hold_audio(self, *, recording=False):
         assert recording is True
         if self.fail == 'hold':
@@ -41,15 +43,26 @@ class Progress:
         hold = Hold()
         self.holds.append(hold)
         return hold
-    def start(self, *args, **kwargs):
+    def begin(self, phase, **kwargs):
         if self.fail == 'start': raise RuntimeError('Detached progress view')
-        return 1
-    def update(self, *args, **kwargs): pass
-    def succeed(self, *args, **kwargs):
-        if self.fail == 'succeed': raise RuntimeError('Detached progress view')
-        self.events.append('completed')
-    def fail(self, *args, **kwargs): self.events.append('failed')
-    def cancel(self, *args, **kwargs): self.events.append('cancelled')
+        self.active_task = self.hub.start(phase, **kwargs)
+        return self.active_task
+    def finish(self, task, state, message):
+        if state == 'succeeded':
+            if self.fail == 'succeed': raise RuntimeError('Detached progress view')
+            task.succeed(durable=True, message=message)
+            self.events.append('completed')
+        elif state == 'failed':
+            task.fail(message)
+            self.events.append('failed')
+        elif state == 'cancelled':
+            task.cancelled(message)
+            self.events.append('cancelled')
+        else:
+            raise AssertionError(state)
+    def reporting_unavailable(self, task, state, message):
+        if not task.snapshot().terminal:
+            task.unavailable(message)
 
 
 class Executor:
@@ -79,7 +92,8 @@ def handlers(values):
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names))
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions
-    namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'time': time}
+    namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'time': time,
+                 'ProgressState': ProgressState, 'bind_progress': bind_progress}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
 
@@ -171,6 +185,7 @@ def test_close_active_capture_waits_for_cleanup_without_releasing_recording_hold
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
     view.values['dialog'].EndModal.assert_called_once_with(2)
     assert view.progress.events[-1] == 'cancelled'
+    assert view.progress.active_task.snapshot().state == ProgressState.CANCELLED
 
 
 def test_partial_silence_admission_failure_releases_existing_holds_and_does_not_record(view):
@@ -204,3 +219,33 @@ def test_progress_observer_failure_cannot_turn_retained_recording_into_failed_wo
     assert view.values['saved'].items == ['My recording (2026-11-27T01:00:00)']
     assert len(view.captures) == 1 and view.progress.holds[0].closed
     assert 'Detached progress view' in view.progress.reporting_error
+
+
+def test_recording_progress_uses_actual_duration_in_the_bound_canonical_task(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    observed = []
+    actual = view.service.capture
+
+    def capture(device_id, **options):
+        assert current_progress() is view.progress.active_task
+        result = actual(device_id, **options)
+        observed.append(current_progress().snapshot())
+        return result
+
+    view.service.capture = capture
+    view.handlers.start()
+    assert view.values['dialog'].working is True
+    view.executor.finish()
+    snapshot, = observed
+    assert snapshot.state == ProgressState.RUNNING
+    assert snapshot.completed == 1000 and snapshot.unit == 'milliseconds'
+    assert snapshot.total is None and snapshot.percent is None
+    assert snapshot.phase == 'Recorded 1.0 seconds'
+    completed = view.progress.active_task.snapshot()
+    assert completed.operation_id == snapshot.operation_id
+    assert completed.state == ProgressState.SUCCEEDED and completed.percent == 100
+    assert view.progress.hub.snapshot(completed.operation_id) == completed
+    assert current_progress() is None and view.values['dialog'].working is False
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    assert len(view.captures) == 1 and view.values['saved'].items

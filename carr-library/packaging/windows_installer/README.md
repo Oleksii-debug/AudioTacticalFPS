@@ -217,3 +217,31 @@ upload the setup EXE, compiler, private bundle, model assets, credentials or key
 - Windows sharing rules: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
 - Job accounting: https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information
 - Querying an existing owned job: https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-queryinformationjobobject
+
+
+## Confirmed bootstrap cleanup
+
+The setup helper holds the existing exclusive installation lease and records
+its own bounded bootstrap receipt before starting the offline installer. It
+uses the same private Windows Job launcher for the selected installer and every
+pip or ensurepip descendant. A successful direct-child exit is insufficient:
+the helper retains exact process handles until every observed Job member is
+signaled, then closes the owned handles before removing its own unchanged
+receipt.
+
+If native launch returns no handle, the cleanup deadline expires, the receipt
+changes, or the helper dies, the receipt remains a conservative veto. The
+current and retained application directories and their original recovery
+receipts stay in place. No rollback, repair or uninstall is inferred safe from
+a PID, elapsed time or disappearance of the setup window. Both the native
+launcher before Python startup and ordinary managed application entries refuse
+work while that veto exists. Preserve the folder and use the matching verified
+setup in a new program folder; there is no automatic receipt reset.
+
+Ordinary confirmed bootstrap failures still restore the original application
+and original receipt bytes. The source filesystem suite retains its existing
+ENOSPC, foreign-file, user-data and rollback assertions. Separate Windows cases
+exercise direct-child exit with a live descendant, uncertain cleanup, actual
+helper death, post-create constructor failure, and early native-launch refusal
+before site initialization. These cases supplement the existing real Inno
+install/repair/uninstall qualification and do not replace it.

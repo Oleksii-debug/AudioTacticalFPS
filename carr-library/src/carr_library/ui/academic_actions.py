@@ -11,6 +11,7 @@ import wx
 
 from ..catalog.reference_exchange import preview_references
 from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 from .catalog_metadata_dialog import MetadataDialog, metadata_values
 from .export_destination import confirm_export_destination
 
@@ -296,7 +297,7 @@ def export_bibliography(frame):
         finally:
             dialog.Destroy()
         approval = confirm_export_destination(frame, path, private_root=library.root,
-                                               title='Replace bibliography')
+                                               title='Replace bibliography', wx_module=wx)
         if approval is None:
             return
         if not _current_scope(frame, library, workspace):
@@ -316,7 +317,7 @@ def export_bibliography(frame):
 
         frame.run_job('Exporting bibliography', operation, done)
     except Exception as exc:
-        frame.report(f'Bibliography was not exported: {exc}')
+        frame.report(f'Bibliography export: {exc}')
 
 
 def export_research_outline(frame):
@@ -334,7 +335,7 @@ def export_research_outline(frame):
         finally:
             dialog.Destroy()
         approval = confirm_export_destination(frame, path, private_root=library.root,
-                                               title='Replace research outline')
+                                               title='Replace research outline', wx_module=wx)
         if approval is None:
             return
         if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
@@ -353,7 +354,7 @@ def export_research_outline(frame):
 
         frame.run_job('Exporting verified research outline', operation, done)
     except Exception as exc:
-        frame.report(f'Research outline was not exported: {exc}')
+        frame.report(f'Research outline export: {exc}')
 
 
 def install_academic_actions(frame):

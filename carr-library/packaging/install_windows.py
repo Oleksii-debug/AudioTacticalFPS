@@ -40,8 +40,16 @@ def verify(root, *, manifest_bytes=None):
                 or not isinstance(commit, str) or len(commit) != 40
                 or any(character not in "0123456789abcdef" for character in commit)):
             raise ValueError("incomplete native launcher installation inventory")
-    elif launcher_files.intersection(files) or any(os.path.lexists(root / name) for name in launcher_files):
-        raise ValueError("unannounced native launcher files")
+    else:
+        # Canonical bundles may seal the previously Windows-qualified pinned
+        # executable without opting into a new ownership profile. Its inventory
+        # is still hashed below; it grants no managed/portable update authority.
+        legacy = ("bundled_launcher" not in manifest and "ResearchLibrary.exe" in files
+                  and "native-launcher-build.json" not in files
+                  and not os.path.lexists(root / "native-launcher-build.json"))
+        if (launcher_files.intersection(files)
+                or any(os.path.lexists(root / name) for name in launcher_files)) and not legacy:
+            raise ValueError("unannounced native launcher files")
     if any(path.name.casefold() in {name.casefold() for name in launcher_files}
            and path.name not in launcher_files for path in root.iterdir()):
         raise ValueError("ambiguous native launcher paths")
@@ -108,6 +116,8 @@ def verify(root, *, manifest_bytes=None):
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
     for component, flag, required in (
+            ('audio-runtime', 'bundled_audio_runtime', {'audio-runtime/audio-manifest.json',
+                'audio-runtime/bin/ffmpeg.exe', 'audio-runtime/bin/ffprobe.exe', 'audio-runtime/bin/ffplay.exe'}),
             ('audio', 'bundled_audio', {'audio/bin/ffmpeg.exe', 'audio/bin/ffprobe.exe', 'audio/LICENSE'}),
             ('citation-runtime', 'bundled_citation_runtime', {'citation-runtime/node.exe', 'citation-runtime/LICENSE'})):
         included = manifest.get(flag, False)
@@ -160,8 +170,14 @@ def main():
                     "install", "--no-index", "--only-binary=:all:", "--require-hashes",
                     "--no-cache-dir", "--find-links", str(root / "wheelhouse"),
                     "-r", str(root / "install.lock")], check=True, env=environment)
-    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m",
-                    "carr_library.native_checks", "--bundle-root", str(root)],
+    # Fixed pre-readiness native check only. Ordinary diagnostic CLI entries
+    # retain their application lease and cannot run through maintenance.
+    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-c",
+                    "import json, sys; from pathlib import Path; "
+                    "from carr_library.native_checks import check_native_dependencies; "
+                    "report = check_native_dependencies(Path(sys.argv[1])); "
+                    "print(json.dumps(report, ensure_ascii=False), flush=True); "
+                    "raise SystemExit(0 if report['status'] == 'PASS' else 1)", str(root)],
                    check=True, env=environment, cwd=root)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)

@@ -13,7 +13,7 @@ import pytest
 
 from carr_library.integrations.dordiai_speech import DordiaiSpeechProvider, install_dordiai_provider
 from carr_library.integrations.dordiai_voices import PCMChunk
-from test_dordiai_voices import ACTOR, runtime  # Same synthetic pipe actor, no second speech fixture engine.
+from .test_dordiai_voices import ACTOR, runtime  # Same synthetic pipe actor, no second speech fixture engine.
 
 
 @pytest.fixture

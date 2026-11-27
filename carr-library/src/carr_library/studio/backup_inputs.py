@@ -85,12 +85,7 @@ def _input_paths(project):
     return {cue.path for scene in project.scenes for cue in scene.cues}
 
 
-def input_review(studio_root):
-    """Local approval state, never inherited as authority from a backup."""
-    path = Path(studio_root) / Path(REVIEW).name
-    if not os.path.lexists(path):
-        return {'schema': 1, 'pending': [], 'approved': {}}
-    value = read_json(path)
+def validate_input_review(value):
     if (not isinstance(value, dict) or set(value) != {'schema', 'pending', 'approved'}
             or type(value['schema']) is not int or value['schema'] != 1
             or not isinstance(value['pending'], list)
@@ -107,6 +102,15 @@ def input_review(studio_root):
                 or re.fullmatch('[0-9a-f]{64}', identity['sha256']) is None):
             raise ValueError('Invalid restored Studio input approval.')
     return value
+
+
+def input_review(studio_root):
+    """Local approval state, never inherited as authority from a backup."""
+    path = Path(studio_root) / Path(REVIEW).name
+    if not os.path.lexists(path):
+        return {'schema': 1, 'pending': [], 'approved': {}}
+    value = read_json(path)
+    return validate_input_review(value)
 
 
 def approve_input_review(studio_root, selected, *, cancelled=lambda: False):
@@ -299,29 +303,13 @@ def snapshot_inputs(target, entries, *, source_root, max_bytes, max_files, cance
     return sorted(by_name.values(), key=lambda entry: entry['filename'])
 
 
-def restore_inputs(stage, destination, entries):
-    """Rebind typed project inputs only after the complete state hashes pass."""
-    stage, destination = Path(stage), Path(destination)
+def validate_backup_inputs(stage, entries, *, cancelled=lambda: False):
+    """Authenticate staged project/input bindings without following external paths."""
+    stage = Path(stage)
     by_name = {entry['filename']: entry for entry in entries}
     _reserved_names(by_name)
     if RECEIPT not in by_name:
-        # Legacy snapshots have no retained input bindings. Keep their project
-        # paths intact, but never carry old external output authority forward.
-        pending = set()
-        for name in by_name:
-            record = _record(stage, name)
-            if record is not None:
-                kind, value, project = record
-                pending.update(_input_paths(project))
-                if kind == 'job':
-                    atomic_json(stage / name, _waiting_job(value, project, project, retained=False),
-                                replace=True)
-        # Paths in an old backup describe its source machine. A later backup
-        # or render must not treat them as local file-selection permission.
-        if pending or REVIEW in by_name:
-            atomic_json(stage / REVIEW, {'schema': 1, 'pending': sorted(pending), 'approved': {}},
-                        replace=REVIEW in by_name)
-        return
+        return None, {}
     receipt = read_json(stage / RECEIPT)
     if (type(receipt) is not dict or set(receipt) != {'schema', 'projects', 'inputs', 'external_outputs'}
             or type(receipt['schema']) is not int or receipt['schema'] != 1
@@ -356,8 +344,35 @@ def restore_inputs(stage, destination, entries):
                 or not (match := ASSET.fullmatch(entry['filename']))
                 or match[1] != entry['sha256'] or by_name.get(entry['filename']) != entry
                 or type(entry['size_bytes']) is not int or entry['size_bytes'] <= 0
-                or digest_file(stage / entry['filename']) != entry['sha256']):
+                or digest_file(stage / entry['filename'], cancelled=cancelled) != entry['sha256']):
             raise ValueError('A required Studio input is missing or differs from its receipt.')
+    return receipt, actual
+
+
+def restore_inputs(stage, destination, entries, *, cancelled=lambda: False):
+    """Rebind typed project inputs only after the complete state hashes pass."""
+    stage, destination = Path(stage), Path(destination)
+    by_name = {entry['filename']: entry for entry in entries}
+    _reserved_names(by_name)
+    if RECEIPT not in by_name:
+        # Legacy snapshots have no retained input bindings. Keep their project
+        # paths intact, but never carry old external output authority forward.
+        pending = set()
+        for name in by_name:
+            record = _record(stage, name)
+            if record is not None:
+                kind, value, project = record
+                pending.update(_input_paths(project))
+                if kind == 'job':
+                    atomic_json(stage / name, _waiting_job(value, project, project, retained=False),
+                                replace=True)
+        # Paths in an old backup describe its source machine. A later backup
+        # or render must not treat them as local file-selection permission.
+        if pending or REVIEW in by_name:
+            atomic_json(stage / REVIEW, {'schema': 1, 'pending': sorted(pending), 'approved': {}},
+                        replace=REVIEW in by_name)
+        return
+    receipt, actual = validate_backup_inputs(stage, entries, cancelled=cancelled)
     for name, (kind, value, project) in actual.items():
         revised = project.to_dict()
         for scene in revised['scenes']:
