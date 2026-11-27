@@ -673,3 +673,40 @@ def test_controller_can_return_the_publication_receipt_without_rereading(control
     receipt = controller.export_to(target, format='ris', return_receipt=True)
     assert isinstance(receipt, ExportReceipt) and receipt.path == target
     assert len(controller.preview(target.read_bytes(), 'ris').entries) == 1
+
+
+@pytest.mark.parametrize('changed_after_confirmation', [False, True])
+def test_native_interchange_observer_tracks_actual_receipt_export_entry(
+        controller, native_handlers, tmp_path, changed_after_confirmation):
+    """The native probe observes the actual handler's receipt-bearing entrypoint."""
+    from pathlib import Path
+    from carr_library.ui import academic_library_dialog as ui
+
+    probe = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_bibliography_interchange_smoke.py'
+    definition = next(node for node in ast.walk(ast.parse(probe.read_text(encoding='utf-8')))
+                      if isinstance(node, ast.ClassDef) and node.name == 'ObservedController')
+    namespace = {'ui': ui, '__name__': 'native_interchange_observer_regression'}
+    exec(compile(ast.Module(body=[definition], type_ignores=[]), str(probe), 'exec'), namespace)
+    observed = namespace['ObservedController'](controller.library, controller.workspace)
+    reference = observed.create(form_values(draft(title='Observed real bibliography export')))
+    window = native_handlers.make('academic', observed)
+    window.controller = observed
+    destination = tmp_path / 'native-observer.bib'
+    destination.write_bytes(b'Explicitly selected previous bibliography')
+    approval = ui.capture_export_destination(destination, private_root=controller.library.root)
+    assert observed.export_attempts == []
+
+    if changed_after_confirmation:
+        newer = b'Independent work saved after confirmation'
+        destination.write_bytes(newer)
+        with pytest.raises(ValueError, match='destination changed'):
+            window.export_to(destination, format='bibtex', approval=approval)
+        assert destination.read_bytes() == newer
+    else:
+        text = window.export_to(destination, format='bibtex', approval=approval)
+        assert text.encode('utf-8') == destination.read_bytes()
+        restored, = observed.preview(destination.read_bytes(), 'bibtex').entries
+        assert restored.title == reference.title
+        assert window.status.value.startswith(f'Bibliography exported to {destination}.')
+    assert observed.export_attempts == [{'path': str(destination), 'format': 'bibtex'}]
+    assert not list(tmp_path.glob('.research-export-*'))

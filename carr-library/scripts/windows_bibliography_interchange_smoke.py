@@ -215,9 +215,9 @@ def main():
             super().__init__(*args)
             self.export_attempts = []
 
-        def export_to(self, destination, **options):
+        def export_result(self, destination, **options):
             self.export_attempts.append({'path': str(destination), 'format': options.get('format', 'text')})
-            return super().export_to(destination, **options)
+            return super().export_result(destination, **options)
 
     modules = (ui, academic_library, bibtex_import, export_file)
     installed = Path(sysconfig.get_path('purelib')).resolve()
