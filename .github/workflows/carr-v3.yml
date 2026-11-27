@@ -89,6 +89,35 @@ jobs:
             tests/packaging/test_worker_bytecode.py \
             tests/academic_integration/test_doi.py::test_worker_command_distinguishes_source_python_and_frozen_launcher \
             tests/academic_integration/test_doi.py::test_actual_isolated_worker_rejects_invalid_envelope_without_echoing_email \
+            tests/integrations/test_dordiai_convergence.py \
+            tests/speech/test_progress_speech.py \
+            tests/integrations/test_dordiai_voices.py \
+            tests/integrations/test_dordiai_speech.py \
+            tests/integrations/test_dordiai_settings.py \
+            tests/integrations/test_dordiai_ownership.py \
+            tests/integrations/test_dordiai_probe_cancellation.py \
+            tests/ui/test_keyboard_settings.py \
+            tests/speech/test_pronunciation_review.py \
+            tests/speech/test_pronunciation_reader_hook.py \
+            tests/speech/test_pronunciation_handlers.py \
+            tests/speech/test_reader_native_lifetime.py \
+            tests/ui/test_command_palette.py \
+            tests/reader/test_ebook_audio.py \
+            tests/ui/test_reader_dialog_lifetime.py \
+            tests/language_qualification/test_ui.py \
+            tests/audio/test_recording.py \
+            tests/audio/test_audio_process.py \
+            tests/ui/test_recording_dialog.py \
+            tests/studio/test_clip_dialog.py \
+            tests/studio/test_clip_editing.py \
+            tests/storage/test_studio_input_backup.py \
+            tests/studio/test_project_v1_compatibility.py \
+            tests/ui/test_studio_progress_isolation.py \
+            tests/assistant/test_local_planning.py \
+            tests/assistant/test_planning_handlers.py \
+            tests/assistant/test_local_planning_loopback.py \
+            tests/studio/test_daisy_publishing.py \
+            tests/studio/test_studio_controller.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -102,7 +131,7 @@ jobs:
 
   native-studio:
     runs-on: windows-2022
-    timeout-minutes: 40
+    timeout-minutes: 55
     defaults:
       run:
         shell: pwsh
@@ -169,6 +198,7 @@ jobs:
           import carr_library.speech.session
           import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.assistant.providers, carr_library.assistant.translation
+          import carr_library.assistant.llm, carr_library.assistant.service
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -179,6 +209,7 @@ jobs:
                    'carr_library.speech.session',
                    'carr_library.durable_state', 'carr_library.ui.save_actions',
                    'carr_library.assistant.providers', 'carr_library.assistant.translation',
+                   'carr_library.assistant.llm', 'carr_library.assistant.service',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -220,7 +251,8 @@ jobs:
                     'tests/extract/test_ocr_inventory_boundary.py',
                     'tests/assistant/test_translation.py',
                     'tests/ui/test_translation_selection.py',
-                    'tests/assistant/test_providers.py']
+                    'tests/assistant/test_providers.py',
+                    'tests/assistant/test_local_planning_loopback.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -247,6 +279,12 @@ jobs:
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr
           }
+      - name: Exercise installed local proposal review with an explicit loopback fixture
+        timeout-minutes: 5
+        run: |
+          # Real loopback HTTP is intentional and runs before outbound runtime blocking.
+          python -I -B -X utf8 scripts/windows_local_planning_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-local-planning.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native local proposal review failed.' }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime
         run: |
@@ -273,6 +311,22 @@ jobs:
            } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-v3-results/epubcheck-tool-binding.json'
           "CARR_EPUBCHECK_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_EPUBCHECK_JAVA=$java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $schemaPin = Get-Content -LiteralPath 'packaging/daisy-validation-schemas.json' -Raw | ConvertFrom-Json
+          if ($schemaPin.schema -ne 1 -or @($schemaPin.files.PSObject.Properties).Count -ne 5) { throw 'Unexpected reviewed DAISY validation schema set.' }
+          $schemas = Join-Path $env:RUNNER_TEMP 'carr-daisy-validation-schemas'
+          New-Item -ItemType Directory -Force $schemas | Out-Null
+          $schemaEvidence = @()
+          foreach ($property in $schemaPin.files.PSObject.Properties) {
+            if ($property.Name -notmatch '^[A-Za-z0-9._-]+$') { throw 'Invalid pinned schema basename.' }
+            $schemaFile = Join-Path $schemas $property.Name
+            Invoke-WebRequest -Uri $property.Value.url -OutFile $schemaFile
+            $schemaHash = (Get-FileHash -LiteralPath $schemaFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-Item -LiteralPath $schemaFile).Length -ne $property.Value.size -or $schemaHash -ne $property.Value.sha256) { throw ('DAISY validation schema differs from its size or hash pin: ' + $property.Name) }
+            $schemaEvidence += @{ name=$property.Name; sha256=$schemaHash; size=$property.Value.size; source=$property.Value.url }
+          }
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$schemas; files=$schemaEvidence
+           } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-v3-results/daisy-schema-binding.json'
+          "CARR_DAISY_SCHEMAS=$schemas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
@@ -311,8 +365,20 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
             & $python -I -B -X utf8 scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native draft timer lifetime acceptance failed.' }
-            & $python -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-sapi 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            & $python -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --daisy-schemas $env:CARR_DAISY_SCHEMAS --require-sapi 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native synchronized publication acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_recording_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed recording acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_clip_editor_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-clip-editor.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed clip-editor acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_epub_reading_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-epub-reading.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed epub-reading acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-pronunciation.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed pronunciation acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-command-palette.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed command-palette acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_reader_lifetime_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-lifetime.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed reader-lifetime acceptance failed.' }
             & $python -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-installed --report 'ci-v3-results/epub-conformance.json' 2>&1 | Tee-Object 'ci-v3-results/epub-conformance.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual EPUBCheck conformance acceptance failed.' }
           } finally {
@@ -329,7 +395,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_transcription_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_state_backup_portability.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_transcription_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_state_backup_portability.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py tests/integrations/test_dordiai_convergence.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/ui/test_recording_dialog.py tests/storage/test_studio_input_backup.py tests/ui/test_studio_progress_isolation.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require actual import-attempt, migration and export integrity regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
@@ -343,7 +409,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
+          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/integrations/test_dordiai_convergence.py tests/speech/test_progress_speech.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_keyboard_settings.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_pronunciation_handlers.py tests/speech/test_source.py tests/speech/test_reader_native_lifetime.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/language_qualification/test_ui.py tests/audio/test_recording.py tests/audio/test_audio_process.py tests/audio/test_recording_process_windows.py tests/ui/test_recording_dialog.py tests/studio/test_clip_dialog.py tests/studio/test_clip_editing.py tests/storage/test_studio_input_backup.py tests/studio/test_project_v1_compatibility.py tests/ui/test_studio_progress_isolation.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_studio_controller.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

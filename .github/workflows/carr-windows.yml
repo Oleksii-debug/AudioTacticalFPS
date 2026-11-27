@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: pwsh
@@ -241,6 +241,12 @@ jobs:
           & $env:CARR_PYTHON -I tests/ui/probe_catalog_insights_native.py 2>&1 | Tee-Object 'ci-results/native-catalog-insights.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed local proposal review with an explicit loopback fixture
+        timeout-minutes: 5
+        run: |
+          # Real loopback HTTP is intentional and runs before outbound runtime blocking.
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_local_planning_smoke.py 2>&1 | Tee-Object 'ci-results/native-local-planning.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native local proposal review failed.' }
       - name: Prepare the pinned local model through the existing upstream verifier
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         id: local_model
@@ -336,10 +342,26 @@ jobs:
            } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-results/epubcheck-tool-binding.json'
           "CARR_EPUBCHECK_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_EPUBCHECK_JAVA=$java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $schemaPin = Get-Content -LiteralPath 'packaging/daisy-validation-schemas.json' -Raw | ConvertFrom-Json
+          if ($schemaPin.schema -ne 1 -or @($schemaPin.files.PSObject.Properties).Count -ne 5) { throw 'Unexpected reviewed DAISY validation schema set.' }
+          $schemas = Join-Path $env:RUNNER_TEMP 'carr-daisy-validation-schemas'
+          New-Item -ItemType Directory -Force $schemas | Out-Null
+          $schemaEvidence = @()
+          foreach ($property in $schemaPin.files.PSObject.Properties) {
+            if ($property.Name -notmatch '^[A-Za-z0-9._-]+$') { throw 'Invalid pinned schema basename.' }
+            $schemaFile = Join-Path $schemas $property.Name
+            Invoke-WebRequest -Uri $property.Value.url -OutFile $schemaFile
+            $schemaHash = (Get-FileHash -LiteralPath $schemaFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-Item -LiteralPath $schemaFile).Length -ne $property.Value.size -or $schemaHash -ne $property.Value.sha256) { throw ('DAISY validation schema differs from its size or hash pin: ' + $property.Name) }
+            $schemaEvidence += @{ name=$property.Name; sha256=$schemaHash; size=$property.Value.size; source=$property.Value.url }
+          }
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$schemas; files=$schemaEvidence
+           } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-results/daisy-schema-binding.json'
+          "CARR_DAISY_SCHEMAS=$schemas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.epubcheck_runtime.conclusion == 'success' }}
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           if (-not $env:CARR_NATIVE_LAUNCHER -or -not $env:CARR_NATIVE_LAUNCHER_SHA256) { throw 'The native launcher must pass its exact process acceptance before bundle assembly.' }
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -482,8 +504,20 @@ jobs:
           if ($nativeOperations.status -ne 'PASS' -or $nativeOperations.native_destruction -ne 'PASS' -or $nativeOperations.native_parent_destruction -ne 'PASS' -or $nativeOperations.named_controls_and_policy_save -ne 'PASS' -or $nativeOperations.native_close_during_initialization -ne 'PASS') { throw 'Installed native resource controls did not complete their actual acceptance.' }
           & $installedPython -I -B -X utf8 scripts/windows_save_timer_smoke.py --output 'ci-results/installed-save-timer.json' 2>&1 | Tee-Object 'ci-results/installed-save-timer.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native draft timer lifetime acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' --require-sapi 2>&1 | Tee-Object 'ci-results/installed-native-publishing.txt'
+          & $installedPython -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' --daisy-schemas $env:CARR_DAISY_SCHEMAS --require-sapi 2>&1 | Tee-Object 'ci-results/installed-native-publishing.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native synchronized publication acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-recording.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed recording acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_clip_editor_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-clip-editor.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed clip-editor acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_epub_reading_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-epub-reading.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed epub-reading acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/native-pronunciation.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed pronunciation acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/native-command-palette.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed command-palette acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_lifetime_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-lifetime.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed reader-lifetime acceptance failed.' }
           & $installedPython -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-results/external-test-audio-binding.json' --require-installed --report 'ci-results/installed-epub-conformance.json' 2>&1 | Tee-Object 'ci-results/installed-epub-conformance.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed EPUBCheck conformance acceptance failed.' }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -505,12 +539,22 @@ jobs:
           import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.assistant.providers, carr_library.assistant.translation
           import carr_library.studio.publishing, carr_library.studio.cli
+          import carr_library.integrations.dordiai_voices, carr_library.integrations.dordiai_speech
+          import carr_library.audio.recording, carr_library.studio.clips, carr_library.studio.daisy
+          import carr_library.reader.ebook_audio, carr_library.ui.pronunciation_dialog
+          import carr_library.ui.command_palette, carr_library.ui.language_matrix
+          import carr_library.assistant.llm, carr_library.assistant.service
           from carr_library.native_runtime import activate_bundled_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
           installed_origins = {module.__name__: str(pathlib.Path(module.__file__).resolve())
                                for module in (carr_library, carr_library.durable_state, carr_library.ui.save_actions,
                                               carr_library.assistant.providers, carr_library.assistant.translation,
-                                              carr_library.studio.publishing, carr_library.studio.cli)}
+                                              carr_library.studio.publishing, carr_library.studio.cli,
+                                              carr_library.integrations.dordiai_voices, carr_library.integrations.dordiai_speech,
+                                              carr_library.audio.recording, carr_library.studio.clips, carr_library.studio.daisy,
+                                              carr_library.reader.ebook_audio, carr_library.ui.pronunciation_dialog,
+                                              carr_library.ui.command_palette, carr_library.ui.language_matrix,
+                                              carr_library.assistant.llm, carr_library.assistant.service)}
           assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in installed_origins.values()), installed_origins
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
@@ -592,6 +636,34 @@ jobs:
                             'tests/ingest/test_competing_publication_receipts.py',
                             'tests/audio/test_process_start_cleanup.py',
                             'tests/storage/test_state_backup_portability.py',
+                            'tests/integrations/test_dordiai_convergence.py',
+                            'tests/speech/test_progress_speech.py',
+                            'tests/integrations/test_dordiai_voices.py',
+                            'tests/integrations/test_dordiai_speech.py',
+                            'tests/integrations/test_dordiai_settings.py',
+                            'tests/integrations/test_dordiai_ownership.py',
+                            'tests/integrations/test_dordiai_probe_cancellation.py',
+                            'tests/ui/test_keyboard_settings.py',
+                            'tests/speech/test_pronunciation_review.py',
+                            'tests/speech/test_pronunciation_reader_hook.py',
+                            'tests/speech/test_pronunciation_handlers.py',
+                            'tests/speech/test_reader_native_lifetime.py',
+                            'tests/ui/test_command_palette.py',
+                            'tests/reader/test_ebook_audio.py',
+                            'tests/ui/test_reader_dialog_lifetime.py',
+                            'tests/language_qualification/test_ui.py',
+                            'tests/audio/test_recording.py',
+                            'tests/audio/test_audio_process.py',
+                            'tests/audio/test_recording_process_windows.py',
+                            'tests/ui/test_recording_dialog.py',
+                            'tests/studio/test_clip_dialog.py',
+                            'tests/studio/test_clip_editing.py',
+                            'tests/storage/test_studio_input_backup.py',
+                            'tests/studio/test_project_v1_compatibility.py',
+                            'tests/assistant/test_local_planning.py',
+                            'tests/assistant/test_planning_handlers.py',
+                            'tests/studio/test_daisy_publishing.py',
+                            'tests/studio/test_studio_controller.py',
                           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -827,7 +899,35 @@ jobs:
             'tests/ui/test_profile_project_exports.py',
             'tests/packaging/test_worker_bytecode.py',
             'tests/audio/test_process_start_cleanup.py',
-            'tests/storage/test_state_backup_portability.py'
+            'tests/storage/test_state_backup_portability.py',
+            'tests/integrations/test_dordiai_convergence.py',
+            'tests/speech/test_progress_speech.py',
+            'tests/integrations/test_dordiai_voices.py',
+            'tests/integrations/test_dordiai_speech.py',
+            'tests/integrations/test_dordiai_settings.py',
+            'tests/integrations/test_dordiai_ownership.py',
+            'tests/integrations/test_dordiai_probe_cancellation.py',
+            'tests/ui/test_keyboard_settings.py',
+            'tests/speech/test_pronunciation_review.py',
+            'tests/speech/test_pronunciation_reader_hook.py',
+            'tests/speech/test_pronunciation_handlers.py',
+            'tests/speech/test_reader_native_lifetime.py',
+            'tests/ui/test_command_palette.py',
+            'tests/reader/test_ebook_audio.py',
+            'tests/ui/test_reader_dialog_lifetime.py',
+            'tests/language_qualification/test_ui.py',
+            'tests/audio/test_recording.py',
+            'tests/audio/test_audio_process.py',
+            'tests/audio/test_recording_process_windows.py',
+            'tests/ui/test_recording_dialog.py',
+            'tests/studio/test_clip_dialog.py',
+            'tests/studio/test_clip_editing.py',
+            'tests/storage/test_studio_input_backup.py',
+            'tests/studio/test_project_v1_compatibility.py',
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_planning_handlers.py',
+            'tests/studio/test_daisy_publishing.py',
+            'tests/studio/test_studio_controller.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR

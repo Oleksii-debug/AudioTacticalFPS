@@ -75,3 +75,52 @@ def test_actual_cli_verification_detects_later_edited_epub(source_job, tmp_path)
     result = cli(root, 'verify-publication', record['id'])
     assert result.returncode == 1 and 'receipt' in result.stderr and not result.stdout
     assert target.read_bytes() == b'Edited after export'
+
+
+def test_actual_cli_daisy_export_verify_and_required_publisher(source_job, tmp_path):
+    from carr_library.studio.daisy import inspect_daisy
+    service, state = source_job
+    root = service.root.parent.parent
+    target = tmp_path / 'cli-daisy.zip'
+    missing = cli(root, 'publish-daisy', state['id'], '--output', target)
+    assert missing.returncode == 2 and '--publisher' in missing.stderr and not target.exists()
+    exported = cli(root, 'publish-daisy', state['id'], '--output', target,
+                   '--language', 'uk', '--publisher', 'Explicit synthetic publisher')
+    assert exported.returncode == 0, exported.stderr
+    record = json.loads(exported.stdout)
+    assert record['format'] == 'daisy-2.02' and record['status'] == 'complete'
+    assert inspect_daisy(target)['publisher'] == 'Explicit synthetic publisher'
+    checked = cli(root, 'verify-publication', record['id'])
+    assert checked.returncode == 0 and json.loads(checked.stdout)['artifact'] == record['artifact']
+    before = target.read_bytes()
+    repeated = cli(root, 'publish-daisy', state['id'], '--output', target, '--publisher', 'Explicit synthetic publisher')
+    assert repeated.returncode == 1 and target.read_bytes() == before
+
+
+
+def test_cli_cleanup_failure_preserves_actual_completed_publication(source_job, tmp_path, monkeypatch, capsys):
+    from carr_library.studio import cli as entry
+    from carr_library.studio.publishing import PublicationService
+    service, state = source_job
+    root = service.root.parent.parent
+    output = tmp_path / 'completed-before-cleanup.epub'
+    actual_close = getattr(entry.ProductionService, 'close', None)
+    closed = []
+
+    def failed_close(production):
+        if callable(actual_close):
+            actual_close(production)
+        closed.append(production)
+        raise OSError('Synthetic final voice cleanup failure')
+
+    monkeypatch.setattr(entry.ProductionService, 'close', failed_close, raising=False)
+    code = entry.main(['--data-dir', str(root), 'publish-epub', state['id'],
+                       '--output', str(output), '--language', 'uk'])
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert code == 0 and result['status'] == 'complete' and closed
+    assert 'Local voice cleanup was not confirmed' in captured.err
+    assert 'Synthetic final voice cleanup failure' in captured.err
+    original = output.read_bytes()
+    verified = PublicationService(service).verify(result['id'])
+    assert verified['artifact'] == result['artifact'] and output.read_bytes() == original

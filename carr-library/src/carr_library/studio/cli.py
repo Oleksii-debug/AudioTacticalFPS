@@ -18,6 +18,25 @@ def data_directory(selected):
     return selected_directory() or user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
+def _close_production(service):
+    """Report lifecycle cleanup separately from the completed command outcome."""
+    if service is None:
+        return
+    try:
+        close = getattr(service, 'close', None)
+        if not callable(close) or close() is not False:
+            return
+        detail = 'the owned voice worker has not confirmed shutdown'
+    except (Exception, KeyboardInterrupt) as exc:
+        detail = type(exc).__name__ + ': ' + str(exc)[:1000]
+    try:
+        print('Local voice cleanup was not confirmed: ' + detail + '.',
+              file=sys.stderr, flush=True)
+    except (OSError, ValueError):
+        # A closed diagnostics stream must not replace the command's exit code.
+        pass
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
@@ -27,17 +46,22 @@ def main(argv=None):
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
-    operations.add_parser('publications', help='List saved EPUB receipts; use verify-publication to check actual bytes')
-    publish = operations.add_parser('publish-epub', help='Export a completed Studio job as local EPUB3 with measured line overlays')
-    publish.add_argument('job_id')
-    publish.add_argument('--output', type=Path, required=True, help='New .epub file in an existing directory; never overwritten')
-    publish.add_argument('--language', default='und', help='Publication language tag, such as uk, en or und')
-    publish.add_argument('--creator', default='')
-    publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
-    publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
-    verify = operations.add_parser('verify-publication', help='Verify a saved EPUB receipt or recover completed publication after interruption')
+    operations.add_parser('publications', help='List saved publication receipts; use verify-publication to check actual bytes')
+    for operation, extension, description in (
+            ('publish-epub', '.epub', 'Local EPUB3 with measured line overlays'),
+            ('publish-daisy', '.zip', 'DAISY 2.02 file-set ZIP with measured line synchronization')):
+        publish = operations.add_parser(operation, help=description + ' from a completed Studio job')
+        publish.add_argument('job_id')
+        publish.add_argument('--output', type=Path, required=True, help=f'New {extension} file in an existing directory; never overwritten')
+        publish.add_argument('--language', default='und', help='Publication language, such as uk, en or und')
+        publish.add_argument('--creator', default='')
+        publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+        publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+        if operation == 'publish-daisy':
+            publish.add_argument('--publisher', required=True, help='Publisher metadata explicitly supplied for this publication')
+    verify = operations.add_parser('verify-publication', help='Verify a saved receipt or recover completed publication after interruption')
     verify.add_argument('publication_id')
-    verify.add_argument('--file', type=Path, help='Explicit existing EPUB after relocation; must match the exact saved receipt')
+    verify.add_argument('--file', type=Path, help='Explicit existing publication after relocation; must match the exact saved receipt')
     verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
     verify.add_argument('--timeout', type=float, default=3600)
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
@@ -52,6 +76,7 @@ def main(argv=None):
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
     args = parser.parse_args(argv)
+    service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
@@ -66,7 +91,7 @@ def main(argv=None):
         elif args.operation == 'capabilities':
             runtime = service._runtime()
             result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
-        elif args.operation in ('publish-epub', 'publications', 'verify-publication'):
+        elif args.operation in ('publish-epub', 'publish-daisy', 'publications', 'verify-publication'):
             from ..audio.models import AudioBudget
             from .publishing import PublicationService
             budget = (AudioBudget(timeout=args.timeout, max_output_bytes=args.max_bytes)
@@ -76,6 +101,10 @@ def main(argv=None):
                 result = publisher.publications()
             elif args.operation == 'verify-publication':
                 result = publisher.verify(args.publication_id, output=args.file)
+            elif args.operation == 'publish-daisy':
+                result = publisher.export_daisy(args.job_id, args.output, language=args.language,
+                    creator=args.creator, publisher=args.publisher,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
             else:
                 result = publisher.export_epub(args.job_id, args.output, language=args.language, creator=args.creator,
                     progress=lambda message: print(message, file=sys.stderr, flush=True))
@@ -98,48 +127,78 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        if args.operation in ('publish-epub', 'verify-publication'):
-            print('EPUB operation interrupted. A saved receipt may refer to a completed file; '
-                  'verify that existing EPUB before another export.', file=sys.stderr)
+        if args.operation in ('publish-epub', 'publish-daisy', 'verify-publication'):
+            print('Publication interrupted. A saved receipt may refer to a completed file; '
+                  'verify that existing publication before another export.', file=sys.stderr)
         else:
             print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
         return 130
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        _close_production(service)
 
 
 def assistant_main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
     parser.add_argument('--data-dir', type=Path)
-    parser.add_argument('--instructions', type=Path)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--instructions', type=Path)
+    source.add_argument('--resume')
+    source.add_argument('--list-local-profiles', action='store_true',
+                        help='List enabled local chat profiles without contacting them')
+    parser.add_argument('--local-profile',
+                        help='Explicit profile ID for a proposal only; save and review its JSON before a separate --run')
     parser.add_argument('--workspace')
     parser.add_argument('--input-root', action='append', type=Path, default=[])
     parser.add_argument('--output-root', type=Path)
     parser.add_argument('--allow-create', action='store_true')
     parser.add_argument('--allow-full-backup', action='store_true')
     parser.add_argument('--run', action='store_true')
-    parser.add_argument('--resume')
     args = parser.parse_args(argv)
-    if bool(args.instructions) == bool(args.resume):
-        parser.error('Choose an instruction file or a saved job ID to resume.')
+    if args.local_profile is not None and (not args.instructions or args.run):
+        parser.error('--local-profile requires --instructions and cannot be combined with --run. '
+                     'Save and review the proposed JSON, then use it as --instructions in a separate invocation.')
+    if args.list_local_profiles and args.run:
+        parser.error('--list-local-profiles does not execute a plan.')
+    production = None
     try:
         from ..application import LibraryApp
         from ..assistant import AssistantService, Scope
+        from ..assistant.credentials import validate_profile_id
+        from ..assistant.models import local_path, text
+        if args.local_profile is not None:
+            validate_profile_id(args.local_profile)
+        instruction = None
+        if args.instructions:
+            path = local_path(args.instructions)
+            maximum = 512 * 1024 if args.local_profile is not None else 4 * 1024**2
+            with path.open('rb') as stream:
+                raw = stream.read(maximum + 1)
+            if len(raw) > maximum:
+                raise ValueError('Instruction file exceeds its budget.')
+            instruction = text(raw.decode('utf-8-sig'), 'assistant instruction', maximum=maximum)
         app = LibraryApp(data_directory(args.data_dir))
         production = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
         service = AssistantService(app, production=production.assistant_callback)
-        if args.resume:
+        if args.list_local_profiles:
+            result = [{'id': profile.id, 'name': profile.name, 'endpoint': profile.endpoint,
+                       'model': profile.model} for profile in service.local_planner_profiles()]
+        elif args.resume:
             if not args.run:
                 result = asdict(service.get(args.resume))
             else:
                 result = asdict(service.resume(args.resume))
         else:
-            if args.instructions.stat().st_size > 4 * 1024**2:
-                raise ValueError('Instruction file exceeds its budget.')
             scope = Scope(args.workspace, tuple(args.input_root), args.output_root,
                           allow_create=args.allow_create, allow_full_backup=args.allow_full_backup)
-            plan = service.preview(args.instructions.read_text(encoding='utf-8-sig'), scope)
+            if args.local_profile is not None:
+                plan = service.propose_local(instruction, scope, profile_id=args.local_profile)
+                print('Local proposal only. Review this JSON and its exact scope before running it in a separate invocation.',
+                      file=sys.stderr, flush=True)
+            else:
+                plan = service.preview(instruction, scope)
             result = plan.to_dict()
             if args.run:
                 identity = service.submit(plan)
@@ -154,6 +213,8 @@ def assistant_main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Local assistant: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        _close_production(production)
 
 
 if __name__ == '__main__':

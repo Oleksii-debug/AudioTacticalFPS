@@ -95,6 +95,11 @@ class Cue:
     gain_db: float = -6
     pan: float = 0
     role: str = 'sfx'
+    trim_start: float = 0
+    duration: float | None = None
+    fade_in: float = 0
+    fade_out: float = 0
+    title: str = ''
 
     def __post_init__(self):
         _id(self.id)
@@ -102,8 +107,16 @@ class Cue:
         _number(self.start, 'Cue start', 0, 31_536_000)
         _number(self.gain_db, 'Cue gain', -60, 12)
         _number(self.pan, 'Cue pan', -1, 1)
-        if self.role not in ('sfx', 'ambience', 'music'):
+        if self.role not in ('sfx', 'ambience', 'music', 'microphone'):
             raise ValueError('Invalid cue track role.')
+        _number(self.trim_start, 'Clip source start', 0, 31_536_000)
+        if self.duration is not None:
+            _number(self.duration, 'Clip duration', .000001, 31_536_000)
+        _number(self.fade_in, 'Clip fade in', 0, 31_536_000)
+        _number(self.fade_out, 'Clip fade out', 0, 31_536_000)
+        _text(self.title, 'clip title', 512, True)
+        if self.duration is not None and max(self.fade_in, self.fade_out) > self.duration:
+            raise ValueError('A clip fade exceeds its selected duration.')
 
 
 @dataclass(frozen=True)
@@ -147,7 +160,7 @@ class Project:
         _id(self.id)
         _text(self.title, 'project title', 512)
         _text(self.original_script, 'original script', 16_000_000, True)
-        if self.schema != 1 or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+        if self.schema not in (1, 2) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
             raise ValueError('Unsupported project schema or revision.')
         if self.mode not in ('faithful', 'authored'):
             raise ValueError('Choose faithful narration or explicitly authored production.')
@@ -162,13 +175,28 @@ class Project:
             raise ValueError('Duplicate role or scene ID.')
         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
             raise ValueError('A line uses an unknown role.')
+        if self.schema >= 2 and any(len({cue.id for cue in scene.cues}) != len(scene.cues)
+                                    for scene in self.scenes):
+            raise ValueError('Duplicate scene clip ID.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+            raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
 
     @property
     def fingerprint(self):
         return sha256(encode(self.to_dict())).hexdigest()
 
     def to_dict(self):
-        return asdict(self)
+        value = asdict(self)
+        if self.schema == 1:
+            # Keep every pre-editor project/job fingerprint stable. Schema 2
+            # explicitly carries the new optional clip selection and fade data.
+            for scene in value['scenes']:
+                for cue in scene['cues']:
+                    for name in ('trim_start', 'duration', 'fade_in', 'fade_out', 'title'):
+                        cue.pop(name)
+        return value
 
     @classmethod
     def from_dict(cls, value):

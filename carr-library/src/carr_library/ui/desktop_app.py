@@ -521,6 +521,8 @@ class DesktopFrame(WorkspaceFrame):
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
+        from .recording_dialog import install_recording_actions
+        install_recording_actions(self)
         install_operations_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)

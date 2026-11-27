@@ -90,6 +90,7 @@ packages = [
   "carr_library.assistant",
   "carr_library.operations",
   "carr_library.conversion",
+  "carr_library.integrations",
   "carr_library.academic_integration",
   "carr_library.language_qualification",
   "bootstrap",

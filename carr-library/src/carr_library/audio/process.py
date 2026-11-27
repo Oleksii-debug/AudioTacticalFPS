@@ -19,6 +19,21 @@ class ProcessResult:
     stdout: bytes
     stderr: bytes
     elapsed: float
+    returncode: int = 0
+    stopped: bool = False
+
+
+def native_audio_environment(environment=None):
+    """Keep required host settings without ambient FFmpeg report-file writes.
+
+    FFREPORT can write to an arbitrary inherited path even for a read-only
+    inspection. Diagnostic capture belongs to this application's bounded pipes.
+    Work on a copy so callers' explicit environments and the host stay intact.
+    """
+    return {key: value for key, value in
+            (os.environ if environment is None else environment).items()
+            if not ((isinstance(key, str) and key.casefold() == 'ffreport')
+                    or (isinstance(key, bytes) and key.lower() == b'ffreport'))}
 
 
 def _terminate(process):
@@ -41,15 +56,79 @@ def _terminate(process):
         process.wait(timeout=5)
 
 
+def _capture_lifetime(process):
+    """Keep a Windows capture in an owned job, including after a host crash.
+
+    The job handle is not inherited by the child. Windows closes it when this
+    host exits, and KILL_ON_JOB_CLOSE terminates the capture and its children.
+    An unsupported or rejected job fails closed. Ordinary render workers keep
+    their existing process behavior.
+    https://learn.microsoft.com/windows/win32/procthread/job-objects
+    """
+    if os.name != 'nt':
+        return lambda: None
+    import ctypes
+    from ctypes import wintypes
+
+    class BasicLimits(ctypes.Structure):
+        _fields_ = [('PerProcessUserTimeLimit', ctypes.c_longlong),
+            ('PerJobUserTimeLimit', ctypes.c_longlong), ('LimitFlags', wintypes.DWORD),
+            ('MinimumWorkingSetSize', ctypes.c_size_t), ('MaximumWorkingSetSize', ctypes.c_size_t),
+            ('ActiveProcessLimit', wintypes.DWORD), ('Affinity', ctypes.c_size_t),
+            ('PriorityClass', wintypes.DWORD), ('SchedulingClass', wintypes.DWORD)]
+
+    class IoCounters(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_ulonglong) for name in
+            ('ReadOperationCount', 'WriteOperationCount', 'OtherOperationCount',
+             'ReadTransferCount', 'WriteTransferCount', 'OtherTransferCount')]
+
+    class ExtendedLimits(ctypes.Structure):
+        _fields_ = [('BasicLimitInformation', BasicLimits), ('IoInfo', IoCounters),
+            ('ProcessMemoryLimit', ctypes.c_size_t), ('JobMemoryLimit', ctypes.c_size_t),
+            ('PeakProcessMemoryUsed', ctypes.c_size_t), ('PeakJobMemoryUsed', ctypes.c_size_t)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    for name, arguments, result in (
+            ('CreateJobObjectW', [ctypes.c_void_p, wintypes.LPCWSTR], wintypes.HANDLE),
+            ('SetInformationJobObject', [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD], wintypes.BOOL),
+            ('OpenProcess', [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+            ('AssignProcessToJobObject', [wintypes.HANDLE, wintypes.HANDLE], wintypes.BOOL),
+            ('CloseHandle', [wintypes.HANDLE], wintypes.BOOL)):
+        function = getattr(kernel, name)
+        function.argtypes, function.restype = arguments, result
+    job = kernel.CreateJobObjectW(None, None)
+    if not job:
+        raise AudioError('Windows could not protect the microphone process lifetime.')
+    child = None
+    try:
+        limits = ExtendedLimits()
+        limits.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not kernel.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+            raise AudioError('Windows could not configure microphone cleanup.')
+        child = kernel.OpenProcess(0x0100 | 0x0001, False, process.pid)  # SET_QUOTA | TERMINATE
+        if not child or not kernel.AssignProcessToJobObject(job, child):
+            raise AudioError('Windows could not attach microphone cleanup; recording was stopped.')
+    except BaseException:
+        kernel.CloseHandle(job)
+        raise
+    finally:
+        if child:
+            kernel.CloseHandle(child)
+    return lambda: kernel.CloseHandle(job)
+
+
 def run_process(args, *, budget=None, cancelled=lambda: False,
-                watch=(), progress=None, env=None, cwd=None):
+                watch=(), progress=None, env=None, cwd=None,
+                stop_requested=None, allow_failure=False):
     """Run an already constructed argument vector, never a shell expression.
 
     Progress callbacks receive rendered seconds from FFmpeg's progress stream.
     Ordinary stdout/stderr have a *total* byte cap, including a fast child which
     finishes between polls. Expected progress is streamed into a single latest
     value rather than accumulated for multi-hour renders.  Callbacks run on the
-    caller's thread. No child inherits stdin.
+    caller's thread. No child inherits stdin. Explicit capture callers may
+    request FFmpeg's fixed ``q`` command through an owned pipe to finalize PCM;
+    cancellation still terminates and discards incomplete output.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -58,17 +137,22 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Invalid audio worker argument.')
     if not Path(args[0]).is_absolute():
         raise ValueError('Audio worker must use a resolved executable.')
+    if stop_requested is not None and not callable(stop_requested):
+        raise ValueError('Graceful audio stop requires a callback.')
+    if type(allow_failure) is not bool:
+        raise ValueError('Diagnostic exit handling must be explicit.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before starting.')
     watched = tuple(Path(path) for path in watch)
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
-    process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
+    process = subprocess.Popen(args, stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-        cwd=cwd, env=env, start_new_session=os.name == 'posix',
+        cwd=cwd, env=native_audio_environment(env), start_new_session=os.name == 'posix',
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
     started = time.monotonic()
+    stopped_at = None
 
     def read_pipe(pipe, name):
         count = 0
@@ -104,11 +188,22 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
 
     threads, started_pipes = [], set()
     last_progress = None
+    release_lifetime = None
 
     def check():
-        nonlocal last_progress
+        nonlocal last_progress, stopped_at
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
+        if stop_requested is not None and stopped_at is None and stop_requested() and process.poll() is None:
+            stopped_at = time.monotonic()
+            try:
+                process.stdin.write(b'q\n')
+                process.stdin.flush()
+                process.stdin.close()
+            except BrokenPipeError:
+                pass  # A concurrent normal exit is checked below.
+        if stopped_at is not None and time.monotonic() - stopped_at > 5 and process.poll() is None:
+            raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         if time.monotonic() - started > budget.timeout:
@@ -143,9 +238,10 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             last_progress = latest[0]
 
     try:
-        # Reader allocation/start can fail after Popen (for example exhausted
-        # thread resources). Keep it inside native-process ownership so that
-        # callers cannot release their reservation while the child survives.
+        if stop_requested is not None:
+            release_lifetime = _capture_lifetime(process)
+        # Keep reader allocation and start inside native-process ownership.
+        # Exhausted threads cannot leave a capture/render running unowned.
         for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
             thread = threading.Thread(target=read_pipe, args=(pipe, name), daemon=True)
             threads.append(thread)
@@ -163,20 +259,25 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker did not close its diagnostic streams.')
         # Required even for a child which exited before the first polling tick.
         check()
-        if process.returncode:
+        if process.returncode and not allow_failure:
             message = bytes(buffers['stderr']).decode('utf-8', errors='replace')[-3000:]
             raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
-                             time.monotonic() - started)
+                             time.monotonic() - started, process.returncode, stopped_at is not None)
     finally:
         try:
             _terminate(process)
         finally:
+            if release_lifetime is not None:
+                release_lifetime()
+            if process.stdin is not None:
+                try:
+                    process.stdin.close()
+                except (BrokenPipeError, OSError):
+                    pass
             for thread in threads:
                 if thread.ident is not None:
                     thread.join(timeout=2)
-            # A reader owns and closes its stream. Streams whose readers never
-            # started still belong to this caller and must be closed here.
             for pipe in (process.stdout, process.stderr):
                 if pipe not in started_pipes:
                     pipe.close()

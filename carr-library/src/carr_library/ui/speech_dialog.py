@@ -15,8 +15,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                        source_guard=lambda: None, recovery_slot='manual'):
     import wx
 
-    dialog = wx.Dialog(parent, title='Voice reader and reading copy', size=(900, 800),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    class ReaderWindow(wx.Dialog):
+        def Destroy(self):
+            detach = getattr(self, '_reader_detach', None)
+            if detach is not None:
+                detach()
+            if getattr(self, '_reader_destroy_requested', False) or not self:
+                return False
+            self._reader_destroy_requested = True
+            return super().Destroy()
+
+    dialog = ReaderWindow(parent, title='Voice reader and reading copy', size=(900, 800),
+                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    native_id = dialog.GetId()
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-speech')
     cancel = threading.Event()
     audio_files = TemporaryDirectory(prefix='research-reader-')
@@ -26,10 +37,28 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         progress.register_player(player)
     document = ReadingDocument(text, title=title)
     registry = None
+    owned_registries = set()
     voices = ()
     alive = True
     busy = False
     playback_generation = 0
+
+    def detach_reader():
+        nonlocal alive, playback_generation
+        if not alive:
+            return
+        alive = False
+        playback_generation += 1
+        cancel.set()
+
+    def reader_destroyed(event):
+        if event.GetId() == native_id:
+            dialog._reader_destroy_requested = True
+            detach_reader()
+        event.Skip()
+
+    dialog._reader_detach = detach_reader
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, reader_destroyed)
     save_path = None
     last_audio = None
     source_loaded = source_loader is None
@@ -113,8 +142,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     row = wx.BoxSizer(wx.HORIZONTAL)
     seek = wx.Button(dialog, label='Seek to &time')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
+    pronunciation = wx.Button(dialog, label='Pronunciatio&n rules')
+    pronunciation.SetName('Pronunciation rules')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, cleanup, close):
+    for control in (seek, cleanup, pronunciation, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -142,32 +173,78 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         for button in (read, cursor, export_audio):
             button.Enable(bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
+        pronunciation.Enable(source_loaded and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
 
-    def run(work, on_done):
+    def run(work, on_done, *, on_failed=None):
         nonlocal busy
-        if busy:
+        if not alive or busy:
             report('A speech operation is running. Stop it before starting another.', focus=True)
-            return
+            return False
         busy = True
         cancel.clear()
         capabilities()
         reload_button.Disable()
 
+        def release_unapplied(future):
+            if future.cancelled() or future.exception() is not None:
+                return
+            result = future.result()
+            release = getattr(result, 'close', None)
+            if callable(release):
+                try:
+                    if release() is not False:
+                        owned_registries.discard(result)
+                except (Exception, KeyboardInterrupt):
+                    # The normal reader cleanup retains failed owners for retry.
+                    pass
+
         def finish(future):
             nonlocal busy
             if not alive:
+                release_unapplied(future)
                 return
             busy = False
             reload_button.Enable()
             try:
-                on_done(future.result())
+                result = future.result()
+                on_done(result)
+                if callable(getattr(result, 'close', None)):
+                    owned_registries.discard(result)
             except Exception as exc:
-                report(f'Operation did not complete. {exc}', focus=True)
-            capabilities()
-        executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+                if not alive:
+                    return
+                if on_failed is not None:
+                    on_failed(exc)
+                else:
+                    report(f'Operation did not complete. {exc}', focus=True)
+            if alive:
+                capabilities()
+        def completed(future):
+            if not future.cancelled() and future.exception() is None:
+                result = future.result()
+                if callable(getattr(result, 'close', None)):
+                    # The existing owner collection also covers a result whose
+                    # queued UI handoff never runs after native destruction.
+                    owned_registries.add(result)
+            if not alive:
+                release_unapplied(future)
+                return
+            wx.CallAfter(finish, future)
+
+        try:
+            executor.submit(work).add_done_callback(completed)
+        except Exception as exc:
+            busy = False
+            reload_button.Enable(); capabilities()
+            if on_failed is not None:
+                on_failed(exc)
+            else:
+                report(f'Operation did not start. {exc}', focus=True)
+            return False
+        return True
 
     def select_progress_voice(event=None):
         selected = voice_choice.GetSelection()
@@ -180,13 +257,22 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             try:
                 progress.set_speech_provider(provider, root=library_root)
             except Exception:
-                provider.close()
+                try:
+                    if provider.close() is not False:
+                        owned_registries.discard(provider)
+                except (Exception, KeyboardInterrupt):
+                    # Preserve the handoff error and retry this owned selection
+                    # during the normal reader cleanup.
+                    pass
                 raise
+            # OperationProgress now owns this selection. A nested settings
+            # modal may destroy the reader without closing the accepted owner.
+            owned_registries.discard(provider)
             progress.settings_dialog()
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(library_root, voice_id), activated)
+        run(lambda: activate_progress_voice(library_root, voice_id, cancelled=cancel.is_set), activated)
 
     def start_playback(action):
         generation = playback_generation
@@ -199,13 +285,22 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                return voice_registry(Path(library_root) / 'state')
-            return VoiceRegistry.discover()
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
+            else:
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
+            owned_registries.add(found)
+            return found
 
         def loaded(value):
             nonlocal registry, voices, document, source_loaded, draft_store, recovered
             nonlocal source_guard, source_loader, recovery_notice
+            previous = registry
             registry, source = value
+            if previous is not None and previous is not registry:
+                def retire():
+                    if previous.close() is not False:
+                        owned_registries.discard(previous)
+                executor.submit(retire)
             voices = registry.voices()
             if source is not None:
                 source_guard()
@@ -227,6 +322,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
                     recovered, draft_store, detached = open_source_draft(source, draft_store,
                         guard=source_guard, choose=choose_source_draft)
+                    if not alive:
+                        return
                     document = recovered.document
                 else:
                     document = source.reading_document()
@@ -266,8 +363,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             else:
                 report(with_recovery_warning(recovery_notice + 'No local voice is available. Install a SAPI 5 voice '
                        'on Windows or an optional local engine. ' + ' '.join(registry.notices)), focus=True)
-        run(lambda: (discover_configured(),
-                     source_loader(cancel.is_set) if not source_loaded else None), loaded)
+        def load():
+            source = source_loader(cancel.is_set) if not source_loaded else None
+            return discover_configured(), source
+        run(load, loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
@@ -552,6 +651,83 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+    def pronunciations(event=None):
+        try:
+            if busy or not source_loaded:
+                raise ValueError('Wait for the reader operation to finish before editing pronunciation rules.')
+            from ..durable_state import local_path
+            from .pronunciation_dialog import (ReadingSnapshot, apply_pronunciation_preview,
+                                               create_pronunciation_dialog)
+            selected_library = parent.library
+            selected_root = local_path(selected_library.root, exists=True)
+
+            def guard():
+                if (not alive or getattr(parent, '_closing', False) or parent.library is not selected_library
+                        or local_path(parent.library.root, exists=True) != selected_root):
+                    raise ValueError('The library changed or the reader closed. Reopen pronunciation rules.')
+                source_guard()
+
+            def capture():
+                guard(); sync_document()
+                # wx positions are not Python character indexes on every native
+                # text control. Convert the actual ranges, including Unicode/CRLF.
+                native_start, native_end = editor.GetSelection()
+                prefix = editor.GetRange(0, native_start)
+                selected = editor.GetRange(native_start, native_end)
+                start, end = len(prefix), len(prefix) + len(selected)
+                if not document.text.startswith(prefix) or document.text[start:end] != selected:
+                    raise ValueError('The native text selection changed. Select the reading range again.')
+                index = voice_choice.GetSelection()
+                voice = voices[index] if 0 <= index < len(voices) else None
+                return ReadingSnapshot.capture(document, (start, end),
+                    language=voice.language if voice else '', voice_id=voice.id if voice else '')
+
+            def synchronize():
+                nonlocal last_audio, playback_generation
+                playback_generation += 1; last_audio = None
+                editor.ChangeValue(document.text); sync_document()
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
+                return with_recovery_warning('')
+
+            def apply(preview):
+                guard(); current = capture()
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                apply_pronunciation_preview(document, preview, current)
+                warning = synchronize()
+                return capture(), warning
+
+            def undo_pronunciation(expected):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed after applying. Use the reader undo history explicitly.')
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                if not document.undo():
+                    raise ValueError('The pronunciation change is no longer available to undo.')
+                return synchronize()
+
+            review = create_pronunciation_dialog(dialog, library_root=selected_root, capture=capture,
+                apply=apply, undo=undo_pronunciation, guard=guard, run=run, cancel=cancel)
+            try:
+                review.on_load()
+                review.ShowModal()
+            finally:
+                if review.alive:
+                    review.finish_close()
+                if review:
+                    review.Destroy()
+            if alive:
+                capabilities(); editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
+
+
     def clean(event=None):
         try:
             sync_document()
@@ -600,7 +776,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (recover_button, recover_saved_draft),
         (undo, history), (redo, lambda event: history(forward=True)),
-        (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing)):
+        (original, compare), (seek, seek_audio), (cleanup, clean), (pronunciation, pronunciations), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)
@@ -647,6 +823,20 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 worker_finished = True
             except (OSError, RuntimeError) as exc:
                 notices.append(f'The reading worker has not confirmed shutdown: {exc}')
+            for owned in tuple(owned_registries):
+                try:
+                    if owned.close() is False:
+                        notices.append('A local voice worker has not confirmed cleanup; its owner is retained for shutdown retry.')
+                    else:
+                        owned_registries.discard(owned)
+                except (OSError, RuntimeError) as exc:
+                    notices.append(f'The local voice worker could not confirm shutdown: {exc}')
+            if owned_registries:
+                retained = getattr(parent, '_reader_registry_retained', None)
+                if not isinstance(retained, list):
+                    retained = []
+                    parent._reader_registry_retained = retained
+                retained.extend(owned_registries)
             removed = False
             if silence_confirmed and worker_finished:
                 try:
@@ -671,7 +861,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     # A detached parent reporter must not keep the modal open.
                     pass
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
 
 def install_speech_actions(frame):

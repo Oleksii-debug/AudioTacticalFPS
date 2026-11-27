@@ -37,14 +37,17 @@ def collect_installed_voices(library, *, cancelled=lambda: False):
     if cancelled():
         raise InterruptedError("Installed voice inventory cancelled.")
     from ..runtime_settings import voice_registry
-    registry = voice_registry(Path(library.root) / "state")
-    if cancelled():
-        raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
-    voices = tuple(registry.voices())
-    notices = tuple(registry.notices)
-    if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
-        raise ValueError("The local voice inventory exceeds its metadata limits.")
-    return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    registry = voice_registry(Path(library.root) / "state", cancelled=cancelled)
+    try:
+        if cancelled():
+            raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
+        voices = tuple(registry.voices())
+        notices = tuple(registry.notices)
+        if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
+            raise ValueError("The local voice inventory exceeds its metadata limits.")
+        return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    finally:
+        registry.close()
 
 
 class LanguageMatrixController:
@@ -157,6 +160,10 @@ def _native_dialog_type():
         def __init__(self, parent, controller):
             super().__init__(parent, title="Languages and capability evidence", size=(960, 760),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._native_id = self.GetId()
+            self._host = parent
+            self._cancel_event = parent.cancel_event
+            self._destroy_requested = False
             self.controller = controller
             self.rows = ()
             self._alive = True
@@ -223,6 +230,7 @@ def _native_dialog_type():
             self.SetMinSize((740, 540))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.search.Bind(wx.EVT_TEXT, self.filter)
             self.search.Bind(wx.EVT_TEXT_ENTER, self.filter)
             for control in (self.regions, self.capabilities, self.status_filter):
@@ -232,6 +240,8 @@ def _native_dialog_type():
             self.search.SetFocus()
 
         def filter(self, event=None):
+            if not self._alive:
+                return
             try:
                 r, c, s = self.regions.GetSelection(), self.capabilities.GetSelection(), self.status_filter.GetSelection()
                 self.rows = self.controller.filter(self.search.GetValue(),
@@ -254,6 +264,8 @@ def _native_dialog_type():
                 self.status.ChangeValue("Could not apply language filters. " + str(error))
 
         def select(self, event=None):
+            if not self._alive:
+                return
             index = self.languages.GetSelection()
             if 0 <= index < len(self.rows):
                 self.controller.select(self.rows[index].language.id)
@@ -261,6 +273,8 @@ def _native_dialog_type():
                 self.details.SetInsertionPoint(0)
 
         def refresh(self, event=None):
+            if not self._alive:
+                return
             if self.pending:
                 return
             self.pending = True
@@ -289,24 +303,42 @@ def _native_dialog_type():
                     self.status.ChangeValue("Voice inventory was not updated. " + str(error))
 
             try:
-                request_voice_inventory(self.GetParent(), self.controller, completed=completed, failed=failed)
+                request_voice_inventory(self._host, self.controller, completed=completed, failed=failed)
             except Exception as error:
                 failed(error)
 
         def cancel(self, event=None):
+            if not self._alive:
+                return
             if self.pending:
-                self.GetParent().cancel_event.set()
+                self._cancel_event.set()
                 self.status.ChangeValue("Cancellation requested. The current bounded adapter probe must finish or reach its time limit.")
 
         def close(self, event=None):
+            if not self._alive:
+                return
             self.shutdown()
-            if self.IsModal():
+            if self and self.IsModal():
                 self.EndModal(wx.ID_CANCEL)
 
         def shutdown(self):
+            if not getattr(self, '_alive', False):
+                return
             self._alive = False
             if self.pending:
-                self.GetParent().cancel_event.set()
+                self._cancel_event.set()
+
+        def on_destroy(self, event):
+            if event.GetId() == self._native_id:
+                self.shutdown()
+            event.Skip()
+
+        def Destroy(self):
+            self.shutdown()
+            if getattr(self, '_destroy_requested', False) or not self:
+                return False
+            self._destroy_requested = True
+            return super().Destroy()
 
     return LanguageMatrixDialog
 
@@ -320,11 +352,13 @@ def show_language_matrix(frame):
         dialog = _native_dialog_type()(frame, controller)
         dialog.ShowModal()
     except Exception as error:
-        frame.report("Language evidence view could not open. " + str(error))
+        if frame and not getattr(frame, '_closing', False):
+            frame.report("Language evidence view could not open. " + str(error))
     finally:
         if dialog is not None:
             dialog.shutdown()
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
 
 def install_language_actions(frame):

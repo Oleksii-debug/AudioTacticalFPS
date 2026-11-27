@@ -284,7 +284,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
         pending = {'assets': [], 'paths': []}
         if manifest['version'] >= 3:
             from .state_backup import restore_state
-            restore_state(source / 'state', stage / 'state', manifest['state'])
+            restore_state(source / 'state', stage / 'state', manifest['state'],
+                          destination_root=destination / 'state')
         if manifest['version'] == 4:
             from .pending_backup import restore_pending
             pending = restore_pending(source / 'pending', stage, destination, manifest['pending'])

@@ -5,13 +5,14 @@ writers may continue: a changing file causes a clear retryable failure, never
 a successful partial snapshot. Rebuildable audio cache is optional; a restored
 render checks every receipt and regenerates missing/corrupt chunks.
 """
+from contextlib import ExitStack
 from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
 import unicodedata
 
-from .durable_state import local_path, regular, sync_directory
+from .durable_state import local_path, regular, state_lock, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
@@ -53,6 +54,16 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)
+    # Capture owns this existing state-root lock through native cleanup and
+    # receipt publication. A running microphone cannot disappear from a
+    # purportedly complete snapshot merely because its PCM is still staged.
+    with ExitStack() as locks:
+        locks.enter_context(state_lock(root, 'studio-recording'))
+        return _snapshot_locked_state(root, target, include_generated=include_generated,
+                                      max_bytes=max_bytes, cancelled=cancelled)
+
+
+def _snapshot_locked_state(root, target, *, include_generated, max_bytes, cancelled):
     def inventory():
         found = {}
         for directory, dirs, files in os.walk(root, followlinks=False):
@@ -103,12 +114,18 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             if count != before.st_size or _stamp(regular(source)) != _stamp(before):
                 raise ValueError('Application state changed during backup; retry after saving.')
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
+    # The original state hashes remain authoritative after typed inputs augment
+    # the staged snapshot. No original project bytes are rewritten here.
+    source_entries = tuple(entries)
+    from .studio.backup_inputs import snapshot_inputs
+    entries = snapshot_inputs(target, entries, max_bytes=max_bytes,
+                              max_files=MAX_STATE_FILES, cancelled=cancelled)
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
     # File metadata is not a content identity: on Windows an equal-size write
     # can retain the observed timestamps. Recheck every copied source against
     # its manifest hash before the caller can publish this snapshot.
-    for entry in entries:
+    for entry in source_entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
@@ -174,7 +191,7 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, destination_root=None):
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
@@ -208,6 +225,8 @@ def restore_state(source, target, entries):
             os.fsync(write.fileno())
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Application state checksum mismatch.')
+    from .studio.backup_inputs import restore_inputs
+    restore_inputs(target, target if destination_root is None else destination_root, entries)
     sync_directory(target)
 
 

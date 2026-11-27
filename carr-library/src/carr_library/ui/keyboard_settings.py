@@ -80,8 +80,11 @@ def capture_commands(menu_bar):
             if item.IsSeparator():
                 continue
             label = item.GetItemLabel()
-            part = _part(label)
-            if not part or '/' in part:
+            # Installers may keep an existing command identity when its visible
+            # label expands. Saved shortcuts continue to address that same action.
+            part = getattr(item, 'carr_command_name', _part(label))
+            if (not isinstance(part, str) or not part or part != part.casefold().strip()
+                    or '/' in part or any(ord(char) < 32 for char in part)):
                 raise ValueError('A menu command needs a stable, unambiguous action path.')
             path, title = (*parents, part), (*display, _label(label))
             submenu = item.GetSubMenu()
@@ -162,7 +165,7 @@ def _unique(pairs):
 
 def _decode(raw, commands):
     if raw is None:
-        return {}
+        return {}, ()
     try:
         value = json.loads(raw, object_pairs_hook=_unique,
                            parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite settings.')))
@@ -173,17 +176,33 @@ def _decode(raw, commands):
             or not isinstance(value['overrides'], dict) or not isinstance(value['originals'], dict)
             or set(value['originals']) != set(value['overrides'])):
         raise ValueError('Invalid keyboard shortcut settings schema.')
-    effective_shortcuts(commands, value['overrides'])
+    # Schema 1 records explicit choices and their original keys, not the whole
+    # old command catalogue. Validate those choices independently of today's
+    # implicit defaults; duplicate explicit owners and unknown actions still
+    # fail. A newly introduced default must not disable a valid saved keymap.
+    explicit = {command.action: '' for command in commands}
+    explicit.update(value['overrides'])
+    explicit_keys = effective_shortcuts(commands, explicit)
     defaults = {command.action: command.default for command in commands}
     if any(value['originals'][key] != defaults[key] for key in value['overrides']):
         raise ValueError('An original menu shortcut changed in this version. Reset shortcuts before editing them.')
-    return dict(value['overrides'])
+    indexed = {command.action: command for command in commands}
+    owners = {explicit_keys[action]: indexed[action].title for action in value['overrides']
+              if explicit_keys[action]}
+    restored, conflicts = dict(value['overrides']), []
+    for command in commands:
+        if command.action not in restored and command.default and command.default in owners:
+            restored[command.action] = ''
+            conflicts.append(f'{command.title}: {command.default} is used by {owners[command.default]}')
+    effective_shortcuts(commands, restored)
+    return restored, tuple(conflicts)
 
 
 def load_shortcuts(root, commands):
     """Return overrides and a compare-before-write token; never retarget actions."""
     raw = _bytes(_path(root))
-    return _decode(raw, commands), _token(raw)
+    overrides, _ = _decode(raw, commands)
+    return overrides, _token(raw)
 
 
 def save_shortcuts(root, commands, overrides, *, expected_token):
@@ -225,6 +244,7 @@ class KeyboardSettings:
         self.frame, self.wx = frame, wx_module
         self.commands = capture_commands(frame.menu_bar)
         self.overrides, self.token, self.root = {}, None, None
+        self.load_notice = ''
         self.reload()
 
     def _render(self, overrides):
@@ -240,14 +260,20 @@ class KeyboardSettings:
         raw = None
         try:
             raw = _bytes(_path(self.root))
-            overrides = _decode(raw, self.commands)
+            overrides, conflicts = _decode(raw, self.commands)
             self._render(overrides)
             self.overrides, self.token = overrides, _token(raw)
+            self.load_notice = ('Saved keyboard shortcuts are active. These default shortcuts remain unassigned '
+                'to preserve your saved choices: ' + '; '.join(conflicts) +
+                '. Open Keyboard shortcuts to review the assignments.') if conflicts else ''
+            if self.load_notice:
+                self.frame.report(self.load_notice)
             return True
         except (ValueError, OSError) as exc:
             self._render({})
             self.overrides, self.token = {}, _token(raw)
-            self.frame.report(f'Original keyboard shortcuts are active. Saved settings could not be applied: {exc}')
+            self.load_notice = f'Original keyboard shortcuts are active. Saved settings could not be applied: {exc}'
+            self.frame.report(self.load_notice)
             return False
 
     def apply(self, overrides):
@@ -262,6 +288,7 @@ class KeyboardSettings:
             self._render(previous)
             raise
         self.overrides, self.token = kept, token
+        self.load_notice = ''
 
     def show(self, event=None):
         wx = self.wx
@@ -287,6 +314,7 @@ class KeyboardSettings:
             layout.Add(key, 0, wx.EXPAND | wx.ALL, 8)
             status = wx.TextCtrl(dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
             status.SetName('Shortcut settings status')
+            status.ChangeValue(self.load_notice)
             layout.Add(status, 1, wx.EXPAND | wx.ALL, 8)
             buttons = wx.BoxSizer(wx.HORIZONTAL)
             apply = wx.Button(dialog, wx.ID_APPLY, '&Apply')
@@ -345,6 +373,8 @@ def install_keyboard_settings(frame):
     if getattr(frame, 'keyboard_settings', None) is not None:
         frame.keyboard_settings.reload()
         return frame.keyboard_settings
+    from .command_palette import install_command_palette
+    install_command_palette(frame)
     menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
                  if _part(frame.menu_bar.GetMenuLabel(index)) == 'help'), None)
     if menu is None:
