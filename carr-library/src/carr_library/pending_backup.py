@@ -245,7 +245,7 @@ def _metadata(value, db, workspace):
         raise ValueError('Pending edition/work identity differs from the catalog.')
 
 
-def _result(value, workspace, edition, db, *, complete=False):
+def _result(value, workspace, edition, db, *, complete=False, asset=None):
     if value is None and not complete:
         return
     if not isinstance(value, dict) or len(canonical(value).encode('utf-8')) > MAX_REQUEST:
@@ -256,10 +256,12 @@ def _result(value, workspace, edition, db, *, complete=False):
         revision = value.get('id')
         if value.get('state') != 'complete' or not _hash(revision):
             raise ValueError('Invalid complete import result.')
+        if not _hash(asset) or value.get('asset', asset) != asset:
+            raise ValueError('Complete import result source differs from its saved request.')
         if db.execute('SELECT 1 FROM revision JOIN sealed ON sealed.revision=revision.id '
-                      'WHERE revision.id=? AND workspace=? AND edition=?',
-                      (revision, workspace, edition)).fetchone() is None:
-            raise ValueError('Import completion has no matching sealed publication.')
+                      'WHERE revision.id=? AND workspace=? AND edition=? AND asset=?',
+                      (revision, workspace, edition, asset)).fetchone() is None:
+            raise ValueError('Import completion has no matching sealed source publication.')
 
 
 def _request(record, request_id, data_dir, db):
@@ -298,7 +300,7 @@ def _request(record, request_id, data_dir, db):
                 or (record.get('job') is not None and candidate['revision'] != record['job'])):
             raise ValueError('Pending publication candidate has a foreign source or journal identity.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
-            complete=record['state'] == 'complete')
+            complete=record['state'] == 'complete', asset=record.get('asset_sha256'))
 
 
 def _batch(record, batch_id, data_dir, db):
@@ -340,7 +342,9 @@ def _batch(record, batch_id, data_dir, db):
         _metadata(dict(title=row['title'], authors=[], language=None, edition=None, volume=None,
                        collections=record['collections'], work_id=row['work_id'], edition_id=row['edition_id']),
                   db, record['workspace'])
-        _result(row['result'], record['workspace'], row['edition_id'], db, complete=row['state'] == 'complete')
+        _result(row['result'], record['workspace'], row['edition_id'], db,
+                complete=row['state'] == 'complete',
+                asset=row['manifest']['sha256'] if row['manifest'] is not None else None)
     for row in record['rows']:
         duplicate = row['duplicate_of']
         if duplicate is None:
@@ -615,9 +619,12 @@ def _source_checkpoints(asset, raw, jobs, journal):
                     raise ValueError('Pending text checkpoint differs from the exact original bytes.')
 
 
-def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=None):
+def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: False, expected_roots=None):
     """Create a self-contained component under the caller's root writer guard."""
     _check(cancelled)
+    if type(max_bytes) is not int or max_bytes < 0:
+        raise ValueError('Pending import byte budget must be a nonnegative integer.')
+    max_bytes = min(max_bytes, MAX_TOTAL)
     root = local_path(app.root, exists=True)
     roots = pending_roots(root)
     if expected_roots is not None and roots != expected_roots:
@@ -630,6 +637,12 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
         catalog_path = app.database
     journal = None
     files, assets, bindings = [], {}, []
+    total_bytes = 0
+    def reserve(size):
+        nonlocal total_bytes
+        total_bytes += size
+        if total_bytes > max_bytes or len(files) >= MAX_FILES:
+            raise ValueError('Pending import backup exceeds its complete byte or file budget.')
     try:
         with closing(_catalog(catalog_path)) as catalog:
             jobs = {}
@@ -643,7 +656,7 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                 with closing(source_db), closing(sqlite3.connect(target / 'imports.sqlite')) as backup:
                     def progress(status, remaining, total):
                         _check(cancelled)
-                        if total * page_size > MAX_JOURNAL:
+                        if total * page_size > min(MAX_JOURNAL, max_bytes):
                             raise ValueError('Pending journal exceeds its backup budget.')
                     source_db.backup(backup, pages=256, progress=progress)
                     # Online backup copies the source header's WAL flag. Make
@@ -652,13 +665,16 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                     if backup.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                         raise ValueError('Pending journal snapshot is not self-contained.')
                 journal, jobs = _journal(target / 'imports.sqlite', catalog, cancelled)
-                files.append(_entry(target / 'imports.sqlite', 'imports.sqlite', cancelled))
+                entry = _entry(target / 'imports.sqlite', 'imports.sqlite', cancelled)
+                reserve(entry['size_bytes'])
+                files.append(entry)
             for name, stamp in sorted(before.items()):
                 _check(cancelled)
                 maximum = MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST
                 raw = _read(root / name, maximum)
                 if _stamp(regular(root / name)) != stamp:
                     raise ValueError('Pending import state changed during backup; retry after pausing imports.')
+                reserve(len(raw))
                 entry = _write(target / name, raw)
                 entry['filename'] = name
                 files.append(entry)
@@ -687,6 +703,7 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
                 name = incoming.digest + SUFFIXES[incoming.mime]
+                reserve(len(incoming.data))
                 entry = _write(target / 'originals' / name, incoming.data)
                 entry['filename'] = name
                 entry['mime'] = incoming.mime
@@ -707,6 +724,11 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                 _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
         if _inventory(root) != before or pending_roots(root) != roots:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
+        # Windows file timestamps can stay unchanged after a same-sized edit.
+        # Recheck actual committed sidecar bytes before accepting the snapshot.
+        for entry in files:
+            if entry['filename'] in before and _entry(root / entry['filename'], entry['filename'], cancelled) != entry:
+                raise ValueError('Pending import state changed during backup; retry after pausing imports.')
     finally:
         if journal is not None:
             journal.close()
@@ -718,9 +740,10 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
 
 
 def _component_name(name):
+    suffixes = '|'.join(re.escape(suffix) for suffix in sorted(set(SUFFIXES.values())))
     return isinstance(name, str) and bool(re.fullmatch(
         r'imports\.sqlite|import-requests/(?:reviews/)?[0-9a-f]{32}\.json|'
-        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}\.(?:txt|pdf|docx|epub)', name))
+        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}(?:' + suffixes + ')', name))
 
 
 def validate_pending(metadata):
