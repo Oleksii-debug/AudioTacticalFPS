@@ -34,7 +34,7 @@ jobs:
       ORT_DISABLE_TELEMETRY: '1'
       HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
       TRANSFORMERS_OFFLINE: '1'
-      CARR_SOURCE_COMMIT: f7efd3a0009f2a91e822e13a584b377ca97cc58a
+      CARR_SOURCE_COMMIT: b06c203eb9d80c56b199222ee0323b69485c7715
     steps:
       - name: Check out the exact event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

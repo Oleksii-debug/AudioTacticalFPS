@@ -267,11 +267,18 @@ def run_native(source=None, timeout=120):
             action.Enable(True)
             before = keymap.read_bytes()
 
+            cancel_shortcut = 'Ctrl+Alt+Shift+J'
+            check('cancel probe shortcut is free in the installed main command registry',
+                  cancel_shortcut not in {
+                      manager.shortcut(command.command_id)
+                      for command in manager.registry.commands('main')
+                  })
+
             def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
+                dialog.shortcut.SetValue(cancel_shortcut)
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                      dialog.draft[test_id] == cancel_shortcut and manager.shortcut(test_id) == 'Ctrl+Shift+K')
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))
