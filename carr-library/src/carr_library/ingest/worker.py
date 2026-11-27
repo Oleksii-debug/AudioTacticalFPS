@@ -21,6 +21,7 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
+from ..extract.document_formats import MIME_SUFFIXES
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -500,9 +501,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
-                or expected_manifest['mime'] not in (
-                    'text/plain', 'application/pdf', 'application/epub+zip',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
                 or not 0 < expected_manifest['size'] <= MAX_BYTES):
             raise ValueError('Invalid planned source manifest.')

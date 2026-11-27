@@ -111,5 +111,6 @@ jobs:
             tests/speech/test_source.py \
             tests/assistant/test_translation_narration.py \
             tests/packaging/test_standard_installer.py \
+            tests/e2e/test_extended_document_workflows.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.
