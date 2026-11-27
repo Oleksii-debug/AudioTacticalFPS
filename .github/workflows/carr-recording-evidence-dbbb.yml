@@ -1,0 +1,96 @@
+name: CARR bounded recording evidence inspection
+on:
+  push:
+    branches: [carr/recording-evidence-dbbb-20261127]
+    paths: ['.github/workflows/carr-recording-evidence-dbbb.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect-original-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify original artifact identity and read only its synthetic recording diagnostics
+        env:
+          GH_DIAGNOSTIC_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import hashlib, io, json, os, pathlib, stat, urllib.error, urllib.parse, urllib.request, zipfile
+          
+          REPO = 'Oleksii-debug/AudioTacticalFPS'
+          RUN = 45995866931
+          HEAD = 'acd0398288c62d2f7aa68e5290b77945755a3068'
+          ARTIFACT = 15198751385
+          SIZE = 10027
+          DIGEST = '5bef49048fac45b653f0e3f15cc5501160a8949a7a4a3d1ce932a2055f48771d'
+          NAME = 'carr-windows-recording-' + HEAD + '-1'
+          TOKEN = os.environ['GH_DIAGNOSTIC_TOKEN']
+          API = 'https://api.github.com/repos/' + REPO
+          
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          
+          opener = urllib.request.build_opener(NoRedirect())
+          def request(path):
+              return urllib.request.Request(API + path, headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': 'Bearer ' + TOKEN,
+                  'X-GitHub-Api-Version': '2022-11-28',
+                  'User-Agent': 'resonance-bounded-evidence-read',
+              })
+          def metadata(path):
+              with opener.open(request(path), timeout=30) as response:
+                  raw = response.read(1024 * 1024 + 1)
+              assert len(raw) <= 1024 * 1024
+              return json.loads(raw)
+          
+          run = metadata('/actions/runs/' + str(RUN))
+          assert run['id'] == RUN and run['head_sha'] == HEAD and run['run_attempt'] == 1
+          assert run['head_branch'] == 'carr/ci-endpoint-evaluation-20261127'
+          artifact = metadata('/actions/artifacts/' + str(ARTIFACT))
+          assert artifact['id'] == ARTIFACT and artifact['name'] == NAME and not artifact['expired']
+          assert artifact['workflow_run']['id'] == RUN and artifact['workflow_run']['head_sha'] == HEAD
+          assert artifact['size_in_bytes'] == SIZE and artifact['digest'] == 'sha256:' + DIGEST
+          
+          try:
+              response = opener.open(request('/actions/artifacts/' + str(ARTIFACT) + '/zip'), timeout=30)
+          except urllib.error.HTTPError as error:
+              assert error.code in (301, 302, 303, 307, 308)
+              location = error.headers['Location']
+              target = urllib.parse.urlsplit(location)
+              assert target.scheme == 'https' and target.username is None and target.password is None
+              assert target.hostname and (target.hostname.endswith('.blob.core.windows.net') or
+                  target.hostname.endswith('.actions.githubusercontent.com') or
+                  target.hostname.endswith('.githubusercontent.com'))
+              # Authorization is intentionally never forwarded to the signed storage URL.
+              response = urllib.request.urlopen(urllib.request.Request(location), timeout=30)
+          with response:
+              raw = response.read(SIZE + 1)
+          assert len(raw) == SIZE and hashlib.sha256(raw).hexdigest() == DIGEST
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              entries = archive.infolist()
+              assert 1 <= len(entries) <= 32 and len({entry.filename for entry in entries}) == len(entries)
+              assert sum(entry.file_size for entry in entries) <= 512 * 1024
+              for entry in entries:
+                  path = pathlib.PurePosixPath(entry.filename)
+                  assert not path.is_absolute() and '..' not in path.parts and '\\' not in entry.filename
+                  assert not entry.is_dir() and path.suffix in ('.json', '.txt')
+                  assert entry.file_size <= 256 * 1024 and not stat.S_ISLNK(entry.external_attr >> 16)
+              print(json.dumps(dict(purpose='read original synthetic diagnostic evidence only; not release acceptance',
+                  source_head=HEAD, run=RUN, attempt=1, artifact_id=ARTIFACT,
+                  artifact_size=len(raw), artifact_sha256=DIGEST,
+                  files=[entry.filename for entry in entries])))
+              wanted = {'recording-device-inventory.json', 'native-recording-device.json',
+                        'native-recording-device.txt', 'native-recording-process.json'}
+              displayed = []
+              for entry in entries:
+                  if pathlib.PurePosixPath(entry.filename).name in wanted:
+                      content = archive.read(entry).decode('utf-8-sig')
+                      assert len(content) <= 64 * 1024
+                      print(json.dumps(dict(file=entry.filename, content=content), ensure_ascii=True))
+                      displayed.append(pathlib.PurePosixPath(entry.filename).name)
+              assert 'recording-device-inventory.json' in displayed
+          PY
