@@ -412,6 +412,8 @@ jobs:
           "CARR_CI_TRANSFER_BUNDLE=$nativeBundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           & $env:CARR_PYTHON packaging/add_audio_runtime.py --bundle $nativeBundle --audio-runtime $audioRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Collect import tables for the exact sealed FFmpeg images, not a guessed dependency list.
+          & ./packaging/inspect_audio_pe.ps1 -Runtime (Join-Path $bundle 'audio-runtime') -SourceLock 'packaging/audio-runtime/source-lock.json' -Evidence 'ci-results'
           $manifest = Join-Path $bundle 'bundle-manifest.json'
           $manifestEvidence = 'ci-results/bundle-manifests'
           New-Item -ItemType Directory -Force $manifestEvidence | Out-Null
@@ -613,7 +615,7 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_federated_advanced.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')} | {'test_actual_same_length_edit_with_restored_mtime_is_not_overwritten['+kind+']' for kind in ('False','True')} | {'test_file_changed_while_confirmation_is_open_is_not_approved['+kind+']' for kind in ('False','True')}; required |= {'test_replay_preserves_original_receipt_and_sql_replacement_is_rejected','test_recovered_commit_with_pending_extraction_journal_survives_backup','test_source_lineage_is_distinct_and_survives_save_and_backup','test_saved_lineage_distinguishes_identical_text_and_preserves_derived_separators'}; assert required<={c.get('name') for c in cases} and failed==skipped==0; assert sum(c.get('name','').startswith('test_competing_commit_after_kill_does_not_complete_stopped_request[') for c in cases)==9; metadata_cases=[c for c in cases if 'test_import_metadata_shape' in c.get('classname','').split('.')]; assert len(metadata_cases)==58 and len({c.get('name') for c in metadata_cases})==58; ocr_required={'test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries'}; ocr_cases=[c.get('name') for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_ocr_runtime']; assert len(ocr_cases)==len(ocr_required) and set(ocr_cases)==ocr_required; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',export_change_time='PASS',export_destination_approval='PASS',import_ownership='PASS',reading_source_lineage='PASS',ocr_inventory_exact='PASS',ocr_inventory_cases=sorted(ocr_cases),nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -870,6 +872,7 @@ jobs:
             'tests/reader/test_query_manager.py',
             'tests/ui/test_query_manager_actions.py',
             'tests/search/test_federated.py',
+            'tests/search/test_federated_advanced.py',
             'tests/search/test_federated_independent.py',
             'tests/ui/test_federated_search.py',
             'tests/search/test_federated_epub.py',
@@ -886,6 +889,9 @@ jobs:
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
             'tests/packaging/test_local_audio_setup.py',
+            'tests/packaging/test_audio_runtime.py',
+            'tests/packaging/test_audio_acquisition.py',
+            'tests/packaging/test_audio_bundle.py',
             'tests/ingest/test_import_metadata_shape.py',
             'tests/library_assistant/test_library_workflow.py',
             'tests/library_assistant/test_library_workflow_ui.py',
@@ -897,8 +903,10 @@ jobs:
             'tests/assistant/test_backup_receipt.py',
             'tests/integrations/test_dordiai_voices.py',
             'tests/packaging/test_delivery_archive.py',
+            'tests/packaging/test_prepare_windows_audio.py',
             'tests/ui/test_save_all.py',
             'tests/ui/test_studio_keyboard_registration.py',
+            'tests/ui/test_studio_output_settings.py',
             'tests/voice_acceptance/test_dordiai_acceptance.py',
             'tests/integrations/test_dordiai_speech.py',
             'tests/integrations/test_dordiai_settings.py',
