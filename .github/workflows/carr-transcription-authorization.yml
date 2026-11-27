@@ -36,25 +36,65 @@ jobs:
         run: |
           mkdir -p ../transcription-authorization-evidence
           python -m pip install '.[test]'
-      - name: Record the unchanged production source
+      - name: Record the corrected production source
         run: |
           git rev-parse HEAD > ../transcription-authorization-evidence/commit.txt
           git hash-object src/carr_library/transcription.py > ../transcription-authorization-evidence/transcription-blob.txt
           python -B - <<'PY'
           from pathlib import Path
           observed = Path('../transcription-authorization-evidence/transcription-blob.txt').read_text().strip()
-          assert observed == '299241fef5e52481892f7db00f9ed3a9037d8b8b', observed
-          print('Exact unchanged e8/de4 transcription source:', observed)
+          assert observed == '3591b92c85c705659084da867512de176887e67f', observed
+          print('Exact corrected transcription source:', observed)
           PY
-      - name: Run four actual authorization controls
+      - name: Run the full strict bridge suite and require all four controls
         run: |
-          python -B -m pytest -q -s -o addopts= -o xfail_strict=true -o junit_family=xunit1 \
-            --junitxml=../transcription-authorization-evidence/junit.xml \
-            'tests/transcription/test_supplied_worker_bridge.py::test_edit_and_export_reject_archived_workspace[save-edit-archived-at-entry]' \
-            'tests/transcription/test_supplied_worker_bridge.py::test_edit_and_export_reject_archived_workspace[export-archived-at-entry]' \
-            'tests/transcription/test_supplied_worker_bridge.py::test_edit_and_export_reject_archived_workspace[save-edit-archived-at-final-checkpoint]' \
-            'tests/transcription/test_supplied_worker_bridge.py::test_edit_and_export_reject_archived_workspace[export-archived-at-final-checkpoint]' \
-            2>&1 | tee ../transcription-authorization-evidence/pytest.log
+          python -B - <<'PY' 2>&1 | tee ../transcription-authorization-evidence/pytest.log
+          import json
+          import os
+          from pathlib import Path
+          import runpy
+          import subprocess
+          import sys
+          import xml.etree.ElementTree as ET
+
+          evidence = Path('../transcription-authorization-evidence')
+          report = evidence / 'junit.xml'
+          guard = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
+          environment = dict(os.environ)
+          for name in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
+              environment.pop(name, None)
+          environment['PYTHONPATH'] = str(Path('src').resolve())
+          environment['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          result = subprocess.run([
+              sys.executable, '-B', '-c', guard, '-q', '-s',
+              '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'junit_family=xunit1',
+              '--junitxml', str(report), '--',
+              'tests/transcription/test_supplied_worker_bridge.py',
+          ], env=environment, check=False, timeout=300)
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          names = [case.attrib.get('name') for case in cases]
+          required = {
+              'test_edit_and_export_reject_archived_workspace[save-edit-archived-at-entry]',
+              'test_edit_and_export_reject_archived_workspace[export-archived-at-entry]',
+              'test_edit_and_export_reject_archived_workspace[save-edit-archived-at-final-checkpoint]',
+              'test_edit_and_export_reject_archived_workspace[export-archived-at-final-checkpoint]',
+          }
+          failures = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          required_counts = {name: names.count(name) for name in sorted(required)}
+          verified = (result.returncode == 0 and len(cases) == 61 and failures == skipped == 0
+                      and all(count == 1 for count in required_counts.values()))
+          summary = {
+              'python': sys.version, 'pytest_exit': result.returncode,
+              'total': len(cases), 'passed': len(cases) - failures - skipped,
+              'failed': failures, 'skipped': skipped,
+              'required_case_counts': required_counts, 'verified': verified,
+          }
+          (evidence / 'verification.json').write_text(
+              json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          print('TRANSCRIPTION_AUTHORIZATION_VERIFICATION=' + json.dumps(summary, sort_keys=True), flush=True)
+          raise SystemExit(0 if verified else 1)
+          PY
       - name: Retain diagnostic evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
