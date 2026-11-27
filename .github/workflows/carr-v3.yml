@@ -3,10 +3,10 @@ name: CARR V3 local studio and assistant
 on:
   pull_request:
     branches: [carr-library, carr/v3-integrated-studio-20261126]
-    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-windows.yml']
   push:
     branches: [carr/v3-dordiai-primary-411a-20261126, carr/v3-academic-acquisition-20261126]
-    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-windows.yml']
   workflow_dispatch:
 
 permissions:
