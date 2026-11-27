@@ -292,8 +292,10 @@ def test_noncontiguous_physical_locations_use_reading_order_not_fake_page_number
                 'SELECT raw,physical FROM page WHERE revision=? AND physical IN (5,9) ORDER BY physical',
                 (book['id'],)).fetchall()
             assert len(rows) == 2
+            config = storage.db.execute(
+                'SELECT config FROM revision WHERE id=?', (book['id'],)).fetchone()[0]
             storage.stage_revision(workspace, book['edition'], 'reader-sparse', book['asset'],
-                'synthetic-extraction', [Page(rows[0]['raw'], 5, 'v', True), Page(rows[1]['raw'], 9)])
+                config, [Page(rows[0]['raw'], 5, 'v', True), Page(rows[1]['raw'], 9)])
             storage.db.execute(
                 'INSERT INTO source_metadata SELECT workspace,edition,?,author,title,volume,edition_label '
                 'FROM source_metadata WHERE workspace=? AND edition=? AND revision=?',
