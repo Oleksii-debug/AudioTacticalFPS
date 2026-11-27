@@ -1,0 +1,263 @@
+; Generated only from a pinned complete bundle. Requires Inno Setup 6.4+.
+; No download, trust root, license activation, model acquisition or forced close.
+[Setup]
+AppId=Resonance.StandardInstall
+AppName=Resonance
+AppVersion=@SHORT_SOURCE@
+VersionInfoVersion=0.0.0.0
+AppPublisher=Resonance
+DefaultDirName={localappdata}\Programs\Resonance
+DisableProgramGroupPage=yes
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+UninstallLogMode=append
+UninstallDisplayIcon={code:PayloadDir}\ResearchLibrary.exe
+AppModifyPath="{code:PayloadDir}\maintenance-setup.exe"
+AppReadmeFile={code:PayloadDir}\README.txt
+SetupMutex=Resonance.StandardInstall
+CloseApplications=no
+RestartApplications=no
+AllowCancelDuringInstall=no
+SetupLogging=yes
+Compression=lzma2
+SolidCompression=yes
+OutputDir=dist
+OutputBaseFilename=Resonance-Setup-@SHORT_SOURCE@
+WizardStyle=modern
+UninstallRestartComputer=no
+
+[Messages]
+WelcomeLabel2=This installs Resonance for your Windows account using only the supplied offline package.%n%nInstalling again repairs the program in a fresh version directory. Earlier versions and running jobs are kept. Your library, drafts, recordings and backups are stored separately and are not removed by this installer.%n%nThis development installer is unsigned. It does not enable an update service or change license or trust settings.
+FinishedLabel=Resonance was installed and checked. Open Resonance from the Start menu.%n%nTo repair this installation, use Modify in Windows installed programs or run this installer again. Previous program versions remain available until you uninstall. Research data is preserved.
+
+[Files]
+@TEMP_FILES@
+Source: "install-layout-v1.txt"; DestDir: "{app}"; Flags: onlyifdoesntexist
+@PAYLOAD_FILES@
+; Cache the exact installer for Windows Modify/repair, after bootstrap succeeds.
+Source: "{srcexe}"; DestDir: "{code:PayloadDir}"; DestName: "maintenance-setup.exe"; Flags: external ignoreversion
+
+[Icons]
+Name: "{userprograms}\Resonance"; Filename: "{code:PayloadDir}\ResearchLibrary.exe"; WorkingDir: "{code:PayloadDir}"
+
+[UninstallDelete]
+; Only a generated environment in this exact installed generation is recursive.
+; Inno's append log retains each successful generation's expanded absolute path.
+Type: filesandordirs; Name: "{code:PayloadDir}\.venv"
+Type: dirifempty; Name: "{code:PayloadDir}"
+Type: dirifempty; Name: "{app}\versions"
+
+[Code]
+const
+  LayoutMarker = 'Resonance.StandardInstall/1';
+  ReparseAttribute = $400;
+var
+  SelectedPayload: String;
+
+function FileAttributes(const Filename: String): Cardinal;
+  external 'GetFileAttributesW@kernel32.dll stdcall';
+
+function PlainParents(Path: String): Boolean;
+var
+  Parent: String;
+  Attributes: Cardinal;
+begin
+  Result := False;
+  Path := RemoveBackslashUnlessRoot(ExpandFileName(Path));
+  while Path <> '' do begin
+    if DirExists(Path) or FileExists(Path) then begin
+      Attributes := FileAttributes(Path);
+      if (Attributes = $FFFFFFFF) or ((Attributes and ReparseAttribute) <> 0) then exit;
+    end;
+    Parent := ExtractFileDir(Path);
+    if Parent = Path then break;
+    Path := Parent;
+  end;
+  Result := True;
+end;
+
+function EmptyDirectory(const Path: String): Boolean;
+var
+  Found: TFindRec;
+begin
+  Result := True;
+  if FindFirst(AddBackslash(Path) + '*', Found) then begin
+    try
+      repeat
+        if (Found.Name <> '.') and (Found.Name <> '..') then begin
+          Result := False;
+          break;
+        end;
+      until not FindNext(Found);
+    finally
+      FindClose(Found);
+    end;
+  end;
+end;
+
+function PayloadDir(Param: String): String;
+var
+  Index: Integer;
+  Candidate: String;
+begin
+  if SelectedPayload = '' then begin
+    Index := 1;
+    repeat
+      Candidate := ExpandConstant('{app}\versions\@SHORT_SOURCE@-') + IntToStr(Index);
+      Index := Index + 1;
+      if Index > 100000 then RaiseException('Too many previous installations; choose a new program directory.');
+    until not DirExists(Candidate) and not FileExists(Candidate);
+    SelectedPayload := Candidate;
+  end;
+  Result := SelectedPayload;
+end;
+
+function CheckInstallDirectory(): String;
+var
+  Root, Data: String;
+  Marker: AnsiString;
+begin
+  Result := '';
+  SelectedPayload := '';
+  Root := RemoveBackslashUnlessRoot(ExpandFileName(ExpandConstant('{app}')));
+  Data := RemoveBackslashUnlessRoot(ExpandFileName(ExpandConstant('{localappdata}\Universal Research Library')));
+  if (CompareText(Root, Data) = 0)
+    or (Pos(Lowercase(AddBackslash(Data)), Lowercase(AddBackslash(Root))) = 1)
+    or (Pos(Lowercase(AddBackslash(Root)), Lowercase(AddBackslash(Data))) = 1) then begin
+    Result := 'Choose a program directory outside the research data directory.';
+    exit;
+  end;
+  if not PlainParents(Root) then begin
+    Result := 'Linked or inaccessible program directories are not supported.';
+    exit;
+  end;
+  if FileExists(Root) then begin
+    Result := 'The selected program path is a file.';
+    exit;
+  end;
+  if DirExists(Root) and not EmptyDirectory(Root) then begin
+    if not LoadStringFromFile(AddBackslash(Root) + 'install-layout-v1.txt', Marker)
+      or (Trim(Marker) <> LayoutMarker) then begin
+      Result := 'This directory contains other files. Choose a new empty program directory.';
+      exit;
+    end;
+  end;
+  if not PlainParents(AddBackslash(Root) + 'versions') then begin
+    Result := 'Linked or inaccessible version directories are not supported.';
+    exit;
+  end;
+  Log('New installation generation: ' + PayloadDir(''));
+end;
+
+procedure StagePayload(const Relative, Expected: String);
+var
+  Source, Target: String;
+begin
+  Source := ExpandConstant('{tmp}\resonance-payload\') + Relative;
+  Target := AddBackslash(PayloadDir('')) + Relative;
+  if not PlainParents(Source) or (Lowercase(GetSHA256OfFile(Source)) <> Expected) then
+    RaiseException('The embedded package failed verification: ' + Relative);
+  if not ForceDirectories(ExtractFileDir(Target)) or not PlainParents(Target) then
+    RaiseException('The new generation directory could not be created safely.');
+  if not FileCopy(Source, Target, True) or (Lowercase(GetSHA256OfFile(Target)) <> Expected) then
+    RaiseException('The new generation could not be copied and checked: ' + Relative);
+end;
+
+procedure CheckPayload(const Relative, Expected: String);
+var
+  Path: String;
+begin
+  Path := AddBackslash(PayloadDir('')) + Relative;
+  if not PlainParents(Path) or (Lowercase(GetSHA256OfFile(Path)) <> Expected) then
+    RaiseException('The offline package failed verification: ' + Relative);
+end;
+
+procedure Bootstrap;
+var
+  Code: Integer;
+  Root: String;
+begin
+  Root := PayloadDir('');
+  CheckPayload('bundle-manifest.json', '@MANIFEST@');
+@PAYLOAD_CHECKS@
+  if DirExists(Root + '\.venv') or FileExists(Root + '\.venv') then
+    RaiseException('The new environment path was created by another operation. Nothing will be replaced.');
+  WizardForm.StatusLabel.Caption := 'Creating and checking the offline application environment...';
+  if not ExecAndLogOutput(Root + '\runtime\python.exe',
+    '-I -B -X utf8 "' + Root + '\install_windows.py"', Root,
+    SW_SHOWNORMAL, ewWaitUntilTerminated, Code, nil) or (Code <> 0) then
+    RaiseException('Offline installation did not finish. The previous version and your library were kept. See the Setup log.');
+  if not FileExists(Root + '\.venv\.installation-complete') then
+    RaiseException('The application did not report a complete installation.');
+  CheckPayload('bundle-manifest.json', '@MANIFEST@');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Root: String;
+begin
+  Result := CheckInstallDirectory();
+  if Result <> '' then exit;
+  try
+    Root := ExpandConstant('{app}');
+    if not ForceDirectories(Root) or not ForceDirectories(Root + '\versions') then
+      RaiseException('The program directory could not be created.');
+    { Keep this small ownership marker across interrupted preparations. It is
+      not a ready marker and conveys no update or source trust. }
+    if not FileExists(Root + '\install-layout-v1.txt') then begin
+      if not SaveStringToFile(Root + '\install-layout-v1.txt', LayoutMarker + #13#10, False) then
+        RaiseException('The program ownership marker could not be saved.');
+    end;
+    if not CreateDir(PayloadDir('')) then
+      RaiseException('Another operation created this generation; retry in a fresh directory.');
+    ExtractTemporaryFiles('{tmp}\resonance-payload\*');
+    StagePayload('bundle-manifest.json', '@MANIFEST@');
+@PAYLOAD_COPIES@
+    Bootstrap;
+  except
+    { A nonempty return stops Setup before any normal Files/Icons/Registry work.
+      No AfterInstall exception or late custom exit code is used as rollback. }
+    Result := 'Offline installation was not activated. The previous version and research data were kept. '
+      + GetExceptionMessage;
+    Log(Result);
+  end;
+end;
+
+function PlainTree(const Path: String; var Count: Integer): Boolean;
+var
+  Found: TFindRec;
+  Child: String;
+begin
+  Result := False;
+  Count := Count + 1;
+  if (Count > 500000) or not PlainParents(Path) then exit;
+  if FindFirst(AddBackslash(Path) + '*', Found) then begin
+    try
+      repeat
+        if (Found.Name <> '.') and (Found.Name <> '..') then begin
+          Count := Count + 1;
+          if Count > 500000 then exit;
+          Child := AddBackslash(Path) + Found.Name;
+          if (Found.Attributes and ReparseAttribute) <> 0 then exit;
+          if (Found.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then begin
+            if not PlainTree(Child, Count) then exit;
+          end;
+        end;
+      until not FindNext(Found);
+    finally
+      FindClose(Found);
+    end;
+  end;
+  Result := True;
+end;
+
+function InitializeUninstall(): Boolean;
+var
+  Count: Integer;
+begin
+  Count := 0;
+  Result := PlainTree(ExpandConstant('{app}'), Count);
+  if not Result then
+    MsgBox('The program directory contains a link or could not be checked. Uninstall stopped without removing it. Research data is preserved.', mbError, MB_OK);
+end;
