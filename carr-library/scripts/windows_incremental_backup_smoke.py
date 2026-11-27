@@ -113,9 +113,9 @@ def _run_probe(args):
         checksum = library_backup.create_backup(library, full)
         document.set_text('Revised reading copy.')
         with library.read(workspace) as db:
-            row = db.execute('SELECT e.active_revision,e.asset,p.ordinal,p.physical,p.digest '
-                'FROM catalog_edition e JOIN page p ON p.revision=e.active_revision '
-                'WHERE e.workspace=? AND e.id=? ORDER BY p.ordinal LIMIT 1',
+            row = db.execute('SELECT p.revision,p.asset,p.ordinal,p.physical,p.digest '
+                'FROM active_page p '
+                'WHERE p.workspace=? AND p.edition=? ORDER BY p.ordinal LIMIT 1',
                 (workspace, 'source')).fetchone()
         revision, asset, ordinal, physical, text_digest = row
         location = ReadingLocation(workspace, 'source', revision,

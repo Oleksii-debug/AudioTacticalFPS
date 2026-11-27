@@ -39,6 +39,7 @@ license-files = [
 ]
 
 [project.optional-dependencies]
+sync = ["cryptography==50.0.2"]
 desktop = ["wxPython==4.2.4"]
 semantic = [
   "fastembed==0.9.1",
@@ -96,6 +97,7 @@ packages = [
   "carr_library.ui._vendor.wx_grid",
   "carr_library.speech",
   "carr_library.studio",
+  "carr_library.sync",
   "carr_library.operations",
   "carr_library.transcription",
   "carr_library.conversion",

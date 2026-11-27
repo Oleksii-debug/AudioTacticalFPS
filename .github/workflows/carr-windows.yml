@@ -25,7 +25,7 @@ jobs:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
     # Preserve every installed/source case and the additive native reader/platform gates.
-    timeout-minutes: 220
+    timeout-minutes: 232
     defaults:
       run:
         shell: pwsh
@@ -432,7 +432,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert len(pins)==52 and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert len(pins)==55 and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -520,11 +520,33 @@ jobs:
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_reference_smoke.py --expect-installed --report ci-results/installed-voice-reference.json
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-reference' }
           if ($failures.Count) { throw ('Required native reference controls failed: ' + ($failures -join ', ')) }
+      - name: Require native encrypted portable snapshot review and restore
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted --source . --report ci-results/source-portable-sync.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-portable-sync' }
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted --expect-installed --report ci-results/installed-portable-sync.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-portable-sync' }
+          if ($failures.Count) { throw ('Required native encrypted transfer failed: ' + ($failures -join ', ')) }
       - name: Record required integrated source-suite inventory
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/sync/test_archive.py',
+            'tests/sync/test_crypto.py',
+            'tests/sync/test_crypto_publication.py',
+            'tests/sync/test_vault.py',
+            'tests/sync/test_service.py',
+            'tests/sync/test_service_commit_boundaries.py',
+            'tests/sync/test_cli.py',
+            'tests/sync/test_complete_state.py',
+            'tests/sync/test_current_backup_composition.py',
+            'tests/sync/test_admission.py',
+            'tests/sync/test_state.py',
+            'tests/ui/test_portable_sync.py',
             'tests/audio/test_package_publication.py',
             'tests/audio/test_voice_reference.py',
             'tests/ui/test_voice_reference.py',
@@ -1187,7 +1209,7 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.local_model.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.launcher_build.outcome == 'success' }}
-        timeout-minutes: 93
+        timeout-minutes: 97
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -1356,6 +1378,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'bundle current-reader assistant controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_voice_reference_smoke.py --expect-installed --report ci-results/bundle-voice-reference.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle reviewed reference controls failed' }
+          & $installedPython -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted --expect-installed --report ci-results/bundle-portable-sync.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle encrypted portable snapshot controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
           & $installedPython -I -B -X utf8 scripts/windows_incremental_backup_smoke.py --installed --output ci-results/bundle-incremental-backup.json 2>&1 | Tee-Object 'ci-results/bundle-incremental-backup.txt'
@@ -1477,6 +1501,18 @@ jobs:
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = [
+              'tests/sync/test_archive.py',
+              'tests/sync/test_crypto.py',
+              'tests/sync/test_crypto_publication.py',
+              'tests/sync/test_vault.py',
+              'tests/sync/test_service.py',
+              'tests/sync/test_service_commit_boundaries.py',
+              'tests/sync/test_cli.py',
+              'tests/sync/test_complete_state.py',
+              'tests/sync/test_current_backup_composition.py',
+              'tests/sync/test_admission.py',
+              'tests/sync/test_state.py',
+              'tests/ui/test_portable_sync.py',
               'tests/audio/test_package_publication.py',
               'tests/audio/test_voice_reference.py',
               'tests/ui/test_voice_reference.py',

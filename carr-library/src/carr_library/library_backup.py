@@ -411,7 +411,8 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False,
     return manifest
 
 
-def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
+def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False,
+                   _final_destination=None):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
@@ -428,12 +429,20 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
+    # Internal portable restore can prepare privately, then atomically rename
+    # the complete directory. Only typed path projection uses the final root;
+    # all byte publication below still targets the owned preparation directory.
+    projected = destination
+    if _final_destination is not None:
+        projected = _destination(_final_destination, source)
+        if projected == destination or projected.is_relative_to(destination) or destination.is_relative_to(projected):
+            raise RestoreError('final restore projection must be a separate new directory')
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
         entries, pending, flat, sidecars = _verify_contents(
-            source, stage, manifest, destination=destination, cancelled=cancelled)
+            source, stage, manifest, destination=projected, cancelled=cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)

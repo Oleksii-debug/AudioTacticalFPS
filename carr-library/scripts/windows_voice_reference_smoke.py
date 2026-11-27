@@ -80,7 +80,7 @@ def _run_probe(args, report, checkpoint):
     expected = checkout / 'src' / 'carr_library'
     if args.expect_installed:
         assert sys.flags.isolated, 'Installed acceptance requires Python -I.'
-        package_root = _installed_package_root(importlib.metadata.distributions(name='carr-library'),
+        package_root = _installed_package_root(importlib.metadata.distributions(name='universal-research-library'),
                                                carr_library.__file__, checkout)
     else:
         package_root = Path(carr_library.__file__).resolve().parent

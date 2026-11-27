@@ -29,7 +29,7 @@ MAX_BYTES = 512 * 1024 * 1024
 ENGINE_SETTINGS_BYTES = 32 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
            'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json',
-           'desktop-preferences.json')
+           'desktop-preferences.json', 'portable-sync-state.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -74,6 +74,8 @@ def _model(module):
 def sidecar_limit(name):
     """Resolve only explicit formats; also fail early if a producer is absent."""
     portable_name(name)
+    if name == 'portable-sync-state.json':
+        return _model('sync.state').MAX_BYTES
     if name == 'desktop-preferences.json':
         return _model('desktop_preferences').MAX_BYTES
     if name == 'reading-state.json':
@@ -296,7 +298,9 @@ def validate_sidecar(db, name, raw):
             or not raw and not backup_transcription.allows_empty(name)):
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     try:
-        if name == 'desktop-preferences.json':
+        if name == 'portable-sync-state.json':
+            _model('sync.state').validate_portable_state(raw)
+        elif name == 'desktop-preferences.json':
             _model('desktop_preferences').validate_desktop_preferences(raw)
         elif name == 'reading-state.json':
             positions, bookmarks, _ = _decode(raw.decode('utf-8'))

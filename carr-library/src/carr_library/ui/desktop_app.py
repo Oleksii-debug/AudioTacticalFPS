@@ -680,6 +680,8 @@ class DesktopFrame(WorkspaceFrame):
         install_citation_actions(self)
         from .word_citations import install_word_actions
         install_word_actions(self)
+        from .portable_sync import install_portable_sync_actions
+        install_portable_sync_actions(self)
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)

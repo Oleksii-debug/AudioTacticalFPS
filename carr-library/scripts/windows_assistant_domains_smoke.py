@@ -15,6 +15,33 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 import traceback
 
+def _installed_package_root(distributions, package_file, checkout):
+    """Bind installed acceptance to the imported package's actual wheel record.
+
+    A checkout egg-info entry may precede the wheel in metadata discovery.
+    Its project-relative locate_file('carr_library') is not package evidence.
+    Source acceptance never consults installed distribution metadata.
+    """
+    actual = Path(package_file).resolve(strict=True)
+    checkout = Path(checkout).resolve(strict=True)
+    if actual.is_relative_to(checkout):
+        raise RuntimeError('Installed acceptance imported the checkout package.')
+    matches = []
+    for distribution in distributions:
+        for member in distribution.files or ():
+            if str(member).replace('\\', '/') != 'carr_library/__init__.py':
+                continue
+            try:
+                declared = Path(distribution.locate_file(member)).resolve(strict=True)
+            except FileNotFoundError:
+                continue  # An unrelated stale metadata entry is not this package.
+            if declared == actual:
+                matches.append(declared.parent)
+    if len(matches) != 1:
+        raise RuntimeError('Exactly one installed wheel record must own the imported package.')
+    return matches[0]
+
+
 MODULES = (
     'carr_library.assistant.models', 'carr_library.assistant.service',
     'carr_library.assistant.local_tools', 'carr_library.assistant.player_tools',
@@ -26,6 +53,7 @@ MODULES = (
 
 def run_native(source, report, checkpoint):
     import wx
+    import carr_library
     from carr_library.application import LibraryApp
     from carr_library.assistant import AssistantService
     from carr_library.speech.session import ReaderDraftStore
@@ -47,15 +75,23 @@ def run_native(source, report, checkpoint):
         report['checks'].append(name)
         checkpoint(name)
 
+    checkout = Path(__file__).resolve().parents[1]
     if source is None:
-        from importlib.metadata import distribution
-        installed = Path(distribution('universal-research-library').locate_file('carr_library')).resolve(strict=True)
-        check('all nine assistant and reader modules load from the installed package',
-              all(Path(path).is_relative_to(installed) for path in origins.values()))
+        from importlib.metadata import distributions
+        installed = _installed_package_root(distributions(name='universal-research-library'),
+                                            carr_library.__file__, checkout)
+        check('all nine assistant and reader modules load from the exact installed wheel record',
+              all(Path(path) == installed.joinpath(*name.split('.')[1:]).with_suffix('.py').resolve(strict=True)
+                  for name, path in origins.items()))
     else:
         expected = (source / 'src' / 'carr_library').resolve(strict=True)
         check('all nine assistant and reader modules load from the explicit source package',
-              all(Path(path).is_relative_to(expected) for path in origins.values()))
+              all(Path(path) == expected.joinpath(*name.split('.')[1:]).with_suffix('.py').resolve(strict=True)
+                  for name, path in origins.items()))
+    check('all nine imported assistant and reader modules match the exact checkout bytes',
+          all(report['module_sha256'][name] == sha256(
+              checkout.joinpath('src', *name.split('.')).with_suffix('.py').read_bytes()).hexdigest()
+              for name in origins))
 
     def pump(predicate, timeout=30):
         deadline = monotonic() + timeout
@@ -284,8 +320,9 @@ def run_native(source, report, checkpoint):
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--source', type=Path)
-    parser.add_argument('--expect-installed', action='store_true')
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--source', type=Path)
+    mode.add_argument('--expect-installed', action='store_true')
     args = parser.parse_args()
     args.report.parent.mkdir(parents=True, exist_ok=True)
     report = {'status': 'FAIL', 'phase': 'incomplete', 'checks': [],
@@ -305,6 +342,8 @@ def main():
     try:
         source = args.source.resolve(strict=True) if args.source is not None else None
         if source is not None:
+            if source != Path(__file__).resolve().parents[1]:
+                raise ValueError('Choose this exact checkout for native source acceptance.')
             sys.path.insert(0, str(source / 'src'))
         from carr_library.native_runtime import activate_bundled_runtime
         handle = activate_bundled_runtime()

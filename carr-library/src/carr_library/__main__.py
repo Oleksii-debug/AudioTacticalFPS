@@ -79,6 +79,9 @@ def main(argv=None, *, delivery=None):
     if arguments and arguments[0] in ('transcribe', 'transcription'):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments[:1] == ['sync']:
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
     if arguments[:1] == ['backup-incremental']:
         from .backup_incremental_cli import main as backup_incremental_main
         return backup_incremental_main(arguments[1:])

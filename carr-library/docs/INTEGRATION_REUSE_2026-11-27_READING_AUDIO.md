@@ -346,3 +346,157 @@ Every new adapter, fixture and corrected source at this checkpoint remains
 **NOT_RUN**. No earlier result is relabeled as evidence for this new composition.
 The full same-head Windows aggregate and all six ordinary workflows are still
 required. No eligible application wheel or private final archive exists.
+
+
+## V3-06/08 portable snapshot composition (2026-11-27 18:07 UTC)
+
+The reviewed current-domain Sync selection is
+`4837346fe62b7926585d44c26ae8f3891961c8d9` (27 source/test/guide paths),
+reconciled from PR99 `5f18481654277425ab8af170575de978e7a2a69c`.
+Its narrow backup hooks are separately checkpointed at
+`88a72077e2787f440bb175baf1470082f8861345`. The existing backup format 5,
+catalog schema 6, original-data validation and passive restore contracts remain
+the authority. No live SQLite database is shared between devices.
+
+- Explicit publication uses a separate local transfer directory and immutable
+  verified chunks. A separately retained transfer token binds the actual
+  manifest. Expected-parent and local-history checks reject divergent history;
+  the user must review/restore it separately or select a new transfer directory.
+- Source admission measures only the existing backup producer roots. The shared
+  ResourceBroker accounts for one CPU slot, declared 256 MiB crypto/archive
+  memory and bounded measured staging/final-volume disk copies. Source growth
+  while waiting rejects the attempt. These are cooperative declared estimates,
+  not a native memory sandbox.
+- The existing backup verifier is run on original backup bytes before restore.
+  Its internal final-destination projection binds restored clip/Book/pending
+  paths to the final new library, even while actual writes remain in private
+  preparation. External execution/rights/runtime authority stays revoked.
+- One existing broker lease remains held through authenticated reading, fresh
+  canonical copy, exclusive final directory publication and staging cleanup.
+  Its latched cancellation controls each phase. A proven publication followed
+  by cleanup trouble retains a distinct receipt; it is not reported as absent.
+- The native UI borrows DesktopExecutor, captures the current application and
+  window owner, and revokes callbacks on direct native destruction. Queued
+  passwords are released even if their future never starts. The existing main
+  entrypoint dispatches `sync`; a nonexistent donor updater decorator is not
+  introduced. Only passive, typed `portable-sync-state.json` history joins
+  current backups.
+
+### Selected encryption and exact-file correction
+
+The same optional PyCA cryptography 50.0.2 envelope is reused, with its existing
+AES-GCM/scrypt/HKDF primitives and unchanged wire format. Encryption is an
+explicit choice and cannot fall back to plaintext. Passphrases are not command
+arguments, saved history, transfer labels or diagnostics. Python/native memory
+cannot promise secure erasure; the guide records that limitation.
+
+The independently reviewed two-path correction
+`cedbcf2288339d486bc73b4185f0d62ef5a4b996` changes only the existing crypto
+output owner and adds ten actual cipher/filesystem test cases. After fsync, the
+output is hashed against the authenticated writer's expected bytes, using the
+same captured inode and finite byte count. A newly computed hash cannot approve
+a changed stage. Precommit source/destination/cancellation checks remain.
+Postcommit verification ignores late Cancel but proves the exact owned output;
+uncertain bytes remain for explicit review. Cleanup refuses to delete a staging
+name replaced by another file. Cipher primitives, header, input contract and
+CryptoReceipt schema are byte-identical to the reviewed donor adaptation.
+These new cases are source only, NOT_RUN.
+
+Three exact publisher-verified Windows wheels join the existing locks/SBOM:
+cryptography 50.0.2, cffi 2.1.1 and pycparser 3.12. Core/full inventories now
+contain 19/55 packages respectively. Existing hashes/pins are retained; the
+manual supplemental entries do not claim a new resolver run. Exact wheel
+hashes, source links and license declarations are recorded in
+[SYNC_DEPENDENCIES.md](SYNC_DEPENDENCIES.md). Actual wheel installation, native
+compatibility and qualification still require the current candidate gates.
+
+### Required checks and guide delivery
+
+All twelve Sync/crypto-publication/UI suites join main source and installed
+inventories, with the unchanged POSIX cleanup scenario additionally required
+in Linux. The POSIX scenario is moved explicitly out of Windows selection;
+no platform early return or skip counts as a pass. The V3 aggregate selects
+the whole Sync directory. Native encrypted snapshot review/publish/restore
+runs from source, installed wheel and full bundle with the existing 180-second
+probe watchdog. It verifies actual SQLite sources/citations and native
+confirmation ownership, not cloud/WebDAV service behavior or manual NVDA.
+
+The bundle guide list now includes the implemented voice/reference, reading
+preparation, Book batch, incremental backup, publishing, search continuation,
+Word, assistant and portable-transfer guides, plus the existing explicit local
+audio-runtime setup guide. Its packaging fixture gets the same real required
+filenames; existing packaging assertions remain.
+
+Two new native probes receive exact distribution identity corrections:
+`b44358a8a1dcbeaf01560591c9992d438ffd501f`. The reference probe now filters
+the real `universal-research-library` distribution, not the import-directory
+name. The assistant probe resolves the exact wheel RECORD owner of its imported
+package and matches all nine module files to the current checkout bytes.
+Source acceptance requires this exact checkout. This strengthens evidence;
+it does not claim either probe has executed.
+
+### New capture diagnosis, not capture qualification
+
+The exact endpoint diagnosis at
+[run 46028171421](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46028171421)
+completed at `05594e86f12f012fff0ded2b93646eab1658e7d5`.
+WASAPI read the exact active capture endpoint, its unchanged identity, device
+period and mix format, but shared Initialize returned `0x80070005` (access
+denied). It never started a capture stream or requested data buffers. All four
+WinMM opens also failed; DirectShow format application returned `0x80004005`.
+The successful job conclusion means diagnosis completed, not recording passed.
+
+A separate read-only diagnostic branch
+`carr/capture-access-dbbb-20261127`, commit
+`f2fe6dcbd54cd5bb0a5a0587993177aa412d1f93`, adds fixed microphone consent,
+machine-policy and process-session observations. It neither writes registry
+settings nor changes consent, policy, endpoint or device fallback. Main run
+46031920263 at `94ecfdd4` completed with failure at 17:58 UTC; its exact final
+artifact is retained for a separate bounded evidence read. The selected capture gate
+remains required and failing until actual valid capture evidence exists.
+
+All source in this composition is **INTEGRATED / NOT_RUN**. The streamed large
+TXT and wider scoped/ranked/federated continuation work is separate and not
+claimed by this checkpoint. Protected voice-package transfer is also separate
+from this library-snapshot envelope. Full exact-head execution, model/device
+quality, Windows 11/manual NVDA and final release evidence remain outstanding.
+
+## Observed Windows failures and bounded corrections (2026-11-27 18:24 UTC)
+
+The completed native evidence from run 46031920263 at `94ecfdd4` was read from
+its exact retained pre-source/recording artifacts by diagnostic run
+[46040872548](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46040872548).
+That read did not execute or qualify any new source.
+
+- Audio batch review passed its preceding native checks, then could not open the
+  review dialog. The current UI passed `progress_total`/`progress_unit` to the
+  existing DesktopFrame.run_job, which has neither parameter. Both calls now
+  use its existing `with_progress=True` contract. The service still reports
+  actual completed/total/phase tuples. The existing worker/UI regression fixture
+  now has the real explicit job signature and checks both exact progress tuples;
+  all cancellation, changed-library and committed-receipt assertions remain.
+- Reopening the reader before deferred native Destroy left its old desktop
+  command registration attached. Checkpoint `18bdaaf9` retains the returned
+  detach token and releases only that token after native/worker ownership cleanup,
+  before Destroy. Three focused cases cover normal close and output/worker
+  failure followed by immediate reopen. Native appearance assertions remain.
+- The incremental-backup probe now obtains its ReadingLocation from the current
+  active_page view rather than a removed catalog_edition.active_revision column.
+  Actual incremental creation, fresh restore and original-data checks remain.
+- The output-routing probe constructs a real LibraryApp before its existing
+  OperationProgress and closes progress only if initialization succeeded. Actual
+  endpoint selection, pause/resume/default routing and source-integrity checks
+  remain required.
+- Native multiline text presentation compares against the exact admitted text
+  with only CRLF-to-LF conversion required by wx presentation. Separate existing
+  assertions still require exact raw clipboard bytes, immutable source_text and
+  unchanged retained source/manual draft. This does not normalize source data.
+- The player-queue probe `23a6ac7b` only adds bounded actual MCI/status/owner
+  diagnostics on its existing failure. Its playing/position condition, route
+  and deadline are unchanged. The queue cause remains unproven; this is not a fix.
+
+All corrections are **NOT_RUN**. Earlier d313 corrections cover the actual
+DAISY constant import, native Book lease wrapper and transcription cache/root
+restoration failures. Current source and installed suites must establish that
+these changes resolve the original failures. The failed `94ecfdd4` run retained
+no eligible wheel; a final bundle cannot use its wheel.

@@ -1058,10 +1058,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     unregister_save = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
                         dirty=unsaved, save=save_registered, focus=lambda: editor.SetFocus())
                        if coordinator is not None else lambda: None)
+    detach_reader = lambda: None
     try:
         integration = getattr(parent, 'desktop_integration', None)
         if integration is not None:
-            integration.attach_reader(dialog, pause, stop,
+            detach_reader = integration.attach_reader(dialog, pause, stop,
                 lambda: alive and not dialog_destroyed,
                 player=player, source_snapshot=assistant_player_snapshot,
                 player_guard=assistant_player_guard, pause_action=pause_audio, stop_action=stop_audio)
@@ -1161,8 +1162,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     # A detached parent reporter must not keep the modal open.
                     pass
         finally:
-            if not dialog_destroyed:
-                dialog.Destroy()
+            # Destroy may defer its native event beyond this modal call. Release
+            # only our desktop command token after native/worker cleanup has
+            # either completed or retained its exact pending owners above.
+            try:
+                detach_reader()
+            finally:
+                if not dialog_destroyed:
+                    dialog.Destroy()
 
 
 def install_speech_actions(frame):

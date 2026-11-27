@@ -181,7 +181,10 @@ def main():
                 pump(lambda: controller.reader is not None, 'Canonical reader controls were not attached.')
                 _token, dialog, buttons, _alive, _scope = controller.reader
                 editor = named(dialog, 'Reading copy (editable; Ctrl+S saves)')
-                check('native reader contains the exact admitted copy', editor.GetValue() == expected)
+                # wx multiline presentation uses LF; the raw clipboard and
+                # immutable source_text are checked byte-for-byte below.
+                check('native reader presents every admitted character with wx line endings',
+                      editor.GetValue() == expected.replace('\r\n', '\n'))
                 check('global controls bind actual canonical reader buttons',
                       buttons['voice.pause'].GetParent() is dialog and buttons['voice.stop'].GetParent() is dialog)
                 stop_events = []

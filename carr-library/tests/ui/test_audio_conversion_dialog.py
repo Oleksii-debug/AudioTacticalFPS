@@ -20,16 +20,17 @@ class Frame:
         self.worker = ThreadPoolExecutor(max_workers=1)
         self.thread = threading.get_ident()
 
-    def run_job(self, title, operation, done=None, failed=None, **options):
+    def run_job(self, title, operation, done=None, failed=None, *, with_progress=False, discard=None):
         assert threading.get_ident() == self.thread
         assert not self.working
         self.cancel_event.clear()
         self.working = True
-        self.jobs.append((title, operation, done, failed, options))
+        self.jobs.append((title, operation, done, failed,
+                          {'with_progress': with_progress, 'discard': discard}))
 
     def take(self):
         title, operation, done, failed, options = self.jobs.pop(0)
-        assert options['with_progress'] and options['progress_unit'] == 'files'
+        assert options['with_progress'] and options['discard'] is None
         calls = []
         def progress(*values):
             assert threading.get_ident() != self.thread
@@ -130,7 +131,7 @@ def test_review_and_conversion_use_worker_but_explicit_approval_uses_caller(peer
     inputs.reverse()
     chain.clear()
     deliver, progress = peer.frame.take()
-    assert progress and not peer.approvals
+    assert progress == [(0, 2, 'Actual selected-source review')] and not peer.approvals
     prepare, = [event for event in peer.events if event[0] == 'prepare']
     assert prepare[1] == tuple(map(str, peer.sources))
     assert prepare[3:5] == ('flac', False)
@@ -140,7 +141,7 @@ def test_review_and_conversion_use_worker_but_explicit_approval_uses_caller(peer
     assert len(peer.approvals) == 1
     assert not any(event[0] == 'run' for event in peer.events)
     complete, progress = peer.frame.take()
-    assert progress
+    assert progress == [(2, 2, 'Saved reviewed outputs')]
     complete()
     assert [event[0] for event in peer.events].count('run') == 1
     assert '2 of 2 files saved' in peer.frame.messages[-1]

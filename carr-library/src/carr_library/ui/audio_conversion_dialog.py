@@ -158,10 +158,9 @@ def start_audio_batch(frame, sources, *, format='wav', resume=False, **settings)
             frame.run_job('Converting reviewed audio batch',
                 lambda progress: service.run(plan, resume=resume, cancelled=cancellation.is_set,
                                               progress=progress),
-                finished, failed, progress_total=len(plan['sources']),
-                progress_unit='files', with_progress=True)
+                finished, failed, with_progress=True)
         except Exception as exc:
             failed(exc)
 
     frame.run_job('Reviewing selected audio batch', prepare, reviewed, failed,
-                  progress_total=len(selected_sources), progress_unit='files', with_progress=True)
+                  with_progress=True)

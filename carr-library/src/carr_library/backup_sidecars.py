@@ -37,7 +37,7 @@ _PATHS = (
     r'reading-state\.json', r'connections\.json', r'imports\.sqlite',
     r'keybindings\.json', r'ocr-language-presets\.json',
     r'evidence-drafts\.json', r'keyboard-shortcuts\.json', r'progress-preferences\.json',
-    r'desktop-preferences\.json',
+    r'desktop-preferences\.json', r'portable-sync-state\.json',
     rf'import-batches/{_REQUEST}\.json',
     rf'import-requests/(?:reviews/)?{_REQUEST}\.json',
     rf'pending-originals/{_HASH}\.(?:{_ORIGINAL_EXTENSIONS})',
@@ -58,7 +58,8 @@ _PATHS = (
 _TYPED_ROOT_LIMITS = {'evidence-drafts.json': 8 * 1024**2,
                       'keyboard-shortcuts.json': 64 * 1024,
                       'progress-preferences.json': 8192,
-                      'desktop-preferences.json': 8192}
+                      'desktop-preferences.json': 8192,
+                      'portable-sync-state.json': 1024 * 1024}
 
 
 def _present(path):

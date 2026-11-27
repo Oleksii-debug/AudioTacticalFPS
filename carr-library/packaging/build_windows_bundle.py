@@ -432,7 +432,19 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
                      "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
                      "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
-                     "TRANSCRIPTION.md", "recording.md"):
+                     "TRANSCRIPTION.md", "recording.md",
+                     "LOCAL_AUDIO_RUNTIME_SETUP.md",
+                     "LOCAL_VOICES.md",
+                     "VOICE_REFERENCE_REVIEW.md",
+                     "READING_PREPARATION.md",
+                     "BOOK_AUDIO_BATCH.md",
+                     "INCREMENTAL_BACKUP.md",
+                     "STUDIO_EPUB_PUBLISHING.md",
+                     "SEARCH_PAGINATION.md",
+                     "WORD_NATIVE_INTEGRATION.md",
+                     "ASSISTANT_DOMAINS.md",
+                     "PORTABLE_SNAPSHOTS.md",
+                     "SYNC_DEPENDENCIES.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)

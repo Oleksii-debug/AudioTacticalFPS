@@ -429,6 +429,20 @@ def native_controls(player, check, commands, selected_output, private_root, runt
         def selected(popup):
             try:
                 owner = frame._playback_owner
+                queue_native_events = []
+                actual_queue_mci = owner.player._mci
+                def queue_mci(command):
+                    try:
+                        result = actual_queue_mci(command)
+                    except BaseException as error:
+                        if len(queue_native_events) < 24:
+                            queue_native_events.append({'operation': command.partition(' ')[0],
+                                'error': type(error).__name__ + ': ' + str(error)[:512]})
+                        raise
+                    if not command.startswith('status ') and len(queue_native_events) < 24:
+                        queue_native_events.append({'operation': command.partition(' ')[0], 'ok': True})
+                    return result
+                owner.player._mci = queue_mci
                 check('fresh standalone player does not borrow document playback',
                       owner.player is not player and owner.player.path is None)
                 actual_prepare = owner.player.prepare_playlist
@@ -459,8 +473,36 @@ def native_controls(player, check, commands, selected_output, private_root, runt
                 check('queue selection alone is silent', owner.player.playlist_index == 0
                       and owner.player.state == 'stopped' and not owner.player._open)
                 press(find(popup, 'Play queue from selected item'))
-                pump(lambda: owner.player.state == 'playing' and owner.player.position_seconds >= .08,
-                     'Actual queue playback did not advance')
+                try:
+                    pump(lambda: owner.player.state == 'playing' and owner.player.position_seconds >= .08,
+                         'Actual queue playback did not advance')
+                except BaseException as exc:
+                    # Keep the strict native condition; expose the real admission
+                    # result rather than inferring a reason from a timeout alone.
+                    diagnostic = {
+                        'notice': str(owner.notice)[:1024],
+                        'status': wx.Window.FindWindowByName(
+                            'Current reader playback status', popup).GetValue()[:2048],
+                        'cancelled': frame.cancel_event.is_set(),
+                        'working': bool(frame.working),
+                        'closed': owner.closed,
+                        'generation': owner.generation,
+                        'session_generation': owner.player.session_generation,
+                        'queue_active': owner.player.queue_active,
+                        'playlist_index': owner.player.playlist_index,
+                        'mci_open': owner.player._open,
+                        'wave_open': owner.player._wave is not None,
+                        'selected_output': (owner.player.output_device.identity
+                                            if owner.player.output_device is not None else None),
+                        'native_events': queue_native_events,
+                    }
+                    for name in ('state', 'position_seconds', 'duration_seconds'):
+                        try:
+                            diagnostic[name] = getattr(owner.player, name)
+                        except BaseException as error:
+                            diagnostic[name] = type(error).__name__ + ': ' + str(error)[:512]
+                    raise RuntimeError('Actual queue playback did not advance: ' +
+                                       json.dumps(diagnostic, sort_keys=True)) from exc
                 press(find(popup, 'Pause or resume recording'))
                 check('actual queue pause keeps the retained original frame', owner.player.state == 'paused')
                 press(find(popup, 'Save playback queue'))
