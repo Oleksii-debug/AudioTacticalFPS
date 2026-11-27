@@ -55,7 +55,12 @@
       "Every product file, runtime pin, oracle and timeout",
       "Current running/frozen refs"
     ],
-    "execution": "NOT_RUN_FOR_SUCCESSOR"
+    "execution": "NOT_RUN_FOR_SUCCESSOR",
+    "focused_trigger": {
+      "pattern": "carr/audio-native-*",
+      "scope": "Existing auxiliary audio workflow only; permits the observed-failure rerun without triggering the full v3-acceptance cohort.",
+      "unchanged_execution": "Same dependency preparation, actual native probes, selectors, counts and timeouts."
+    }
   },
   "other_active_workflows": [
     {
