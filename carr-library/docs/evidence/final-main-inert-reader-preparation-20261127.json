@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "PREPARED_SOURCE_ONLY",
+  "parent": "f77cdd445c158f3f66d13c03d920418965840d16",
+  "run_id": 46078342596,
+  "job_id": 140771249163,
+  "reader": {
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "sha256": "c9d2a3a65af6d3eb6e8fec2d83560a5f5d7449bff65d866153a8b0fca83645e1",
+    "lines": 1591
+  },
+  "reused_transport": {
+    "commit": "b2773b8c9f1e67348f020b3cf01652d614914a43",
+    "path": "carr-library/scripts/converter_artifact_diagnostics.py",
+    "blob": "b37c8e3232770f0fa226ad45e63fa7f7eeac177d",
+    "scope": "Fixed GitHub HTTPS provenance, redirect Authorization removal, whole-archive digest/size and bounded ZIP reading. No use of its old artifact pins."
+  },
+  "changes": [
+    "A closed profile binds known f77c/run/job/attempt and refuses missing artifact pins before any artifact request.",
+    "Whole selected-member bytes are hashed; large source/installed logs are never copied wholesale to reader stdout.",
+    "Exact source selector totals and selector-multiplied CASE_START Counter; exact installed/translation/library JUnit Counters.",
+    "Exact21r7 and separate reader-interactive Counters, metrics, module/source/probe/runtime hashes.",
+    "Independent raw-byte bindings for ordinary6, maintenance4, managed15, library50, restart and shell3 receipts.",
+    "Three public wheels inspected inertly with exact RECORD and source-byte closure; compiled/native/model payloads remain unretained.",
+    "Four in-memory negative controls target missing member, normalized duplicate, function multiplicity and source identity; no test/application/model execution."
+  ],
+  "actual_prior_log_parser_observation": {
+    "actual_log_sha256": "f8f1267f32533fd84e79657341db59d76b33132f5c4111abdf77765a543c3286",
+    "function": "tests.audio.test_engine_profiles::test_unreviewed_or_incomplete_installations_never_create_registration",
+    "actual_markers": 4,
+    "line_anchored_markers": 3,
+    "reason": "A real concurrent duration row ends immediately before CASE_START; token must not be line-anchored.",
+    "whole_job_prior_pdf_markers": 4,
+    "strict_selected_protected_markers": 6469
+  },
+  "counter_observation_limit": "JS source-analysis rehearsal of the marker rule, not execution of the new Python reader. The four earlier PDF markers belong to a preceding phase outside integrated-tests.txt; no prior failure becomes PASS.",
+  "execution": "NOT_RUN; source review and actual completed artifact identity still required.",
+  "refs_changed": false,
+  "reader_launched": false
+}
