@@ -176,7 +176,8 @@ def _studio_job(value, identity):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice',
+                                                      'effects', 'markers', 'marker_notice'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -224,6 +225,81 @@ def _timeline(value):
             for key in required - {'start', 'end'}:
                 text(row[key], 100000 if key == 'text' else 8192, empty=key in ('text', 'source_ref'))
 
+
+    if any(name in value for name in ('effects', 'markers', 'marker_notice')):
+        if not all(name in value for name in ('effects', 'markers', 'marker_notice', 'clips')):
+            raise ValueError('Edited Studio timelines require their complete typed annotations.')
+        from .audio.effect_presets import read_effect
+        from .studio.project import _timeline_effects
+        effect_data = value['effects']
+        fields(effect_data, {'master', 'roles', 'scenes', 'clips', 'clip_bypass', 'stems'})
+        if effect_data['stems'] != ('Track effects are included. Scene and master effects '
+                                   'apply only to their mixed buses.'):
+            raise ValueError('Unknown effect stem semantics.')
+        def identity(key):
+            if type(key) is not str or re.fullmatch(ID, key) is None:
+                raise ValueError('Invalid effect or marker identity.')
+        def mapping(rows):
+            if type(rows) is not dict or len(rows) > 100000:
+                raise ValueError('Invalid bounded effect inventory.')
+            for key in rows:
+                identity(key)
+            return rows
+        def chain(rows):
+            if type(rows) is not list or len(rows) > 32:
+                raise ValueError('Invalid saved timeline effect chain.')
+            _timeline_effects(tuple(read_effect(row) for row in rows), value['sample_rate'])
+        chain(effect_data['master'])
+        for rows in mapping(effect_data['roles']).values():
+            chain(rows)
+        chapters = {row['id']: row for row in value['chapters']}
+        if len(chapters) != len(value['chapters']):
+            raise ValueError('Duplicate annotated chapter identity.')
+        for scene in chapters:
+            identity(scene)
+        if not {row['role'] for row in value['lines']} <= effect_data['roles'].keys():
+            raise ValueError('A spoken line has no retained effect-role declaration.')
+        scene_effects, clip_effects, bypass = (mapping(effect_data[name])
+                                               for name in ('scenes', 'clips', 'clip_bypass'))
+        if any(set(rows) != set(chapters) for rows in (scene_effects, clip_effects, bypass)):
+            raise ValueError('Effect scenes differ from the retained chapter graph.')
+        clips = {scene: set() for scene in chapters}
+        for row in value['clips']:
+            identity(row['id'])
+            if row['scene'] not in clips or row['id'] in clips[row['scene']]:
+                raise ValueError('Invalid or duplicate annotated clip identity.')
+            clips[row['scene']].add(row['id'])
+        for scene in chapters:
+            chain(scene_effects[scene])
+            effects, flags = mapping(clip_effects[scene]), mapping(bypass[scene])
+            if set(effects) != clips[scene] or set(flags) != clips[scene]:
+                raise ValueError('Effect clips differ from the measured clip graph.')
+            for rows in effects.values():
+                chain(rows)
+            if any(type(flag) is not bool for flag in flags.values()):
+                raise ValueError('Clip bypass must be an explicit boolean.')
+        if value['marker_notice'] != 'Authored scene annotations; not transcript alignment or source citations.':
+            raise ValueError('Unknown marker provenance semantics.')
+        if type(value['markers']) is not list or len(value['markers']) > 100000:
+            raise ValueError('Invalid marker inventory.')
+        counts, seen = {}, set()
+        for row in value['markers']:
+            fields(row, {'scene', 'id', 'label', 'position', 'start'})
+            identity(row['scene'])
+            identity(row['id'])
+            if row['scene'] not in chapters or (row['scene'], row['id']) in seen:
+                raise ValueError('Unknown scene or duplicate marker identity.')
+            seen.add((row['scene'], row['id']))
+            counts[row['scene']] = counts.get(row['scene'], 0) + 1
+            if counts[row['scene']] > 10000:
+                raise ValueError('Scene marker inventory exceeds its producer limit.')
+            text(row['label'], 512)
+            number(row['position'], 0, 31_536_000)
+            number(row['start'], 0, value['duration'] + 31_536_000)
+            if (abs(row['position'] * value['sample_rate'] - round(
+                    row['position'] * value['sample_rate'])) > .001
+                    or abs(row['start'] - chapters[row['scene']]['start'] - row['position']) > 1e-6):
+                raise ValueError('Marker position differs from its authored sample-grid annotation.')
 
 def _assistant_job(db, value, identity):
     from .assistant.models import Step, canonical

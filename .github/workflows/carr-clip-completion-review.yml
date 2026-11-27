@@ -1,0 +1,268 @@
+name: Exact clip timeline and owned deadline review
+
+on:
+  push:
+    branches: [carr/clip-completion-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-clip-completion-review.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clip-review-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Clip timeline / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        id: source-runtime
+        run: |
+          python -m pip install ".[test,sync]"
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+      - name: Install actual Windows desktop
+        id: desktop-runtime
+        if: runner.os == 'Windows'
+        run: python -m pip install ".[desktop]"
+      - name: Prepare actual Linux test audio runtime
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p ci-clip-review
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          ffmpeg -version > ci-clip-review/ffmpeg-version.txt
+          ffprobe -version > ci-clip-review/ffprobe-version.txt
+      - name: Prepare pinned Windows test audio runtime
+        id: audio-runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-clip-review' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-clip-review-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-clip-review/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_CLIP_REVIEW_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Compile exact changed source and native acceptance
+        run: |
+          mkdir -p ci-clip-review
+          python -B - <<'PY'
+          from pathlib import Path
+          paths = [
+              "src/carr_library/studio/project.py", "src/carr_library/studio/clips.py",
+              "src/carr_library/studio/render.py", "src/carr_library/audio/dsp.py",
+              "src/carr_library/audio/process.py", "src/carr_library/ui/studio_clips.py",
+              "src/carr_library/ui/studio_dialog.py", "src/carr_library/backup_producers.py",
+              "scripts/windows_clip_editor_smoke.py",
+              "tests/studio/test_project_effects.py",
+              "tests/studio/test_clip_timeline.py",
+              "tests/studio/test_clip_timeline_dialog.py",
+              "tests/studio/test_clip_editing.py",
+              "tests/studio/test_clip_dialog.py",
+              "tests/studio/test_project_v1_compatibility.py",
+              "tests/studio/test_studio_controller.py",
+              "tests/studio/test_production.py",
+              "tests/studio/test_production_cancellation_outcomes.py",
+              "tests/studio/test_production_total_budget_ownership.py",
+              "tests/audio/test_dsp.py",
+              "tests/audio/test_process_deadline.py",
+              "tests/audio/test_process_start_cleanup.py",
+              "tests/audio/test_owned_process_tree.py",
+              "tests/audio/test_windows_job_cleanup.py",
+              "tests/conversion/test_calibre_process_ownership.py",
+              "tests/storage/test_current_producer_backup.py"
+          ]
+          for name in paths:
+              compile(Path(name).read_bytes(), name, "exec")
+          print("Exact source/native compile:", len(paths))
+          PY
+      - name: Require exact source clip and native-owner boundaries without skips
+        run: |
+          mkdir -p ci-clip-review
+          python scripts/ci_check.py --diagnostics --jobs 2 \
+            tests/studio/test_project_effects.py \
+            tests/studio/test_clip_timeline.py \
+            tests/studio/test_clip_timeline_dialog.py \
+            tests/studio/test_clip_editing.py \
+            tests/studio/test_clip_dialog.py \
+            tests/studio/test_project_v1_compatibility.py \
+            tests/studio/test_studio_controller.py \
+            tests/studio/test_production.py \
+            tests/studio/test_production_cancellation_outcomes.py \
+            tests/studio/test_production_total_budget_ownership.py \
+            tests/audio/test_dsp.py \
+            tests/audio/test_process_deadline.py \
+            tests/audio/test_process_start_cleanup.py \
+            tests/audio/test_owned_process_tree.py \
+            tests/audio/test_windows_job_cleanup.py \
+            tests/conversion/test_calibre_process_ownership.py \
+            tests/storage/test_current_producer_backup.py 2>&1 | tee ci-clip-review/source-boundaries.txt
+      - name: Require exact installed clip and native-owner boundaries without skips
+        if: "!cancelled() && steps.source-runtime.outcome == 'success'"
+        run: |
+          mkdir -p ci-clip-review
+          python -I -B -X utf8 - <<'PY' 2>&1 | tee ci-clip-review/installed-boundaries.txt
+          from hashlib import sha256
+          import importlib
+          import json
+          from pathlib import Path
+          import sys
+          import sysconfig
+          import xml.etree.ElementTree as ET
+          import pytest
+          import carr_library
+          import bootstrap
+          
+          checkout = Path.cwd().resolve()
+          purelib = Path(sysconfig.get_path("purelib")).resolve()
+          package = Path(carr_library.__file__).resolve().parent
+          assert package == purelib / "carr_library", (package, purelib)
+          assert Path(bootstrap.__file__).resolve().is_relative_to(purelib)
+          modules = [
+              "studio.clips",
+              "studio.project",
+              "studio.render",
+              "audio.dsp",
+              "ui.studio_clips",
+              "ui.studio_dialog",
+              "backup_producers",
+              "audio.process",
+              "audio.windows_job",
+              "ui.playback_navigation",
+              "ui.effects_dialog"
+          ]
+          identities = {}
+          for suffix in modules:
+              relative = Path(*suffix.split(".")).with_suffix(".py")
+              installed = package / relative
+              source = checkout / "src" / "carr_library" / relative
+              assert installed.is_relative_to(purelib)
+              expected = sha256(source.read_bytes()).hexdigest()
+              assert sha256(installed.read_bytes()).hexdigest() == expected, suffix
+              identities["carr_library." + suffix] = {"path": str(installed), "sha256": expected}
+          for suffix in ("studio.clips", "studio.project", "studio.render", "audio.dsp", "audio.process", "backup_producers"):
+              selected = importlib.import_module("carr_library." + suffix)
+              assert Path(selected.__file__).resolve().is_relative_to(purelib), suffix
+          report = checkout / "ci-clip-review" / "installed.xml"
+          identity_path = report.with_name("installed-origins.json")
+          identity_path.write_text(json.dumps(identities, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          suites = [
+              "tests/studio/test_project_effects.py",
+              "tests/studio/test_clip_timeline.py",
+              "tests/studio/test_clip_timeline_dialog.py",
+              "tests/studio/test_clip_editing.py",
+              "tests/studio/test_clip_dialog.py",
+              "tests/studio/test_project_v1_compatibility.py",
+              "tests/studio/test_studio_controller.py",
+              "tests/studio/test_production.py",
+              "tests/studio/test_production_cancellation_outcomes.py",
+              "tests/studio/test_production_total_budget_ownership.py",
+              "tests/audio/test_dsp.py",
+              "tests/audio/test_process_deadline.py",
+              "tests/audio/test_process_start_cleanup.py",
+              "tests/audio/test_owned_process_tree.py",
+              "tests/audio/test_windows_job_cleanup.py",
+              "tests/conversion/test_calibre_process_ownership.py",
+              "tests/storage/test_current_producer_backup.py"
+          ]
+          status = pytest.main(["-q", "--import-mode=importlib", "-o", "pythonpath=",
+              "-o", "faulthandler_timeout=60", "--junitxml=" + str(report), *suites])
+          assert report.is_file(), "Installed suite did not produce its required verdict."
+          root = ET.parse(report).getroot()
+          totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
+          for suite in root.iter("testsuite"):
+              for name in totals:
+                  totals[name] += int(suite.attrib.get(name, 0))
+          print(json.dumps({"installed": totals, "source_identity": identities}, sort_keys=True), flush=True)
+          for suffix, row in identities.items():
+              assert sha256(Path(row["path"]).read_bytes()).hexdigest() == row["sha256"], suffix
+          assert totals["tests"] > 0 and not any(totals[name] for name in ("failures", "errors", "skipped")), totals
+          raise SystemExit(status)
+          PY
+      - name: Require installed native feature workflows with egress blocked
+        if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success'"
+        shell: pwsh
+        run: |
+          $python = (Get-Command python.exe).Source
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testFfmpeg = Join-Path $env:CARR_CLIP_REVIEW_AUDIO 'bin/ffmpeg.exe'
+          $testFfprobe = Join-Path $env:CARR_CLIP_REVIEW_AUDIO 'bin/ffprobe.exe'
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$env:CARR_CLIP_REVIEW_AUDIO;
+             ffmpeg=@{ path=$testFfmpeg; sha256=(Get-FileHash -LiteralPath $testFfmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
+             ffprobe=@{ path=$testFfprobe; sha256=(Get-FileHash -LiteralPath $testFfprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-clip-review/external-test-audio-binding.json'
+          $programs = @($python, $basePython,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Get-Process -Id $PID).Path,
+            (Join-Path $env:CARR_CLIP_REVIEW_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_CLIP_REVIEW_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $rulePrefix = 'CARR-clip-review-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-clip-review/runtime-firewall.json'
+            $probes = @(
+              @{ name='native-clips'; script='scripts/windows_clip_editor_smoke.py'; arguments=@('--audio-evidence', 'ci-clip-review/external-test-audio-binding.json') }
+            )
+            $failures = @()
+            foreach ($probe in $probes) {
+              $scriptPath = $probe.script
+              $probeArgs = @($probe.arguments)
+              & $python -I -B -X utf8 -X faulthandler $scriptPath @probeArgs 2>&1 | Tee-Object ('ci-clip-review/' + $probe.name + '.txt')
+              if ($LASTEXITCODE -ne 0) { $failures += $probe.name }
+            }
+            if ($failures.Count -ne 0) { throw ('Required native workflows failed: ' + ($failures -join ', ')) }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Preserve source and dependency identity
+        if: always()
+        run: |
+          mkdir -p ci-clip-review
+          git rev-parse HEAD > ci-clip-review/commit.txt
+          python -m pip freeze > ci-clip-review/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: clip-review-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-clip-review
+          if-no-files-found: error
