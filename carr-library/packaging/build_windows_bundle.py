@@ -178,14 +178,37 @@ def verify_dependency_closure(selected):
                 raise ValueError(f"unsatisfied Windows dependency: {req}")
 
 
+def verify_portable_entry_sources(wheel, launcher_payload):
+    """A marker cannot opt an older/unowned application wheel into activation."""
+    package = HERE.parent / "src" / "carr_library"
+    with ZipFile(wheel) as archive:
+        for relative in ("installation_lease.py", "portable_entry.py", "portable_bootstrap.py", "audio/windows_process.py",
+                         "__main__.py", "native_checks.py", "transcription_cli.py", "security/__main__.py",
+                         "studio/cli.py", "extract/ocr_model_catalog.py", "assistant/translation_cli.py", "operations/cli.py"):
+            current = regular(package / relative).read_bytes()
+            name = "carr_library/" + relative
+            names = [entry for entry in archive.infolist() if entry.filename == name]
+            if (len(names) != 1 or names[0].file_size != len(current)
+                    or archive.read(names[0]) != current):
+                raise ValueError("portable ownership code differs from the exact application wheel")
+    receipt = json.loads(launcher_payload[1].decode("utf-8-sig"))
+    current_launcher = sha256(regular(HERE / "native-launcher" / "launcher.c"))
+    if receipt["source_sha256"].get("launcher.c") != current_launcher:
+        raise ValueError("portable ownership differs from the exact native launcher source")
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, launcher_dir=None):
+                 ocr_source_archive=None, launcher_dir=None, portable_updates=False):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
+    if type(portable_updates) is not bool:
+        raise ValueError('portable_updates must be an explicit boolean')
+    if portable_updates and (source_commit is None or launcher_dir is None or python_archive is None):
+        raise ValueError('portable updates require exact source, native launcher and bundled Python')
     launcher_payload = None
     if launcher_dir is not None:
         if python_archive is None:
@@ -235,6 +258,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             raise ValueError("application wheel has no production entrypoint")
     source_evidence = (verify_application_source(wheel, source_commit)
                        if source_commit is not None else None)
+    if portable_updates:
+        verify_portable_entry_sources(wheel, launcher_payload)
     selected[name] = (wheel, version, metadata)
     # Retain the digest of the exact bytes inspected by the source verifier.
     # A concurrent build can replace this fixed-name wheel before copying it;
@@ -364,13 +389,22 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                      "DOCUMENT_FORMATS_V3.md", "DOCUMENT_EXTRACTOR_REUSE.md",
                      "ACADEMIC_ACQUISITION.md", "TRANSCRIPTION.md", "TRUSTED_CLIENT.md",
                      "STUDIO_CLIP_EDITING.md", "MICROPHONE_RECORDING.md", "STUDIO_EPUB_PUBLISHING.md",
-                     "STUDIO_DAISY_PUBLISHING.md", "PRONUNCIATION_REVIEW.md", "AUDIOBOOK_CHAPTERS.md", "runtime_resources.md", "translation_workstation.md"):
+                     "STUDIO_DAISY_PUBLISHING.md", "PRONUNCIATION_REVIEW.md", "AUDIOBOOK_CHAPTERS.md", "runtime_resources.md",
+                     "PORTABLE_UPDATES.md", "translation_workstation.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         if launcher_payload is not None:
             (staged / "ResearchLibrary.exe").write_bytes(launcher_payload[0])
             (staged / "native-launcher-build.json").write_bytes(launcher_payload[1])
+        if portable_updates:
+            source_root = str(HERE.parent / "src")
+            if source_root not in sys.path:
+                sys.path.insert(0, source_root)
+            from carr_library import portable_entry
+            if Path(portable_entry.__file__).resolve() != (HERE.parent / "src/carr_library/portable_entry.py").resolve():
+                raise ValueError("portable contract was imported from another application")
+            (staged / portable_entry.PORTABLE_MARKER).write_bytes(portable_entry.PORTABLE_CONTRACT)
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
@@ -409,11 +443,13 @@ def main():
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
     parser.add_argument("--launcher-dir", type=Path,
                         help="Private native launcher build with its exact-source receipt")
+    parser.add_argument("--portable-updates", action="store_true",
+                        help="Opt this new sealed bundle into owned portable entries and external idle activation")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.launcher_dir)))
+                                  args.launcher_dir, portable_updates=args.portable_updates)))
 
 
 if __name__ == "__main__":

@@ -71,6 +71,8 @@ class TrustController:
                      else 'No signed update source has been configured for this installation.')
         if self.update_poll is not None:
             lines.append(self.update_poll.message)
+        from ..portable_entry import activation_status
+        lines.append(activation_status())
         lines.append('Updates and renewal never remove access to reading, export, backups, recovery or prior outputs.')
         return '\n\n'.join(lines)
 

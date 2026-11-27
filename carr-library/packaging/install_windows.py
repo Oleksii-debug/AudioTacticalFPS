@@ -160,8 +160,14 @@ def main():
                     "install", "--no-index", "--only-binary=:all:", "--require-hashes",
                     "--no-cache-dir", "--find-links", str(root / "wheelhouse"),
                     "-r", str(root / "install.lock")], check=True, env=environment)
-    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m",
-                    "carr_library.native_checks", "--bundle-root", str(root)],
+    # Fixed pre-readiness native check only. Ordinary diagnostic CLI entries
+    # retain their application lease and cannot run through maintenance.
+    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-c",
+                    "import json, sys; from pathlib import Path; "
+                    "from carr_library.native_checks import check_native_dependencies; "
+                    "report = check_native_dependencies(Path(sys.argv[1])); "
+                    "print(json.dumps(report, ensure_ascii=False), flush=True); "
+                    "raise SystemExit(0 if report['status'] == 'PASS' else 1)", str(root)],
                    check=True, env=environment, cwd=root)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)

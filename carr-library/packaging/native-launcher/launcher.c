@@ -72,6 +72,31 @@ static int acquire_managed_lease(void) {
     return managed_lease != INVALID_HANDLE_VALUE;
 }
 
+/* Only bundles whose sealed inventory explicitly opts in use this sibling
+   control directory. It survives application-directory replacement. */
+static int acquire_portable_lease(void) {
+    static const wchar_t suffix[] = L".update-control";
+    volatile wchar_t *copy = managed_parent;
+    size_t length = rl_len(root), i, used;
+    int marker = child_path(L"portable-update.ini", 0), lease_state;
+    if (marker == 0) return 1;
+    if (marker != 1) return 0;
+    if (length && root[length - 1] == L'\\') --length;
+    if (!length || length + rl_len(suffix) + 1 >= CAP) return 0;
+    for (i = 0; i < length; ++i) copy[i] = root[i];
+    used = length;
+    for (i = 0; suffix[i]; ++i) copy[used++] = suffix[i];
+    copy[used] = 0;
+    if (!CreateDirectoryW(managed_parent, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return 0;
+    if (present(managed_parent, 1) != 1 ||
+        !rl_join(scratch, CAP, managed_parent, L"installation.lease")) return 0;
+    lease_state = present(scratch, 0);
+    if (lease_state < 0) return 0;
+    managed_lease = CreateFileW(scratch, GENERIC_READ, FILE_SHARE_READ, NULL,
+                               OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+    return managed_lease != INVALID_HANDLE_VALUE;
+}
+
 static int state(void) {
     int env = present(environment_path, 1);
     int scripts = child_path(L".venv\\Scripts", 1);
@@ -162,7 +187,8 @@ static int run(void) {
     index = length; while (index && root[index - 1] != L'\\') --index;
     if (!index) return fail(RL_PATH_ERROR, L"The application folder could not be determined.");
     root[index] = 0; /* Retaining the slash also preserves C:\\ correctly. */
-    if (!acquire_managed_lease())
+    if (!acquire_managed_lease() ||
+        (managed_lease == INVALID_HANDLE_VALUE && !acquire_portable_lease()))
         return fail(RL_PROCESS_ERROR, L"Installation maintenance is in progress. Wait for setup or repair to finish, then open Resonance again.");
     if (!rl_join(python, CAP, root, L".venv\\Scripts\\python.exe") ||
         !rl_join(base_python, CAP, root, L"runtime\\python.exe") ||

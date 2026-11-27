@@ -1,6 +1,6 @@
 """Cooperating application/maintenance leases for the standard Windows layout.
 
-The portable distribution is unchanged. A managed installation has an ``app``
+Unmarked portable distributions are unchanged. A managed installation has an ``app``
 directory beside ``managed-install.ini`` and a persistent, empty lease file.
 Windows sharing rules (not process IDs or stale lock contents) own the lease.
 POSIX flock supports the same lifecycle in source tests. This is a same-user
@@ -105,7 +105,7 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
                 raise RuntimeError('Close Resonance and its running jobs before repairing or uninstalling.')
         try:
             plain(path)
-            yield
+            yield handle
         finally:
             api.CloseHandle(handle)
     else:
@@ -123,7 +123,7 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
                 fcntl.flock(descriptor, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB)
             except BlockingIOError as error:
                 raise RuntimeError('Close Resonance and its running jobs before repairing or uninstalling.') from error
-            yield
+            yield descriptor
         finally:
             os.close(descriptor)
 
@@ -153,8 +153,22 @@ def _process_application_hold(root):
 
 @contextmanager
 def application_lease(arguments=(), *, prefix=None, allow_bootstrap_self_test=False):
-    """Guard all ordinary installed entrypoints, retaining portable behavior."""
+    """Guard managed entries and explicitly admitted portable installations."""
     environment = Path(sys.prefix if prefix is None else prefix).absolute()
+    from .portable_entry import active_program, portable_contract, control_root, owner_authorized
+    portable = active_program(prefix)
+    if portable is not None:
+        portable_contract(portable)
+        if not (environment / '.installation-complete').is_file():
+            if allow_bootstrap_self_test and list(arguments) == ['--self-test']:
+                yield
+                return
+            raise RuntimeError('Portable installation is incomplete. Use its verified offline installer.')
+        if not owner_authorized(portable):
+            raise RuntimeError('A verified portable lifetime owner is required before application work.')
+        with _process_application_hold(control_root(portable, create=True)):
+            yield
+        return
     program, root = environment.parent, environment.parent.parent
     if environment.name.casefold() != '.venv' or program.name.casefold() != 'app' or not os.path.lexists(root / MARKER):
         yield
@@ -184,6 +198,14 @@ def installed_entrypoint(function=None, *, allow_bootstrap_self_test=False):
             context = application_lease(arguments,
                 allow_bootstrap_self_test=allow_bootstrap_self_test)
             try:
+                from .portable_entry import active_program, owner_authorized, run_entry
+                portable = active_program()
+                bootstrap = (allow_bootstrap_self_test and arguments == ['--self-test']
+                             and not (Path(sys.prefix) / '.installation-complete').is_file())
+                if portable is not None and not bootstrap and not owner_authorized(portable):
+                    if args or kwargs:
+                        raise ValueError('Portable owned entrypoints accept CLI arguments only.')
+                    return run_entry(callback, arguments, portable)
                 context.__enter__()
             except (ValueError, RuntimeError, OSError) as error:
                 print('Resonance: ' + str(error), file=sys.stderr)
