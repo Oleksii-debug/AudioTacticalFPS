@@ -5,6 +5,9 @@ import this module, receive its samples, or include notification files in a
 project. The single daemon worker coalesces progress and never blocks wx.
 """
 from array import array
+from dataclasses import replace
+import hashlib
+import json
 import io
 import math
 import os
@@ -68,14 +71,60 @@ def cue_wav(event, *, volume=.12):
     return target.getvalue()
 
 
-def speech_text(event):
-    # Do not read document text, private paths, exception traces or model names.
+_NOTICES = {
+    'en': {'running': 'In progress', 'complete': 'Complete', 'failed': 'Failed',
+           'cancelled': 'Cancelled', 'paused': 'Paused', 'resume': 'Resumed',
+           'unknown': 'Total unknown', 'percent': 'percent'},
+    'uk': {'running': 'Робота триває', 'complete': 'Завершено', 'failed': 'Помилка',
+           'cancelled': 'Скасовано', 'paused': 'Призупинено', 'resume': 'Відновлено',
+           'unknown': 'Загальний обсяг невідомий', 'percent': 'відсотків'},
+    'sk': {'running': 'Prebieha', 'complete': 'Dokončené', 'failed': 'Chyba',
+           'cancelled': 'Zrušené', 'paused': 'Pozastavené', 'resume': 'Pokračuje sa',
+           'unknown': 'Celkový rozsah nie je známy', 'percent': 'percent'},
+}
+
+
+def speech_text(event, language='en'):
+    # No source paragraphs, paths or exception details enter notification speech.
+    if language not in _NOTICES:
+        raise ValueError('Select English, Ukrainian or Slovak for progress speech.')
+    words = _NOTICES[language]
     value = event.title[:90] + '. '
     if event.transition == 'resume':
-        value += 'Resumed. '
-    value += {'running': 'In progress', 'complete': 'Complete', 'failed': 'Failed',
-              'cancelled': 'Cancelled', 'paused': 'Paused'}[event.state]
-    return value + ('. Total unknown.' if event.percent is None else f'. {event.percent} percent.')
+        value += words['resume'] + '. '
+    value += words[event.state]
+    return value + ('. ' + words['unknown'] + '.' if event.percent is None else
+                    f'. {event.percent} ' + words['percent'] + '.')
+
+
+def configured_registry():
+    """Discover only existing local adapters; never install or download a voice."""
+    from .audio.engines import default_registry
+    from .audio.runtime import resolve_ffmpeg
+    try:
+        ffmpeg = resolve_ffmpeg()
+    except (ValueError, OSError, RuntimeError):
+        ffmpeg = None
+    return default_registry(ffmpeg=ffmpeg)
+
+
+def voice_fingerprint(registry, voice_id, language, *, cancelled=lambda: False):
+    """Bind the explicit selection to current adapter/model/runtime identities."""
+    if language not in _NOTICES:
+        raise ValueError('Progress speech supports English, Ukrainian and Slovak notices.')
+    voices = [voice for voice in registry.voices(cancelled=cancelled)
+              if voice.id == voice_id and voice.available
+              and language in {item.lower().replace('_', '-').split('-')[0]
+                               for item in voice.languages}
+              and 'volume' in voice.controls]
+    if len(voices) != 1:
+        raise ValueError('The selected local voice and notification language are unavailable.')
+    voice = voices[0]
+    identity = registry.cache_identity(voice_id, cancelled=cancelled)
+    raw = json.dumps({'voice': voice_id, 'language': language, 'engine': voice.engine,
+                      'revision': voice.revision, 'runtime': identity},
+                     ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    return hashlib.sha256(raw).hexdigest()
 
 
 class NotificationSchedule:
@@ -133,57 +182,88 @@ class NotificationSchedule:
 
 
 class LocalNotificationOutput:
-    """Reuse the existing local player and SAPI adapter, with cancellation.
+    """Private short cues through the current player and explicitly chosen voice.
 
-    Temporary notification audio is never written in a library/project. SAPI
-    speech is available on Windows with an installed English UI voice. Missing
-    support is reported, not replaced by another language or a network call.
+    A persisted identity may reconnect only to that exact local voice/runtime.
+    No first-English-voice fallback or provider request is permitted.
     """
-    def __init__(self):
-        self._speech_engine = None
-        self._speech_voice = None
+    def __init__(self, *, registry_factory=configured_registry, player_factory=None):
+        self._registry_factory, self._player_factory = registry_factory, player_factory
+        self._registry = None
+        self._possibly_audible = False
+        self._retained = []
 
-    @staticmethod
-    def _play(path, cancelled):
+    @property
+    def quiescent(self):
+        return not self._possibly_audible and not self._retained
+
+    def set_registry(self, registry):
+        self._registry = registry
+
+    def _play(self, path, cancelled):
         from .audio.player import WavePlayer
-        player = WavePlayer()
+        player = (self._player_factory or WavePlayer)()
+        if cancelled():
+            player.close()
+            return
+        self._possibly_audible = True
         try:
-            if cancelled():
-                return
             player.play(path)
-            while not cancelled() and player.state == 'playing':
+            while not cancelled() and player.state in ('starting', 'playing'):
                 time.sleep(.02)
             if player.state == 'error' and not cancelled():
                 raise RuntimeError('The local audio device could not play a progress notification.')
         finally:
-            player.close()  # Only this worker's player/alias, never other audio.
+            try:
+                player.close()
+            except Exception:
+                # Retain the handle and do not claim silence after a failed
+                # native close. Content transport must remain outside this cue.
+                self._retained.append(player)
+                raise
+            else:
+                self._possibly_audible = False
+
+    def _temporary(self, name, write, cancelled):
+        directory = TemporaryDirectory(prefix='carr-notification-')
+        path = Path(directory.name) / name
+        try:
+            write(path)
+            if not cancelled():
+                self._play(path, cancelled)
+        finally:
+            if self.quiescent:
+                directory.cleanup()
+            else:
+                self._retained.append(directory)
 
     def beep(self, raw, *, cancelled):
-        if cancelled():
-            return
-        with TemporaryDirectory(prefix='carr-notification-') as directory:
-            path = Path(directory) / 'cue.wav'
-            path.write_bytes(raw)
-            self._play(path, cancelled)
+        if not cancelled():
+            self._temporary('cue.wav', lambda path: path.write_bytes(raw), cancelled)
 
-    def speak(self, text, *, volume, cancelled):
+    def speak(self, text, *, volume, cancelled, selection=None):
         if cancelled():
             return
-        if os.name != 'nt':
-            raise RuntimeError('Application progress speech requires Windows SAPI and an installed English voice.')
-        if self._speech_engine is None:
-            from .audio.engines import SAPI5Engine
-            engine = SAPI5Engine(timeout=30)
-            voices = [voice for voice in engine.voices()
-                      if voice.available and any(language.lower().split('-')[0] == 'en' for language in voice.languages)]
-            if not voices:
-                raise RuntimeError('No installed English SAPI voice is available for the current English interface.')
-            self._speech_engine, self._speech_voice = engine, voices[0].id
-        with TemporaryDirectory(prefix='carr-notification-') as directory:
-            path = Path(directory) / 'progress.wav'
-            self._speech_engine.synthesize(text, path, voice=self._speech_voice,
-                language='en', volume=volume, cancelled=cancelled)
-            self._play(path, cancelled)
+        if (not isinstance(selection, tuple) or len(selection) != 3
+                or not all(isinstance(value, str) and value for value in selection)):
+            raise RuntimeError('Choose a local progress voice in Progress settings. No substitute was used.')
+        voice_id, language, expected = selection
+        deadline = time.monotonic() + 30
+        stopped = lambda: cancelled() or time.monotonic() >= deadline
+        registry = self._registry
+        if registry is None:
+            registry = self._registry_factory()
+            self._registry = registry
+        if voice_fingerprint(registry, voice_id, language, cancelled=stopped) != expected:
+            raise RuntimeError('The selected progress voice or runtime changed. Review and select it again.')
+        def synthesize(path):
+            if stopped():
+                raise InterruptedError('Progress speech stopped.')
+            registry.synthesize(text, path, voice=voice_id, language=language, volume=volume,
+                                cancelled=stopped)
+            if path.stat().st_size > 8 * 1024 * 1024:
+                raise RuntimeError('The local voice exceeded the short-notification audio budget.')
+        self._temporary('progress.wav', synthesize, stopped)
 
 
 class NotificationWorker:
@@ -199,12 +279,35 @@ class NotificationWorker:
         self._revision = 0
         self._schedule = NotificationSchedule()
         self._error = ''
+        self._active_output = False
         self._thread = None  # Off means no audio thread, device or subprocess.
 
     @property
     def error(self):
         with self._condition:
             return self._error
+
+    @property
+    def quiescent(self):
+        with self._condition:
+            return (not self._active_output and
+                    bool(getattr(self._output, 'quiescent', True)))
+
+    def clear(self):
+        """Discard a prior library/operation and cancel only our own output."""
+        with self._condition:
+            self._events.clear()
+            self._schedule = NotificationSchedule()
+            self._revision += 1
+            self._condition.notify_all()
+
+    def set_registry(self, registry):
+        with self._condition:
+            setter = getattr(self._output, 'set_registry', None)
+            if callable(setter):
+                setter(registry)
+            self._revision += 1
+            self._condition.notify_all()
 
     def configure(self, preferences):
         if not isinstance(preferences, ProgressPreferences):
@@ -218,6 +321,9 @@ class NotificationWorker:
     def environment(self, *, foreground, media_active):
         with self._condition:
             self._foreground, self._media_active = bool(foreground), bool(media_active)
+            if not self._schedule.allowed(self._preferences,
+                    foreground=self._foreground, media_active=self._media_active):
+                self._schedule.suppress(tuple(self._events.values()), self._clock())
             self._condition.notify_all()
 
     def offer(self, events):
@@ -240,7 +346,7 @@ class NotificationWorker:
         with self._condition:
             current = self._events.get(event.operation_id)
             return (self._closed or self._revision != revision or current is None
-                    or (current.state != event.state and current.state != 'running')
+                    or current.state != event.state
                     or not self._schedule.allowed(self._preferences,
                         foreground=self._foreground, media_active=self._media_active))
 
@@ -256,17 +362,27 @@ class NotificationWorker:
                     self._condition.wait(timeout=.25 if self._events else None)
                     continue
                 revision = self._revision
+                self._active_output = True
             cancelled = lambda: self._cancelled(revision, event)
             try:
                 if preferences.mode in ('beep', 'beep_speech') and not cancelled():
                     self._output.beep(cue_wav(event, volume=preferences.volume), cancelled=cancelled)
                 if preferences.mode in ('speech', 'beep_speech') and not cancelled():
-                    self._output.speak(speech_text(event), volume=preferences.volume, cancelled=cancelled)
+                    self._output.speak(speech_text(event, preferences.voice_language or 'en'),
+                        volume=preferences.volume, cancelled=cancelled,
+                        selection=(preferences.voice_id, preferences.voice_language, preferences.voice_fingerprint))
             except Exception as exc:
+                # Expected preemption (quiet, new operation, content playback)
+                # is not a failed voice and must not overwrite newer settings.
+                if not cancelled() or not bool(getattr(self._output, 'quiescent', True)):
+                    with self._condition:
+                        self._error = 'Progress audio unavailable: ' + ' '.join(str(exc).split())[:300]
+                        self._preferences = replace(self._preferences, mode='off')
+                        self._revision += 1
+            finally:
                 with self._condition:
-                    self._error = 'Progress audio unavailable: ' + ' '.join(str(exc).split())[:300]
-                    self._preferences = ProgressPreferences()
-                    self._revision += 1
+                    self._active_output = False
+                    self._condition.notify_all()
 
     def close(self):
         with self._condition:

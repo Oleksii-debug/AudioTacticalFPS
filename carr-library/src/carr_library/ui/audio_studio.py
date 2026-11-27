@@ -542,6 +542,11 @@ class AudioStudioDialog:
         self.editing_dirty = False
         self._script_dirty = False
         self.playback = LocalPlayback()
+        from .operation_progress import operation_progress_for
+        self.operation_progress = operation_progress_for(parent)
+        self._content_request = None
+        self._progress_unregister_player = (self.operation_progress.register_player(self.playback)
+            if self.operation_progress is not None else lambda: None)
         self.voice_rows = []
         self.controls = []
         self.windows_playback_controls = []
@@ -830,22 +835,41 @@ class AudioStudioDialog:
     def _run(self, label, action, done):
         if self.busy or self.closed:
             return
+        self._cancel_content_request()
         try:
             self.playback.stop()
         except Exception as exc:
             self._error(exc)
             return
         self.busy = True
+        job_token = self._job_token = object()
         self.cancelled.clear()
         for control in self.controls:
             control.Disable()
         self.cancel_button.Enable()
         self._message(label)
-        future = self.executor.submit(action)
+        progress = getattr(self, 'operation_progress', None)
+        token = progress.start(label, unit='steps').token if progress is not None else None
+        def observed_action():
+            if progress is None:
+                return action()
+            with progress.bind(token):
+                return action()
+        try:
+            future = self.executor.submit(observed_action)
+        except Exception as exc:
+            self.busy = False
+            for control in self.controls:
+                control.Enable(self.playback.native is not None or control not in self.windows_playback_controls)
+            self.cancel_button.Disable()
+            if progress is not None:
+                progress.fail(exc, token=token)
+            self._error(exc)
+            return
 
         def complete(completed):
             def apply():
-                if self.closed:
+                if self.closed or getattr(self, '_job_token', None) is not job_token:
                     return
                 self.busy = False
                 for control in self.controls:
@@ -853,8 +877,16 @@ class AudioStudioDialog:
                 self.cancel_button.Disable()
                 try:
                     result = completed.result()
+                    if progress is not None:
+                        progress.finish_result(result, cancelled=self.cancelled.is_set(), token=token)
+                        progress.tick()
                     done(result)
                 except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(str(exc), token=token)
+                        else:
+                            progress.fail(exc, token=token)
                     self._error(exc)
                 if self.close_pending:
                     self.close_pending = False
@@ -1289,7 +1321,13 @@ class AudioStudioDialog:
                 return
 
             def progress(status):
-                self.wx.CallAfter(self._message, str(status))
+                from ..progress import report_progress
+                report_progress(phase=str(status))
+                token = getattr(self, '_job_token', None)
+                def apply():
+                    if not self.closed and getattr(self, '_job_token', None) is token:
+                        self._message(str(status))
+                self.wx.CallAfter(apply)
 
             def finished(result):
                 self._message('Audio render completed.\nMaster: ' + result['output'] +
@@ -1302,9 +1340,32 @@ class AudioStudioDialog:
 
     def cancel(self, event=None):
         self.cancelled.set()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            progress.request_cancel()
         self._message('Cancellation requested. Waiting for the local worker to checkpoint and stop.', focus=True)
 
+    def _cancel_content_request(self):
+        request = getattr(self, '_content_request', None)
+        if request is not None:
+            request.close()
+            self._content_request = None
+
+    def _with_quiet_output(self, action):
+        self._cancel_content_request()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is None:
+            action()
+            return
+        result = self.controller.result
+        self._content_request = progress.media_action(action,
+            alive=lambda: not self.closed and self.controller.result is result,
+            failed=self._error)
+
     def play(self, event=None):
+        self._with_quiet_output(lambda: self._play_after_progress(event))
+
+    def _play_after_progress(self, event=None):
         try:
             if self.controller.result is None:
                 raise ValueError('Render or resume the current script before playing its master.')
@@ -1330,6 +1391,7 @@ class AudioStudioDialog:
             self._error(exc)
 
     def stop_playback(self, event=None):
+        self._cancel_content_request()
         try:
             self.playback.stop()
             self.refresh_playback()
@@ -1350,6 +1412,7 @@ class AudioStudioDialog:
             self._message(message, focus=True)
 
     def _stop_for_project_change(self):
+        self._cancel_content_request()
         try:
             self.playback.stop()
             self.refresh_playback()
@@ -1364,8 +1427,11 @@ class AudioStudioDialog:
             if self.playback.native is None:
                 raise ValueError('Pause and resume use the native Windows player.')
             if status.state == 'paused':
-                self.playback.resume()
-                self._message('Playback resume requested.')
+                def resume():
+                    if self.playback.status().state == 'paused':
+                        self.playback.resume()
+                        self._message('Playback resume requested.')
+                self._with_quiet_output(resume)
             elif status.state in ('playing', 'starting'):
                 self.playback.pause()
                 self._message('Playback pause requested.')
@@ -1462,6 +1528,9 @@ class AudioStudioDialog:
             dialog.Destroy()
 
     def _playback_action(self, action):
+        self._with_quiet_output(lambda: self._playback_action_after_progress(action))
+
+    def _playback_action_after_progress(self, action):
         try:
             result = action()
             self._refresh_playback_choices()
@@ -1526,6 +1595,7 @@ class AudioStudioDialog:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
+        self._cancel_content_request()
         try:
             self.playback.close()
         except Exception as exc:
@@ -1534,6 +1604,7 @@ class AudioStudioDialog:
                 event.Veto()
             return
         self.closed = True
+        getattr(self, '_progress_unregister_player', lambda: None)()
         getattr(self, '_save_unregister', lambda: None)()
         self.cancelled.set()
         self.timer.Stop()
@@ -1551,6 +1622,8 @@ class AudioStudioDialog:
             self.dialog.ShowModal()
         finally:
             self.closed = True
+            self._cancel_content_request()
+            getattr(self, '_progress_unregister_player', lambda: None)()
             getattr(self, '_save_unregister', lambda: None)()
             self.cancelled.set()
             self.timer.Stop()

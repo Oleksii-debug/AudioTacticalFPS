@@ -755,13 +755,41 @@ class LibraryApp:
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
-    def import_files(self, workspace, paths, **metadata):
+    def import_files(self, workspace, paths, *, progress=None, **metadata):
+        """Import selected files and observe their actual completed outcomes."""
+        total = None
+        if progress is not None:
+            try:
+                count = len(paths)
+                total = count if count > 1 else None
+            except Exception:
+                pass  # Never consume an iterator just to invent a denominator.
+
+        def report(completed):
+            nonlocal progress
+            if progress is not None:
+                try:
+                    progress(completed, total, 'Processing files')
+                except Exception:
+                    # Observation is outside transactions and cannot retry or
+                    # reclassify a durable import result.
+                    progress = None
+
+        cancelled = metadata.get('cancelled', lambda: False)
+        report(0)
         results = []
         for path in paths:
             try:
+                if cancelled():
+                    raise InterruptedError('Import cancelled before this file; remaining files were not attempted.')
                 results.append({'file': Path(path).name, **self.import_file(workspace, path, **metadata)})
+            except InterruptedError as exc:
+                results.append({'file': Path(path).name, 'state': 'cancelled', 'message': str(exc)})
             except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                 results.append({'file': Path(path).name, 'state': 'failed', 'message': str(exc)})
+            report(len(results))
+            if results[-1].get('state') == 'cancelled':
+                break
         return tuple(results)
 
     def add_text(self, workspace, title, text, **metadata):

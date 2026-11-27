@@ -192,7 +192,7 @@ class PreferencesTests(unittest.TestCase):
             changed['preferences'][key] = value
             variants.append(json.dumps(changed).encode())
         variants.extend((b'{}', b'\xff', b' ' * (MAX_BYTES + 1),
-                         encode_preferences(default).replace(b'"version": 1', b'"version": 1, "version": 1')))
+                         encode_preferences(default).replace(b'"version": 2', b'"version": 2, "version": 2')))
         for raw in variants:
             with self.subTest(raw=raw[:80]), self.assertRaises(ValueError):
                 decode_preferences(raw)

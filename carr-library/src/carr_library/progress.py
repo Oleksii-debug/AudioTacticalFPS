@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass, replace
 import json
 import math
 import os
+import re
 from pathlib import Path
 import stat
 from tempfile import NamedTemporaryFile
@@ -59,6 +60,9 @@ class ProgressPreferences:
     quiet: bool = False
     background: bool = False
     suppress_during_media: bool = True
+    voice_id: str = ''
+    voice_language: str = ''
+    voice_fingerprint: str = ''
 
     def __post_init__(self):
         if self.mode not in MODES:
@@ -68,6 +72,14 @@ class ProgressPreferences:
         for key in ('muted', 'quiet', 'background', 'suppress_during_media'):
             if type(getattr(self, key)) is not bool:
                 raise ValueError(f'{key} must be true or false.')
+        _text(self.voice_id, 'Progress voice identity', maximum=2048)
+        if any((self.voice_id, self.voice_language, self.voice_fingerprint)):
+            if (not self.voice_id or self.voice_language not in ('en', 'uk', 'sk')
+                    or not isinstance(self.voice_fingerprint, str)
+                    or not re.fullmatch('[0-9a-f]{64}', self.voice_fingerprint)):
+                raise ValueError('Select one verified local voice and its notification language.')
+        elif type(self.voice_language) is not str or type(self.voice_fingerprint) is not str:
+            raise ValueError('Invalid progress voice selection.')
 
 
 def _unique(pairs):
@@ -86,10 +98,11 @@ def decode_preferences(raw):
     try:
         data = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
         if (type(data) is not dict or set(data) != {'version', 'kind', 'preferences'}
-                or type(data['version']) is not int or data['version'] != 1
+                or type(data['version']) is not int or data['version'] not in (1, 2)
                 or data['kind'] != 'carr-progress'
                 or type(data['preferences']) is not dict
-                or set(data['preferences']) != set(ProgressPreferences.__dataclass_fields__)):
+                or set(data['preferences']) != (set(ProgressPreferences.__dataclass_fields__)
+                    - ({'voice_id', 'voice_language', 'voice_fingerprint'} if data['version'] == 1 else set()))):
             raise ValueError('Unsupported progress preferences format.')
         return ProgressPreferences(**data['preferences'])
     except (UnicodeError, TypeError, RecursionError) as exc:
@@ -99,7 +112,7 @@ def decode_preferences(raw):
 def encode_preferences(preferences):
     if not isinstance(preferences, ProgressPreferences):
         raise ValueError('Use validated progress preferences.')
-    raw = (json.dumps({'version': 1, 'kind': 'carr-progress',
+    raw = (json.dumps({'version': 2, 'kind': 'carr-progress',
                        'preferences': asdict(preferences)}, sort_keys=True, indent=2) + '\n').encode('utf-8')
     decode_preferences(raw)
     return raw
@@ -194,6 +207,11 @@ class ProgressEvent:
     transition: str = 'update'
     eta_seconds: float | None = None
     total_changed_reason: str = ''
+
+    @property
+    def token(self):
+        """Native callbacks use the same immutable operation identity."""
+        return self.operation_id
 
     @property
     def percent(self):
@@ -406,27 +424,56 @@ def batch_progress(reporter, batch):
 
 
 def finish_result(reporter, result, *, cancelled=False):
-    """Map service outcomes after their existing commit/verification returns.
+    """Resolve actual nested receipts without hiding failure behind a stop request.
 
-    A cancellation request does not retroactively undo a typed committed
-    success. Unknown explicit statuses remain paused instead of claiming 100.
+    Plain read/query return values can finish normally. Explicit unknown states
+    require attention. A committed typed success remains successful when a
+    cancellation request arrives after its publication.
     """
-    def status(value):
-        return value.get('status', value.get('state', '')) if isinstance(value, dict) else getattr(value, 'status', '')
-    states = [status(row) for row in result] if isinstance(result, (tuple, list)) else [status(result)]
-    counts = result.get('counts', {}) if isinstance(result, dict) else {}
-    if counts.get('failed') or counts.get('rejected') or any(s in ('failed', 'error', 'rejected') for s in states):
+    states, all_counts, pending, inspected = [], {}, [result], 0
+    while pending:
+        value = pending.pop()
+        inspected += 1
+        if inspected > 100_000:
+            return reporter.fail('The operation returned too many progress receipts to verify.')
+        if isinstance(value, (tuple, list)):
+            pending.extend(value)
+            continue
+        if isinstance(value, dict):
+            for key in ('state', 'status'):
+                if key in value and value[key] is not None:
+                    states.append(value[key].casefold() if isinstance(value[key], str) else 'unknown')
+            counts = value.get('counts', {})
+            if not isinstance(counts, dict):
+                states.append('unknown')
+            else:
+                for key in ('failed', 'rejected', 'quarantined', 'queued', 'running', 'cancelled'):
+                    if counts.get(key):
+                        all_counts[key] = True
+            for key in ('rows', 'results'):
+                if isinstance(value.get(key), (tuple, list)):
+                    pending.append(value[key])
+        else:
+            state = getattr(value, 'status', '')
+            if state:
+                states.append(state.casefold() if isinstance(state, str) else 'unknown')
+    if (all_counts.get('failed') or all_counts.get('rejected')
+            or any(s in ('failed', 'error', 'rejected', 'timed_out', 'timeout', 'corrupt', 'invalid') for s in states)):
         return reporter.fail('One or more operations failed; review the result.')
-    if counts.get('quarantined') or any(s in ('quarantined', 'needs_review', 'needs_reapproval', 'review_required', 'attention') for s in states):
-        return reporter.pause('Review is required before this operation can finish.')
-    if counts.get('queued') or counts.get('running') or any(s in ('paused', 'partial', 'queued', 'running', 'interrupted') for s in states):
-        return reporter.pause('Work remains; resume from the saved checkpoint.')
-    if any(s in ('cancelled', 'canceled') for s in states):
+    if all_counts.get('cancelled') or any(s in ('cancelled', 'canceled', 'aborted') for s in states):
         return reporter.cancel('The operation was cancelled.')
-    successful = ('complete', 'completed', 'success', 'duplicate', 'excluded')
-    if any(s and s not in successful for s in states):
+    if all_counts.get('quarantined') or any(
+            s in ('quarantined', 'needs_review', 'needs_reapproval', 'review_required', 'attention') for s in states):
+        return reporter.pause('Review is required before this operation can finish.')
+    if all_counts.get('queued') or all_counts.get('running') or any(
+            s in ('paused', 'partial', 'queued', 'running', 'interrupted') for s in states):
+        return reporter.pause('Work remains; resume from the saved checkpoint.')
+    successful = ('complete', 'completed', 'success', 'succeeded', 'ok', 'passed', 'pass',
+                  'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded')
+    if any(s not in successful for s in states):
         return reporter.pause('The service did not report a supported verified completion state.')
     explicit = bool(states) and all(s in successful for s in states)
+    counts = result.get('counts', {}) if isinstance(result, dict) else {}
     if cancelled and not explicit and not counts:
         return reporter.cancel('Cancellation was requested; no verified completion was reported.')
     if reporter.event.total is not None and reporter.event.completed != reporter.event.total:

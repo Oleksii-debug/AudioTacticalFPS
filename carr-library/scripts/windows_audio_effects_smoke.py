@@ -75,6 +75,14 @@ def run_native():
         event.SetEventObject(button)
         check('native dialog button dispatch', button.GetEventHandler().ProcessEvent(event))
 
+    def selected_choice(dialog, expected):
+        # wx.SingleChoiceDialog caches its public string result on acceptance.
+        # Inspect the real list while modal; verify the returned role after OK.
+        lists = [control for control in descendants(dialog) if isinstance(control, wx.ListBox)]
+        check('one native choice list retains its exact Unicode inventory',
+              len(lists) == 1 and tuple(lists[0].GetStrings()) == tuple(expected))
+        return lists[0].GetStringSelection()
+
     def drive(*, cancel_at=None, invalid_number=False):
         state = dict(active=True, phase=0, complete=False)
         timer = [None]
@@ -100,12 +108,12 @@ def run_native():
                     check('named role selector', isinstance(dialog, wx.SingleChoiceDialog)
                           and dialog.GetName() == 'Role for the new audio effect')
                     dialog.SetSelection(1)
-                    check('Unicode role selection is retained', dialog.GetStringSelection() == roles[1])
+                    check('Unicode role selection is retained', selected_choice(dialog, roles) == roles[1])
                 elif phase == 'effect':
                     check('named effect selector', isinstance(dialog, wx.SingleChoiceDialog)
                           and dialog.GetName() == 'Audio effect type')
                     dialog.SetSelection(tuple(definitions).index(kind))
-                    check('selected typed effect kind', dialog.GetStringSelection() == kind)
+                    check('selected typed effect kind', selected_choice(dialog, tuple(definitions)) == kind)
                 else:
                     check('named parameter dialog', dialog.GetName() == f'Parameters for {kind} on {roles[1]}')
                     fields = [control for control in descendants(dialog) if isinstance(control, wx.TextCtrl)]

@@ -15,8 +15,10 @@ def test_close_signals_worker_without_competing_write_and_ignores_late_callbacks
     finish = next(node for node in helpers['run'].body if isinstance(node, ast.FunctionDef)
                   and node.name == 'finish')
     factory = ast.parse('''
-def callbacks(cancel, executor, dialog, wx, service, review):
+def callbacks(cancel, executor, dialog, wx, service, review, progress, frame):
     alive, busy, job_id = True, True, 'active-backup'
+    token = progress_token = 'synthetic-progress-token'
+    bound_library = frame.library
     return close, report, finish
 ''').body[0]
     factory.body[1:1] = [helpers['close'], helpers['report'], finish]
@@ -28,10 +30,18 @@ def callbacks(cancel, executor, dialog, wx, service, review):
     service = Mock()
     service.pause.side_effect = RuntimeError('Assistant snapshot holds the state write guard.')
     wx = SimpleNamespace(ID_CLOSE=42, CallAfter=queued.append)
-    close, report, finish = namespace['callbacks'](cancel, executor, dialog, wx, service, review)
+    from carr_library.progress import ProgressHub, finish_result
+    reporter = ProgressHub().start('Synthetic assistant backup')
+    progress = SimpleNamespace(request_cancel=Mock(), fail=Mock(), cancel=Mock(),
+        finish_result=lambda result, **kwargs: finish_result(reporter, result,
+            cancelled=kwargs.get('cancelled', False)))
+    frame = SimpleNamespace(library=object())
+    close, report, finish = namespace['callbacks'](
+        cancel, executor, dialog, wx, service, review, progress, frame)
 
     # A completion callback may already be queued before the user closes.
     completed = Mock()
+    completed.result.return_value = {'status': 'paused'}
     finish(completed)
     close()
     close()
@@ -43,5 +53,6 @@ def callbacks(cancel, executor, dialog, wx, service, review):
     finish(completed)
     for apply in queued:
         apply()
-    completed.result.assert_not_called()
+    assert reporter.event.state == 'paused' and reporter.event.percent is None
+    progress.request_cancel.assert_called_once()
     assert not review.mock_calls

@@ -983,3 +983,67 @@ def test_failed_save_all_cancels_main_close_without_shutting_down_workers(classe
     value.Close.assert_not_called()
     value.executor.shutdown.assert_not_called()
     assert 'remains open' in value.report.call_args.args[0]
+
+
+
+def observed_frame(classes, tmp_path):
+    from carr_library.ui.operation_progress import OperationProgress
+    value = frame(classes)
+    value.library = SimpleNamespace(root=tmp_path)
+    value.menu_bar.FindMenu.return_value = 1
+    boundary = SimpleNamespace(GetActiveWindow=lambda: value)
+    notifications = SimpleNamespace(configure=Mock(), clear=Mock(), set_registry=Mock(),
+        environment=Mock(), offer=Mock(), error='', close=Mock(), quiescent=True)
+    value.operation_progress = OperationProgress(value, Mock(), Mock(),
+        wx_module=boundary, notifications=notifications, start_timer=False)
+    return value
+
+
+def test_frame_progress_retains_durable_success_after_late_cancel(classes, tmp_path):
+    from carr_library.progress import report_progress
+    value = observed_frame(classes, tmp_path)
+    future = Future()
+    value.executor.submit.return_value = future
+    output = tmp_path / 'committed.txt'
+    def write():
+        output.write_text('Actual synthetic committed bytes', encoding='utf-8')
+        report_progress(completed=1, total=1)
+        return {'state': 'complete'}
+    received = []
+    value.run_job('Write', write, received.append, progress_total=1)
+    actual = value.executor.submit.call_args.args[0]()
+    assert value.operation_progress.event.percent == 99 and output.is_file()
+    value.cancel_event.set()
+    future.set_result(actual)
+    classes[1].pop()()
+    assert received == [actual]
+    assert value.operation_progress.event.percent == 100
+    assert output.read_text(encoding='utf-8') == 'Actual synthetic committed bytes'
+
+
+def test_frame_progress_keeps_real_failure_after_cancel_request(classes, tmp_path):
+    value = observed_frame(classes, tmp_path)
+    future = Future()
+    value.executor.submit.return_value = future
+    value.run_job('Write', lambda: None)
+    value.cancel_event.set()
+    future.set_exception(OSError('Synthetic writable destination failed'))
+    classes[1].pop()()
+    assert value.operation_progress.event.state == 'failed'
+    assert value.operation_progress.event.percent is None
+    assert not value.working
+
+
+def test_old_library_job_callback_cannot_touch_new_window_state(classes, tmp_path):
+    value = observed_frame(classes, tmp_path)
+    future, received = Future(), []
+    value.executor.submit.return_value = future
+    value.run_job('Old scope', lambda: None, received.append)
+    future.set_result({'state': 'complete'})
+    value.library = SimpleNamespace(root=tmp_path / 'new')
+    value.report.reset_mock()
+    value.cancel_button.reset_mock()
+    classes[1].pop()()
+    assert received == []
+    value.report.assert_not_called()
+    value.cancel_button.Disable.assert_not_called()

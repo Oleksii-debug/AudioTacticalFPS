@@ -501,6 +501,8 @@ class DesktopFrame(WorkspaceFrame):
         self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
+        from .operation_progress import install_operation_progress
+        install_operation_progress(self)
         from .productivity import install_productivity_actions
         keyboard = install_productivity_actions(self)
         if self.scopes:
@@ -556,7 +558,7 @@ class DesktopFrame(WorkspaceFrame):
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
         cancel = wx.Button(self.host, label='Cancel current operation')
-        cancel.Bind(wx.EVT_BUTTON, lambda e: self.cancel_event.set())
+        cancel.Bind(wx.EVT_BUTTON, self.cancel_current_operation)
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)
         self.cancel_button = cancel
         cancel.Disable()
@@ -683,12 +685,22 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None):
+    def cancel_current_operation(self, event=None):
+        self.cancel_event.set()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            progress.request_cancel()
+        self.report('Cancellation requested. Waiting for the operation to stop or save its result.')
+
+    def run_job(self, title, operation, done=None, failed=None, *, progress_total=None, progress_unit='items'):
         if self._closing:
             return
         if self.working:
             self.report('An operation is already running. Wait or choose Cancel current operation.')
             return
+        library = getattr(self, 'library', None)
+        progress = getattr(self, 'operation_progress', None)
+        token = None
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
@@ -696,12 +708,24 @@ class DesktopFrame(WorkspaceFrame):
         if self.book is not None:
             self.book.Disable()
         for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+            # Read-only help and the explicit progress query stay available
+            # while write commands and scoped navigation are disabled.
+            keep_help = progress is not None and i == self.menu_bar.FindMenu('Help')
+            self.menu_bar.EnableTop(i, keep_help)
         self.report(title + '…')
         try:
-            future = self.executor.submit(operation)
+            if progress is not None:
+                token = progress.start(title, total=progress_total, unit=progress_unit).token
+            def observed_operation():
+                if progress is None:
+                    return operation()
+                with progress.bind(token):
+                    return operation()
+            future = self.executor.submit(observed_operation)
         except Exception as exc:
             self._finish_job_controls()
+            if progress is not None and token is not None:
+                progress.fail(exc, token=token)
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
                 failed(exc)
@@ -711,20 +735,40 @@ class DesktopFrame(WorkspaceFrame):
             if self._closing:
                 return
             def apply():
-                if self._closing:
+                if self._closing or getattr(self, 'library', None) is not library:
                     return
                 self._finish_job_controls()
                 try:
                     result = future.result()
+                except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(str(exc), token=token)
+                        else:
+                            progress.fail(exc, token=token)
+                    self.report(f'{title}: {exc}')
+                    if failed is not None:
+                        failed(exc)
+                    return
+                if progress is not None:
+                    outcome = progress.finish_result(result,
+                        cancelled=self.cancel_event.is_set(), token=token)
+                    summary = outcome.text if outcome is not None else title + ': result returned.'
+                    progress.tick()
+                else:
+                    summary = title + ': complete.'
+                try:
                     if done is not None and getattr(self, 'status', None) is not None:
                         # The result callback owns its panel/reader focus.
-                        self.status.SetValue(title + ': complete.')
+                        self.status.SetValue(summary)
                     else:
-                        self.report(title + ': complete.')
+                        self.report(summary)
                     if done is not None:
                         done(result)
                 except Exception as exc:
-                    self.report(f'{title}: {exc}')
+                    # The service already returned; a display error cannot
+                    # retroactively undo or misreport its durable result.
+                    self.report(f'{title}: result returned, but its display failed: {exc}')
                     if failed is not None:
                         failed(exc)
             wx.CallAfter(apply)
@@ -756,6 +800,9 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            progress.change_root()
         if getattr(self, 'keyboard_commands', None) is not None:
             self.keyboard_commands.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
@@ -882,8 +929,13 @@ class DesktopFrame(WorkspaceFrame):
                 report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
                     message=row.get('message', ''), result=row)) for row in rows)
                 show_text(self, 'Import details', report)
-        self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set,config=config), done)
+        library = self.library
+        def import_selected():
+            from ..progress import report_progress
+            return library.import_files(workspace, paths, cancelled=self.cancel_event.is_set, config=config,
+                progress=lambda completed, total, phase: report_progress(
+                    completed=completed, total=total, phase=phase))
+        self.run_job('Importing books', import_selected, done, progress_unit='files')
 
     def add_text(self, event):
         try:
@@ -1255,5 +1307,8 @@ class DesktopFrame(WorkspaceFrame):
         if not event.GetVeto():
             self._closing = True
             self.cancel_event.set()
+            progress = getattr(self, 'operation_progress', None)
+            if progress is not None:
+                progress.close()
             self.executor.shutdown(wait=False, cancel_futures=True)
 
