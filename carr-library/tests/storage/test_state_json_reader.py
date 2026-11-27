@@ -58,8 +58,9 @@ def replace_in_child(path, *, production=False):
     return json.loads(process.stdout)
 
 
-def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch):
-    target = tmp_path / 'стан.json'
+@pytest.mark.parametrize('name', ['стан.json', 'стан-𐐷.json'])
+def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch, name):
+    target = tmp_path / name
     target.write_bytes(b'{"done":0}')
     # This negative control demonstrates the real Windows sharing collision.
     # POSIX permits replacement with either kind of reader, without a skip.
@@ -234,7 +235,7 @@ def test_rejected_publication_preserves_committed_state_and_cleans_only_staging(
     before = target.read_bytes()
     stages = []
 
-    def denied(source, destination):
+    def denied(source, destination, staged):
         assert destination == target
         assert source.parent == target.parent
         assert source.read_bytes() == state.encode({'done': 1})
@@ -305,3 +306,23 @@ def test_native_denied_save_keeps_its_primary_error_if_descriptor_close_raises(t
         assert list(tmp_path.glob('.pending-*')) == []
     finally:
         target.chmod(0o600)
+
+
+@pytest.mark.parametrize('change', ['foreign-parent', 'unmanaged-name', 'replaced-stage'])
+def test_native_replacement_rejects_an_unbound_stage_before_opening_it(tmp_path, change):
+    target = tmp_path / 'state.json'
+    target.write_bytes(b'{"old":1}')
+    parent = tmp_path / 'other' if change == 'foreign-parent' else tmp_path
+    parent.mkdir(exist_ok=True)
+    staged = parent / ('unmanaged.json' if change == 'unmanaged-name' else '.pending-test')
+    staged.write_bytes(b'{"new":1}')
+    expected = staged.stat()
+    if change == 'replaced-stage':
+        replacement = parent / 'replacement.json'
+        replacement.write_bytes(b'{"substituted":1}')
+        os.replace(replacement, staged)
+    retained = staged.read_bytes()
+    with pytest.raises(ValueError, match='[Ss]taged'):
+        state._replace_state_file(staged, target, expected)
+    assert target.read_bytes() == b'{"old":1}'
+    assert staged.read_bytes() == retained

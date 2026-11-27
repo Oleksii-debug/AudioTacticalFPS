@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import sys
 import tempfile
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
@@ -135,7 +136,7 @@ def sync_directory(path):
             os.close(descriptor)
 
 
-def _replace_state_file(source, destination):
+def _replace_state_file(source, destination, staged):
     """Publish a flushed sibling file while delete-sharing readers retain it.
 
     MoveFileExW, and therefore Python's os.replace on Windows, cannot replace
@@ -143,18 +144,22 @@ def _replace_state_file(source, destination):
     flags 1|2 keep old handles valid and direct new opens to the new file.
     See Microsoft's FILE_RENAME_INFORMATION and FILE_RENAME_INFO contracts.
     """
+    source = local_path(source, exists=True)
+    destination = local_path(destination)
+    if source.parent != destination.parent or not source.name.startswith('.pending-'):
+        raise ValueError('State replacement requires its staged file in the destination directory.')
+    before = regular(source)
+    expected = (staged.st_dev, staged.st_ino, staged.st_size)
+    if (before.st_dev, before.st_ino, before.st_size) != expected:
+        raise ValueError('Staged state changed before atomic replacement.')
     if os.name != 'nt':
         os.replace(source, destination)
         return
+
     import ctypes
     from ctypes import wintypes
     import msvcrt
 
-    source = local_path(source, exists=True)
-    destination = local_path(destination)
-    if source.parent != destination.parent:
-        raise ValueError('State replacement must use a sibling staging file.')
-    before = regular(source)
     kernel = ctypes.WinDLL('kernel32', use_last_error=True)
     create = kernel.CreateFileW
     create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
@@ -172,6 +177,8 @@ def _replace_state_file(source, destination):
 
     # GENERIC_READ | DELETE; shared read/write/delete; OPEN_EXISTING;
     # OPEN_REPARSE_POINT. The native operation is bound to our staged file.
+    # Native calls do not emit os.rename: preserve installed audit policies.
+    sys.audit('os.rename', str(source), str(destination), -1, -1)
     handle = create(str(source), 0x80010000, 7, None, 3, 0x00200000, None)
     if handle == ctypes.c_void_p(-1).value:
         raise ctypes.WinError(ctypes.get_last_error())
@@ -186,12 +193,12 @@ def _replace_state_file(source, destination):
         opened = os.fstat(descriptor)
         if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
                 or getattr(opened, 'st_file_attributes', 0) & 0x400
-                or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino)):
+                or (opened.st_dev, opened.st_ino, opened.st_size) != expected):
             raise ValueError('State staging identity changed before publication.')
         # Revalidate the owned namespace without following substituted links.
         local_path(source, exists=True)
         observed = regular(source)
-        if (observed.st_dev, observed.st_ino) != (opened.st_dev, opened.st_ino):
+        if (observed.st_dev, observed.st_ino, observed.st_size) != expected:
             raise ValueError('State staging identity changed before publication.')
         local_path(destination)
 
@@ -247,8 +254,9 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
+            staged = os.fstat(stream.fileno())
         if replace:
-            _replace_state_file(temporary, path)
+            _replace_state_file(temporary, path, staged)
         else:
             # link is the portable same-filesystem no-replace publication primitive.
             os.link(temporary, path)
