@@ -263,3 +263,30 @@ def test_unavailable_library_cache_never_uses_direct_ranker_cache(tmp_path, monk
     assert ranker.cache is None
     with pytest.raises(ValueError, match='validated embedding cache budget'):
         ranker.bind_cache(root, budget=object())
+
+
+@pytest.mark.parametrize('explicit', [True, False])
+def test_ranker_ignores_cache_from_other_model_namespace(tmp_path, candidates, explicit):
+    ranker = fixture_ranker(tmp_path)
+    query = 'Industrial transport'
+    expected = ranker.rank(query, candidates, cache=None)
+    ranker.engine.calls.clear()
+    foreign = EmbeddingCache(tmp_path / 'foreign',
+                             model_identity(APPROVED_MANIFEST, runtime='another-runtime'))
+    texts = [(None, query), *candidates]
+    assert foreign.put_many({
+        content_identity(foreign.model, text, key): (1.0,) + (0.0,) * 383
+        for key, text in texts
+    })
+    original = foreign.path.read_bytes()
+    if not explicit:
+        ranker.cache = foreign
+    options = {'cache': foreign} if explicit else {}
+    with patch.object(foreign, 'get_many', side_effect=AssertionError('foreign cache read')), \
+            patch.object(foreign, 'put_many', side_effect=AssertionError('foreign cache write')):
+        assert ranker.rank(query, candidates, **options) == expected
+    assert ranker.engine.calls == [tuple(text for _, text in texts)]
+    assert ranker.cache_statistics == {
+        'hits': 0, 'misses': 3, 'embedded_texts': 3, 'available': False}
+    assert foreign.path.read_bytes() == original
+    assert foreign.available
