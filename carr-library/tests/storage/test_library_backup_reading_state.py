@@ -82,8 +82,10 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
     assert (app.root / FILENAME).read_bytes() == raw
 
 
-def test_unverified_physical_pdf_bookmark_keeps_location_and_review_status(tmp_path):
+@pytest.mark.parametrize('historical', (False, True), ids=['current', 'historical'])
+def test_unverified_physical_pdf_bookmark_keeps_location_and_review_status(tmp_path, historical):
     from reportlab.pdfgen.canvas import Canvas
+    from carr_library.operations.policy_backup import FILENAME as RESOURCE_POLICY
     source = tmp_path / 'source.pdf'
     canvas = Canvas(str(source), invariant=1, pageCompression=0)
     for number in (1, 2):
@@ -98,9 +100,17 @@ def test_unverified_physical_pdf_bookmark_keeps_location_and_review_status(tmp_p
     state = ReadingState(app.root)
     state.remember(page.location)
     bookmark = state.add_bookmark(page.location, 'The second physical page')
+    policy = (app.root / RESOURCE_POLICY).read_bytes()
     folder = tmp_path / 'backup'
-    digest = create_backup(app, folder)
+    backup = create_backup if historical else library_backup.create_backup
+    digest = backup(app, folder)
+    manifest = read_manifest(folder)
+    assert manifest['version'] == (4 if historical else 5)
+    assert next(entry for entry in manifest['sidecars'] if entry['path'] == RESOURCE_POLICY) == dict(
+        path=RESOURCE_POLICY, size_bytes=len(policy), sha256=sha256(policy).hexdigest())
+    assert (folder / 'sidecars' / RESOURCE_POLICY).read_bytes() == policy
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
+    assert (restored.root / RESOURCE_POLICY).read_bytes() == policy
     saved, = ReadingState(restored.root).bookmarks(workspace, book['edition'])
     assert saved == bookmark
     after = ReadingDesk(restored, workspace, book['edition']).validate(saved.location)
