@@ -435,7 +435,7 @@ jobs:
             'tests/ui/test_audio_menu_registry.py',
             'tests/audio/test_chunk_cache_budget.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the pinned local model through the existing upstream verifier
