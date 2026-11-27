@@ -28,3 +28,11 @@ The application tree at this branch's parent is canonical commit `966e5ccf892243
 The V8 citation bridge smoke in `citation-bridge-v8-smoke.json` checks seven fixed historical examples against the pinned processor. It does not execute the Python adapter, QuickJS extension, installed package, custom-style limits or cancellation path. Those remain unqualified.
 
 Checkpoint2's 73 exact candidate files were verified and its Python files compiled in isolated CI run45969309316. A recorded six-file citation composition ran actual QuickJS tests: 271 passed, one failed because a retained test lost its shutil import, and seven setup errors came from one seven-style fixture. The import is restored here; the native engine failure is still being diagnosed. This is not a full composition or installed/native PASS. Newer checkpoint3 source files have not yet been compiled. Studio/desktop/progress and packaging verification closure remain pending. No private voice/model assets, credentials, trust signing authority or human NVDA acceptance are included.
+
+## Checkpoint 4: recovered execution and retained ownership
+
+This checkpoint records 150 exact candidate paths. It adds typed backup fixtures, canonical desktop/Studio progress consumers, cleanup acknowledgement retained before thread admission, and source-only audio setup/install/refresh verification. These candidates have source review and exact blob readback, not execution acceptance.
+
+The local executor has recovered. The preserved local c04 plus canonical966 unfinished merge was snapshotted without resetting or aborting it. PUBLIC962 application/render candidates match their recorded bases exactly; the stronger local playback/effects/CAS additions still require patch reconciliation.
+
+The Windows workflow candidate has two known review corrections pending: standard installers must consume the verified no-audio bundle with its own manifest identity, and the installed command registry module lives under carr_library.ui. Do not activate this workflow unchanged. Exact compile, merged source, installed-wheel and native qualification remain outstanding.

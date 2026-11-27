@@ -1,0 +1,132 @@
+{
+  "status": "SOURCE_ONLY_NOT_COMPILED_NOT_EXECUTED",
+  "title": "Canonical local audio bundle continuity through existing packaging tools",
+  "base_current": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+  "base_canonical": "966e5ccf892243ead6942c635af5fbab47e72551",
+  "files": [
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "20d3da68cb0a9543be98844227e08ac7cd463add",
+      "supersedes_blob": "f6230a7b4bdd84115e86e1e4699601b18ece3d53",
+      "blob": "ff150863100e1806f1e53fa41f602bcc36dd493e",
+      "sha256": "7078230da417df9a59fc9ba949c2a1d2e72a53d916829aef0b19c74b0ca6a397",
+      "readback": true
+    },
+    {
+      "path": "carr-library/packaging/install_windows.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "3892f6be60135a8018fa5ea7444ae25d0a791742",
+      "supersedes_blob": "69d698e8eb7b05904def5e3c95ae2b04e6285d87",
+      "blob": "a7cd0507d2fc0bd8885a609671bd1ce9950a1e96",
+      "sha256": "fc13df83f506b4d7b428794f635a24dc775b8670a810baad9c691ba70fcce0dc",
+      "readback": true
+    },
+    {
+      "path": "carr-library/packaging/add_native_runtime.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "c85b8dd9916df0dadbc458c09786859995ea2252",
+      "supersedes_blob": null,
+      "blob": "45ab51a4b8042dd233e399244f20b166d2562be6",
+      "sha256": "303e40bc121008fb4df9db5f818cdaa18e9d0ad684d6abf61fee80908c33d766",
+      "readback": true
+    },
+    {
+      "path": "carr-library/packaging/refresh_private_bundle.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+      "supersedes_blob": null,
+      "blob": "bdd72420e168dfa8ad5c397b3e8b64459620c97e",
+      "sha256": "fe3ce0d6be825e4cc5e9375b3ca050509f7eeb5b80a0ed485de6306ad690d142",
+      "readback": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_bundle_convergence.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": null,
+      "supersedes_blob": "aafba46144449a7c13bb7ac9f5b667de2cef8b9f",
+      "blob": "ec5dcf9dc8fd69ca2b9a3e080ede1d79fdd9b269",
+      "sha256": "f3b98a2526afbf3594269a2f1936c0b62e2967eb8f3221d55482ca3ce11e9724",
+      "readback": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+      "supersedes_blob": null,
+      "blob": "c17c3935f4e940b511668ea7ece560fa66e4cdb5",
+      "sha256": "1bd2b30a9bec5c3b559ae5f8cb7d1cf27780a1fafb1980d959af779acc27b255",
+      "readback": true
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "blob": "dc6f11c08f0a4d5751a155edc8646be2b46a9105"
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "blob": "9db85cc398e44a1e3e6bbb6c4afb65352eb091c8"
+    },
+    {
+      "path": "carr-library/packaging/optional_runtimes.py",
+      "blob": "a23316650c0e1718ea6e16a01ba36147dc7704a4",
+      "change": "none"
+    },
+    {
+      "path": "carr-library/packaging/prepare_audio_runtime.py",
+      "blob": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d",
+      "change": "canonical file already proposed for merge"
+    }
+  ],
+  "unchanged_authority": [
+    {
+      "path": "carr-library/packaging/create_delivery.py",
+      "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef",
+      "contract": "transfer gate still refuses both local audio layouts; integrity is not distribution clearance"
+    },
+    {
+      "path": "carr-library/packaging/build_standard_installer.py",
+      "blob": "7ea59f5e7061a3acef4f2481fa9c0796ad537c04",
+      "contract": "existing standard installer transfer/rollback/complete-bundle authority remains"
+    }
+  ],
+  "changes": [
+    "Factor the exact 14-file source-only audio setup inventory from f623 without changing copied bytes or source/launcher guards.",
+    "One captured outer manifest for native attachment, bounded duplicate-safe reads, acceptance manifest moved last.",
+    "Installer verifies actual canonical/legacy optional runtime inventories, rejects both layouts, undeclared bytes, links, wrong case and unreadable/over-budget trees.",
+    "Refresh drops unselected old runtime bytes/flags, replaces obsolete setup sources with current exact inventory, and supports explicit --audio-runtime through existing pinned verifier.",
+    "Canonical runtime copied only from its frozen verified SHA inventory and verified again before final seal; captured legacy optional runtime admission reused."
+  ],
+  "tests": {
+    "new_path": "carr-library/tests/packaging/test_audio_bundle_convergence.py",
+    "new_cases": 17,
+    "existing_path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+    "existing_functions_retained": 9,
+    "added_refresh_cases": 5,
+    "fixture_changes": "Current SetupLocalAudio/14 helper sources and START_UK are included in the synthetic committed source fixture; no application/runtime payload executes.",
+    "behavioral_scope": [
+      "real synthetic PE/source-lock verification",
+      "invalid optional flags/missing/extra/mixed/case layouts",
+      "actual directory read error and inventory bound",
+      "duplicate outer keys",
+      "after-verification outer-manifest replacement cannot control native-attachment copy paths",
+      "acceptance manifest remains absent after interrupted payload move",
+      "current setup inventory refresh and unselected runtime removal",
+      "post-verification runtime mutation rejected",
+      "transfer rights gate remains unchanged",
+      "actual unreadable optional root cannot be downgraded to absence; only FileNotFoundError denotes absence and an empty directory stays present"
+    ],
+    "execution": "NOT_RUN"
+  },
+  "limitations": [
+    "No actual Windows installer/native audio/runtime/ASR/hardware acceptance has run on these proposals.",
+    "The source-only copy helper intentionally does not import or execute setup scripts.",
+    "The local-only c04 extras must still be replayed by parent; these files do not claim to reconstruct unrelated inaccessible local changes."
+  ],
+  "supersedes_manifest": "49fb489c896feae30118f3ce1e8e98467ef54c7d",
+  "review": {
+    "source": "Durable accepted snapshot/raw/manifest-last order; its lexists error-suppression finding is addressed in this supersession, awaiting final source review.",
+    "execution": "NOT_RUN"
+  }
+}

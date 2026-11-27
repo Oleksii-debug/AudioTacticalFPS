@@ -1624,7 +1624,7 @@ jobs:
             'tests/storage/test_backup_canonical_union.py',
             'tests/studio/test_production_total_budget_ownership.py',
             'tests/integrations/test_dordiai_canonical_convergence.py',
-            'tests/storage/test_legacy_research_note.py',
+            'tests/storage/test_legacy_research_note.py'
 
           )
           $previousPath = $env:PATH

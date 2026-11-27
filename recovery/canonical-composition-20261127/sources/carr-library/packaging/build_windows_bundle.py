@@ -34,6 +34,37 @@ TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
 
 
+# Fixed source-only setup inputs shared by initial and refreshed bundles.
+# These files contain no prepared audio runtime or model payload.
+AUDIO_SETUP_FILES = (
+    "setup_local_audio.py",
+    "acquire_audio_runtime.py",
+    "prepare_audio_runtime.py",
+    "audio-runtime/README.txt",
+    "audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+    "audio-runtime/licenses/COPYING.GPLv2",
+    "audio-runtime/licenses/COPYING.GPLv3",
+    "audio-runtime/licenses/COPYING.LGPLv2.1",
+    "audio-runtime/licenses/COPYING.LGPLv3",
+    "audio-runtime/licenses/LICENSE.md",
+    "audio-runtime/provenance/build-configuration.txt",
+    "audio-runtime/provenance/checksums.sha256",
+    "audio-runtime/provenance/dependency-source-index.json",
+    "audio-runtime/source-lock.json",
+)
+
+
+def copy_audio_setup(destination, *, packaging_root=None):
+    """Copy the exact current source-only setup tools without loading them."""
+    source = HERE if packaging_root is None else Path(packaging_root)
+    destination = Path(destination)
+    shutil.copyfile(regular(source / "SetupLocalAudio.cmd"), destination / "SetupLocalAudio.cmd")
+    for relative in AUDIO_SETUP_FILES:
+        target = destination / "tools" / "audio-setup" / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(regular(source / relative), target)
+
+
 def sha256(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
@@ -335,29 +366,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     raise ValueError("OCR source archive changed during bundle assembly")
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
-        # Setup helpers are source only. A user may explicitly acquire and
-        # prepare the pinned runtime on their own machine; transfer archives
-        # never include that runtime. Copy only this reviewed file inventory.
-        shutil.copyfile(regular(HERE / "SetupLocalAudio.cmd"), staged / "SetupLocalAudio.cmd")
-        for relative in (
-            "setup_local_audio.py",
-            "acquire_audio_runtime.py",
-            "prepare_audio_runtime.py",
-            "audio-runtime/README.txt",
-            "audio-runtime/licenses/BUILD_RECIPES_LICENSE",
-            "audio-runtime/licenses/COPYING.GPLv2",
-            "audio-runtime/licenses/COPYING.GPLv3",
-            "audio-runtime/licenses/COPYING.LGPLv2.1",
-            "audio-runtime/licenses/COPYING.LGPLv3",
-            "audio-runtime/licenses/LICENSE.md",
-            "audio-runtime/provenance/build-configuration.txt",
-            "audio-runtime/provenance/checksums.sha256",
-            "audio-runtime/provenance/dependency-source-index.json",
-            "audio-runtime/source-lock.json",
-        ):
-            target = staged / "tools" / "audio-setup" / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(regular(HERE / relative), target)
+        # Setup remains an explicit owner-local operation, outside transfer archives.
+        copy_audio_setup(staged)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")

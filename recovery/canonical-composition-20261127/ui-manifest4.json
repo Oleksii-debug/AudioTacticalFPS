@@ -1,0 +1,123 @@
+{
+  "schema": "carr-source-recovery-proposal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+  "purpose": "Canonical command/progress consumers with retained public lifecycle, receipt and source guards",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "88132e14b07b220a3ee0c734ec1defbd5fd338db",
+      "new_blob": "840a9ff6ba30858b539ed931e180b3401cc10f5b",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/portable_sync.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "e065c973a31872279232c0f6921dd913889d5b69",
+      "new_blob": "75ff111cdd108a2131b0193a84edfb747fd83429",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/trust_status.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "7a923fd6a87bbbe89c29a13132b0ebeb42dfb5ff",
+      "new_blob": "e01c8e202b44ba6354f57445c5135cfb9db85502",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "cab84ae07a1fdd72b1ffa96b8c4d039b265fbb7f",
+      "new_blob": "e3aee7e03c3100dc9351007f2db04fb2edf801fc",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "c090be77f44f4d95aaea44139a0e10deaf6ebd7a",
+      "new_blob": "3e6a2feb8ac385ff4cb7ec0ecbbb4e86a71b52ed",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "c1ee879fa54d356d0a16719241fc7c166a9f9aeb",
+      "new_blob": "9c85ea25f7e1f4febd45c4507ea7593efa30da72",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "0bb2dec7a8b5a490565a196e281ec30e3ca00e9b",
+      "new_blob": "153757e0096d0057550fb975de1016a22be937ec",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "dfed6a16a54eeef18542a628360ec085dc2571b1",
+      "new_blob": "631dfded701782626bf382e289ae9155c7a419f1",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_panel_state.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "13a1fd87ed8ed86b836b887b3bb964469ff02fe3",
+      "new_blob": "efa5771fbd79508af1af9d444a0abd421457548b",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "0e7bb47ad0faf869fb95868aafeab3d3832556e8",
+      "new_blob": "982ab6106827f4fb10f2cc1f83888393d06ae613",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "aa28e07dad812e94e4c5d2f53fb029fd308f3747",
+      "new_blob": "dcd822d776b76ce34c9ae1273c1afcbdd6e44a7a",
+      "status": "SOURCE_ONLY_NOT_RUN",
+      "additional_source_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "readback": "EXACT"
+    }
+  ],
+  "review": {
+    "desktop_consumers": "source reviewed by author; independent runtime pending",
+    "studio_provider_ownership": "durable_review accepted source9c85/96ed, plus narrow None task diagnostic guard now included",
+    "execution": "NOT_RUN; executor unavailable"
+  },
+  "dependencies": [
+    "Selected speech/progress_speech.py retains actual registry cleanup before thread admission; ASR is preparing that followup over f977907ae646cfd8ca636deea3dc8670844fc5e5.",
+    "Canonical registry, keyboard and ProgressHub proposals from checkpoint3, including one NativeProgressPanel/ProgressMedia authority.",
+    "Reconcile exact inaccessible local791 playback/effects and536 Studio expected_fingerprint hooks; public-source proposals do not reconstruct those unpublished changes."
+  ],
+  "notes": [
+    "All19 shared progress job review test names remain and use real canonical ProgressHub/NativeProgressPanel methods.",
+    "All shared and canonical progress voice and Studio isolation test names remain; added fields are actual production closure owners, never placeholder cleanup callbacks.",
+    "document_conversion differs from exact962 only by the canonical registration imports/calls; all handlers are byte-identical.",
+    "No branch or pull-request refs modified."
+  ]
+}
