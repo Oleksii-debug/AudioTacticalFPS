@@ -237,3 +237,135 @@ def test_save_all_still_saves_the_registered_note_after_child_destruction(tmp_pa
     assert not state.frame._save_coordinator.busy
     assert state.timer.IsRunning()
     assert state.reports and 'saved' in state.reports[-1].lower()
+
+
+def test_late_cancel_after_final_durable_save_is_complete():
+    coordinator = SaveCoordinator()
+    dirty, stop, summaries = [True], [False], []
+    def save(done):
+        dirty[0] = False
+        stop[0] = True
+        done(SaveResult(True))
+    coordinator.register('one', 'Transcript', dirty=lambda: dirty[0], save=save)
+    assert coordinator.save_all(summaries.append, cancelled=lambda: stop[0])
+    assert summaries[0].complete and not summaries[0].cancelled
+    assert summaries[0].saved == ('Transcript',)
+    assert not coordinator.busy
+
+
+def test_late_cancel_with_clean_tail_is_complete():
+    coordinator = SaveCoordinator()
+    dirty, stop, summaries = [True], [False], []
+    callbacks = []
+    coordinator.register('one', 'Note', dirty=lambda: dirty[0], save=callbacks.append)
+    coordinator.register('two', 'Clean reader', dirty=lambda: False, save=lambda done: None)
+    coordinator.save_all(summaries.append, cancelled=lambda: stop[0])
+    dirty[0] = False
+    stop[0] = True
+    callbacks[0](SaveResult(True))
+    assert summaries[0].complete and not summaries[0].cancelled
+
+
+def test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes():
+    coordinator = SaveCoordinator()
+    summaries = []
+    coordinator.register('clean', 'Clean reader', dirty=lambda: False, save=lambda done: None)
+    coordinator.save_all(summaries.append, cancelled=lambda: True)
+    assert summaries[0].cancelled and not summaries[0].complete
+    assert not summaries[0].remaining
+    assert 'Unsaved changes remain:' not in summaries[0].message()
+
+
+def test_cancel_with_newer_edits_still_reports_unsaved_changes():
+    coordinator = SaveCoordinator()
+    callbacks, summaries, stop = [], [], [False]
+    coordinator.register('one', 'Note', dirty=lambda: True, save=callbacks.append)
+    coordinator.save_all(summaries.append, cancelled=lambda: stop[0])
+    stop[0] = True
+    callbacks[0](SaveResult(True))
+    assert summaries[0].cancelled and not summaries[0].complete
+    assert summaries[0].remaining
+
+
+def test_cancel_after_failed_save_not_misreported_as_complete():
+    coordinator = SaveCoordinator()
+    summaries, stop = [], [False]
+    def save(done):
+        stop[0] = True
+        done(SaveResult(False, 'write failed'))
+    coordinator.register('one', 'Note', dirty=lambda: True, save=save)
+    coordinator.save_all(summaries.append, cancelled=lambda: stop[0])
+    assert summaries[0].cancelled and not summaries[0].complete
+    assert summaries[0].remaining == (('Note', 'write failed'),)
+
+
+def test_failed_old_save_does_not_hide_replacement_draft():
+    coordinator = SaveCoordinator()
+    callbacks, summaries, focused = [], [], []
+    unregister = coordinator.register('reader', 'Old reader', dirty=lambda: True,
+                                      save=callbacks.append, focus=lambda: focused.append('old'))
+    assert coordinator.save_all(summaries.append)
+    coordinator.register('reader', 'New reader', dirty=lambda: True,
+                         save=lambda done: None, focus=lambda: focused.append('new'))
+    unregister()
+    callbacks[0](SaveResult(False, 'old write failed'))
+    assert len(summaries) == 1 and not summaries[0].complete
+    assert summaries[0].remaining == (('Old reader', 'old write failed'),
+                                      ('New reader', 'newer or unsaved edits are retained'))
+    assert focused == ['new']
+    assert not coordinator.busy
+
+
+def test_failed_old_save_does_not_focus_clean_replacement():
+    coordinator = SaveCoordinator()
+    callbacks, summaries, focused = [], [], []
+    coordinator.register('reader', 'Old reader', dirty=lambda: True, save=callbacks.append)
+    assert coordinator.save_all(summaries.append)
+    coordinator.register('reader', 'Clean reader', dirty=lambda: False,
+                         save=lambda done: None, focus=lambda: focused.append('clean'))
+    callbacks[0](SaveResult(False, 'old write failed'))
+    assert summaries[0].remaining == (('Old reader', 'old write failed'),)
+    assert focused == []
+
+
+def test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration():
+    coordinator = SaveCoordinator()
+    callbacks, summaries, focused, attempts = [], [], [], []
+    first_dirty = [True]
+    coordinator.register('first', 'First', dirty=lambda: first_dirty[0], save=callbacks.append)
+    coordinator.register('reader', 'Old reader', dirty=lambda: True,
+                         save=lambda done: attempts.append('old'))
+    assert coordinator.save_all(summaries.append)
+    coordinator.register('reader', 'New reader', dirty=lambda: True,
+                         save=lambda done: attempts.append('new'), focus=lambda: focused.append('new'))
+    first_dirty[0] = False
+    callbacks[0](SaveResult(True))
+    assert summaries[0].saved == ('First',)
+    assert summaries[0].remaining == (('Old reader', 'the open document changed during saving'),
+                                      ('New reader', 'newer or unsaved edits are retained'))
+    assert focused == ['new'] and attempts == []
+
+
+def test_focus_rechecks_registration_after_completion_notification():
+    coordinator = SaveCoordinator()
+    focused = []
+    coordinator.register('reader', 'Old reader', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'failed')),
+                         focus=lambda: focused.append('old'))
+    def completed(summary):
+        assert not summary.complete
+        coordinator.register('reader', 'Clean reader', dirty=lambda: False,
+                             save=lambda done: None, focus=lambda: focused.append('clean'))
+    assert coordinator.save_all(completed)
+    assert focused == []
+
+
+def test_live_failed_registration_retains_its_own_focus():
+    coordinator = SaveCoordinator()
+    focused, summaries = [], []
+    coordinator.register('reader', 'Reader', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'failed')),
+                         focus=lambda: focused.append('reader'))
+    assert coordinator.save_all(summaries.append)
+    assert summaries[0].remaining == (('Reader', 'failed'),)
+    assert focused == ['reader']
