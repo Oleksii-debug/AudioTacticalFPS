@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-SOURCES = [[46055068086,"023de4612e3490b5c9dc4f9abb5f9ca3887ca29e",15227397556,"ae8853b5aa6a6d6f85b75b250ef3f92560f96d643f1dc07626e12ee214b0710b"]]
+SOURCES = [[46054991807,"23d6401341d2d0f9415cef699a687394368f4b7b",15227792200,"c2acd723ce7358aee6dbb242f47b08f6648ea8bb7bb0900aaf8d727fd7ff33d6"]]
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         parsed = urllib.parse.urlsplit(newurl)
@@ -53,7 +53,7 @@ for run, head, identity, digest in SOURCES:
         if len(entries) > 2000 or sum(x.file_size for x in entries) > 128 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds reviewed bound")
         emit("FILES " + json.dumps([(x.filename, x.file_size) for x in entries if not x.is_dir()])[:10000])
-        priority = ("ocr", "import", "reader", "bundle", "desktop")
+        priority = ("reading-production-source",)
         entries.sort(key=lambda entry: (next((i for i, term in enumerate(priority)
             if term in entry.filename.lower()), len(priority)), entry.filename))
         for entry in entries:
@@ -78,6 +78,14 @@ for run, head, identity, digest in SOURCES:
                             key: value[key] for key in ("status", "result", "passed", "failed_stage",
                             "error", "errors", "manual_nvda", "speech_inference") if key in value})[:2500])
             elif any(term in name for term in priority):
-                emit("NATIVE_TEXT " + name + "\n" + content[-12000:])
+                lines = content.splitlines()
+                selected = set()
+                for number, line in enumerate(lines):
+                    if re.match(r"^(?:PASS|FAIL):|^Required suites complete:|^FAILED tests/|^ERROR tests/", line):
+                        selected.add(number)
+                    if re.match(r"^FAIL:|^FAILED tests/|^ERROR tests/", line):
+                        selected.update(range(max(0, number - 20), min(len(lines), number + 5)))
+                emit("RETAINED_SUITE_SUMMARY " + name + "\n" +
+                     "\n".join(lines[number] for number in sorted(selected)))
 emit(json.dumps({"summary_complete": True, "remaining_output_budget": remaining,
                  "qualification": "diagnostic only; exact previous source head"}))
