@@ -272,6 +272,11 @@ def _selected_package():
 def test_actual_parent_owned_crash_resumes_only_last_durable_prefix(repository, tmp_path):
     raw, client, review, original = selected(repository, tmp_path, length=2 * 1024**2)
     selection = _selected_package()
+    # The exact complete package inventory exceeds Windows command-line limits.
+    # Bind an owned file by digest while retaining every child origin/hash check.
+    selection_bytes = json.dumps(selection, sort_keys=True).encode('utf-8')
+    selection_file = tmp_path / 'selected-package.json'
+    selection_file.write_bytes(selection_bytes)
     bootstrap = tmp_path / 'selected-bootstrap.json'
     bootstrap.write_bytes(repository.bootstrap)
     child = r'''
@@ -279,7 +284,9 @@ from hashlib import sha256
 import json, os, sys
 from pathlib import Path
 import carr_library
-selection = json.loads(sys.argv[1])
+selection_bytes = Path(sys.argv[1]).read_bytes()
+assert sha256(selection_bytes).hexdigest() == sys.argv[5], 'selected package inventory changed'
+selection = json.loads(selection_bytes)
 root = Path(carr_library.__file__).resolve().parent
 assert str(root) in selection['roots']
 actual = {str(p.relative_to(root)).replace(os.sep, '/'): sha256(p.read_bytes()).hexdigest()
@@ -299,7 +306,8 @@ client.download(Path(sys.argv[2]), release.target, reviewed_sha256=release.sha25
 raise AssertionError('actual crash boundary was not reached')
 '''
     process = subprocess.Popen([sys.executable, '-I', '-B', '-c', child,
-        json.dumps(selection, sort_keys=True), str(repository.root), str(bootstrap), str(client.cache)],
+        str(selection_file), str(repository.root), str(bootstrap), str(client.cache),
+        sha256(selection_bytes).hexdigest()],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         stdout, stderr = process.communicate(timeout=30)
