@@ -145,13 +145,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installed = @'
           import pathlib, runpy, sys
-          import carr_library
+          import carr_library, bootstrap
           prefix = pathlib.Path(sys.prefix).resolve()
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(prefix)
+          assert pathlib.Path(bootstrap.__file__).resolve().is_relative_to(prefix)
           assert 'site-packages' in {part.casefold() for part in pathlib.Path(carr_library.__file__).parts}
           child = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
           sys.argv = ['installed-publication-gate', 'offline', '-o', 'addopts=', '-o', 'xfail_strict=true',
-                      '--import-mode=importlib', '--junitxml', sys.argv[1], 'tests/audio/test_publication_acceptance.py']
+                      '-o', 'pythonpath=', '--import-mode=importlib', '--junitxml', sys.argv[1], 'tests/audio/test_publication_acceptance.py']
           exec(compile(child, 'installed-publication-offline-policy', 'exec'))
           '@
           & $env:CARR_PUBLICATION_PYTHON -I -B -c $installed 'publication-ci-results/strict-installed.xml' 2>&1 | Tee-Object 'publication-ci-results/strict-installed.txt'

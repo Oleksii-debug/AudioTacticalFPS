@@ -1067,3 +1067,113 @@ def test_old_library_job_callback_cannot_touch_new_window_state(classes, tmp_pat
     assert received == []
     value.report.assert_not_called()
     value.cancel_button.Disable.assert_not_called()
+
+
+def test_progress_start_failure_does_not_cancel_actual_publication(classes, tmp_path):
+    value = observed_frame(classes, tmp_path)
+    value.operation_progress.start = Mock(side_effect=RuntimeError('Synthetic observer unavailable'))
+    future, done, failed = Future(), Mock(), Mock()
+    value.executor.submit.return_value = future
+    output = tmp_path / 'committed.txt'
+    def publish():
+        output.write_text('Committed despite unavailable progress', encoding='utf-8')
+        return {'state': 'complete'}
+    value.run_job('Publish', publish, done, failed)
+    actual = value.executor.submit.call_args.args[0]()
+    future.set_result(actual)
+    classes[1].pop()()
+    done.assert_called_once_with(actual)
+    failed.assert_not_called()
+    assert output.read_text(encoding='utf-8') == 'Committed despite unavailable progress'
+    assert not value.working and not value.busy
+    assert 'Progress reporting is unavailable' in value.report.call_args.args[0]
+
+
+@pytest.mark.parametrize('observer', ['finish_result', 'tick'])
+def test_progress_completion_observer_failure_preserves_actual_publication(classes, tmp_path, observer):
+    value = observed_frame(classes, tmp_path)
+    setattr(value.operation_progress, observer, Mock(side_effect=RuntimeError('Synthetic observer unavailable')))
+    future, done, failed = Future(), Mock(), Mock()
+    value.executor.submit.return_value = future
+    output = tmp_path / 'committed.txt'
+    def publish():
+        output.write_bytes(b'Committed result must reach its callback')
+        return {'state': 'complete'}
+    value.run_job('Publish', publish, done, failed)
+    actual = value.executor.submit.call_args.args[0]()
+    future.set_result(actual)
+    classes[1].pop()()
+    done.assert_called_once_with(actual)
+    failed.assert_not_called()
+    assert output.read_bytes() == b'Committed result must reach its callback'
+    assert not value.working and not value.busy
+    assert 'Progress reporting is unavailable' in value.report.call_args.args[0]
+
+
+@pytest.mark.parametrize('error,observer', [
+    (OSError('Actual publication failed'), 'fail'),
+    (InterruptedError('Actual operation stopped'), 'cancel'),
+], ids=['service-error', 'acknowledged-cancellation'])
+def test_progress_failure_observer_cannot_hide_actual_service_error(classes, tmp_path, error, observer):
+    value = observed_frame(classes, tmp_path)
+    setattr(value.operation_progress, observer, Mock(side_effect=RuntimeError('Synthetic observer unavailable')))
+    future, done, failed = Future(), Mock(), Mock()
+    value.executor.submit.return_value = future
+    def operation():
+        raise error
+    value.run_job('Publish', operation, done, failed)
+    with pytest.raises(type(error)) as raised:
+        value.executor.submit.call_args.args[0]()
+    assert raised.value is error
+    value.cancel_event.set()
+    future.set_exception(error)
+    classes[1].pop()()
+    failed.assert_called_once_with(error)
+    done.assert_not_called()
+    assert str(error) in value.report.call_args.args[0]
+    assert 'Synthetic observer' not in value.report.call_args.args[0]
+    assert not value.working and not value.busy
+
+
+@pytest.mark.parametrize('stage', ['enter', 'exit'])
+@pytest.mark.parametrize('service_error', [False, True], ids=['success', 'failure'])
+def test_progress_binding_failure_runs_operation_once_without_masking_result(
+        classes, tmp_path, stage, service_error):
+    value = observed_frame(classes, tmp_path)
+    class Binding:
+        def __enter__(self):
+            if stage == 'enter':
+                raise RuntimeError('Synthetic context entry failed')
+        def __exit__(self, *error):
+            if stage == 'exit':
+                raise RuntimeError('Synthetic context release failed')
+    value.operation_progress.bind = Mock(return_value=Binding())
+    future, done, failed = Future(), Mock(), Mock()
+    value.executor.submit.return_value = future
+    output, calls = tmp_path / 'committed.txt', []
+    error = OSError('Actual service failure stays authoritative')
+    def operation():
+        calls.append('started')
+        if service_error:
+            raise error
+        output.write_bytes(b'One actual publication')
+        return {'state': 'complete'}
+    value.run_job('Publish', operation, done, failed)
+    if service_error:
+        with pytest.raises(OSError) as raised:
+            value.executor.submit.call_args.args[0]()
+        assert raised.value is error
+        future.set_exception(error)
+    else:
+        future.set_result(value.executor.submit.call_args.args[0]())
+    classes[1].pop()()
+    assert calls == ['started']
+    assert not value.working and not value.busy
+    if service_error:
+        failed.assert_called_once_with(error)
+        done.assert_not_called()
+        assert not output.exists()
+    else:
+        done.assert_called_once_with({'state': 'complete'})
+        failed.assert_not_called()
+        assert output.read_bytes() == b'One actual publication'

@@ -112,6 +112,10 @@ def _studio(payload):
     draft = NarrationDraft.from_dict(payload['draft'])
     reference = payload['source_reference']
     if reference is not None:
+        from .legacy_project import KIND as CANONICAL_STUDIO, validate_reference
+        if type(reference) is dict and reference.get('kind') == CANONICAL_STUDIO:
+            validate_reference(reference, draft)
+            return payload
         from ..reader.narration import READING_REFERENCE_KIND, validate_reading_project_reference
         from .recording import REFERENCE_KIND as RECORDING_REFERENCE_KIND, validate_recording_reference
         if type(reference) is not dict or reference.get('kind') not in (

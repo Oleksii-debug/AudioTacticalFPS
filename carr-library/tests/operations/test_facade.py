@@ -213,7 +213,7 @@ def test_discovery_counts_non_job_entries_and_honours_cancel_and_byte_budget(tmp
         (base / ('irrelevant-' + str(index))).write_bytes(b'x')
     monkeypatch.setattr(module, '_MAX_DISCOVERY', 2)
     with pytest.raises(ResourceStateError, match='discovery'):
-        OperationFacade(app).list()
+        OperationFacade(app).list(limit=2)
     monkeypatch.setattr(module, '_MAX_DISCOVERY', 10000)
     with pytest.raises(InterruptedError):
         OperationFacade(app).list(cancelled=lambda: True)

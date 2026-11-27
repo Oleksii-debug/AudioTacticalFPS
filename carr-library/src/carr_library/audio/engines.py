@@ -735,6 +735,12 @@ class DordiaiVoicesEngine:
                         raise EngineUnavailable('dordiai-voices is not consuming bounded requests.') from exc
                 started = time.monotonic()
                 total = 0
+                def checked_reply():
+                    _cancelled(cancelled)
+                    if time.monotonic() - started > self.timeout:
+                        raise TimeoutError('dordiai-voices exceeded its per-segment time budget.')
+                    if os.fstat(errors.fileno()).st_size > MAX_LOG_BYTES:
+                        raise EngineUnavailable('dordiai-voices exceeded its diagnostic byte budget.')
                 reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
                 reader.start()
                 writer = threading.Thread(target=write_requests, daemon=True, name='dordiai-voices request writer')
@@ -766,6 +772,9 @@ class DordiaiVoicesEngine:
                             row = replies.get(timeout=.05)
                         except queue.Empty:
                             continue
+                        # The bounded queue wait can cross cancellation or the
+                        # deadline before a one-shot PCM/completion response.
+                        checked_reply()
                         if isinstance(row, Exception):
                             raise row
                         if not isinstance(row, dict):
@@ -798,6 +807,7 @@ class DordiaiVoicesEngine:
                         if 'pcm' in row:
                             break
                         send({'mode': 'next'})
+                checked_reply()
                 if not total:
                     raise ValueError('dordiai-voices produced no audio.')
             finally:

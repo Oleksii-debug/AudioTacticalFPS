@@ -16,8 +16,10 @@ on:
 permissions:
   contents: read
 
+# Keep distinct source acceptance runs alive while development continues.
+# Duplicate push/PR runs of the same source still coalesce.
 concurrency:
-  group: carr-audio-${{ github.head_ref || github.ref_name }}
+  group: carr-audio-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:

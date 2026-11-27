@@ -718,6 +718,17 @@ class DesktopFrame(WorkspaceFrame):
         library = getattr(self, 'library', None)
         progress = getattr(self, 'operation_progress', None)
         token = None
+        progress_error = None
+
+        def observe(callback):
+            nonlocal progress_error
+            try:
+                return callback()
+            except Exception as exc:
+                # Progress is an observer. Its device, presentation or receipt
+                # classifier cannot cancel work or hide a committed result.
+                progress_error = exc
+
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
@@ -732,17 +743,28 @@ class DesktopFrame(WorkspaceFrame):
         self.report(title + '…')
         try:
             if progress is not None:
-                token = progress.start(title, total=progress_total, unit=progress_unit).token
+                token = observe(lambda: progress.start(
+                    title, total=progress_total, unit=progress_unit).token)
             def observed_operation():
-                if progress is None:
+                binding = None
+                if progress is not None and token is not None and progress_error is None:
+                    candidate = observe(lambda: progress.bind(token))
+                    if candidate is not None and observe(lambda: (candidate.__enter__(), True)[1]):
+                        binding = candidate
+                try:
                     return operation()
-                with progress.bind(token):
-                    return operation()
+                finally:
+                    if binding is not None:
+                        import sys
+                        error = sys.exc_info()
+                        # A failed context reset must not replace an operation's
+                        # exception or turn its successful publication into retry.
+                        observe(lambda: binding.__exit__(*error))
             future = self.executor.submit(observed_operation)
         except Exception as exc:
             self._finish_job_controls()
             if progress is not None and token is not None:
-                progress.fail(exc, token=token)
+                observe(lambda: progress.fail(exc, token=token))
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
                 failed(exc)
@@ -758,22 +780,27 @@ class DesktopFrame(WorkspaceFrame):
                 try:
                     result = future.result()
                 except Exception as exc:
-                    if progress is not None:
+                    if progress is not None and token is not None:
                         if isinstance(exc, InterruptedError):
-                            progress.cancel(str(exc), token=token)
+                            observe(lambda: progress.cancel(str(exc), token=token))
                         else:
-                            progress.fail(exc, token=token)
+                            observe(lambda: progress.fail(exc, token=token))
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
                     return
-                if progress is not None:
-                    outcome = progress.finish_result(result,
-                        cancelled=self.cancel_event.is_set(), token=token)
-                    summary = outcome.text if outcome is not None else title + ': result returned.'
-                    progress.tick()
-                else:
-                    summary = title + ': complete.'
+                summary = title + (': result returned.' if progress is not None else ': complete.')
+                if progress is not None and token is not None and progress_error is None:
+                    outcome = observe(lambda: progress.finish_result(result,
+                        cancelled=self.cancel_event.is_set(), token=token))
+                    if outcome is not None:
+                        description = observe(lambda: outcome.text)
+                        if isinstance(description, str):
+                            summary = description
+                    if progress_error is None:
+                        observe(progress.tick)
+                if progress_error is not None:
+                    summary += ' Progress reporting is unavailable.'
                 try:
                     if done is not None and getattr(self, 'status', None) is not None:
                         # The result callback owns its panel/reader focus.

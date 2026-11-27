@@ -758,6 +758,8 @@ class LibraryApp:
                                 # it never reactivates the old source revision.
                                 register_batch(Catalog(storage.db, workspace), (record,))
                                 storage._check()
+                                if cancelled():
+                                    raise InterruptedError('Import registration cancelled before commit.')
                             # Initial publication already registered and checked
                             # this request inside the source publication transaction.
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'

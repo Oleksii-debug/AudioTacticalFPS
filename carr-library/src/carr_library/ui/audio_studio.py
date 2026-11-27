@@ -145,8 +145,9 @@ class StudioController:
 
     def _protect_original(self, selected):
         from ..reader.narration import READING_REFERENCE_KIND, protect_original_path
+        from ..audio.legacy_project import KIND as CANONICAL_STUDIO
         reference = self.source_reference
-        if isinstance(reference, dict) and reference.get('kind') in ('local-text', READING_REFERENCE_KIND):
+        if isinstance(reference, dict) and reference.get('kind') in ('local-text', READING_REFERENCE_KIND, CANONICAL_STUDIO):
             protect_original_path(reference.get('original_path'), selected)
 
     @property
@@ -381,6 +382,9 @@ class StudioController:
             if not isinstance(reference, dict) or len(_json_text(reference)) > self.loading_budget:
                 raise ValueError('The source reference is invalid.')
             from ..reader.narration import READING_REFERENCE_KIND, validate_reading_project_reference
+            from ..audio.legacy_project import KIND as CANONICAL_STUDIO, validate_reference
+            if reference.get('kind') == CANONICAL_STUDIO:
+                validate_reference(reference, values['draft'])
             if reference.get('kind') == READING_REFERENCE_KIND:
                 validate_reading_project_reference(reference, original_text=values['draft'].source_text,
                                                    source_id=values['draft'].source_id)
@@ -702,8 +706,11 @@ class AudioStudioDialog:
         self.script.SetName('Editable narration or dialogue script')
         self.controls.append(self.script)
         script_layout.Add(self.script, 1, wx.EXPAND | wx.ALL, 5)
-        script_buttons = wx.BoxSizer(wx.HORIZONTAL)
+        script_buttons = wx.WrapSizer(wx.HORIZONTAL)
         self._button(script_page, script_buttons, 'Import text', self.import_text)
+        from .legacy_studio_import import import_canonical_project
+        self._button(script_page, script_buttons, 'Import canonical project',
+                     lambda event: import_canonical_project(self, event))
         self._button(script_page, script_buttons, 'Add role effect', self.add_effect)
         self._button(script_page, script_buttons, 'Script and keyboard help', self.help)
         script_layout.Add(script_buttons, 0, wx.ALL, 5)
