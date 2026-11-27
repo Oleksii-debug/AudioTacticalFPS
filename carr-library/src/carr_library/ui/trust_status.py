@@ -170,22 +170,36 @@ def install_trust_actions(frame):
     item = menu_bar.GetMenu(help_index).Append(wx.ID_ANY, 'License and signed updates')
     frame.Bind(wx.EVT_MENU, lambda event: show_trust_status(frame), item)
     controller = getattr(frame, 'trust_controller', None)
-    if controller is None or controller.refresh is None:
+    if controller is None:
         return
-    host = IdleRenewalHost(controller.refresh, enabled=controller.automatic_refresh)
-    frame.trust_renewal_host = host
+    hosts = []
+    if controller.refresh is not None:
+        renewal = IdleRenewalHost(controller.refresh, enabled=controller.automatic_refresh)
+        frame.trust_renewal_host = renewal
+        hosts.append(renewal)
+    if controller.update_poll is not None:
+        frame.trust_update_poll_host = controller.update_poll
+        hosts.append(controller.update_poll)
+    if not hosts:
+        return
     timer = wx.Timer(frame)
-    frame.trust_renewal_timer = timer
+    frame.trust_client_timer = timer
+    if controller.refresh is not None:
+        frame.trust_renewal_timer = timer
     def idle(event=None):
-        host.set_idle(not getattr(frame, 'working', False) and not getattr(frame, '_closing', False))
+        available = not getattr(frame, 'working', False) and not getattr(frame, '_closing', False)
+        for host in hosts:
+            host.set_idle(available)
     def close(event):
         if event.GetEventObject() is frame:
             timer.Stop()
-            host.close()
+            for host in hosts:
+                host.close()
         event.Skip()
     frame.Bind(wx.EVT_TIMER, idle, timer)
     frame.Bind(wx.EVT_WINDOW_DESTROY, close)
-    if controller.automatic_refresh:
+    if any(host.enabled for host in hosts):
         idle()
-        host.start()
+        for host in hosts:
+            host.start()
         timer.Start(1000)

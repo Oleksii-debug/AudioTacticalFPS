@@ -175,6 +175,37 @@ virtual environments. Target bytes, entries, unpacked bytes, free disk and
 cancellation are bounded. Failed staging never becomes current. Verified
 downloads are reusable; partial byte-range download resume is not claimed.
 
+## Automatic read-only update checks
+
+Trusted host configuration may supply the existing update client and exact
+target together with `update_repository=OWNER_LOCAL_REPOSITORY` on
+`TrustController`. Checks remain off unless `automatic_updates=True` is explicit.
+No repository, endpoint, account or bootstrap trust is selected by default.
+
+The existing native idle timer owns `IdleUpdatePollHost` alongside the renewal
+host. One background thread calls only `TrustController.check_repository`, so
+the same TUF root, product/channel/build policy, metadata limits and rollback
+checks apply. The host checks metadata; it never calls package download,
+installation, restart or entitlement renewal. A signed release remains display
+information and does not become a `VerifiedPackage`.
+
+`update_interval` defaults to 3,600 seconds (explicit range 1–86,400 seconds);
+`update_timeout` defaults to 20 seconds (range 0.01–60 seconds). Failures use
+bounded exponential retry, capped at one day. Only one check can be in flight.
+Idle withdrawal, cancellation, deadline or changed client/target binding prevents
+a late result from replacing the cached release. Accessible status uses fixed
+diagnostics and retains the last verified release after failure. The schedule
+and status belong to this application instance; reopening starts one new
+configured check, without a second durable job store.
+
+Metadata verification and its existing private TUF cache run outside the UI.
+No library, rendering, save, source or output lock is acquired. Closing the owner
+signals cancellation and uses a bounded join. An unusually slow local filesystem
+can retain one daemon until its read returns; it cannot block application close,
+start extra workers or publish a late result. This is not an HTTP update-server
+adapter: supplying production transport or signed releases remains an owner
+responsibility. Manual review and download remain separate explicit actions.
+
 ## Installation transaction
 
 `UpdateTransaction` requires disjoint program, update-work and data directories,
@@ -206,7 +237,8 @@ A production restart/idle supervisor is not implemented by this adoption.
 Independent root material, a real signed Windows bundle and its qualification
 are also still required before managed activation can be exposed. UI exposes
 working check/download, without an unimplemented activation button. Update
-server polling is absent; manual local checks are the implemented route.
+server transport is absent; explicit manual or configured automatic local
+metadata checks use the same verified repository client.
 
 This transaction delegates backup and restoration to the current canonical
 complete-library backup. It does not introduce a competing journal, media
