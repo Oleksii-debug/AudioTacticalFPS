@@ -146,6 +146,11 @@ def _manifest() -> dict:
         raise CitationError('The installed citation bundle is incomplete.') from exc
 
 
+def citation_attribution() -> str:
+    """Read the installed credit without discovering or launching a runtime."""
+    return _text(_manifest()['attribution'], 'Citation attribution', 2048)
+
+
 def available_styles() -> tuple[StyleInfo, ...]:
     return tuple(StyleInfo(**{key: entry[key] for key in StyleInfo.__dataclass_fields__})
                  for entry in _manifest()['styles'])

@@ -10,9 +10,22 @@ import pytest
 
 from carr_library.academic_integration import (
     CitationCancelled, CitationCluster, CitationError, CitationRequest,
-    available_styles, render_citations,
+    available_styles, citation_attribution, render_citations,
 )
 from carr_library.academic_integration import formatting
+
+
+def test_startup_attribution_is_available_without_node_or_subprocess(monkeypatch):
+    def unavailable(*args, **kwargs):
+        pytest.fail('Reading the startup credit must not discover or launch a runtime.')
+
+    monkeypatch.setattr(formatting, '_node_binary', unavailable)
+    monkeypatch.setattr(formatting.shutil, 'which', unavailable)
+    monkeypatch.setattr(formatting.subprocess, 'Popen', unavailable)
+    manifest = json.loads((Path(formatting.__file__).parent / 'UPSTREAM.json').read_text(encoding='utf-8'))
+    assert citation_attribution() == manifest['attribution']
+    assert 'citeproc-js by Frank Bennett' in citation_attribution()
+    assert 'https://citationstyles.org/' in citation_attribution()
 
 
 @pytest.fixture

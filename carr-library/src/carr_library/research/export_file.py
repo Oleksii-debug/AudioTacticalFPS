@@ -6,6 +6,7 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path, PureWindowsPath
 import os
 import stat
@@ -40,7 +41,7 @@ def _file_state(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _destination(path, private_root):
+def _inspect_destination(path, private_root):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -80,6 +81,48 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
+def _destination(path, private_root, check_cancelled=lambda: None):
+    snapshot = _inspect_destination(path, private_root)
+    target, parent_identity, state = snapshot
+    if state is None:
+        return snapshot
+
+    check_cancelled()
+    # Guard before opening, then bind the descriptor before reading any bytes.
+    # Nonblocking/no-follow opens also reject a raced-in FIFO or final symlink
+    # on platforms exposing these flags. Existing paths are already validated.
+    flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
+             | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOFOLLOW', 0))
+    descriptor = os.open(target, flags)
+    try:
+        with os.fdopen(descriptor, 'rb', buffering=0, closefd=False) as source:
+            opened = os.fstat(descriptor)
+            if (_file_state(opened) != state
+                    or _inspect_destination(path, private_root) != snapshot):
+                raise ValueError('The export destination changed. Choose the destination again.')
+            # There is no global export-file size cap. Read the complete
+            # captured length with constant memory and one extra byte solely
+            # to detect growth; never accept a sampled or truncated digest.
+            digest, remaining = sha256(), opened.st_size
+            while remaining:
+                check_cancelled()
+                block = source.read(min(1024 * 1024, remaining))
+                if not block:
+                    raise ValueError('The export destination changed. Choose the destination again.')
+                digest.update(block)
+                remaining -= len(block)
+            check_cancelled()
+            if source.read(1):
+                raise ValueError('The export destination changed. Choose the destination again.')
+            check_cancelled()
+            if (_file_state(os.fstat(descriptor)) != state
+                    or _inspect_destination(path, private_root) != snapshot):
+                raise ValueError('The export destination changed. Choose the destination again.')
+    finally:
+        os.close(descriptor)
+    return target, parent_identity, (*state, digest.hexdigest())
+
+
 @dataclass(frozen=True)
 class ExportDestination:
     """One destination state captured before caller-side overwrite approval."""
@@ -108,8 +151,10 @@ def capture_export_destination(path, *, private_root):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
-    binds approval to the selected path, parent directory and existing file
-    state across queued work and rendering; it grants no permission itself.
+    binds approval to the selected path, parent directory and complete existing
+    file contents across queued work and rendering; it grants no permission
+    itself. Existing files are streamed in full with constant-memory reads,
+    bounded to their captured size; this is not a fixed-time operation.
     """
     requested, private = _export_paths(path, private_root)
     target, parent_identity, state = _destination(requested, private)
@@ -160,7 +205,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
 
     check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, previous = _destination(requested, private)
+    target, parent_identity, previous = _destination(requested, private, check_cancelled)
     # A caller approving ordinary replacement cannot approve a file that did
     # not exist at this snapshot. Protect every existing caller from a last-
     # moment competing create, even without the new explicit policy argument.
@@ -186,7 +231,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             os.fsync(output.fileno())
 
         check_cancelled()
-        checked_target, checked_parent, current = _destination(requested, private)
+        checked_target, checked_parent, current = _destination(requested, private, check_cancelled)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
