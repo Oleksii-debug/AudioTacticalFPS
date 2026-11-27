@@ -30,12 +30,16 @@ def verify_voice_reader_controls(application, parent, library, workspace, check,
     import carr_library.speech.reading as reading_module
     import carr_library.ui.speech_dialog as speech_module
     import carr_library.ui.pronunciation_dialog as pronunciation_module
+    import carr_library.ui.find_replace_dialog as find_module
+    import carr_library.speech.navigation as navigation_module
+    from carr_library.speech.session import ReaderDraftStore
     import carr_library.ui.reading_shortcuts as shortcuts_module
     from carr_library.reader.reading_desk import ReadingDesk
     from carr_library.speech import ReadingDocument, Voice, VoiceRegistry
     from carr_library.speech.source import read_source_range
 
-    for module in (reading_module, speech_module, pronunciation_module, shortcuts_module):
+    for module in (reading_module, speech_module, pronunciation_module, shortcuts_module,
+                   find_module, navigation_module):
         origins[module.__name__] = str(Path(module.__file__).resolve())
     if source is None:
         checkout = Path(__file__).resolve().parents[2]
@@ -137,7 +141,8 @@ def verify_voice_reader_controls(application, parent, library, workspace, check,
 
     def force_close():
         holding.clear()
-        for title in ('Pronunciation dictionary', 'Voice reader and reading copy'):
+        for title in ('Find and replace — review a reading copy', 'Pronunciation dictionary',
+                      'Voice reader and reading copy'):
             item = window(title)
             if item is not None:
                 if item.IsModal():
@@ -273,6 +278,70 @@ def verify_voice_reader_controls(application, parent, library, workspace, check,
         post(lambda: press(control(reader, 'Undo reading edit', label=True)))
         yield from await_condition(lambda: editor.GetValue() == raw, 'One Undo did not restore the reading copy.')
         check('native Undo preserves the immutable source', original.read_bytes() == original_bytes)
+
+        editor.SetInsertionPoint(editor.XYToPosition(5, 1))
+        post(lambda: press(control(reader, 'Select current text unit')))
+        yield from await_condition(lambda: editor.GetStringSelection() == 'Second',
+                                   'Current word navigation did not select the native Unicode range.')
+        post(lambda: press(control(reader, 'Next text unit')))
+        yield from await_condition(lambda: editor.GetStringSelection() == 'line',
+                                   'Next word navigation did not advance.')
+        post(lambda: press(control(reader, 'Previous text unit')))
+        yield from await_condition(lambda: editor.GetStringSelection() == 'Second',
+                                   'Previous word navigation did not return to the exact word.')
+        control(reader, 'Navigation unit').SetSelection(1)
+        post(lambda: press(control(reader, 'Select current text unit')))
+        sentence = 'Second line has 12 kg.'
+        yield from await_condition(lambda: editor.GetStringSelection() == sentence,
+                                   'Sentence navigation did not preserve the exact native range.')
+        check('word and sentence navigation select text without starting speech',
+              len(requests) == 3 and len(played) == 3 and editor.GetValue() == raw)
+        editor.SetFocus()
+        yield from await_condition(lambda: wx.Window.FindFocus() == editor,
+                                   'The reading editor did not receive focus before Ctrl+F.')
+        def find_shortcut():
+            check('native Find modifier is delivered', simulator.KeyDown(wx.WXK_CONTROL))
+            try:
+                key(ord('F'))
+            finally:
+                check('native Find modifier is released', simulator.KeyUp(wx.WXK_CONTROL))
+        post(find_shortcut)
+        yield from await_condition(lambda: window('Find and replace — review a reading copy') is not None,
+                                   'The shared Ctrl+F command did not open native Find and replace.')
+        find = window('Find and replace — review a reading copy')
+        control(find, 'Find text or pattern').SetValue('line')
+        control(find, 'Replacement text; empty deletes a match').SetValue('segment')
+        control(find, 'Search scope').SetSelection(1)
+        post(lambda: press(control(find, 'Preview matches')))
+        yield from await_condition(lambda: control(find, 'Reviewed exact matches').GetCount() == 1
+                                   and control(find, 'Replace selected match').IsEnabled(),
+                                   'The actual isolated find worker did not return one reviewed match.')
+        check('native Find preview leaves the source and reading copy unchanged',
+              editor.GetValue() == raw and original.read_bytes() == original_bytes
+              and control(find, 'Current text in the reviewed scope').GetValue() == sentence
+              and control(find, 'Proposed text for Replace all reviewed').GetValue()
+                  == 'Second segment has 12 kg.')
+        check('reviewed Find result selects the exact native word after Unicode text',
+              editor.GetStringSelection() == 'line')
+        post(lambda: press(control(find, 'Replace selected match')))
+        replacement_text = raw.replace('line', 'segment', 1)
+        yield from await_condition(lambda: editor.GetValue() == replacement_text
+                                   and control(find, 'Undo last replacement').IsEnabled(),
+                                   'The reviewed native single replacement did not finish.')
+        restored = ReaderDraftStore(library.root, slot='native-reader-usability').load().document
+        check('native Find replacement persists one source-preserving recovery revision',
+              restored.text == replacement_text and restored.source_text == raw
+              and restored.source_anchor['quotation_authority'] is False
+              and restored.source_anchor['asset_sha256'] == imported['asset'])
+        check('one native Find replacement is undoable in the actual recovered copy',
+              restored.undo() and restored.text == raw)
+        post(lambda: press(control(find, 'Undo last replacement')))
+        yield from await_condition(lambda: editor.GetValue() == raw,
+                                   'One native Find Undo did not restore the exact reading copy.')
+        check('native Find Undo retains immutable original bytes', original.read_bytes() == original_bytes)
+        post(lambda: press(control(find, 'Close')))
+        yield from await_condition(lambda: window('Find and replace — review a reading copy') is None,
+                                   'The native Find dialog did not close.')
         editor.SetSelection(0, 0)
         editor.SetFocus()
         yield from await_condition(lambda: wx.Window.FindFocus() == editor, 'The reading editor did not gain focus.')
@@ -341,7 +410,9 @@ def verify_voice_reader_controls(application, parent, library, workspace, check,
                         wx.TheClipboard.Clear()
             finally:
                 wx.TheClipboard.Close()
-    return {'controls': 'native wx', 'keyboard': 'native UIActionSimulator F6/F8',
+    return {'controls': 'native wx', 'keyboard': 'native UIActionSimulator F6/F8/Ctrl+F',
+            'navigation': 'native word and sentence selections without automatic speech',
+            'find_replace': 'native preview, selected replacement, durable recovery and one Undo',
             'clipboard': 'one explicit native read', 'voice_provider': 'synthetic PCM fixture',
             'playback': 'synthetic sink; no device opened', 'file_pickers': 'controlled answers; NOT_RUN',
             'unsaved_close_confirmation': 'controlled answer; NOT_RUN',

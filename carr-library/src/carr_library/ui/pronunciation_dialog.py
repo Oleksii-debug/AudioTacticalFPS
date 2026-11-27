@@ -1,9 +1,31 @@
 """Native rule editing on the existing reader's worker and pronunciation APIs."""
+from dataclasses import dataclass
 from pathlib import Path
 
-from ..speech import PronunciationRule, import_dictionary, export_dictionary
+from ..speech import ReadingDocument, PronunciationRule, import_dictionary, export_dictionary
+from ..speech._io import text_value
 from ..speech.navigation import native_cursor_position, native_insertion_offset
 from ..research.export_file import capture_export_destination
+
+
+@dataclass(frozen=True)
+class ReadingSnapshot:
+    identity: int
+    signature: tuple
+    text: str
+    selection: tuple[int, int]
+    language: str
+    voice_id: str
+
+    @classmethod
+    def capture(cls, document, selection, *, language='', voice_id=''):
+        if not isinstance(document, ReadingDocument):
+            raise ValueError('An existing reading copy is required.')
+        start, end = selection
+        document._range(start, end)
+        text_value(language, 'reader language', maximum=128, empty=True)
+        text_value(voice_id, 'reader voice ID', maximum=2048, empty=True)
+        return cls(id(document), document._signature(), document.text, (start, end), language, voice_id)
 
 
 def text_at_caret(editor, *, paragraph=False):

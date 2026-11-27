@@ -9,6 +9,7 @@ from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
+from ..speech.navigation import native_cursor_position, native_selection, select_text_unit
 from ..speech._io import text_value
 from .pronunciation_dialog import PronunciationDialog, caret_offset, native_caret_position, text_at_caret
 
@@ -100,6 +101,23 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(controls, 0, wx.EXPAND)
     editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    navigation = wx.BoxSizer(wx.HORIZONTAL)
+    navigation.Add(wx.StaticText(dialog, label='Navigation unit'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
+    navigation_unit = wx.Choice(dialog, choices=['Word', 'Sentence', 'Paragraph'])
+    navigation_unit.SetName('Navigation unit')
+    navigation_unit.SetSelection(0)
+    navigation.Add(navigation_unit, 0, wx.ALL, 4)
+    previous_unit = wx.Button(dialog, label='Previous unit')
+    previous_unit.SetName('Previous text unit')
+    current_unit = wx.Button(dialog, label='Select current unit')
+    current_unit.SetName('Select current text unit')
+    next_unit = wx.Button(dialog, label='Next unit')
+    next_unit.SetName('Next text unit')
+    read_unit = wx.Button(dialog, label='Read current unit')
+    read_unit.SetName('Read current text unit')
+    for control in (previous_unit, current_unit, next_unit, read_unit):
+        navigation.Add(control, 0, wx.ALL, 4)
+    layout.Add(navigation, 0, wx.EXPAND)
     status = labelled('Speech and save status', wx.TextCtrl, style=wx.TE_READONLY | wx.TE_MULTILINE,
                       value='Finding installed local voices. No speech starts automatically.', size=(-1, 90))
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -116,7 +134,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     read_paragraph = wx.Button(dialog, label='Read current para&graph')
     read_clipboard_button = wx.Button(dialog, label='Read &clipboard once')
     dictionary = wx.Button(dialog, label='Pronunciation &dictionary...')
-    for control in (read_line, read_paragraph, read_clipboard_button, dictionary):
+    find_button = wx.Button(dialog, label='Find and replace... (Ctrl+F)')
+    for control in (read_line, read_paragraph, read_clipboard_button, dictionary, find_button):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -159,6 +178,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         for button in (read, cursor, read_line, read_paragraph, read_clipboard_button, export_audio):
             button.Enable(bool(current) and not busy)
         dictionary.Enable(source_loaded and not busy)
+        find_button.Enable(source_loaded and not busy)
+        for control in (navigation_unit, previous_unit, current_unit, next_unit):
+            control.Enable(source_loaded and not busy)
+        read_unit.Enable(source_loaded and bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
@@ -349,6 +372,106 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return text_at_caret(editor, paragraph=mode == 'paragraph')
         selected = editor.GetStringSelection()
         return selected or editor.GetValue()
+
+    def navigate_unit(event=None, *, direction=0, read_aloud=False):
+        try:
+            if not alive or busy or not source_loaded:
+                raise ValueError('Wait for the current reader operation before navigating text.')
+            check_current()
+            displayed = editor.GetValue()
+            index = navigation_unit.GetSelection()
+            if not 0 <= index < 3:
+                raise ValueError('Choose word, sentence or paragraph navigation.')
+            unit = ('word', 'sentence', 'paragraph')[index]
+            span = select_text_unit(editor, displayed, unit, direction=direction)
+            if span is None:
+                report('No further ' + unit + ' in this direction. The selection is unchanged.')
+                return
+            report(f'Selected {unit}, characters {span[0] + 1} to {span[1]}. '
+                   'Navigation does not start speech; F6 reads the selection.')
+            if read_aloud:
+                speak()
+        except Exception as exc:
+            report(str(exc), focus=True)
+
+    def find_replace(event=None):
+        try:
+            if busy or not source_loaded or not alive:
+                raise ValueError('Wait for the current reader operation before finding or replacing text.')
+            check_current()
+            from ..durable_state import local_path
+            from .pronunciation_dialog import ReadingSnapshot
+            from .find_replace_dialog import apply_find_preview, check_find_preview, create_find_dialog
+            selected_library = getattr(parent, 'library', None)
+            selected_root = (local_path(selected_library.root, exists=True)
+                             if selected_library is not None else None)
+
+            def guard():
+                if (not alive or getattr(parent, '_closing', False)
+                        or getattr(parent, 'library', None) is not selected_library
+                        or selected_library is not None
+                        and local_path(selected_library.root, exists=True) != selected_root):
+                    raise ValueError('The library changed or the reader closed. Reopen find and replace.')
+                check_current()
+
+            def capture():
+                guard(); sync_document()
+                return ReadingSnapshot.capture(document, native_selection(editor, document.text))
+
+            def select(preview, index):
+                current = capture()
+                check_find_preview(document, preview, current)
+                if type(index) is not int or not 0 <= index < len(preview.matches):
+                    raise ValueError('Choose a match from this reviewed search.')
+                item = preview.matches[index]
+                start = native_cursor_position(editor, document.text, item.start)
+                end = native_cursor_position(editor, document.text, item.end)
+                editor.SetSelection(start, end); editor.ShowPosition(end)
+                return capture()
+
+            def synchronize():
+                nonlocal last_audio, playback_generation
+                playback_generation += 1; last_audio = None
+                editor.ChangeValue(document.text); sync_document()
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
+                return ''
+
+            def apply(preview, index):
+                guard(); current = capture()
+                check_find_preview(document, preview, current)
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                apply_find_preview(document, preview, current, index=index)
+                warning = synchronize()
+                return capture(), warning
+
+            def undo_find(expected):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed after replacement. Use the reader undo history explicitly.')
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                if not document.undo():
+                    raise ValueError('The replacement is no longer available to undo.')
+                return synchronize()
+
+            review = create_find_dialog(dialog, capture=capture, select=select, apply=apply,
+                undo=undo_find, guard=guard, run=run, cancel=cancel)
+            try:
+                review.ShowModal()
+            finally:
+                if review.alive:
+                    review.on_close()
+                review.Destroy()
+            if alive:
+                capabilities(); editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def speak(event=None, *, from_cursor=False, destination=None, mode='selection', content=None):
         nonlocal last_audio, playback_generation
@@ -651,7 +774,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing),
         (read_line, lambda event: speak(mode='line')),
         (read_paragraph, lambda event: speak(mode='paragraph')),
-        (read_clipboard_button, read_clipboard), (dictionary, show_dictionary)):
+        (read_clipboard_button, read_clipboard), (dictionary, show_dictionary),
+        (find_button, find_replace),
+        (previous_unit, lambda event: navigate_unit(direction=-1)),
+        (current_unit, navigate_unit), (next_unit, lambda event: navigate_unit(direction=1)),
+        (read_unit, lambda event: navigate_unit(read_aloud=True))):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)
@@ -670,6 +797,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.paragraph': (read_paragraph, lambda event: speak(mode='paragraph')),
         'voice_reader.clipboard': (read_clipboard_button, read_clipboard),
         'voice_reader.dictionary': (dictionary, show_dictionary),
+        'voice_reader.find': (find_button, find_replace),
+        'voice_reader.previous_unit': (previous_unit, lambda event: navigate_unit(direction=-1)),
+        'voice_reader.current_unit': (current_unit, navigate_unit),
+        'voice_reader.next_unit': (next_unit, lambda event: navigate_unit(direction=1)),
+        'voice_reader.read_unit': (read_unit, lambda event: navigate_unit(read_aloud=True)),
         'voice_reader.pause': (pause, pause_audio), 'voice_reader.stop': (stop, stop_audio),
         'voice_reader.save': (save_button, save_project),
         'voice_reader.save_as': (save_as, lambda event: save_project(choose=True)),
