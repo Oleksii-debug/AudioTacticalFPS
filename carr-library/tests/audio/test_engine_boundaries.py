@@ -258,22 +258,18 @@ Path(sys.argv[1]).write_text(json.dumps([child.pid, os.getpgrp()]), encoding='ut
 
 
 def test_windows_cleanup_does_not_open_a_console(monkeypatch):
+    from carr_library.audio import recording_process
     monkeypatch.setattr(engines, 'os', SimpleNamespace(name='nt'))
     monkeypatch.setattr(engines.subprocess, 'run',
                         lambda *args, **kwargs: pytest.fail('Owned cleanup must not launch another process.'))
-    calls = []
-    class Process:
-        returncode = 0
-        _carr_job = SimpleNamespace(close=lambda: calls.append('job'))
-        _handle = SimpleNamespace(Close=lambda: calls.append('handle'))
-        def poll(self): return self.returncode
-        def kill(self): pytest.fail('An exited helper does not need direct termination.')
-        def wait(self, *, timeout):
-            assert timeout == 5
-            calls.append('wait')
-            return self.returncode
-    engines._stop(Process())
-    assert calls == ['job', 'wait', 'handle']
+    process, calls = object(), []
+    def settled(current):
+        assert current is process
+        calls.append('existing-owned-family-settled')
+        return True
+    monkeypatch.setattr(recording_process, '_stop_owned', settled)
+    engines._stop(process)
+    assert calls == ['existing-owned-family-settled']
 
 
 def test_dordiai_rejects_duplicate_completion_fields_from_actual_worker(tmp_path):

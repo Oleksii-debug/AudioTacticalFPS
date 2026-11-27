@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "status": "IMPLEMENTED_RUNTIME_NOT_RUN",
+  "parent": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+  "observed_failed_run": 46039343585,
+  "observed_failed_job": 140642779359,
+  "code_finding": "The previous Windows engines._stop closed its job and then waited only for the helper leader. That sequence did not confirm every job member was quiescent before private PCM staging unwound.",
+  "causality_limit": "The sharing failure is observed; the exact process retaining that native file was not separately identified. This correction establishes the missing full-family ownership guarantee and must be re-executed.",
+  "changes": [
+    "Windows engines._stop lazily reuses the existing recording_process._stop_owned; it retains the exact job through active-process count zero and closes it only afterward.",
+    "The existing synchronous engine runner waits through the existing retained pending_cleanup owner before closing its input/log streams or letting caller staging/admission unwind. KeyboardInterrupt/SystemExit during initial cleanup are delivered after settlement.",
+    "POSIX stop algorithm, launcher, native COM protocol, voice IDs, saved settings and cache identity are unchanged.",
+    "The actual Windows probe additionally launches an isolated owned helper whose child holds a private non-delete-sharing file after the leader exits; return must permit immediate unlink without a retry/sleep.",
+    "All38 native labels remain; receipt requires actual owned-descendant file release and binds the two reused owner modules."
+  ],
+  "new_case_counter": {
+    "tests/audio/test_native_sapi.py": {
+      "test_native_engine_stop_waits_for_existing_job_accounting": 1,
+      "test_native_engine_cancel_retains_streams_until_pending_cleanup_settles": 3,
+      "test_native_engine_success_cannot_return_before_pending_cleanup_settles": 1
+    }
+  },
+  "changed_existing_case": "tests/audio/test_engine_boundaries.py::test_windows_cleanup_does_not_open_a_console now verifies exact existing-owner delegation; its case identity/count remain.",
+  "source_cases": 114,
+  "installed_cases": 114,
+  "native_checks": 38,
+  "fixture_parameter_multipliers": {
+    "stop_error": 3,
+    "other": 1
+  },
+  "peer_review": "Requested separately; no runtime qualification is inferred from review."
+}

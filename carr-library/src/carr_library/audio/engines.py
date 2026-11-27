@@ -233,21 +233,12 @@ def _start_process(command, **options):
 
 def _stop(process):
     if os.name == 'nt':
-        job = getattr(process, '_carr_job', None)
-        try:
-            if job is not None:
-                # An owned job still contains descendants after its helper
-                # exits; no PID scan or taskkill fallback can replace it.
-                job.close()
-        finally:
-            if process.poll() is None:
-                process.kill()
-            try:
-                process.wait(timeout=5)
-            finally:
-                handle = getattr(process, '_handle', None)
-                if job is not None and process.poll() is not None and handle is not None:
-                    handle.Close()
+        # Reuse the current capture owner's exact job-accounting boundary.
+        # A terminated leader does not prove that descendants released PCM.
+        # Import only at call time; the POSIX branch below remains the target
+        # of recording_process's existing _stop_engine callback.
+        from .recording_process import _stop_owned
+        _stop_owned(process)
         return
     # Every worker is started in its own session. The group can still own
     # live descendants after its leader has exited; poll() alone is not a
@@ -320,7 +311,17 @@ def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, c
             check()
             return result
         finally:
-            _stop(process)
+            try:
+                _stop(process)
+            except BaseException as error:
+                # Native family settlement precedes closing these streams or
+                # unwinding the caller's PCM/staging/admission scopes.
+                from .cleanup import pending_cleanup, wait_for_cleanup
+                pending = pending_cleanup(lambda: _stop(process),
+                    message='Local engine cleanup is pending; its staging and admission remain held.')
+                wait_for_cleanup(pending)
+                if not isinstance(error, Exception):
+                    raise
 
 
 _SAPI_SCRIPT = r'''
