@@ -8,7 +8,7 @@ from pathlib import Path
 
 import wx
 
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
 from .export_destination import approve_export_destination
 
 
@@ -278,13 +278,13 @@ class LibraryToolsDialog(wx.Dialog):
                                                      format=format, cancelled=cancelled)
             if cancelled():
                 raise TimeoutError('Export cancelled; the destination was not changed.')
-            write_export(path, value, private_root=self.private_root, cancelled=cancelled, approval=approval)
-            return path
+            return write_export(path, value, private_root=self.private_root,
+                                cancelled=cancelled, approval=approval)
 
-        def exported(destination):
+        def exported(receipt):
             detail = ('Verified quotations and research notes are in separate columns.' if kind == 'review-matrix'
                       else 'This file contains source metadata; it does not include saved quotations or notes.')
-            self._message(f'{name} exported to {destination}.\n{detail}')
+            self._message(export_completion(f'{name} exported to {receipt.path}.\n{detail}', receipt))
 
         return self._start(f'Exporting {name}', collection, publish, exported)
 

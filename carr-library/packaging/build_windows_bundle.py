@@ -19,6 +19,7 @@ import tarfile
 import sys
 from zipfile import ZipFile
 from email.parser import BytesParser
+from io import BytesIO
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
@@ -84,11 +85,11 @@ def read_lock(path):
     return pins
 
 
-def wheel_metadata(path):
+def wheel_metadata(path, *, raw=None):
     name, version, _build, tags = parse_wheel_filename(path.name)
     if not tags.intersection(TAGS):
         raise ValueError(f"wheel does not target {TARGET}: {path.name}")
-    with ZipFile(path) as archive:
+    with ZipFile(BytesIO(raw) if raw is not None else path) as archive:
         metadata = [n for n in archive.namelist() if n.endswith(".dist-info/METADATA")]
         if len(metadata) != 1 or archive.getinfo(metadata[0]).file_size > 4 * 1024 * 1024:
             raise ValueError("invalid wheel metadata")
@@ -161,9 +162,91 @@ def verify_native_launcher(directory, source_commit, *, receipt_name="build-evid
     return binary, receipt
 
 
+
+SPELLCHECK_NAME = "spylls-0.1.7+carr.1-py2.py3-none-any.whl"
+SPELLCHECK_SHA256 = "10b65cc18b2166c2fe4ae2aba1ee0839e7a0a4a0f5aa2a76d13ec653f9c71b66"
+SPELLCHECK_SIZE = 224323
+
+
+def _component_bytes(path, maximum=65536):
+    path = regular(Path(path))
+    with path.open("rb") as stream:
+        raw = stream.read(maximum + 1)
+    if not 0 < len(raw) <= maximum:
+        raise ValueError("optional spelling metadata exceeds its byte bound")
+    return raw
+
+
+def spellcheck_snapshot(wheel):
+    """Admit one exact code-only component before any bundle is sealed."""
+    wheel = regular(Path(wheel))
+    raw = _component_bytes(wheel, SPELLCHECK_SIZE)
+    if (wheel.name != SPELLCHECK_NAME or len(raw) != SPELLCHECK_SIZE
+            or hashlib.sha256(raw).hexdigest() != SPELLCHECK_SHA256):
+        raise ValueError("spelling requires the exact reviewed code-only wheel")
+    name, version, metadata = wheel_metadata(wheel, raw=raw)
+    if (name != "spylls" or str(version) != "0.1.7+carr.1"
+            or metadata.get_all("Requires-Dist", []) or metadata["License"] != "MPL-2.0"):
+        raise ValueError("the optional spelling wheel metadata changed")
+    expected = {"spylls": ("0.1.7+carr.1", {SPELLCHECK_SHA256})}
+    if read_lock(HERE / "spellcheck.lock") != expected:
+        raise ValueError("the optional spelling component lock changed")
+    manifest_raw = _component_bytes(HERE.parent / "src/carr_library/reader/spellcheck_backend.json")
+    manifest = json.loads(manifest_raw)
+    if (set(manifest) != {"wheel", "size", "sha256", "provenance"}
+            or manifest["wheel"] != SPELLCHECK_NAME or manifest["size"] != SPELLCHECK_SIZE
+            or manifest["sha256"] != SPELLCHECK_SHA256):
+        raise ValueError("the optional spelling source manifest changed")
+    prefix = "spylls-0.1.7+carr.1.dist-info/"
+    with ZipFile(BytesIO(raw)) as archive:
+        names = archive.namelist()
+        if any(value.endswith((".aff", ".dic")) for value in names):
+            raise ValueError("a language dictionary must not be included in the code-only component")
+        provenance = json.loads(archive.read(prefix + "CARR_REPACK.json"))
+        if provenance != manifest["provenance"] or provenance["license"] != "MPL-2.0":
+            raise ValueError("spelling source provenance differs from the reviewed wheel")
+        sources = provenance["unchanged_python_sha256"]
+        if len(sources) != 21 or set(sources) != {value for value in names if value.endswith(".py")}:
+            raise ValueError("the optional spelling source inventory changed")
+        if any(hashlib.sha256(archive.read(path)).hexdigest() != expected for path, expected in sources.items()):
+            raise ValueError("the optional spelling source checksum changed")
+        notice = archive.read(prefix + "LICENSE")
+    component_raw = _component_bytes(HERE / "spellcheck-sbom.json")
+    component_bom = json.loads(component_raw)
+    components, dependencies = component_bom.get("components"), component_bom.get("dependencies")
+    if (component_bom.get("bomFormat") != "CycloneDX" or component_bom.get("specVersion") != "1.5"
+            or type(components) is not list or len(components) != 1
+            or type(dependencies) is not list or len(dependencies) != 1):
+        raise ValueError("the optional spelling SBOM is invalid")
+    component, dependency = components[0], dependencies[0]
+    if (component.get("name") != "spylls" or component.get("version") != "0.1.7+carr.1"
+            or component.get("licenses") != [{"license": {"id": "MPL-2.0"}}]
+            or component.get("hashes") != [{"alg": "SHA-256", "content": SPELLCHECK_SHA256}]
+            or component.get("bom-ref") != "pypi:spylls@0.1.7+carr.1"
+            or dependency != {"ref": component["bom-ref"], "dependsOn": []}):
+        raise ValueError("the optional spelling SBOM differs from its exact code pin")
+    return dict(wheel=wheel, version=version, metadata=metadata, manifest=manifest_raw,
+                sbom=component_raw, component=component, dependency=dependency, notice=notice)
+
+
+
+def spellcheck_sbom_bytes(bom, spelling):
+    """Extend a validated base inventory without editing its source objects."""
+    reference = spelling["component"]["bom-ref"]
+    components, dependencies = bom["components"], bom.get("dependencies", [])
+    refs = [item["bom-ref"] for item in components if "bom-ref" in item]
+    if (type(dependencies) is not list or reference in refs
+            or any(canonicalize_name(item["name"]) == "spylls" for item in components)
+            or any(type(row) is not dict or row.get("ref") == reference for row in dependencies)):
+        raise ValueError("the runtime SBOM already has an ambiguous spelling reference")
+    result = dict(bom, components=components + [spelling["component"]],
+                  dependencies=dependencies + [spelling["dependency"]])
+    return (json.dumps(result, sort_keys=True, indent=2) + "\n").encode("utf-8")
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, audio_dir=None, launcher_dir=None):
+                 ocr_source_archive=None, audio_dir=None, launcher_dir=None, *, spellcheck_wheel=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -177,6 +260,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
     pins = read_lock(lock)
+    if 'spylls' in pins:
+        raise ValueError('Select the separate reviewed spelling component; keep the base lock unchanged.')
+    spelling = spellcheck_snapshot(spellcheck_wheel) if spellcheck_wheel is not None else None
+    if spelling is not None and sbom is None:
+        raise ValueError('Optional spelling requires the matching base runtime SBOM.')
     if sbom is not None:
         sbom = regular(Path(sbom))
         # Seal the very bytes whose dependency inventory was validated.
@@ -193,6 +281,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         refs = [item["bom-ref"] for item in components if "bom-ref" in item]
         if len(components) != len(expected) or len(refs) != len(set(refs)):
             raise ValueError("duplicate runtime SBOM component or reference")
+        if spelling is not None:
+            sbom_bytes = spellcheck_sbom_bytes(bom, spelling)
     selected = {}
     inventory = {}
     for path in sorted(wheelhouse.iterdir()):
@@ -209,6 +299,9 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         inventory[path.name] = digest
     if set(selected) != set(pins):
         raise ValueError("incomplete wheelhouse")
+    if spelling is not None:
+        selected["spylls"] = (spelling["wheel"], spelling["version"], spelling["metadata"])
+        inventory[SPELLCHECK_NAME] = SPELLCHECK_SHA256
     regular(wheel)
     name, version, metadata = wheel_metadata(wheel)
     if name != "universal-research-library" or name in selected:
@@ -384,6 +477,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                         staged / "LOCAL_AUDIO_SETUP.txt")
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        if spelling is not None:
+            (staged / "spelling-component.json").write_bytes(spelling["manifest"])
+            spelling_notice = staged / "notices" / "spelling"
+            spelling_notice.mkdir(parents=True)
+            (spelling_notice / "LICENSE").write_bytes(spelling["notice"])
+            (spelling_notice / "spellcheck-sbom.json").write_bytes(spelling["sbom"])
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)
@@ -427,11 +526,13 @@ def main():
                         help="Optional hash-verified private Windows FFmpeg runtime with notices")
     parser.add_argument("--launcher-dir", type=Path,
                         help="Private source-bound native build with ResearchLibrary.exe and build-evidence.json")
+    parser.add_argument("--spellcheck-wheel", type=Path,
+                        help="Optional exact code-only Spylls wheel; base lock and wheelhouse remain unchanged")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.audio_dir, args.launcher_dir)))
+                                  args.audio_dir, args.launcher_dir, spellcheck_wheel=args.spellcheck_wheel)))
 
 
 if __name__ == "__main__":

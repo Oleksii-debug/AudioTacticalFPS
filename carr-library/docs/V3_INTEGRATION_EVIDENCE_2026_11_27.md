@@ -3,6 +3,45 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Integrated follow-up source while the executor is unavailable
+
+This composition extends exact `55725629bc0cb79b62f7f3979842a573d5fd868f`.
+The new candidate identities below are source checkpoints, **not executed
+acceptance of this combined tree**. Their exact source/installed/native
+gates remain mandatory.
+
+| Integrated source | Behavior and review boundary |
+|---|---|
+| `caa1a9d` (root domain checkpoint `3288429`) | Current-producer EPUB3/DAISY capture, graph/audio validation, bounded FFmpeg PCM preparation, native interval/chapter navigation, exact-publication resume and typed backup. Initial earlier local domain: 18 passes; later reconstructed domain/UI/state bytes are NOT_RUN. Independent review found no concrete lifetime/cancellation blocker. |
+| `0207566` + `1f75516` | Explicit multi-stream inspection, retained media jobs, selected-format conversion, real decode verification, pause/cancel/resume, typed backup/export and native workstation. Earlier local core: 35 passes; exact reconstructed files and added UI/backup/native checks are NOT_RUN. |
+| `01ba17a` + `c201de7` | Existing clip DSP now holds every native input through processing. Different-source adjacent clips can be consolidated into an independent verified asset with provenance and retained undo/snapshot inputs. All new exact checks are NOT_RUN. |
+| `adae47e` + `2ca3ef9` | Explicit Hunspell-compatible spelling review through the exact optional code-only Spylls component; reviewed proposals use current narration preview/apply/undo. Pre-seal opt-in adds one declared component without editing 17/53 base profiles. New source and native checks are NOT_RUN. |
+| `dd64b93` + `9915a70` + `de7127f` | Large original viewing uses streamed copies, worker-only whole-byte verification, current resource admission, and exact readers held through an explicit native handoff. Expired/cancelled queued actions are inert; started actions settle before interruption can release readers. New exact checks are NOT_RUN. |
+| `0759d85` | Canonical `e69ba24` export corrections: bounded cancellable replacement fingerprints, nonblocking special-file refusal, create-only conflict refusal before reading unapproved contents, and truthful cleanup notices in existing academic/catalog/reading/import-report actions. New composed checks are NOT_RUN. |
+
+Ten changed clip/spelling path preimages and fifteen canonical-export
+preimages were compared byte-for-byte with the current parent before adopting
+their public blobs. The shared library backup was reconciled by eleven media
+hunks while preserving streamed source cancellation and the new publication
+cursor sidecar. Desktop imports/methods were composed narrowly and its existing
+actual-installer inventory test now requires both semantic commands.
+
+The Windows workflow retains all 333 previous distinct required test paths and
+adds the new source/installed/Linux suites. Actual recorded-reading and media
+conversion native probes run under the installed interpreter; spelling also
+runs under the separately prepared optional component and full sealed bundle.
+Required installed JUnit identities retain previous gates. The original base
+locks/wheelhouse stay unchanged; the full profile explicitly adds the exact
+code-only spelling wheel before sealing its combined inventory. No dictionaries,
+private runtimes, recordings, weights, credentials or binaries enter public Git.
+
+Canonical convergence remains active: `e69ba24` introduced historical
+`state/transcription` data that the stronger current ASR store must preserve
+inertly and migrate only through reviewed current inputs/runtime admission.
+A successful source checkpoint is not proof of that unfinished migration or
+final platform acceptance.
+
+
 ## Corrective source after observed Windows results
 
 Exact `01014502a9af432f42a2d5747b6cb81f28e4c4e3` main Windows

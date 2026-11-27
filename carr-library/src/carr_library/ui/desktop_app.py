@@ -14,9 +14,10 @@ from ..application import LibraryApp
 from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export, write_binary_export
+from ..research.export_file import write_export, write_binary_export, export_completion
 from .export_destination import approve_export_destination
 from ..reader.source_file import prepare_source_file, launch_source_file
+from .source_launch import call_on_ui
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
@@ -36,6 +37,7 @@ from .academic_tools import install_academic_actions as install_academic_compari
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
+from .media_overlay_dialog import install_media_overlay_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
 from .audio_studio import install_audio_studio_actions
@@ -47,6 +49,7 @@ from .portable_sync import install_portable_sync_actions
 from .language_matrix import install_language_actions
 from .translation_dialog import install_translation_actions
 from .document_conversion import install_conversion_actions
+from .media_conversion import install_media_actions
 from .transcription_dialog import install_transcription_actions
 from .engine_settings import install_engine_settings_actions
 from .operations_dialog import install_operations_actions
@@ -465,11 +468,18 @@ class DesktopSearchPanel(PagedSearchPanel):
                 raise ValueError('The selection changed. Select the source again.')
 
         def prepare():
-            # Read only captured scope here; native selection controls belong to
-            # the UI thread. The service rechecks topic access in its transaction.
+            # File copying and complete original/view verification stay on the
+            # existing worker. Only the final checked native opener is queued
+            # onto wx; its worker keeps both exact readers alive until it returns.
             check_context()
-            return prepare_source_file(library, *selection, authorized_topic=topic,
-                                       cancelled=cancelled)
+            source = prepare_source_file(library, *selection, authorized_topic=topic,
+                                         cancelled=cancelled)
+            if (source.identity.workspace, source.ref, source.identity.revision) != selection:
+                raise ValueError('The prepared source changed. Select the source again.')
+            launch_source_file(library, source, launch, authorized_topic=topic,
+                cancelled=cancelled, native_dispatch=lambda action: call_on_ui(
+                    wx.CallAfter, action, cancelled=cancelled))
+            return source
 
         def launch(path):
             # Source validation may take time. Check scope again immediately
@@ -478,21 +488,25 @@ class DesktopSearchPanel(PagedSearchPanel):
             return wx.LaunchDefaultApplication(path)
 
         def ready(source):
-            try:
-                check_selection()
-                if (source.identity.workspace, source.ref, source.identity.revision) != selection:
-                    raise ValueError('The prepared source changed. Select the source again.')
-                launch_source_file(library, source, launch, authorized_topic=topic,
-                                   cancelled=cancelled)
-                self.status.ChangeValue(f'Opened a viewing copy of {source.title}. '
-                    f'Source location: {source.locator.display()}. '
-                    'Use the external viewer to navigate to this location. '
-                    'The retained original is unchanged.')
-            except Exception as exc:
-                self.status.ChangeValue(f'Original not opened: {exc}')
+            # The native action already returned successfully. A later Stop
+            # cannot turn that acknowledgement into "not opened".
+            if (getattr(self.frame, '_closing', False)
+                    or self.frame.library is not library or self.bound_library is not library
+                    or self.frame.active != active or self._context_epoch != epoch):
+                return
+            self.status.ChangeValue(f'Opened a viewing copy of {source.title}. '
+                f'Source location: {source.locator.display()}. '
+                'Use the external viewer to navigate to this location. '
+                'The retained original is unchanged.')
             self.status.SetFocus()
 
-        self.frame.run_job('Preparing original source file', prepare, ready)
+        def failed(error):
+            if getattr(self.frame, '_closing', False):
+                return
+            self.status.ChangeValue(f'Original not opened: {error}')
+            self.status.SetFocus()
+
+        self.frame.run_job('Preparing and verifying original source file', prepare, ready, failed=failed)
 
     def save_selected(self, event):
         if self.frame.working:
@@ -632,6 +646,7 @@ class DesktopFrame(WorkspaceFrame):
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
         install_ebook_actions(self)
+        install_media_overlay_actions(self)
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
@@ -642,6 +657,7 @@ class DesktopFrame(WorkspaceFrame):
         install_assistant_actions(self)
         install_translation_actions(self)
         install_conversion_actions(self)
+        install_media_actions(self)
         install_transcription_actions(self)
         install_engine_settings_actions(self)
         install_operations_actions(self)
@@ -1204,17 +1220,18 @@ class DesktopFrame(WorkspaceFrame):
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
-                writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set, approval=approval)
+                return writer(path,content,private_root=library.root,
+                              cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):
-                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                    message = 'Bibliography exported. Quotations and research notes are not included.'
                 elif format in ('docx', 'html'):
-                    self.report('Research document exported with navigable headings, source citations, '
-                                'and quotations kept separate from research notes.')
+                    message = ('Research document exported with navigable headings, source citations, '
+                               'and quotations kept separate from research notes.')
                 else:
-                    self.report('Topic exported with quotations and research notes kept separate.')
+                    message = 'Topic exported with quotations and research notes kept separate.'
+                self.report(export_completion(message, result))
 
             self.run_job('Exporting verified topic',export,done,
                          lambda error: self.report(f'Export not completed: {error}'))

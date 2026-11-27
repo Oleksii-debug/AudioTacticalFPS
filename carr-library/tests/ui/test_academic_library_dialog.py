@@ -562,3 +562,25 @@ def test_live_academic_completion_reports_done_callback_error(controller, native
     native_handlers.drain()
     assert not window.pending and window.modal
     assert 'Visible callback failure' in window.status.value
+
+
+def test_native_export_handler_retains_text_return_and_cleanup_notice(
+        controller, native_handlers, monkeypatch, tmp_path):
+    from carr_library.ui import academic_library_dialog as ui
+    from carr_library.research.export_file import ExportReceipt
+    controller.create(form_values(draft()))
+    actual_writer = ui.write_export
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return ExportReceipt(receipt.path, 'Completed; temporary cleanup needs attention.')
+
+    monkeypatch.setattr(ui, 'write_export', completed_with_notice)
+    window = native_handlers.make('academic', controller)
+    window.controller = controller
+    destination = tmp_path / 'references.ris'
+    result = window.export_to(destination, format='ris')
+    assert isinstance(result, str)
+    assert result.encode('utf-8') == destination.read_bytes()
+    assert len(controller.preview(result.encode('utf-8'), 'ris').entries) == 1
+    assert 'Completed; temporary cleanup needs attention.' in window.status.value

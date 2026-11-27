@@ -501,6 +501,23 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertEqual(self.frame.jobs, [])
 
 
+    def test_matrix_saved_receipt_preserves_cleanup_notice_after_late_cancel(self):
+        from carr_library.research.export_file import ExportReceipt
+        writer, receipts = ui.write_export, []
+        def saved(*args, **kwargs):
+            receipt = writer(*args, **kwargs)
+            receipts.append(receipt)
+            return ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+        self.frame.after_worker = self.frame.cancel_event.set
+        actions, _ = self.actions((0, 0))
+        with patch.object(ui, 'write_export', saved):
+            actions.export_matrix()
+        self.assertEqual(len(receipts), 1)
+        self.assertTrue(self.destination.is_file())
+        self.assertIn('saved before cancellation', self.frame.messages[-1])
+        self.assertIn('Saved; temporary cleanup needs attention.', self.frame.messages[-1])
+
+
 class MenuRegistrationTests(unittest.TestCase):
     def test_reuses_existing_item_and_installs_only_once(self):
         class Item:

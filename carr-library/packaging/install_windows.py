@@ -18,6 +18,46 @@ import subprocess
 import venv
 
 
+
+SPELLCHECK_WHEEL = "spylls-0.1.7+carr.1-py2.py3-none-any.whl"
+SPELLCHECK_SHA256 = "10b65cc18b2166c2fe4ae2aba1ee0839e7a0a4a0f5aa2a76d13ec653f9c71b66"
+
+
+def _verify_spelling(root, files):
+    declaration = "spelling-component.json"
+    wheels = sorted(name for name in files if name.casefold().startswith("wheelhouse/spylls-"))
+    selected = declaration in files
+    if not selected:
+        if wheels or os.path.lexists(root / declaration):
+            raise ValueError("unannounced optional spelling component")
+        return
+    expected = "wheelhouse/" + SPELLCHECK_WHEEL
+    if wheels != [expected] or files[expected] != SPELLCHECK_SHA256:
+        raise ValueError("optional spelling requires the exact code-only wheel")
+    path = root / declaration
+    with path.open("rb") as stream:
+        raw = stream.read(65537)
+    if not 0 < len(raw) <= 65536:
+        raise ValueError("optional spelling declaration exceeds its bound")
+    value = json.loads(raw)
+    if (type(value) is not dict or set(value) != {"wheel", "size", "sha256", "provenance"}
+            or value["wheel"] != SPELLCHECK_WHEEL or value["size"] != 224323
+            or type(value["size"]) is not int or value["sha256"] != SPELLCHECK_SHA256
+            or type(value["provenance"]) is not dict
+            or value["provenance"].get("version") != "0.1.7+carr.1"
+            or value["provenance"].get("license") != "MPL-2.0"
+            or (root / expected).stat().st_size != value["size"]
+            or "notices/spelling/LICENSE" not in files
+            or "notices/spelling/spellcheck-sbom.json" not in files
+            or "runtime-sbom.cdx.json" not in files):
+        raise ValueError("optional spelling component declaration is invalid")
+    line = "spylls==0.1.7+carr.1 --hash=sha256:" + SPELLCHECK_SHA256
+    selected_lines = [row.strip() for row in (root / "install.lock").read_text(encoding="utf-8").splitlines()
+                      if row.strip().casefold().startswith("spylls")]
+    if selected_lines != [line]:
+        raise ValueError("optional spelling differs from the sealed install lock")
+
+
 def verify(root, *, manifest_bytes=None):
     # Packaging callers can bind verification to the exact snapshot they seal,
     # without reopening a manifest that another operation might replace.
@@ -64,6 +104,7 @@ def verify(root, *, manifest_bytes=None):
             actual = hashlib.file_digest(stream, "sha256").hexdigest()
         if actual != digest:
             raise ValueError(f"bundle checksum failed: {name}")
+    _verify_spelling(root, files)
     actual_wheels = {"wheelhouse/" + p.name for p in (root / "wheelhouse").iterdir()}
     if actual_wheels != {p for p in files if p.startswith("wheelhouse/")}:
         raise ValueError("unexpected or missing wheelhouse file")
@@ -129,7 +170,9 @@ def main():
     if os.name != "nt" or sys.version_info[:2] != (3, 11) or platform.architecture()[0] != "64bit":
         raise RuntimeError("Use Windows x64 with CPython 3.11 (py -3.11 install_windows.py).")
     root = Path(__file__).absolute().parent
-    verify(root)
+    manifest_bytes = (root / "bundle-manifest.json").read_bytes()
+    verify(root, manifest_bytes=manifest_bytes)
+    spelling_selected = "spelling-component.json" in json.loads(manifest_bytes)["files"]
     local = os.environ.get("LOCALAPPDATA")
     if not local or not Path(local).is_absolute():
         raise RuntimeError("Windows did not provide an absolute LOCALAPPDATA directory.")
@@ -168,6 +211,14 @@ def main():
                    check=True, env=environment, cwd=root)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)
+    if spelling_selected:
+        # Validate the installed code inventory before readiness. Never import
+        # Spylls itself or load a language dictionary during installation.
+        check_spelling = ("import json; from carr_library.reader.spellcheck import _backend; "
+                          "b=_backend(lambda:False); "
+                          "print(json.dumps({'spelling':b['version'],'source_files':len(b['files'])}))")
+        subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-c", check_spelling],
+                       check=True, env=environment, cwd=root)
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)

@@ -343,6 +343,29 @@ class ClipEditor:
                 result['clipboard'] = copied
             return result
 
+    def consolidate(self, identity, other_id, *, ffmpeg, cancelled=lambda: False,
+                    broker=None, operation_id=None):
+        """Bake a reviewed adjacent pair, then return one ordinary draft edit."""
+        from .clip_consolidation import consolidate_clips
+
+        index, _, first = self._clip(identity)
+        other_index, _, second = self._clip(other_id)
+        if index != other_index:
+            raise ValueError('Choose both clips from the same chapter.')
+        value = consolidate_clips(self.root, first, second, ffmpeg=ffmpeg,
+            sample_rate=self.plan.sample_rate, disk_budget_bytes=self.plan.disk_budget_bytes,
+            cancelled=cancelled, broker=broker, operation_id=operation_id)
+        combined = value['clip']
+        removed = second if combined.id == first.id else first
+        first_line, second_line = self._clip_line(combined.id), self._clip_line(removed.id)
+        ending = ('\r\n' if self.lines[first_line].endswith('\r\n')
+                  else '\n' if self.lines[first_line].endswith('\n') else '')
+        updated = self._replace([
+            (first_line, first_line + 1, [clip_directive(combined) + ending]),
+            (second_line, second_line + 1, [])])
+        return {'script': updated, 'fingerprint': self.fingerprint, 'clip_id': combined.id,
+                'consolidation_receipt': value['receipt']}
+
     def preview(self, identity, *, ffmpeg, cancelled=lambda: False, broker=None, operation_id=None):
         """Render only the selected trim/gain/pan/fades through the shared cache."""
         with project_lock(self.root):

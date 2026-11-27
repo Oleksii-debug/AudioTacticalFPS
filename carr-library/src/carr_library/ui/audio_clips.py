@@ -43,7 +43,8 @@ def show_clip_editor(parent, plan, *, selected_id=None, clipboard_available=Fals
         'Clips keep an independent PCM WAV/RF64 copy. Their start does not move spoken lines.\n'
         'Music and ambience duck under speech, microphone and sound-effects tracks.\n'
         'Save settings before Preview. Copy and Cut keep the original audio; Paste uses this project session.\n'
-        'Split uses a sample boundary outside fades. Join combines adjacent selections of the same source.')),
+        'Split uses a sample boundary outside fades. Join combines adjacent selections of the same source.\n'
+        'Consolidate bakes adjacent clips of one track into new PCM; original audio and controls remain saved.')),
         0, wx.EXPAND | wx.ALL, 8)
     body = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
     body.SetScrollRate(0, 16)
@@ -67,7 +68,7 @@ def show_clip_editor(parent, plan, *, selected_id=None, clipboard_available=Fals
     destination.SetSelection(0)
     minimum = field('Minimum chapter duration, seconds', wx.TextCtrl(body, value='1'))
     split_at = field('Split position from clip start, seconds', wx.TextCtrl(body, value='0.5'))
-    join_choice = field('Adjacent clip to join', wx.Choice(body))
+    join_choice = field('Adjacent clip to join or consolidate', wx.Choice(body))
     body.SetSizer(grid)
     body.FitInside()
     layout.Add(body, 1, wx.EXPAND | wx.ALL, 8)
@@ -100,7 +101,7 @@ def show_clip_editor(parent, plan, *, selected_id=None, clipboard_available=Fals
             controls[key].ChangeValue('' if value is None else str(value))
         title.ChangeValue(clip.title if clip is not None else '')
         track.SetSelection(CLIP_TRACKS.index(clip.track) if clip is not None else 0)
-        for key in ('edit', 'remove', 'move', 'preview', 'copy', 'cut', 'split', 'join'):
+        for key in ('edit', 'remove', 'move', 'preview', 'copy', 'cut', 'split', 'join', 'consolidate'):
             if key in buttons:
                 buttons[key].Enable(clip is not None)
         if 'paste' in buttons:
@@ -121,7 +122,7 @@ def show_clip_editor(parent, plan, *, selected_id=None, clipboard_available=Fals
         try:
             scene = current_scene()
             result = {'action': action, 'scene_id': scene.id}
-            if action in ('edit', 'remove', 'move', 'preview', 'copy', 'cut', 'split', 'join'):
+            if action in ('edit', 'remove', 'move', 'preview', 'copy', 'cut', 'split', 'join', 'consolidate'):
                 result['clip_id'] = current_clip().id
             if action in ('add', 'edit'):
                 index = track.GetSelection()
@@ -147,7 +148,7 @@ def show_clip_editor(parent, plan, *, selected_id=None, clipboard_available=Fals
             elif action == 'split':
                 result['split_at'] = number(float(split_at.GetValue()), 0.000001,
                                             MAX_CLIP_SECONDS, 'Split position')
-            elif action == 'join':
+            elif action in ('join', 'consolidate'):
                 index = join_choice.GetSelection()
                 if not 0 <= index < len(scene.clips) or scene.clips[index].id == result['clip_id']:
                     raise ValueError('Choose another adjacent clip in this chapter.')
@@ -170,7 +171,8 @@ def show_clip_editor(parent, plan, *, selected_id=None, clipboard_available=Fals
         (('add', '&Add local audio'), ('edit', '&Save clip settings'), ('remove', '&Remove clip')),
         (('move', '&Move to chapter'), ('duration', 'Set chapter &duration'), ('preview', '&Preview saved clip')),
         (('copy', '&Copy clip'), ('cut', 'Cu&t clip'), ('paste', 'Paste c&lip at start')),
-        (('split', 'S&plit clip'), ('join', '&Join adjacent clips'))):
+        (('split', 'S&plit clip'), ('join', '&Join adjacent clips'),
+         ('consolidate', 'Consolidate into &new audio'))):
         row = wx.BoxSizer(wx.HORIZONTAL)
         for action, label in specs:
             button = wx.Button(dialog, label=label)

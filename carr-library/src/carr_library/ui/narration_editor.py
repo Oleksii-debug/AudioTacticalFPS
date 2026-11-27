@@ -179,7 +179,8 @@ def _parse_rules(value):
 
 
 def open_narration_editor(parent, store, project, *, expected_digest=None, draft_digest=None,
-                          guard=lambda: None, dialogs=None, on_ready=None, studio_factory=None):
+                          guard=lambda: None, dialogs=None, on_ready=None, studio_factory=None,
+                          spelling_factory=None):
     """Open one reading-copy editor; source provenance is always readable.
 
     The caller guards the captured workspace/source, not the current global
@@ -538,6 +539,55 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         finally:
             picker.Destroy()
 
+    def review_spelling_copy(event=None):
+        if state['closed'] or preview.busy:
+            return
+        timer.Stop()
+        try:
+            capture()
+            controller.guard()
+            from .live_reading import native_offset, selected_source_offsets
+            from .spellcheck_dialog import (apply_spelling_preview, capture_spelling,
+                show_spellcheck_dialog, spelling_frame, undo_spelling_preview)
+            frame = spelling_frame(dialog, store.root)
+
+            def current():
+                if state['closed']:
+                    raise InterruptedError('The reading editor is closed.')
+                controller.guard()
+                return capture_spelling(controller,
+                    selected_source_offsets(editor, controller.pending_text))
+
+            def keep_draft():
+                try:
+                    return controller.autosave()
+                except Exception as exc:
+                    return 'The change remains in this open reading copy; recovery saving failed: ' + str(exc)
+
+            def apply_reviewed(proposal):
+                apply_spelling_preview(controller, proposal, current())
+                refresh()
+                editor.SetSelection(native_offset(editor, controller.pending_text, proposal.start),
+                    native_offset(editor, controller.pending_text, proposal.start + len(proposal.replacement)))
+                result = current()
+                warning = keep_draft()
+                return result, warning
+
+            def undo_reviewed(applied):
+                undo_spelling_preview(controller, applied, current())
+                refresh()
+                editor.SetInsertionPoint(0)
+                return keep_draft()
+
+            factory = spelling_factory or show_spellcheck_dialog
+            factory(dialog, frame=frame, library_root=store.root, capture=current,
+                apply=apply_reviewed, undo=undo_reviewed, guard=controller.guard)
+        except Exception as exc:
+            say(str(exc))
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
+
     def close(event=None):
         if state['closed']:
             return
@@ -601,7 +651,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('&Export UTF-8 text', export), ('Save and open Audio S&tudio', open_audio_studio),
         ('Save all open drafts', save_all_open), ('Import dictionary...', import_dictionary),
         ('Export dictionary...', export_dictionary), ('Read current copy aloud...', read_aloud),
-        ('Cancel preview', cancel_preview), ('C&lose', close),
+        ('Review spelling...', review_spelling_copy), ('Cancel preview', cancel_preview), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -638,7 +688,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             compare=native_buttons[9], audio_studio=native_buttons[11],
                             save_all=native_buttons[12], cancel_preview=native_buttons[-2],
                             import_dictionary=native_buttons[13], export_dictionary=native_buttons[14],
-                            live_reading=native_buttons[15],
+                            live_reading=native_buttons[15], spelling=native_buttons[16],
                             close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()

@@ -56,6 +56,12 @@ from .audio.recording_backup import (
     allows_empty as _recording_empty, state_paths as _recording_files,
     validate_state_tree as _validate_recordings, snapshot_guard as _recording_guard,
 )
+from .audio.media_backup import (
+    MAX_FILES as MAX_MEDIA_FILES, MAX_JOBS as MAX_MEDIA_JOBS,
+    MAX_SNAPSHOT_BYTES as MAX_MEDIA_BYTES, is_state_path as _media_path,
+    state_limit as _media_limit, state_paths as _media_files,
+    validate_state_tree as _validate_media, snapshot_guard as _media_guard,
+)
 from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
@@ -65,6 +71,10 @@ from .reader.reading_state import (
 from .reader.live_speech import (
     FILENAME as LIVE_READING, MAX_STATE_BYTES as MAX_LIVE_READING_BYTES,
     decode_positions as decode_live_reading, saved_locations as live_reading_locations,
+)
+from .reader.publication_state import (
+    FILENAME as PUBLICATION_READING, MAX_BYTES as MAX_PUBLICATION_READING_BYTES,
+    decode_positions as decode_publication_reading,
 )
 from .reader.narration import (
     DIRECTORY as NARRATION_DIRECTORY, MAX_PROJECT_BYTES, MAX_PROJECTS,
@@ -114,6 +124,7 @@ MAX_AUDIO_PROJECTS = 1000
 _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
     LIVE_READING: (MAX_LIVE_READING_BYTES, decode_live_reading),
+    PUBLICATION_READING: (MAX_PUBLICATION_READING_BYTES, decode_publication_reading),
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     'keyboard-shortcuts.json': (MAX_KEYMAP_BYTES, validate_keymap),
     EVIDENCE_DRAFTS: (MAX_EVIDENCE_DRAFTS, validate_evidence_drafts),
@@ -314,7 +325,7 @@ def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
             or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
-            or _recording_path(value)):
+            or _recording_path(value) or _media_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -396,6 +407,7 @@ def _sidecar_info(root, relative):
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter().state_limit(relative) if _transcription_path(relative) else
              _recording_limit(relative) if _recording_path(relative) else
+             _media_limit(relative) if _media_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if (_historical_path(relative) or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))
@@ -461,6 +473,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     transcription = ()
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
     recordings = _recording_files(root, cancelled=cancelled)
+    media = _media_files(root, cancelled=cancelled)
     sessions = session_paths(root, cancelled=cancelled)
     with ExitStack() as stack:
         stack.enter_context(session_snapshot_guard(root, cancelled=cancelled))
@@ -495,6 +508,9 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
         stack.enter_context(_recording_guard(root, cancelled=cancelled))
         if _recording_files(root, cancelled=cancelled) != recordings:
             raise RestoreError('Recording originals changed before backup; retry when capture is idle.')
+        stack.enter_context(_media_guard(root, cancelled=cancelled))
+        if _media_files(root, cancelled=cancelled) != media:
+            raise RestoreError('Media jobs changed before backup; retry when conversion is idle.')
         stack.enter_context(_resource_policy_guard(root, cancelled=cancelled))
         if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
             raise RestoreError('Resource allowances changed before backup; retry after the update.')
@@ -525,6 +541,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                     or _transcription_files(root) != transcription
                     or _resource_policy_files(root, cancelled=cancelled) != resource_policy
                     or _recording_files(root, cancelled=cancelled) != recordings
+                    or _media_files(root, cancelled=cancelled) != media
                     or session_paths(root, cancelled=cancelled) != sessions):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
@@ -673,6 +690,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
     for path in _resource_policy_files(root, cancelled=cancelled):
         add(path)
     for path in _recording_files(root, cancelled=cancelled):
+        add(path)
+    for path in _media_files(root, cancelled=cancelled):
         add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
@@ -852,6 +871,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_recordings(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_media(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             # Refuse a newly introduced project before interpreting its files.
@@ -1106,6 +1126,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         transcription_total, transcription_files, transcription_jobs = 0, 0, set()
         recording_total, recording_files, recording_ids = 0, 0, set()
+        media_total, media_files, media_jobs = 0, 0, set()
         for entry in entries:
             if (type(entry) is not dict or set(entry) != {field, 'size_bytes', 'sha256'}
                     or not _backup_sidecar_allowed(entry[field])
@@ -1122,6 +1143,15 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             total += entry['size_bytes']
             if total > max_sidecar_bytes:
                 raise RestoreError('sidecar manifest byte limit')
+            if _media_path(entry[field]):
+                media_total += entry['size_bytes']
+                media_files += 1
+                parts = PurePosixPath(entry[field]).parts
+                if len(parts) > 2:
+                    media_jobs.add(parts[1])
+                if (entry['size_bytes'] > _media_limit(entry[field]) or media_total > MAX_MEDIA_BYTES
+                        or media_files > MAX_MEDIA_FILES or len(media_jobs) > MAX_MEDIA_JOBS):
+                    raise RestoreError('Media conversion sidecar count or byte limit')
             if _recording_path(entry[field]):
                 recording_total += entry['size_bytes']
                 recording_files += 1
@@ -1255,6 +1285,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
                 _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
                 _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
                 _validate_recordings(storage.db, checked_root, cancelled=cancelled)
+                _validate_media(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,

@@ -1,0 +1,61 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pypi:spylls@0.1.7+carr.1",
+      "name": "spylls",
+      "version": "0.1.7+carr.1",
+      "purl": "pkg:pypi/spylls@0.1.7%2Bcarr.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MPL-2.0"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "10b65cc18b2166c2fe4ae2aba1ee0839e7a0a4a0f5aa2a76d13ec653f9c71b66"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/zverok/spylls"
+        },
+        {
+          "type": "documentation",
+          "url": "https://spylls.readthedocs.io/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "resonance:upstream-wheel-sha256",
+          "value": "0c7fa4b66615f390bd12fd37939b85934c012309fd3cce8584844c54270b7776"
+        },
+        {
+          "name": "resonance:python-source",
+          "value": "All 21 upstream Python files unchanged; inventory in spellcheck_backend.json."
+        },
+        {
+          "name": "resonance:dictionary-payload",
+          "value": "All six upstream .aff/.dic files omitted; no language dictionary is shipped."
+        },
+        {
+          "name": "resonance:distribution",
+          "value": "spylls-0.1.7+carr.1-py2.py3-none-any.whl"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pypi:spylls@0.1.7+carr.1",
+      "dependsOn": []
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Code-only derivative. Build with scripts/repack_spellcheck.py; never substitute the upstream wheel.
+spylls==0.1.7+carr.1 --hash=sha256:10b65cc18b2166c2fe4ae2aba1ee0839e7a0a4a0f5aa2a76d13ec653f9c71b66

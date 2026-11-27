@@ -59,7 +59,7 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
                     controls['start'].SetValue('1.25')
                 elif action == 'split':
                     controls['split_at'].SetValue('.25')
-                elif action == 'join':
+                elif action in ('join', 'consolidate'):
                     controls['join'].SetSelection(1)
             elif state['phase'] == 'invalid-duration':
                 assert dialog.IsShown() and 'duration' in status.GetValue().lower()
@@ -121,7 +121,7 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
                 assert result['position'] == 1.25 and 'clipboard' not in result
             elif action == 'split':
                 assert result['split_at'] == .25 and result['clip_id'] == 'clip-one'
-            elif action == 'join':
+            elif action in ('join', 'consolidate'):
                 assert result['other_id'] == 'clip-two' and result['clip_id'] == 'clip-one'
         assert plan.scenes[0].clips[0].title == 'Голос'
         return result
@@ -157,7 +157,7 @@ def main():
 
     try:
         for action in ('edit', 'move', 'duration', 'remove', 'preview',
-                       'copy', 'cut', 'paste', 'split', 'join', 'cancel'):
+                       'copy', 'cut', 'paste', 'split', 'join', 'consolidate', 'cancel'):
             drive_editor(wx, show_clip_editor, frame, plan, action, record)
         print(json.dumps({'status': 'PASS', 'checks': checks,
                           'actual_pcm_processing': 'SEPARATE_STRICT_SUITE',

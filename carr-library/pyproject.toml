@@ -37,6 +37,7 @@ license-files = [
 [project.optional-dependencies]
 desktop = ["wxPython==4.2.4"]
 sync = ["cryptography==50.0.2"]
+spelling = ["spylls==0.1.7+carr.1"]
 trusted-client = ["cryptography==50.0.2", "tuf==7.0.1", "securesystemslib==1.6.0",
                   "urllib3==2.8.0", "cffi==2.1.1", "pycparser==3.12"]
 semantic = [
@@ -111,6 +112,7 @@ bootstrap = "bootstrap"
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
+"carr_library.reader" = ["spellcheck_backend.json"]
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 
 "carr_library.language_qualification" = ["data/*.md"]

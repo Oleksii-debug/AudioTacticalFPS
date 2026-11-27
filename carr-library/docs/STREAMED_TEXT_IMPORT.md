@@ -107,3 +107,41 @@ supplies a synthetic path to the real handler and explicitly does **not** claim
 OS file-picker or manual NVDA acceptance. Windows execution is a separate gate.
 Realistic corpus throughput, multilingual quality and wider-format capacities
 require their own declared profiles and measured evidence.
+
+## Open original action
+
+The current Open original action also uses a file-backed path for a sealed streamed
+source above 64 MiB. It copies bounded chunks into a private viewing stage, hashes
+the complete bytes, and publishes a separate file through the existing no-replace
+publisher. The external viewer never receives the retained original inode. An
+edited viewing copy is preserved; a later request receives a newly verified copy.
+A post-move directory-sync failure is retried before an existing copy is accepted.
+Fresh workspace/source authorization and complete copied-byte verification remain
+required immediately before an explicit native launch.
+
+The added test `tests/reader/test_streamed_source_view.py` includes one actual
+source above 64 MiB and real source-view retry, copy, cancellation and changed-scope
+checks. This follow-up was prepared while execution was unavailable; its source
+and installed/native gates must run before reporting an executed result.
+
+### Event-thread and shared resource boundary
+
+Large-source viewing reserves one declared CPU slot, 16 MiB of incremental
+working memory and, when copying, the full selected source size plus 16 MiB of
+disk headroom through the existing ResourceBroker. These are cooperative
+admission estimates, not measured physical memory or an operating-system sandbox.
+A waiting action remains cancellable and rechecks its exact source after admission.
+
+Copying and full original/view hashes execute on the current desktop worker.
+The native viewer call runs on the wx event thread. Both exact payload readers
+remain held until that native call settles; a delayed callback repeats fresh
+workspace/topic/selection and native file-identity checks without rereading the
+large source. Cancelled or timed-out queued callbacks are inert. An already
+acknowledged viewer opening is not reported as undone by a later Stop.
+The final logical-fragment authorization still checks its bounded stored text;
+legacy byte-profile behavior and its earlier per-source bounds remain supported.
+
+The additional source handoff and worker/event-thread policy tests are prepared
+in `tests/ui/test_source_launch.py` and `tests/ui/test_source_open_handler.py`.
+Their new source and installed/native outcomes remain **NOT_RUN** until CI or a
+recovered executor executes this follow-up.

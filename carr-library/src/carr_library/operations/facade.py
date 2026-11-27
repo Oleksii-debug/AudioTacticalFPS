@@ -26,6 +26,7 @@ _LOCATIONS = {
     'studio': ('audio-projects', True, 1024 * 1024),
     'translation': ('state/translation', False, 64 * 1024 * 1024),
     'recording': ('state/studio/recordings', False, 65536),
+    'media': ('media-conversion-jobs', True, 8 * 1024 * 1024),
 }
 _TERMINAL = {'complete', 'cancelled', 'failed', 'attention', 'superseded',
              'quarantined', 'conflict', 'timed_out'}
@@ -120,7 +121,7 @@ def resource_view(snapshot):
         request = ResourceRequest.from_dict(row['request'])
         operation = row.get('operation_id')
         if (type(operation) is not str or re.fullmatch(
-                r'(?:asr|studio|document|assistant|translation|import|recording):[0-9a-f]{32}', operation) is None):
+                r'(?:asr|studio|document|assistant|translation|import|recording|media):[0-9a-f]{32}', operation) is None):
             operation = 'other'
         leases.append({
             'id': row['id'], 'operation_id': operation,
@@ -192,6 +193,8 @@ class OperationFacade:
             return ('cancel',) if status == 'paused' else ('pause', 'cancel')
         if kind == 'asr' and status in ('verifying', 'running', 'paused'):
             return ('cancel',) if status == 'paused' else ('pause', 'cancel')
+        if kind == 'media' and status == 'running':
+            return ('pause', 'cancel')
         return ()
 
     def _read_view(self, kind, identity, budget):
@@ -227,6 +230,14 @@ class OperationFacade:
             status, completed, total = 'complete', data['audio']['frames'], data['audio']['frames']
             updated, unit = _stamp(data['created']), 'PCM frames'
             phase = 'Stored capture receipt; opening the saved recording verifies its PCM bytes.'
+        elif kind == 'media':
+            from ..audio.media_types import validate_definition, validate_job
+            definition = validate_definition(budget.read(path.parent / 'definition.json', 8 * 1024 * 1024),
+                                             job_id=identity)
+            validate_job(data, definition, job_id=identity)
+            status, completed, total = data['status'], data['completed'], data['total']
+            updated, unit = _stamp(data['updated']), 'files'
+            phase = 'Stored conversion checkpoint; verify outputs in Audio and video conversion.'
         elif kind == 'import':
             from ..ingest.batches import ImportBatchStore
             # _validate is the current store's pure validator; do not call its
@@ -388,6 +399,9 @@ class OperationFacade:
             if kind == 'asr':
                 from ..transcription_service import TranscriptionService
                 service = TranscriptionService(self.root)
+            elif kind == 'media':
+                from ..audio.media_conversion import MediaConversionService
+                service = MediaConversionService(self.root)
             else:
                 from ..assistant import AssistantService
                 service = AssistantService(self.app)
@@ -395,6 +409,8 @@ class OperationFacade:
         self._validate_scope()
         if kind == 'asr':
             service.control(identity, 'stop' if action == 'cancel' else 'pause')
+        elif kind == 'media':
+            service.control(identity, action)
         else:
             # This retains the owning service's scope and reapproval checks.
             getattr(service, action)(identity)
