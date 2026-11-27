@@ -1,12 +1,12 @@
 """Read-only, bounded catalog intake candidate; never extracts archives or executes data."""
 from dataclasses import dataclass
 from hashlib import sha256
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 import os
 import stat
 
 from ._filetype.archive import Exe, Pdf, Rtf, Zip
-from .office_archive import validate_office
+from .office_archive import _reserved, validate_office
 
 MAX_BYTES = 64 * 1024 * 1024
 
@@ -78,7 +78,10 @@ def snapshot(root, relative, *, max_bytes=MAX_BYTES):
     if not isinstance(raw, str) or "\\" in raw or ":" in raw or "\x00" in raw:
         raise IntakeError("unsafe relative path")
     parts = raw.split("/")
-    if any(p in ("", ".", "..") or p.rstrip(" .") != p or PureWindowsPath(p).is_reserved() for p in parts):
+    # Reuse the portable archive policy before filesystem access. Older
+    # Python pathlib only checks reserved device names, not punctuation.
+    if any(p in ("", ".", "..") or p.rstrip(" .") != p
+           or any(ord(c) < 32 for c in p) or _reserved(p) for p in parts):
         raise IntakeError("unsafe relative path")
     root = Path(root).resolve(strict=True)
     path = root
