@@ -509,3 +509,16 @@ assistant differences. This candidate retains its reviewed ancestry through
 been reconciled. That comparison remains explicit work, with preservation of
 existing behavior and original-data guards required before integration. No
 test or delivery PASS is transferred between these trees.
+
+Public candidate `41de2ca` started actual Windows run
+[45959680867](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45959680867).
+Its native Tasks destruction workflow and the new durable voice-preference
+dialog passed. The official Hunspell checkout passed, but its MSVC build failed;
+the actual C API qualification did not run. That failure also exposed a workflow
+dependency error: the otherwise independent pinned audio/citation preparation
+was skipped, so subsequent audio failures cannot qualify the application.
+The next workflow gives preparation its own explicit prerequisite and makes
+dependent native/source/bundle gates require that actual preparation. Independent
+installed/OCR/reading checks continue after unrelated failures. Hunspell remains
+a required gate, with unchanged commands, assertions and deadlines; its actual
+build error is still under diagnosis.

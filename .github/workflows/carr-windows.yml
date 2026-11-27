@@ -87,6 +87,7 @@ jobs:
 
       - name: Locate the installed native Windows compiler
         id: native_toolchain
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 2
         run: |
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
@@ -95,6 +96,8 @@ jobs:
           "CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build the private native launch entry from this exact source
+        id: native_launcher_build
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.native_toolchain.outcome == 'success' }}
         timeout-minutes: 5
         shell: cmd
         run: |
@@ -104,6 +107,8 @@ jobs:
           if errorlevel 1 exit /b %errorlevel%
 
       - name: Verify native process behavior before sealing the launch entry
+        id: native_launcher_probe
+        if: ${{ !cancelled() && steps.native_launcher_build.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           $private = Join-Path $env:RUNNER_TEMP 'carr-integrated-native-launcher'
@@ -189,6 +194,8 @@ jobs:
           # DLL, import libraries and generated dictionaries never enter a bundle.
 
       - name: Prepare pinned local audio and citation runtimes
+        id: audio_citation_runtime
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           $audio = Join-Path $env:RUNNER_TEMP 'carr-canonical-audio'
@@ -210,12 +217,14 @@ jobs:
           $citations | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Check the installed application through its self-test entrypoint
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the installed offline OCR catalogue and console entrypoint
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 2
         run: |
           & $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'
@@ -225,6 +234,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise the installed native OCR catalogue and model manager
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
@@ -232,24 +242,28 @@ jobs:
 
 
       - name: Exercise native academic references and reading controls
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-library.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native advanced query builder and source search
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed document formats and native accessible reading
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed native transcription controls and durable jobs
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           # The UI probe uses an explicitly synthetic worker. Real private
@@ -290,7 +304,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - citation regeneration
-        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_citation_regeneration_smoke.py 2>&1 | Tee-Object 'ci-results/windows_citation_regeneration_smoke.txt'
@@ -304,21 +318,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - clip editor
-        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-results/windows_clip_editor_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - measured audio conversion controls
-        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_audio_conversion_smoke.py 2>&1 | Tee-Object 'ci-results/windows_audio_conversion_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - reviewed audio metadata and original covers
-        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/windows_audio_metadata_smoke.txt'
@@ -327,21 +341,21 @@ jobs:
           if ($audioMetadata.result -ne 'PASS' -or $audioMetadata.native_keyboard -ne 'PASS' -or $audioMetadata.actual_ffmpeg_metadata -ne 'PASS' -or $audioMetadata.actual_ffprobe -ne 'PASS' -or $audioMetadata.output.chapters -ne 2 -or $audioMetadata.output.title -ne '2027' -or @($audioMetadata.source_identity.PSObject.Properties).Count -ne 5) { throw 'The actual installed audio metadata workflow is incomplete or failed.' }
 
       - name: Native acceptance - recording
-        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_recording_smoke.py 2>&1 | Tee-Object 'ci-results/windows_recording_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - EPUB and DAISY publishing
-        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_publishing_smoke.py 2>&1 | Tee-Object 'ci-results/windows_publishing_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - EPUB synchronized recorded reading
-        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_epub_reading_smoke.py 2>&1 | Tee-Object 'ci-results/windows_epub_reading_smoke.txt'
@@ -418,6 +432,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Retain core-only fallback and offline startup coverage
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
@@ -591,7 +606,7 @@ jobs:
           "CARR_EPUBCHECK_JAVA=$java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
-        if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.epubcheck_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.epubcheck_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' && steps.native_launcher_probe.outcome == 'success' }}
         timeout-minutes: 30
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -1034,7 +1049,7 @@ jobs:
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
-        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.audio_citation_runtime.outcome == 'success' }}
         # Run 45929429163 reported 175 of 183 source suites before the old
         # 20-minute deadline interrupted the remainder; retain every suite.
         timeout-minutes: 30
