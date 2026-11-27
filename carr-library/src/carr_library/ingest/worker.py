@@ -3,7 +3,7 @@
 This is process isolation with time/resource limits, not an OS security sandbox.
 The existing ingest journal remains the only extraction/checkpoint pipeline.
 """
-from contextlib import closing, contextmanager, redirect_stdout
+from contextlib import ExitStack, closing, contextmanager, nullcontext, redirect_stdout
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -21,7 +21,9 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
-from ..extract.document_formats import MIME_SUFFIXES
+from ..extract.document_formats import MIME_SUFFIXES, PHYSICAL_MIMES, raster_format
+from .resource_budget import ImportBudget, checked_budget, effective_budget, source_limit
+from ..audio.models import AudioCleanupPending
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -52,13 +54,26 @@ def load_request(root, request_id):
     if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > MAX_REQUEST
             or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError('Invalid import request file.')
-    record = json.loads(path.read_text(encoding='utf-8'))
-    if (not isinstance(record, dict) or record.get('version') != 1
+    from ..durable_state import read_json
+    record = read_json(path, maximum=MAX_REQUEST)
+    if (not isinstance(record, dict) or type(record.get('version')) is not int
+            or record['version'] not in (1, 2)
             or record.get('request_id') != request_id
             or record.get('data_dir') != str(Path(root).resolve())):
         raise ValueError('Import request identity changed.')
+    _budget_from_record(record)
     return record
 
+
+
+def _budget_from_record(record):
+    if record.get('version') == 1:
+        if 'import_budget' in record:
+            raise ValueError('A legacy import cannot acquire an unreviewed resource budget.')
+        return None
+    if record.get('version') == 2:
+        return ImportBudget.from_dict(record.get('import_budget'))
+    raise ValueError('Unsupported import request version.')
 
 def _store(root, request_id, record, *, create=False):
     path = _path(root, request_id)
@@ -95,9 +110,13 @@ def record_progress(root, request_id, **changes):
 
 def _request_identity(record):
     """Stable request identity; progress and publication candidates are not authority."""
-    return {key: record.get(key) for key in (
+    result = {key: record.get(key) for key in (
         'version', 'request_id', 'data_dir', 'workspace', 'source',
         'metadata', 'config', 'expected_manifest')}
+    budget = _budget_from_record(record)
+    if budget is not None:
+        result['import_budget'] = budget.to_dict()
+    return result
 
 
 def _publication_state(db, record, revision, *, allow_superseded=False):
@@ -131,8 +150,9 @@ def _publication_state(db, record, revision, *, allow_superseded=False):
     if catalog is None:
         raise ValueError('Import publication registration is missing.')
     manifest = dict(sha256=catalog[1], mime=catalog[2], size=catalog[3])
-    if manifest['mime'] == 'application/pdf' and record.get('job') != revision:
-        raise ValueError('Import publication differs from its saved PDF job.')
+    if manifest['mime'] in PHYSICAL_MIMES and record.get('job') != revision:
+        kind = 'PDF' if manifest['mime'] == 'application/pdf' else 'image'
+        raise ValueError(f'Import publication differs from its saved {kind} job.')
     if (tuple(catalog[:2]) != (metadata['work_id'], record.get('asset_sha256'))
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):
@@ -208,6 +228,7 @@ def record_publication_candidate(root, request_id, db, workspace, revision, *,
             or any(record.get(key) != expected[key] for key in
                    ('version', 'request_id', 'data_dir', 'source', 'workspace',
                     'metadata', 'config', 'expected_manifest'))
+            or record.get('import_budget') != expected.get('import_budget')
             or config is None or asdict(config) != expected['config']
             or expected['pinned_asset'] not in (None, record.get('asset_sha256'))
             or expected['resume_job'] not in (None, revision)):
@@ -221,7 +242,7 @@ def record_publication_candidate(root, request_id, db, workspace, revision, *,
         attempt=attempt, revision=revision, **state))
 
 
-def _reconcile_publication(root, request_id, attempt, *, initial=None):
+def _reconcile_publication(root, request_id, attempt, *, initial=None, _context=None):
     """Recover only a fresh publication from this stopped child, without replay."""
     record = load_request(root, request_id)
     if initial is not None and _request_identity(record) != _request_identity(initial):
@@ -242,8 +263,16 @@ def _reconcile_publication(root, request_id, attempt, *, initial=None):
     from ..application import LibraryApp
     from ..citations.anchors import Identity
 
-    app = LibraryApp(root)
-    with app.read(record['workspace']) as db:
+    if _context is None:
+        app = LibraryApp(root)
+        snapshot = app.read(record['workspace'])
+    else:
+        from .reconciliation import ReconciliationContext
+        if type(_context) is not ReconciliationContext:
+            raise TypeError('Use an exact post-worker reconciliation context.')
+        app, db = _context.check(root, record['workspace'])
+        snapshot = nullcontext(db)
+    with snapshot as db:
         receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
                              'WHERE revision=?', (candidate['revision'],)).fetchone()
         if receipt is None or tuple(receipt[:2]) != (request_id, attempt):
@@ -263,6 +292,8 @@ def _reconcile_publication(root, request_id, attempt, *, initial=None):
         active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
                             (record['workspace'], record['metadata']['edition_id'])).fetchone()
         current = active is not None and active[0] == candidate['revision']
+        if _context is not None:
+            _context.check(root, record['workspace'])
     return dict(state='complete' if current else 'superseded',
                 id=candidate['revision'], workspace=record['workspace'],
                 edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
@@ -282,7 +313,7 @@ class RuntimeBoundIngest(Ingest):
 
     def _plan(self, asset, config):
         count, settings, segments = super()._plan(asset, config)
-        if asset.mime == 'application/pdf':
+        if asset.mime in PHYSICAL_MIMES:
             from ..extract.runtime_identity import runtime_identity
             data = json.loads(settings)
             data['runtime_identity'] = runtime_identity(config)
@@ -292,9 +323,9 @@ class RuntimeBoundIngest(Ingest):
     def _validated(self, row):
         settings = json.loads(row['config'])
         if settings.get('kind') == 'physical_page':
-            from ..extract.page_ocr import Config
+            from ..extract.page_ocr import config_from_dict
             from ..extract.runtime_identity import runtime_identity
-            if settings.get('runtime_identity') != runtime_identity(Config(**settings['config'])):
+            if settings.get('runtime_identity') != runtime_identity(config_from_dict(settings['config'])):
                 raise ValueError('Extraction runtime changed; this import cannot resume with mixed results.')
         # Existing run calls this after extraction inside its checkpoint write
         # transaction. A changed runtime rolls that checkpoint back atomically.
@@ -307,25 +338,38 @@ class RuntimeBoundIngest(Ingest):
         review = self.reviews.get(str(physical))
         if review is None:
             return False
+        from ..catalog.intake import FileSnapshot
+        if isinstance(self.review_asset, FileSnapshot):
+            if self.review_asset.mime != 'application/pdf':
+                raise ValueError('Reviewed checkpoint requires its exact PDF original.')
+            self.review_asset.verify(cancelled=self._cancelled)
+            reviewed_digest = self.review_asset.digest
+        elif isinstance(self.review_asset, bytes):
+            reviewed_digest = sha256(self.review_asset).hexdigest()
+        else:
+            reviewed_digest = None
         if (record.get('status') != 'review_required' or not record.get('raw_text', '').strip()
-                or type(physical) is not int or not isinstance(self.review_asset, bytes)
+                or type(physical) is not int or reviewed_digest is None
                 or not isinstance(review, dict)
                 or review.get('physical') != physical
                 or review.get('asset_sha256') != record['provenance'].get('asset_sha256')
-                or review.get('asset_sha256') != sha256(self.review_asset).hexdigest()
+                or review.get('asset_sha256') != reviewed_digest
                 or review.get('raw_sha256') != sha256(record['raw_text'].encode('utf-8')).hexdigest()
                 or review.get('checkpoint_sha256') != sha256(canonical(record).encode('utf-8')).hexdigest()
                 or not isinstance(review.get('reviewer'), str) or not review['reviewer'].strip()):
             raise ValueError('Reviewed checkpoint identity differs from the extracted source.')
         if physical not in self.validated_reviews:
             from ..citations.pdf_review_attestation import render_fingerprint
-            renderer, fingerprint = render_fingerprint(self.review_asset, physical)
+            renderer, fingerprint = (render_fingerprint(self.review_asset, physical, cancelled=self._cancelled)
+                                     if isinstance(self.review_asset, FileSnapshot)
+                                     else render_fingerprint(self.review_asset, physical))
             if review.get('renderer') != renderer or review.get('render_sha256') != fingerprint:
                 raise ValueError('Reviewed PDF page rendering changed.')
             self.validated_reviews[physical] = dict(review)
         return True
 
-    def retry(self, workspace, job):
+    def retry(self, workspace, job, *, import_budget=None, cancelled=lambda: False):
+        self._configure(import_budget, cancelled)
         # Approved quarantine keeps the exact original checkpoint; ordinary
         # retry continues to discard/re-extract the last unapproved candidate.
         with self.transaction():
@@ -335,7 +379,7 @@ class RuntimeBoundIngest(Ingest):
                 if not self._recover(row, records):
                     self._set(job, 'pending')
                 return
-        return super().retry(workspace, job)
+        return super().retry(workspace, job, import_budget=import_budget, cancelled=cancelled)
 
 
 @contextmanager
@@ -347,11 +391,21 @@ def request_lock(root, request_id):
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
                 or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
             raise ValueError('Invalid import request lock.')
+    lock = FileLock(lock_path, mode=0o600, thread_local=False)
     try:
-        with FileLock(lock_path, mode=0o600).acquire(timeout=0):
-            yield
+        lock.acquire(timeout=0)
     except Timeout as exc:
         raise ValueError('This import request is already running.') from exc
+    retained = False
+    try:
+        yield
+    except AudioCleanupPending as exc:
+        retained = True
+        exc.cleanup_owner.add_quiescent_callback(lock.release)
+        raise
+    finally:
+        if not retained:
+            lock.release()
 
 
 def _review_path(root, request_id):
@@ -409,8 +463,14 @@ def _pending_review(root, workspace, request_id):
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
             raise ValueError('No intact extracted PDF text is available for review.')
         from .retained_assets import RetainedAssets
-        data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
-        renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'])
+        from ..catalog.intake import source_snapshot
+        budget = effective_budget(_budget_from_record(request))
+        originals = RetainedAssets(Path(root) / 'originals')
+        retained = originals.resolve(job['asset'], max_bytes=budget.source_bytes)
+        source = source_snapshot(originals.root, retained.name, max_bytes=budget.source_bytes,
+                                 file_backed=request['version'] == 2)
+        data = source if request['version'] == 2 else source.data
+        renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'], resource_root=root)
         binding = dict(request_id=request_id, workspace=workspace, job=job['id'], edition=job['edition'],
                        asset_sha256=job['asset'], physical=row['ordinal'],
                        raw_sha256=sha256(record['raw_text'].encode('utf-8')).hexdigest(),
@@ -488,7 +548,9 @@ def _stop(process):
         process.wait(timeout=2)
 
 
-def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
+def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None,
+                    import_budget=None):
+    checked_budget(import_budget)
     metadata = dict(metadata)
     if metadata.get('title') in (None, ''):
         metadata['title'] = Path(source).stem
@@ -497,15 +559,16 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=asdict(config), state='pending')
+    if import_budget is not None:
+        record.update(version=2, import_budget=import_budget.to_dict())
     if expected_manifest is not None:
-        from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or not 0 < expected_manifest['size'] <= source_limit(expected_manifest['mime'], import_budget)):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -513,7 +576,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None):
+                    expected_manifest=None, import_budget=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
@@ -522,7 +585,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
-                                  request_id, expected_manifest)
+                                  request_id, expected_manifest, import_budget)
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:
@@ -536,14 +599,14 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None):
+                timeout=None, request_id=None, import_budget=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new)
+                            request_id=request_id, new=new, import_budget=import_budget)
 
 
 def _published_after_stop(app, initial, attempt_id):
@@ -556,28 +619,37 @@ def _published_after_stop(app, initial, attempt_id):
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new):
-    if (not callable(cancelled) or type(timeout) not in (int, float)
-            or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
-        raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
+                 timeout, request_id, new, import_budget=None):
+    checked_budget(import_budget)
+    if (not callable(cancelled) or timeout is not None and
+            (type(timeout) not in (int, float) or not math.isfinite(timeout)
+             or not 0.1 <= timeout <= 86400)):
+        raise ValueError('Choose a finite import work-slice allowance.')
     if new:
-        record = _request_record(root, workspace, source, metadata, config, request_id)
+        record = _request_record(root, workspace, source, metadata, config, request_id,
+                                 import_budget=import_budget)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
-        if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
-            return dict(record['result'], request_id=request_id, isolated=True)
+        if import_budget is not None and record.get('import_budget') != import_budget.to_dict():
+            raise ValueError('Resume must retain the exact reviewed import budget.')
+    budget = _budget_from_record(record)
+    timeout = (budget.seconds if budget is not None else 120.0) if timeout is None else timeout
+    if timeout > (budget.seconds if budget is not None else 600):
+        raise ValueError('The work slice exceeds its reviewed import allowance.')
+    if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
+        return dict(record['result'], request_id=request_id, isolated=True)
     from ..application import LibraryApp
     from .publication_identity import request_identity
     app = LibraryApp(root)
-    # This value is fresh for every native launch, including resumed requests.
-    # Only the worker that commits a new revision can persist its receipt.
-    attempt_id = uuid4().hex
-    fingerprint = sha256(request_identity(record).encode('utf-8')).hexdigest()
-    # A new parent attempt clears old hints even when cancelled before launch.
-    record_progress(root, request_id, attempt=attempt_id, publication_candidate=None)
+    # Admission must precede any new attempt or progress write. A previous
+    # pending native owner retains that same reservation; waiting for it must
+    # not rebind its request or overwrite its saved progress.
+    attempt_id = None
+    captured_identity = request_identity(record)
+    fingerprint = sha256(captured_identity.encode('utf-8')).hexdigest()
     started = False
 
     def worker_started():
@@ -590,36 +662,52 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     # takes the whole declared CPU/RAM pool rather than claiming one thread.
     from ..operations import (ResourceBroker, ResourceRequest, ResourceCancelled,
                               ResourceTimeout, ResourceError, ResourceUnavailable)
-    from ..extract.page_ocr import Config
+    from ..extract.page_ocr import config_from_dict
     try:
         broker = ResourceBroker.for_app(app.root, cancelled=cancelled)
         limits = broker.limits
         if not limits.memory_bytes:
             raise ResourceUnavailable('Configure a positive declared memory allowance before isolated import/OCR.')
-        selected = Config(**record['config'])
-        temporary_bytes = (4 * selected.max_pixels + 64 * 1024**2 + MAX_REPLY + MAX_LOG)
-        request = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
-            disk_path=app.root, disk_bytes=256 * 1024**2,
+        selected = config_from_dict(record['config'])
+        if budget is None:
+            temporary_bytes = 4 * selected.max_pixels + 64 * 1024**2 + MAX_REPLY + MAX_LOG
+            memory_bytes, library_bytes = limits.memory_bytes, 256 * 1024**2
+        else:
+            minimum_temporary = budget.source_bytes + 4 * selected.max_pixels + MAX_REPLY + MAX_LOG
+            if budget.temporary_bytes < minimum_temporary:
+                raise ResourceUnavailable('The selected temporary allowance must cover the source, pixels and bounded worker logs.')
+            temporary_bytes = budget.temporary_bytes
+            from .session import WRITE_HEADROOM
+            memory_bytes, library_bytes = budget.memory_bytes, budget.library_bytes + WRITE_HEADROOM
+        request = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=memory_bytes,
+            disk_path=app.root, disk_bytes=library_bytes,
             additional_disks=((Path(gettempdir()), temporary_bytes),))
-        with broker.reserve(request, operation_id='import:' + request_id,
-                            cancelled=cancelled, timeout=min(60, timeout)) as lease:
+        with import_admission(broker, request, operation_id='import:' + request_id,
+                              cancelled=cancelled, timeout=min(60, timeout)) as lease:
             # Reauthorize after waiting. This read snapshot is released before
             # native parsing; revocation while queued cannot authorize a launch.
             with app.read(workspace):
                 pass
-            record_progress(root, request_id, state='running')
+            current = load_request(root, request_id)
+            if (request_identity(current) != captured_identity
+                    or current.get('attempt') != record.get('attempt')):
+                raise ValueError('The saved import changed while waiting for admission.')
+            attempt_id = uuid4().hex
+            record_progress(root, request_id, attempt=attempt_id,
+                            publication_candidate=None, state='running')
             result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                               'attempt_id': attempt_id, 'request_sha256': fingerprint,
                               'source': record['source'], 'timeout': timeout},
                              timeout=timeout, cancelled=lease.cancelled,
-                             on_started=worker_started)
+                             on_started=worker_started, **({'owned_tree': True, 'staging_bytes': temporary_bytes}
+                                                         if budget is not None else {}))
     except ResourceCancelled:
         result = {'state': 'cancelled', 'message': 'Import cancelled while waiting for shared local resources.'}
     except ResourceTimeout:
         result = {'state': 'timed_out', 'message': 'Shared local resources remained busy; the saved import can be resumed.'}
     except ResourceError as exc:
         result = {'state': 'failed', 'message': str(exc)[:2000]}
-    if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
+    if attempt_id is not None and (started or budget is not None) and result.get('state') in ('cancelled', 'timed_out', 'failed'):
         try:
             committed = _reconcile_publication(root, request_id, attempt_id, initial=record)
         except (KeyError, TypeError, ValueError, OSError, sqlite3.Error):
@@ -629,12 +717,17 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             if committed is not None:
                 result = dict(committed, worker_state=result['state'])
     result = dict(result, request_id=request_id, isolated=True)
-    record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
+    if attempt_id is not None:
+        record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
-    """One process supervisor for import and render operations."""
+def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None, owned_tree=False,
+            staging_bytes=256 * 1024**2):
+    """One worker protocol; explicit streaming requests use the current native tree owner."""
+    if owned_tree:
+        return _invoke_owned(message, timeout=timeout, cancelled=cancelled,
+                             on_started=on_started, staging_bytes=staging_bytes)
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
         raise ValueError('Import request is too large.')
@@ -719,14 +812,117 @@ def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     return result
 
 
-def _resource_limits(timeout):
+@contextmanager
+def import_admission(broker, request, *, operation_id, cancelled, timeout):
+    """Keep this exact resource reservation with a pending native cleanup owner."""
+    context = broker.reserve(request, operation_id=operation_id, cancelled=cancelled, timeout=timeout)
+    lease = context.__enter__()
+    retained = False
+    try:
+        yield lease
+    except AudioCleanupPending as exc:
+        retained = True
+        exc.cleanup_owner.add_quiescent_callback(lambda: context.__exit__(None, None, None))
+        raise
+    finally:
+        if not retained:
+            context.__exit__(None, None, None)
+
+
+def _load_worker_input(path, expected):
+    """Open only the parent's finite private protocol file in the native child."""
+    from ..durable_state import _open_json_file, local_path, regular
+    from ..catalog.intake import _stamp
+    path = local_path(path, exists=True)
+    before = regular(path)
+    if not 0 < before.st_size <= MAX_REQUEST:
+        raise ValueError('Import worker input exceeds its private protocol allowance.')
+    with _open_json_file(path) as stream:
+        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+            raise ValueError('Import worker input was replaced before open.')
+        raw = stream.read(before.st_size + 1)
+        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+            raise ValueError('Import worker input changed while reading.')
+    if (_stamp(regular(path)) != _stamp(before) or len(raw) != before.st_size
+            or sha256(raw).hexdigest() != expected):
+        raise ValueError('Import worker input differs from its captured protocol bytes.')
+    return raw
+
+
+def _invoke_owned(message, *, timeout, cancelled, on_started=None, staging_bytes=256 * 1024**2):
+    """Reuse audio.process's exact owned Job/group and unchanged worker JSON."""
+    from ..audio.cleanup import retained_temporary_directory
+    from ..audio.models import AudioBudget, AudioCancelled, AudioError
+    from ..audio.process import run_process
+    payload = canonical(message).encode('utf-8')
+    if not 0 < len(payload) <= MAX_REQUEST:
+        raise ValueError('Import request is too large.')
+    if type(staging_bytes) is not int or not 4096 <= staging_bytes <= 2**63-1:
+        raise ValueError('Invalid import worker staging allowance.')
+    if cancelled():
+        return {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
+    with retained_temporary_directory(prefix='carr-import-worker-', dir=None) as temporary:
+        directory = Path(temporary)
+        path = directory / 'request.json'
+        with path.open('xb') as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        package_root = Path(__file__).resolve().parents[2]
+        roots = [str(package_root)]
+        if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+            roots.append(str(package_root.parent))
+        bootstrap = ("import sys,runpy,io; sys.path[:0]=sys.argv[3:]; "
+                     "from carr_library.ingest.worker import _load_worker_input; "
+                     "raw=_load_worker_input(sys.argv[1],sys.argv[2]); "
+                     "sys.stdin=io.TextIOWrapper(io.BytesIO(raw),encoding='utf-8'); "
+                     "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+        executable = sys.executable
+        environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8',
+                           TMPDIR=str(directory), TEMP=str(directory), TMP=str(directory))
+        if (os.name == 'nt' and sys.prefix != sys.base_prefix
+                and getattr(sys, '_base_executable', None)
+                and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
+            environment.pop('PYTHONEXECUTABLE', None)
+            environment['__PYVENV_LAUNCHER__'] = executable
+            executable = sys._base_executable
+        try:
+            native = run_process([str(Path(executable).absolute()), '-I', '-B', '-X', 'utf8', '-c',
+                    bootstrap, str(path), sha256(payload).hexdigest(), *roots],
+                budget=AudioBudget(timeout=timeout, max_log_bytes=MAX_LOG,
+                                   max_output_bytes=staging_bytes, reserve_disk_bytes=0),
+                cancelled=cancelled, env=environment, watch=(directory,),
+                owned_tree=True, allow_failure=True)
+            if on_started is not None:
+                on_started()  # A returned native result proves a real launch.
+        except AudioCleanupPending:
+            raise
+        except AudioCancelled:
+            return {'state': 'cancelled', 'message': 'The owned import worker was cancelled; resume verifies saved checkpoints.'}
+        except AudioError as exc:
+            return {'state': 'failed', 'message': str(exc)[:2000]}
+        if len(native.stdout) > MAX_REPLY:
+            return {'state': 'failed', 'message': 'Import worker reply exceeded its limit.'}
+        try:
+            reply = json.loads(native.stdout)
+        except (UnicodeError, ValueError):
+            reply = None
+        if (native.returncode != 0 or not isinstance(reply, dict)
+                or not isinstance(reply.get('result'), dict)):
+            return {'state': 'failed', 'message': str(reply.get('error') if isinstance(reply, dict)
+                else f'Import worker exited unexpectedly ({native.returncode}).')[:2000]}
+        return reply['result']
+
+
+def _resource_limits(timeout, memory_bytes=None):
     try:
         import resource
     except ImportError:
         return
-    # Runtime libraries and a bounded 64 MiB source fit well below this address
-    # limit. Windows uses process/time isolation; POSIX limits are not claimed there.
-    for key, value in ((resource.RLIMIT_AS, 3 * 1024**3),
+    # Keep the historical address limit unless a reviewed request selected its
+    # own declared RAM budget. Windows does not claim POSIX address enforcement.
+    memory_bytes = 3 * 1024**3 if memory_bytes is None else memory_bytes
+    for key, value in ((resource.RLIMIT_AS, memory_bytes),
                        (resource.RLIMIT_CPU, max(1, math.ceil(timeout)))):
         _, hard = resource.getrlimit(key)
         limit = value if hard == resource.RLIM_INFINITY else min(value, hard)
@@ -734,19 +930,56 @@ def _resource_limits(timeout):
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
-def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
-    """Reuse the citation renderer in the same bounded isolated worker."""
+def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False, resource_root=None):
+    """Use the same isolated renderer; large originals stay file-backed."""
+    from ..catalog.intake import FileSnapshot
     if not callable(cancelled):
         raise ValueError('A review cancellation callback is required.')
-    if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
-        raise ValueError('Invalid PDF review bytes.')
-    if type(physical) is not int or not 1 <= physical <= 1000:
-        raise ValueError('Invalid PDF review page.')
-    with TemporaryDirectory(prefix='carr-review-') as temporary:
-        source = Path(temporary) / 'page-source.pdf'
-        source.write_bytes(data)
-        result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
-                              physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    file_backed = isinstance(data, FileSnapshot)
+    if file_backed:
+        if (data.mime != 'application/pdf' or not 0 < data.size <= 2 ** 63 - 1
+                or resource_root is None):
+            raise ValueError('A large PDF review requires its scoped resource owner.')
+        if type(physical) is not int or not 1 <= physical <= 2 ** 31 - 1:
+            raise ValueError('Invalid PDF review page.')
+    else:
+        if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
+            raise ValueError('Invalid PDF review bytes.')
+        if type(physical) is not int or not 1 <= physical <= 1000:
+            raise ValueError('Invalid PDF review page.')
+    with ExitStack() as lifetime:
+        stopped = cancelled
+        if file_backed:
+            from ..operations import ResourceBroker, ResourceRequest
+            broker = ResourceBroker.for_app(resource_root, cancelled=cancelled)
+            if not broker.limits.memory_bytes:
+                raise ValueError('Configure a positive declared memory allowance before PDF review.')
+            lease = lifetime.enter_context(import_admission(broker,
+                ResourceRequest(cpu_slots=broker.limits.cpu_slots,
+                    memory_bytes=broker.limits.memory_bytes,
+                    disk_path=Path(gettempdir()), disk_bytes=data.size + 100 * 1024**2),
+                operation_id='import-review:' + uuid4().hex, cancelled=cancelled, timeout=30))
+            stopped = lease.cancelled
+        if file_backed:
+            from ..audio.cleanup import retained_temporary_directory
+            temporary = lifetime.enter_context(retained_temporary_directory(prefix='carr-review-', dir=None))
+        else:
+            temporary = lifetime.enter_context(TemporaryDirectory(prefix='carr-review-'))
+        raster = raster_format(data) if type(data) is bytes else None
+        suffix = MIME_SUFFIXES[raster.mime] if raster is not None else '.pdf'
+        source = Path(temporary) / ('page-source' + suffix)
+        if file_backed:
+            data.copy_to(source, cancelled=stopped)
+            message = dict(action='render-file', source=str(source), sha256=data.digest,
+                           size=data.size, physical=physical, timeout=30)
+        else:
+            source.write_bytes(data)
+            message = dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
+                           physical=physical, timeout=30)
+        result = _invoke(message, timeout=30, cancelled=stopped,
+                         **({'owned_tree': True} if file_backed else {}))
+        if file_backed:
+            data.verify(cancelled=stopped)
     if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
         raise InterruptedError('PDF source verification cancelled.')
     if (not isinstance(result, dict) or set(result) != {'renderer', 'fingerprint'}
@@ -765,33 +998,61 @@ def main():
         message = json.loads(raw)
         import_keys = {'data_dir', 'request_id', 'attempt_id', 'request_sha256', 'source', 'timeout'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys):
+        render_file_keys = render_keys | {'size'}
+        from .slices import MESSAGE_KEYS as slice_keys, SCHEMA as slice_schema
+        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, render_file_keys, slice_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
-        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
+        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 86400:
             raise ValueError('Invalid import worker timeout.')
-        _resource_limits(timeout)
+        if set(message) == slice_keys:
+            if (message.get('action') != slice_schema or type(message.get('request_ids')) is not list
+                    or not 1 <= len(message['request_ids']) <= 1000):
+                raise ValueError('Invalid import slice header.')
+            record = load_request(message['data_dir'], message['request_ids'][0])
+        else:
+            record = load_request(message['data_dir'], message['request_id']) if set(message) == import_keys else None
+        budget = _budget_from_record(record) if record is not None else None
+        if timeout > (budget.seconds if budget is not None else 600):
+            raise ValueError('Import worker exceeds its reviewed time allowance.')
+        if budget is None:
+            _resource_limits(timeout)
+        else:
+            _resource_limits(timeout, budget.memory_bytes)
         import socket
         def denied(*args, **kwargs):
             raise PermissionError('Network access is disabled in the import worker.')
         socket.create_connection = socket.getaddrinfo = denied
         socket.socket.connect = socket.socket.connect_ex = denied
-        if set(message) == render_keys:
-            if message['action'] != 'render' or not isinstance(message['source'], str):
+        if set(message) == slice_keys:
+            from .slices import run_child
+            with redirect_stdout(sys.stderr):
+                result = run_child(message)
+            print(canonical({'result': result}))
+            return 0
+        if set(message) in (render_keys, render_file_keys):
+            action = 'render-file' if set(message) == render_file_keys else 'render'
+            if message['action'] != action or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')
+            from ..catalog.intake import file_snapshot, snapshot
             source = Path(message['source'])
-            info = source.lstat()
-            if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
-                raise ValueError('Invalid PDF review source.')
-            data = source.read_bytes()
-            if sha256(data).hexdigest() != message['sha256']:
-                raise ValueError('PDF review source digest changed.')
+            if action == 'render-file':
+                size = message['size']
+                if type(size) is not int or not 0 < size <= 2 ** 63 - 1:
+                    raise ValueError('Invalid captured PDF review size.')
+                data = file_snapshot(source.parent, source.name, max_bytes=size)
+                if data.size != size or data.digest != message['sha256'] or data.mime != 'application/pdf':
+                    raise ValueError('PDF review source identity changed.')
+            else:
+                selected = snapshot(source.parent, source.name)
+                if selected.mime not in PHYSICAL_MIMES or selected.digest != message['sha256']:
+                    raise ValueError('PDF review source digest changed.')
+                data = selected.data
             from ..citations.pdf_review_attestation import render_fingerprint
             with redirect_stdout(sys.stderr):
                 renderer, fingerprint = render_fingerprint(data, message['physical'])
             print(canonical({'result': dict(renderer=renderer, fingerprint=fingerprint)}))
             return 0
-        record = load_request(message['data_dir'], message['request_id'])
         if (not isinstance(record.get('metadata'), dict) or set(record['metadata']) != FIELDS
                 or not isinstance(record.get('config'), dict)
                 or not isinstance(record.get('workspace'), str)
@@ -806,7 +1067,7 @@ def main():
                 sha256(identity.encode('utf-8')).hexdigest() != message['request_sha256']):
             raise ValueError('Import request changed before this worker attempt.')
         from ..application import LibraryApp
-        from ..extract.page_ocr import Config
+        from ..extract.page_ocr import config_from_dict
         metadata = dict(record['metadata'])
         if not isinstance(metadata['authors'], list) or not isinstance(metadata['collections'], list):
             raise ValueError('Invalid import metadata sequences.')
@@ -816,12 +1077,14 @@ def main():
             app = LibraryApp(message['data_dir'])
             source = record['source']
             if record.get('asset_sha256'):
-                source = app.assets.resolve(record['asset_sha256'])
+                source = app.assets.resolve(record['asset_sha256'],
+                                            max_bytes=effective_budget(budget).source_bytes)
             result = app._import_file(record['workspace'], source, **metadata,
-                                      config=Config(**record['config']),
+                                      config=config_from_dict(record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
                                       _expected_manifest=record.get('expected_manifest'),
-                                      _publication_attempt=attempt)
+                                      _publication_attempt=attempt,
+                                      **({'import_budget': budget} if budget is not None else {}))
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

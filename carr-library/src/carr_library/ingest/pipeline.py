@@ -17,6 +17,7 @@ from carr_library.catalog.intake import (source_snapshot as snapshot, IntakeErro
     FileSnapshot, TextSegments, source_stream, copy_snapshot, _selected, _stamp)
 from .resource_budget import effective_budget, MAX_CHECKPOINT_BYTES
 from carr_library.extract.page_ocr import Config, extract_page
+from carr_library.extract.document_formats import MIME_SUFFIXES, RASTER_MIMES, RASTER_BY_MIME
 from carr_library.storage.revisions import Page
 from ..audio.cleanup import retained_temporary_directory
 from ..audio.models import AudioCleanupPending
@@ -151,6 +152,15 @@ class Ingest:
                             pypdf=importlib.metadata.version('pypdf'),
                             pdfium=importlib.metadata.version('pypdfium2'))
             segments = None
+        elif asset.mime in RASTER_MIMES:
+            from carr_library.extract.raster_pages import frame_inventory, inventory_sha256, NORMALIZATION
+            frames = frame_inventory(asset.data, config, cancelled=self._cancelled)
+            count = len(frames)
+            settings = dict(adapter='raster_ocr-v1', kind='physical_page',
+                config=asdict(config), format=RASTER_BY_MIME[asset.mime].name,
+                pillow=importlib.metadata.version('Pillow'), normalization=NORMALIZATION,
+                frame_inventory_sha256=inventory_sha256(frames))
+            segments = None
         else:
             raise IngestError('unsupported source format')
         if not 1 <= count <= self._budget.segments:
@@ -211,6 +221,10 @@ class Ingest:
                 raise IngestError('checkpoint identity mismatch')
             if not isinstance(p['raw_text'], str) or '\x00' in p['raw_text']:
                 raise IngestError('invalid raw text')
+            settings = json.loads(row['config'])
+            if settings.get('adapter') == 'raster_ocr-v1':
+                from carr_library.extract.raster_pages import validate_checkpoint
+                validate_checkpoint(p, settings, ordinal, row['count'])
         except (KeyError, TypeError, json.JSONDecodeError) as exc:
             raise IngestError('invalid checkpoint shape') from exc
         return p
@@ -321,7 +335,7 @@ class Ingest:
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
         with retained_temporary_directory(prefix='carr-ingest-', dir=None) as tmp:
-            staged = Path(tmp) / ('source.pdf' if segments is None else 'source.txt')
+            staged = Path(tmp) / ('source' + MIME_SUFFIXES[asset.mime])
             copy_snapshot(asset, staged, cancelled=cancelled)
             path, info = _selected(staged.parent, staged.name)
             staged_asset = FileSnapshot(asset.digest, asset.mime, asset.size, path, _stamp(info))
@@ -360,14 +374,26 @@ class Ingest:
                                 if self._active(workspace, row['edition']) != row['expected_active']:
                                     self._set(job, 'conflict', 'active_revision_changed')
                                     break
+                                def checked_pages():
+                                    for p in records:
+                                        check_resources()
+                                        yield Page(p['raw_text'], p['physical_index'])
+                                        check_resources()
                                 self.storage.publish_revision(workspace, row['edition'], job, asset.digest, settings,
-                                    (Page(p['raw_text'], p['physical_index']) for p in records))
+                                    checked_pages())
                                 self.storage.check()
                                 self._set(job, 'complete')
                                 break
                             i = len(records) + 1
-                            if segments is None:
-                                p = extract_page(staged, i, config)
+                            if asset.mime in RASTER_MIMES:
+                                from carr_library.extract.raster_pages import extract_raster_page
+                                p = extract_raster_page(staged, i, config, cancelled=cancelled)
+                            elif segments is None:
+                                if import_budget is None:
+                                    p = extract_page(staged, i, config)
+                                else:
+                                    p = extract_page(staged, i, config, original=staged_asset,
+                                        max_pages=self._budget.segments, cancelled=cancelled)
                             else:
                                 p = dict(physical_index=None, printed_label=None, printed_label_verified=False,
                                          raw_text=read_segment(i-1), status='candidate', blocks=[], warnings=[],
@@ -389,6 +415,7 @@ class Ingest:
                             if not self._eligible(p):
                                 self._set(job, 'quarantined', 'extraction_review_required')
                                 break
+                        check_resources()
                     except AudioCleanupPending:
                         # Retain the same temporary directory with its existing
                         # native cleanup owner; never convert uncertainty to failure.
