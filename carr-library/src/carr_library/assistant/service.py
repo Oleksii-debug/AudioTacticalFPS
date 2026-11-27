@@ -380,46 +380,143 @@ class AssistantService:
                 progress(sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
             return self._report(record, fresh=record['status'] == 'complete')
 
-    def _input_files(self, path, scope, cancelled):
-        accepted = []
-        total = 0
-        # The shared intake registry includes additional document formats when
-        # that component is installed. There is no independent suffix catalogue.
-        from ..ingest.retained_assets import SUFFIXES
-        suffixes = set(SUFFIXES.values())
+    def _import_inventory(self, path, scope, cancelled):
+        """Admit the bounded inventory without opening any document bytes.
+
+        Reuse Import Center's walker, traversal bounds and fingerprint. A
+        selected folder stays one root, even when it contains over 256 files.
+        These counters cover the whole scan, rather than resetting each page.
+        """
+        from ..ingest.batch_scan import _Page, _scan_paths
+
+        class Refused(Exception):
+            pass
+
+        class Admission(_Page):
+            files = 0
+            size = 0
+
+            def admit(self, candidate, root, *, source=True):
+                if source:
+                    try:
+                        candidate = scope.input(candidate)
+                        size = regular(candidate).st_size
+                    except (OSError, ValueError) as exc:
+                        # The shared walker turns ordinary source errors into
+                        # display rows. An authorization refusal must escape it.
+                        raise Refused(str(exc)) from exc
+                    self.files += 1
+                    self.size += size
+                    if self.files > scope.max_files or self.size > scope.max_bytes:
+                        raise Refused('Import exceeds the selected file or byte budget; '
+                                      'narrow the folder or raise its explicit budget.')
+                return super().admit(candidate, root, source=source)
+
+        inventory = Admission(inventory_only=True)
         try:
-            from ..extract.document_formats import FORMAT_BY_SUFFIX
-        except ModuleNotFoundError as exc:
-            if exc.name != 'carr_library.extract.document_formats':
-                raise
-        else:
-            suffixes.update(FORMAT_BY_SUFFIX)
-        def add(candidate):
-            nonlocal total
-            candidate = scope.input(candidate)
-            if candidate.suffix.lower() not in suffixes:
-                return
-            size = regular(candidate).st_size
-            total += size
-            if total > scope.max_bytes or len(accepted) >= scope.max_files:
-                raise ValueError('Import exceeds the selected file or byte budget; narrow the folder or raise its explicit budget.')
-            accepted.append(candidate)
-        if path.is_file():
-            add(path)
-        else:
-            for directory, dirs, files in os.walk(path, followlinks=False):
-                if cancelled():
-                    raise InterruptedError('Folder scan stopped.')
-                scope.input(directory)
-                for name in dirs:
-                    scope.input(Path(directory) / name)
-                for name in sorted(files):
-                    if cancelled():
-                        raise InterruptedError('Folder scan stopped.')
-                    add(Path(directory) / name)
-        if not accepted:
+            _scan_paths((path,), recursive=path.is_dir(), cancelled=cancelled, _page=inventory)
+        except Refused as exc:
+            raise PermissionError(str(exc)) from exc
+        if inventory.unscanned:
+            raise PermissionError('The selected folder was not completely scanned within the '
+                                  'entry/path limits. Select smaller folders in Import Center; '
+                                  'no sources were imported by this operation.')
+        if not inventory.files:
             raise ValueError('No supported local document files were found in the selected scope.')
-        return tuple(sorted(accepted))
+        return {'sha256': inventory.digest.hexdigest(), 'files': inventory.files,
+                'bytes': inventory.size}
+
+    def _import(self, scope, workspace, path, intent, persist, cancelled):
+        from ..ingest.batches import MAX_BATCHES, STATES
+
+        # Old assistant checkpoints may contain one V1 queue or a V2 queue
+        # whose roots were individual files. Keep them readable and continue to
+        # check every row against the exact approved file/folder below.
+        admission = None
+        if 'batch' not in intent or 'import_scan' in intent:
+            admission = self._import_inventory(path, scope, cancelled)
+            if 'import_scan' in intent and intent['import_scan'] != admission:
+                raise PermissionError('Source inventory changed. Review a new import plan; '
+                                      'previously completed pages were preserved.')
+        if 'batch' not in intent:
+            batch = self.app.plan_import_batch(workspace, (path,), recursive=path.is_dir(),
+                                               cancelled=cancelled)
+            if batch['scan']['inventory_sha256'] != admission['sha256']:
+                raise PermissionError('Source inventory changed before import. Review a new plan.')
+            intent.update(batch=batch['batch_id'], import_scan=admission)
+            persist()
+
+        batch_id = intent['batch']
+        counts = dict.fromkeys(STATES, 0)
+        editions, pages, seen_sources = [], [], set()
+        total_files = total_bytes = 0
+        previous = None
+        while True:
+            if cancelled():
+                raise InterruptedError('Import paused; its durable pages will resume.')
+            if batch_id in pages or len(pages) >= MAX_BATCHES:
+                raise PermissionError('The import page chain exceeds its bounded queue capacity.')
+            batch = self.app.import_batch(workspace, batch_id)
+            scan = batch.get('scan')
+            if admission is not None and (scan is None
+                    or scan['roots'] != [str(path)] or batch['recursive'] != path.is_dir()
+                    or scan['inventory_sha256'] != admission['sha256']):
+                raise PermissionError('The import page differs from the selected source inventory.')
+            if previous is not None:
+                old = previous['scan']
+                if (scan is None or scan['previous_batch_id'] != previous['batch_id']
+                        or scan['offset'] != old['next_offset']
+                        or scan['roots'] != old['roots']
+                        or scan['inventory_sha256'] != old['inventory_sha256']
+                        or scan['options_sha256'] != old['options_sha256']):
+                    raise PermissionError('The import continuation differs from its approved page chain.')
+            elif scan is not None and (scan['previous_batch_id'] is not None or scan['offset'] != 0):
+                raise PermissionError('An assistant import must start at its original first page.')
+            if scan is not None and scan['unscanned']:
+                raise PermissionError('The saved scan has unscanned folders. Review smaller scopes '
+                                      'in Import Center; this operation is incomplete.')
+            for row in batch['rows']:
+                if cancelled():
+                    raise InterruptedError('Import paused; its durable pages will resume.')
+                source = scope.input(row['source'])
+                if source != path and (not path.is_dir() or not source.is_relative_to(path)):
+                    raise PermissionError('The resumed import queue contains a file outside the selected input.')
+                manifest = row.get('manifest')
+                if manifest:
+                    if source in seen_sources:
+                        raise PermissionError('The import page chain repeats a source.')
+                    seen_sources.add(source)
+                    total_files += 1
+                    total_bytes += manifest['size']
+            if total_files > scope.max_files or total_bytes > scope.max_bytes:
+                raise PermissionError('The resumed queue exceeds this plan\'s file or byte budget.')
+            if batch['state'] != 'complete':
+                batch = self.app.run_import_batch(workspace, batch_id, cancelled=cancelled,
+                    timeout=min(120.0, scope.max_seconds), retry_failed=True)
+            if batch['state'] != 'complete':
+                if cancelled():
+                    raise InterruptedError('Import paused; its durable pages will resume.')
+                raise PermissionError('Import requires attention in Import Center; no unreviewed '
+                                      'text was approved. Batch ' + batch_id)
+            pages.append(batch_id)
+            for state, count in batch['counts'].items():
+                counts[state] += count
+            editions.extend(row['edition_id'] for row in batch['rows'] if row['state'] == 'complete')
+            if scan is None or scan['next_offset'] is None:
+                break
+            if cancelled():
+                raise InterruptedError('Import paused; its durable pages will resume.')
+            try:
+                following = self.app.next_import_scan_page(workspace, batch_id, cancelled=cancelled)
+            except ValueError as exc:
+                raise PermissionError('Import continuation requires review in Import Center: ' + str(exc)) from exc
+            if following['batch_id'] != scan['next_batch_id']:
+                raise PermissionError('The saved import continuation identity changed.')
+            previous, batch_id = batch, following['batch_id']
+        if admission is not None and (total_files != admission['files'] or total_bytes != admission['bytes']):
+            raise PermissionError('The completed pages do not cover the whole admitted source inventory.')
+        return {'batch_id': intent['batch'], 'batch_ids': pages, 'counts': counts,
+                'editions': editions, 'scan_complete': True}
 
     def _execute(self, step, scope, record, checkpoint, persist, cancelled, progress, index):
         args = step.arguments
@@ -455,34 +552,9 @@ class AssistantService:
             return {'books': _plain(rows), 'next_after': rows[-1].edition_id if rows else None}
         if step.tool.startswith('library.import'):
             path = scope.input(args['path'])
-            if 'batch' not in intent:
-                files = self._input_files(path, scope, cancelled)
-                batch = self.app.plan_import_batch(workspace, files, recursive=False, cancelled=cancelled)
-                intent['batch'] = batch['batch_id']
-                persist()
-            # A checkpoint may name an existing queue, but it may never enlarge
-            # the file/folder authorization of the original reviewed plan.
-            saved_batch = self.app.import_batch(workspace, intent['batch'])
-            if len(saved_batch['rows']) > scope.max_files:
-                raise PermissionError('The resumed queue exceeds this plan\'s file budget.')
-            size = 0
-            for row in saved_batch['rows']:
-                source = scope.input(row['source'])
-                if source != path and (not path.is_dir() or not source.is_relative_to(path)):
-                    raise PermissionError('The resumed import queue contains a file outside the selected input.')
-                manifest = row.get('manifest')
-                if manifest:
-                    size += manifest['size']
-            if size > scope.max_bytes:
-                raise PermissionError('The resumed queue exceeds this plan\'s byte budget.')
-            batch = self.app.run_import_batch(workspace, intent['batch'], cancelled=cancelled,
-                                             timeout=min(120.0, scope.max_seconds), retry_failed=True)
-            if batch['state'] != 'complete':
-                if cancelled():
-                    raise InterruptedError('Import paused; its durable queue will resume.')
-                raise RuntimeError('Import requires attention in Import Center; no unreviewed text was approved. Batch ' + intent['batch'])
-            return {'batch_id': intent['batch'], 'counts': batch['counts'],
-                    'editions': [r['edition_id'] for r in batch['rows'] if r['state'] == 'complete']}
+            if step.tool.endswith('_folder') != path.is_dir():
+                raise PermissionError('The selected input no longer matches the approved file/folder operation.')
+            return self._import(scope, workspace, path, intent, persist, cancelled)
         if step.tool == 'library.search':
             options = dict(args)
             limit = options.pop('limit', 50)

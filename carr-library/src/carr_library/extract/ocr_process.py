@@ -144,6 +144,7 @@ def _ascii_path(path, cwd):
 
 def _execute(command, cwd, remaining):
     return subprocess.run(command, check=True, capture_output=True,
+                          executable=command[0],
                           timeout=remaining(), cwd=cwd,
                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
 

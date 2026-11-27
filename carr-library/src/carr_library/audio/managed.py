@@ -270,7 +270,7 @@ class ManagedProjects:
                         raise ValueError('A staged sound input changed during verification.')
                     if self._identity(regular_file(source)) != identity:
                         raise ValueError('A selected sound input changed while copying.')
-                    prepared.append((copied, target, copy_identity))
+                    prepared.append((copied, target, copy_identity, receipt))
             try:
                 descriptor, name = tempfile.mkstemp(prefix='.studio-save-', dir=selected.parent)
                 temporary = Path(name)
@@ -293,9 +293,15 @@ class ManagedProjects:
                 if any(self._identity(regular_file(path)) != identity for path, identity in existing.items()):
                     raise ValueError('An existing library sound input changed.')
                 if prepared:
+                    # Verify every private staged file before creating the
+                    # destination namespace. Windows metadata alone may hide
+                    # an equal-size write after the initial readback.
+                    for copied, _target, _copied_identity, receipt in prepared:
+                        _copy(copied, None, maximum=MAX_INPUT_FILE_BYTES, expected=receipt,
+                              cancelled=lambda: _check(cancelled))
                     assets = checked_directory(audio / 'assets', create=True)
                     asset_identity = self._identity(assets.lstat())[:2]
-                    for copied, target, copy_identity in prepared:
+                    for copied, target, copy_identity, receipt in prepared:
                         _check(cancelled)
                         checked_directory(assets)
                         self.check_root()
@@ -307,8 +313,15 @@ class ManagedProjects:
                         actual = self._identity(regular_file(target))
                         if actual[:3] != copy_identity[:3] or actual[4:6] != copy_identity[4:6]:
                             raise ValueError('A sound input changed during publication.')
-                        published.append((target, actual))
+                        published.append((target, actual, receipt))
                     _sync_directory(assets)
+                    for _copied, target, _copied_identity, receipt in prepared:
+                        _copy(target, None, maximum=MAX_INPUT_FILE_BYTES, expected=receipt,
+                              cancelled=lambda: _check(cancelled))
+                    receipts = {target: receipt for _, target, _, receipt in prepared}
+                    for source, target, _source_identity in sources:
+                        _copy(source, None, maximum=MAX_INPUT_FILE_BYTES, expected=receipts[target],
+                              cancelled=lambda: _check(cancelled))
                 # Dispose private input staging before the metadata commit. A
                 # cleanup fault must not turn a committed adoption into failure.
                 staging.close()
@@ -321,7 +334,7 @@ class ManagedProjects:
                         raise ValueError('The selected sound input folder changed.')
                 if (any(self._identity(regular_file(path)) != identity for path, identity in existing.items())
                         or any(self._identity(regular_file(source)) != identity for source, _, identity in sources)
-                        or any(self._identity(regular_file(path)) != identity for path, identity in published)):
+                        or any(self._identity(regular_file(path)) != identity for path, identity, _ in published)):
                     raise ValueError('A sound input changed before project publication.')
                 if (self._identity(selected.parent.lstat())[:2] != parent_identity
                         or self._state(selected) != previous):
@@ -344,12 +357,15 @@ class ManagedProjects:
                         pass  # Warning filters cannot turn a committed save into a failure.
             finally:
                 if not committed:
-                    for target, identity in reversed(published):
+                    for target, identity, receipt in reversed(published):
                         try:
                             current = self._identity(regular_file(target))
+                            if current == identity:
+                                _copy(target, None, maximum=MAX_INPUT_FILE_BYTES,
+                                      expected=receipt, cancelled=lambda: False)
                         except (OSError, ValueError):
                             continue
-                        if current == identity:
+                        if current == identity and self._identity(regular_file(target)) == identity:
                             target.unlink()
                 if temporary is not None:
                     temporary.unlink(missing_ok=True)

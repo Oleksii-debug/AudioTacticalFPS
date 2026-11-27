@@ -8,6 +8,48 @@ product acceptance work are complete.
 
 ## Latest composed checkpoint
 
+### Follow-up to the first complete feature composition
+
+Published composition `6b3a343a06862aa8002e59be5597ea02c7363d19` has successful
+Windows bibliography, portable snapshot and native keyboard results. Its audio
+job passed 412 audio cases but exposed one staged-input mutation case. The
+integrated job exposed three real image-conversion cases before its main source
+gate. These two jobs are failures, not acceptance of the new composition.
+
+The observed causes are corrected in the following source:
+
+- Adopted PCM inputs are compared with their copied digest again before
+  publication and checked after publication, including the selected source.
+  Metadata alone cannot detect every equal-size write on Windows. Cleanup
+  retains a subsequently edited file instead of deleting changed bytes.
+- The existing OCR process helper passes its exact verified executable
+  explicitly. CPython 3.11 Windows otherwise reports a null executable in the
+  `subprocess.Popen` audit event, which the isolated converter correctly refuses.
+  The subprocess allowlist remains strict.
+
+Both new controlled regressions fail on the preceding source and pass after
+the fixes. Seven affected local suite paths pass 248 cases in their final
+affected runs; the three audio groups were rerun after fixing the initial
+staging-directory ordering. No failed intermediate run is counted as a pass.
+
+The assistant now admits a selected folder through the same metadata-only
+bounded walker and follows saved import pages under one total file/byte budget.
+This removes the accidental 256-selected-root limit for a single approved
+folder, retains completed workers across resume and reports an incomplete scope
+explicitly. The assembled folder/assistant/Desktop check passes 95 cases over
+three strict suites. The component's five-suite check passes 92 overlapping cases.
+
+A required native transcription probe now exercises actual installed wx
+controls and the independent controlled protocol fixture. Its ASR-model,
+recognition-quality, file-selector and NVDA limits are explicit. Local execution
+returns NOT_RUN on Linux; Windows acceptance is pending. Native checks run before
+the longer required source gate so interface failures are visible earlier; all
+source and sealed-bundle gates remain required.
+
+The existing canonical private-delivery interface is included with its 45
+passing synthetic boundary tests. It is disabled preparation: there is no new
+license restriction, signature verifier, trusted authority or automatic updater.
+
 The latest observed public Windows source is
 `0cf4228dc7a35b17ed7eba3e55c9f6613905b3a2`.
 [Its integrated run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45927121458)

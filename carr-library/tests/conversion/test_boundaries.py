@@ -231,11 +231,30 @@ def test_actual_child_is_stopped_by_its_time_budget(tmp_path):
     assert marker.read_text() == 'started'
 
 
-def test_real_ocr_and_provenance_under_unicode_input_and_output_directories(tmp_path):
+@pytest.mark.parametrize('windows_audit_shape', [False, True])
+def test_real_ocr_and_provenance_under_unicode_input_and_output_directories(tmp_path, monkeypatch, windows_audit_shape):
     from PIL import Image, ImageDraw, ImageFont
     from carr_library.extract.ocr_runtime import discover_ocr_runtime
     runtime = discover_ocr_runtime('eng')
     assert runtime is not None, 'This real OCR regression requires the prepared local English OCR runtime.'
+    if windows_audit_shape:
+        # CPython 3.11 Windows reports the explicit executable parameter
+        # (possibly None), not argv[0], in its Popen audit event. Reproduce
+        # that event in the real isolated worker before actual local OCR.
+        original_command = service_module.worker_command
+        def audited_command(request):
+            command = original_command(request)
+            index = command.index('-c') + 1
+            prefix = (
+                "import subprocess,sys\n"
+                "original_popen=subprocess.Popen\n"
+                "def windows_audited_popen(args, **kw):\n"
+                " sys.audit('subprocess.Popen', kw.get('executable'), subprocess.list2cmdline(args), kw.get('cwd'), kw.get('env'))\n"
+                " return original_popen(args, **kw)\n"
+                "subprocess.Popen=windows_audited_popen\n")
+            command[index] = prefix + command[index]
+            return command
+        monkeypatch.setattr(service_module, 'worker_command', audited_command)
     source_dir, output = tmp_path / 'Джерела Ľudská', tmp_path / 'Čитання Україна'
     source_dir.mkdir()
     output.mkdir()

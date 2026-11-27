@@ -296,11 +296,16 @@ def test_cleanup_does_not_delete_a_replacement_of_its_published_input(tmp_path):
     assert target.read_bytes() == competitor and not owned(value)[1].exists()
 
 
+@pytest.mark.parametrize('coarse_metadata', [False, True])
 @pytest.mark.parametrize('change', ['source', 'folder', 'staged-copy', 'after-readback'])
-def test_changed_source_or_selected_folder_or_staged_bytes_cannot_be_committed(tmp_path, monkeypatch, change):
+def test_changed_source_or_selected_folder_or_staged_bytes_cannot_be_committed(tmp_path, monkeypatch, change, coarse_metadata):
     _, value, folder, source = external(tmp_path)
     raw = pcm(folder / 'effect.bin')
     before = source.read_bytes()
+    if coarse_metadata:
+        identity = managed.ManagedProjects._identity
+        monkeypatch.setattr(managed.ManagedProjects, '_identity',
+                            staticmethod(lambda info: (*identity(info)[:-2], 0, 0)))
     copy = library_sidecars._copy
     def copied(source_path, target, **kwargs):
         result = copy(source_path, target, **kwargs)
