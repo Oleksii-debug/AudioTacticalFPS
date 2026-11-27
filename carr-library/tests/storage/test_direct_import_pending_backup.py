@@ -4,7 +4,10 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
+from time import monotonic, sleep
+from types import SimpleNamespace
 from uuid import uuid4
 from zipfile import ZipFile
 
@@ -261,22 +264,156 @@ def test_direct_identity_child_checks_actual_bytes_and_never_creates_a_catalog(t
     assert sorted(path.name for path in tmp_path.iterdir()) == [source.name]
 
 
-def test_cancel_during_direct_identity_child_cleans_the_complete_backup(tmp_path, monkeypatch):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Cancellation scope')
-    _stopped(app, workspace, _source(tmp_path, '.html'), monkeypatch)
+def _direct_identity_barrier(monkeypatch, marker, *, hold=True):
+    """Acknowledge real extraction while retaining the backup source handle."""
     from carr_library.ingest import worker
     popen = worker.subprocess.Popen
     children = []
 
-    def started(*args, **kwargs):
-        process = popen(*args, **kwargs)
-        if args[0][0] == sys.executable:
-            children.append(process)
+    def launch(command, *args, **kwargs):
+        command = list(command)
+        # The Windows worker intentionally owns the base interpreter directly.
+        # Matching sys.executable misses it and never arms cancellation.
+        if '-c' not in command:
+            return popen(command, *args, **kwargs)
+        index = command.index('-c') + 1
+        if index >= len(command) or "runpy.run_module('carr_library.ingest.worker'" not in command[index]:
+            return popen(command, *args, **kwargs)
+        stream = kwargs['stdin']
+        position = stream.tell()
+        try:
+            message = json.load(stream)
+        finally:
+            stream.seek(position)
+        if message.get('action') != 'direct-identity':
+            return popen(command, *args, **kwargs)
+        injection = f'''
+import json, os, time
+from pathlib import Path
+from carr_library import pending_backup as _pending
+from carr_library.ingest import worker as _worker
+_original_identity = _pending._direct_extraction_identity
+def _held_identity(*args, **kwargs):
+    result = _original_identity(*args, **kwargs)
+    # Windows cannot delete the backup stage until this native child exits.
+    with open({message['source']!r}, 'rb'):
+        marker = Path({str(marker)!r})
+        pending = marker.with_suffix('.pending')
+        pending.write_text(json.dumps(dict(pid=os.getpid(), module=_worker.__file__)), encoding='utf-8')
+        os.replace(pending, marker)
+        if {hold!r}:
+            time.sleep(30)
+    return result
+_pending._direct_extraction_identity = _held_identity
+'''
+        command[index] = command[index].replace('runpy.run_module(',
+            'exec(' + repr(injection) + '); runpy.run_module(', 1)
+        process = popen(command, *args, **kwargs)
+        child = dict(process=process, source=Path(message['source']))
+        children.append(child)
+        deadline = monotonic() + 15
+        try:
+            while not marker.exists():
+                assert process.poll() is None, 'Actual identity worker exited before its acknowledgement.'
+                assert monotonic() < deadline, 'Actual identity worker did not acknowledge within 15 seconds.'
+                sleep(.01)
+            receipt = json.loads(marker.read_bytes())
+            assert receipt['pid'] == process.pid, (receipt, process.pid)
+            assert Path(receipt['module']).samefile(worker.__file__)
+            child['acknowledged_at'] = monotonic()
+        except BaseException:
+            worker._stop(process)
+            raise
         return process
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', started)
-    with pytest.raises(InterruptedError):
-        create_backup(app, tmp_path / 'cancelled', cancelled=lambda: bool(children))
-    assert len(children) == 1 and children[0].poll() is not None
+    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    return children
+
+
+@pytest.mark.parametrize('different_spelling', (False, True), ids=('selected-interpreter', 'equivalent-path'))
+def test_cancel_during_direct_identity_child_cleans_the_complete_backup(tmp_path, monkeypatch, different_spelling):
+    from carr_library.ingest import worker
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Cancellation scope')
+    source = _source(tmp_path, '.html')
+    original = source.read_bytes()
+    request = _stopped(app, workspace, source, monkeypatch)
+    request_file = app.root / 'import-requests' / (request['request_id'] + '.json')
+    request_bytes = request_file.read_bytes()
+    if different_spelling:
+        executable = Path(sys.executable)
+        alias = executable.parent / '..' / executable.parent.name / executable.name
+        assert str(alias) != sys.executable and alias.samefile(executable)
+        monkeypatch.setattr(worker, 'sys', SimpleNamespace(executable=str(alias),
+            prefix=sys.prefix, base_prefix=sys.base_prefix,
+            _base_executable=getattr(sys, '_base_executable', sys.executable)))
+    marker = tmp_path / 'identity-acknowledged.json'
+    children = _direct_identity_barrier(monkeypatch, marker)
+    try:
+        with pytest.raises(InterruptedError, match='cancelled'):
+            create_backup(app, tmp_path / 'cancelled', cancelled=marker.exists)
+        child, = children
+        assert child['process'].poll() is not None
+        assert child['process'].wait(timeout=1) == child['process'].returncode
+        assert monotonic() - child['acknowledged_at'] < 5
+        assert not child['source'].exists()
+        assert not list(tmp_path.glob('.carr-library-backup-*'))
+        assert not (tmp_path / 'cancelled').exists()
+        assert source.read_bytes() == original
+        assert request_file.read_bytes() == request_bytes
+        with app.read(workspace) as db:
+            assert not db.execute('SELECT 1 FROM revision WHERE id=?', (request['job'],)).fetchone()
+    finally:
+        for child in children:
+            if child['process'].poll() is None:
+                worker._stop(child['process'])
+
+
+def test_acknowledged_direct_identity_without_cancel_publishes_valid_backup(tmp_path, monkeypatch):
+    from carr_library.ingest import worker
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Uncancelled identity')
+    request = _stopped(app, workspace, _source(tmp_path, '.html'), monkeypatch)
+    marker = tmp_path / 'completed-identity.json'
+    original_popen = worker.subprocess.Popen
+    children = _direct_identity_barrier(monkeypatch, marker, hold=False)
+    destination = tmp_path / 'complete'
+    try:
+        digest = create_backup(app, destination, cancelled=lambda: False)
+        child, = children
+        assert marker.exists() and child['process'].wait(timeout=1) == 0
+        assert not child['source'].exists()
+        assert not list(tmp_path.glob('.carr-library-backup-*'))
+        assert sha256((destination / 'manifest.json').read_bytes()).hexdigest() == digest
+        # The restore independently launches its own uninstrumented verifier;
+        # the first operation's acknowledgement cannot stand in for that child.
+        monkeypatch.setattr(worker.subprocess, 'Popen', original_popen)
+        restored = tmp_path / 'restored'
+        restore_backup(destination, restored, digest)
+        assert load_request(restored, request['request_id'])['job'] == request['job']
+    finally:
+        for child in children:
+            if child['process'].poll() is None:
+                worker._stop(child['process'])
+
+
+def test_direct_identity_backup_cancelled_before_launch_creates_no_child(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('No native parser on early cancellation')
+    _stopped(app, workspace, _source(tmp_path, '.html'), monkeypatch)
+    marker = tmp_path / 'must-not-launch.json'
+    children = _direct_identity_barrier(monkeypatch, marker)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, tmp_path / 'cancelled', cancelled=lambda: True)
+    assert children == [] and not marker.exists()
     assert not (tmp_path / 'cancelled').exists()
+    assert not list(tmp_path.glob('.carr-library-backup-*'))
+
+
+def test_direct_identity_barrier_leaves_unrelated_child_unchanged(tmp_path, monkeypatch):
+    marker = tmp_path / 'not-an-identity-worker.json'
+    children = _direct_identity_barrier(monkeypatch, marker)
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', "print('unrelated child')"],
+                            capture_output=True, text=True, check=True, timeout=5)
+    assert result.stdout.strip() == 'unrelated child'
+    assert children == [] and not marker.exists()

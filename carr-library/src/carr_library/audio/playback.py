@@ -27,17 +27,24 @@ MCI_FORMAT_MILLISECONDS = 0
 _MODES = {524: 'not_ready', 525: 'stopped', 526: 'playing', 529: 'paused', 530: 'open', 528: 'seeking'}
 
 
-class _Open(C.Structure):
+class _MciParameters(C.Structure):
+    # The Windows SDK's mmsystem.h includes mciapi.h under pshpack1.h.
+    # Natural x64 alignment shifts the string pointers in MCI_WAVE_OPEN_PARMSW
+    # and can make mciSendCommandW dereference an invalid address.
+    _pack_ = 1
+
+
+class _Open(_MciParameters):
     _fields_ = [('callback', C.c_size_t), ('device', C.c_uint32),
                 ('device_type', C.c_wchar_p), ('element', C.c_wchar_p),
                 ('alias', C.c_wchar_p), ('buffer_seconds', C.c_uint32)]
 
 
-class _Generic(C.Structure):
+class _Generic(_MciParameters):
     _fields_ = [('callback', C.c_size_t)]
 
 
-class _Set(C.Structure):
+class _Set(_MciParameters):
     _fields_ = [('callback', C.c_size_t), ('time_format', C.c_uint32), ('audio', C.c_uint32),
                 ('input', C.c_uint32), ('output', C.c_uint32),
                 ('format_tag', C.c_uint16), ('reserved2', C.c_uint16),
@@ -47,15 +54,15 @@ class _Set(C.Structure):
                 ('bits', C.c_uint16), ('reserved5', C.c_uint16)]
 
 
-class _Position(C.Structure):
+class _Position(_MciParameters):
     _fields_ = [('callback', C.c_size_t), ('position', C.c_uint32)]
 
 
-class _Play(C.Structure):
+class _Play(_MciParameters):
     _fields_ = [('callback', C.c_size_t), ('start', C.c_uint32), ('end', C.c_uint32)]
 
 
-class _Status(C.Structure):
+class _Status(_MciParameters):
     _fields_ = [('callback', C.c_size_t), ('result', C.c_size_t),
                 ('item', C.c_uint32), ('track', C.c_uint32)]
 

@@ -292,14 +292,78 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --lock packaging/epubcheck.json --report ci-results/installed-epubcheck.json --require-installed 2>&1 | Tee-Object 'ci-results/installed-epubcheck.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Compile actual Windows SDK WinMM layout evidence
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.launcher_tools.outcome == 'success' }}
+        id: winmm_sdk_layout
+        shell: cmd
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          cl /nologo /W4 /WX /TC tests\audio\native_winmm_layout.c /Fo"%RUNNER_TEMP%\carr-winmm-layout.obj" /Fe"%RUNNER_TEMP%\carr-winmm-layout.exe"
+          if errorlevel 1 exit /b %errorlevel%
+          "%RUNNER_TEMP%\carr-winmm-layout.exe" > "ci-results\native-winmm-sdk-layout.json"
+          if errorlevel 1 exit /b %errorlevel%
+
       - name: Verify actual installed Windows SAPI speech and native preview
         if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/audio/native_sapi_smoke.py 2>&1 | Tee-Object 'ci-results/native-sapi-speech.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/native-audio-preview.json'
+          & $env:CARR_PYTHON -I -B tests/audio/native_playback_probe.py --sdk-layout 'ci-results/native-winmm-sdk-layout.json' 2>&1 | Tee-Object 'ci-results/native-audio-preview.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Require actual Windows capture process ownership
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/audio/native_recording_process_probe.py --report 'ci-results/native-recording-process.json' 2>&1 | Tee-Object 'ci-results/native-recording-process.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require source and installed native recording controls
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $ffmpeg = Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe'
+          $previousSourcePath = $env:PYTHONPATH
+          try {
+            $env:PYTHONPATH = Join-Path (Get-Location).Path 'src'
+            & $env:CARR_PYTHON -B scripts/windows_recording_smoke.py --ffmpeg $ffmpeg --report 'ci-results/source-recording-controls.json' 2>&1 | Tee-Object 'ci-results/source-recording-controls.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PYTHONPATH = $previousSourcePath
+          }
+          & $env:CARR_PYTHON -I -B scripts/windows_recording_smoke.py --ffmpeg $ffmpeg --report 'ci-results/installed-recording-controls.json' --expect-installed 2>&1 | Tee-Object 'ci-results/installed-recording-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require measured capture from the explicitly reviewed virtual input
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && github.event_name == 'push' && github.repository == 'Oleksii-debug/AudioTacticalFPS' && github.ref == 'refs/heads/carr/ci-endpoint-evaluation-20261127' }}
+        timeout-minutes: 3
+        run: |
+          $ffmpeg = Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe'
+          & $env:CARR_PYTHON -I -B scripts/windows_recording_device_probe.py --ffmpeg $ffmpeg --report 'ci-results/recording-device-inventory.json' --inventory-only 2>&1 | Tee-Object 'ci-results/recording-device-inventory.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $inventory = Get-Content -Raw 'ci-results/recording-device-inventory.json' | ConvertFrom-Json
+          # Exact expected capture label from pinned Pack46 INF:
+          # VBCABLE.INPUTNAME1="CABLE Output", DeviceName="VB-Audio Virtual Cable".
+          # An absent, renamed or ambiguous endpoint must fail, never select a microphone.
+          $selected = @($inventory.devices | Where-Object { $_.name -ceq 'CABLE Output (VB-Audio Virtual Cable)' })
+          if ($inventory.status -cne 'PASS' -or $selected.Count -ne 1) { throw 'The exact reviewed virtual capture input is unavailable or ambiguous; inspect the retained inventory.' }
+          & $env:CARR_PYTHON -I -B scripts/windows_recording_device_probe.py --ffmpeg $ffmpeg --report 'ci-results/native-recording-device.json' --device-id $selected[0].id 2>&1 | Tee-Object 'ci-results/native-recording-device.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve initial native playback and recording diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-windows-recording-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/*recording*.json
+            carr-library/ci-results/*recording*.txt
+            carr-library/ci-results/native-winmm-sdk-layout.json
+            carr-library/ci-results/native-audio-preview.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Exercise native audio studio and provider settings
         if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
@@ -383,6 +447,12 @@ jobs:
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/audio/test_recording_probe.py',
+            'tests/audio/test_recording.py',
+            'tests/audio/test_recording_process.py',
+            'tests/audio/test_recording_windows_process.py',
+            'tests/ui/test_recording_dialog.py',
+            'tests/storage/test_recording_backup.py',
             'tests/audio_acceptance/test_primary_publication_budget.py',
             'tests/studio/test_production_hardening.py',
             'tests/studio/test_production.py',
@@ -995,6 +1065,12 @@ jobs:
           for name in ('carr_library.acquisition.models', 'carr_library.acquisition.providers',
                        'carr_library.acquisition.service', 'carr_library.acquisition.cli',
                        'carr_library.ui.acquisition_dialog',
+                       'carr_library.audio.recording',
+                       'carr_library.audio.cleanup',
+                       'carr_library.audio.windows_process',
+                       'carr_library.audio.playback',
+                       'carr_library.ui.recording_dialog',
+                       'carr_library.recording_backup',
                        'carr_library.extract.document_formats',
                        'carr_library.extract.document_formats_text',
                        'carr_library.extract.document_formats_xml'):
@@ -1004,7 +1080,14 @@ jobs:
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
-          contents_suites = ['tests/audio_acceptance/test_primary_publication_budget.py',
+          contents_suites = ['tests/audio/test_recording_probe.py',
+                            'tests/audio/test_recording.py',
+                            'tests/audio/test_recording_process.py',
+                            'tests/audio/test_recording_windows_process.py',
+                            'tests/ui/test_recording_dialog.py',
+                            'tests/storage/test_recording_backup.py',
+                            'tests/audio/test_playback.py',
+                            'tests/audio_acceptance/test_primary_publication_budget.py',
                             'tests/studio/test_production_hardening.py',
                             'tests/studio/test_production.py',
                             'tests/ui/test_assistant_voice_preview.py',
@@ -1189,6 +1272,18 @@ jobs:
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
+
+      - name: Preserve completed native and bundle diagnostics before source inventory
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-windows-pre-source-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/*.txt
+            carr-library/ci-results/*.json
+            carr-library/ci-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
 
       # Evidence and public source wheel only: no model, native DLLs, audio executables, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.

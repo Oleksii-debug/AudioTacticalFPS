@@ -21,7 +21,7 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated
+from . import backup_producers, backup_generated, recording_backup
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
@@ -85,6 +85,8 @@ def sidecar_limit(name):
         return _model('progress_preferences').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
+    if recording_backup.state_path(name):
+        return recording_backup.state_limit(name)
     if maximum := backup_generated.limit(name):
         return maximum
     if maximum := backup_producers.limit(name):
@@ -294,6 +296,8 @@ def validate_sidecar(db, name, raw):
             _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
+        elif recording_backup.state_path(name):
+            recording_backup.validate_receipt(name, _json(raw))
         elif name.startswith(backup_generated.PREFIX):
             backup_generated.validate_receipt(name, _json(raw))
         elif backup_producers.SUBTITLE.fullmatch(name):
@@ -573,7 +577,13 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
-        if backup_generated.is_media(name):
+        if recording_backup.is_audio(name):
+            # Retained originals use the existing streaming manifest proof.
+            # PCM/retake verification runs against the complete private state;
+            # an orphan is preserved without parsing binary bytes as JSON.
+            _stream_file(source / name, destination=stage / name, expected=entry,
+                         maximum=sidecar_limit(name), cancelled=cancelled)
+        elif backup_generated.is_media(name):
             size, _, header = _stream_file(source / name, destination=stage / name,
                 expected=entry, maximum=sidecar_limit(name), cancelled=cancelled)
             backup_generated.validate_container(name, header, size)

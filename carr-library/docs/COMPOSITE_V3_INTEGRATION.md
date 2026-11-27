@@ -14,6 +14,21 @@ the PR176 pre-link cancellation correction. The identical guard and real-render
 regression were already present in this composite; that two-path delta required
 no duplicate implementation or transfer of canonical test results.
 
+Latest canonical `924ae83316a3cf9482aaf2ec51a6e6a5adb614c3` is reconciled
+through fail-closed optional roots and per-root cancellation, preserving the
+existing real-child publication barriers. The finalization specification blob
+remains `db8adbdc483a03c262885928c7ed214ca70bbaa7`.
+
+Complete predecessor `df42d91b547066e8bc578dd67f8e023502447d09` passed
+V3, canonical reconciliation, transcription, launcher and bibliography, but
+failed the main Windows aggregate. Its actual failures and successor fixes are
+recorded in the canonical reconciliation document. The successor also adopts
+reviewed production submission/full-inventory recovery, atomic DOI acquisition
+and bounded recording/retakes with complete recording backup validation. Its
+275-case composed portable recording/production/backup gate passes without
+skips. This remains source evidence; no application wheel from the failed
+predecessor qualifies for delivery.
+
 The current combined candidate also incorporates canonical per-evidence recovery,
 durably acknowledged Save All, contextual reader keys, historical backup and
 inert voice-helper compatibility, bounded asynchronous export approval and typed

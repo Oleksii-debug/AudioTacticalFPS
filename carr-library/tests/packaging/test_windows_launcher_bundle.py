@@ -101,7 +101,7 @@ def candidate(tmp_path, monkeypatch):
                  'ACADEMIC_SEARCH.md', 'ADVANCED_SEARCH.md', 'ACADEMIC_LIBRARY.md',
                  'ACADEMIC_WORKFLOWS.md', 'CATALOG_TOOLS.md', 'READING_DESK.md',
                  'RESEARCH_NOTEBOOK.md', 'EPUB_READING.md', 'IMPORT_CENTER.md',
-                 'TRANSCRIPTION.md'):
+                 'TRANSCRIPTION.md', 'recording.md'):
         (package / 'docs' / name).write_text('Synthetic packaging boundary fixture.\n', encoding='utf-8')
     (package / 'pyproject.toml').write_text('''[project]
 name = "universal-research-library"

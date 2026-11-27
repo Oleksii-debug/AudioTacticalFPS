@@ -455,6 +455,7 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
     selected = []
     for name in ('reading-state.json', 'connections.json', 'keybindings.json', 'ocr-language-presets.json',
                  *_TYPED_ROOT_LIMITS):
+        _check(cancelled)
         path = root / name
         if _present(path):
             selected.append((name, path))
@@ -462,6 +463,7 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
     if include_pending:
         directories.extend(('import-requests', 'import-batches'))
     for name in directories:
+        _check(cancelled)
         path = root / name
         if _present(path):
             selected.extend((name + '/' + relative, item)

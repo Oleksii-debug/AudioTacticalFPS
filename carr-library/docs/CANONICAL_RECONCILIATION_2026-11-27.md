@@ -9,6 +9,10 @@
   Its two-path PR176 publication-cancellation delta is already present here:
   the exact check after staged fsync/digest and before link, plus the identical
   real-render cancellation/resume regression. No prior verdict is transferred.
+- Latest reviewed canonical: 924ae83316a3cf9482aaf2ec51a6e6a5adb614c3.
+  Optional-root lookup remains fail-closed; cancellation now runs before each
+  optional sidecar root. The real-child publication barriers already in this
+  composite remain stronger than the incoming clock-only fixture.
 - Authoritative technical scope blob:
   db8adbdc483a03c262885928c7ed214ca70bbaa7, unchanged by this merge.
 - Current native correction baseline:
@@ -161,6 +165,69 @@ installed lane retains the previous 102 contents selectors and now runs 130,
 alongside the existing 11 installed core suites. The portable resource module
 is mandatory in both main lanes and the V3 gates. These are required
 inventories, not a claim that the final combined Windows run has passed.
+
+## Complete df42 execution and reviewed successor
+
+All following results belong only to
+`df42d91b547066e8bc578dd67f8e023502447d09`, tree
+`c117a267e771dc0060631214a98833f0e9287b03`:
+
+| Workflow | Result | Evidence |
+| --- | --- | --- |
+| Main Windows | FAIL | [45972600926](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45972600926): 257/259 source suites passed; native/bundle failures listed below |
+| V3 | PASS | [45972601005](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45972601005): 580 installed shared-service, 532 installed recovery and 2064 broad source cases; strict progress and native V3 also passed |
+| Canonical reconciliation | PASS | [45972600941](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45972600941): 37 source suites, 1056 installed cases, seven native lanes |
+| Supplied transcription bridge | PASS | [45972600943](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45972600943): Linux and Windows contracts plus the native Windows bridge; synthetic model API, not acoustic inference |
+| Native launcher | PASS | [45972601074](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45972601074): MSVC and pinned Zig process probes |
+| Bibliography | PASS | [45972600917](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45972600917) |
+
+The main failures were examined from the completed job log. Two cancellation
+fixtures matched only `sys.executable`, although the Windows supervisor owns
+the base interpreter; the PDF fixture also started its cancellation clock
+before preflight finished. Their replacement retains the actual bootstrap,
+selected interpreter and extraction/rendering, then waits for an atomic child
+PID acknowledgement while the staged source is open. Cancellation must reap
+that exact child in under five seconds after acknowledgement and leave no
+published review/backup. The old defects failed their negative controls; all
+31 corrected module cases passed on portable Python, without skips.
+
+The standalone typed WinMM preview had naturally aligned x64 parameter blocks.
+The Windows SDK includes MCI structures under byte packing. The correction
+preserves native-width fields and compares every field offset, size and
+alignment with a C probe compiled against the runner's actual SDK before native
+playback. Six layout regressions failed against the old source; the 68-case
+playback/reader/keymap gate passes after correction. The separate ReadingDialog
+probes now address stable command IDs and still assert accessible names and
+actual native event behavior. Their old exact-label lookup failed after the
+keyboard registry added the configured shortcut to the visible label.
+
+The successor reconciles PR185 submission recovery and PR188 full completed
+artifact/owner verification into the current production service while retaining
+its resource, rights and lifecycle guards. A real-render negative control
+demonstrated that the old replay accepted a shortened inventory. All 34
+production cases pass after composition. PR186's three acquisition negative
+controls also fail old source; its 285-case provider/security/workflow/CLI gate
+passes after the existing writer transaction covers both reference and
+collection mutations and rechecks the exact unambiguous edition identity.
+
+Recording reuses the reviewed PR123 capture implementation through current
+runtime, worker, immutable assets and progress contracts. It adds bounded
+PCM16 capture, Stop/save, Cancel/discard, retakes and native controls; no second
+editor or default microphone is introduced. The backup hooks use the same
+recording lock, stream PCM originals, validate typed receipts and retake graphs,
+and keep unreceipted finals inert. Composite v5/schema6 and supported flat-v4
+roundtrips remain real tests. One composed portable gate passes 275 cases
+without skips, including current production and backup regressions. These
+overlapping component totals must not be added together.
+
+The successor's main source inventory has 265 unique suites and its installed
+contents inventory has 137 selectors, preserving all previous entries and the
+11 installed core suites. New native gates exercise capture-process ownership,
+source and installed wx recording controls, and independently measured PCM from
+an explicitly identified virtual input in the dated evaluation environment.
+Reports retain physical-microphone, listening and human NVDA as NOT_RUN.
+The complete enclosing Windows aggregate remains required; df42 is not an
+eligible final wheel despite its successful independent workflows.
 
 ## Stronger behavior retained
 

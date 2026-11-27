@@ -32,7 +32,7 @@ from .data_paths import guard_data_directory
 from .durable_state import local_path
 from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
-from . import backup_sidecars, backup_compat
+from . import backup_sidecars, backup_compat, recording_backup
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -91,7 +91,8 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
     if cancelled():
         raise InterruptedError('Backup cancelled.')
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root), backup_sidecars.state_locks(app.root):
+    with (exclusive_writer(app.root), backup_sidecars.state_locks(app.root),
+          recording_backup.snapshot_guard(app.root, cancelled=cancelled)):
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')

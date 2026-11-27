@@ -190,3 +190,237 @@ def test_retained_inventory_refuses_entry_budget_before_descending(tmp_path, mon
         render._retained_bytes((root,), lambda: False)
     assert inspected == [root], 'The bounded pending list must reject before any child descent.'
     assert {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files} == before
+
+@pytest.fixture
+def submission(tmp_path):
+    # Only queue creation is under test; no voice synthesis is invoked.
+    from types import SimpleNamespace
+    registry = SimpleNamespace(voices=lambda: (SimpleNamespace(id='test:voice'),))
+    service = ProductionService(tmp_path / 'state', voices=registry)
+    project = service.create('Synthetic submission.', voice_ids=('test:voice',))
+    output = tmp_path / 'output'
+    output.mkdir()
+    return service, project, output
+
+
+@pytest.mark.parametrize('committed', [False, True])
+def test_submission_retries_same_operation_after_receipt_write_failure(submission, monkeypatch, committed):
+    from carr_library.studio import render
+    service, project, output = submission
+    job = 'receipt-replay'
+    directory = service.jobs_root / job
+    write = render.atomic_json
+
+    def fail_receipt(path, value, **kwargs):
+        if Path(path) == directory / 'job.json':
+            if committed:
+                write(path, value, **kwargs)
+            else:
+                # Simulate a process interruption before publishing the receipt.
+                (directory / '.pending-interrupted').write_bytes(b'partial receipt')
+            raise OSError('Injected receipt write interruption')
+        return write(path, value, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(render, 'atomic_json', fail_receipt)
+        with pytest.raises(OSError, match='Injected receipt'):
+            service.submit(project, output, operation_id=job)
+    assert (directory / 'job.json').exists() is committed
+    reopened = ProductionService(service.root, voices=service.voices)
+    assert reopened.submit(project, output, operation_id=job) == job
+    receipt = reopened.get(job)
+    assert receipt['status'] == 'pending'
+    assert receipt['fingerprint'] == project.fingerprint
+    assert len(reopened.jobs()) == 1
+    assert reopened.submit(project, output, operation_id=job) == job
+    assert reopened.get(job) == receipt
+    with pytest.raises(ValueError, match='different production plan'):
+        reopened.submit(project, output, operation_id=job, stems=False)
+    if not committed:
+        assert (directory / '.pending-interrupted').read_bytes() == b'partial receipt'
+
+
+def test_submission_does_not_adopt_unreceipted_recovery_data(submission):
+    service, project, output = submission
+    directory = service.jobs_root / 'missing-receipt'
+    directory.mkdir()
+    recovery = directory / 'timeline.json'
+    recovery.write_bytes(b'preserve existing recovery data')
+    with pytest.raises(ValueError, match='recovery data but no receipt'):
+        service.submit(project, output, operation_id=directory.name)
+    assert recovery.read_bytes() == b'preserve existing recovery data'
+    assert not (directory / 'job.json').exists()
+
+
+def test_submission_does_not_adopt_existing_unreceipted_output(submission):
+    from carr_library.studio.render import _output_name
+    service, project, output = submission
+    job = 'existing-output'
+    existing = output / f'{_output_name(project.title)}-{job[:12]}'
+    existing.mkdir()
+    master = existing / 'master.wav'
+    master.write_bytes(b'preserve existing output')
+    with pytest.raises(FileExistsError, match='without a matching job receipt'):
+        service.submit(project, output, operation_id=job)
+    assert master.read_bytes() == b'preserve existing output'
+    assert not (service.jobs_root / job / 'job.json').exists()
+
+
+def test_submission_respects_existing_render_lock(submission):
+    from carr_library.durable_state import state_lock
+    service, project, output = submission
+    job = 'locked-submit'
+    with state_lock(service.jobs_root / job, 'render'):
+        with pytest.raises(RuntimeError, match='already being changed'):
+            service.submit(project, output, operation_id=job)
+        assert not (service.jobs_root / job / 'job.json').exists()
+    assert service.submit(project, output, operation_id=job) == job
+
+
+@pytest.mark.parametrize('phase', ['before-receipt', 'after-receipt'])
+def test_submission_recovers_actual_process_exit_without_rewriting_receipt(submission, phase):
+    import subprocess
+    import carr_library
+
+    service, project, output = submission
+    job = 'child-exit-receipt'
+    directory = service.jobs_root / job
+    receipt_path = directory / 'job.json'
+    # Select exactly the package already imported by this gate. In an installed
+    # lane this remains the installed package; no checkout path is substituted.
+    package_file = Path(carr_library.__file__).resolve()
+    child = r'''
+import os
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+
+expected = Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(expected.parent.parent))
+import carr_library
+assert Path(carr_library.__file__).resolve() == expected
+assert sys.flags.isolated and sys.dont_write_bytecode
+from carr_library import durable_state
+from carr_library.studio import render
+
+registry = SimpleNamespace(voices=lambda: (SimpleNamespace(id='test:voice'),))
+service = render.ProductionService(Path(sys.argv[2]), voices=registry)
+project = service.projects.load(sys.argv[3])
+output, job, phase = Path(sys.argv[4]), sys.argv[5], sys.argv[6]
+receipt = service.jobs_root / job / 'job.json'
+original_link = durable_state.os.link
+original_json = render.atomic_json
+
+def interrupted_link(source, destination, *args, **kwargs):
+    if Path(destination) == receipt and phase == 'before-receipt':
+        # The real writer has flushed its temporary bytes, but has not linked
+        # the receipt. Immediate process exit bypasses both cleanup and unlock.
+        os._exit(73)
+    return original_link(source, destination, *args, **kwargs)
+
+def interrupted_acknowledgement(path, value, **kwargs):
+    result = original_json(path, value, **kwargs)
+    if Path(path) == receipt and phase == 'after-receipt':
+        # A fully published durable receipt exists; the caller got no reply.
+        os._exit(73)
+    return result
+
+durable_state.os.link = interrupted_link
+render.atomic_json = interrupted_acknowledgement
+service.submit(project, output, operation_id=job)
+raise AssertionError('The requested receipt boundary was never reached.')
+'''
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', child,
+                             str(package_file), str(service.root), project.id,
+                             str(output), job, phase],
+                            capture_output=True, text=True, encoding='utf-8', timeout=15)
+    assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)
+    assert receipt_path.exists() is (phase == 'after-receipt')
+    before = receipt_path.read_bytes() if receipt_path.exists() else None
+    pending = {path: path.read_bytes() for path in directory.glob('.pending-*')}
+    assert len(pending) == (1 if phase == 'before-receipt' else 0)
+
+    reopened = ProductionService(service.root, voices=service.voices)
+    assert reopened.submit(project, output, operation_id=job) == job
+    receipt = reopened.get(job)
+    assert receipt['status'] == 'pending' and receipt['fingerprint'] == project.fingerprint
+    assert len(reopened.jobs()) == 1
+    assert not Path(receipt['destination']).exists(), 'Submission must not adopt or publish audio.'
+    if before is not None:
+        assert receipt_path.read_bytes() == before
+    assert {path: path.read_bytes() for path in directory.glob('.pending-*')} == pending
+    committed = receipt_path.read_bytes()
+    assert reopened.submit(project, output, operation_id=job) == job
+    assert receipt_path.read_bytes() == committed
+
+
+@pytest.mark.parametrize('kind', ['directory', 'hardlink'])
+def test_submission_rejects_nonregular_pending_recovery_entries(submission, kind):
+    service, project, output = submission
+    directory = service.jobs_root / 'unsafe-pending'
+    directory.mkdir()
+    pending = directory / '.pending-uncommitted'
+    retained = output / 'independent-data.txt'
+    retained.write_bytes(b'Independent data must remain untouched.')
+    if kind == 'directory':
+        pending.mkdir()
+    else:
+        pending.hardlink_to(retained)
+    with pytest.raises(ValueError, match='regular local files'):
+        service.submit(project, output, operation_id=directory.name)
+    assert not (directory / 'job.json').exists()
+    assert retained.read_bytes() == b'Independent data must remain untouched.'
+    if kind == 'directory':
+        assert pending.is_dir() and list(pending.iterdir()) == []
+    else:
+        assert pending.samefile(retained)
+
+
+def test_completed_replay_requires_full_inventory_and_owner(tmp_path, voices, monkeypatch):
+    from copy import deepcopy
+    from carr_library.durable_state import atomic_json, read_json
+    service, job = production(tmp_path, voices)
+    complete = service.run(job)
+    output = Path(complete['destination'])
+    original = {row['path']: row['sha256'] for row in complete['artifacts']}
+    receipt = service.jobs_root / job / 'job.json'
+    marker = output / 'production-owner.json'
+    owner = read_json(marker)
+
+    def forbid_render():
+        pytest.fail('Committed replay must not invoke the audio runtime.')
+
+    monkeypatch.setattr(service, '_runtime', forbid_render)
+    assert service.run(job) == complete
+    for missing in ('master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json', 'chapter'):
+        damaged = deepcopy(complete)
+        damaged['artifacts'] = [
+            row for row in damaged['artifacts']
+            if (Path(row['path']).parent.name != 'chapters' if missing == 'chapter'
+                else Path(row['path']).name != missing)
+        ]
+        assert len(damaged['artifacts']) < len(complete['artifacts'])
+        atomic_json(receipt, damaged, replace=True)
+        with pytest.raises(ValueError, match='missing required artifacts'):
+            service.run(job)
+        assert read_json(receipt) == damaged
+
+    damaged = deepcopy(complete)
+    damaged['artifacts'] = []
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='missing required artifacts'):
+        service.run(job)
+
+    damaged = deepcopy(complete)
+    damaged['artifacts'].append(damaged['artifacts'][0])
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='Duplicate production artifact'):
+        service.run(job)
+
+    atomic_json(receipt, complete, replace=True)
+    atomic_json(marker, {**owner, 'job': 'another-job'}, replace=True)
+    with pytest.raises(ValueError, match='owner receipt changed'):
+        service.run(job)
+    atomic_json(marker, owner, replace=True)
+    assert service.run(job) == complete
+    assert {name: sha256(Path(name).read_bytes()).hexdigest() for name in original} == original

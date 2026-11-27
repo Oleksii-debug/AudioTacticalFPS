@@ -695,6 +695,14 @@ def install_audio_studio(frame):
         except Exception as exc:
             frame.report('Synchronized EPUB reading could not open: ' + str(exc))
     frame.Bind(wx.EVT_MENU, open_synchronized_reader, synchronized_reader)
+    recording = menu.Append(wx.ID_ANY, '&Record microphone and manage takes...')
+    def open_recording(event):
+        from .recording_dialog import show_recording
+        try:
+            show_recording(frame)
+        except Exception as exc:
+            frame.report('Microphone recording could not be opened: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, open_recording, recording)
     frame.menu_bar.Insert(max(0,frame.menu_bar.GetMenuCount()-1),menu,'Audio &Studio')
 
 

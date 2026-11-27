@@ -9,6 +9,7 @@ from carr_library.audio.playback import (
     LocalPlayer, MCI_OPEN, MCI_CLOSE, MCI_PLAY, MCI_PAUSE, MCI_RESUME, MCI_STOP,
     MCI_SEEK, MCI_SET, MCI_STATUS, MCI_STATUS_LENGTH, MCI_STATUS_POSITION,
     MCI_STATUS_MODE, MCI_FORMAT_MILLISECONDS, _Status,
+    _Open, _Generic, _Set, _Position, _Play,
 )
 
 
@@ -97,3 +98,21 @@ def test_no_audio_device_is_reported_instead_of_false_playback(wav):
 def test_win32_return_field_is_pointer_sized():
     assert _Status.result.size == ctypes.sizeof(ctypes.c_void_p)
     assert _Status.item.size == 4
+
+
+@pytest.mark.parametrize('structure', [_Open, _Generic, _Set, _Position, _Play, _Status])
+def test_winmm_parameter_blocks_use_sdk_byte_packing(structure):
+    # MMSYSTEM.H includes MCIAPI.H inside PSHPACK1.H/POPPACK.H.  Native CI
+    # additionally compares every field with the installed Windows SDK.
+    assert ctypes.alignment(structure) == 1
+    pointer = ctypes.sizeof(ctypes.c_void_p)
+    if structure is _Open:
+        assert _Open.device.offset == pointer
+        assert _Open.device_type.offset == pointer + 4
+        assert _Open.element.offset == 2 * pointer + 4
+        assert _Open.alias.offset == 3 * pointer + 4
+        assert _Open.buffer_seconds.offset == 4 * pointer + 4
+        assert ctypes.sizeof(_Open) == 4 * pointer + 8
+    elif structure is _Position:
+        assert _Position.position.offset == pointer
+        assert ctypes.sizeof(_Position) == pointer + 4

@@ -179,10 +179,17 @@ def _prepared(relative, value):
 
 def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False):
     """Check typed state without touching model paths or external output files."""
+    from . import recording_backup
+    recording_backup.validate_state_entries(entries, cancelled=cancelled)
     for entry in entries:
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
         relative = _dispatch_path(entry['filename'])
+        if relative.as_posix().startswith(recording_backup.STATE_PREFIX):
+            # The dedicated copied-tree verifier below parses only receipts,
+            # streams actual PCM and validates the complete retake graph.
+            # An unreceipted final WAV remains inert and is never decoded.
+            continue
         if relative.suffix != '.json':
             continue
         path = root / entry['filename']
@@ -209,6 +216,7 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
         updated = _prepared(entry['filename'], value)
         if restored and updated is not None:
             atomic_json(path, updated, replace=True)
+    recording_backup.validate_state_root(root, cancelled=cancelled)
 
 
 def prepare_restored_state(root, entries, *, cancelled=lambda: False):

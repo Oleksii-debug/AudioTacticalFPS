@@ -14,9 +14,10 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives with explicit source lineage, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; saved/recovered reading copies retain exact source spans; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
+| Local recording | Explicit DirectShow input selection, bounded PCM16 capture, Stop/save, Cancel/discard, retained retakes and attachment to existing Studio assets | Actual FFmpeg fixture capture and composed backup tests pass; Windows controls, native process ownership and measured virtual-input capture are required successor gates; physical microphones, live monitoring and human listening remain separate |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
 | Recovery | Manifest-bound composite backup v5 includes pending import bytes, identities, settings and both accepted project/state formats; historical v1–v4 formats remain readable | Real backup/restore and resumed import tests; restored external engines/jobs require review; externally exported audio and OS credential secrets are separate |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
+| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; recording keeps its quiet hold until confirmed capture cleanup; human NVDA and listening review remain required |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
@@ -32,7 +33,7 @@ firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 ## Current completion pass
 
 The authoritative specification was rechecked against canonical source
-`3beebd5aca900b8bf2e86498ae79db4015c96705`, with the current finalization
+`924ae83316a3cf9482aaf2ec51a6e6a5adb614c3`, with the current finalization
 specification at blob `db8adbdc483a03c262885928c7ed214ca70bbaa7`. The next candidate retains the
 full requested platform scope. It adds native A/B and sleep controls, retained
 document/range translation, explicit owner voice profiles, accessible local
@@ -43,6 +44,23 @@ safeguards passed their composed portable gates. **Exact final Windows execution
 pending** until the complete successor result is recorded. Private engine/authority source,
 weights, voice recordings, signing material and actual service policy are not
 part of public source.
+
+The subsequent complete predecessor `df42d91b547066e8bc578dd67f8e023502447d09`
+passed V3, canonical reconciliation, both transcription jobs, both launcher
+toolchains and bibliography. Its main Windows aggregate still failed: 257 of
+259 source suites passed, two cancellation fixtures missed the actual owned
+worker, the old typed WinMM player used incorrect x64 structure packing, and
+two native reader probes searched a label that now includes a keyboard hint.
+The bundle stopped on the same reader-probe mismatch. That wheel is not a
+delivery candidate. These concrete defects are corrected in the successor;
+only its own complete Windows result can establish final wheel eligibility.
+
+The successor also incorporates reviewed interrupted-production submission
+recovery, full committed-artifact inventory/owner checks, atomic DOI acquisition
+and explicit local recording. One composed portable gate passed 275 recording,
+process, production and backup cases without failure or skip. The acquisition
+gate passed 285 cases and the corrected cancellation modules passed 31; these
+separate runs are not an additive unique-test count or Windows qualification.
 
 Earlier predecessor `90496fad8f397dbd007d2a9531709be82c9d9f2b` passed its native
 launcher, bibliography and dedicated transcription workflows and all 221
@@ -122,7 +140,8 @@ The following cannot be labelled DONE by passing the current core tests:
   remaining presentation/tabs workflows. These are code/workflow gaps rather
   than claims that owner input alone would complete them; see
   [the bounded reader inventory](READING_WORKFLOW_ACCEPTANCE.md).
-- Professional microphone/track editing, the remaining shared cross-engine
+- Professional track/clip editing and live capture monitoring beyond the
+  implemented bounded recording/retake workflow, the remaining shared cross-engine
   resource-admission work and qualification at the specified platform scale.
   The implemented production disk allowance and bounded traversal do not
   constitute a complete platform resource broker.

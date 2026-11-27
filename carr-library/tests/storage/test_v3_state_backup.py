@@ -331,3 +331,66 @@ def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkey
         create_backup(app, destination)
     assert not destination.exists()
     assert probes >= (1 if failure is PermissionError else 2)
+
+
+@pytest.mark.parametrize('name', ['reading-state.json', 'state'])
+@pytest.mark.parametrize('failure', [PermissionError, NotADirectoryError])
+def test_typed_backup_refuses_inaccessible_optional_root(tmp_path, monkeypatch, name, failure):
+    """Retain the canonical PR180 contract through the composed backup writer."""
+    from carr_library.runtime_settings import load_settings, save_settings
+
+    app = LibraryApp(tmp_path / 'data')
+    target = app.root / name
+    if name == 'state':
+        target.mkdir(exist_ok=True)
+        save_settings(target, load_settings(target))
+        retained = target / 'audio/engines.json'
+    else:
+        target.write_bytes(b'fixture must never be silently omitted')
+        retained = target
+    original = retained.read_bytes()
+    lstat, lexists = Path.lstat, os.path.lexists
+
+    def denied(path, *args, **kwargs):
+        if path == target:
+            raise failure('typed sidecar lookup unavailable')
+        return lstat(path, *args, **kwargs)
+
+    def suppressed(path):
+        return False if Path(path) == target else lexists(path)
+
+    destination = tmp_path / 'backup'
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'lstat', denied)
+        patch.setattr(os.path, 'lexists', suppressed)
+        with pytest.raises(failure, match='typed sidecar lookup unavailable'):
+            create_backup(app, destination)
+    assert not destination.exists()
+    assert retained.read_bytes() == original
+
+
+@pytest.mark.parametrize('stop_after', ['reading-state.json', 'studio'])
+def test_typed_optional_roots_check_cancellation_before_another_lookup(
+        tmp_path, monkeypatch, stop_after):
+    from carr_library import backup_sidecars
+
+    app = LibraryApp(tmp_path / 'data')
+    destination = tmp_path / 'backup'
+    present = backup_sidecars._present
+    stopping, after_stop, visited = [False], [], []
+
+    def observed(path):
+        if stopping[0]:
+            after_stop.append(Path(path).name)
+        found = present(path)
+        visited.append(Path(path).name)
+        if Path(path).name == stop_after:
+            stopping[0] = True
+        return found
+
+    monkeypatch.setattr(backup_sidecars, '_present', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, destination, cancelled=lambda: stopping[0])
+    assert stop_after in visited
+    assert not after_stop, 'Cancellation must stop optional-root lookup before another root.'
+    assert not destination.exists()
