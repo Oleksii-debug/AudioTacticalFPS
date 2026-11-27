@@ -192,3 +192,32 @@ def test_large_txt_requires_original_bounded_logical_segments(tmp_path):
     source = source_snapshot(tmp_path, path.name)
     with pytest.raises(IntakeError, match='logical segment exceeds 4 MiB'):
         TextSegments(source)
+
+
+def test_new_source_receipt_rejects_post_hash_bytes_with_unchanged_metadata(tmp_path, monkeypatch):
+    from carr_library.catalog import intake
+    original = b'Original exact source.'
+    changed = b'Changed!' + original[8:]
+    path = tmp_path / 'same-metadata.txt'
+    path.write_bytes(original)
+    frozen = intake._stamp(path.stat())
+    # Model a filesystem retaining the same metadata while an existing reader
+    # is open; both hashes and the in-place write remain genuine byte I/O.
+    monkeypatch.setattr(intake, '_stamp', lambda info: frozen)
+    genuine_hash = intake._hash_stream
+    observed = []
+    def change_after_first_hash(stream, **options):
+        result = genuine_hash(stream, **options)
+        observed.append(result)
+        if len(observed) == 1:
+            with path.open('r+b') as writer:
+                writer.write(changed)
+                writer.flush()
+                os.fsync(writer.fileno())
+        return result
+    monkeypatch.setattr(intake, '_hash_stream', change_after_first_hash)
+    with pytest.raises(IntakeError, match='changed'):
+        file_snapshot(tmp_path, path.name)
+    assert observed == [(sha256(original).hexdigest(), len(original)),
+                        (sha256(changed).hexdigest(), len(changed))]
+    assert path.read_bytes() == changed and len(changed) == len(original)

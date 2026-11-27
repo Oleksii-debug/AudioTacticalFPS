@@ -265,7 +265,10 @@ def file_snapshot(root, relative, *, cancelled=lambda: False):
         raise IntakeError('unsupported binary or text encoding') from exc
     if size != before.st_size:
         raise IntakeError('Source changed during file-backed intake.')
-    return FileSnapshot(digest, mime, size, path, _stamp(before))
+    # A same-size write can leave Windows stat timestamps unchanged while
+    # the first descriptor is held. Bind the new receipt to a complete reopened
+    # byte read as well as the original identity checks before admitting it.
+    return FileSnapshot(digest, mime, size, path, _stamp(before)).verify(cancelled=cancelled)
 
 
 def source_snapshot(root, relative, *, cancelled=lambda: False):
