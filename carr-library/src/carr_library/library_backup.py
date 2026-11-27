@@ -1056,7 +1056,9 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
                 or not isinstance(asset['mime'], str) or asset['mime'] not in SUFFIXES
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
-                or not valid_original_size(asset['mime'], asset['size_bytes'])):
+                or not (valid_original_size(asset['mime'], asset['size_bytes'])
+                    or manifest['version'] == 5 and asset['mime'] == 'text/plain'
+                    and type(asset['size_bytes']) is int and 0 < asset['size_bytes'] <= 128 * 1024**2)):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')

@@ -6,8 +6,8 @@ including schema, FK, revision seals, evidence and FTS. Stable private local
 parents only. Existing revision-only asset_copy stays unchanged.
 """
 from dataclasses import dataclass
-from ..catalog.streaming_pdf import FileAsset, valid_original_size
-import os
+from ..catalog.streaming_pdf import FileAsset
+from ..backup_files import optional_present
 from pathlib import Path
 import re
 
@@ -21,6 +21,7 @@ class AssetEntry:
     digest: str
     mime: str
     size: int
+    profile: object = None
 
     @property
     def filename(self):
@@ -58,19 +59,22 @@ def catalog_inventory(db, *, include_all_workspaces=False,
     total = 0
     for digest, mime, size in rows:
         if (not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
-                or mime not in SUFFIXES or not valid_original_size(mime, size)):
+                or mime not in SUFFIXES or type(size) is not int or size < 1):
             raise RetentionError('invalid or unsupported catalog asset manifest')
+        from .streamed_text import catalog_profile
+        profile = catalog_profile(db, digest, mime, size)
         total += size
         if total > max_bytes:
             raise RetentionError('asset byte limit exceeded')
-        entries.append(AssetEntry(digest, mime, size))
+        entries.append(AssetEntry(digest, mime, size, profile))
     return tuple(entries)
 
 
 def _checked_path(store, entry, cancelled=lambda: False):
     if cancelled():
         raise InterruptedError('Original backup verification cancelled.')
-    path = store.resolve(entry.digest, cancelled=cancelled)  # existing hash, file type and link checks
+    path = (store.resolve(entry.digest, cancelled=cancelled) if entry.profile is None else
+            store.resolve(entry.digest, profile=entry.profile, cancelled=cancelled))
     if path.name != entry.filename or path.stat().st_size != entry.size:
         raise RetentionError('retained asset disagrees with catalog MIME or size')
     return path
@@ -95,7 +99,7 @@ def copy_catalog_assets(db, source, destination, *, cancelled=lambda: False, **l
     entries = catalog_inventory(db, **limits)
     paths = [_checked_path(source, entry, cancelled) for entry in entries]
     destination = Path(destination)
-    if os.path.lexists(destination):
+    if optional_present(destination):
         raise FileExistsError(destination)
     resolved = destination.resolve()
     if resolved.is_relative_to(source.root) or source.root.is_relative_to(resolved):
@@ -105,6 +109,10 @@ def copy_catalog_assets(db, source, destination, *, cancelled=lambda: False, **l
     for entry, path in zip(entries, paths):
         if cancelled():
             raise InterruptedError('Original backup copy cancelled.')
+        if entry.profile is not None:
+            target.retain_file(path, entry.mime, entry.digest, entry.size,
+                               profile=entry.profile, cancelled=cancelled)
+            continue
         if entry.mime == 'application/pdf' and entry.size > MAX_BYTES:
             asset = FileAsset.capture(path, cancelled=cancelled,
                 expected_manifest=dict(sha256=entry.digest, mime=entry.mime, size=entry.size))
