@@ -172,7 +172,10 @@ def test_parallel_barrier():
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "pending = marker.with_suffix('.pending')\n"
+                "pending.write_text(str(os.getpid()), encoding='ascii')\n"
+                "os.replace(pending, marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport subprocess,sys,time\n"
