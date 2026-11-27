@@ -426,13 +426,33 @@ def inspect(args):
         system = shell.parents[2]
         qualification_environment = dict(host.environment(), CI='true', OS='Windows_NT',
             PATH=os.pathsep.join((str(Path(git_executable).parent), str(system))))
-        code, _ = run_owned([shell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+        code, library_output = run_owned([shell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
             '-File', HERE.parent / 'scripts' / 'qualify_standard_library.ps1',
             '-CurrentGeneration', b_generation, '-SourceCommit', args.candidate_source,
             '-ManifestSha256', args.candidate_manifest_sha256, '-TestWheels', test_wheels,
             '-Report', library_report, '-Project', HERE.parent], cwd=work,
             environment=qualification_environment, timeout=1800)
+        # Retain the existing owner's bounded exact output before the success
+        # predicate, including failures before PowerShell creates child reports.
+        if type(library_output) is not bytes or len(library_output) > 2 * 1024**2:
+            raise AssertionError('The owned library process returned invalid bounded diagnostics.')
+        child_log = library_report.parent / 'native-library-process.log'
+        with child_log.open('xb') as stream:
+            stream.write(library_output)
+            stream.flush()
+            os.fsync(stream.fileno())
+        child_result = {'schema': 1, 'source_commit': args.candidate_source,
+            'manifest_sha256': args.candidate_manifest_sha256, 'returncode': code,
+            'output_file': child_log.name, 'output_bytes': len(library_output),
+            'output_sha256': sha256(library_output).hexdigest()}
+        with (library_report.parent / 'native-library-process.json').open('x', encoding='utf-8') as stream:
+            json.dump(child_result, stream, sort_keys=True)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        print('LIBRARY_CHILD ' + json.dumps(child_result, sort_keys=True), flush=True)
         if code:
+            print(library_output[-24000:].decode('utf-8', errors='replace'), flush=True)
             raise AssertionError('The exact installed audio-free library qualification failed.')
         qualification = json_value(read_bytes(library_report, 4 * 1024**2), maximum=4 * 1024**2)
         if (qualification.get('schema') != 'carr-standard-library-qualification/1'
