@@ -715,7 +715,9 @@ def _observe_destination_reads(monkeypatch, after_read=lambda *args: None):
 
     def observe_open(path, flags, *args, **kwargs):
         descriptor = actual_open(path, flags, *args, **kwargs)
-        if not flags & os.O_CREAT and flags & os.O_ACCMODE == os.O_RDONLY:
+        # O_ACCMODE is not exposed on Windows; the two write modes form
+        # the same access mask without weakening actual descriptor observation.
+        if not (flags & os.O_CREAT) and not (flags & (os.O_WRONLY | os.O_RDWR)):
             session = {'index': len(sessions), 'descriptor': descriptor,
                        'requested': [], 'returned': [], 'closed': False}
             sessions.append(session)
