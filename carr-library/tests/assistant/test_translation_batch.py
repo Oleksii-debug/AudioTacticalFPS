@@ -408,3 +408,19 @@ def test_plain_single_document_jobs_keep_their_existing_wire_and_execution(batch
     assert e.service._load(single)['authorization'] == json.loads(canonical(asdict(approval)))
     assert e.batches.get(identity)['status'] == 'queued'
     assert len(e.service.list()) == 3
+
+
+def test_saved_batch_review_is_an_independent_copy_and_currency_cannot_be_relabelled(batch_env, transport):
+    e = batch_env
+    identity, manifest = prepared(e)
+    before = len(transport['calls'])
+    review = e.batches.get_review(identity)
+    assert review['review_sha256'] == manifest['review_sha256'] and review['currency'] == 'USD'
+    review['items'][0]['title'] = 'Caller-only copy'
+    assert e.batches.get_review(identity)['items'][0]['title'] == e.items[0]['title']
+    changed = deepcopy(manifest)
+    changed['members'][0]['job']['authorization']['currency'] = 'EUR'
+    reseal(changed)
+    with pytest.raises(ValueError, match='currency'):
+        validate_batch(changed, identity)
+    assert e.service.jobs.load(identity) == manifest and len(transport['calls']) == before

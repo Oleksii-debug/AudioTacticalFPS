@@ -145,6 +145,8 @@ def _template(job):
         approval = Authorization(**job['authorization'])
     except (TypeError, ValueError) as exc:
         raise ValueError('Invalid approved batch provider or authorization.') from exc
+    if approval.currency != 'USD':
+        raise ValueError('The reviewed batch reservation currency changed.')
     context = source_context(job['source_text'], job.get('source_anchor'),
                              job.get('source_metadata'), job.get('source_topic'))
     if job['source_language'] == job['target_language']:
@@ -316,6 +318,11 @@ class TranslationBatchService:
                     self.service._validate_source(member['job'], cancelled=cancelled)
                     _stop(cancelled)
                     self.jobs.save(_copy(member['job']))
+
+    def get_review(self, identity):
+        """Read the exact retained approval, without renewing it or sending text."""
+        manifest = self._load(identity)
+        return {**_copy(manifest['review']), 'review_sha256': manifest['review_sha256']}
 
     def get(self, identity):
         manifest = self._load(identity)
