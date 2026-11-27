@@ -79,7 +79,12 @@ def checked_file(path, maximum):
         raise ValueError("A qualification input is not a bounded ordinary file.")
     digest = hashlib.sha256()
     count = 0
+    identity = lambda item: (item.st_dev, item.st_ino, item.st_size, item.st_nlink)
+    stamp = lambda item: (*identity(item), item.st_mtime_ns, item.st_ctime_ns)
     with path.open("rb") as stream:
+        opened = os.fstat(stream.fileno())
+        if identity(opened) != identity(before):
+            raise ValueError("Qualification input changed while opening.")
         while block := stream.read(1024 * 1024):
             count += len(block)
             if count > maximum:
@@ -87,10 +92,13 @@ def checked_file(path, maximum):
             digest.update(block)
         after_open = os.fstat(stream.fileno())
     after = path.lstat()
-    stamp = lambda item: (item.st_dev, item.st_ino, item.st_size,
-                          item.st_mtime_ns, item.st_ctime_ns, item.st_nlink)
-    if count != before.st_size or stamp(before) != stamp(after_open) or stamp(before) != stamp(after):
-        raise ValueError("Qualification input changed during verification.")
+    # Windows APIs can represent timestamps differently. Compare each API to
+    # itself while binding both observations to the same identity and size.
+    if (count != before.st_size or stamp(opened) != stamp(after_open)
+            or stamp(before) != stamp(after) or identity(after_open) != identity(after)):
+        raise ValueError("Qualification input changed during verification: " + json.dumps({
+            "path_before": stamp(before), "handle_before": stamp(opened),
+            "handle_after": stamp(after_open), "path_after": stamp(after)}))
     return {"sha256": digest.hexdigest(), "size_bytes": count}
 
 

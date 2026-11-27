@@ -110,3 +110,36 @@ def test_native_denial_requires_access_denied_not_an_unrelated_timeout(tmp_path,
     monkeypatch.setattr(proof.socket, "socket", lambda *args: FakeSocket())
     with pytest.raises(RuntimeError, match="WSAEACCES"):
         proof.probe_network(tmp_path, True)
+
+
+def test_real_same_size_mutation_during_read_is_still_rejected(tmp_path, monkeypatch):
+    target = tmp_path / "changing.bin"
+    target.write_bytes(b"old-content")
+    original_open = Path.open
+    class ChangingReader:
+        def __init__(self):
+            self.stream = original_open(target, "rb")
+            self.changed = False
+        def __enter__(self): return self
+        def __exit__(self, *args): self.stream.close()
+        def fileno(self): return self.stream.fileno()
+        def read(self, size):
+            raw = self.stream.read(size)
+            if raw and not self.changed:
+                self.changed = True
+                with original_open(target, "r+b") as writer:
+                    writer.write(b"new-content")
+                    writer.flush()
+                    proof.os.fsync(writer.fileno())
+                # Set a visible, different modification time without relying
+                # on the filesystem's minimum timestamp resolution.
+                before = target.stat()
+                proof.os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns + 2_000_000_000))
+            return raw
+    def selected_open(path, *args, **kwargs):
+        if path == target and args == ("rb",):
+            return ChangingReader()
+        return original_open(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "open", selected_open)
+    with pytest.raises(ValueError, match="changed during verification"):
+        proof.checked_file(target, 1024)
