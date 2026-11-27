@@ -45,7 +45,9 @@ def main(argv=None):
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Actual Windows required.', 'nvda': 'NOT_RUN'}))
         return 77
     import wx
-    from ctypes import windll
+    from ctypes import windll, wintypes
+    windll.user32.IsWindow.argtypes = [wintypes.HWND]
+    windll.user32.IsWindow.restype = wintypes.BOOL
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
     import carr_library.component_notices as inventory
@@ -269,7 +271,7 @@ def main(argv=None):
             if ready:
                 wx.CallAfter(advance)
             elif time.monotonic() >= deadline:
-                advance(AssertionError(message))
+                advance(AssertionError(message() if callable(message) else message))
             else:
                 wx.CallLater(30, poll)
         wx.CallAfter(poll)
