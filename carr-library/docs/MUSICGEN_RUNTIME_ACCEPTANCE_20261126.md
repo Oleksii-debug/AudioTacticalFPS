@@ -113,20 +113,45 @@ The post-import preflight measured 32,874 files, 35,670 entries, 2,253,356,336 b
 
 The narrowly revised cap is 40,960 files. The 16 MiB JSON limit, 65,536-entry traversal limit, complete inventory, asset byte limit, hashes, path checks and explicit license/weight consent are unchanged. The existing `MAX_MODEL_FILES + 1` regression automatically checks rejection at 40,961. The subsequent successful run above qualified this correction against the complete real runtime and model installation.
 
-## Windows binary route: metadata confirmed; inference NOT_RUN
+## Windows configured runtime preflight: PASS; neural inference NOT_RUN
 
-The pinned AudioCraft source requires `av==11.0.0`; its [PyPI release](https://pypi.org/project/av/11.0.0/) contains no Windows wheel. The [official conda-forge release metadata](https://api.anaconda.org/release/conda-forge/av/11.0.0) confirms the exact Windows Python 3.11 artifact `win-64/av-11.0.0-py311ha83308b_0.conda`, 789,730 bytes, SHA256 `0535da653551e31631684b1cf4d5be8a9816043852fd7f55c5b85eec9f056b5f`. Its requirements include Python >=3.11,<3.12, FFmpeg >=6,<7, NumPy >=1.23.5,<2, UCRT and MSVC runtime libraries. These FFmpeg 6 DLLs are distinct from the application's separately selected FFmpeg CLI.
+The existing worker's original guarded import prefix and a real CPU Torch SDPA operation passed on Windows at exact source `0f9d7b0aaf9b9e65c98b79889334da1093b6c299`, tree `607a7b8523948c3d51678b29b419da1fd2a7357b`. The [successful run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45915760966), job `140234446625`, emitted its final `PREFLIGHT_PASS` report at 00:24:40 UTC on 2026-11-27. All job steps succeeded; its artifacts API returned an empty list.
 
-The official [Torch CPU index](https://download.pytorch.org/whl/cpu/torch/) and [Xformers release](https://pypi.org/project/xformers/0.0.22.post7/) contain Windows Python 3.11 wheels for the pinned versions. This confirms a concrete installation candidate, not an accepted complete Windows runtime.
+The [complete exact Windows preflight report](acceptance/musicgen_windows_cpu_preflight_0f9d7b0a.json) preserves the emitted JSON, including all installed package versions, the complete Conda base SHA256 lock, 320 local native-module paths, the production code hashes and the runtime inventory digest. All paths in that module list are relative public package paths inside the reviewed prefix.
 
-A separate bounded Windows preflight is being prepared: install the exact public packages into a physical prefix, retain a complete package/file inventory, verify an outbound firewall block, then run the original worker's guarded imports and a small real Torch SDPA operation before any model weights. Package DLL resolution and the complete Windows worker environment still require actual execution. No Windows inference result is asserted by either Linux receipt.
+| Windows preflight measurement | Observed result |
+|---|---|
+| Isolated interpreter | CPython 3.11.14, physical local Conda prefix |
+| Runtime | Torch 2.1.0+cpu; Torchaudio 2.1.0+cpu; Torchvision 0.16.0+cpu |
+| Supporting versions | Transformers 4.33.3; Xformers 0.0.22.post7; PyAV 11.0.0; NumPy 1.26.4; SciPy 1.11.4 |
+| Attention path | Upstream Torch SDPA, actual finite CPU result |
+| Complete runtime inventory | 36,645 files; 39,923 entries; 3,050,343,584 payload bytes |
+| Inventory JSON | 4,852,697 bytes |
+| Native library origins | All loaded modules were within the reviewed local prefix or Windows system directory |
+| PyAV FFmpeg ABI | libavcodec 60.31.102; libavformat 60.16.100; libavutil 58.29.100 |
+| Operating-system network check | Previously reachable socket blocked for the runtime interpreter; errno 13 |
+| Inventory after guarded imports | Complete file set and all hashes unchanged |
+| Checkpoints, generated audio, public runtime artifacts | None |
+
+Runtime inventory SHA256: `172b9bf7016524f85f3b8de7d2adafd3adba7ba89feede2ac8b5efd6e65d249c`.
+
+The verified artifact identities are recorded in [the public package pin evidence](acceptance/musicgen_windows_runtime_pins.json). The exact conda-forge PyAV artifact is `av-11.0.0-py311ha83308b_0.conda`, SHA256 `0535da653551e31631684b1cf4d5be8a9816043852fd7f55c5b85eec9f056b5f`. The pinned CPython and Miniforge archive hashes also passed before use, and the installed runtime passed `pip check`.
+
+The prior source `516c243` already installed those dependencies successfully, but its firewall setup rejected a mixed-separator executable path. The successful source canonicalizes the existing executable path and verifies the firewall application's target before running the probe. The production worker, dependency constraints, resource limits and network-denial policy were retained.
+
+**Environment boundary:** this preflight explicitly places the reviewed runtime root, `Library/bin`, `Scripts` and Windows `System32` on the child process's `PATH`. Its result qualifies that configured local runtime. An unconfigured Windows application launch is not covered by this receipt.
+
+**Inference boundary:** the preflight downloaded no model checkpoints and generated no audio. It tested imports, native-library origins, real CPU attention, complete runtime integrity and the operating-system firewall plus original worker audit hook. The runtime-only inventory is not presented as a complete MusicGen model installation. Windows model loading, two-second neural generation, listening, multi-scene continuity and multi-hour generation remain **NOT_RUN**.
 
 ## Acceptance boundaries
 
 - Linux CPU MusicGen inference through the existing production adapter: **PASS**, including final integrated source `fc90e308231b1c083af35c926e071367988e717d` and the earlier `591b960` run. Both qualifications cover the exact recorded runtime and two-second sample.
-- Windows neural inference: **NOT_RUN**.
+- Configured Windows runtime, original guarded imports and real CPU SDPA: **PREFLIGHT_PASS**, at source `0f9d7b0aaf9b9e65c98b79889334da1093b6c299`.
+- Windows neural inference and an unconfigured Windows application launch: **NOT_RUN**.
 - Human listening, musical quality and accessibility of the generated result: **NOT_RUN**.
 - Multi-scene neural continuity and multi-hour original neural generation: **NOT_RUN**.
 - No claim is made that the optional model/runtime is bundled or preinstalled on a user's machine. Acquisition, local resources and the reviewed manifest remain explicit installation requirements.
+
+These receipts qualify the exact recorded source commits. A different renderer or configuration API requires its own compatibility review and execution.
 
 This evidence update changes documentation only. It does not change or rerun the qualified workflow, worker, model, or application code.
