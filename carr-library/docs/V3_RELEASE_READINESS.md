@@ -1,92 +1,58 @@
-# Resonance V3 implementation and owner-test delivery status
+# Resonance V3 candidate readiness
 
-This document describes the implemented library, reading and audio preview of
-Resonance by Sceneria Innovative Technologies. It does not close the complete
-platform specification or the finalization addendum. An owner-test application
-bundle and a signed distribution-cleared release have separate acceptance
-requirements. Existing package, launch filenames and data locations remain
-unchanged until a verified migration; visible application titles use Resonance.
+Resonance / «Резонанс», by Sceneria Innovative Technologies, retains the existing native Python/wx desktop, SQLite library, exact-source evidence, audio services and installed entrypoints. The current product authority is [the finalization specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md) with [the detailed V3 scope](UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md). This is a source and acceptance record, not a replacement specification or a distribution approval.
 
-## Implemented and exercised
+## Current source and execution checkpoint
 
-| Area | Implemented behavior | Evidence and limits |
+The selected completion branch is `carr/canonical-completion-2aa-20261127`, reviewed through [PR152](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/152). Canonical branch changes through `e3cf74c243d4ef930b526b5648ca9003c0900057` are reviewed in [the convergence ledger](CANONICAL_CONVERGENCE_20261127.md).
+
+Exact source checkpoint `ad679edd1b326f00d073e8994b0e2b2158a374ca`, tree `5ca9f32acc354e3b44b39a8d6a5ddcb062f639e0`, passed **396 cases in 22 isolated suites, zero failures, zero skips**, in [Actions run45995072764](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45995072764). The [machine-readable record](acceptance/20261127-ad679-reader.json) identifies each suite. This job uses the real source package and FFmpeg on Ubuntu; its native-handler doubles do not establish Windows/NVDA or hardware qualification.
+
+The authoring executor became unavailable during the session. Later work was retained through immutable Git objects and expected-head updates. No local execution after that outage is claimed. New changes require completed exact-head CI; earlier passes are retained as historical evidence, never copied onto a different tree.
+
+## Integrated workflows
+
+| Requirement area | Current integrated behavior | Acceptance boundary |
 | --- | --- | --- |
-| Library and OCR | Scoped originals, exact quotations, academic references, Boolean AND/OR/NOT and bounded NEAR source search, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
-| Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
-| Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
-| Documents and citations | TXT/PDF/DOCX/EPUB and supported text subsets of HTML/HTM/XHTML, Markdown, EML, FB2/FB3, ODT/ODS/ODP, PPTX/XLSX; local BibTeX/RIS/CSL-JSON preview, seven bundled CSL styles and editable DOCX with citation provenance | Existing 64 MiB source limit and parser budgets apply; actual local processor, document and integrity tests; no live Word add-in or automatic approval of extracted quotations |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Native key-injection probes and progress/result regressions require acceptance for the exact candidate; manual NVDA is NOT_RUN and listening review remains required; the recording quiet contract does not implement microphone capture |
-| Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
-| Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
-| Supplied transcription | Opt-in adapter to the exact owner-supplied V4.3 worker through existing typed assistant jobs; verified TXT/SRT/VTT/JSON, input/settings binding, cancellation and publication recovery | Actual supplied worker protocol exercised with an isolated synthetic SDK; real model inference, desktop configuration, Windows/NVDA and complete ASR migration remain pending |
-| Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
-| Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
-| Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
+| Library, sources and research | Scoped original assets, catalog/import queues, exact quotations, historical source metadata, notes/evidence, academic references, source review and search | Existing actual SQLite/retained-original/isolated parser tests; cancelled imports require their own transaction receipt and request identity. Extracted text never becomes approved evidence by model agreement. |
+| Reader | Reversible reading copies, original comparison, Undo/Redo, Unicode navigation, search/replace, pronunciation, spelling, presentation, voice preferences, several recoverable tabs, passive exact-text bookmarks, paragraph split/join | Reader/mark/tab/focus/lifetime composition passed on ad679. Native and manual acceptance is tied to its own build. Missing selected voices remain missing, without silent replacement. |
+| Paced reading and listening | Explicit visual Start/Pause, clearly labelled approximate audio follow, independent speed/pitch listening derivatives, seek and resume using measured source-time mapping | Actual FFmpeg listening and source-identity checks passed ad679. No exact engine word timings are inferred from duration. Originals remain unchanged. |
+| Book Audio | Existing chapter/batch narration, role/pronunciation settings, landmarks/subtitles, new exports and measured target-duration review using actual rendered frames | Actual measured duration, CLI, publication/backup and native-handler tests passed ad679. Long synthetic fixtures do not establish long neural-model quality. |
+| Studio, capture and effects | Existing clips/timeline, explicit range edits, multi-track/role production, effects/presets, measured loudness/peaks, microphone pause/resume and monitoring with owned resource cleanup | Real FFmpeg/capture-process and native-buffer contract tests exist. Physical devices, listening quality and every selected private engine still need exact target evidence. |
+| Recovery | Current full v4 snapshot producer, explicit legacy adapters, pending input recovery, typed reading/studio/ASR state, original/evidence bindings, Save All and scoped draft recovery | Byte/schema/source validation remains mandatory. Restored external runtime trust is revoked before publishing the new root. |
+| Incremental backups | Changed-file layers over canonical full snapshots, explicit checksum-selected parent chains, verify/create/restore in Library menu and CLI, bounded private materialization | 22 actual filesystem/core cases and eight queued action cases passed ad679. Eight incremental layers maximum; a layer requires its bases. Creation still stages a full canonical snapshot. See [workflow and limits](INCREMENTAL_BACKUPS.md). |
+| Supplied transcription | Existing receipts-v1 and V5 worker protocols, retained input batches, exact environment/model review, named profiles, durable pause/cancel/interruption review, selected exports, separate editing, native workstation and CLI | Integration source is 6a9b5d96/65a2c287 on the existing flat service. Synthetic worker execution proves protocol/application behavior only. New profile/restore/control gates and actual native workflows must pass on the delivery candidate. See [current runtime](transcription_runtime.md). |
+| Shared operations | One cooperative CPU/RAM/disk/device broker around existing jobs; exact workspace views, durable supported controls, admission held through process/device cleanup | Reservations are declared allowances, not measured model capacity. An accepted pause/cancel request is distinct from acknowledged worker stop. No second queue is introduced. |
+| Translation | Basic v2 and Advanced v3 plaintext derivatives, explicit language fetch, exact model/location/glossary binding, protected OAuth references, per-request approval/cost ledger, chunk receipts, edited reading derivative and provenance exports | Existing synthetic transport tests use the real gateway/ledger. They do not establish a live Google account, billing rate, translation quality or a local translation model. |
+| Assistant | Guided commands and explicit local-provider plan proposals, review before submission, validated scoped tools, durable plan/checkpoints, no document-as-instruction authority | A typed plan or synthetic local response is not a qualified local LLM. Model weights, license, task-selection and hardware benchmarks remain separate. |
+| Academic/document integration | Current supported TXT/PDF/DOCX/EPUB/text-adapter formats, strict local BibTeX/RIS/CSL interchange, seven pinned CSL styles through QuickJS-ng, editable DOCX citation provenance, explicit lawful metadata acquisition and portable sync boundary | Unsupported adapters are visible. No implicit quotation approval, live Word add-in, external publishing or arbitrary provider support is inferred. |
+| Accessibility and delivery | Native labelled controls, semantic command registry, configurable keys, explicit progress feedback, private runtime/launcher, update/entitlement verification boundaries and standard-installation lifecycle code | Automated Windows evidence is useful but distinct from human Windows11/NVDA. A checksum or passing source test is not Authenticode, publisher trust or distribution clearance. |
+| Languages | Canonical 135-entry language inventory and capability/qualification views | OCR, ASR, translation, UI, voice and model coverage are independent. The inventory is not a claim of 135 qualified speech languages. |
 
-See the [Ukrainian quick start](START_V3_UK.txt), [document-format boundaries](DOCUMENT_FORMATS_V3.md),
-[advanced search syntax](ACADEMIC_SEARCH.md), [bibliography workflow](V3_BIBLIOGRAPHY.md)
-and [keyboard profiles](KEYBOARD_SHORTCUTS.md) for the implemented user paths.
-The complete private installation needs both Application and OCR Sources ZIPs
-extracted into their shared program folder; `ocr-corresponding-source.tar`
-remains intact for verification before `Install.cmd` runs.
+## Finite source additions still being integrated at this checkpoint
 
-Progress speech now uses the explicitly selected, installed local voice through
-the existing speech adapter. Choose **Use voice for progress** in the Voice
-reader or Studio, then **Options → Progress feedback settings**. This is a
-session-only choice, cleared when the library data folder changes; enabling a
-mode does not acquire a voice. **Ctrl+Shift+Q** queries the current operation.
-Default feedback is Off, optional playback quieting remains available, and
-progress sounds never become project audio. These software paths do not establish
-manual screen-reader or acoustic acceptance.
+These were identified against the updated specification and are part of the active completion work:
 
-Replacing an existing export requires approval captured before confirmation and
-rendering. The file's identity and bounded full-content fingerprint are rechecked
-before publication. Existing files over 32 MiB, or files that cannot be verified
-within the checking budget, require a new filename. This is a replacement-check
-limit, not a new-export size limit or a guaranteed maximum filesystem latency.
-A completed save with a staging-cleanup warning remains a completed save.
+| Gap | Current source component | Remaining integration |
+| --- | --- | --- |
+| Playback queue/playlists and live volume/mute/balance | Owned WavePlayer/WinMM and passive queue component9b5414dc; native owner/UI successor in preparation | Adopt final native/cleanup successor, strict source and installed native acceptance |
+| Audio-to-audio conversion batches | Existing AudioRuntime extension4ae0982a with durable external receipts and owned publication recovery | Native/CLI completion and actual FFmpeg cancellation/crash/reuse acceptance |
+| Multi-document translation | Existing TranslationService/JobStore batch componentb131e0c7; individual approvals and child receipts stay authoritative | Native/CLI front end, passive typed backup and exact batch tests |
+| Larger supported source intake | Existing catalog/intake, retained originals and isolated worker paths under review | Bounded streaming, coherent recovery and measured source larger than64MiB; unsupported in-memory formats retain explicit bounds |
+| Wider assistant tools | Current typed executor retained | Reader/evidence/conversion/voice/player/effects glue through existing services with exact scope and no alternate execution authority |
 
-The native V3 acceptance script performs installed SAPI synthesis, scene
-production, output verification, restart, CSL/DOCX, isolated text conversion and
-named native dialogs while the selected runtime executables have outbound
-firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
+These rows must be updated from actual merged component and CI evidence before a source-complete claim. A working library/audio preview must not be described as the entire promised platform while these source gaps remain.
 
-## Requirements still open
+## Qualification and delivery gates
 
-The following cannot be labelled DONE by passing the current core tests:
+The following require evidence or inputs beyond source completion:
 
-- A signed ResearchLibrary.exe and standard signed installer/uninstall/repair,
-  owner-configured publisher trust and a complete private release review.
-- Compatible private entitlement authority, account-optional perpetual policies,
-  signed unattended refresh and offline renewal, and signed update A-to-B,
-  interruption/recovery and key-rotation acceptance.
-- Actual owner-supplied cloning runtime, authorized reference recordings,
-  protected voice profiles and independent multilingual inference/listening.
-- Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
-  the remaining approved Balabolka-equivalent workflow checklist and synchronized
-  publishing/Braille workflows.
-- Independent qualification of every required capability for the canonical 135
-  entries; registry/resource counts never establish language quality.
-- Human Windows 11/NVDA and listening review. Automated Windows Server native
-  execution is useful evidence, but does not substitute for that review.
+- Exact authorized private cloning/dordiai runtime and reference recordings, source/model/voice licenses, multilingual similarity/intelligibility and supported hardware.
+- Exact supplied ASR SDK/model inference, recognition quality and long-input resource measurements. Diarization and extra alignment capabilities require separate explicit support.
+- Each selected neural music, local translation or local LLM runtime/model with its rights and measured capacity. Procedural audio or synthetic protocol responses do not qualify these models.
+- Human Windows11/NVDA, real keyboard/device recovery and listening review on the exact installed build.
+- Publisher signing identity, signed installer/repair/uninstall, production update/entitlement trust and approved release/distribution obligations.
+- Actual1k/10k/50k corpus and large-media measurements with throughput, latency, memory/disk, restart and isolation. Initial targets are not present capacity claims.
+- Optional online accounts, external provider permissions and billing. No paid call or secret access is implied by implementing a provider adapter.
 
-The supplied Whisper Transcribe V4.3 implementation now has an opt-in backend
-adapter using the existing assistant JobStore and bounded audio process runner.
-The reviewed worker is corrected on a private staging copy; it is not bundled.
-Three executions of that exact worker with a synthetic isolated SDK verified
-selected Ukrainian exports, rejected silent language fallback and rejected a
-required-SRT failure even when the worker claimed success. The primary integration
-passed 117 tests covering the adapter, assistant and common-v4/schema recovery.
-These are protocol and application tests, not acoustic recognition evidence.
-
-Real pinned SDK/model installation, native Windows offline execution, accessible
-desktop configuration and transcript editing, ASR source/output backup migration,
-long-input resource measurements and independent audio quality remain open.
-Diarization and word alignment are not implemented by this adapter. Existing GUI
-constructors leave the engine unconfigured. See the [source review](TRANSCRIPTION_INTEGRATION_REVIEW.md)
-and [exact adapter contract and limitations](SUPPLIED_TRANSCRIPTION_ADAPTER.md).
-
-The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
-This work does not authorize external distribution, pricing, billing, a public site,
-automatic model acquisition or publishing private voice profiles.
+The default remains local/offline operation with access to user-owned data. This technical work does not activate paid services, select prices, publish private voices/books/models or waive third-party notices and corresponding-source obligations.

@@ -95,8 +95,10 @@ state/transcription/<sha256(workspace)>/jobs/<job-id>/job.json.
 The view reports ready, running, stopped, partial or completed as recorded and
 uses accepted receipt counts, not a worker's unverified live progress. Selecting
 a library restricts ASR discovery to its exact scope directory before any journal
-read. The common view has no transcription pause/cancel buttons because this
-canonical service does not expose a durable cross-process control API. Open
+read. Explicitly enabled shared controls now resolve the exact selected transcription
+service and expose its durable pause/cancel methods. A restored execution review,
+uncertain interruption or rejected attempt suppresses these controls. An accepted
+request remains distinct from worker acknowledgement. Open
 workstation selects the existing job in its original active library and starts
 no recognition. The current workstation's stop/continue controls remain available.
 

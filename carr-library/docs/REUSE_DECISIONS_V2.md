@@ -72,3 +72,8 @@ SHA256 code: 005b2944d8e3a61cc49a7c770a9faef0fbb4cc33399ec544a3b1b782c108acfd
 SHA256 tests: 92cd05adca41a0312eaf81a822f2e39d2a6e354577e34a2d2902a31b65ed632d
 Drive roundtrip byte hashes matched original tested files; GitHub readback matched uploaded UTF-8 code. Tests exercise persistent independent workspaces, multiple collections, topic tree and cycle rejection, Unicode, PDF and text import, physical/unknown printed page, source exact quote, note updates, export, cross-workspace rejection and reopening database.
 Limitations: prototype only. No GUI, scanned PDF OCR, full semantic ranking, verified printed page inference, source binary archival/revision migration, robust untrusted file sandbox, complete CRUD or backup/restore. FTS rank can be influenced by global corpus statistics despite result scope filtering; production isolation review needed. PDF extraction is native text only and trusted local input; not verified against scan images. No Windows/NVDA run, no real Carr corpus, no production release. Review candidates and integrate into owned module contracts instead of maintaining parallel production implementation.
+
+
+## Current canonical convergence, 2026-11-27
+
+See [the exact branch/file reconciliation](CANONICAL_CONVERGENCE_20261127.md) and [candidate readiness](V3_RELEASE_READINESS.md). Existing supplied-worker ASR, shared operations, native export receipts, Advanced v3 translation and local planning have been reconciled into the selected canonical modules. The alternative transcription package is not installed alongside the existing flat service. No source review upgrades model, native device, NVDA or distribution qualification.

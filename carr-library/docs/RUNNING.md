@@ -610,3 +610,10 @@ and 256 parts; duration estimates are unavailable. Source text remains literal,
 including strings that resemble Studio directions. Restored plans require a new
 output review through the existing Studio recovery path. See
 [BOOK_AUDIO_BATCH.md](BOOK_AUDIO_BATCH.md) for limits, provenance and cancellation.
+
+
+## Current completion candidate, 2026-11-27
+
+The current technical authority is [the finalization specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md). See [candidate readiness](V3_RELEASE_READINESS.md) for source/runtime/qualification distinctions and [canonical convergence](CANONICAL_CONVERGENCE_20261127.md) for reconciled branch behavior.
+
+The existing launcher now accepts `transcribe` or `transcription`, and `translate` or `translation`, for the same corresponding service. `operations` retains the shared journal/resource view with explicitly scoped controls. `backup-incremental create|verify|restore` and the Library menu use the [incremental backup workflow](INCREMENTAL_BACKUPS.md). A layer requires its explicitly selected parent chain and is never a standalone replacement for the full base.
