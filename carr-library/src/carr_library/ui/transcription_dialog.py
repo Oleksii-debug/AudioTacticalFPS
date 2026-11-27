@@ -2,7 +2,7 @@
 from pathlib import Path
 from threading import Lock
 
-from ..audio.jobs import checked_directory
+from ..audio.jobs import RenderCancelled, checked_directory
 from ..audio.model_manifest import local_path
 from ..audio.transcription import receipt_notes
 
@@ -16,6 +16,16 @@ def completion_message(results, output):
 
 
 class TranscriptionBatchError(RuntimeError):
+    def __init__(self, message, completed, *, notes=()):
+        self.completed = tuple(completed)
+        details = [note for receipt in self.completed for note in receipt_notes(receipt)]
+        details.extend(str(note) for note in notes)
+        super().__init__(f'{message}\n{len(self.completed)} completed file(s) remain saved in the selected output folder.'
+                         + ('\n' + '\n'.join(details) if details else ''))
+
+
+class TranscriptionBatchCancelled(InterruptedError):
+    """Preserve cancellation for shared job handling and retain saved receipts."""
     def __init__(self, message, completed, *, notes=()):
         self.completed = tuple(completed)
         details = [note for receipt in self.completed for note in receipt_notes(receipt)]
@@ -66,6 +76,11 @@ class TranscriptionController:
                 if not isinstance(receipt, dict) or receipt.get('status') != 'complete':
                     raise ValueError('The transcription service did not confirm a complete result.')
                 completed.append(receipt)
+        except (InterruptedError, RenderCancelled) as exc:
+            # InterruptedError is an OSError, and reused audio hashing raises
+            # RenderCancelled. Neither is an ordinary failed transcription.
+            raise TranscriptionBatchCancelled(str(exc), completed,
+                notes=getattr(exc, '__notes__', ())) from exc
         except (ValueError, RuntimeError, OSError, ImportError) as exc:
             raise TranscriptionBatchError(str(exc), completed, notes=getattr(exc, '__notes__', ())) from exc
         return tuple(completed)

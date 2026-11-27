@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from carr_library.audio.jobs import RenderCancelled
+
 from carr_library.ui.transcription_dialog import (TranscriptionController, TranscriptionBatchError,
                                                   completion_message)
 
@@ -139,3 +141,48 @@ def test_partial_batch_message_retains_prior_cleanup_path_and_current_error_note
     assert 'Previous snapshot could not be removed.' in message
     assert str(previous_snapshot) in message and str(current_snapshot) in message
     assert 'Synthetic failed inference' in message
+
+def test_between_file_cancellation_preserves_its_type_and_completed_receipt(setup):
+    controller, sources, output, manifest, calls, _ = setup
+    stopped = [False]
+    def status(message):
+        if message == 'Segment complete':
+            stopped[0] = True
+    with pytest.raises(InterruptedError, match='cancelled') as raised:
+        controller.transcribe(sources, output, manifest, settings=None, formats=('txt',),
+                             cancelled=lambda: stopped[0], on_status=status)
+    assert len(calls) == 1
+    assert len(raised.value.completed) == 1
+    assert raised.value.completed[0]['status'] == 'complete'
+    assert '1 completed file(s)' in str(raised.value)
+    assert isinstance(raised.value.__cause__, InterruptedError)
+
+
+@pytest.mark.parametrize('cancel_type', [InterruptedError, RenderCancelled])
+def test_engine_and_output_hash_cancellation_remain_typed_with_partial_receipts(setup, cancel_type):
+    controller, sources, output, manifest, calls, _ = setup
+    original = controller.session_factory
+    def factory(path):
+        session = original(path)
+        perform = session.transcribe
+        def transcribe(source, folder, **options):
+            if source == sources[1]:
+                error = cancel_type('Transcription cancelled at the inference or export boundary.')
+                error.add_note('Current snapshot needs cleanup: ' + str(output / '.current'))
+                raise error
+            receipt = perform(source, folder, **options)
+            receipt.update(warnings=['Previous snapshot needs cleanup.'], cleanup_pending=str(output / '.previous'))
+            return receipt
+        session.transcribe = transcribe
+        return session
+    controller.session_factory = factory
+    with pytest.raises(InterruptedError, match='cancelled') as raised:
+        controller.transcribe(sources, output, manifest, settings=None, formats=('txt',))
+    assert len(calls) == 1
+    assert len(raised.value.completed) == 1
+    assert raised.value.completed[0]['status'] == 'complete'
+    assert isinstance(raised.value.__cause__, cancel_type)
+    assert not isinstance(raised.value, TranscriptionBatchError)
+    assert 'Previous snapshot needs cleanup.' in str(raised.value)
+    assert str(output / '.previous') in str(raised.value)
+    assert str(output / '.current') in str(raised.value)
