@@ -108,6 +108,13 @@ jobs:
                   self.before = origins()
                   self.expected_failure_reports = []
           
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      # Preserve the original collection failure before the
+                      # required nonempty-suite assertion can terminate pytest.
+                      print("FAILED COLLECTION: " + report.nodeid, flush=True)
+                      print(str(report.longrepr)[:16384], flush=True)
+          
               def pytest_collection_finish(self, session):
                   self.collected = {suite: 0 for suite in suites}
                   for item in session.items:

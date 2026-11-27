@@ -19,7 +19,7 @@ from .resource_budget import effective_budget, MAX_CHECKPOINT_BYTES
 from carr_library.extract.page_ocr import Config, extract_page
 from carr_library.storage.revisions import Page
 from ..audio.cleanup import retained_temporary_directory
-from ..audio.process import AudioCleanupPending
+from ..audio.models import AudioCleanupPending
 
 
 class IngestError(ValueError):
