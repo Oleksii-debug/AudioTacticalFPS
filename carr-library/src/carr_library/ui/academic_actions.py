@@ -10,7 +10,7 @@ import stat
 import wx
 
 from ..catalog.reference_exchange import preview_references
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
 from .export_destination import confirm_export_destination
 from .catalog_metadata_dialog import MetadataDialog, metadata_values
 
@@ -295,23 +295,34 @@ def export_bibliography(frame):
             format = ('csl-json', 'ris', 'bibtex')[index]
         finally:
             dialog.Destroy()
+        def selected_scope():
+            if not _current_scope(frame, library, workspace):
+                raise ValueError('Library selection changed. Open the bibliography command again.')
+
+        selected_scope()
         approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
         if approval is None:
             return
-        if not _current_scope(frame, library, workspace):
-            raise ValueError('Library selection changed. Open the bibliography command again.')
+        selected_scope()
+
+        def export_cancelled():
+            selected_scope()
+            return frame.cancel_event.is_set()
 
         def operation():
+            selected_scope()
             text = library.export_bibliography(workspace, collection=collection, format=format,
                                                cancelled=frame.cancel_event.is_set)
+            selected_scope()
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            write_export(path, text, private_root=library.root,
-                         cancelled=frame.cancel_event.is_set, approval=approval)
+            return write_export(path, text, private_root=library.root,
+                                cancelled=export_cancelled, approval=approval)
 
         def done(result):
             if _current_scope(frame, library, workspace):
-                frame.report('Bibliography exported with known catalog metadata and separate editions.')
+                frame.report(export_completion(
+                    'Bibliography exported with known catalog metadata and separate editions.', result))
 
         frame.run_job('Exporting bibliography', operation, done)
     except Exception as exc:
@@ -332,22 +343,33 @@ def export_research_outline(frame):
             path = Path(dialog.GetPath())
         finally:
             dialog.Destroy()
+        def selected_scope():
+            if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
+                raise ValueError('Topic selection changed. Open the outline command again.')
+
+        selected_scope()
         approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
         if approval is None:
             return
-        if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
-            raise ValueError('Topic selection changed. Open the outline command again.')
+        selected_scope()
+
+        def export_cancelled():
+            selected_scope()
+            return frame.cancel_event.is_set()
 
         def operation():
+            selected_scope()
             text = library.export_outline(workspace, topic, cancelled=frame.cancel_event.is_set)
+            selected_scope()
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            write_export(path, text, private_root=library.root,
-                         cancelled=frame.cancel_event.is_set, approval=approval)
+            return write_export(path, text, private_root=library.root,
+                                cancelled=export_cancelled, approval=approval)
 
         def done(result):
             if frame.library is library and frame.active == (workspace, topic):
-                frame.report('Research outline exported with active subtopics, verified quotations and separate research notes.')
+                frame.report(export_completion(
+                    'Research outline exported with active subtopics, verified quotations and separate research notes.', result))
 
         frame.run_job('Exporting verified research outline', operation, done)
     except Exception as exc:
