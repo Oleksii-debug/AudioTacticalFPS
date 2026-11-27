@@ -36,6 +36,19 @@ def _path(value):
         raise ValueError('Assistant backup contains a non-local path.')
 
 
+def backup_manifest_intent(tool, intent):
+    """Read the typed ownership attestation; arbitrary existing outputs are inert."""
+    if type(intent) is not dict:
+        raise ValueError('Invalid saved assistant step intent.')
+    if 'backup_manifest_sha256' not in intent:
+        return None
+    checksum = intent['backup_manifest_sha256']
+    if (tool != 'library.backup' or not isinstance(checksum, str)
+            or not _HASH.fullmatch(checksum)):
+        raise ValueError('Invalid saved backup manifest SHA256 intent.')
+    return checksum
+
+
 def validate_state_bytes(name, raw):
     """Return referenced workspace IDs after pure structural validation."""
     if isinstance(name, str) and _REVIEW_NAME.fullmatch(name):
@@ -107,8 +120,9 @@ def validate_state_bytes(name, raw):
         if (type(checkpoint) is not dict or set(checkpoint) != {'status', 'intent', 'result', 'message'}
                 or checkpoint['status'] not in ('pending', 'running', 'complete', 'failed')
                 or type(checkpoint['intent']) is not dict
-                or set(checkpoint['intent']) - {'batch', 'sha256'}):
+                or set(checkpoint['intent']) - {'batch', 'sha256', 'backup_manifest_sha256'}):
             raise ValueError('Invalid saved assistant step checkpoint.')
+        backup_manifest_intent(typed.tool, checkpoint['intent'])
         text(checkpoint['message'], 'step message', maximum=2000, empty=True)
         if checkpoint['status'] == 'complete' and type(checkpoint['result']) is not dict:
             raise ValueError('A completed assistant step has no result.')
