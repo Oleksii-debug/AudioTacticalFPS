@@ -67,12 +67,13 @@ def test_ready_asr_and_resource_policy_restore_without_runtime_or_live_leases(re
 @pytest.mark.parametrize('damage', ['workspace', 'source-digest', 'retained-bytes'])
 def test_resealed_asr_state_requires_its_workspace_and_retained_original(retained, tmp_path, damage):
     app, workspace, service, identity, source, policy = retained
+    other = app.create_workspace('Different valid library')
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     relative = (service._path(identity).relative_to(app.root) / 'job.json').as_posix()
     job = json.loads((folder / relative).read_bytes())
     if damage == 'workspace':
-        job['workspace'] = app.create_workspace('Different valid library')
+        job['workspace'] = other
     elif damage == 'source-digest':
         job['sources'][0]['sha256'] = '0' * 64
     if damage == 'retained-bytes':
