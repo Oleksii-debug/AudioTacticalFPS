@@ -1176,12 +1176,19 @@ def test_decoded_translation_digest_and_legacy_missing_proof_are_explicit(tmp_pa
     service.export(identity, tmp_path / 'bound-text')
     report = read_json(tmp_path / 'bound-text' / 'translation-provenance.json')
     assert report['decoded_text_binding'] == 'usage-ledger-sha256'
-    del recorded['translation_sha256']  # An actual old v1 receipt lacked this field.
+    assert report['decoded_language_binding'] == 'usage-ledger-sha256'
+    # An actual old v1 receipt lacked both independent digests.
+    del recorded['translation_sha256']
+    del recorded['decoded_translation_sha256']
+    saved = service.jobs.load(identity)
+    del saved['receipts'][0]['decoded_translation_sha256']
+    service.jobs.save(saved)
     atomic_json(service.gateway.ledger._path(approval.id), usage)
     calls = len(connection['calls'])
     service.export(identity, tmp_path / 'legacy-text')
     report = read_json(tmp_path / 'legacy-text' / 'translation-provenance.json')
     assert report['decoded_text_binding'] == 'unrecorded-legacy'
+    assert report['decoded_language_binding'] == 'unrecorded-legacy'
     assert (tmp_path / 'legacy-text' / 'translated.txt').read_bytes() == b'A & B'
     assert len(connection['calls']) == calls
 
@@ -1548,3 +1555,35 @@ def test_saved_source_translation_keeps_historical_capture_snapshot(
     assert report['quotation_authority'] is False
     assert report['source_anchor'] == case.document.source_anchor
     assert report['source_anchor']['positions'][0]['text_verified_at_capture'] is True
+
+
+@pytest.mark.parametrize('mutation', ['language', 'local-digest', 'missing-local', 'missing-ledger'])
+def test_detected_language_is_bound_to_independent_basic_receipt(tmp_path, connection, mutation):
+    from carr_library.assistant.providers import translation_receipt_sha256
+    from carr_library.assistant.state import atomic_json
+    service, p, _ = ready(tmp_path, connection)
+    value = 'Synthetic original.'
+    approval, cost = translation_approval(p, value, 'auto', 'uk', '1')
+    identity = service.submit(p, value, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    saved = service.jobs.load(identity)
+    row = saved['receipts'][0]
+    usage = service.gateway.ledger.get(approval.id)
+    recorded = usage['operations'][identity + '_0']['usage']
+    assert row['decoded_translation_sha256'] == recorded['decoded_translation_sha256']
+    if mutation in ('language', 'local-digest'):
+        row['detected_source'] = 'fr'
+        if mutation == 'local-digest':
+            row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], 'fr')
+    elif mutation == 'missing-local':
+        del row['decoded_translation_sha256']
+    else:
+        del recorded['decoded_translation_sha256']
+        atomic_json(service.gateway.ledger._path(approval.id), usage)
+    service.jobs.save(saved)
+    calls = len(connection['calls'])
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.resume(identity)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, tmp_path / 'unpublished')
+    assert not (tmp_path / 'unpublished').exists() and len(connection['calls']) == calls

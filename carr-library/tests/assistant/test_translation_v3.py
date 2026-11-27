@@ -538,3 +538,39 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
         e.press('Translate / resume')
         assert not e.state['queue'] and not e.service.list()
     e.scenario(scenario)
+
+
+@pytest.mark.parametrize('invalid', [False, 0, [], {}])
+def test_advanced_rejects_falsey_nonlanguage_response(tmp_path, transport, invalid):
+    service, p, _ = ready(tmp_path, transport)
+    identity, approval = submit(service, p)
+    def response(document):
+        document['translations'][0]['detectedLanguageCode'] = invalid
+        return document
+    transport['response'] = response
+    with pytest.raises(ProviderError, match='detected translation language'):
+        service.resume(identity)
+    assert not service.jobs.load(identity)['receipts']
+    assert service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['status'] == 'uncertain'
+
+
+def test_advanced_detected_language_cannot_be_rebound(tmp_path, transport):
+    from carr_library.assistant.providers import translation_receipt_sha256
+    service, p, _ = ready(tmp_path, transport)
+    value = 'Synthetic original.'
+    approval, cost = translation_approval(p, value, 'auto', 'uk', '1')
+    identity = service.submit(p, value, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    row = job['receipts'][0]
+    assert row['detected_source'] == 'en'
+    assert row['decoded_translation_sha256'] == service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['usage']['decoded_translation_sha256']
+    row['detected_source'] = 'fr'
+    row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], 'fr')
+    service.jobs.save(job)
+    calls = len(transport['calls'])
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.resume(identity)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, tmp_path / 'unpublished')
+    assert not (tmp_path / 'unpublished').exists() and len(transport['calls']) == calls
