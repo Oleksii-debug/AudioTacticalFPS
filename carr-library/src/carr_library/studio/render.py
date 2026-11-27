@@ -554,10 +554,34 @@ class ProductionService:
         if cancelled():
             raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
+        required = set()
+        if state['status'] == 'complete':
+            # A receipt with a shortened (or empty) artifact list must not
+            # turn a damaged production into a successful committed replay.
+            project = Project.from_dict(state['project'])
+            if read_json(root / 'production-owner.json') != {
+                    'job': state['id'], 'fingerprint': state['fingerprint']}:
+                raise ValueError('The production output owner receipt changed.')
+            required = {'master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json'}
+            required.update(f'chapters/{index:04d}-{_output_name(scene.title)}.wav'
+                            for index, scene in enumerate(project.scenes, 1))
+            if state['format'] != 'wav':
+                required.add('audiobook.' + state['format'])
+            if state['stems']:
+                required.update('stems/' + role.id + '.wav' for role in project.roles)
+                if any(scene.music is not None for scene in project.scenes):
+                    required.add('stems/music.wav')
+        seen = set()
         for artifact in state['artifacts']:
             path = local_path(artifact['path'], root=root, exists=True)
+            name = path.relative_to(root).as_posix()
+            if name in seen:
+                raise ValueError('Duplicate production artifact receipt.')
+            seen.add(name)
             if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
+        if required - seen:
+            raise ValueError('The completed production receipt is missing required artifacts.')
 
     def assistant_callback(self, arguments, output_directory, cancelled, progress):
         if set(arguments) - {'script', 'text', 'title', 'format', 'stems', 'voice_ids', 'operation_id'}:
