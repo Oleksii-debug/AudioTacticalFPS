@@ -118,7 +118,9 @@ jobs:
             'tests/ui/test_progress_job_review.py',
             'tests/ui/test_save_all_access.py',
             'tests/storage/test_recording_backup.py',
-            'tests/speech/test_source.py'
+            'tests/speech/test_source.py',
+            'tests/audio/test_local_runtime_cli.py',
+            'tests/audio_acceptance/test_primary_publication_budget.py'
           )
           python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-platform-results/strict-source.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
