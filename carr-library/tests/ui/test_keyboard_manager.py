@@ -3,6 +3,7 @@
 Actual OS key dispatch is covered by the separate native keyboard probe. These
 tests exercise persistence failure, rejected imports and late module wiring.
 """
+import importlib.util
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -81,6 +82,13 @@ class DynamicMenuBar:
 
     def Append(self, menu, label):
         self.entries.append((label, menu, True))
+
+    def Insert(self, index, menu, label):
+        self.entries.insert(index, (label, menu, True))
+
+    def FindMenu(self, label):
+        return next((index for index, entry in enumerate(self.entries)
+                     if entry[0].replace('&', '') == label), -1)
 
 
 class MenuBar:
@@ -333,6 +341,85 @@ def test_disabled_native_item_or_parent_is_unavailable(manager):
     manager.frame._closing = True
     assert not manager.available('library.import')
     assert not manager.available('missing.command')
+
+
+@pytest.fixture
+def composed_menu_installers(monkeypatch):
+    """Load the real installers with only the native menu protocol doubled."""
+    from carr_library.ui import ebook_reader
+    fake_wx = SimpleNamespace(Menu=Menu, Dialog=object, ID_ANY=-1, EVT_MENU=object(),
+                              CallAfter=lambda callback, *args: callback(*args))
+    monkeypatch.setitem(sys.modules, 'wx', fake_wx)
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identifier: (0, 0, identifier))
+    source = Path(ebook_reader.__file__).parent
+
+    def load(name, filename):
+        spec = importlib.util.spec_from_file_location(name, source / filename)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    metadata = load('carr_library.ui._menu_metadata_test', 'catalog_metadata_dialog.py')
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.catalog_metadata_dialog', metadata)
+    academic = load('carr_library.ui._menu_academic_test', 'academic_actions.py')
+    return ebook_reader.install_ebook_reader, academic.install_academic_actions
+
+
+@pytest.mark.parametrize('order', [
+    ('File', 'Library', 'Research', 'Help'),
+    ('Library', 'Research', 'Help', 'File'),
+    ('Tools', 'Research', 'File', 'Help', 'Library'),
+], ids=['current-desktop', 'legacy-library-first', 'reordered-menus'])
+def test_actual_menu_installers_keep_save_all_and_existing_commands_rebindable(
+        tmp_path, composed_menu_installers, order):
+    menus = {name: Menu() for name in order}
+    save_all = menus['File'].Append(-1, 'Save all open drafts\tCtrl+Alt+S')
+    bar = DynamicMenuBar([('&' + name, menus[name], True) for name in order])
+    handlers = {}
+    frame = SimpleNamespace(menu_bar=bar, GetMenuBar=lambda: bar, IsEnabled=lambda: True,
+        _closing=False, library=SimpleNamespace(root=tmp_path), report=lambda message: None,
+        Bind=lambda event, handler, item: handlers.__setitem__(item.GetId(), handler))
+    for install in composed_menu_installers:
+        install(frame)
+    manager = install_keyboard_settings(frame)
+
+    # Reproduce the actual installed Save All failure: a valid unrelated map
+    # must not collide with a misplaced, falsely unmanaged EPUB/outline item.
+    expected = {'file.save_all': 'Ctrl+Alt+F12'}
+    assert manager.apply_overrides(expected) == expected
+    assert manager.store.load() == expected
+    assert not manager.load_notice and not manager._unmanaged
+    for command, menu, shortcut in (
+        ('library.epub_reader', 'Library', 'Ctrl+Shift+R'),
+        ('research.export_outline', 'Research', 'Ctrl+Shift+E'),
+    ):
+        binding = manager.bindings[command]
+        assert binding.item in menus[menu].items
+        assert binding.top_index == bar.FindMenu(menu)
+        assert binding.item.GetItemLabel().endswith('\t' + shortcut)
+        assert manager.available(command) and binding.item.GetId() in handlers
+    assert manager.bindings['file.save_all'].item is save_all
+    assert save_all.GetItemLabel().endswith('\tCtrl+Alt+F12')
+    before = manager.store.path.read_bytes()
+    with pytest.raises(ShortcutError):
+        manager.apply_overrides({'file.save_all': 'Ctrl+Shift+R'})
+    assert manager.store.path.read_bytes() == before
+    assert manager.overrides == expected
+
+
+@pytest.mark.parametrize('installer, required', [(0, 'Library'), (1, 'Research')])
+def test_menu_installer_rejects_missing_named_owner_before_mutation(
+        tmp_path, composed_menu_installers, installer, required):
+    bar = DynamicMenuBar([('&File', Menu(), True), ('&Help', Menu(), True)])
+    handlers = []
+    frame = SimpleNamespace(menu_bar=bar, Bind=lambda *args: handlers.append(args))
+    before = tuple(bar.entries)
+    with pytest.raises(ValueError, match=required):
+        composed_menu_installers[installer](frame)
+    assert tuple(bar.entries) == before
+    assert all(not menu.items for _, menu, _ in bar.entries)
+    assert handlers == []
 
 
 def test_root_change_loads_the_new_folders_map_without_overwriting_either(manager, tmp_path):

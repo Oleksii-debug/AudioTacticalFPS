@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
+from runpy import run_path
 import platform
 import sys
 from tempfile import TemporaryDirectory
@@ -63,6 +64,8 @@ def run_native(source=None):
                 return True
             wx.MilliSleep(10)
         return False
+
+    native = run_path(str(Path(__file__).with_name('native_input_support.py')))['NativeInput'](wx, app)
 
     class Host(wx.Frame):
         def __init__(self, library, workspace, topic):
@@ -128,8 +131,7 @@ def run_native(source=None):
                 try:
                     choice = next(child for child in descendants(dialog)
                                   if isinstance(child, wx.ListBox))
-                    dialog.Raise()
-                    choice.SetFocus()
+                    native.focus(choice, lambda predicate: pump(predicate, timeout=5))
                     def press():
                         try:
                             simulator = wx.UIActionSimulator()
@@ -194,9 +196,9 @@ def run_native(source=None):
             check('restored draft remains unsaved until explicit Save',
                   restored._dirty() and library.evidence(workspace, topic)[0].note == 'Saved baseline')
             button = restored.save_button
-            button.SetFocus()
+            native.focus(button, pump)
             check('Save note receives actual keyboard focus', pump(lambda: wx.Window.FindFocus() == button))
-            check('native Space key activates Save note', wx.UIActionSimulator().Char(wx.WXK_SPACE))
+            check('native Space key activates Save note', native.press(wx.WXK_SPACE))
             check('native save commits note and removes its recovery copy', pump(lambda:
                 not frame.working and store.get(workspace, topic, evidence) is None
                 and library.evidence(workspace, topic)[0].note == 'Final pending edit — Slovenská poznámka 🚂'))

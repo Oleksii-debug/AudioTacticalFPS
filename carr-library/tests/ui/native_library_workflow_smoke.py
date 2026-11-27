@@ -210,7 +210,15 @@ def run_native():
                 assert 'Plan ready for review' in view.status.GetValue()
                 assert wx.Window.FindFocus() is view.status
                 assert 'LOCAL ONLY' in view.review.GetValue()
-                assert str(inputs) in view.review.GetValue() and str(outputs) in view.review.GetValue()
+                # Windows may canonicalize a selected folder's spelling when
+                # binding it. Verify its actual identity and the exact bound
+                # path shown for approval, not the temporary-path spelling.
+                for label, selected, bound in (
+                    ('Allowed input folder', inputs, view.controller.plan.input_root),
+                    ('Allowed output folder', outputs, view.controller.plan.output_root),
+                ):
+                    assert Path(bound).samefile(selected)
+                    assert f'{label}: {bound}' in view.review.GetValue()
                 assert 'import_text' in view.review.GetValue() and 'export_topic' in view.review.GetValue()
                 assert not view.controller.service.journal.exists()
                 assert len(library.browse(workspace)) == 1 and len(library.topics(workspace)) == 1

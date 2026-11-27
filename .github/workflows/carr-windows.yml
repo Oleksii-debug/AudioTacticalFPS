@@ -443,6 +443,7 @@ jobs:
             'tests/ui/test_reader_command_dispatch.py',
             'tests/ui/test_reader_keymap_context.py',
             'tests/ui/test_command_registry.py',
+            'tests/ui/test_native_input_support.py',
             'tests/ui/test_keyboard_manager.py',
             'tests/storage/test_keyboard_preferences.py',
             'tests/storage/test_evidence_drafts.py',

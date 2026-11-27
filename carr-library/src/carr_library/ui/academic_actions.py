@@ -346,6 +346,10 @@ def export_research_outline(frame):
 
 
 def install_academic_actions(frame):
+    index = frame.menu_bar.FindMenu('Research')
+    if index < 0:
+        raise ValueError('The Research menu is required for outline export.')
+    research = frame.menu_bar.GetMenu(index)
     menu = wx.Menu()
     for title, action in (
         ('Review reference metadata for selected book', import_reference_metadata),
@@ -354,6 +358,5 @@ def install_academic_actions(frame):
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, lambda event, run=action: run(frame), item)
     frame.menu_bar.Insert(2, menu, '&Bibliography')
-    research = frame.menu_bar.GetMenu(1)
     item = research.Append(wx.ID_ANY, 'Export topic and subtopics\tCtrl+Shift+E')
     frame.Bind(wx.EVT_MENU, lambda event: export_research_outline(frame), item)

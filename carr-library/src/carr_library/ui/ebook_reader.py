@@ -216,7 +216,10 @@ class EbookReaderActions:
 def install_ebook_reader(frame):
     import wx
 
+    index = frame.menu_bar.FindMenu('Library')
+    if index < 0:
+        raise ValueError('The Library menu is required for EPUB reading.')
     actions = EbookReaderActions(frame)
-    item = frame.menu_bar.GetMenu(0).Append(wx.ID_ANY, 'Read EPUB book\tCtrl+Shift+R')
+    item = frame.menu_bar.GetMenu(index).Append(wx.ID_ANY, 'Read EPUB book\tCtrl+Shift+R')
     frame.Bind(wx.EVT_MENU, actions.read, item)
     frame.ebook_reader_actions = actions

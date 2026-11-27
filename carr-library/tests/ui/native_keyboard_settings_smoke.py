@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 import json
 import os
 from pathlib import Path
+from runpy import run_path
 import platform
 import sys
 from tempfile import TemporaryDirectory
@@ -114,15 +115,16 @@ def run_native(source=None, timeout=120):
             healthy()
             wx.MilliSleep(10)
 
+    native = run_path(str(Path(__file__).with_name('native_input_support.py')))['NativeInput'](
+        wx, application, simulator=simulator, healthy=healthy)
+
     def press(keycode, modifiers=wx.MOD_NONE):
-        if not simulator.Char(keycode, modifiers):
+        if not native.press(keycode, modifiers):
             raise RuntimeError('Native input backend could not inject a key press.')
         settle()
 
     def focus(control):
-        control.SetFocus()
-        if not pump(lambda: wx.Window.FindFocus() == control, seconds=3):
-            raise AssertionError('Native keyboard focus did not reach ' + control.GetName())
+        native.focus(control, lambda predicate: pump(predicate, seconds=3))
 
     def button(dialog, *, identifier=None, caption=None):
         return next(child for child in dialog.GetChildren()

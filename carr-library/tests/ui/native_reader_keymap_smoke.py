@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 import json
 import os
 from pathlib import Path
+from runpy import run_path
 import platform
 import sys
 from tempfile import TemporaryDirectory
@@ -83,8 +84,11 @@ def run_native(source=None):
             application.Yield()
             wx.MilliSleep(10)
 
+    native = run_path(str(Path(__file__).with_name('native_input_support.py')))['NativeInput'](
+        wx, application, simulator=simulator)
+
     def press(keycode, modifiers=wx.MOD_NONE):
-        if not simulator.Char(keycode, modifiers):
+        if not native.press(keycode, modifiers):
             raise RuntimeError('The native input backend could not inject a key press.')
         settle()
 
@@ -129,10 +133,7 @@ def run_native(source=None):
         release_worker = Event()
 
         def focus_source():
-            reader.dialog.Raise()
-            reader.text.SetFocus()
-            if not pump(lambda: wx.Window.FindFocus() == reader.text, timeout=3):
-                raise AssertionError('Native source text did not receive keyboard focus.')
+            native.focus(reader.text, lambda predicate: pump(predicate, timeout=3))
 
         def at_page(ordinal):
             return (not reader.busy and reader.controller.current is not None
@@ -251,8 +252,7 @@ def run_native(source=None):
             reader.dialog.ShowModal()
             if failures:
                 raise failures[0]
-            parent.Raise()
-            note.SetFocus()
+            native.focus(note, lambda predicate: pump(predicate, timeout=3))
             check('host accepts native keyboard focus after Reader closes',
                   pump(lambda: wx.Window.FindFocus() == note, timeout=3))
             press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
