@@ -1,4 +1,4 @@
-name: Windows transcription shared reader qualification
+name: Windows transcription status publication qualification
 on:
   push:
     branches: [carr/transcription-status-diagnostic-20261127-137c]

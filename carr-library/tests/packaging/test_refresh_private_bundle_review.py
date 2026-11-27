@@ -68,8 +68,8 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices').mkdir()
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
-    for name in ('RUNNING.md', 'START_V3_UK.txt'):
-        (project / 'docs' / name).write_text('Synthetic current installation guidance.\n')
+    for name in ('RUNNING.md', 'START_UK.txt', 'START_V3_UK.txt', *refresh.BUNDLE_GUIDES):
+        (project / 'docs' / name).write_text('Synthetic current guidance: ' + name + '\n')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
     package = project / 'src/carr_library'
@@ -154,6 +154,7 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     monkeypatch.setattr(subprocess, 'run', git_only)
     (bundle.source / 'unlisted-private.txt').write_text('This private file must not be copied.')
     before = (bundle.source / 'bundle-manifest.json').read_bytes()
+    assert not (bundle.source / 'docs').exists()
     report = _refresh(bundle)
     manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
     identity = json.loads((bundle.output / 'application-source.json').read_bytes())
@@ -165,8 +166,26 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     assert report['manifest_sha256'] == sha256((bundle.output / 'bundle-manifest.json').read_bytes()).hexdigest()
     for name, raw in bundle.protected.items():
         assert (bundle.output / name).read_bytes() == raw
+    assert {path.name for path in (bundle.output / 'docs').iterdir()} == set(bundle.module.BUNDLE_GUIDES)
+    for name in bundle.module.BUNDLE_GUIDES:
+        raw = (bundle.packaging.parent / 'docs' / name).read_bytes()
+        assert (bundle.output / 'docs' / name).read_bytes() == raw
+        assert manifest['files']['docs/' + name] == sha256(raw).hexdigest()
+    for name in ('START_UK.txt', 'START_V3_UK.txt'):
+        raw = (bundle.packaging.parent / 'docs' / name).read_bytes()
+        assert (bundle.output / name).read_bytes() == raw
+        assert manifest['files'][name] == sha256(raw).hexdigest()
     assert not (bundle.output / 'unlisted-private.txt').exists()
     assert (bundle.source / 'bundle-manifest.json').read_bytes() == before
+    assert not list(bundle.output.parent.glob('.private-bundle-*'))
+
+
+@pytest.mark.parametrize('name', ['START_UK.txt', 'TRANSCRIPTION.md'])
+def test_refresh_missing_current_guide_never_publishes_incomplete_bundle(bundle, name):
+    (bundle.packaging.parent / 'docs' / name).unlink()
+    with pytest.raises(FileNotFoundError):
+        _refresh(bundle)
+    assert not bundle.output.exists()
     assert not list(bundle.output.parent.glob('.private-bundle-*'))
 
 
