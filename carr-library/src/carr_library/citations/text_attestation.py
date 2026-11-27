@@ -3,6 +3,7 @@ from hashlib import sha256
 import re
 
 from .anchors import Identity, Locator, digest
+from ..catalog.intake import FileSnapshot, text_segments, source_limit
 
 # Exact canonical extraction configuration from CARR-10 PR31.
 CONFIG = '{"adapter":"strict-utf8-v1","kind":"logical_segment"}'
@@ -10,7 +11,7 @@ MAX_BYTES = 64 * 1024 * 1024
 MAX_SEGMENTS = 1000
 
 
-def strict_text_attestor(db, workspace, resolve_asset):
+def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: False):
     """Return a callback for historical_loader, never approve PDF or OCR here.
 
     resolve_asset(identity) must return bounded immutable original bytes from an
@@ -26,19 +27,37 @@ def strict_text_attestor(db, workspace, resolve_asset):
             return False
         if (not isinstance(identity, Identity) or identity.workspace != workspace
                 or not isinstance(locator, Locator) or locator.kind != 'logical_segment'
-                or locator.index > MAX_SEGMENTS):
+                or locator.index > 2 ** 31 - 1):
             return False
         row = db.execute('''SELECT r.config, (SELECT count(*) FROM page p WHERE p.revision=r.id)
             FROM revision r JOIN sealed s ON s.revision=r.id
             WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.id=?''',
             (workspace, identity.edition_id, identity.asset_sha256, identity.revision)).fetchone()
-        if row is None or row[0] != CONFIG or not 1 <= row[1] <= MAX_SEGMENTS:
+        if row is None or row[0] != CONFIG or not 1 <= row[1] <= 2 ** 31 - 1:
             return False
         try:
             data = resolve_asset(identity)
+        except InterruptedError:
+            raise
         except (OSError, LookupError, ValueError):
             return False
-        if (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
+        if isinstance(data, FileSnapshot):
+            if (data.mime != 'text/plain' or data.digest != identity.asset_sha256
+                    or not 0 < data.size <= source_limit(data.mime, data.size)):
+                return False
+            try:
+                selected, count, nonempty = None, 0, False
+                for count, segment in enumerate(text_segments(data, cancelled=cancelled,
+                        max_segments=row[1], max_segment_bytes=MAX_BYTES), 1):
+                    nonempty = nonempty or bool(segment.strip())
+                    if count == locator.index:
+                        selected = digest(segment)
+                return count == row[1] and nonempty and selected == raw_sha256
+            except InterruptedError:
+                raise
+            except (OSError, LookupError, ValueError, UnicodeError):
+                return False
+        if (row[1] > MAX_SEGMENTS or type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
                 or sha256(data).hexdigest() != identity.asset_sha256):
             return False
         try:
