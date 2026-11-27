@@ -132,6 +132,8 @@ def _publication_state(db, record, revision):
     if catalog is None:
         raise ValueError('Import publication registration is missing.')
     manifest = dict(sha256=catalog[1], mime=catalog[2], size=catalog[3])
+    if manifest['mime'] == 'application/pdf' and record.get('job') != revision:
+        raise ValueError('Import publication journal identity changed.')
     if (tuple(catalog[:2]) != (metadata['work_id'], record.get('asset_sha256'))
             or tuple(catalog[4:]) != (metadata['language'], metadata['edition'],
                                       metadata['volume'], metadata['title'])
