@@ -52,6 +52,11 @@ def _digest(value):
     return sha256(_json(value)).hexdigest()
 
 
+def translation_receipt_sha256(value, detected_source):
+    """Bind accepted decoded text and language independently of its wire hash."""
+    return _digest({'text': value, 'detected_source': detected_source})
+
+
 def _plain(path, *, directory=False):
     path = Path(path)
     if any(parent.is_symlink() for parent in (path, *path.parents)):
@@ -493,9 +498,15 @@ class BudgetLedger:
         self.path = _plain(path)
         _plain(self.path.parent, directory=True)
         with self._db() as db:
-            db.executescript('CREATE TABLE IF NOT EXISTS approval (id TEXT PRIMARY KEY, digest TEXT NOT NULL);'
-                'CREATE TABLE IF NOT EXISTS operation (id TEXT PRIMARY KEY, job TEXT NOT NULL, request_hash TEXT NOT NULL,'
-                'estimate_micros INTEGER NOT NULL, state TEXT NOT NULL, output_sha256 TEXT);')
+            # Serialize first-open migration; historical rows stay NULL because
+            # their wire hashes cannot prove a decoded output after the fact.
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('CREATE TABLE IF NOT EXISTS approval (id TEXT PRIMARY KEY, digest TEXT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS operation (id TEXT PRIMARY KEY, job TEXT NOT NULL, request_hash TEXT NOT NULL,'
+                       'estimate_micros INTEGER NOT NULL, state TEXT NOT NULL, output_sha256 TEXT, decoded_translation_sha256 TEXT)')
+            columns = {row[1] for row in db.execute('PRAGMA table_info(operation)')}
+            if 'decoded_translation_sha256' not in columns:
+                db.execute('ALTER TABLE operation ADD COLUMN decoded_translation_sha256 TEXT')
 
     @contextmanager
     def _db(self):
@@ -538,7 +549,7 @@ class BudgetLedger:
                 # request and reservation. Sent/unknown/completed rows never retry.
                 db.execute("UPDATE operation SET state='reserved' WHERE id=?", (identity,))
             else:
-                db.execute('INSERT INTO operation VALUES(?,?,?,?,?,NULL)',
+                db.execute('INSERT INTO operation (id,job,request_hash,estimate_micros,state,output_sha256,decoded_translation_sha256) VALUES(?,?,?,?,?,NULL,NULL)',
                            (identity, approval.job_id, request_hash, estimate, 'reserved'))
 
     def cancel_before_send(self, identity):
@@ -547,10 +558,15 @@ class BudgetLedger:
             if cursor.rowcount != 1:
                 raise ProviderError('Only an unsent reserved operation can be cancelled without charge.')
 
-    def finish(self, identity, *, output_sha256=None):
+    def finish(self, identity, *, output_sha256=None, decoded_translation_sha256=None):
+        if decoded_translation_sha256 is not None and (
+                output_sha256 is None or not isinstance(decoded_translation_sha256, str)
+                or not re.fullmatch('[0-9a-f]{64}', decoded_translation_sha256)):
+            raise ProviderError('Invalid decoded translation receipt.')
         with self._db() as db:
-            db.execute('UPDATE operation SET state=?, output_sha256=? WHERE id=?',
-                       ('complete' if output_sha256 else 'uncertain', output_sha256, identity))
+            db.execute('UPDATE operation SET state=?, output_sha256=?, decoded_translation_sha256=? WHERE id=?',
+                       ('complete' if output_sha256 else 'uncertain', output_sha256,
+                        decoded_translation_sha256, identity))
 
     def report(self, job_id):
         with self._db() as db:
@@ -729,8 +745,12 @@ class ProviderGateway:
                 output = self.transport.post(profile, route, raw, headers, cancelled=cancelled)
             if not isinstance(output, bytes) or not 0 < len(output) <= MAX_RESPONSE:
                 raise ProviderError('Invalid or oversized provider result.')
+            decoded_translation_sha256 = None
             if isinstance(request, GoogleTranslationRequest):
-                decode_translation_response(request, output, secret=secret)
+                decoded = decode_translation_response(request, output, secret=secret)
+                if request.operation == 'text':
+                    decoded_translation_sha256 = translation_receipt_sha256(
+                        decoded['text'], decoded['detected_source'])
             elif request.capability == 'llm':
                 try:
                     decoded = json.loads(output)
@@ -739,7 +759,10 @@ class ProviderGateway:
                         raise ValueError
                 except (ValueError, TypeError, KeyError, IndexError):
                     raise ProviderError('Unsupported model response; no returned commands were executed.') from None
-            self.ledger.finish(operation_id, output_sha256=sha256(output).hexdigest())
+            receipt = {'output_sha256': sha256(output).hexdigest()}
+            if decoded_translation_sha256 is not None:
+                receipt['decoded_translation_sha256'] = decoded_translation_sha256
+            self.ledger.finish(operation_id, **receipt)
             return output
         except BaseException as exc:
             if submitted:

@@ -372,3 +372,112 @@ def test_native_denied_save_keeps_its_primary_error_if_descriptor_close_raises(t
         assert list(tmp_path.glob('.checkpoint-*')) == []
     finally:
         target.chmod(0o600)
+
+
+DURABLE_REPLACE_ONCE = r'''
+import json, pathlib, sys
+target = pathlib.Path(sys.argv[1])
+sys.path.insert(0, sys.argv[2])
+from carr_library import durable_state
+from carr_library.audio import jobs
+assert pathlib.Path(durable_state.__file__).resolve(strict=True) == pathlib.Path(sys.argv[3]).resolve(strict=True)
+assert pathlib.Path(jobs.__file__).resolve(strict=True) == pathlib.Path(sys.argv[4]).resolve(strict=True)
+durable_state.atomic_json(target, {'done': 1}, replace=True)
+print(json.dumps({'published': True}))
+'''
+
+
+def test_generic_durable_reader_and_writer_share_actual_child_snapshots(tmp_path, monkeypatch):
+    from carr_library import durable_state
+    target = tmp_path / 'спільний стан.json'
+    durable_state.atomic_json(target, {'done': 0})
+    original = state._open_json_file
+    streams, publications = [], []
+
+    def publish_with_owned_reader_open(path):
+        stream = original(path)
+        streams.append(stream)
+        try:
+            assert not os.get_inheritable(stream.fileno())
+            result = subprocess.run(
+                [sys.executable, '-I', '-B', '-X', 'utf8', '-c', DURABLE_REPLACE_ONCE,
+                 str(path), str(Path(state.__file__).resolve().parents[2]),
+                 str(Path(durable_state.__file__).resolve()), str(Path(state.__file__).resolve())],
+                capture_output=True, text=True, encoding='utf-8', timeout=15, close_fds=True)
+            assert result.returncode == 0, result.stderr
+            publications.append(json.loads(result.stdout))
+            assert publications[-1] == {'published': True}
+        except BaseException:
+            stream.close()
+            raise
+        return stream
+
+    monkeypatch.setattr(state, '_open_json_file', publish_with_owned_reader_open)
+    assert durable_state.read_json(target) == {'done': 0}
+    assert publications == [{'published': True}] and all(stream.closed for stream in streams)
+    monkeypatch.setattr(state, '_open_json_file', original)
+    assert durable_state.read_json(target) == {'done': 1}
+    assert list(tmp_path.glob('.pending-*')) == []
+
+
+def test_generic_durable_create_only_preserves_actual_competing_publication(tmp_path, monkeypatch):
+    from carr_library import durable_state
+    target = tmp_path / 'new state.json'
+    publish = durable_state.publish_directory_no_replace
+    winning_bytes = b'{"winner":"other"}'
+
+    def competing_publish(stage, destination):
+        destination.write_bytes(winning_bytes)
+        return publish(stage, destination)
+
+    monkeypatch.setattr(durable_state, 'publish_directory_no_replace', competing_publish)
+    monkeypatch.setattr(state, '_replace_state_file',
+                        lambda *args: pytest.fail('Create-only publication called replacement.'))
+    with pytest.raises(FileExistsError):
+        durable_state.atomic_json(target, {'winner': 'this'})
+    assert target.read_bytes() == winning_bytes and target.stat().st_nlink == 1
+    assert list(tmp_path.glob('.pending-*')) == []
+
+
+def test_generic_durable_reader_keeps_32_mib_budget_before_payload_open(tmp_path, monkeypatch):
+    from carr_library import durable_state
+    assert durable_state.MAX_JSON_BYTES == 32 * 1024 * 1024
+    target = tmp_path / 'oversized.json'
+    with target.open('wb') as stream:
+        stream.seek(durable_state.MAX_JSON_BYTES)
+        stream.write(b'x')
+    monkeypatch.setattr(state, '_open_json_file',
+                        lambda *args: pytest.fail('Oversized state reached a payload open.'))
+    with pytest.raises(ValueError, match='large'):
+        durable_state.read_json(target)
+
+
+@pytest.mark.parametrize('payload', [b'{"a":1,"a":2}', b'{"a":NaN}', b'{invalid'],
+                         ids=['duplicate-key', 'nonfinite', 'malformed'])
+def test_generic_durable_reader_retains_strict_json_decoding(tmp_path, payload):
+    from carr_library import durable_state
+    target = tmp_path / 'invalid.json'
+    target.write_bytes(payload)
+    with pytest.raises(ValueError):
+        durable_state.read_json(target)
+
+
+def test_generic_durable_failed_replacement_preserves_committed_bytes(tmp_path, monkeypatch):
+    from carr_library import durable_state
+    target = tmp_path / 'state.json'
+    durable_state.atomic_json(target, {'done': 0})
+    before = target.read_bytes()
+    stages = []
+
+    def denied(source, destination):
+        source = Path(source)
+        assert destination == target and source.parent == target.parent
+        assert source.read_bytes() == durable_state.encode({'done': 1})
+        stages.append(source)
+        raise PermissionError('Synthetic denied generic state replacement.')
+
+    monkeypatch.setattr(state, '_replace_state_file', denied)
+    with pytest.raises(PermissionError, match='denied generic'):
+        durable_state.atomic_json(target, {'done': 1}, replace=True)
+    assert target.read_bytes() == before and len(stages) == 1 and not stages[0].exists()
+    assert list(tmp_path.glob('.pending-*')) == []

@@ -17,7 +17,8 @@ from .state import (atomic_json, now, read_bytes, read_json, regular,
 from .validation import decode_state_json
 from ..ingest.writer_guard import exclusive_writer
 from ..providers import (GoogleTranslationRequest, JobApproval, ProviderProfile,
-                         GOOGLE_TRANSLATION_ENDPOINT, decode_translation_response)
+                         GOOGLE_TRANSLATION_ENDPOINT, decode_translation_response,
+                         translation_receipt_sha256)
 
 DIRECTORY = 'state/translation'
 MAX_JOBS = 1000
@@ -151,7 +152,9 @@ def validate_translation_job(value, *, identity=None):
     receipt_keys = {'index', 'source_sha256', 'text', 'translation_sha256',
                     'detected_source', 'operation_id', 'request_hash', 'response_sha256'}
     for index, row in enumerate(receipts):
-        if type(row) is not dict or set(row) != receipt_keys or type(row['index']) is not int or row['index'] != index:
+        if (type(row) is not dict
+                or set(row) not in (receipt_keys, receipt_keys | {'decoded_translation_sha256'})
+                or type(row['index']) is not int or row['index'] != index):
             raise ValueError('Invalid translation receipt order.')
         translated = text(row['text'], 'accepted translation text', maximum=200000, empty=True)
         if (row['source_sha256'] != text_hash(parts[index])
@@ -169,8 +172,14 @@ def validate_translation_job(value, *, identity=None):
             if row['detected_source'] is not None and (
                     not isinstance(row['detected_source'], str) or not _LANGUAGE.fullmatch(row['detected_source'])):
                 raise ValueError('Invalid detected source language.')
-        elif (translated != parts[index] or any(row[key] is not None for key in (
-                'detected_source', 'operation_id', 'request_hash', 'response_sha256'))):
+            if 'decoded_translation_sha256' in row:
+                _hash(row['decoded_translation_sha256'])
+                if row['decoded_translation_sha256'] != translation_receipt_sha256(
+                        translated, row['detected_source']):
+                    raise ValueError('An accepted decoded translation failed its content check.')
+        elif (translated != parts[index] or 'decoded_translation_sha256' in row
+              or any(row[key] is not None for key in (
+                  'detected_source', 'operation_id', 'request_hash', 'response_sha256'))):
             raise ValueError('Whitespace must be preserved without a provider request.')
     pending = value['pending']
     if pending is not None:

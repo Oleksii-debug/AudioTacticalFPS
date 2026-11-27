@@ -21,7 +21,7 @@ from ..ingest.writer_guard import exclusive_writer
 from ..providers import (
     BudgetLedger, GoogleTranslationRequest, JobApproval, ProfileStore, ProviderError,
     ProviderGateway, ProviderProfile, GOOGLE_TRANSLATION_ENDPOINT,
-    decode_translation_response)
+    decode_translation_response, translation_receipt_sha256)
 from ..reader.narration_text import NarrationDraft
 from ..research.export_file import _destination, _filename, write_export
 
@@ -48,6 +48,30 @@ def language_approval(profile):
 
 def _json_value(value):
     return json.loads(canonical(value))
+
+
+def _assemble_translation(chunks, receipts):
+    """Restore source whitespace at joins without changing provider receipts.
+
+    Providers may trim or normalize a chunk's outer whitespace. Preserve the
+    exact source separator where two chunks meet, including whitespace-only
+    chunks. A join without source whitespace and a single-chunk result remain
+    unchanged; neither is evidence that an extra word separator is needed.
+    """
+    parts = []
+    for index, (source, receipt) in enumerate(zip(chunks, receipts)):
+        translated = receipt['text']
+        if not source.strip():
+            parts.append(source)
+            continue
+        if index and (chunks[index - 1][-1].isspace() or source[0].isspace()):
+            leading = source[:len(source) - len(source.lstrip())]
+            translated = leading + translated.lstrip()
+        if index + 1 < len(chunks) and (source[-1].isspace() or chunks[index + 1][0].isspace()):
+            trailing = source[len(source.rstrip()):]
+            translated = translated.rstrip() + trailing
+        parts.append(translated)
+    return ''.join(parts)
 
 
 class TranslationService:
@@ -170,8 +194,10 @@ class TranslationService:
         return {row['id']: row for row in self.gateway.ledger.report(job['id'])}
 
     def _check_receipts(self, job, operations):
+        integrity = []
         for receipt in job['receipts']:
             if receipt['operation_id'] is None:
+                integrity.append('original-whitespace')
                 continue
             row = operations.get(receipt['operation_id'])
             if (row is None or row['state'] != 'complete' or row['job'] != job['id']
@@ -179,6 +205,30 @@ class TranslationService:
                     or row['output_sha256'] != receipt['response_sha256']
                     or row['estimate_micros'] != job['allocations'][receipt['index']]):
                 raise PermissionError('Accepted translation receipts disagree with the live provider ledger. No request was repeated.')
+            key = 'decoded_translation_sha256'
+            if key in receipt or row.get(key) is not None:
+                expected = translation_receipt_sha256(receipt['text'], receipt['detected_source'])
+                if receipt.get(key) != expected or row.get(key) != expected:
+                    raise PermissionError('Decoded translation disagrees with the live provider ledger. No request was repeated.')
+                integrity.append('decoded-ledger-bound')
+            else:
+                integrity.append('legacy-wire-only')
+        return integrity
+
+    def _receipt_integrity(self, job):
+        # Passive restored derivatives remain usable without reconnecting a
+        # profile or rebinding remote authority. Their self-consistent copies
+        # must not be presented as independently checked against a live ledger.
+        live = False
+        if job['library_root'] == str(self.root):
+            try:
+                live = job['ledger_identity'] == self._ledger_identity()
+            except FileNotFoundError:
+                pass
+        if live:
+            return self._check_receipts(job, self._operations(job))
+        return ['original-whitespace' if row['operation_id'] is None else 'archived-unverified'
+                for row in job['receipts']]
 
     @staticmethod
     def _summary(job):
@@ -191,6 +241,7 @@ class TranslationService:
         with self.jobs.lock(identity):
             job = self.jobs.load(identity)
             if job['status'] == 'complete':
+                self._receipt_integrity(job)
                 return self._summary(job)
             profile = self._binding(job)
             operations = self._operations(job)
@@ -228,7 +279,9 @@ class TranslationService:
                         row = {'index': index, 'source_sha256': text_hash(chunk), 'text': result['text'],
                             'translation_sha256': text_hash(result['text']), 'detected_source': result['detected_source'],
                             'operation_id': operation, 'request_hash': request.fingerprint(profile),
-                            'response_sha256': sha256(raw).hexdigest()}
+                            'response_sha256': sha256(raw).hexdigest(),
+                            'decoded_translation_sha256': translation_receipt_sha256(
+                                result['text'], result['detected_source'])}
                     else:
                         row = {'index': index, 'source_sha256': text_hash(chunk), 'text': chunk,
                             'translation_sha256': text_hash(chunk), 'detected_source': None,
@@ -270,12 +323,13 @@ class TranslationService:
                 raise ValueError('Finish every translation chunk before exporting.')
             if cancelled():
                 raise InterruptedError('Translation export cancelled.')
+            receipt_integrity = self._receipt_integrity(job)
             target = local_path(output, must_exist=False)
             _filename(target.name)
             parent = local_path(target.parent)
             _destination(parent / ('.translation-location-check-' + uuid4().hex), self.root)
             target.mkdir(mode=0o700)  # Exclusive, never reuse an original/prior export folder.
-            translated = ''.join(row['text'] for row in job['receipts'])
+            translated = _assemble_translation(split_text(job['source_text']), job['receipts'])
             draft = NarrationDraft(job['source_text'], source_id='translation-source:' + job['source_sha256'])
             draft.replace_range(0, len(draft.text), translated,
                                 reason='Machine translation derivative; not a source quotation')
@@ -296,7 +350,9 @@ class TranslationService:
                 'source_is_immutable': True, 'quotation_authority': False,
                 'automated_translation_quality': 'not independently qualified',
                 'billed_cost': 'unknown; local amounts are reservations only',
-                'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
+                'chunks': [dict({key: value for key, value in row.items() if key != 'text'},
+                                decoded_receipt_integrity=integrity)
+                           for row, integrity in zip(job['receipts'], receipt_integrity)],
                 'files': hashes}
             # A provenance manifest is the final complete-export marker.
             write_export(target / 'translation-provenance.json', canonical(report) + '\n',
