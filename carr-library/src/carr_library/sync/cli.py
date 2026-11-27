@@ -31,6 +31,10 @@ def _password(args, parser):
     return value
 
 
+from ..installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='research-library sync',
         description='Checked local portable snapshots of every library in a data folder. No network service is used.')

@@ -6,6 +6,10 @@ from pathlib import Path
 import sys
 
 
+from .installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Resonance tasks and resource allowances')
     parser.add_argument('--data-dir', type=Path, required=True,

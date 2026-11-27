@@ -305,6 +305,10 @@ def prepare_offline_pack(source_directory, destination, codes, *, profile='fast'
                         tuple(model.code for model in models), total, sha256(raw).hexdigest())
 
 
+from ..installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)

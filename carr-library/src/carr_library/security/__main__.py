@@ -14,6 +14,10 @@ from .entitlements import PublicKey, TrustPolicy, verify_envelope
 from .updates import LocalRepositoryClient, UpdatePolicy
 
 
+from ..installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Private status and independently trusted offline verification.')
     commands = parser.add_subparsers(dest='command', required=True)

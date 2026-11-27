@@ -62,6 +62,10 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+from .installation_lease import installed_entrypoint
+
+
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments and arguments[0] == 'transcribe':

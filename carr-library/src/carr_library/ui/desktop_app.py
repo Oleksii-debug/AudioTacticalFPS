@@ -737,7 +737,13 @@ class DesktopFrame(WorkspaceFrame):
                 task = progress.reporter
             else:
                 task = shared_hub(self).start(title, total=progress_total, unit=progress_unit)
-            future = self.executor.submit(lambda: run_observed(task, operation, finalize=False))
+            from ..installation_lease import application_lease
+            def execute():
+                # The actual worker retains the shared generation lease even
+                # after a parent window's lifecycle or callback has finished.
+                with application_lease():
+                    return run_observed(task, operation, finalize=False)
+            future = self.executor.submit(execute)
         except Exception as exc:
             fail_operation(task, exc)
             self._finish_job_controls()
