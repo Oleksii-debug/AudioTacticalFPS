@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "parent": "80615ed23a21af84c2adebacd170f22ea452a3c4",
+  "actual_host_matrix": [
+    "ubuntu-24.04",
+    "windows-2022"
+  ],
+  "required_windows_source_cases": 48,
+  "required_linux_source_cases": 49,
+  "no_windows_fork_skip_credit": true,
+  "process_owner": "The existing ci_check._run_test_process; existing WindowsJobProcess/Windows owned job settlement and existing POSIX session/quiescence. No independent process supervisor.",
+  "limits": {
+    "job_minutes": 22,
+    "step_minutes": 17,
+    "owned_test_process_seconds": 900,
+    "default_each_suite_seconds": 600,
+    "per_case_watchdog": "unchanged"
+  },
+  "closure": "All tracked Python, pyproject.toml, exact oracle, interpreter SHA and four existing dependency versions recorded before; unchanged source and dependency versions required after full execution and cleanup.",
+  "canonical_fork": {
+    "source_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "path": "carr-library/tests/operations/test_resources.py",
+    "blob": "4e6aa26cff15cc91fa4aae53e17070f741a3572f",
+    "name": "test_forked_child_cannot_release_parent_reservation",
+    "adaptation": "Current ResourceBroker implementation unchanged. Actual child release/checkpoint refusal and cancellation are observed, exact parent's live reservation remains blocked to a competing admission, and only parent release frees capacity. Child timeout cleanup targets only the returned fork PID."
+  },
+  "runner_counter": "scripts/ci_runner_oracle.json",
+  "runtime_claim": "No execution, native GUI, product, package installation, real user corpus or performance qualification claimed at authoring."
+}
