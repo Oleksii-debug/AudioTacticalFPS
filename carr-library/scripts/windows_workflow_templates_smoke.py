@@ -82,20 +82,88 @@ def run(work):
         if not button.GetEventHandler().ProcessEvent(event):
             raise AssertionError('The actual native button did not handle its command.')
 
-    def stop_modals():
-        for window in reversed(wx.GetTopLevelWindows()):
+    cleanup_state = {'scheduled': False, 'until': None}
+
+    def owned_modals():
+        result = []
+        for window in wx.GetTopLevelWindows():
             try:
+                if (not isinstance(window, wx.Dialog) or not window
+                        or window.IsBeingDeleted() or not window.IsShown()
+                        or not window.IsModal()):
+                    continue
+                current, seen = window, set()
+                for _ in range(32):
+                    if current is frame:
+                        result.append(window)
+                        break
+                    if current is None or id(current) in seen:
+                        break
+                    seen.add(id(current))
+                    current = current.GetParent()
+            except RuntimeError:
+                continue
+        return result
+
+    def modal_descends_from(window, parent):
+        current, seen = window.GetParent(), set()
+        for _ in range(32):
+            if current is parent:
+                return True
+            if current is None or id(current) in seen:
+                return False
+            seen.add(id(current))
+            current = current.GetParent()
+        raise AssertionError('The native modal owner chain exceeded its bound.')
+
+    def schedule_unwind():
+        if cleanup_state['scheduled']:
+            return
+        if cleanup_state['until'] is None:
+            cleanup_state['until'] = monotonic() + 10
+        cleanup_state['scheduled'] = True
+
+        def unwind_one():
+            cleanup_state['scheduled'] = False
+            try:
+                if monotonic() >= cleanup_state['until']:
+                    raise TimeoutError('Owned native modal cleanup did not settle.')
+                dismiss = chosen.get('dismiss_removal')
+                if dismiss is not None and dismiss():
+                    # Never end a wx parent loop while its native TaskDialog
+                    # still owns the active inner message loop.
+                    schedule_unwind()
+                    return
+                windows = owned_modals()
+                if not windows:
+                    return
+                leaves = [window for window in windows
+                          if not any(other is not window and modal_descends_from(other, window)
+                                     for other in windows)]
+                if len(leaves) != 1:
+                    raise AssertionError('Native cleanup found ambiguous active modal ownership.')
+                window = leaves[0]
+                print('CLEANUP close one owned modal: ' + type(window).__name__, flush=True)
                 if hasattr(window, 'template_handlers'):
                     window.template_handlers['close']()
-                elif isinstance(window, wx.Dialog) and window.IsModal():
+                elif chosen.get('assistant_dialog') is window:
+                    # Use the product handler so it cancels and settles its
+                    # actual executor instead of only hiding its native loop.
+                    window.Close()
+                else:
                     window.EndModal(wx.ID_CANCEL)
-            except RuntimeError:
-                pass
+                # Give ShowModal and its product finally block a full event
+                # turn to return before touching the next owning dialog.
+                schedule_unwind()
+            except Exception:
+                failures.append('Native cleanup: ' + traceback.format_exc())
+                print(failures[-1], file=sys.stderr, flush=True)
+        timers.append(wx.CallLater(25, unwind_one))
 
     def failed():
         failures.append(traceback.format_exc())
         print(failures[-1], file=sys.stderr, flush=True)
-        stop_modals()
+        schedule_unwind()
 
     def later(callback):
         def invoke():
@@ -138,41 +206,153 @@ def run(work):
 
     def answer_remove(parent):
         api = ctypes.WinDLL('user32', use_last_error=True)
+        callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
         api.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
         api.FindWindowW.restype = wintypes.HWND
         api.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
         api.GetWindow.restype = wintypes.HWND
-        api.GetDlgItem.argtypes = (wintypes.HWND, ctypes.c_int)
-        api.GetDlgItem.restype = wintypes.HWND
         api.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
         api.GetWindowThreadProcessId.restype = wintypes.DWORD
-        api.IsWindowVisible.argtypes = api.IsWindowEnabled.argtypes = (wintypes.HWND,)
-        api.IsWindowVisible.restype = api.IsWindowEnabled.restype = wintypes.BOOL
-        api.SetActiveWindow.argtypes = (wintypes.HWND,)
-        api.SetActiveWindow.restype = wintypes.HWND
+        api.GetDlgCtrlID.argtypes, api.GetDlgCtrlID.restype = (wintypes.HWND,), ctypes.c_int
+        api.GetClassNameW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+        api.GetClassNameW.restype = ctypes.c_int
+        api.EnumChildWindows.argtypes = (wintypes.HWND, callback_type, wintypes.LPARAM)
+        api.EnumChildWindows.restype = wintypes.BOOL
+        api.IsChild.argtypes, api.IsChild.restype = (wintypes.HWND, wintypes.HWND), wintypes.BOOL
+        for name in ('IsWindow', 'IsWindowVisible', 'IsWindowEnabled'):
+            getattr(api, name).argtypes, getattr(api, name).restype = (wintypes.HWND,), wintypes.BOOL
+        api.SetActiveWindow.argtypes, api.SetActiveWindow.restype = (wintypes.HWND,), wintypes.HWND
         api.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
         api.PostMessageW.restype = wintypes.BOOL
         owner = parent.GetHandle()
-        def accept():
+        state = {'handle': None, 'inventory': None, 'inventories': 0,
+                 'yes_sent': None, 'yes_button_sent': False, 'no_sent': None,
+                 'no_button_sent': False}
+        started = monotonic()
+
+        def current_prompt():
             handle = api.FindWindowW(None, 'Remove workflow template')
             if not handle:
-                later(accept)
-                return
-            if api.GetWindow(handle, 4) != owner:  # GW_OWNER
+                return None
+            if (not parent or parent.IsBeingDeleted() or not parent.IsModal()
+                    or parent.GetHandle() != owner or not api.IsWindow(owner)
+                    or api.GetWindow(handle, 4) != owner):  # GW_OWNER
                 raise AssertionError('The native removal prompt belongs to another window.')
             process_id = wintypes.DWORD()
-            api.GetWindowThreadProcessId(handle, ctypes.byref(process_id))
+            if not api.GetWindowThreadProcessId(handle, ctypes.byref(process_id)):
+                raise ctypes.WinError(ctypes.get_last_error())
             if process_id.value != os.getpid():
                 raise AssertionError('The native removal prompt belongs to another process.')
-            button = api.GetDlgItem(handle, 6)  # Existing standard IDYES button.
-            if not button or not api.IsWindowVisible(button) or not api.IsWindowEnabled(button):
-                raise AssertionError('The owned removal prompt has no enabled native Yes button.')
-            api.SetActiveWindow(handle)
-            print('ACTION click owned native removal Yes button', flush=True)
-            # wxWidgets may use the Vista TaskDialog. Sending WM_COMMAND to
-            # that parent does not operate its button; BM_CLICK does.
-            if not api.PostMessageW(button, 0x00F5, 0, 0):  # BM_CLICK
+            if state['handle'] is not None and state['handle'] != handle:
+                raise AssertionError('The selected native removal prompt was replaced.')
+            state['handle'] = handle
+            return handle
+
+        def child_record(handle, child):
+            name = ctypes.create_unicode_buffer(256)
+            if not api.GetClassNameW(child, name, len(name)):
                 raise ctypes.WinError(ctypes.get_last_error())
+            process_id = wintypes.DWORD()
+            if not api.GetWindowThreadProcessId(child, ctypes.byref(process_id)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return {'handle': int(child), 'class': name.value,
+                    'id': api.GetDlgCtrlID(child),
+                    'visible': bool(api.IsWindowVisible(child)),
+                    'enabled': bool(api.IsWindowEnabled(child)),
+                    'same_process': process_id.value == os.getpid(),
+                    'descendant': bool(api.IsChild(handle, child))}
+
+        def inventory(handle):
+            rows, errors = [], []
+            @callback_type
+            def visit(child, unused):
+                try:
+                    if len(rows) >= 128:
+                        raise AssertionError('The owned prompt exceeded 128 native descendants.')
+                    rows.append(child_record(handle, child))
+                    return True
+                except Exception as error:
+                    errors.append(error)
+                    return False
+            # Unlike GetDlgItem, this includes children of native container
+            # windows. Never enumerate the desktop or inspect button captions.
+            api.EnumChildWindows(handle, visit, 0)
+            if errors:
+                raise errors[0]
+            if current_prompt() != handle:
+                raise AssertionError('The native prompt changed during descendant inspection.')
+            encoded = json.dumps(rows, sort_keys=True)
+            if encoded != state['inventory']:
+                if state['inventories'] >= 8:
+                    raise AssertionError('The native prompt inventory did not become stable.')
+                state['inventories'] += 1
+                state['inventory'] = encoded
+                print('NATIVE_PROMPT ' + encoded, flush=True)
+            return rows
+
+        def exact_button(handle, identity):
+            matches = [row for row in inventory(handle)
+                       if row['class'].casefold() == 'button' and row['id'] == identity
+                       and row['visible'] and row['enabled']
+                       and row['same_process'] and row['descendant']]
+            if len(matches) > 1:
+                raise AssertionError('The owned native prompt has ambiguous action buttons.')
+            if not matches:
+                return None
+            row = matches[0]
+            if current_prompt() != handle or child_record(handle, row['handle']) != row:
+                raise AssertionError('The native action button changed before its click.')
+            return row['handle']
+
+        def post(handle, message, identity=0):
+            if current_prompt() != state['handle']:
+                raise AssertionError('The native prompt changed before dispatch.')
+            if not api.PostMessageW(handle, message, identity, 0):
+                raise ctypes.WinError(ctypes.get_last_error())
+
+        def answer(identity, *, cleanup=False):
+            handle = current_prompt()
+            if handle is None:
+                return False
+            if not api.IsWindowVisible(handle) or not api.IsWindowEnabled(handle):
+                inventory(handle)
+                return True
+            button = exact_button(handle, identity)
+            prefix = 'no' if cleanup else 'yes'
+            api.SetActiveWindow(handle)
+            if state[prefix + '_sent'] is None:
+                # wxWidgets v3.2.8 uses TaskDialogIndirect on supported MSW.
+                # Its documented button message is TDM_CLICK_BUTTON, not
+                # WM_COMMAND. IDYES/IDNO are assigned in wx's native config.
+                # A legacy MessageBox ignores this message; only its observed
+                # exact standard Button may receive the later BM_CLICK.
+                print('ACTION owned native TDM_CLICK_BUTTON ' + str(identity), flush=True)
+                post(handle, 0x0400 + 102, identity)
+                state[prefix + '_sent'] = monotonic()
+            elif (monotonic() - state[prefix + '_sent'] >= 0.25
+                  and not state[prefix + '_button_sent'] and button is not None):
+                if current_prompt() != handle or exact_button(handle, identity) != button:
+                    raise AssertionError('The owned native button changed before BM_CLICK.')
+                print('ACTION owned native descendant BM_CLICK ' + str(identity), flush=True)
+                post(button, 0x00F5)  # BM_CLICK to the actual Button only.
+                state[prefix + '_button_sent'] = True
+            return True
+
+        def dismiss():
+            # This is only failure cleanup. It can never convert FAIL to PASS
+            # or grant removal; the negative answer leaves the saved item.
+            return answer(7, cleanup=True)  # IDNO
+
+        chosen['dismiss_removal'] = dismiss
+        chosen['removal_active'] = lambda: current_prompt() is not None
+
+        def accept():
+            present = answer(6)  # IDYES
+            if not present and state['yes_sent'] is not None:
+                return
+            if monotonic() - started >= 5:
+                raise TimeoutError('The exact owned native removal prompt did not accept Yes.')
+            later(accept)
         later(accept)
 
     def template_window():
@@ -236,6 +416,7 @@ def run(work):
         until(lambda: buttons['refresh'].IsEnabled(), opened, 'initial workflow inventory')
 
     def ready(dialog, controls):
+        chosen['assistant_dialog'] = dialog
         try:
             check('native_main_template_action_named', controls['templates'].GetName() == 'Templates...'
                   and controls['templates'].IsEnabled())
@@ -349,6 +530,7 @@ def run(work):
             until(lambda: buttons['refresh'].IsEnabled(), opened, 'removal inventory')
 
         def remove_ready(dialog, controls):
+            chosen['assistant_dialog'] = dialog
             try:
                 later(remove_current)
                 press(controls['templates'])
@@ -372,7 +554,8 @@ def run(work):
     finally:
         for timer in timers:
             timer.Stop()
-        stop_modals()
+        if owned_modals() or chosen.get('removal_active', lambda: False)():
+            raise AssertionError('Owned native modal loops must settle before their windows are destroyed.')
         frame.Destroy()
         wx.YieldIfNeeded()
         gui.Destroy()
