@@ -417,10 +417,27 @@ def test_pending_extended_original_survives_complete_backup_and_resume(tmp_path,
     planned = snapshot(source.parent, source.name).manifest()
     request = prepare_request(app.root, workspace, source, metadata, Config(),
         expected_manifest=planned)
+    asset = sha256(original).hexdigest()
+    retained_before_decode = []
+    def stop_after_retention():
+        # Logical document formats do not create an ingest page journal. Their
+        # recoverable boundary is the real retained original and its durable
+        # request binding, before decoding/publishing any logical text.
+        saved = load_request(app.root, request['request_id'])
+        if saved.get('asset_sha256') is None:
+            return False
+        assert saved['asset_sha256'] == asset
+        retained = app.assets.resolve(asset)
+        assert retained.read_bytes() == original
+        retained_before_decode.append(retained)
+        return True
     with pytest.raises(InterruptedError):
         app._import_file(workspace, source, **metadata, _request_id=request['request_id'],
-            _expected_manifest=planned, cancelled=lambda: True)
-    asset = sha256(original).hexdigest()
+            _expected_manifest=planned, cancelled=stop_after_retention)
+    assert retained_before_decode and set(retained_before_decode) == {app.assets.resolve(asset)}
+    assert not (app.root / 'imports.sqlite').exists()
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
     assert app.assets.resolve(asset).read_bytes() == original
     assert source.read_bytes() == original and app.browse(workspace) == ()
     source.unlink()
@@ -442,7 +459,7 @@ def test_pending_extended_original_survives_complete_backup_and_resume(tmp_path,
     assert copied_request['metadata'] == metadata
     assert copied_request['expected_manifest'] == planned
     result = restored.resume_import(workspace, request['request_id'])
-    assert result['state'] == 'complete', result
+    assert result['state'] == 'complete' and result['isolated'] is True, result
     assert result['edition'] == metadata['edition_id'] and result['verified'] is False
     assert result['request_id'] == request['request_id']
     assert restored.assets.resolve(asset).read_bytes() == original
