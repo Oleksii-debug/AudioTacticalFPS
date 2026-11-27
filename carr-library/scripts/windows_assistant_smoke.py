@@ -166,7 +166,8 @@ def exercise_controls(root, wx):
                         checks.append(EXPECTED_CHECKS[0])
                     click(button(dialog, 'Run / resume'))
                     state['phase'] = 'running'
-                elif state['phase'] == 'running' and review.GetValue().startswith('complete:'):
+                elif (state['phase'] == 'running' and review.GetValue().startswith('complete:')
+                      and button(dialog, 'Run / resume').IsEnabled()):
                     assert '3 of 3 verified operations' in review.GetValue()
                     job, = observer.jobs()
                     assert job.status == 'complete' and job.completed == job.total == 3
