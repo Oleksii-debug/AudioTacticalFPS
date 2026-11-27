@@ -11,6 +11,7 @@ import struct
 import sys
 from threading import Event, Thread
 from time import monotonic, sleep
+from uuid import uuid4
 
 import pytest
 
@@ -21,7 +22,11 @@ def records(runtime):
 
 
 def scenario(runtime, value):
-    (runtime / "scenario.json").write_text(json.dumps({"mode": value}))
+    launch_nonce = uuid4().hex
+    (runtime / "scenario.json").write_text(json.dumps({
+        "mode": value, "launch_nonce": launch_nonce,
+    }))
+    return launch_nonce
 
 
 def wait_for(predicate, timeout=2.0):
@@ -33,13 +38,18 @@ def wait_for(predicate, timeout=2.0):
     pytest.fail("Synthetic worker did not reach its expected bounded checkpoint")
 
 
-def worker_is_ready(runtime, pid):
-    # A prior process leaves this marker behind. Bind readiness to the new
-    # child rather than mistaking an old marker for completed interpreter startup.
+def ready_worker_pid(runtime, launch_nonce):
+    # Windows venv python.exe is a redirector: Popen.pid is the launcher,
+    # while os.getpid() in the actor belongs to its child interpreter. Bind
+    # readiness to this launch, then use the actor PID for request ownership.
     try:
-        return json.loads((runtime / "worker-ready.json").read_text())["pid"] == pid
-    except (OSError, ValueError, KeyError):
-        return False
+        value = json.loads((runtime / "worker-ready.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(value, dict) or value.get("launch_nonce") != launch_nonce:
+        return None
+    pid = value.get("pid")
+    return pid if type(pid) is int and pid > 0 else None
 
 
 def test_exact_pull_protocol_preserves_unicode_and_pcm_without_inference(adapter, runtime):
@@ -91,17 +101,23 @@ def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, 
     # Refresh must close the cancelled process before the next scenario starts.
     adapter.voices(refresh=True)
     assert cancelled_worker.process.poll() is not None and adapter._worker is None
-    scenario(runtime, recovery_scenario)
+    recovery_nonce = scenario(runtime, recovery_scenario)
+    # The previous actor's marker remains on disk and must not satisfy readiness.
+    assert ready_worker_pid(runtime, recovery_nonce) is None
     # This test checks cancellation and reply framing, not subsecond Windows
-    # interpreter startup. Wait for a PID-bound fixture checkpoint, preserving
+    # interpreter startup. Wait for a launch-bound fixture checkpoint, preserving
     # the same one-second protocol deadline for the actual recovery render.
     recovered_worker = adapter._start_worker()
     assert recovered_worker.process.pid != cancelled_worker.process.pid
-    wait_for(lambda: worker_is_ready(runtime, recovered_worker.process.pid), timeout=5.0)
+    wait_for(lambda: ready_worker_pid(runtime, recovery_nonce) is not None, timeout=5.0)
+    actor_pid = ready_worker_pid(runtime, recovery_nonce)
+    assert actor_pid is not None
     assert recovered_worker.process.poll() is None and adapter.request_timeout == 1.0
     assert len(list(adapter.stream_pcm("After cancellation.", "speaker_a", "uk"))) == 2
     assert adapter._worker is recovered_worker
-    assert [r["mode"] for r in records(runtime) if r["pid"] == recovered_worker.process.pid] == [
+    recovery_requests = [r for r in records(runtime) if r["launch_nonce"] == recovery_nonce]
+    assert {r["pid"] for r in recovery_requests} == {actor_pid}
+    assert [r["mode"] for r in recovery_requests] == [
         "reference", "next", "next"]
     adapter.close()
     assert recovered_worker.process.poll() is not None

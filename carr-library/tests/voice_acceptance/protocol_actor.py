@@ -22,12 +22,16 @@ CLASSMATE_LOCALES = frozenset({"sk"})
 
 def main():
     root = Path(__file__).resolve().parent
-    scenario = json.loads((root / "scenario.json").read_text())["mode"]
+    configuration = json.loads((root / "scenario.json").read_text())
+    scenario = configuration["mode"]
+    launch_nonce = configuration.get("launch_nonce")
     if scenario == "delayed_normal":
         # Explicitly outlast the fixture's one-second reply deadline before
         # announcing readiness; no model or real inference is involved.
         Event().wait(1.25)
-    (root / "worker-ready.json").write_text(json.dumps({"pid": os.getpid()}))
+    (root / "worker-ready.json").write_text(json.dumps({
+        "pid": os.getpid(), "launch_nonce": launch_nonce,
+    }))
     if scenario == "stall_reader":
         Event().wait(15)
         return
@@ -40,6 +44,7 @@ def main():
             if "text" in request:
                 logged["text_sha256"] = hashlib.sha256(request["text"].encode()).hexdigest()
             logged["pid"] = os.getpid()
+            logged["launch_nonce"] = launch_nonce
             with (root / "requests.jsonl").open("a", encoding="utf-8") as log:
                 log.write(json.dumps(logged) + "\n")
             if request["mode"] == "cancel":
