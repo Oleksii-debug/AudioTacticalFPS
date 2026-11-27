@@ -528,7 +528,7 @@ class AudioStudioDialog:
         self.busy = self.closed = self.close_pending = False
         self.editing_dirty = False
         self._script_dirty = False
-        self.playback = LocalPlayback()
+        self.playback = LocalPlayback(progress_hub=getattr(parent, 'progress_hub', None))
         self.voice_rows = []
         self.controls = []
         self.windows_playback_controls = []

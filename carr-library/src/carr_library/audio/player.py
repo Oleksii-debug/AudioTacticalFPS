@@ -5,6 +5,7 @@ The optional POSIX ffplay fallback exposes observed process state and file
 metadata; it does not manufacture a playhead position from elapsed wall time.
 """
 from bisect import bisect_left, bisect_right
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 import math
 import os
@@ -38,10 +39,11 @@ class WavePlayer:
     MAX_PLAYLIST = 256
     MAX_SEGMENTS = 10000
 
-    def __init__(self, *, clock=time.monotonic):
+    def __init__(self, *, clock=time.monotonic, progress_hub=None):
         from .playback import PCMPlayer
         self.process = None
-        self.native = PCMPlayer() if os.name == 'nt' else None
+        self._progress_hub, self._external_activity = progress_hub, None
+        self.native = PCMPlayer(progress_hub=progress_hub) if os.name == 'nt' else None
         self._external_status = PlaybackStatus()
         self._clock = clock
         self._queue, self.playlist_index = (), None
@@ -110,11 +112,18 @@ class WavePlayer:
                 raise ValueError('Local playback is unavailable. Open the exported WAV in your audio player.')
             self._halt()
             limit = [] if end_seconds is None else ['-t', str(float(end_seconds - start_seconds))]
-            self.process = subprocess.Popen([executable, '-hide_banner', '-nodisp', '-autoexit',
-                '-loglevel', 'error', '-nostats', '-ss', str(float(start_seconds)),
-                '-protocol_whitelist', 'file,pipe', '-i', str(selected), *limit],
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                shell=False, start_new_session=True)
+            activity = self._progress_hub.media_activity() if self._progress_hub is not None else nullcontext()
+            activity.__enter__()
+            self._external_activity = activity
+            try:
+                self.process = subprocess.Popen([executable, '-hide_banner', '-nodisp', '-autoexit',
+                    '-loglevel', 'error', '-nostats', '-ss', str(float(start_seconds)),
+                    '-protocol_whitelist', 'file,pipe', '-i', str(selected), *limit],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    shell=False, start_new_session=True)
+            except BaseException:
+                self._release_external_activity()
+                raise
             self._external_status = PlaybackStatus(state='playing', path=str(selected),
                 position_frames=start, total_frames=info.frames, sample_rate=info.rate, channels=info.channels,
                 device_name='System output through local ffplay', position_accuracy='external_player')
@@ -129,6 +138,7 @@ class WavePlayer:
                 code = self.process.returncode
                 self._external_status = replace(self._external_status, state='completed' if code == 0 else 'error',
                     error=None if code == 0 else f'The local audio player exited with code {code}.')
+                self._release_external_activity()
             snapshot = self._external_status
         if getattr(self, '_selection_cleared', False) and snapshot.state not in ('error', 'unavailable', 'closed'):
             return PlaybackStatus()
@@ -164,19 +174,31 @@ class WavePlayer:
         if paused:
             self.pause()
 
+    def _release_external_activity(self):
+        activity = getattr(self, '_external_activity', None)
+        self._external_activity = None
+        if activity is not None:
+            activity.__exit__(None, None, None)
+
     def _halt(self):
         if self.native is not None:
             self.native.stop()
         if self.process is not None:
-            if self.process.poll() is None:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=1)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                    self.process.wait(timeout=1)
-            self.process = None
-            self._external_status = replace(self._external_status, state='stopped', position_frames=0)
+            try:
+                if self.process.poll() is None:
+                    self.process.terminate()
+                    try:
+                        self.process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        self.process.kill()
+                        self.process.wait(timeout=1)
+            finally:
+                # A failed cleanup must not unmute while the owned process is
+                # still alive. A later status/stop observes exit and releases it.
+                if self.process.poll() is not None:
+                    self.process = None
+                    self._external_status = replace(self._external_status, state='stopped', position_frames=0)
+                    self._release_external_activity()
         self._ended = False
 
     def stop(self):

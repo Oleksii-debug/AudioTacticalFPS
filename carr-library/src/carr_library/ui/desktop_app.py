@@ -503,6 +503,8 @@ class DesktopFrame(WorkspaceFrame):
         self._menus()
         from .productivity import install_productivity_actions
         keyboard = install_productivity_actions(self)
+        from .progress_view import install_progress_view
+        install_progress_view(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
         if self.scopes:
@@ -685,7 +687,7 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None):
+    def run_job(self, title, operation, done=None, failed=None, *, progress_unit='items'):
         if self._closing:
             return
         if self.working:
@@ -697,12 +699,20 @@ class DesktopFrame(WorkspaceFrame):
         self.choice.Disable()
         if self.book is not None:
             self.book.Disable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+        progress_view = getattr(self, 'progress_view', None)
+        if progress_view is not None:
+            progress_view.set_busy(True)
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, False)
         self.report(title + '…')
+        from .progress_view import shared_hub, run_observed, fail_operation
+        task = None
         try:
-            future = self.executor.submit(operation)
+            task = shared_hub(self).start(title, unit=progress_unit)
+            future = self.executor.submit(lambda: run_observed(task, operation))
         except Exception as exc:
+            fail_operation(task, exc)
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
@@ -710,6 +720,8 @@ class DesktopFrame(WorkspaceFrame):
             return
 
         def finish(future):
+            if future.cancelled():
+                fail_operation(task, InterruptedError('The queued operation was cancelled.'))
             if self._closing:
                 return
             def apply():
@@ -718,11 +730,19 @@ class DesktopFrame(WorkspaceFrame):
                 self._finish_job_controls()
                 try:
                     result = future.result()
+                    try:
+                        outcome = task.event
+                        message = (title + ': complete.' if outcome.state == 'complete' and outcome.verified
+                                   else outcome.text)
+                    except Exception:
+                        # A detached/evicted observer cannot suppress the real
+                        # result callback or retry an already committed operation.
+                        message = title + ': operation returned; progress status is unavailable.'
                     if done is not None and getattr(self, 'status', None) is not None:
                         # The result callback owns its panel/reader focus.
-                        self.status.SetValue(title + ': complete.')
+                        self.status.SetValue(message)
                     else:
-                        self.report(title + ': complete.')
+                        self.report(message)
                     if done is not None:
                         done(result)
                 except Exception as exc:
@@ -738,8 +758,12 @@ class DesktopFrame(WorkspaceFrame):
         self.choice.Enable()
         if self.book is not None:
             self.book.Enable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, True)
+        progress_view = getattr(self, 'progress_view', None)
+        if progress_view is not None:
+            progress_view.set_busy(False)
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, True)
 
     def _open_workspace(self, workspace, topic=None):
         self.refresh_scopes()
@@ -1252,6 +1276,8 @@ class DesktopFrame(WorkspaceFrame):
         super().on_close(event)
         if not event.GetVeto():
             self._closing = True
+            if getattr(self, 'progress_view', None) is not None:
+                self.progress_view.close()
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
 
