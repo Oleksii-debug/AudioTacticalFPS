@@ -514,6 +514,14 @@ class TranscriptionService:
                                 (f' {len(errors) - 5} more damaged outputs.' if len(errors) > 5 else ''))}
         return {'record': record, 'outputs': outputs}
 
+    def interrupted_details(self, job_id):
+        """Bounded request metadata after stop; do not restart a receipt scan."""
+        record = self._record(job_id)
+        if record['status'] == 'complete':
+            record = {**record, 'status': 'unverified',
+                      'error': 'Result validation stopped; recorded completion has not been rechecked.'}
+        return {'record': record, 'outputs': [], 'validation_cancelled': True}
+
     def transcript_text(self, job_id, source_file, *, cancelled=lambda: False):
         """Read verified TXT as a derivative, bounded to the existing reader budget."""
         detail = self.details(job_id, cancelled=cancelled)
@@ -565,7 +573,7 @@ class TranscriptionService:
             raise ValueError('Select a reviewed local transcription runtime before resuming a job.')
         directory = self._directory(job_id)
         with state_lock(directory, 'job'):
-            record = self.load(job_id)
+            record = self._record(job_id)
             request = record['request']
             command = 'run'
             def stopped():
@@ -588,6 +596,7 @@ class TranscriptionService:
                     record.setdefault('notices', []).append('Progress observer failed: ' + type(exc).__name__)
             try:
                 _cancel(stopped)
+                record = self.load(job_id, cancelled=stopped)
                 runtime_id, prepared, python, runtime_root, model_root = self.runtime.verify(stopped)
                 if runtime_id != request['runtime']:
                     raise ValueError('The selected runtime or model changed; create a new reviewed job.')
@@ -600,14 +609,14 @@ class TranscriptionService:
                         source = local_path(directory / 'inputs' / item['file'], root=directory / 'inputs', exists=True)
                         if regular(source).st_size != item['bytes'] or _file_digest(source, stopped) != item['sha256']:
                             raise ValueError('The retained audio snapshot failed its identity check.')
-                        receipt = self._receipt(directory, item, request)
+                        receipt = self._receipt(directory, item, request, cancelled=stopped)
                         if receipt is None:
                             notify(f'Transcribing file {index} of {len(request["inputs"])} locally.')
                             notice = self._run_one(directory, item, request, source, settings,
                                                    prepared, python, runtime_root, model_root, stopped)
                             if notice is not None:
                                 record.setdefault('cleanup_pending', []).append(notice)
-                            receipt = self._receipt(directory, item, request)
+                            receipt = self._receipt(directory, item, request, cancelled=stopped)
                             if receipt is None:
                                 raise AudioError('The completed worker output has no durable receipt.')
                         completed.append(item['file'])

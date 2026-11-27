@@ -637,3 +637,27 @@ def test_folder_selection_reuses_input_byte_budget(service, tmp_path):
     service.budget = AudioBudget(timeout=10, reserve_disk_bytes=0, max_output_bytes=4096)
     with pytest.raises(AudioError, match='disk allowance'):
         service.folder_inputs(folder)
+
+
+
+def test_resume_completed_job_polls_stop_while_rechecking_receipts(service, tmp_path, monkeypatch):
+    job_id = service.create([audio(tmp_path)])
+    service.run(job_id)
+    target = output(service, job_id)
+    before = target.read_bytes()
+    real = asr._file_digest
+    def paused_digest(path, cancelled=lambda: False):
+        if Path(path).name == 'transcript.txt':
+            service.control(job_id, 'pause')
+            assert cancelled(), 'Completed-job validation did not receive the stop predicate.'
+            raise AudioCancelled('Receipt recheck paused.')
+        return real(path, cancelled)
+    monkeypatch.setattr(asr, '_file_digest', paused_digest)
+    with pytest.raises(AudioCancelled):
+        service.run(job_id)
+    record = read_json(service.root/job_id/'job.json')
+    assert record['status'] == 'complete'
+    interrupted = service.interrupted_details(job_id)
+    assert interrupted['record']['status'] == 'unverified'
+    assert interrupted['outputs'] == [] and interrupted['validation_cancelled']
+    assert target.read_bytes() == before

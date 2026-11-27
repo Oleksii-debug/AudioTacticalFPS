@@ -120,6 +120,14 @@ class SyntheticService:
                               'formats': ['txt', 'srt'], 'directory': str(self.output)}]
                             if self.record['completed'] else [])}
 
+    def interrupted_details(self, job_id):
+        self.call('interrupted_details')
+        assert job_id == JOB
+        record = deepcopy(self.record)
+        if record['status'] == 'complete':
+            record['status'] = 'unverified'
+        return {'record': record, 'outputs': [], 'validation_cancelled': True}
+
     def transcript_text(self, job_id, source_file, *, cancelled):
         self.call('transcript_text')
         assert job_id == JOB and source_file == SOURCE
@@ -420,3 +428,42 @@ def test_history_status_does_not_turn_refresh_into_new_failed_operation(setup, s
     result = setup.host.finish()['value']
     assert operation_outcome(result) == 'succeeded'
     assert setup.controller.jobs[0]['status'] == status
+
+
+
+def test_cancelled_run_does_not_start_another_receipt_scan(setup):
+    ready(setup)
+    setup.service.record['completed'] = [SOURCE]
+    setup.service.wait_for_stop = True
+    setup.controller.start()
+    pending = setup.host.launch()
+    assert setup.service.started.wait(1)
+    setup.controller.request_stop('pause')
+    setup.host.finish(pending)
+    assert setup.controller.record['status'] == 'paused'
+    assert setup.controller.outputs == []
+    assert not any(name == 'details' for name, _, _ in setup.service.calls)
+    assert any(name == 'interrupted_details' for name, _, _ in setup.service.calls)
+    assert 'not rechecked after stop' in setup.controller.status
+
+
+def test_cancel_during_post_run_validation_returns_unverified_metadata_promptly(setup):
+    ready(setup)
+    validating = threading.Event()
+    def slow_details(job_id, *, cancelled):
+        validating.set()
+        for _ in range(500):
+            if cancelled():
+                raise AudioCancelled('Receipt validation stopped.')
+            threading.Event().wait(.002)
+        raise AssertionError('Cancellation never reached receipt validation.')
+    setup.service.details = slow_details
+    setup.controller.start()
+    pending = setup.host.launch()
+    assert validating.wait(1)
+    setup.controller.request_stop('cancel')
+    result = setup.host.finish(pending)['value']
+    assert result['status'] == 'cancelled'
+    assert setup.service.record['status'] == 'complete'
+    assert setup.controller.record['status'] == 'unverified'
+    assert setup.controller.outputs == []

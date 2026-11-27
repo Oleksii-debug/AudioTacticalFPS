@@ -56,6 +56,7 @@ class TranscriptionController:
         self._token = None
         self._control_lock = threading.Lock()
         self._pending_command = self._active_job = self._active_service = None
+        self._requested_command = None
 
     def guard(self):
         if self.closed or getattr(self.frame, '_closing', False) or self.frame.library is not self.library:
@@ -110,6 +111,13 @@ class TranscriptionController:
                 or self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library)
 
+    def _inspection_cancelled(self):
+        with self._control_lock:
+            requested = self._requested_command is not None
+        return (requested or self.frame.cancel_event.is_set()
+                or self.closed or getattr(self.frame, '_closing', False)
+                or self.frame.library is not self.library)
+
     def _progress(self, token, text, progress_token):
         if self.closed or self._token is not token:
             return
@@ -134,6 +142,7 @@ class TranscriptionController:
         token = self._token = object()
         with self._control_lock:
             self._pending_command = self._active_job = self._active_service = None
+            self._requested_command = None
         self.report(title + '…', focus=True)
 
         def work():
@@ -214,6 +223,8 @@ class TranscriptionController:
                    f'Language: {settings["language"]}; task: {settings["task"]}; '
                    f'device: {settings["device"]}; compute: {settings["compute_type"]}; '
                    f'formats: {", ".join(request["formats"])}. ')
+        if detail.get('validation_cancelled'):
+            summary += 'Results were not rechecked after stop. Refresh and inspect this job to verify outputs. '
         if self.record.get('error'):
             summary += readable(self.record['error']) + ' '
         summary += ('Resume preserves original settings, runtime identity and input copies. '
@@ -239,15 +250,24 @@ class TranscriptionController:
             with self._control_lock:
                 self._active_job, self._active_service = active, service
             service.control(active, 'run')
-            error = None
+            error, stopped = None, False
             try:
                 service.run(active, cancelled=self._cancelled, on_status=progress)
             except AudioCancelled:
-                pass
+                stopped = True
             except Exception as exc:
                 error = str(exc)
-            detail = service.details(active)
-            detail['status'] = detail['record']['status']
+            try:
+                if stopped or self._inspection_cancelled():
+                    raise AudioCancelled('Result inspection stopped.')
+                detail = service.details(active, cancelled=self._inspection_cancelled)
+                detail['status'] = detail['record']['status']
+            except AudioCancelled:
+                detail = service.interrupted_details(active)
+                with self._control_lock:
+                    requested = self._requested_command
+                detail['status'] = ('paused' if requested == 'pause' or
+                                    detail['record']['status'] == 'paused' else 'cancelled')
             if error is not None:
                 detail.update(status='failed', operation_error=error)
             return detail
@@ -268,6 +288,7 @@ class TranscriptionController:
             return False
         with self._control_lock:
             self._pending_command = command
+            self._requested_command = command
         self.report(f'{command.capitalize()} requested. Waiting for the worker to stop and save its final state.', focus=True)
         return True
 
