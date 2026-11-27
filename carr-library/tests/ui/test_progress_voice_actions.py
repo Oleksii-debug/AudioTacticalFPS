@@ -495,7 +495,8 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
 
 
 @pytest.mark.parametrize('origin', ['dialog', 'parent'])
-def test_studio_native_destroy_detaches_without_autosave_or_dead_window_calls(origin):
+@pytest.mark.parametrize('timer_unavailable', [False, True])
+def test_studio_native_destroy_detaches_without_autosave_or_dead_window_calls(origin, timer_unavailable):
     local, parent, player = Progress('studio'), Progress('parent'), Mock()
     executor, service, provider = CleanupQueue(), SimpleNamespace(close=Mock()), Mock()
     owner_id, parent_id = 701, 702
@@ -509,6 +510,8 @@ def test_studio_native_destroy_detaches_without_autosave_or_dead_window_calls(or
         executor=executor, service=service, owned_progress_voices={provider},
         dialog=dialog, frame=frame, unregister=Mock(), close=close,
         wx=SimpleNamespace(EVT_WINDOW_DESTROY='destroy'), report=Mock())
+    if timer_unavailable:
+        values['timer'].Stop.side_effect = RuntimeError('Native timer already destroyed')
     handlers = callbacks('studio_dialog.py', 'show_studio',
         ['on_destroy', 'retire_playback', 'retire_worker'], values, cleanup=True)
     child = SimpleNamespace(GetId=lambda: 999, Skip=Mock(),
@@ -565,3 +568,20 @@ def test_studio_destroyed_playback_failure_has_an_independent_retry_owner(monkey
     assert owner.close()
     assert owner.quiescent and owner not in cleanup._RETAINED
     assert player.close.call_count == 3
+
+
+def test_studio_worker_cleanup_attempts_every_owned_voice_and_service_after_failure():
+    first, second, service = Mock(), Mock(), SimpleNamespace(close=Mock())
+    first.close.side_effect = RuntimeError('First voice close failed')
+    executor = CleanupQueue()
+    handlers = callbacks('studio_dialog.py', 'show_studio', ['retire_worker'],
+        dict(cleanup_started=False, executor=executor, owned_progress_voices=(first, second),
+             service=service))
+    handlers.retire_worker()
+    handlers.retire_worker()
+    assert len(executor.pending) == 1
+    with pytest.raises(RuntimeError, match='First voice close failed'):
+        executor.finish().result()
+    first.close.assert_called_once()
+    second.close.assert_called_once()
+    service.close.assert_called_once()

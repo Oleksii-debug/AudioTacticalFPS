@@ -531,9 +531,6 @@ def install_progress_panel(frame):
     if existing is not None:
         frame.operation_progress = existing
         return existing
-    existing = getattr(frame, 'progress_panel', None)
-    if existing is not None:
-        return existing
     import wx
     panel = NativeProgressPanel(frame)
     frame.progress_panel = frame.operation_progress = panel

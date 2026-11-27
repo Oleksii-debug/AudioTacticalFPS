@@ -1211,11 +1211,6 @@ class DesktopFrame(WorkspaceFrame):
             if approval is None:
                 return
 
-            approval = confirm_export_destination(self, path, private_root=library.root,
-                                                  title='Replace export')
-            if approval is None:
-                return
-
             def selected_scope():
                 if self.library is not library or self.active != (workspace, topic):
                     raise ValueError('The selected library or topic changed. Export again from the intended topic.')
@@ -1284,7 +1279,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete library backup')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1296,8 +1291,8 @@ class DesktopFrame(WorkspaceFrame):
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
                 'All completed libraries, original files, saved evidence, notes, tags, searches, '
-                'reading positions and bookmarks are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'reading positions, bookmarks and application state are included. '
+                'Pending import inputs and review checkpoints are retained for explicit resume.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 

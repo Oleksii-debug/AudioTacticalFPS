@@ -587,11 +587,19 @@ def show_studio(frame):
         from .worker_cleanup import close_after_worker
         class StudioResources:
             def close(self):
-                try:
-                    for provider in owned_progress_voices:
+                errors = []
+                for provider in owned_progress_voices:
+                    try:
                         provider.close()
-                finally:
+                    except Exception as exc:
+                        errors.append(exc)
+                try:
                     service.close()
+                except Exception as exc:
+                    errors.append(exc)
+                if errors:
+                    raise RuntimeError('Studio resource cleanup reported: ' +
+                        '; '.join(str(error) for error in errors)) from errors[0]
         close_after_worker(executor, StudioResources())
 
     def retire_playback(*, notify):
@@ -627,14 +635,25 @@ def show_studio(frame):
         cancel.set()
         if current_job is not None and busy:
             service.request_pause(current_job)
-        timer.Stop()
-        retire_playback(notify=True)
-        if busy:
-            progress.request_cancel()
-        progress.close()
-        alive = False
-        retire_worker()
-        dialog.EndModal(wx.ID_CLOSE)
+        try:
+            timer.Stop()
+        except RuntimeError:
+            pass
+        try:
+            retire_playback(notify=True)
+        finally:
+            try:
+                if busy:
+                    progress.request_cancel()
+            finally:
+                try:
+                    progress.close()
+                finally:
+                    alive = False
+                    try:
+                        retire_worker()
+                    finally:
+                        dialog.EndModal(wx.ID_CLOSE)
 
     def on_destroy(event):
         nonlocal alive, destroyed, parent_destroyed
@@ -645,7 +664,10 @@ def show_studio(frame):
             if alive:
                 alive = False
                 cancel.set()
-                timer.Stop()
+                try:
+                    timer.Stop()
+                except RuntimeError:
+                    pass  # A destroyed native timer cannot block owned cleanup.
                 try:
                     retire_playback(notify=False)
                 finally:
@@ -727,13 +749,20 @@ def show_studio(frame):
     try:
         dialog.ShowModal()
     finally:
-        unregister()
-        if alive:
-            close()
-        if not parent_destroyed:
-            frame.Unbind(wx.EVT_WINDOW_DESTROY, handler=on_destroy)
-        if not destroyed and not parent_destroyed:
-            dialog.Destroy()
+        try:
+            unregister()
+        finally:
+            try:
+                if alive:
+                    close()
+            finally:
+                if not parent_destroyed:
+                    try:
+                        frame.Unbind(wx.EVT_WINDOW_DESTROY, handler=on_destroy)
+                    except RuntimeError:
+                        pass  # The parent may have completed native destruction.
+                if not destroyed and not parent_destroyed:
+                    dialog.Destroy()
 
 
 def show_audio_conversion(frame):
