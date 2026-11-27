@@ -157,10 +157,12 @@ def parse_language_report(report):
 def _capture(runtime, option, remaining):
     # A file-backed capture prevents a malformed native inventory from filling
     # Python's memory. The runtime remains bounded by the shared deadline.
+    # Import lazily: the process boundary also uses this module's model IDs.
+    from .ocr_process import prepare_ocr_query, normalize_ocr_query_output
     remaining()
-    argv = runtime.command([runtime.executable, option])
+    argv, cwd, report_directory = prepare_ocr_query(runtime, [runtime.executable, option])
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
-        with subprocess.Popen(argv, stdout=output, stderr=errors, cwd=runtime.root,
+        with subprocess.Popen(argv, stdout=output, stderr=errors, cwd=cwd,
                               creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)) as process:
             try:
                 while True:
@@ -184,7 +186,7 @@ def _capture(runtime, option, remaining):
                     process.kill()
                 process.wait()
                 raise
-    return raw.decode('utf-8')
+    return normalize_ocr_query_output(raw, report_directory).decode('utf-8')
 
 
 def discover_languages(*, timeout=10, cancelled=lambda: False, model_profile='installed'):

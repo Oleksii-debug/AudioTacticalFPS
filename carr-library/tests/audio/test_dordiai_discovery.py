@@ -196,7 +196,7 @@ def test_missing_required_installed_helper_fails_before_discovery(installed):
         {'id': 'demo', 'name': 'Synthetic', 'languages': ['https://remote.invalid']}]}).encode(),
     json.dumps({'protocol': DISCOVERY_PROTOCOL, 'voices': [
         {'id': 'demo', 'name': 'Synthetic', 'languages': []}]}).encode(),
-    b'x' * (MAX_RESPONSE_BYTES + 1),
+    pytest.param(b'x' * (MAX_RESPONSE_BYTES + 1), id='oversized-response'),
 ])
 def test_malformed_discovery_response_never_publishes_voices(installed, monkeypatch, payload):
     provider = engine(installed)

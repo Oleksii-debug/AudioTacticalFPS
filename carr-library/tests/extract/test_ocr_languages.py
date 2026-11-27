@@ -141,6 +141,35 @@ def test_capture_uses_bound_native_arguments_and_file_backed_output(monkeypatch)
     assert models._capture(native, '--list-langs', lambda: 3) == report('eng')
 
 
+@pytest.mark.parametrize('reported', ['selected', 'other'])
+def test_capture_binds_unicode_models_and_checks_reported_directory(tmp_path, monkeypatch, reported):
+    from carr_library.extract import ocr_process
+    selected, other = tmp_path / 'Вибрані моделі', tmp_path / 'other'
+    selected.mkdir()
+    other.mkdir()
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    class Process:
+        def __init__(self, argv, **kwargs):
+            assert argv == ['selected local engine', '--tessdata-dir', '.', '--list-langs']
+            assert kwargs['cwd'] == selected
+            directory = './' if reported == 'selected' else str(other)
+            kwargs['stdout'].write(f'List of available languages in "{directory}" (1):\r\neng\r\n'.encode('utf-8'))
+            kwargs['stdout'].flush()
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def wait(self, timeout=None): return 0
+        def poll(self): return 0
+    monkeypatch.setattr(subprocess, 'Popen', Process)
+    native = ocr_runtime.OcrRuntime('selected local engine', root=tmp_path, tessdata=selected)
+    if reported == 'other':
+        with pytest.raises(ocr_runtime.OcrRuntimeError, match='different model directory'):
+            models._capture(native, '--list-langs', lambda: 3)
+    else:
+        captured = models._capture(native, '--list-langs', lambda: 3)
+        assert str(selected) in captured
+        assert models.parse_language_report(captured) == ('eng',)
+
+
 @pytest.mark.parametrize('stream', ['stdout', 'stderr'])
 def test_actual_child_oversized_output_is_stopped_and_rejected(stream):
     # Actual bounded process handling, using a synthetic Python emitter instead
