@@ -1,4 +1,4 @@
-name: CARR original JUnit qualification diagnostic
+name: CARR original and corrected JUnit diagnostic
 on:
   push:
     branches:
@@ -197,13 +197,145 @@ jobs:
           report_path.write_text(json.dumps(report, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
           print(json.dumps({"kind": "diagnostic_summary", **report}, ensure_ascii=True), flush=True)
           # Continue past failed assertions solely to collect diagnostics, then keep failure.
-          raise SystemExit(1 if failed else 0)
+          # Preserve the recorded original failure before evaluating the corrected metadata.
+          assert exception is None and len(records) == len(conditions) == 7
+          assert [item["number"] for item in failed_assertions] == [4]
+          assert report["passed"] == 2146 and report["failed"] == report["skipped"] == 0
+          assert not report["missing_required_names_repr"]
+          
+          CORRECTED_COMMIT = "83f06358572153ce63e862192ea1a4905c3b4723"
+          CORRECTED_WORKFLOW_BLOB = "9f35e5980a58d94ab55d57f78e7f28f47c1bf4ca"
+          import base64
+          import textwrap
+          
+          source_api = ("https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/contents/"
+                        ".github/workflows/carr-windows.yml?ref=" + CORRECTED_COMMIT)
+          source_request = urllib.request.Request(source_api, headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+              "X-GitHub-Api-Version": "2022-11-28",
+          })
+          try:
+              with urllib.request.build_opener(NoRedirect()).open(source_request, timeout=30) as response:
+                  source_json = response.read(512 * 1024 + 1)
+          except Exception:
+              raise RuntimeError("Pinned corrected workflow API read failed") from None
+          assert len(source_json) <= 512 * 1024, "Corrected workflow response exceeds bound"
+          source_document = json.loads(source_json)
+          assert source_document["encoding"] == "base64"
+          assert source_document["sha"] == CORRECTED_WORKFLOW_BLOB
+          corrected_bytes = base64.b64decode(
+              "".join(source_document["content"].splitlines()), validate=True)
+          assert len(corrected_bytes) == source_document["size"] <= 256 * 1024
+          assert sha1(b"blob " + str(len(corrected_bytes)).encode("ascii") + b"\0" +
+                      corrected_bytes).hexdigest() == CORRECTED_WORKFLOW_BLOB
+          corrected_workflow = corrected_bytes.decode("utf-8")
+          corrected_lines = [line.strip() for line in corrected_workflow.splitlines()
+                             if line.strip().startswith(prefix)
+                             and "full-bundle-workflows.xml" in line and "required=" in line]
+          assert len(corrected_lines) == 1 and corrected_lines[0].endswith(suffix)
+          corrected_checker = corrected_lines[0][len(prefix):-len(suffix)]
+          assert "$" not in corrected_checker and chr(96) not in corrected_checker
+          
+          old_audio = "audio_totals={'tests.audio.test_music':18,'tests.audio.test_production':18}"
+          new_audio = ("audio_totals={'tests.audio.test_music':18,"
+                       "'tests.audio.test_production.ProductionModelTests':6,"
+                       "'tests.audio.test_production.ProductionRenderTests':12}")
+          old_audio_assert = ("assert all(sum(c.get('classname')==module for c in cases)==count "
+                              "for module,count in audio_totals.items())")
+          new_audio_assert = (old_audio_assert +
+                              ", ('audio_class_case_counts', audio_totals, "
+                              "{module:sum(c.get('classname')==module for c in cases) "
+                              "for module in audio_totals})")
+          assert checker.count(old_audio) == checker.count(old_audio_assert) == 1
+          assert corrected_checker == checker.replace(old_audio, new_audio, 1).replace(
+              old_audio_assert, new_audio_assert, 1), "Unrelated original checker change"
+          
+          def ownership_source(text):
+              start = "          $checkImportOwnership = @'\n"
+              end = "\n          '@\n          $checkImportOwnership |"
+              assert text.count(start) == 1
+              tail = text.split(start, 1)[1]
+              assert end in tail
+              return textwrap.dedent(tail.split(end, 1)[0])
+          
+          original_ownership = ownership_source(workflow)
+          corrected_ownership = ownership_source(corrected_workflow)
+          assert original_ownership == corrected_ownership, "Ownership checker changed"
+          
+          def diagnose(code, label, expected_assertions):
+              global conditions
+              conditions = []
+              local_records = []
+              def record(number, condition, value):
+                  item = {"number": number, "condition": condition, "ok": bool(value)}
+                  local_records.append(item)
+                  print(json.dumps({"kind": label + "_assertion", **item}), flush=True)
+              parsed_tree = DiagnosticAssertions().visit(ast.parse(code, mode="exec"))
+              ast.fix_missing_locations(parsed_tree)
+              values = {"_record_original_assertion": record}
+              problem = None
+              try:
+                  exec(compile(parsed_tree, "<exact-" + label + "-checker>", "exec"), values)
+              except Exception as error:
+                  problem = {"type": type(error).__name__, "message": str(error)[:500]}
+              mismatches = [item for item in local_records if not item["ok"]]
+              result = {
+                  "assertion_count": len(conditions),
+                  "assertions_evaluated": len(local_records),
+                  "assertions": local_records,
+                  "exception": problem,
+                  "matched": (problem is None and not mismatches and
+                              len(conditions) == len(local_records) == expected_assertions),
+              }
+              return result, values
+          
+          corrected_result, corrected_values = diagnose(corrected_checker, "corrected", 7)
+          ownership_result, ownership_values = diagnose(corrected_ownership, "ownership", 4)
+          corrected_report = {
+              "diagnostic_only": True,
+              "qualified_application": False,
+              "status": ("DIAGNOSTIC_MATCHED" if corrected_result["matched"] and
+                         ownership_result["matched"] else "DIAGNOSTIC_FAILED"),
+              "original_source_commit": SOURCE_COMMIT,
+              "original_workflow_blob": WORKFLOW_BLOB,
+              "original_checker_verdict": report["original_checker_verdict"],
+              "original_failed_assertions": report["failed_assertions"],
+              "original_artifact_id": ARTIFACT_ID,
+              "original_artifact_sha256": sha256(artifact).hexdigest(),
+              "junit_sha256": sha256(junit).hexdigest(),
+              "cases": len(cases),
+              "passed": report["passed"],
+              "failed": report["failed"],
+              "skipped": report["skipped"],
+              "corrected_source_commit": CORRECTED_COMMIT,
+              "corrected_workflow_blob": CORRECTED_WORKFLOW_BLOB,
+              "corrected": corrected_result,
+              "ownership": ownership_result,
+              "expected_audio": corrected_values.get("audio_totals"),
+              "observed_audio": {
+                  module: sum(case.get("classname") == module for case in cases)
+                  for module in corrected_values.get("audio_totals", {})},
+              "expected_ownership": ownership_values.get("expected"),
+              "observed_ownership": ownership_values.get("observed"),
+              "ownership_totals": ownership_values.get("totals"),
+          }
+          corrected_report_path = workspace / "junit-corrected-diagnostic.json"
+          corrected_report_path.write_text(
+              json.dumps(corrected_report, ensure_ascii=True, indent=2) + "\n",
+              encoding="utf-8")
+          print(json.dumps({"kind": "corrected_diagnostic_summary", **corrected_report},
+                           ensure_ascii=True), flush=True)
+          # These are metadata replays against original synthetic evidence, not new app tests.
+          raise SystemExit(0 if corrected_result["matched"] and ownership_result["matched"] else 1)
           PY
       - name: Preserve the diagnostic only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: carr-original-junit-diagnostic-${{ github.sha }}
-          path: junit-original-diagnostic.json
+          path: |
+            junit-original-diagnostic.json
+            junit-corrected-diagnostic.json
           if-no-files-found: error
           retention-days: 7
