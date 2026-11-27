@@ -79,6 +79,10 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             self.regenerate_button = wx.Button(self, label='Regenerate saved citation document...')
             self.regenerate_button.Bind(wx.EVT_BUTTON, self.on_regenerate)
             layout.Add(self.regenerate_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.clusters_button = wx.Button(self, label='Edit citation &order...')
+            self.clusters_button.SetName('Edit citations in document order')
+            self.clusters_button.Bind(wx.EVT_BUTTON, self.on_clusters)
+            layout.Add(self.clusters_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.status = wx.TextCtrl(self, value='Choose a style and preview the selected references.',
                                       style=wx.TE_MULTILINE | wx.TE_READONLY)
             self.status.SetName('Citation formatting status')
@@ -107,7 +111,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.status.SetFocus()
 
         def controls(self, *, pending):
-            for control in (*self.options, self.generate, self.regenerate_button):
+            for control in (*self.options, self.generate, self.regenerate_button, self.clusters_button):
                 control.Enable(not pending)
             for control in (self.copy_bibliography, self.copy_citations, self.export_button):
                 control.Enable(not pending and self.preview is not None)
@@ -213,6 +217,38 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.report('Bibliography copied.' if part == 'bibliography' else 'Citation examples copied.')
             except Exception as exc:
                 self.report(f'Text not copied: {exc}')
+
+        def on_clusters(self, event=None):
+            if self.pending is not None:
+                return
+            try:
+                style_index = self.style_choice.GetSelection()
+                scope_index = self.scope_choice.GetSelection()
+                name_index = self.names_choice.GetSelection()
+                locale_index = self.locale_choice.GetSelection()
+                if style_index == len(self.styles) and self.custom_style is not None:
+                    style = self.custom_style
+                elif 0 <= style_index < len(self.styles):
+                    style = self.styles[style_index].id
+                else:
+                    raise ValueError('Choose an installed or explicitly loaded citation style.')
+                if (scope_index not in (0, 1)
+                        or scope_index == 1 and self.selected_identity is None
+                        or not 0 <= name_index < len(NAME_MODES)
+                        or not 0 <= locale_index < len(LOCALES)):
+                    raise ValueError('Choose the reference scope, name convention and citation language.')
+                from .citation_clusters_dialog import create_citation_clusters_dialog
+                dialog = create_citation_clusters_dialog(self, controller,
+                    identity=self.selected_identity if scope_index else None,
+                    style=style, locale=LOCALES[locale_index][0],
+                    name_mode=NAME_MODES[name_index][0])
+                try:
+                    dialog.ShowModal()
+                finally:
+                    dialog.Destroy()
+                self.clusters_button.SetFocus()
+            except Exception as exc:
+                self.report('Citation editor not opened: ' + str(exc))
 
         def on_regenerate(self, event=None):
             if self.pending is not None:
