@@ -1210,9 +1210,10 @@ def test_maximum_source_serialization_keeps_checkpoint_and_single_edit_within_ex
     from carr_library.assistant.models import canonical
     from carr_library.assistant.state import MAX_CHECKPOINT_BYTES
     from carr_library.speech.reading import MAX_PROJECT_BYTES
-    # Control characters use the worst six-byte JSON escape. No model or paid
-    # translation is used to test actual source/checkpoint/project serialization.
-    case = bound_ready(tmp_path, connection, first=1, last=1, raw='\x01' * 2_000_000)
+    # Intake rejects binary controls: use an admitted four-byte UTF-8 source,
+    # then the worst six-byte JSON escape for the translated reading edit.
+    # No model or paid translation is used for actual serialization checks.
+    case = bound_ready(tmp_path, connection, first=1, last=1, raw='\U0001f642' * 2_000_000)
     identity, _ = submit_bound(case)
     saved = case.service.jobs.load(identity)
     assert len((canonical(saved) + '\n').encode('utf-8')) <= MAX_CHECKPOINT_BYTES
