@@ -102,3 +102,27 @@ def pending_cleanup(attempt, *, message, callbacks=()):
         owner.last_error = exc
     return AudioCleanupPending(message, cleanup_owner=owner)
 
+
+def wait_for_cleanup(error):
+    """Settle a retained owner before a synchronous caller unwinds its scopes.
+
+    Call this on an operation worker, never the GUI thread. Files, explicit
+    streams and admission leases stay owned until the whole native family is
+    quiescent. Interrupts are delivered after that boundary, not discarded.
+    """
+    if not isinstance(error, AudioCleanupPending):
+        raise TypeError('An owned pending-cleanup error is required.')
+    owner = error.cleanup_owner
+    interrupted = None
+    while True:
+        try:
+            if owner.quiescent_event.is_set():
+                break
+            owner.close()
+            if not owner.quiescent_event.is_set():
+                owner.quiescent_event.wait(.25)
+        except (KeyboardInterrupt, SystemExit) as exc:
+            if interrupted is None:
+                interrupted = exc
+    if interrupted is not None:
+        raise interrupted
