@@ -3,7 +3,7 @@ name: CARR V3 local studio and assistant
 on:
   pull_request:
     branches: [carr-library]
-    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-windows.yml']
   push:
     branches: [carr/v3-academic-interchange-fe7760]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']

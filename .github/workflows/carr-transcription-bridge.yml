@@ -2,7 +2,7 @@ name: Supplied transcription bridge acceptance
 on:
   push:
     branches: [feature/supplied-transcription-20261127-137c, carr/resonance-final-20261127-137c]
-    paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
+    paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml', '.github/workflows/carr-windows.yml']
   workflow_dispatch:
 permissions:
   contents: read

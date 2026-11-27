@@ -295,4 +295,3 @@ class EmbeddingCache:
             self._disable(exc)
             return False
         return False
-
