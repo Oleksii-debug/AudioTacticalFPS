@@ -72,3 +72,27 @@ def test_cancellation(root):
     base, _ = root
     with pytest.raises(InterruptedError):
         module._runtime_inventory([base], cancel=lambda: True)
+
+
+def test_profile_additional_identity_preserves_worker_checkpoint_dialect(root):
+    base, site = root
+    executable = base / 'python.exe'
+    executable.write_bytes(b'fixture interpreter; not executed')
+    worker = base / 'worker.py'
+    worker.write_bytes(b'# fixture worker; not executed')
+    model = base / 'model'
+    model.mkdir()
+    for name in ('model.bin', 'config.json', 'tokenizer.json'):
+        (model / name).write_bytes(b'fixture model identity')
+    legacy = module.inspect_runtime(executable, worker, model)
+    assert 'runtime_additional_distributions' not in legacy
+    payload, _ = install(site, 'tqdm')
+    before = module.inspect_runtime(executable, worker, model)
+    assert before['runtime_distributions'] == legacy['runtime_distributions']
+    assert set(before['runtime_distributions']) == set(module.RUNTIME_DISTRIBUTIONS)
+    assert set(before['runtime_additional_distributions']) == {'tqdm'}
+    assert before['fingerprint'] != legacy['fingerprint']
+    payload.write_bytes(b'# modified only\n')
+    after = module.inspect_runtime(executable, worker, model)
+    assert before['runtime_distributions'] == after['runtime_distributions']
+    assert before['fingerprint'] != after['fingerprint']
