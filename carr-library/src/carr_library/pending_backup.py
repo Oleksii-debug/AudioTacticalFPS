@@ -24,7 +24,8 @@ from .catalog.intake import MAX_BYTES, classify
 from .backup_files import local_path, regular, sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
-from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS
+from .ingest.batches import (MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _ROW_KEYS,
+                             batch_schema, validate_batch_scan)
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
@@ -300,8 +301,7 @@ def _request(record, request_id, data_dir, db):
 
 
 def _batch(record, batch_id, data_dir, db):
-    if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-            or type(record['version']) is not int or record['version'] != 1
+    if (not batch_schema(record)
             or record['batch_id'] != batch_id or not _id(batch_id) or record['data_dir'] != data_dir
             or record['state'] not in ('queued', 'running', 'paused', 'attention', 'complete')
             or type(record['recursive']) is not bool
@@ -311,6 +311,7 @@ def _batch(record, batch_id, data_dir, db):
             or any(not _text(item, 200) for item in record['collections'])
             or len(set(record['collections'])) != len(record['collections'])):
         raise ValueError('Invalid pending batch schema or data-directory binding.')
+    validate_batch_scan(record)
     _workspace(db, record['workspace'])
     _config(record['config'])
     seen = {key: set() for key in ('row_id', 'work_id', 'edition_id', 'request_id')}
@@ -949,6 +950,10 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     for batch_id, batch in batches.items():
         _check(cancelled)
         batch['data_dir'] = str(new_root)
+        if batch['version'] == 2:
+            # Only scanned, manifest-bound files were retained. A restored queue
+            # never acquires fresh authority to read unscanned external folders.
+            batch['scan']['review_required'] = True
         rebased = {}
         for row in batch['rows']:
             if row['manifest'] is None:

@@ -189,3 +189,127 @@ def test_metadata_revision_does_not_retarget_an_existing_reader_location(importe
         read_ebook_section(app, workspace, 'another-edition', result['id'], 2)
     with pytest.raises(ValueError):
         read_ebook_section(app, workspace, 'edition', 'missing-revision', 2)
+
+
+def add_epub_editions(imported, count):
+    """Real retained EPUB and existing publication transaction; no fake DB API."""
+    from contextlib import closing
+    from hashlib import sha256
+    from carr_library.catalog.membership import Catalog
+    from carr_library.catalog.registration import Registration, register_batch
+    from carr_library.ingest.pipeline import canonical
+    from carr_library.ingest.writer_guard import exclusive_writer
+    from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Page, Storage
+    app, workspace, _, result = imported
+    with app.read(workspace) as db:
+        digest, config = db.execute('SELECT asset,config FROM revision WHERE id=?', (result['id'],)).fetchone()
+        body = tuple(Page(row[0]) for row in db.execute(
+            'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (result['id'],)))
+    original = app.assets.resolve(digest)
+    manifest = {'sha256': digest, 'mime': 'application/epub+zip', 'size': original.stat().st_size}
+    records = tuple(Registration(f'work-{index}', f'epub-{index:05d}', manifest,
+                        ('a', 'A', 'Бібліотека')[index % 3],
+                        ('Synthetic author',), 'uk', 'First', None, ())
+                    for index in range(count))
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
+        with storage.transaction():
+            LibraryApp._authorize(storage.db, workspace)
+            register_batch(Catalog(storage.db, workspace), records)
+            for record in records:
+                revision = sha256(canonical([workspace, record.edition_id, digest, config]).encode('utf-8')).hexdigest()
+                storage.stage_revision(workspace, record.edition_id, revision, digest, config, body)
+                storage.db.execute('INSERT INTO source_metadata '
+                    '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
+                    (workspace, record.edition_id, revision, record.authors[0], record.title, None, record.edition))
+        storage.check()
+    return records
+
+
+def test_epub_pages_pass_500_with_exact_order_no_omission_and_real_source_open(imported):
+    from carr_library.reader.ebook import list_ebooks_page
+    app, workspace, _, _ = imported
+    records = add_epub_editions(imported, 502)
+    ascii_lower = str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
+    expected = [('User supplied title', 'edition')] + [(row.title, row.edition_id) for row in records]
+    expected.sort(key=lambda row: (row[0].translate(ascii_lower), row[1]))
+    with pytest.raises(ValueError, match='500'):
+        list_ebooks(app, workspace)
+    actual, cursor, number = [], None, 1
+    for _ in range(30):
+        page = list_ebooks_page(app, workspace, cursor=cursor, limit=37)
+        assert page.page_number == number and len(page.books) <= 37
+        actual.extend((row.title, row.edition_id) for row in page.books)
+        if page.next_cursor is None:
+            break
+        cursor, number = page.next_cursor, number + 1
+    else:
+        pytest.fail('The finite EPUB inventory did not finish.')
+    assert actual == expected and len({identity for _, identity in actual}) == 503
+    last = page.books[-1]
+    opened = read_ebook_section(app, workspace, last.edition_id, last.revision, 1)
+    assert 'Railway research.' in opened.raw_text and opened.verified is False
+    assert app._selections == {}
+
+
+@pytest.mark.parametrize('change', ['workspace', 'topic', 'metadata', 'new-edition'])
+def test_epub_cursor_rejects_stale_scope_or_revision_before_source_bytes(imported, monkeypatch, change):
+    from carr_library.reader.ebook import list_ebooks_page
+    app, workspace, _, _ = imported
+    add_epub_editions(imported, 2)
+    first = list_ebooks_page(app, workspace, limit=1)
+    options = {}
+    if change == 'workspace':
+        workspace = app.create_workspace('Different library')
+    elif change == 'topic':
+        options['authorized_topic'] = app.create_topic(workspace, 'Different topic selection')
+    elif change == 'metadata':
+        app.update_metadata(workspace, 'edition', title='Changed catalogue title')
+    else:
+        # Publish another exact EPUB through the real synchronous domain path.
+        result = app._import_file(workspace, imported[2], title='New EPUB',
+                                  work_id='new-work', edition_id='new-edition')
+        assert result['state'] == 'complete'
+    monkeypatch.setattr(app.assets, 'resolve', lambda *_: pytest.fail('Listing read source bytes.'))
+    with pytest.raises(ValueError, match='changed|another'):
+        list_ebooks_page(app, workspace, cursor=first.next_cursor, limit=1, **options)
+
+
+def test_cancelled_epub_page_never_enters_sqlite_authorization(imported, monkeypatch):
+    from carr_library.reader.ebook import list_ebooks_page
+    app, workspace, _, _ = imported
+    monkeypatch.setattr(app, '_search_read', lambda *_: pytest.fail('Cancelled page entered SQLite.'))
+    with pytest.raises(TimeoutError, match='cancelled'):
+        list_ebooks_page(app, workspace, cancelled=lambda: True)
+
+
+@pytest.mark.parametrize('cursor', ['x' * 8193, '{"version":1,"version":1}', '[]', 'не ASCII'])
+def test_invalid_epub_cursor_is_refused_before_snapshot_loading(imported, monkeypatch, cursor):
+    from carr_library.reader.ebook import list_ebooks_page
+    app, workspace, _, _ = imported
+    monkeypatch.setattr(app, '_search_read', lambda *_: pytest.fail('Invalid cursor entered SQLite.'))
+    with pytest.raises(ValueError):
+        list_ebooks_page(app, workspace, cursor=cursor)
+
+
+def test_epub_page_metadata_byte_budget_continues_instead_of_collecting_all_rows(imported, monkeypatch):
+    from carr_library.reader import ebook
+    app, workspace, _, _ = imported
+    add_epub_editions(imported, 3)
+    # One normal entry fits, two do not. The same title/ID cursor continues.
+    monkeypatch.setattr(ebook, '_EBOOK_PAGE_BYTES', 230)
+    seen, cursor = [], None
+    for _ in range(5):
+        page = ebook.list_ebooks_page(app, workspace, cursor=cursor, limit=100)
+        assert len(page.books) == 1
+        seen.append(page.books[0].edition_id)
+        if page.next_cursor is None:
+            break
+        cursor = page.next_cursor
+    assert len(seen) == len(set(seen)) == 4
+
+
+def test_one_oversized_epub_entry_is_explicitly_refused(imported, monkeypatch):
+    from carr_library.reader import ebook
+    monkeypatch.setattr(ebook, '_EBOOK_PAGE_BYTES', 1)
+    with pytest.raises(ValueError, match='byte budget'):
+        ebook.list_ebooks_page(imported[0], imported[1])
