@@ -922,8 +922,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_translation_smoke.py --local --output ci-results/full-bundle-translation-native-local.json 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native-local.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/ci_check.py --installed --allow-loopback tests/loopback/test_translation_local_adapter.py 2>&1 | Tee-Object 'ci-results/full-bundle-local-translation-http.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_language_matrix_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
@@ -980,6 +978,8 @@ jobs:
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
           # Test dependencies are installed only after production installation passes.
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/ci_check.py --installed --allow-loopback tests/loopback/test_translation_local_adapter.py 2>&1 | Tee-Object 'ci-results/full-bundle-local-translation-http.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B scripts/installed_sync_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-encrypted-transfer.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1246,7 +1246,8 @@ jobs:
           proof = module.verify_application_wheel(sys.argv[1], project.parent, sys.argv[2])
           tree = subprocess.run(['git', 'rev-parse', sys.argv[2] + '^{tree}'], cwd=project.parent,
                                 check=True, capture_output=True, text=True).stdout.strip()
-          print(json.dumps(dict(status='PASS', source_tree=tree, **proof)))
+          assert proof['source_tree'] == tree
+          print(json.dumps(dict(status='PASS', **proof)))
           '@
           $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
