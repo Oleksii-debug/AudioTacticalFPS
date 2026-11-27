@@ -330,10 +330,40 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     raise ValueError("OCR source archive changed during bundle assembly")
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
+        # Setup helpers are source only. A user may explicitly acquire and
+        # prepare the pinned runtime on their own machine; transfer archives
+        # never include that runtime. Copy only this reviewed file inventory.
+        shutil.copyfile(regular(HERE / "SetupLocalAudio.cmd"), staged / "SetupLocalAudio.cmd")
+        for relative in (
+            "setup_local_audio.py",
+            "acquire_audio_runtime.py",
+            "prepare_audio_runtime.py",
+            "audio-runtime/README.txt",
+            "audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+            "audio-runtime/licenses/COPYING.GPLv2",
+            "audio-runtime/licenses/COPYING.GPLv3",
+            "audio-runtime/licenses/COPYING.LGPLv2.1",
+            "audio-runtime/licenses/COPYING.LGPLv3",
+            "audio-runtime/licenses/LICENSE.md",
+            "audio-runtime/provenance/build-configuration.txt",
+            "audio-runtime/provenance/checksums.sha256",
+            "audio-runtime/provenance/dependency-source-index.json",
+            "audio-runtime/source-lock.json",
+        ):
+            target = staged / "tools" / "audio-setup" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(regular(HERE / relative), target)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if source_evidence is not None:
+            # Retain the verifier's exact commit/tree/wheel binding inside the
+            # sealed payload, so installed acceptance can attest those same
+            # bytes. Use deterministic LF bytes on both build platforms.
+            (staged / "application-source.json").write_bytes(
+                (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         if native_bytes is not None and files["ResearchLibrary.exe"] != native_launcher_sha256:
@@ -344,6 +374,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         # Reserve a fresh destination; never overwrite an existing installation.

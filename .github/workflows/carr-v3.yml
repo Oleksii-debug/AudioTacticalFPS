@@ -5,7 +5,7 @@ on:
     branches: [carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   push:
-    branches: [carr/canonical-integrity-finish-20261127]
+    branches: [carr/canonical-integrity-finish-20261127, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, carr/canonical-complete-20261127]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
@@ -250,6 +250,118 @@ jobs:
             tests/studio/test_production.py \
             tests/audio/test_playback_navigation_posix.py \
             tests/reader/test_appearance_posix.py \
+            tests/packaging/test_audio_runtime.py \
+            tests/packaging/test_audio_acquisition.py \
+            tests/packaging/test_audio_bundle.py \
+            tests/packaging/test_local_audio_setup.py \
+            tests/packaging/test_native_checks_manifest.py \
+            tests/audio/test_metadata.py \
+            tests/audio/test_metadata_publication.py \
+            tests/ui/test_audio_metadata_dialog.py \
+            tests/ui/test_audio_metadata_lifetime.py \
+            tests/storage/test_library_backup_reading_state.py \
+            tests/catalog/test_metadata_backup_roundtrip.py \
+            tests/research/test_csl_author_boundaries.py \
+            tests/reader/test_topic_literature_matrix.py \
+            tests/reader/test_outline_export.py \
+            tests/catalog/test_quality.py \
+            tests/ui/test_academic_tools.py \
+            tests/ui/test_literature_matrix.py \
+            tests/ui/test_bibliography_import.py \
+            tests/ui/test_catalog_quality.py \
+            tests/ui/test_reader_command_dispatch.py \
+            tests/ui/test_reader_keymap_context.py \
+            tests/ui/test_command_registry.py \
+            tests/ui/test_keyboard_manager.py \
+            tests/storage/test_keyboard_preferences.py \
+            tests/storage/test_evidence_drafts.py \
+            tests/ui/test_evidence_draft_recovery.py \
+            tests/library_assistant/test_library_workflow.py \
+            tests/library_assistant/test_library_workflow_ui.py \
+            tests/assistant/test_backup_receipt.py \
+            tests/ui/test_save_all.py \
+            tests/ui/test_studio_keyboard_registration.py \
+            tests/voice_acceptance/test_dordiai_acceptance.py \
+            tests/integrations/test_dordiai_speech.py \
+            tests/integrations/test_dordiai_settings.py \
+            tests/ui/test_studio_progress_results.py \
+            tests/ui/test_worker_cleanup.py \
+            tests/assistant/test_local_assistant.py \
+            tests/assistant/test_supplied_transcription.py \
+            tests/speech/test_native_sapi_protocol.py \
+            tests/speech/test_output_fsync.py \
+            tests/studio/test_music_scheduling.py \
+            tests/studio/test_studio_controller.py \
+            tests/ui/test_citation_styles_jobs.py \
+            tests/ui/test_progress_job_results.py \
+            tests/ui/test_progress_panel_state.py \
+            tests/storage/test_state_snapshot_identity.py \
+            tests/storage/test_backup_generated_audio.py \
+            tests/storage/test_backup_translation.py \
+            tests/test_delivery_contract.py \
+            tests/storage/test_backup_primary_producers.py \
+            tests/storage/test_engine_settings_backup.py \
+            tests/storage/test_engine_settings_dordiai_backup.py \
+            tests/audio/test_bundled_runtime_settings.py \
+            tests/language_qualification/test_catalog.py \
+            tests/citations/test_csl.py \
+            tests/citations/test_custom_csl.py \
+            tests/citations/test_bibliography_workbench.py \
+            tests/citations/test_custom_workbench.py \
+            tests/e2e/test_import_files_cancellation.py \
+            tests/storage/test_backup_pending_common4.py \
+            tests/reader/test_export_change_time.py \
+            tests/ui/test_export_confirmation.py \
+            tests/storage/test_backup_v4_sidecars.py \
+            tests/storage/test_progress_preferences_backup.py \
+            tests/speech/test_voice_preferences.py \
+            tests/speech/test_voice_preferences_handlers.py \
+            tests/storage/test_state_json_budget.py \
+            tests/storage/test_voice_preferences_backup.py \
+            tests/storage/test_backup_keyboard_drafts.py \
+            tests/storage/test_backup_v4_review.py \
+            tests/catalog/test_ris_apply_canonical.py \
+            tests/storage/test_legacy_research_note.py \
+            tests/studio/test_production_total_budget_ownership.py \
+            tests/studio/test_daisy_schema_acceptance.py \
+            tests/integrations/test_dordiai_canonical_convergence.py \
+            tests/progress \
+            tests/ui/test_keyboard_convergence.py \
+            tests/extract/test_special_ocr_models.py \
+            tests/ui/test_native_acquisition.py::test_initial_controls_are_named_focused_and_offline_without_jobs \
+            tests/ui/test_native_acquisition.py::test_lookup_validation_never_submits_unauthorized_request \
+            tests/ui/test_native_acquisition.py::test_lookup_worker_forwards_only_explicit_doi_providers_email_and_scope \
+            tests/ui/test_native_acquisition.py::test_email_is_not_sent_when_unpaywall_is_unselected \
+            tests/ui/test_native_acquisition.py::test_cancelled_lookup_never_displays_late_result \
+            tests/ui/test_native_acquisition.py::test_consent_can_be_revoked_during_network_work \
+            tests/ui/test_native_acquisition.py::test_changed_scope_or_request_blocks_worker_and_stale_callback \
+            tests/ui/test_native_acquisition.py::test_crossworkspace_result_is_not_accepted \
+            tests/ui/test_native_acquisition.py::test_incomplete_native_text_display_disables_actions \
+            tests/ui/test_native_acquisition.py::test_oversized_preview_is_explicitly_rejected_without_truncation \
+            tests/ui/test_native_acquisition.py::test_editing_doi_or_provider_discards_old_preview_and_rights \
+            tests/ui/test_native_acquisition.py::test_save_reference_is_local_after_online_consent_is_revoked \
+            tests/ui/test_native_acquisition.py::test_apply_preserves_exact_book_snapshot_and_requires_confirmation \
+            tests/ui/test_native_acquisition.py::test_apply_confirmation_explains_missing_fields_preserved \
+            tests/ui/test_native_acquisition.py::test_apply_rejects_changed_selected_identity \
+            tests/ui/test_native_acquisition.py::test_service_stale_metadata_error_keeps_preview_and_does_not_report_success \
+            tests/ui/test_native_acquisition.py::test_source_preview_clearly_distinguishes_provider_claims \
+            tests/ui/test_native_acquisition.py::test_complete_preview_accepts_actual_frozen_provider_models \
+            tests/ui/test_native_acquisition.py::test_incomplete_source_display_does_not_enable_download \
+            tests/ui/test_native_acquisition.py::test_pdf_without_provider_open_access_claim_is_metadata_only \
+            tests/ui/test_native_acquisition.py::test_download_checks_before_opening_destination_dialog \
+            tests/ui/test_native_acquisition.py::test_download_passes_exact_candidate_index_and_chosen_new_folder \
+            tests/ui/test_native_acquisition.py::test_cancel_destination_never_requests_or_imports_source \
+            tests/ui/test_native_acquisition.py::test_invalid_destination_name_never_submits_download \
+            tests/ui/test_native_acquisition.py::test_destination_prompt_changes_are_revalidated \
+            tests/ui/test_native_acquisition.py::test_missing_sources_and_no_selected_book_still_allow_bibliographic_save \
+            tests/ui/test_native_acquisition.py::test_rejected_job_submission_recovers_controls \
+            tests/ui/test_native_acquisition.py::test_cancel_after_completed_mutation_reports_actual_result \
+            tests/ui/test_native_acquisition.py::test_close_cancels_then_ends_modal_after_worker_callback \
+            tests/ui/test_native_acquisition.py::test_disposal_blocks_callbacks_into_destroyed_dialog \
+            tests/ui/test_native_acquisition.py::test_wrapper_uses_fresh_selected_edition_without_automatic_network \
+            tests/ui/test_native_acquisition.py::test_wrapper_refreshes_only_original_scope_after_mutation \
+            tests/ui/test_native_acquisition.py::test_real_application_lookup_save_apply_from_dialog_preserves_source \
+            tests/ui/test_native_acquisition.py::test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -263,7 +375,7 @@ jobs:
 
   native-studio:
     runs-on: windows-2022
-    timeout-minutes: 75
+    timeout-minutes: 150
     defaults:
       run:
         shell: pwsh
@@ -310,7 +422,7 @@ jobs:
       - name: Verify canonical citation and DOCX regeneration boundaries
         timeout-minutes: 5
         run: |
-          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
+          python -I -B -c "import importlib.metadata,json,pathlib,quickjs; version=importlib.metadata.version('quickjs-ng'); assert version=='0.18.0.2'; context=quickjs.Context(); context.set_memory_limit(8*1024*1024); context.set_time_limit(1.0); assert context.eval('6*7')==42; print(json.dumps(dict(runtime='quickjs-ng',version=version,module=str(pathlib.Path(quickjs.__file__).resolve()),evaluation='PASS')))" | Tee-Object 'ci-v3-results/citation-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/ci_check.py --jobs 3 tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -335,7 +447,7 @@ jobs:
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Verify installed backup and import publication integrity
-        timeout-minutes: 25
+        timeout-minutes: 50
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
           PYTEST_ADDOPTS: ''
@@ -370,6 +482,8 @@ jobs:
           names = tuple(dict.fromkeys((*names, 'carr_library.backup_extensions', 'carr_library.studio.backup_inputs', 'carr_library.studio.clips', 'carr_library.audio.recording', 'carr_library.audio.audiobook', 'carr_library.reader.live_reading', 'carr_library.reader.reading_units', 'carr_library.speech.dordiai', 'carr_library.integrations.dordiai_voices', 'carr_library.search.advanced', 'carr_library.semantic_cache', 'carr_library.extract.document_formats', 'carr_library.acquisition.service', 'carr_library.assistant.llm', 'carr_library.extract.ocr_runtime')))
           names = tuple(dict.fromkeys((*names, 'carr_library.reader.ebook_audio', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.reading_desk', 'carr_library.speech.player', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.translation_dialog', 'carr_library.ui.studio_dialog')))
           names = tuple(dict.fromkeys((*names, 'carr_library.reader.appearance', 'carr_library.ui.reader_appearance', 'carr_library.speech.spellcheck', 'carr_library.speech.spell_worker', 'carr_library.ui.spellcheck_dialog', 'carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings')))
+          names = tuple(dict.fromkeys((*names, 'carr_library.audio_runtime', 'carr_library.audio.metadata', 'carr_library.ui.audio_metadata_dialog')))
+          names = tuple(dict.fromkeys((*names, 'carr_library.progress', 'carr_library.progress_feedback', 'carr_library.progress_preferences', 'carr_library.keyboard_preferences', 'carr_library.evidence_drafts', 'carr_library.backup_current', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.integrations.supplied_transcription', 'carr_library.integrations.dordiai_speech', 'carr_library.citations.csl', 'carr_library.citations.bibliography_workbench', 'carr_library.ui.progress_panel', 'carr_library.ui.progress_media', 'carr_library.ui.operation_progress', 'carr_library.ui.command_registry', 'carr_library.ui.builtin_keyboard_commands', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.save_all', 'carr_library.ui.citation_styles_dialog', 'carr_library.ui.academic_tools', 'carr_library.speech.voice_preferences', 'carr_library.ui.voice_preferences')))
           for name in names:
               importlib.import_module(name)
           from hashlib import sha256
@@ -394,6 +508,95 @@ jobs:
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = [
+              'tests/storage/test_library_backup_reading_state.py',
+              'tests/catalog/test_metadata_backup_roundtrip.py',
+              'tests/research/test_csl_author_boundaries.py',
+              'tests/ui/test_native_acquisition.py',
+              'tests/reader/test_topic_literature_matrix.py',
+              'tests/reader/test_outline_export.py',
+              'tests/catalog/test_quality.py',
+              'tests/ui/test_academic_tools.py',
+              'tests/ui/test_literature_matrix.py',
+              'tests/ui/test_bibliography_import.py',
+              'tests/ui/test_catalog_quality.py',
+              'tests/ui/test_reader_command_dispatch.py',
+              'tests/ui/test_reader_keymap_context.py',
+              'tests/ui/test_command_registry.py',
+              'tests/ui/test_keyboard_manager.py',
+              'tests/storage/test_keyboard_preferences.py',
+              'tests/storage/test_evidence_drafts.py',
+              'tests/ui/test_evidence_draft_recovery.py',
+              'tests/library_assistant/test_library_workflow.py',
+              'tests/library_assistant/test_library_workflow_ui.py',
+              'tests/assistant/test_backup_receipt.py',
+              'tests/ui/test_save_all.py',
+              'tests/ui/test_studio_keyboard_registration.py',
+              'tests/voice_acceptance/test_dordiai_acceptance.py',
+              'tests/integrations/test_dordiai_speech.py',
+              'tests/integrations/test_dordiai_settings.py',
+              'tests/ui/test_studio_progress_results.py',
+              'tests/ui/test_worker_cleanup.py',
+              'tests/assistant/test_local_assistant.py',
+              'tests/assistant/test_supplied_transcription.py',
+              'tests/speech/test_native_sapi_protocol.py',
+              'tests/speech/test_output_fsync.py',
+              'tests/studio/test_music_scheduling.py',
+              'tests/studio/test_studio_controller.py',
+              'tests/ui/test_citation_styles_jobs.py',
+              'tests/ui/test_progress_job_results.py',
+              'tests/ui/test_progress_panel_state.py',
+              'tests/storage/test_state_snapshot_identity.py',
+              'tests/storage/test_backup_generated_audio.py',
+              'tests/storage/test_backup_translation.py',
+              'tests/test_delivery_contract.py',
+              'tests/storage/test_backup_primary_producers.py',
+              'tests/storage/test_engine_settings_backup.py',
+              'tests/storage/test_engine_settings_dordiai_backup.py',
+              'tests/audio/test_bundled_runtime_settings.py',
+              'tests/language_qualification/test_catalog.py',
+              'tests/citations/test_csl.py',
+              'tests/citations/test_custom_csl.py',
+              'tests/citations/test_bibliography_workbench.py',
+              'tests/citations/test_custom_workbench.py',
+              'tests/e2e/test_import_files_cancellation.py',
+              'tests/storage/test_backup_pending_common4.py',
+              'tests/reader/test_export_change_time.py',
+              'tests/ui/test_export_confirmation.py',
+              'tests/storage/test_backup_v4_sidecars.py',
+              'tests/storage/test_progress_preferences_backup.py',
+              'tests/speech/test_voice_preferences.py',
+              'tests/speech/test_voice_preferences_handlers.py',
+              'tests/storage/test_state_json_budget.py',
+              'tests/storage/test_voice_preferences_backup.py',
+              'tests/storage/test_backup_keyboard_drafts.py',
+              'tests/storage/test_backup_v4_review.py',
+              'tests/catalog/test_ris_apply_canonical.py',
+              'tests/storage/test_legacy_research_note.py',
+              'tests/studio/test_production_total_budget_ownership.py',
+              'tests/studio/test_daisy_schema_acceptance.py',
+              'tests/integrations/test_dordiai_canonical_convergence.py',
+              'tests/audio/test_supplied_transcription.py',
+              'tests/ui/test_transcription_dialog.py',
+              'tests/packaging/test_bundled_engines.py',
+              'tests/progress',
+              'tests/ui/test_keyboard_settings.py',
+              'tests/ui/test_keyboard_convergence.py',
+              'tests/ui/test_command_palette.py',
+              'tests/ui/test_reading_desk_actions.py',
+              'tests/ui/test_progress_voice_actions.py',
+              'tests/ui/test_studio_progress_isolation.py',
+              'tests/ui/test_progress_job_review.py',
+              'tests/speech/test_progress_speech.py',
+              'tests/extract/test_special_ocr_models.py',
+              'tests/packaging/test_audio_runtime.py',
+              'tests/packaging/test_audio_acquisition.py',
+              'tests/packaging/test_audio_bundle.py',
+              'tests/packaging/test_local_audio_setup.py',
+              'tests/packaging/test_native_checks_manifest.py',
+              'tests/audio/test_metadata.py',
+              'tests/audio/test_metadata_publication.py',
+              'tests/ui/test_audio_metadata_dialog.py',
+              'tests/ui/test_audio_metadata_lifetime.py',
               'tests/storage/test_v3_state_backup.py',
               'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
               'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
@@ -616,7 +819,7 @@ jobs:
              ffmpeg=@{ path=$testFfmpeg; sha256=(Get-FileHash -LiteralPath $testFfmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
              ffprobe=@{ path=$testFfprobe; sha256=(Get-FileHash -LiteralPath $testFfprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
            } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-v3-results/external-test-audio-binding.json'
-          $programs = @($python, $basePython, (Get-Command node.exe).Source, $env:CARR_EPUBCHECK_JAVA,
+          $programs = @($python, $basePython, $env:CARR_EPUBCHECK_JAVA,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
@@ -658,6 +861,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Required installed command-palette acceptance failed.' }
             & $python -I -B -X utf8 scripts/windows_reader_lifetime_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-lifetime.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Required installed reader-lifetime acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_audio_metadata_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-audio-metadata.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native audio metadata and cover review failed.' }
+            & $python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-voice-preferences.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native voice preference review failed.' }
             & $python -I -B -X utf8 scripts/windows_audio_conversion_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-audio-conversion.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native audio conversion failed.' }
             & $python -I -B -X utf8 scripts/windows_playback_navigation_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-playback-navigation.txt'
@@ -688,7 +895,7 @@ jobs:
       - name: Validate local services, DSP, integrity and provider permission boundaries
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
+          python -I -B -c "import importlib.metadata,json,pathlib,quickjs; version=importlib.metadata.version('quickjs-ng'); assert version=='0.18.0.2'; context=quickjs.Context(); context.set_memory_limit(8*1024*1024); context.set_time_limit(1.0); assert context.eval('6*7')==42; print(json.dumps(dict(runtime='quickjs-ng',version=version,module=str(pathlib.Path(quickjs.__file__).resolve()),evaluation='PASS')))" | Tee-Object 'ci-v3-results/citation-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/research/test_bibtex_import.py tests/language_qualification tests/ui/test_transcription_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_state_backup_portability.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py tests/integrations/test_dordiai_convergence.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/ui/test_recording_dialog.py tests/storage/test_studio_input_backup.py tests/ui/test_studio_progress_isolation.py tests/security tests/sync tests/ui/test_portable_sync.py tests/ui/test_trust_dialog_lifetime.py tests/ui/test_keymap_interchange.py tests/ui/test_keyboard_settings_dialog.py tests/ui/test_native_menu_contract.py tests/ui/test_audio_conversion_controls.py tests/ui/test_playback_navigation.py tests/ui/test_studio_playback_actions.py --ignore=tests/audio/test_playback_navigation_posix.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -704,7 +911,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/integrations/test_dordiai_convergence.py tests/speech/test_progress_speech.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_keyboard_settings.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_pronunciation_handlers.py tests/speech/test_source.py tests/speech/test_reader_native_lifetime.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/language_qualification/test_ui.py tests/audio/test_recording.py tests/audio/test_audio_process.py tests/audio/test_recording_process_windows.py tests/ui/test_recording_dialog.py tests/studio/test_clip_dialog.py tests/studio/test_clip_editing.py tests/storage/test_studio_input_backup.py tests/studio/test_project_v1_compatibility.py tests/ui/test_studio_progress_isolation.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_studio_controller.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/audio/test_publication_fsync.py tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested tests/storage/test_v3_state_backup.py::test_backup_state_lookup_failure_never_publishes tests/speech/test_python_helper.py tests/security/test_anchor_locking.py tests/security/test_canonical_boundary.py tests/security/test_controller.py tests/security/test_entitlement_publication.py tests/security/test_entitlements.py tests/security/test_idle_renewal.py tests/security/test_independent_review_boundaries.py tests/security/test_installation.py tests/security/test_publication_integrity.py tests/security/test_refresh.py tests/security/test_updates.py tests/sync/test_archive.py tests/sync/test_cli.py tests/sync/test_complete_state.py tests/sync/test_crypto.py tests/sync/test_crypto_publication.py tests/sync/test_publication_outcomes.py tests/sync/test_service.py tests/sync/test_vault.py tests/ui/test_portable_sync.py tests/ui/test_trust_dialog_lifetime.py tests/speech/test_find_replace.py tests/speech/test_find_replace_handlers.py tests/speech/test_find_replace_reader_hook.py tests/speech/test_clipboard_reader.py tests/speech/test_spellcheck.py tests/speech/test_spellcheck_handlers.py tests/speech/test_spellcheck_reader_hook.py tests/packaging/test_spellcheck_component.py tests/reader/test_reading_units.py tests/reader/test_appearance.py tests/ui/test_reader_appearance.py tests/ui/test_keymap_interchange.py tests/ui/test_keyboard_settings_dialog.py tests/ui/test_native_menu_contract.py tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py tests/ui/test_audio_conversion_controls.py tests/ui/test_playback_navigation.py tests/ui/test_studio_playback_actions.py tests/security/test_windows_vault.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
+          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/integrations/test_dordiai_convergence.py tests/speech/test_progress_speech.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_keyboard_settings.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_pronunciation_handlers.py tests/speech/test_source.py tests/speech/test_reader_native_lifetime.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/language_qualification/test_ui.py tests/audio/test_recording.py tests/audio/test_audio_process.py tests/audio/test_recording_process_windows.py tests/ui/test_recording_dialog.py tests/studio/test_clip_dialog.py tests/studio/test_clip_editing.py tests/storage/test_studio_input_backup.py tests/studio/test_project_v1_compatibility.py tests/ui/test_studio_progress_isolation.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_studio_controller.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/audio/test_publication_fsync.py tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested tests/storage/test_v3_state_backup.py::test_backup_state_lookup_failure_never_publishes tests/speech/test_python_helper.py tests/security/test_anchor_locking.py tests/security/test_canonical_boundary.py tests/security/test_controller.py tests/security/test_entitlement_publication.py tests/security/test_entitlements.py tests/security/test_idle_renewal.py tests/security/test_independent_review_boundaries.py tests/security/test_installation.py tests/security/test_publication_integrity.py tests/security/test_refresh.py tests/security/test_updates.py tests/sync/test_archive.py tests/sync/test_cli.py tests/sync/test_complete_state.py tests/sync/test_crypto.py tests/sync/test_crypto_publication.py tests/sync/test_publication_outcomes.py tests/sync/test_service.py tests/sync/test_vault.py tests/ui/test_portable_sync.py tests/ui/test_trust_dialog_lifetime.py tests/speech/test_find_replace.py tests/speech/test_find_replace_handlers.py tests/speech/test_find_replace_reader_hook.py tests/speech/test_clipboard_reader.py tests/speech/test_spellcheck.py tests/speech/test_spellcheck_handlers.py tests/speech/test_spellcheck_reader_hook.py tests/packaging/test_spellcheck_component.py tests/reader/test_reading_units.py tests/reader/test_appearance.py tests/ui/test_reader_appearance.py tests/ui/test_keymap_interchange.py tests/ui/test_keyboard_settings_dialog.py tests/ui/test_native_menu_contract.py tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py tests/ui/test_audio_conversion_controls.py tests/ui/test_playback_navigation.py tests/ui/test_studio_playback_actions.py tests/security/test_windows_vault.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py tests/packaging/test_audio_bundle.py tests/packaging/test_local_audio_setup.py tests/packaging/test_native_checks_manifest.py tests/audio/test_metadata.py tests/audio/test_metadata_publication.py tests/ui/test_audio_metadata_dialog.py tests/ui/test_audio_metadata_lifetime.py tests/storage/test_library_backup_reading_state.py tests/catalog/test_metadata_backup_roundtrip.py tests/research/test_csl_author_boundaries.py tests/ui/test_native_acquisition.py tests/reader/test_topic_literature_matrix.py tests/reader/test_outline_export.py tests/catalog/test_quality.py tests/ui/test_academic_tools.py tests/ui/test_literature_matrix.py tests/ui/test_bibliography_import.py tests/ui/test_catalog_quality.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py tests/library_assistant/test_library_workflow.py tests/library_assistant/test_library_workflow_ui.py tests/assistant/test_backup_receipt.py tests/ui/test_save_all.py tests/ui/test_studio_keyboard_registration.py tests/voice_acceptance/test_dordiai_acceptance.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/ui/test_studio_progress_results.py tests/ui/test_worker_cleanup.py tests/assistant/test_local_assistant.py tests/assistant/test_supplied_transcription.py tests/speech/test_native_sapi_protocol.py tests/speech/test_output_fsync.py tests/studio/test_music_scheduling.py tests/ui/test_citation_styles_jobs.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py tests/storage/test_state_snapshot_identity.py tests/storage/test_backup_generated_audio.py tests/storage/test_backup_translation.py tests/test_delivery_contract.py tests/storage/test_backup_primary_producers.py tests/storage/test_engine_settings_backup.py tests/storage/test_engine_settings_dordiai_backup.py tests/audio/test_bundled_runtime_settings.py tests/language_qualification/test_catalog.py tests/citations/test_csl.py tests/citations/test_custom_csl.py tests/citations/test_bibliography_workbench.py tests/citations/test_custom_workbench.py tests/e2e/test_import_files_cancellation.py tests/storage/test_backup_pending_common4.py tests/reader/test_export_change_time.py tests/ui/test_export_confirmation.py tests/storage/test_backup_v4_sidecars.py tests/storage/test_backup_legacy_compat.py tests/storage/test_backup_reporting.py tests/storage/test_backup_restore_cancellation.py tests/storage/test_progress_preferences_backup.py tests/storage/test_backup_keyboard_drafts.py tests/storage/test_backup_schema_identity.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_backup_transcription.py tests/storage/test_backup_studio_media.py tests/storage/test_backup_v5_extensions.py tests/catalog/test_ris_apply_canonical.py tests/storage/test_legacy_research_note.py tests/studio/test_production_total_budget_ownership.py tests/studio/test_daisy_schema_acceptance.py tests/integrations/test_dordiai_canonical_convergence.py tests/audio/test_supplied_transcription.py tests/audio/test_transcription_settings.py tests/audio/test_hardened_transcription_protocol.py tests/ui/test_transcription_dialog.py tests/packaging/test_bundled_engines.py tests/progress tests/ui/test_keyboard_convergence.py tests/ui/test_reading_desk_actions.py tests/ui/test_progress_job_review.py tests/extract/test_special_ocr_models.py tests/speech/test_voice_preferences.py tests/speech/test_voice_preferences_handlers.py tests/storage/test_state_json_budget.py tests/storage/test_voice_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

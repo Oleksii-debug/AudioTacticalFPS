@@ -80,7 +80,10 @@ class Frame:
 
 
 @pytest.fixture
-def wx():
+def wx(monkeypatch):
+    # Keep wx key parsing an explicit headless seam; native probes use wx itself.
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identity: (0, key, int(identity)))
     return SimpleNamespace(ACCEL_CTRL=1, ACCEL_ALT=2, ACCEL_SHIFT=4, ID_ANY=-1,
                            EVT_MENU='menu', Menu=Menu, AcceleratorTable=lambda entries: tuple(entries),
                            **{'WXK_F' + str(index): 1000 + index for index in range(1, 25)})
@@ -376,7 +379,9 @@ def test_settings_reject_linked_paths(frame, wx, tmp_path, kind):
 
 def test_installer_adds_focus_actions_and_binds_real_menu_ids(frame, wx, monkeypatch):
     monkeypatch.setitem(__import__('sys').modules, 'wx', wx)
-    controller = install_keyboard_settings(frame)
+    manager = install_keyboard_settings(frame)
+    controller = frame.keyboard_settings
+    assert controller.manager is manager is frame.keyboard_commands
     keys = effective_shortcuts(controller.commands, controller.overrides)
     for action, target in [('help/focus library and research topic', frame.choice), ('help/focus operation status', frame.status)]:
         command = next(item for item in controller.commands if item.action == action)
@@ -384,7 +389,7 @@ def test_installer_adds_focus_actions_and_binds_real_menu_ids(frame, wx, monkeyp
         frame.bindings[command.menu_id](None)
         assert target.focused
     count_before = len(controller.commands)
-    assert install_keyboard_settings(frame) is controller
+    assert install_keyboard_settings(frame) is manager
     assert len(capture_commands(frame.menu_bar)) == count_before
     assert keys['help/keyboard shortcuts'] == 'Ctrl+Alt+K'
 

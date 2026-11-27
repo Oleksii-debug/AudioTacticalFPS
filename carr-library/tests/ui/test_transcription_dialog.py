@@ -611,3 +611,49 @@ def test_saved_job_modal_handoff_imports_wx_and_cleans_up_dead_parent(monkeypatc
     dialog.controller.inspect.assert_called_once_with(JOB)
     dialog.controller.dispose.assert_called_once()
     assert dialog.Destroy.call_count == (0 if native_deleted else 1)
+
+
+def test_worker_progress_updates_only_its_bound_canonical_task(setup):
+    from carr_library.progress import ProgressHub, ProgressState, bind_progress
+    ready(setup)
+    hub = ProgressHub()
+    captured = hub.start('Captured transcription')
+    unrelated = hub.start('Unrelated later operation')
+    setup.host.progress_panel = SimpleNamespace(active_task=unrelated)
+    setup.host.operation_progress = SimpleNamespace(
+        update=lambda *args, **kwargs: pytest.fail('Canonical work updated the legacy observer.'))
+    assert setup.controller.start()
+    queued = setup.host.queue[-1]
+    original = queued.operation
+    def bound():
+        with bind_progress(captured):
+            return original()
+    queued.operation = bound
+    outcome = setup.host.finish()
+    assert 'error' not in outcome and setup.controller.record['status'] == 'complete'
+    assert 'every requested output' in captured.snapshot().phase
+    assert len(captured.snapshot().phase) <= 200
+    assert captured.snapshot().state == ProgressState.RUNNING
+    assert unrelated.snapshot().revision == 1 and not unrelated.snapshot().phase
+    # Durable completion remains the existing desktop host's responsibility.
+
+
+@pytest.mark.parametrize('state', ['cancelling', 'cancelled', 'complete'])
+def test_late_progress_does_not_rewrite_a_canonical_terminal_or_cancelling_task(setup, state):
+    from carr_library.progress import ProgressHub
+    task = ProgressHub().start('Owned ASR observation')
+    if state == 'cancelling':
+        task.request_cancel()
+    elif state == 'cancelled':
+        task.cancelled()
+    else:
+        task.succeed(durable=True)
+    before = task.snapshot()
+    token = setup.controller._token = object()
+    setup.controller.busy = True
+    setup.controller._progress(token, 'Late owned phase', None, progress_task=task)
+    assert task.snapshot() == before
+    assert len(setup.progress) == 1
+    setup.controller.dispose()
+    setup.progress.pop()()
+    assert setup.controller.closed and setup.controller.status != 'Late owned phase'

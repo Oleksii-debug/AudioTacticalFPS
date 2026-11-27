@@ -2,7 +2,7 @@
 from ..research.export_file import capture_export_destination
 
 
-def confirm_export_destination(parent, path, *, private_root, title='Replace export file'):
+def confirm_export_destination(parent, path, *, private_root, title='Replace export file', wx_module=None):
     """Return the captured destination, or None when replacement is declined.
 
     Call before rendering or queuing an export and pass this same snapshot to
@@ -11,7 +11,9 @@ def confirm_export_destination(parent, path, *, private_root, title='Replace exp
     approval = capture_export_destination(path, private_root=private_root)
     if approval.require_absent:
         return approval
-    import wx
+    if wx_module is None:
+        import wx as wx_module
+    wx = wx_module
 
     dialog = wx.MessageDialog(parent,
         f'Replace the existing file {approval.target.name}?', title,

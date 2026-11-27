@@ -334,12 +334,13 @@ def _native_types():
             self.SetMinSize((620, 540))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self._native_id = self.GetId()
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self._initial = self.raw_values()
             self.controls['title'].SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_id:
                 self._window_alive = False
             event.Skip()
 
@@ -615,6 +616,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 ('duplicates', 'Find &duplicates', self.on_duplicates),
                 ('statistics', 'Reading &overview', self.on_statistics),
                 ('document', 'Open linked &document', self.on_document),
+                ('styles', 'Citation &styles', self.on_styles),
             ):
                 button = wx.Button(self, label=caption)
                 button.Bind(wx.EVT_BUTTON, handler)
@@ -635,12 +637,13 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.SetMinSize((740, 680))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self._native_id = self.GetId()
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.refresh()
             self.query.SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_id:
                 self._window_alive = False
                 self.cancel_event.set()
             event.Skip()
@@ -936,6 +939,27 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     dialog.Destroy()
             except Exception as exc:
                 report(self.status, f'Bibliography import not completed: {exc}')
+
+        def on_styles(self, event=None):
+            if not self._window_alive or self.pending:
+                return
+            dialog = None
+            try:
+                from .citation_styles_dialog import create_citation_styles_dialog
+                try:
+                    identity = self.selected().id
+                except ValueError:
+                    identity = None
+                dialog = create_citation_styles_dialog(self, self.controller,
+                    selected_identity=identity, executor=self.executor)
+                dialog.ShowModal()
+                if self._window_alive:
+                    self.references.SetFocus()
+            except Exception as exc:
+                report(self.status, f'Citation styles could not be opened: {exc}')
+            finally:
+                if dialog is not None:
+                    dialog.Destroy()
 
         def _export_options(self):
             dialog = wx.Dialog(self, title='Export bibliography', size=(560, 320))

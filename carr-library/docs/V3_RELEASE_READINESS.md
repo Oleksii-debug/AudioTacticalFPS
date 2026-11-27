@@ -1,11 +1,25 @@
-# Resonance V3 implementation and owner-test delivery status
+# Resonance V3 implementation and delivery status
 
-This document describes the implemented library, reading and audio preview of
-Resonance by Sceneria Innovative Technologies. It does not close the complete
-platform specification or the finalization addendum. An owner-test application
-bundle and a signed distribution-cleared release have separate acceptance
-requirements. Existing package, launch filenames and data locations remain
-unchanged until a verified migration; visible application titles use Resonance.
+Resonance by Sceneria Innovative Technologies combines the research library,
+reading tools and audio workflows. This document separates source integration,
+executed tests and real device/model acceptance. A complete signed release is
+not established by passing synthetic-engine tests. Package names, launcher
+filenames and data locations keep their existing compatibility contracts.
+
+## Current canonical convergence
+
+The candidate reconciles the accepted feature head
+`96294e97498f2133bf93f02ce72f84b6e709c72b` with canonical
+`3beebd5aca900b8bf2e86498ae79db4015c96705`. Both contain the updated
+`UNIVERSAL_SCOPE_V3_FINALIZATION.md`; this work retains the current catalog,
+job stores, provider ownership, source reader, original bytes and import
+publication receipts while incorporating its missing canonical user paths.
+
+The convergence uses one current backup writer, one bounded citation executor,
+one transcription service, one command manager and the shared progress
+contract. Legacy formats are decoded explicitly. Their presence never grants
+permission to execute restored engines, change user shortcut profiles or
+accept source/receipt identities inferred from matching text.
 
 ## Implemented components and acceptance boundaries
 
@@ -18,11 +32,11 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Synchronized EPUB and DAISY publication | One Studio publisher, native format selector and CLI export completed schema1 narration and schema2 clip productions as EPUB3 media overlays or a DAISY2.02 NCC/XHTML/SMIL/MP3 file set; DAISY requires explicit publisher metadata | Both formats retain the same resource, destination, atomic publication and prepared-receipt recovery authority. Exact-head tests include real process death, backup/restore and native controls. Pinned EPUBCheck and offline DAISY DTD checks are required; DTD validation does not certify all DAISY rules, hardware readers, word alignment or Braille |
 | Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations, shared CUDA exclusion and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; disposable metadata cleanup cannot reverse a verified completed output; hardware capacity and hard-crash orphan management remain separate |
 | Research search and acquisition | Extended isolated document adapters, explicit advanced query builder, scoped lexical/semantic search and cache; opt-in DOI/ISBN metadata and source acquisition through current catalog/import services | Original assets remain unmodified. Provider statements do not approve quotations or establish rights. Malformed-document, scope, cache, consent and publication tests are required; corpus scale, live endpoint behavior and full format fidelity remain separate |
-| Documents and citations | Bounded BibTeX/RIS import, selected-field metadata review, isolated conversion, local citeproc-js styles/locales and editable DOCX regeneration with citation provenance | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
-| Recovery | Manifest-bound archive v5 includes pending import bytes, identities, settings, projects, discoverable reader drafts and typed retained Studio recording/clip inputs; catalog v5 keeps immutable import publication receipts | Existing migration, portability and source-link guards remain. Complete snapshot acquires retained capture locks, preserves declared input hashes and validates typed archive-v5 extensions while retaining older supported envelopes. Restored jobs require explicit review before resuming. External published audio/books and OS credentials remain separately declared |
-| Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 64 MiB overwrite-check limit require a new filename |
+| Documents and citations | Bounded BibTeX/RIS/CSL-JSON import, selected-field metadata review, isolated conversion, seven current CSL styles and historical editable DOCX regeneration through one bounded QuickJS executor; original style/processor provenance retained | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
+| Recovery | One common format-4 writer for database, originals, supported settings, pending imports, reading drafts, projects and typed retained Studio/ASR inputs; strict readers for supported historical formats 1–5 | Historical envelopes retain their own validators; reading does not activate engines or resume jobs. Retained-media locks, exact source identities and catalog-v5 immutable import publication receipts remain authoritative. External exports and OS credentials are separate |
+| Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 32 MiB overwrite-check limit require a new filename |
 | Supplied transcription | Existing Whisper worker protocol, strict source preparation, reviewed local runtime/model inventories, isolated processes, immutable input and atomic TXT/SRT/VTT/JSON receipts; native file/folder selection, jobs/status/pause/cancel/resume and separate transcript editing, plus CLI | Actual process/filesystem tests use synthetic recognition, including a separate execution of the supplied worker; real model inference, throughput, native runtime isolation and human NVDA remain unqualified |
-| Keyboard and progress | Configurable menu keys, searchable command palette over the existing command registry, named native controls, measured progress and optional selected local-voice notices | The palette preserves explicit saved shortcut conflicts and stable command identities. Audio playback/capture quiets notifications. Cold voice discovery is cancellable and stays off the UI thread; failed worker cleanup retains ownership for retry. Exact-head native probes are required, and manual NVDA remains NOT_RUN |
+| Keyboard and progress | One command manager and contextual keymaps, searchable command palette, one shared progress contract with compatibility facades, measured or indeterminate native indicators and optional selected local-voice notices | The palette preserves explicit saved shortcut conflicts and stable command identities. Audio playback/capture quiets notifications. Cold voice discovery is cancellable and stays off the UI thread; failed worker cleanup retains ownership for retry. Exact-head native probes are required, and manual NVDA remains NOT_RUN |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Existing typed scoped executor and deterministic parser plus an explicit local compatible-LLM proposal path, profile selection, plan preview and separate Run action in UI/CLI | Capability, profile identity, scope, budget and plan validation surround the real gateway. Edited goals discard pending proposals. Synthetic loopback HTTP and native controls are tested before the runtime firewall; actual model inference and paid provider quality remain unqualified |
 | Translation | Optional official Google Basic v2 and Advanced v3 plain-text translation, explicit source ranges, directional language inventory, existing glossary selection, scoped consent, decoded-text receipts, resume and export through the same gateway | Exact source/account/model/glossary/approval bindings and short-lived OAuth expiry are covered by synthetic provider, CLI and native-handler cases. Completed saved derivatives remain exportable offline. Actual API/IAM, glossary language coverage, formatted-document fidelity, automatic token renewal and local inference remain separate |
@@ -30,101 +44,113 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Portable snapshots | Explicit snapshot publication, inspected transfer codes, optional password encryption and restore into a new folder over the complete typed backup producers | AES-GCM, scrypt and HKDF use the pinned cryptography library. Actual encrypted roundtrips, competing writers, process interruption, changed destinations and committed-cleanup outcomes are covered by source tests. Windows DPAPI/native controls and the installed artifact need exact-head qualification |
 | Public trust client | Versioned Ed25519 entitlement verification, signed-file renewal, configurable idle refresh, protected credential references, replay anchors and local TUF update verification | Public clients and synthetic policy fixtures are integrated; production authority, endpoints, trust roots, account/billing service and signing material remain separate owner configuration. Managed installations continue to use their approved installer path; an update is not activated merely by checking status |
 
-The native V3 acceptance script performs installed SAPI synthesis, scene
-production, output verification, restart, CSL/DOCX, isolated text conversion and
-named native dialogs while the selected runtime executables have outbound
-firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
+| Reader appearance and spelling | Explicit font, colors, high contrast, 50–400% zoom/reset and bounded saved preferences; code-only spelling engine with explicit local dictionaries, suggestion preview and undo | Current source regressions passed at96294e; native lifetime/installed composition still needs exact-candidate acceptance. Dictionaries are not downloaded or bundled implicitly |
+| Audio metadata and cover | Native review and bounded metadata/cover editing through the existing audio tools and destination publication authority | New common and installed/native probes are part of the candidate; source review is complete, integrated execution pending |
 
-## Current composition and evidence states
+## Executed evidence and remaining gates
 
-The final integration also selects compatible reader tools and Studio controls
-from the reviewed PR112 source, plus the public trust and portable-snapshot
-clients from the reviewed PR99 source. It retains the current source reader,
-resource broker, project versions, publication receipts and archive-v5 producer.
-Find/Replace uses an isolated bounded regex worker; clipboard capture is explicit;
-dictionary and keymap exports use the existing destination approval and completion
-receipts. Studio pronunciation edits use revision and fingerprint checks.
+| Exact revision | Scope | Result |
+| --- | --- | --- |
+| `96294e97498f2133bf93f02ce72f84b6e709c72b` | Portable source integrity, actual declared dependencies | 5001 passed plus 14 subtests; zero failures and skips; [run45969316754](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45969316754) |
+| Same96294e revision | MSVC and pinned Zig launchers executed on native Windows | Both jobs passed; [run45969316748](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45969316748) |
+| Same96294e revision | Full Windows integrated desktop and installed bundle | Reader/bookmark and DAISY URI acceptance failed; integrated source exposed the isolated fixture import and temporary-report cleanup failures before exceeding its 20-minute bound. No complete Windows PASS is claimed; [run45969316892](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45969316892) |
+| `d94e8800261f74c238fc8a4ff6684f84f8040b00` | Real-file export publication, approval, cancellation, full-content hash and native Windows ChangeTime | 138 passed on Linux and 138 passed on Windows, zero failures/skips; [run45974691968](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45974691968) |
+| Complete canonical composition | All new seams together, source and installed origins, fresh native bundle | NOT_RUN at this checkpoint. Component and predecessor results do not qualify a different tree. |
 
-The latest integrity corrections check cancellation immediately before publishing
-a staged Studio artifact, probe every pending-import root without suppressing
-access errors, and enumerate restore contents against the bounded manifest.
-Recorded-EPUB cleanup retains its input, lock and resource lease while an actual
-worker or playback device still owns them. A verified committed output is
-reported as saved when only subsequent cleanup or directory durability fails;
-changed or foreign outputs do not acquire that status.
+The earlier export attempt `c27b8b8` passed Linux 138 but failed 38 Windows
+cases because its real-descriptor observer used the unavailable
+`os.O_ACCMODE` constant. The d94e correction uses the exposed write-mode bits;
+the actual production reads and assertions remain in place. Six additional
+canonical bibliography CLI/workbench cases are restored for the complete
+candidate and require its own run.
 
-Each current CI run identifies its exact source commit, installed Python module
-bytes and dependency pack. The earlier evidence snapshots below are historical
-inputs; they do not qualify newly composed code. Required native probes include
-reader tools, keyboard identities, conversion controls, Studio playback and
-pronunciation, trust status and encrypted portable restore. Human NVDA and
-acoustic/model/profile qualification remain distinct evidence.
+Each CI evidence artifact identifies the exact source commit and dependency
+closure. Installed tests resolve actual product modules from the installed
+environment and compare their bytes with the sealed application wheel. The
+Windows workflow preserves native controls, source-opening events, fresh EXE
+bootstrap, normal shutdown, restart, standard installation/repair/uninstall and
+the final unchanged-bundle seal check. Failed or skipped steps are not evidence
+of success. Human NVDA, listening and physical devices remain separate.
 
-The source composition reconciles these immutable input revisions:
+The focused correction commit `1dd1c6b3611aa21c5463d251257542b7eeeece36`
+has now passed its Windows export, real descendant cleanup, isolated EPUB batch
+and Reader constructor regressions, followed by the actual installed full-source
+reader/bookmark native probe. Its Linux run and the complete canonical
+composition remain separate gates. The earlier V3 installed recovery timed out
+at 70% of its 25-minute run without a recorded test failure; its incomplete job
+was cancelled by the 75-minute job bound. Expanded bounds preserve every required
+suite and verdict rather than treating unfinished work as passed.
 
-- Current shared composition `6a28a7ecdcfdf7dab2d5b948608c42803fe3e8a0`, including PR149/PR165 document/search/acquisition, live reading, canonical dordiai settings, retained media, translation and standard installation.
-- Independently reviewed selected PR112 reuse snapshot `042e44820bd3ec1ec0ab7c17236139ced58c9d25`, including recording/publication recovery, reader lifetime, pronunciation/palette, local planning and DAISY. This snapshot was never substituted wholesale for the later shared head.
-- Canonical `4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`, including predecessor `c532323459157ae389d9c64d234f00beb1616151`'s exact bounded OCR inventory and three installed regression identities, plus bounded complete music-runtime inventories. The shared head's retained temporary-process ownership and isolated Numba cache are preserved.
+## Backup and import authority
 
-Both original-data and saved-state contracts are retained. The canonical
-per-library dordiai declaration, live reader and archive-v5 extension producer
-remain authoritative; only their missing lifecycle/integrity behavior is
-reconciled from the earlier selected work. No parallel ASR, provider store,
-catalog, queue, updater or private engine is substituted. No private model or
-voice assets are copied.
+The current writer emits common format 4. Supported historical formats 1–5 readers
+are strict, read-only decoders with their original envelope and typed-producer
+rules. Literal prior-writer fixtures verify compatibility independently of the
+new writer. A backup includes only declared typed state and retained inputs,
+with size/hash, path, source and publication checks. Unreadable inventory
+subtrees fail visibly; they are not treated as absent. Generated audio is an
+explicit choice, and external exports need their own copies.
 
-For this addition, SOURCE_REVIEWED and ADAPTER_PRESENT are established by review;
-INTEGRATED refers only to the published source composition. EXECUTED remains
-NOT_RUN until its exact commit's source and installed reports are available.
-QUALIFIED and DISTRIBUTION_CLEARED are separate decisions and are not inferred
-from source tests, catalog counts or successful synthetic processes.
+Catalog schema 5 is independent of the archive format. It keeps the canonical
+immutable `import_publication` receipt layout. The incompatible pre-release
+`publication_receipt` dialect is rejected without rewriting the database.
+A worker freezes its launch identity before resource admission and rechecks the
+retained input before publishing. Recovery requires the actual matching
+request/attempt receipt. A similar existing revision or a timing watermark
+does not prove completion.
 
-The predecessor e07545a source run passed 1619 tests and 14 subtests. Follow-up
-source defd4fc passed 1620 tests and 14 subtests with zero failures or skips in
-[V3 run45944559713](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45944559713).
-Its native recovery and integrated desktop runs were cancelled by the later shared-head update before completion; they do not establish a complete Windows PASS.
-The earlier e07545a Windows
-installed recovery run exposed one failure among 630 cases: the Win32
-MoveFileExW path cannot replace an open destination solely because its reader
-shares delete access. The follow-up defd4fc keeps the fully flushed stage and
-legacy retry bound, then uses FileRenameInfoEx with POSIX replacement semantics.
-The regression now executes the exact SHA-bound production writer in a real
-child and checks old/new coherent snapshots, an ordinary-reader negative
-control, Unicode paths and refusal cleanup. That fix also needs its own native
-execution; no predecessor PASS qualifies the later source composition.
+Restore creates a new folder and never resumes work automatically. Old
+path-bound attempt hints are discarded; explicit resume validates the source
+and obtains a new attempt. Reader projects preserve their supported source
+dialects, history and detached drafts without inventing quotation authority.
+Saved bookmarks keep their exact library/edition/revision/asset/text identities.
 
-The new native acceptance covers actual installed controls and process/file
-behavior with synthetic sources. Recording probes do not certify a physical
-microphone. Local planning probes use an explicit loopback response fixture and
-do not certify an actual LLM. dordiai probes do not certify the private engine.
-All new probes preserve the final sealed-bundle checksum check and exclude
-external audio runtimes, DTDs, validators and generated media from uploads.
+## Publication, cancellation and resource ownership
 
-## Measured audiobook output and current preservation fixes
+All research exports use captured destination approval, a bounded full-content
+fingerprint and fresh scope checks before publication. Existing files over
+32 MiB, or files whose inspection exceeds the checking budget, require a new
+name. These are replacement-inspection bounds, not limits on new export sizes
+or guarantees about filesystem latency. Text and binary publication retain
+actual no-clobber and native ChangeTime checks.
 
-Chaptered M4B uses the current FFmpeg runtime and Studio cache/publication
-contracts. The adapter escapes bounded FFmetadata, remuxes the encoded stream,
-and reads actual ffprobe chapter/title/timeline properties before publication.
-Chapter titles and measured intervals form part of the cache key. Same-byte
-foreign files, changed inspected containers and unowned hard links cannot borrow
-this attempt's completion. A verified published M4B remains saved if later
-notifications or temporary cleanup fail; the existing job stores those notices.
-Native cleanup uncertainty retains the existing process-owned staging lease.
+Studio and transcription preserve verified committed output when later cleanup
+or a directory durability operation reports an error. They do not turn corrupt,
+missing or foreign equal-byte replacements into successful output. Cancellation
+before publication remains effective. An operation that has already committed
+reports its saved result accurately.
 
-`script.lrc` uses the existing measured narration-line onsets. It does not invent
-word timing or transcribe recorded clips. The normal job artifact receipt and
-backup producer retain that sidecar; reading an old completed job does not add
-new output or rerender it. Source and installed gates select actual FFmpeg/Flite,
-child-exit, resume, foreign-file and cleanup regressions. These are pending
-exact-composition execution, not an acoustic or audiobook-player certification.
+Shared admission accounts for cooperating CPU, memory, disk and exclusive
+devices. Studio also checks retained logical bytes, destination capacity and
+incremental inventory bounds. These declarations do not claim system-wide hard
+RAM limits. A child, playback device or provider that has not confirmed closure
+retains its owner, files, lock and lease for retry. Progress observer failures
+cannot reverse business completion or replace an output location with a
+misleading operation failure.
 
-Selected PR166 preservation checks propagate unreadable state directories and
-root lookup errors; missing state is optional only at the explicitly allowed
-first probe. They retain the current scoped archive-v5 producer and capture lock.
-PR172 honors cancellation after a blocking durable flush, before the create-only
-publication point. PR174 validates the existing explicit local/private runtime
-policy before acquisition and reports those same sealed declarations. Neither
-policy metadata nor a passing synthetic case grants redistribution clearance.
+## Audio and citation packaging
+
+The main transferable bundle is audio-free. `SetupLocalAudio.cmd` first shows a
+plan and prepares the pinned public FFmpeg inputs only after explicit
+confirmation, into a new folder outside the application. The prepared runtime
+is not a redistribution clearance. CI attaches it to a separate fresh bundle
+copy for real runtime verification under the existing egress rules; the
+original transferable bundle remains independently checked.
+
+Current bibliography and historical document regeneration use the same
+installed QuickJS executor with CPU, memory, stack and input/output bounds.
+Historical processor, style and locale bytes remain available for genuine
+document regeneration; no stored URL or path is followed. The primary bundle
+does not need Node. Exact source, dependency wheels, full notices and the
+57-component base SBOM remain part of the delivery closure. Checksum integrity
+does not establish a publisher signature.
+
+Measured M4B chapters and LRC use actual verified output timing. Synchronized
+EPUB3 and DAISY2.02 publication share the existing typed Studio receipts and
+atomic publisher. Pinned EPUBCheck and offline DAISY DTD tests provide structural
+evidence. They do not certify every reader, word alignment, Braille or acoustic
+quality. Long 1/3/10-hour streaming fixtures do not establish equally long
+uninterrupted neural inference.
 
 ## Requirements still open
 
@@ -150,121 +176,39 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation now has an integrated adapter
-and an exercised process/publication boundary. This advances source integration;
-real recognition quality and an approved runtime/model pack remain separate gates.
-No private worker bytes, recordings, virtual environment or model weights are
-bundled in the public repository. See [the updated source review](TRANSCRIPTION_INTEGRATION_REVIEW.md)
-and [the exact adapter contract](TRANSCRIPTION_SUPPLIED_WORKER.md).
+## Supplied transcription and private components
 
-Current integration is tracked in [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
-Its Windows source and installed-package workflows select the transcription,
-reader recovery, import-publication, export and shared-resource regressions.
-Native launcher acceptance binds committed source, build evidence and the exact
-EXE bytes. The fresh-bundle gate requires absent `.venv`, launches the real EXE
-through the existing installer, opens and normally closes the owned Resonance
-window, repeats startup, and checks the original synthetic library. These are
-required automated gates, not a claim that their latest composition has passed.
-The complete installed bundle also opens the native Tasks and resources view.
-Shared-resource output tests use a pinned external private FFmpeg runtime; those
-binaries are not added to the sealed application or evidence uploads.
-A final unchanged-bundle
-check remains mandatory after all installed tests, including real crash fixtures. Read the checks for
-the exact final head: a predecessor's passing run does not qualify a later tree.
+The supplied Whisper Transcribe V4.3 worker has a reviewed source preparation
+and an exercised synthetic process/protocol boundary. Its historical adapter
+delegates to the existing current TranscriptionService and job/lease owner.
+Native file/folder selection, saved jobs, pause/cancel/resume, separate transcript
+editing and typed recovery remain part of the public implementation. Real
+recognition quality, throughput and a verified owner runtime/model installation
+require their own evidence. Diarization and word alignment are not inferred
+from ordinary segment output.
 
-Windows state-file readers retain bounded descriptor checks while allowing an
-atomic replacement to proceed beside an active read. Draft autosave stops on the
-owner's captured native destruction identity, including a rewrapped event; queued
-callbacks cannot reach a deleted window. Required Windows probes wait for real
-timer delivery, then check Close and direct Destroy beyond the original period.
-Captured native IDs also detach pending reader, language, Studio, publication and
-assistant callbacks when a native parent deletes its children. Modal chooser
-returns recheck their owner before reading or changing controls.
-The OCR runtime inventory also bounds directory traversal and checks cancellation
-between entries; an unreadable directory cannot silently hide runtime payloads.
+The public dordiai bridge remains an adapter to an explicitly selected local
+installation. Restored declarations stay inert, including legacy declarations.
+No private worker/model bytes, recordings, credentials or voice profiles are
+copied into this repository. Public entitlement/update clients likewise require
+owner-configured authority, endpoints, trust roots and signing material before
+production use.
 
-New translation chunks bind the decoded text and detected language to the gateway
-usage receipt. Resume and export check that independent receipt, including after
-a full backup/restore. A saved selection restores its account, text, language pair
-and budget before any queued request. Changed fields require a new selection;
-completed offline exports do not require a new credential lookup or paid call.
-Legacy wire-only receipts remain explicitly distinguishable from decoded-text
-proof and are never upgraded by inventing evidence.
+## Guides and project tracking
 
-Synchronized publication uses the current Studio job, resource policy, export
-destination approval and create-only writer. A verified committed EPUB remains a
-success when only final receipt or temporary cleanup is interrupted, with a
-separate warning. A prepared receipt can verify exact saved bytes after a real
-process exit, including the writer's residual hard link, without deleting another
-name or relaxing generic source/state link guards. Complete backup retains the
-publication receipt metadata; the external EPUB/audio is not silently copied.
-After restore to another location, the user explicitly selects the existing EPUB
-for byte and provenance verification. This does not rerender the old production.
+Use [the Ukrainian quick start](START_V3_UK.txt),
+[document boundaries](DOCUMENT_FORMATS_V3.md),
+[academic search](ACADEMIC_SEARCH.md),
+[bibliography](V3_BIBLIOGRAPHY.md),
+[historical DOCX provenance](academic_integration.md),
+[keyboard profiles](KEYBOARD_SHORTCUTS.md),
+[reading workflow checklist](READING_WORKFLOW_CHECKLIST.md) and
+[transcription source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The exact published source and checks are tracked in
+[PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
 
-EPUBCheck 5.3.0 is pinned by archive size and SHA256 in the CI-only tool manifest.
-DAISY structural checks reuse the locked lxml runtime with an explicit five-file
-DTD/entity set pinned by size and SHA256. The resolver accepts only those exact
-local files and declared public identifiers, with network resolution disabled.
-An intentionally invalid XHTML must fail the same validator. This is structural
-evidence, separate from full DAISY-rule and reader interoperability qualification.
-The EPUBCheck Java process joins the existing outbound firewall scope during
-conformance acceptance; the native publication probe uses the actual installed package and a
-hash-bound external test audio runtime. The validator archive, Java installation,
-audio binaries and synthetic output are excluded from the evidence uploads and
-sealed application. Conformance, native SAPI, source/installed regressions and the
-final unchanged-bundle check must succeed for the exact source being assessed.
-
-The complete-backup format advances to archive v5 for typed retained-media extensions, while earlier supported archives remain readable. Catalog schema v5 adds only import
-publication receipts; the exact earlier schema definitions remain unchanged.
-Opening a supported v3 or v4 library validates and migrates it transactionally.
-Restoring an older snapshot preserves its original version until that normal
-application-open migration. Recovery never infers completion from the timing of
-another import or from a matching pre-existing revision.
-The canonical v5 layout uses `import_publication`, with the exact schema and
-immutable revision/request/attempt receipt contract accepted in PR150. The
-unmerged draft v5 layout named `publication_receipt` is incompatible and is
-rejected without rewriting the database. No parallel receipt store is created.
-A worker freezes its launch identity before waiting for resources, rechecks the
-retained input before execution, and validates that identity before publication.
-Restoring pending work clears the old path-bound attempt and candidate; a resumed
-import must establish a fresh attempt and cannot borrow an earlier receipt.
-Automatic stopped-worker recovery also requires its intact matching candidate
-hint. A missing or damaged hint grants no completion authority; explicit resume
-must revalidate the saved source and journal. A receipt alone does not establish
-successful recovery after arbitrary request-file loss.
-
-Existing v1 reading projects remain readable. All three reviewed v2 source
-dialects are checked: current portable `source_anchor`, the earlier
-`carr.narration-source.v1` anchor with `text_verified_at_read`, and literal
-`source_origin` projects with their established recovery identity and family
-hashes. Reading an older project does not rewrite it or infer missing source
-identity; edits and undo history remain available. A pre-release format notice
-and detached autosave state preserve the old file and matching recovered edits.
-No dialect grants quotation authority. Matching text alone never attaches a
-draft to another source.
-A discovery-link failure after a committed draft, or a recovery-draft failure
-after a committed Save As, is reported separately from the successful save.
-
-Every deployment profile retains local operation and access to user-owned data.
-Private delivery does not waive dependency rights, notices or source obligations.
-This work does not authorize external distribution, pricing, billing, a public site,
-automatic model acquisition or publishing private voice profiles.
-
-
-## Current platform composition
-
-The current integration composes PR149's reviewed extended document adapters,
-advanced research search and semantic cache, source reading transport, explicit
-recording controls, nondestructive clip timeline, retained media inputs and
-typed archive-v5 extensions with PR143's exact source recovery, resource broker,
-publication receipts, protected exports and source-bound native launcher.
-The archive format version is independent of the catalog schema: catalog V5
-continues to mean the canonical immutable `import_publication` layout. Archive
-v5 retains supported earlier envelopes and validates typed extension schema3.
-
-Source and installed acceptance include the previous complete gate plus the
-added component cases; no prior source, native or unchanged-bundle seal is
-removed. The new native probes exercise controls and synthetic engine contracts;
-physical recording/playback, real ASR/music/LLM inference and human NVDA are
-separate qualification requirements. Read the exact published head and its
-checks in PR143; component or predecessor evidence is not final acceptance.
+Every deployment profile keeps access to user-owned data. This implementation
+does not publish private content, acquire paid services, sign an application
+with an invented identity or authorize external distribution. See the actual
+candidate's reports before treating any source-reviewed addition as executed
+or qualified.

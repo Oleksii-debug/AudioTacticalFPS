@@ -17,8 +17,8 @@ def test_actual_preferences_save_backup_restore_and_reload_exactly(tmp_path):
     backup = tmp_path / 'Резервна копія'
     manifest_hash = create_backup(original, backup)
     manifest = json.loads((backup / 'manifest.json').read_bytes())
-    entry, = [row for row in manifest['state'] if row['filename'] == 'ui/progress.json']
-    assert entry == {'filename': 'ui/progress.json', 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()}
+    entry, = [row for row in manifest['sidecars'] if row['filename'] == 'state/ui/progress.json']
+    assert entry == {'filename': 'state/ui/progress.json', 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()}
     restored = LibraryApp(restore_backup(backup, tmp_path / 'Відновлена бібліотека', manifest_hash))
     assert (restored.root / 'state/ui/progress.json').read_bytes() == raw
     assert load_preferences(restored.root) == preferences

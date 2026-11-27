@@ -31,11 +31,14 @@ from .research_actions import install_research_actions, NativeDialogs
 from .source_review import install_source_review_actions
 from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
+from .academic_tools import install_academic_actions as install_academic_comparison_actions
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from .library_assistant import install_library_assistant_actions
+from .acquisition_dialog import show_acquisition_dialog
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -569,16 +572,22 @@ class DesktopFrame(WorkspaceFrame):
             for title, handler in actions:
                 item = menu.Append(wx.ID_ANY, title)
                 self.Bind(wx.EVT_MENU, handler, item)
+                if label == '&Research' and title.startswith('Build advanced query'):
+                    from .command_registry import CommandSpec
+                    from .keyboard_settings import register_menu_command
+                    register_menu_command(self, CommandSpec(
+                        'research.advanced_query', 'Build advanced query', 'main', 'Ctrl+Alt+Q'), item)
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
         cancel = wx.Button(self.host, label='Cancel current operation')
-        cancel.Bind(wx.EVT_BUTTON, lambda e: self.cancel_event.set())
+        cancel.Bind(wx.EVT_BUTTON, self.cancel_current_operation)
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)
         self.cancel_button = cancel
         cancel.Disable()
         install_research_actions(self)
         install_source_review_actions(self)
         install_academic_actions(self)
+        install_academic_comparison_actions(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
@@ -594,26 +603,27 @@ class DesktopFrame(WorkspaceFrame):
         from .document_conversion import install_conversion_actions
         from .keyboard_settings import install_keyboard_settings
         from .citation_formatting import install_citation_actions
-        from .operation_progress import install_operation_progress
         from .language_matrix import install_language_actions
         from .translation_dialog import install_translation_actions
         from .transcription_dialog import install_transcription_actions
         from .portable_sync import install_portable_sync_actions
         from .trust_status import install_trust_actions
         install_speech_actions(self)
-        install_language_actions(self)
         install_studio_actions(self)
         install_operations_actions(self)
         install_assistant_actions(self)
+        install_save_actions(self)
+        install_library_assistant_actions(self)
         install_translation_actions(self)
         install_transcription_actions(self)
         install_conversion_actions(self)
-        install_save_actions(self)
         install_citation_actions(self)
         install_portable_sync_actions(self)
         install_trust_actions(self)
-        install_operation_progress(self)
+        install_language_actions(self)
         install_keyboard_settings(self)
+        from .progress_panel import install_progress_panel
+        install_progress_panel(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -722,65 +732,103 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
-        from concurrent.futures import CancelledError
+    def cancel_current_operation(self, event=None):
+        self.cancel_event.set()
+        progress = getattr(self, 'progress_panel', None)
+        if progress is not None:
+            progress.request_cancel()
+
+    def run_job(self, title, operation, done=None, failed=None, *, progress_total=None,
+                progress_unit='units', with_progress=False):
         if self._closing:
             return
         if self.working:
             self.report('An operation is already running. Wait or choose Cancel current operation.')
             return
-        self.working = self.busy = True
-        self.cancel_event.clear()
-        self.cancel_button.Enable()
-        self.choice.Disable()
-        if self.book is not None:
-            self.book.Disable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            # Progress query, quiet-mode settings and keyboard help remain
-            # reachable while a long operation owns the editable controls.
-            label = self.menu_bar.GetMenuLabel(i)
-            self.menu_bar.EnableTop(i, label.replace('&', '').casefold() == 'help')
-        self.report(title + '…')
-        progress = getattr(self, 'operation_progress', None)
-        progress_token, progress_error = None, None
+        progress = getattr(self, 'progress_panel', None)
+        task = None
+        progress_error = None
 
         def observe(callback):
             nonlocal progress_error
             try:
                 return callback()
             except Exception as exc:
-                # An observer may fail after a durable commit. It must never
-                # trigger the business failure callback or cause a retry.
                 progress_error = exc
 
         if progress is not None:
-            progress_token = observe(lambda: progress.start(title))
+            task = observe(lambda: progress.begin(title, total=progress_total, unit=progress_unit, measured=with_progress))
+        self.working = self.busy = True
+        self.cancel_event.clear()
+        self.cancel_button.Enable()
+        self.choice.Disable()
+        if self.book is not None:
+            self.book.Disable()
+        if progress is not None:
+            observe(lambda: progress.set_busy(True))
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, False)
+        self.report(title + '…')
+
+        def finish_progress(state, message=''):
+            if progress is None:
+                return
+            try:
+                if progress_error is not None:
+                    raise progress_error
+                progress.finish(task, state, message)
+            except Exception as error:
+                # Optional observation cannot reverse an already committed
+                # operation or invoke its failure handler after successful done.
+                result = {'succeeded': 'completed', 'failed': 'failed', 'cancelled': 'cancelled',
+                          'paused': 'needs attention', 'unavailable': 'returned; see the operation results'}[state]
+                warning = f'{title}: {result}. Progress reporting is unavailable: {error}'
+                if task is not None:
+                    try:
+                        if not task.snapshot().terminal:
+                            message = ''.join(character if (ord(character) >= 32 and ord(character) != 127)
+                                              or character == '\n' else ' ' for character in warning)[:1000]
+                            task.unavailable(message)
+                    except Exception:
+                        pass  # An already lost observer cannot alter the job result.
+                try:
+                    unavailable = getattr(progress, 'reporting_unavailable', None)
+                    if callable(unavailable):
+                        unavailable(task, state, warning)
+                    else:
+                        progress.notice = warning
+                        progress.refresh()
+                except Exception:
+                    # Keep result-selected focus even when a native observer
+                    # was destroyed or its notification provider failed.
+                    try:
+                        self.status.SetValue(warning)
+                    except Exception:
+                        pass
 
         def report_progress(completed=None, total=None, phase=None):
-            if progress_token is not None and progress_error is None:
-                observe(lambda: progress.update(completed, total, phase, token=progress_token))
+            if task is not None and progress_error is None:
+                if completed is None and total is None:
+                    observe(lambda: task.update(phase=phase))
+                else:
+                    observe(lambda: task.update(completed=completed, total=total, phase=phase))
 
-        def finish_progress(outcome):
-            if progress_token is None:
-                return
-            if progress_error is None:
-                method, label = {
-                    'cancelled': ('cancel', 'cancelled'), 'paused': ('pause', 'needs attention'),
-                    'failed': ('fail', 'failed'), 'succeeded': ('succeed', 'complete')
-                }.get(outcome, (None, None))
-                if method is not None:
-                    observe(lambda: getattr(progress, method)(title + ': ' + label, token=progress_token))
-            observe(lambda: progress.finalize(token=progress_token))
+        def operation_result():
+            return operation(report_progress) if with_progress else operation()
 
-        def status_text():
-            status = getattr(self, 'status', None)
-            return observe(status.GetValue) if status is not None else None
+        def work():
+            if task is None:
+                return operation_result()
+            from ..progress import bind_progress
+            with bind_progress(task):
+                return operation_result()
 
         try:
-            future = self.executor.submit(lambda: operation(report_progress)) if with_progress else self.executor.submit(operation)
+            future = self.executor.submit(work)
         except Exception as exc:
-            finish_progress('failed')
             self._finish_job_controls()
+            finish_progress('failed', str(exc))
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
                 failed(exc)
@@ -793,40 +841,45 @@ class DesktopFrame(WorkspaceFrame):
                 if self._closing:
                     return
                 self._finish_job_controls()
-                before = status_text()
                 try:
                     result = future.result()
-                    # Some callbacks validate or publish the final artifact.
-                    # Do not emit success until those steps have completed.
+                    cancellation_arrived = self.cancel_event.is_set()
+                    from ..progress import operation_outcome
+                    status = getattr(self, 'status', None)
+                    before = observe(status.GetValue) if status is not None else None
+                    # Result callbacks may still validate or publish an artifact
+                    # and own the selected source control and detailed status.
                     if done is not None:
                         done(result)
+                    if self._closing:
+                        return
+                    outcome = observe(lambda: operation_outcome(result)) or 'unavailable'
+                    if not self.working and (status is None or observe(status.GetValue) == before):
+                        label = {'succeeded': 'complete', 'paused': 'needs attention',
+                                 'failed': 'failed', 'cancelled': 'cancelled',
+                                 'unavailable': 'returned; see the operation results'}[outcome]
+                        summary = title + ': ' + label + '.'
+                        if progress_error is not None:
+                            summary += ' Progress reporting is unavailable.'
+                        if done is not None and status is not None:
+                            # The callback may focus a panel's detailed status,
+                            # results or reader without changing frame.status.
+                            # Keep that focus while recording the job summary.
+                            observe(lambda: status.SetValue(summary))
+                        else:
+                            self.report(summary)
                 except Exception as exc:
-                    finish_progress('cancelled' if isinstance(exc, (InterruptedError, CancelledError)) else 'failed')
+                    from concurrent.futures import CancelledError
+                    cancelled = isinstance(exc, (InterruptedError, CancelledError))
+                    finish_progress('cancelled' if cancelled else 'failed', str(exc))
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
-                    return
-                if self._closing:
-                    return
-                def classify():
-                    from .operation_progress import operation_outcome
-                    return operation_outcome(result)
-                outcome = observe(classify) or 'unavailable'
-                finish_progress(outcome)
-                # Preserve a callback's detailed report or a new job's status.
-                if not self.working and status_text() == before:
-                    label = {'succeeded': 'complete', 'paused': 'needs attention',
-                             'failed': 'failed', 'cancelled': 'cancelled',
-                             'unavailable': 'returned; see the operation results'}[outcome]
-                    warning = ' Progress reporting is unavailable.' if progress_error is not None else ''
-                    message = title + ': ' + label + '.' + warning
-                    status = getattr(self, 'status', None)
-                    if done is not None and status is not None:
-                        # Preserve PR117's callback-owned result focus. A
-                        # generic completion is visible without taking focus.
-                        observe(lambda: status.SetValue(message))
-                    else:
-                        self.report(message)
+                else:
+                    finish_progress(outcome,
+                        'Work completed before cancellation could stop it.'
+                        if cancellation_arrived and outcome == 'succeeded' else
+                        ('Work needs attention; completed portions were retained.' if outcome == 'paused' else ''))
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
@@ -836,8 +889,15 @@ class DesktopFrame(WorkspaceFrame):
         self.choice.Enable()
         if self.book is not None:
             self.book.Enable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, True)
+        progress = getattr(self, 'progress_panel', None)
+        if progress is not None:
+            try:
+                progress.set_busy(False)
+            except Exception:
+                pass  # A detached observer cannot suppress a durable result.
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, True)
 
     def _open_workspace(self, workspace, topic=None):
         self.refresh_scopes()
@@ -858,10 +918,10 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
-        if getattr(self, 'keyboard_settings', None) is not None:
-            self.keyboard_settings.reload()
-        if getattr(self, 'operation_progress', None) is not None:
-            self.operation_progress.reload_preferences()
+        if getattr(self, 'keyboard_commands', None) is not None:
+            self.keyboard_commands.change_root(candidate.root)
+        if getattr(self, 'progress_panel', None) is not None:
+            self.progress_panel.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:
@@ -981,9 +1041,14 @@ class DesktopFrame(WorkspaceFrame):
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:
                 self.book.GetPage(1).refresh()
+            if any(row.get('warnings') for row in rows):
+                from .import_center import row_details
+                report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
+                    message=row.get('message', ''), result=row)) for row in rows)
+                show_text(self, 'Import details', report)
         library = self.library
-        self.run_job('Importing books', lambda progress: library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set, config=config, progress=progress), done, with_progress=True)
+        self.run_job('Importing books', lambda measured: library.import_files(workspace, paths,
+            cancelled=self.cancel_event.is_set, config=config, progress=measured), done, with_progress=True)
 
     def add_text(self, event):
         try:
@@ -1298,11 +1363,17 @@ class DesktopFrame(WorkspaceFrame):
         show_text(self, 'Document formats', supported_formats_text())
 
     def help(self, event):
+        if getattr(self, 'keyboard_commands', None) is not None:
+            show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
+            return
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
-            'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Alt+S for Source, Alt+D for Reading, Alt+T for Tools, and Alt+H for Help.\n'
+            'Tools, Local library workflow assistant previews and runs selected local library operations with saved recovery checkpoints.\n'
+            'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS metadata and checks the catalog.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
+            'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
@@ -1344,7 +1415,7 @@ class DesktopFrame(WorkspaceFrame):
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'New full library backups include reading positions and bookmarks. Reading menu export/import also supports selective transfer and recovery from older backups.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):
@@ -1358,4 +1429,6 @@ class DesktopFrame(WorkspaceFrame):
             self._closing = True
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
+            if getattr(self, 'progress_panel', None) is not None:
+                self.progress_panel.close()
 

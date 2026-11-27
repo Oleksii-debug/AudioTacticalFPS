@@ -141,7 +141,8 @@ def bundle_inputs(tmp_path, monkeypatch, identity, synthetic_launcher):
     expected_runtime = json.loads((ROOT / "packaging/windows-python.json").read_text())["download"]["sha256"]
     actual_sha = builder.sha256
     monkeypatch.setattr(builder, "sha256", lambda path: expected_runtime if Path(path) == runtime else actual_sha(path))
-    monkeypatch.setattr(builder, "verify_application_source", lambda path, commit: {"wheel_sha256": actual_sha(path)})
+    monkeypatch.setattr(builder, "verify_application_source", lambda path, commit: {
+        "wheel_sha256": actual_sha(path), "source_commit": commit, "source_tree": "b" * 40})
     # The current builder takes an independently supplied exact digest and
     # inspects real PE metadata. Reuse its inert PE fixture, never bypass the
     # parser or reinterpret the historical Zig receipt as current acceptance.

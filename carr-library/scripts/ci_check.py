@@ -4,6 +4,8 @@ Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from time import sleep
 import ntpath
 import os
 from pathlib import Path
@@ -230,9 +232,46 @@ raise SystemExit(status)
 """
 
 
+def _cleanup_report_directory(directory) -> None:
+    # Windows may still be releasing a terminated child's file handles.
+    # Retry only permission failures, briefly; persistent residue is a failure.
+    for attempt in range(5):
+        try:
+            directory.cleanup()
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            sleep(.05)
+
+
+@contextmanager
+def _report_directory(suite):
+    directory = tempfile.TemporaryDirectory(prefix='carr-ci-')
+    original_error = None
+    try:
+        yield directory.name
+    except BaseException as exc:
+        original_error = exc
+        raise
+    finally:
+        try:
+            _cleanup_report_directory(directory)
+        except OSError as exc:
+            if original_error is None:
+                raise
+            # Do not replace a suite timeout or other primary failure with a
+            # secondary cleanup exception; record both, with the suite name.
+            print(f'FAIL: {suite}: temporary report cleanup failed after '
+                  f'{type(original_error).__name__}: {type(exc).__name__}: {exc}; '
+                  f'directory={directory.name}', flush=True)
+
+
 def run_suite(suite: str) -> bool:
-    path = (ROOT / suite).resolve()
-    if not path.is_relative_to(ROOT) or not path.exists():
+    relative, separator, node_id = suite.partition('::')
+    path = (ROOT / relative).resolve()
+    if (not relative or not path.is_relative_to(ROOT) or not path.exists()
+            or separator and not node_id):
         print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
         return False
     env = dict(os.environ)
@@ -248,26 +287,28 @@ def run_suite(suite: str) -> bool:
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
     try:
-        with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
+        with _report_directory(suite) as tmp:
             report = Path(tmp) / 'junit.xml'
             returncode = _run_test_process([
                 sys.executable, '-B', '-c', PYTEST_CHILD, '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
-                '--', str(path),
+                '--', str(path) + (separator + node_id if separator else ''),
             ], env=env)
             cases = list(ET.parse(report).iter('testcase'))
             failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
             skipped = sum(c.find('skipped') is not None for c in cases)
             passed = len(cases) - failed - skipped
             ok = returncode == 0 and passed > 0 and failed == skipped == 0
-            print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-                  f'skipped={skipped}, pytest_exit={returncode}', flush=True)
-            return ok
+        # A passing child is complete only after its temporary data is removed.
+        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
+              f'skipped={skipped}, pytest_exit={returncode}', flush=True)
+        return ok
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+        print(f'FAIL: {suite}: required suite did not complete cleanly: '
+              f'{type(exc).__name__}: {exc}', flush=True)
         return False
 
 
@@ -275,7 +316,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
-    parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
+    parser.add_argument('suites', nargs='+', help='Explicit required test paths or pytest node IDs relative to carr-library')
     args = parser.parse_args()
     if args.jobs == 1:
         results = [run_suite(suite) for suite in args.suites]

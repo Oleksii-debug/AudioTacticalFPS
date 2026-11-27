@@ -3,7 +3,6 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
-import shutil
 import time
 
 import pytest
@@ -24,8 +23,6 @@ def references():
 
 @pytest.fixture(scope='module')
 def real_results():
-    if not shutil.which('node'):
-        pytest.skip('Actual CSL acceptance requires locally installed Node.js 18 or newer.')
     items = [dict(id='book-doe', type='book', title='The Book of Science',
                   author=[{'family': 'Doe', 'given': 'Jane'}],
                   issued={'date-parts': [[2020]]}, publisher='Example Press', page='1-400')]
@@ -206,15 +203,29 @@ def test_actual_engine_timeout_is_bounded(references):
     assert time.monotonic() - start < 3
 
 
-def test_actual_worker_cancels_after_launch(references):
-    calls = 0
-    def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+def test_actual_worker_cancels_after_launch(references, monkeypatch):
+    import quickjs
+    context_type = quickjs.Context
+    evaluated = []
+
+    class ObservedContext:
+        def __init__(self):
+            self.context = context_type()
+
+        def __getattr__(self, name):
+            return getattr(self.context, name)
+
+        def eval(self, code):
+            result = self.context.eval(code)
+            evaluated.append(True)
+            return result
+
+    monkeypatch.setattr(quickjs, 'Context', ObservedContext)
     with pytest.raises(CitationCancelled):
-        render_citations(references, cancelled=cancelled)
-    assert calls >= 2
+        render_citations(references, cancelled=lambda: bool(evaluated))
+    # The real pinned processor ran. Cancellation before returning its result
+    # suppresses publication; this does not claim mid-instruction interruption.
+    assert evaluated == [True]
 
 
 def test_runtime_ignores_node_options_preload_injection(tmp_path, references, monkeypatch):

@@ -173,7 +173,29 @@ class SuppliedWhisperRuntime:
     """
     def __init__(self, manifest):
         self.manifest_path = local_path(manifest, exists=True)
-        self.data = read_json(self.manifest_path)
+        self._configure(read_json(self.manifest_path))
+
+    @classmethod
+    def from_reviewed_data(cls, data, *, source_manifest_sha256, python_version):
+        """Explicit compatibility enrollment; all ordinary review checks apply.
+
+        The caller retains the separately pinned legacy manifest. No review
+        flags are inferred from a hash, installed files or provenance notices.
+        """
+        _sha(source_manifest_sha256)
+        if not isinstance(python_version, str) or re.fullmatch(r'\d+\.\d+\.\d+', python_version) is None:
+            raise ValueError('The reviewed interpreter version is invalid.')
+        runtime = cls.__new__(cls)
+        runtime.manifest_path = None
+        runtime._configure(data)
+        runtime._compatibility = {'manifest_sha256': source_manifest_sha256,
+                                  'python_version': python_version}
+        return runtime
+
+    def _configure(self, data):
+        # Own an immutable value snapshot rather than the caller's nested maps.
+        self.data = json.loads(encode(data))
+        self._compatibility = None
         fields = {'schema', 'engine', 'python', 'python_sha256', 'worker',
                   'runtime_directory', 'runtime_files', 'models_directory',
                   'model', 'model_files', 'rights_reviewed', 'runtime_reviewed', 'rights_notice'}
@@ -209,6 +231,8 @@ class SuppliedWhisperRuntime:
                     'source_sha256': sha256(raw).hexdigest(), 'prepared_sha256': sha256(prepared).hexdigest(),
                     'python_sha256': data['python_sha256'], 'runtime_files': data['runtime_files'],
                     'model_files': data['model_files'], 'model': data['model']}
+        if getattr(self, '_compatibility', None) is not None:
+            identity['compatibility'] = self._compatibility
         package = Path(__file__).parent.parent
         identity['adapter_files'] = {name: _file_digest(package / name, cancelled)
             for name in ('audio/transcription.py', 'audio/transcription_protocol.py',
@@ -452,12 +476,22 @@ def _outputs(result):
 
 
 _BOOTSTRAP = r'''
-import json, pathlib, runpy, sys
-worker, job, runtime = sys.argv[1:]
+import json, os, pathlib, runpy, sys
+worker, job, runtime, *version = sys.argv[1:]
+if version and version[0] and '.'.join(map(str, sys.version_info[:3])) != version[0]:
+    raise RuntimeError('The selected transcription Python version changed.')
+stage = pathlib.Path(job).resolve()
 sys.path.insert(0, runtime)
 def audit(event, args):
     if event.startswith('socket.') or event in ('subprocess.Popen','os.system','os.posix_spawn'):
         raise PermissionError('The supplied local transcription worker denies network and child commands.')
+    if event == 'open' and args and isinstance(args[0], (str, bytes)):
+        mode = args[1] if len(args) > 1 else None
+        flags = args[2] if len(args) > 2 else 0
+        writing = (isinstance(mode, str) and any(c in mode for c in 'wax+')) or (
+            isinstance(flags, int) and flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC))
+        if writing and not pathlib.Path(os.fsdecode(args[0])).resolve().is_relative_to(stage):
+            raise PermissionError('Transcription writes only to its private staging directory.')
 sys.addaudithook(audit)
 sys.argv = [worker, '--job-dir', job]
 runpy.run_path(worker, run_name='__main__')
@@ -465,8 +499,11 @@ runpy.run_path(worker, run_name='__main__')
 
 
 _HARDENED_BOOTSTRAP = r'''
-import importlib.util, pathlib, socket, sys
-worker, job, runtime = sys.argv[1:]
+import importlib.util, os, pathlib, socket, sys
+worker, job, runtime, *version = sys.argv[1:]
+if version and version[0] and '.'.join(map(str, sys.version_info[:3])) != version[0]:
+    raise RuntimeError('The selected transcription Python version changed.')
+stage = pathlib.Path(job).resolve()
 sys.path.insert(0, runtime)
 def audit(event, args):
     # multiprocessing's local duplex Pipe uses AF_UNIX on POSIX. Internet
@@ -479,6 +516,13 @@ def audit(event, args):
             raise PermissionError('The local transcription worker denies network access.')
     if event in ('subprocess.Popen', 'os.system', 'os.posix_spawn'):
         raise PermissionError('The local transcription worker denies child commands.')
+    if event == 'open' and args and isinstance(args[0], (str, bytes)):
+        mode = args[1] if len(args) > 1 else None
+        flags = args[2] if len(args) > 2 else 0
+        writing = (isinstance(mode, str) and any(c in mode for c in 'wax+')) or (
+            isinstance(flags, int) and flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC))
+        if writing and not pathlib.Path(os.fsdecode(args[0])).resolve().is_relative_to(stage):
+            raise PermissionError('Transcription writes only to its private staging directory.')
 sys.addaudithook(audit)
 spec = importlib.util.spec_from_file_location('_carr_reviewed_worker', worker)
 module = importlib.util.module_from_spec(spec)
@@ -929,16 +973,22 @@ class TranscriptionService:
             atomic_json(stage / 'job_config.json', config)
             env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG', 'TEMP', 'TMP') if name in os.environ}
             env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_DATASETS_OFFLINE='1',
-                       HF_HUB_DISABLE_TELEMETRY='1', PYTHONDONTWRITEBYTECODE='1')
+                       HF_HUB_DISABLE_TELEMETRY='1', PYTHONDONTWRITEBYTECODE='1',
+                       TEMP=str(stage), TMP=str(stage), TMPDIR=str(stage),
+                       HF_HOME=str(stage / 'hf-cache'), XDG_CACHE_HOME=str(stage / 'cache'))
             entrypoint = ['-c', _BOOTSTRAP]
             if hardened:
                 bootstrap = stage / 'host_bootstrap.py'
                 atomic_bytes(bootstrap, _HARDENED_BOOTSTRAP.encode('utf-8'))
                 entrypoint = [str(bootstrap)]
+            version = (getattr(self.runtime, '_compatibility', None) or {}).get('python_version')
+            invocation = [str(python), '-I', '-S', '-B', '-X', 'utf8',
+                          '-X', 'pycache_prefix=' + str(stage / 'bytecode'), *entrypoint,
+                          str(worker), str(stage), str(runtime_root)]
+            if version is not None:
+                invocation.append(version)
             try:
-                run_process([str(python), '-I', '-S', '-B', '-X', 'utf8',
-                             '-X', 'pycache_prefix=' + str(stage / 'bytecode'), *entrypoint,
-                             str(worker), str(stage), str(runtime_root)],
+                run_process(invocation,
                             budget=self.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage,
                             owned_tree=hardened)
             except (AudioCancelled, AudioCleanupPending):

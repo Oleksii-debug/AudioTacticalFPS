@@ -1,8 +1,8 @@
 """Offline CSL formatting with the pinned, unmodified citeproc-js processor.
 
-Only CSL JSON and XML cross the fixed worker boundary. Neither metadata nor
-style XML is interpreted as JavaScript. Node is an explicit local dependency;
-this module never downloads an engine, a style, a locale or a reference.
+The canonical bounded QuickJS runtime executes the reviewed document resource
+profile. Existing processor/style identities remain exact for regeneration.
+No engine, style, locale or reference is downloaded.
 """
 from __future__ import annotations
 
@@ -11,14 +11,8 @@ from hashlib import sha256
 from html import escape
 from html.parser import HTMLParser
 import json
-import os
 from pathlib import Path
 import re
-import shutil
-import signal
-import subprocess
-import tempfile
-import time
 from typing import Callable, Iterable, Mapping, Sequence
 
 from lxml import etree
@@ -420,69 +414,95 @@ def safe_markup(value: str) -> tuple[str, str]:
     return ''.join(parser.plain).strip(), ''.join(parser.parts).strip()
 
 
-def _node_binary(value: Path | str | None) -> str:
-    if value is None:
-        from ..bundled_engines import bundled_executable, executable_on_path
-        value = bundled_executable('node') or executable_on_path('node')
-    path = Path(value) if value else Path('')
-    if not str(path) or str(path) == '.' or not path.is_file():
-        raise CitationError('Local citation formatting requires an installed Node.js 18 or newer runtime.')
-    return str(path.resolve())
+_DOCUMENT_BRIDGE = r'''
+(function (payload) {
+      'use strict';
+      const data = payload;
+      const references = Object.create(null);
+      for (const item of data.references) references[item.id] = item;
+      const warnings = [];
+      CSL.debug = function (message) {
+        if (warnings.length < 100) warnings.push(String(message).slice(0, 2000));
+      };
+      const system = {
+        retrieveLocale: function (language) {
+          if (data.locales[language]) return data.locales[language];
+          const prefix = String(language).split('-')[0];
+          const match = Object.keys(data.locales).find(x => x.split('-')[0] === prefix);
+          return data.locales[match || 'en-US'];
+        },
+        retrieveItem: function (id) {
+          if (!Object.prototype.hasOwnProperty.call(references, id)) {
+            throw new Error('Unknown citation reference.');
+          }
+          return references[id];
+        }
+      };
+      const engine = new CSL.Engine(system, data.style_xml, data.locale, true);
+      engine.setOutputFormat('html');
+      const ordered = [];
+      for (const cluster of data.clusters) {
+        for (const item of cluster.items) if (!ordered.includes(item.id)) ordered.push(item.id);
+      }
+      for (const item of data.references) if (!ordered.includes(item.id)) ordered.push(item.id);
+      engine.updateItems(ordered);
+      const citations = [];
+      for (let index = 0; index < data.clusters.length; index++) {
+        const cluster = data.clusters[index];
+        const citation = {
+          citationID: cluster.id, citationItems: cluster.items,
+          properties: {noteIndex: cluster.note_index || index + 1}
+        };
+        const updates = engine.appendCitationCluster(citation);
+        for (const entry of updates) citations[entry[0]] = entry[1];
+      }
+      const bibliography = engine.makeBibliography();
+      if (!bibliography) throw new Error('The style has no bibliography.');
+      return JSON.stringify({
+        bibliography: bibliography[1], parameters: bibliography[0], citations,
+        warnings, processor_version: CSL.PROCESSOR_VERSION
+      });
+})
+'''
 
 
 def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[], bool] | None,
          timeout: float) -> dict:
     if cancelled and cancelled():
         raise CitationCancelled('Citation formatting was cancelled.')
+    if node_path is not None:
+        raise CitationError('Node.js is no longer a citation runtime; use the installed QuickJS academic runtime.')
     if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not 0.1 <= timeout <= 60:
         raise CitationError('The processor timeout must be between 0.1 and 60 seconds.')
     raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
     if len(raw) > _MAX_BYTES:
         raise CitationError('The combined CSL input exceeds its processing budget.')
-    binary = _node_binary(node_path)
-    env = {k: v for k, v in os.environ.items() if k in (
-        'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'PATH', 'TEMP', 'TMP', 'TMPDIR',
-        'LANG', 'LC_ALL', 'HOME', 'USERPROFILE')}
-    with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:
-        directory = Path(directory)
-        (directory / 'input.json').write_bytes(raw)
-        output_path, error_path = directory / 'output.json', directory / 'error.txt'
-        with (directory / 'input.json').open('rb') as source, output_path.open('wb') as output, error_path.open('wb') as errors:
-            try:
-                process = subprocess.Popen([binary, '--max-old-space-size=256', '--disable-proto=throw',
-                    str(_ROOT / 'csl_worker.cjs')], stdin=source, stdout=output, stderr=errors,
-                    cwd=directory, env=env, shell=False, start_new_session=os.name != 'nt',
-                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
-            except OSError as exc:
-                raise CitationError('The configured local Node.js runtime could not be started.') from exc
-            deadline = time.monotonic() + timeout
-            try:
-                while process.poll() is None:
-                    if cancelled and cancelled():
-                        raise CitationCancelled('Citation formatting was cancelled.')
-                    if time.monotonic() > deadline:
-                        raise CitationError('The local citation processor exceeded its time budget.')
-                    if output_path.stat().st_size > _MAX_BYTES or error_path.stat().st_size > 1_000_000:
-                        raise CitationError('The local citation processor exceeded its output budget.')
-                    time.sleep(0.025)
-            finally:
-                if process.poll() is None:
-                    if os.name != 'nt':
-                        try:
-                            os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
-                    else:
-                        process.kill()
-                    process.wait(timeout=5)
-            if process.returncode:
-                raise CitationError('The local CSL processor could not format this input; check the runtime and style.')
-        if output_path.stat().st_size > _MAX_BYTES:
-            raise CitationError('The local citation processor exceeded its output budget.')
-        try:
-            return json.loads(output_path.read_text(encoding='utf-8'))
-        except (OSError, ValueError) as exc:
-            raise CitationError('The citation processor returned invalid output.') from exc
+    manifest = _manifest()
+    try:
+        with (_ROOT / 'vendor' / 'citeproc.js').open('rb') as source:
+            processor = source.read(2 * 1024 * 1024 + 1)
+        if len(processor) > 2 * 1024 * 1024 or sha256(processor).hexdigest() != manifest['processor']['sha256']:
+            raise CitationError('The installed citation processor failed its integrity check.')
+        from ..citations.csl import RenderBudget, _execute
+        result = _execute(payload, processor=processor.decode('utf-8'), bridge=_DOCUMENT_BRIDGE,
+            budget=RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
+                max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
+                memory_bytes=256 * 1024 * 1024, cpu_seconds=timeout), cancelled=cancelled)
+    except InterruptedError as exc:
+        raise CitationCancelled('Citation formatting was cancelled.') from exc
+    except (OSError, UnicodeError, KeyError) as exc:
+        raise CitationError('The installed citation bundle is incomplete.') from exc
+    except RuntimeError as exc:
+        if str(exc).startswith('The local citation runtime is missing.'):
+            raise CitationError(str(exc)) from exc
+        raise CitationError('The local citation processor could not finish within its time budget or render the selected metadata/style.') from exc
+    try:
+        value = json.loads(result)
+    except (TypeError, ValueError) as exc:
+        raise CitationError('The citation processor returned invalid output.') from exc
+    if type(value) is not dict:
+        raise CitationError('The citation processor returned invalid output.')
+    return value
 
 
 def render_citations(csl_items: Sequence[Mapping], *, style: str = 'apa', locale: str = 'en-US',

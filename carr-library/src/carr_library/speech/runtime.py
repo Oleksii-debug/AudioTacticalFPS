@@ -123,6 +123,7 @@ def split_utterances(text, *, maximum=2400):
 
 class _CancellableProvider:
     """Optional registry protocol; older custom providers retain voices()."""
+    cancellable_discovery = True
     def discover_voices(self, *, cancelled=lambda: False):
         return self.voices(cancelled=cancelled)
 
@@ -145,7 +146,7 @@ class VoiceRegistry:
 
     @classmethod
     def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False,
-                 cancelled=lambda: False, timeout_seconds=60, extra_providers=()):
+                 cancelled=lambda: False, timeout_seconds=60, extra_providers=(), dordiai=None):
         check_cancelled(cancelled)
         providers = []
         from ..bundled_engines import bundled_executable, executable_on_path
@@ -165,6 +166,11 @@ class VoiceRegistry:
             flite_executable = bundled_executable('ffmpeg') or executable_on_path('ffmpeg')
         if include_flite and flite_executable:
             providers.append(FliteProvider(flite_executable))
+        if dordiai is not None:
+            from ..integrations.dordiai_speech import configured_provider
+            selected = configured_provider(dordiai)
+            if selected is not None:
+                providers.append(selected)
         providers.extend(extra_providers)
         return cls(providers, cancelled=cancelled, timeout_seconds=timeout_seconds)
 
@@ -184,7 +190,12 @@ class VoiceRegistry:
             check_cancelled(cancelled)
             try:
                 discover = getattr(provider, 'discover_voices', None)
-                values = discover(cancelled=cancelled) if callable(discover) else provider.voices()
+                if callable(discover):
+                    values = discover(cancelled=cancelled)
+                elif getattr(provider, 'cancellable_discovery', False):
+                    values = provider.voices(cancelled=cancelled)
+                else:
+                    values = provider.voices()
                 check_cancelled(cancelled)
                 if len(values) > 10000:
                     raise ValueError('The voice provider returned too many voices.')
@@ -498,7 +509,7 @@ class NativeSapiProvider(SapiProvider):
             request.write_bytes(raw)
             helper = Path(__file__).with_name('sapi_native_worker.py')
             command = ([self.executable, '--carr-sapi-native-worker', request, reply]
-                       if getattr(sys, 'frozen', False) else [self.executable, '-I', '-B', helper, request, reply])
+                       if getattr(sys, 'frozen', False) else [self.executable, '-I', '-B', '-X', 'utf8', helper, request, reply])
             _, _, returncode = run_process(command, cancelled=cancelled, timeout=timeout,
                 output_file=temporary / 'speech.wav' if output is not None else reply,
                 max_output=budget if output is not None else 2_000_000, allow_failure=True)

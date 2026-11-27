@@ -17,8 +17,14 @@ by `speech/runtime.py::VoiceRegistry`. It returns the existing canonical
 native comtypes SAPI, eSpeak, Flite, Piper and reviewed generic helpers. It alone
 joins, checks and atomically publishes the final PCM WAV.
 
-`runtime_settings.voice_registry(state_root)` includes the optional provider
-only when the declaration for `state_root.parent` is explicitly enabled. The
+`integrations/dordiai_speech.py::DordiaiSpeechProvider` is a canonical settings
+facade over that same owned provider, not a second transport or renderer. Its
+installation-qualified IDs preserve canonical selection semantics. Direct
+utterance calls use the existing create-only speech output boundary; the
+registry still owns the final combined WAV.
+
+`runtime_settings.voice_registry(state_root)` includes one optional provider
+only when exactly one saved declaration for that library is explicitly enabled. The
 desktop passes the selected library's `root/state`. The existing
 `studio/render.py::ProductionService`, JSON projects, durable jobs, speaker
 stems and production exports use that same registry. No previous `speech/local.py`
@@ -59,20 +65,36 @@ local engine overrides also disables this connection.
 
 ## Saved declarations and restore
 
-The root-level `dordiai-voices.json` file has a 65,536-byte limit and exact
-fields `version`, `enabled`, `runtime_directory`, `python_executable` and
-`expected_worker_sha256`. It contains declarations, not secrets, voice models
-or an installation. Absolute POSIX and Windows declarations can be validated
+`state/audio/engines.json` remains schema 1 and gains the canonical optional
+`dordiai` declaration. An omitted declaration reads as `None` without rewriting
+the file. Its fields are `enabled`, `runtime_directory`, `python_executable` and
+`expected_worker_sha256`; disabled or absent settings never probe a runtime.
+New explicit Connect actions write this existing engine-settings store.
+
+The historical root-level `dordiai-voices.json` remains readable with its
+65,536-byte limit and exact fields `version`, `enabled`, `runtime_directory`,
+`python_executable` and `expected_worker_sha256`. Its old profile/language voice
+IDs remain unchanged. A new canonical connection requires explicitly disabling
+the historical connection first; saved jobs are not silently retargeted to new
+IDs. If both declarations are enabled, discovery fails before starting either
+provider. Disable signals only this library and updates the existing declarations.
+
+Both files contain declarations, not secrets, voice models or an installation. Absolute POSIX and Windows declarations can be validated
 as data; an enabled runtime must use a path absolute on the current host before
 the bridge can open it. Relative paths, network paths, device paths, URLs,
 control characters and traversal are rejected.
 
 `speech/dordiai_settings.py::validate_settings_bytes` and
-`restored_settings_bytes` are pure data operations. Restore preserves the
-declarations with `enabled=False`, without looking up, probing or executing a
-declared runtime. The backup integration owns the inclusion and scope rules.
-A user must intentionally connect the installation again. Ambient enable
-environment variables are not used to enable a restored or selected library.
+`restored_settings_bytes` are pure data operations. The historical root-file
+restore preserves declarations with `enabled=False`, without looking up,
+probing or executing a runtime. The common backup integration separately owns
+the canonical engine-settings inclusion and scope. The current common-format
+backup retains canonical engines.json bytes, including its enabled declaration,
+without constructing a registry or probing any referenced path. It does not
+rewrite that declaration as disabled. A stored reference does not establish
+that its installation exists or is qualified on the destination host; subsequent
+explicit voice discovery and selection use the current runtime checks. Ambient enable environment variables are
+never used to enable a restored or selected library.
 
 ## Identity, cancellation and resource bounds
 
@@ -127,8 +149,10 @@ Each canonical provider retains one adapter and serializes its own operations.
 Successful requests can reuse that provider's warm process. A changed content
 fingerprint refreshes the inventory and stops that exact old worker before a
 new request can use changed model bytes. A different library's registry and
-workers remain separate. The canonical profile/language voice IDs and the
-root-level declaration format are unchanged.
+workers remain separate. Historical profile/language IDs and their root-level
+declaration format are unchanged. Canonical installation-qualified IDs include
+the selected installation identity; enabling a different connection never
+rewrites earlier jobs or claims that two installations are interchangeable.
 
 The transport retains both an unfinished metadata probe and a warm worker
 until their native process and reader/writer threads confirm termination.
@@ -196,9 +220,20 @@ cancellation, failed cleanup retaining the exact process, explicit
 `close() is False`, last-owner release, service-owned versus borrowed registries,
 and live-reader completion/error cleanup. The transport tests retain real
 descendant termination and environment isolation. Their fixture uses the
-canonical saved connection, with no duplicate provider or second settings
-format. These new compositions are source-reviewed; no new runtime pass count
-is claimed here.
+retained historical saved connection. Additional suites
+`tests/integrations/test_dordiai_speech.py`,
+`tests/integrations/test_dordiai_settings.py` and
+`tests/integrations/test_dordiai_canonical_convergence.py` exercise the canonical
+facade, explicit settings transition, disabled references, later rendering after
+the discovery deadline, real caller/provider cold-probe cancellation and
+concurrent cancellation isolation. Both cohorts use the same checked-in
+synthetic peer and actual selected product imports; no environment override
+substitutes a speech package. The current transport, probe-cancellation and
+owned-registry cases remain required.
+
+The reconstructed convergence is **NOT_RUN**. Neither the external candidate
+nor these fixture and stop-forwarding corrections inherit an older source,
+installed or Windows pass count.
 
 Native Windows acceptance must run against the eventual integrated commit.
 The preceding old-stack Windows run `45918580963` failed on an obsolete FFmpeg

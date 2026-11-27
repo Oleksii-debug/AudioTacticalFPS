@@ -1,6 +1,6 @@
-"""Canonical port of the real-file export regressions from 9c5b81b.
+"""Real-file export publication, approval and bibliography integration regressions.
 
-The unrelated alternate bibliography stack is not included.
+Every entry point uses the same destination capture and publication authority.
 """
 import _compression
 from hashlib import sha256
@@ -220,7 +220,7 @@ def test_existing_approval_rejects_same_size_edit_with_unchanged_observed_times(
     def modify():
         target.write_bytes(newer)
         os.utime(target, ns=(original.st_atime_ns, original.st_mtime_ns))
-        assert export_file._file_state(target.stat()) == approval.state
+        assert export_file._file_state(target.stat()) == approval.state[:6]
 
     if when == 'queued':
         modify()
@@ -296,39 +296,15 @@ def test_existing_file_hash_can_stop_between_bounded_reads(
     stopped = False
     clock = 0.0
     inspected = []
-    opened = 0
-    actual_open = os.fdopen
 
-    class ObservedFile:
-        def __init__(self, stream, interrupt):
-            self.stream, self.interrupt = stream, interrupt
+    def observe(session, block):
+        nonlocal stopped, clock
+        if session['index'] == (1 if stage == 'staging' else 0):
+            inspected.append(len(block))
+            stopped = reason == 'cancelled'
+            clock = export_file.APPROVAL_TIMEOUT + 1
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            self.stream.close()
-
-        def fileno(self):
-            return self.stream.fileno()
-
-        def read(self, size):
-            nonlocal stopped, clock
-            assert 0 < size <= 1024 * 1024
-            data = self.stream.read(size)
-            if self.interrupt:
-                inspected.append(len(data))
-                stopped = reason == 'cancelled'
-                clock = export_file.APPROVAL_TIMEOUT + 1
-            return data
-
-    def observed_open(fd, *args, **kwargs):
-        nonlocal opened
-        opened += 1
-        return ObservedFile(actual_open(fd, *args, **kwargs),
-                            opened == (2 if stage == 'staging' else 1))
-
-    monkeypatch.setattr(os, 'fdopen', observed_open)
+    sessions = _observe_destination_reads(monkeypatch, observe)
     monkeypatch.setattr(export_file, 'monotonic', lambda: clock)
     message = 'cancelled' if reason == 'cancelled' else 'too long.*new filename'
     with pytest.raises(TimeoutError, match=message):
@@ -338,6 +314,7 @@ def test_existing_file_hash_can_stop_between_bounded_reads(
         else:
             publish(approval=approval, cancelled=lambda: stopped)
     assert inspected == [1024 * 1024]
+    _assert_fingerprint_descriptors_closed(sessions)
     assert target.read_bytes() == previous
     assert not list(target.parent.glob('.research-export-*'))
 
@@ -672,7 +649,7 @@ def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, m
     target.write_bytes(b'An ordinary external file')
     private = target.parent / 'private' / 'retained.txt'
     private.write_bytes(b'Private retained content')
-    original_open, changed = os.open, []
+    changed = []
 
     def replace_before_open(path, flags, *args, **kwargs):
         if Path(path) == target and not changed:
@@ -682,6 +659,7 @@ def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, m
         return original_open(path, flags, *args, **kwargs)
 
     sessions = _observe_destination_reads(monkeypatch)
+    original_open = os.open
     monkeypatch.setattr(os, 'open', replace_before_open)
     with pytest.raises(ValueError, match='destination changed'):
         publish()
@@ -695,7 +673,7 @@ def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, m
 def test_raced_nonregular_destination_never_blocks_or_reads_content(export, monkeypatch):
     target, _, publish = export
     target.write_bytes(b'An ordinary external file')
-    original_open, changed = os.open, []
+    changed = []
 
     def replace_before_open(path, flags, *args, **kwargs):
         if Path(path) == target and not changed:
@@ -710,6 +688,7 @@ def test_raced_nonregular_destination_never_blocks_or_reads_content(export, monk
         return original_open(path, flags, *args, **kwargs)
 
     sessions = _observe_destination_reads(monkeypatch)
+    original_open = os.open
     monkeypatch.setattr(os, 'open', replace_before_open)
     with pytest.raises((ValueError, OSError)):
         publish()
@@ -730,41 +709,162 @@ def _keep_windows_creation_time(monkeypatch, target):
 
 
 def _observe_destination_reads(monkeypatch, after_read=lambda *args: None):
-    """Observe real unbuffered reads without substituting filesystem bytes."""
-    original = os.fdopen
-    sessions = []
+    """Observe real OS reads and closes without substituting filesystem bytes."""
+    actual_open, actual_read, actual_close = os.open, os.read, os.close
+    sessions, active = [], {}
 
-    class Read:
-        def __init__(self, source, session):
-            self.source, self.session = source, session
-        def __enter__(self):
-            self.source.__enter__()
-            return self
-        def __exit__(self, *args):
-            return self.source.__exit__(*args)
-        def read(self, count):
+    def observe_open(path, flags, *args, **kwargs):
+        descriptor = actual_open(path, flags, *args, **kwargs)
+        # O_ACCMODE is not exposed on Windows; the two write modes form
+        # the same access mask without weakening actual descriptor observation.
+        if not (flags & os.O_CREAT) and not (flags & (os.O_WRONLY | os.O_RDWR)):
+            session = {'index': len(sessions), 'descriptor': descriptor,
+                       'requested': [], 'returned': [], 'closed': False}
+            sessions.append(session)
+            active[descriptor] = session
+        return descriptor
+
+    def observe_read(descriptor, count):
+        result = actual_read(descriptor, count)
+        session = active.get(descriptor)
+        if session is not None:
             assert 0 < count <= 1024 * 1024
-            result = self.source.read(count)
-            self.session['requested'].append(count)
-            self.session['returned'].append(len(result))
-            after_read(self.session, result)
-            return result
+            session['requested'].append(count)
+            session['returned'].append(len(result))
+            after_read(session, result)
+        return result
 
-    def observe(descriptor, *args, **kwargs):
-        source = original(descriptor, *args, **kwargs)
-        session = {'index': len(sessions), 'descriptor': descriptor,
-                   'source': source, 'requested': [], 'returned': []}
-        sessions.append(session)
-        return Read(source, session)
+    def observe_close(descriptor):
+        result = actual_close(descriptor)
+        session = active.pop(descriptor, None)
+        if session is not None:
+            session['closed'] = True
+        return result
 
-    monkeypatch.setattr(os, 'fdopen', observe)
+    monkeypatch.setattr(os, 'open', observe_open)
+    monkeypatch.setattr(os, 'read', observe_read)
+    monkeypatch.setattr(os, 'close', observe_close)
     return sessions
-
 
 
 def _assert_fingerprint_descriptors_closed(sessions):
     for session in sessions:
-        assert session['source'].closed
+        assert session['closed']
         with pytest.raises(OSError):
             os.fstat(session['descriptor'])
 
+
+def test_cli_reports_completed_export_when_staging_cleanup_is_denied(
+        tmp_path, monkeypatch, capsys):
+    import json
+
+    from carr_library.application import LibraryApp
+    from carr_library.bibliography_cli import main
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Publication receipt')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))
+    destination = tmp_path / 'bibliography.txt'
+    unlink = os.unlink
+
+    def locked_stage(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-'):
+            raise PermissionError('Synthetic persistent cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', locked_stage)
+    try:
+        result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
+                       '--reference', reference.id, '--output', str(destination)])
+        report = json.loads(capsys.readouterr().out)
+        assert result == 0 and report['result'] == 'SAVED'
+        assert 'Synthetic source' in destination.read_text(encoding='utf-8')
+        if os.name == 'nt':
+            assert not any('cleanup' in warning for warning in report['warnings'])
+            assert not list(tmp_path.glob('.research-export-*'))
+        else:
+            assert any('file is saved' in warning for warning in report['warnings'])
+            stage, = tmp_path.glob('.research-export-*')
+            assert os.path.samefile(stage, destination)
+    finally:
+        for stage in tmp_path.glob('.research-export-*'):
+            unlink(stage)
+
+
+def test_cli_without_overwrite_preserves_file_created_during_formatting(tmp_path, monkeypatch, capsys):
+    from carr_library.application import LibraryApp
+    from carr_library.bibliography_cli import main
+    from carr_library.citations.bibliography_workbench import BibliographyWorkbench
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Export audit')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))
+    destination = tmp_path / 'bibliography.txt'
+    render = BibliographyWorkbench.preview
+
+    def format_then_competing_write(workbench, **options):
+        preview = render(workbench, **options)
+        destination.write_bytes(b'Created by another program during rendering')
+        return preview
+
+    monkeypatch.setattr(BibliographyWorkbench, 'preview', format_then_competing_write)
+    result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
+                   '--reference', reference.id, '--output', str(destination)])
+    assert result == 1
+    assert 'destination changed' in capsys.readouterr().err
+    assert destination.read_bytes() == b'Created by another program during rendering'
+    assert controller.get(reference.id) == reference
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('change', ('metadata', 'workspace-archive'))
+@pytest.mark.parametrize('existing', (False, True))
+def test_staged_bibliography_reauthorizes_metadata_and_scope_before_publication(
+        tmp_path, change, existing):
+    from carr_library.application import LibraryApp
+    from carr_library.citations.bibliography_workbench import BibliographyWorkbench
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Export freshness audit')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Original metadata title', authors=('Doe, Jane',), year='2020'))
+    workbench = BibliographyWorkbench(controller)
+    preview = workbench.preview(identity=reference.id, style='ieee')
+    destination = tmp_path / 'bibliography.txt'
+    original_bytes = b'Previously exported work must survive'
+    if existing:
+        destination.write_bytes(original_bytes)
+    changed = False
+
+    def change_after_real_staging():
+        nonlocal changed
+        if not changed and list(tmp_path.glob('.research-export-*')):
+            # The pre-render and pre-writer checks already passed. Change the
+            # database only once the real payload has reached a staging file.
+            changed = True
+            if change == 'metadata':
+                controller.update(reference, {'title': 'New current metadata title'})
+            else:
+                app.archive_workspace(workspace)
+        return False
+
+    with pytest.raises(ValueError):
+        workbench.export(preview, destination, cancelled=change_after_real_staging,
+                         require_absent=not existing)
+
+    assert changed, 'The metadata/scope change must happen after the payload is staged.'
+    if existing:
+        assert destination.read_bytes() == original_bytes
+    else:
+        assert not destination.exists()
+    assert not list(tmp_path.glob('.research-export-*'))
+    if change == 'metadata':
+        assert controller.get(reference.id).title == 'New current metadata title'
+    else:
+        with pytest.raises(ValueError):
+            controller.get(reference.id)

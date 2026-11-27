@@ -109,6 +109,24 @@ def test_pinned_controller_rechecks_library_authorization(controller):
     assert controller.get(row.id) == row
 
 
+def test_academic_controller_captures_destination_before_render(controller, tmp_path, monkeypatch):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Approved previous export')
+    original = controller.export
+
+    def render(**kwargs):
+        content = original(**kwargs)
+        target.write_bytes(b'Independent work saved while rendering')
+        return content
+
+    monkeypatch.setattr(controller, 'export', render)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == b'Independent work saved while rendering'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_import_dialog_selection_is_explicit_and_failed_batch_is_atomic(controller):
     data = json.dumps([
         {'type': 'book', 'title': 'First imported reference'},
@@ -350,6 +368,7 @@ def native_handlers(monkeypatch):
         window = cls.__new__(cls)
         _Window.__init__(window)
         window._window_alive, window.pending = True, False
+        window._native_id = id(window)
         window.status = _Control()
         window.executor = _DeferredExecutor()
         if kind == 'editor':
@@ -370,7 +389,8 @@ def native_handlers(monkeypatch):
         return window
 
     def destroy(window):
-        event = SimpleNamespace(GetEventObject=lambda: window, Skip=Mock())
+        event = SimpleNamespace(GetId=lambda: window._native_id,
+                                GetEventObject=lambda: object(), Skip=Mock())
         window.on_destroy(event)
         event.Skip.assert_called_once()
         for control in window.all_controls:
@@ -467,6 +487,7 @@ def test_academic_late_completion_never_runs_ui_callback_after_destroy(controlle
     assert [control.calls for control in window.all_controls] == before
     forbidden = Mock(side_effect=AssertionError('Destroyed dialog started another operation'))
     window._run('Late operation', forbidden, done)
+    window.on_styles()
     window.on_cancel()
     window.on_close(Mock())
     forbidden.assert_not_called()
@@ -485,7 +506,8 @@ def test_live_completion_and_child_destroy_keep_normal_callbacks(controller, nat
         window.on_save()
     else:
         window._run('Loading overview', controller.statistics if outcome == 'success' else Mock(side_effect=error), done)
-    window.on_destroy(SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock()))
+    window.on_destroy(SimpleNamespace(GetId=lambda: window._native_id + 1,
+                                      GetEventObject=lambda: object(), Skip=Mock()))
     assert window._window_alive and window.pending
     if kind == 'academic':
         assert not window.cancel_event.is_set()

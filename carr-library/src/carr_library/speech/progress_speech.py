@@ -31,6 +31,52 @@ _NOTICES = {
 }
 
 
+# The shared ProgressHub distinguishes a requested stop from acknowledgement,
+# and a missing observation from a failed operation. Neither means completion.
+for _language, _cancelling, _unavailable in (
+        ('en', 'Cancellation requested', 'Progress reporting is unavailable'),
+        ('uk', 'Надіслано запит на скасування', 'Повідомлення про прогрес недоступні'),
+        ('sk', 'Požiadavka na zrušenie', 'Hlásenie priebehu nie je dostupné')):
+    _NOTICES[_language].update(cancelling=_cancelling, unavailable=_unavailable)
+
+
+class SnapshotProgressSpeech:
+    """Adapt the selected local voice to ProgressFeedback's 0..100 contract."""
+    def __init__(self, provider):
+        self.provider = provider
+        self.library_root, self.label = provider.library_root, provider.label
+
+    @property
+    def quiescent(self):
+        return self.provider.quiescent
+
+    def format_progress(self, snapshot, *, kind):
+        from types import SimpleNamespace
+        event = SimpleNamespace(state=snapshot.state, percent=snapshot.percent,
+                                phase=' '.join(snapshot.phase.split())[:120])
+        return self.provider.notification_text(event, state='resumed' if kind == 'resumed' else None)
+
+    def speak_progress(self, text, *, volume, cancelled):
+        if type(volume) is not int or not 0 <= volume <= 100:
+            raise ValueError('Progress volume must be an integer from zero to one hundred.')
+        return self.provider.speak_progress(text, volume=volume / 100, cancelled=cancelled)
+
+    def _speak_progress_measured(self, text, *, volume, cancelled):
+        if type(volume) not in (int, float) or not math.isfinite(volume) or not 0 <= volume <= 100:
+            raise ValueError('Progress volume must be a finite percent from zero to one hundred.')
+        return self.provider.speak_progress(text, volume=volume / 100, cancelled=cancelled)
+
+    def copy_selection(self):
+        return SnapshotProgressSpeech(self.provider.copy_selection())
+
+    def close(self):
+        return self.provider.close()
+
+
+def snapshot_speech_provider(provider):
+    return SnapshotProgressSpeech(provider) if isinstance(provider, LocalProgressSpeech) else provider
+
+
 class _RegistryOwnership:
     """Share one explicitly activated registry without borrowing another view's."""
     def __init__(self, registry):

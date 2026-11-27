@@ -466,19 +466,8 @@ def _native_types():
             self.locale.SetSelection(0)
             style_row.Add(self.locale, 0, wx.ALL, 5)
             first.Add(style_row, 0, wx.EXPAND)
-            runtime_row = wx.BoxSizer(wx.HORIZONTAL)
-            runtime_row.Add(wx.StaticText(reference_page, label="Local &Node.js executable; blank uses installed runtime"), 0,
-                            wx.ALL | wx.ALIGN_CENTER_VERTICAL, 7)
-            self.node = wx.TextCtrl(reference_page)
-            self.node.SetName("Local Node.js executable, optional")
-            runtime_row.Add(self.node, 1, wx.ALL, 5)
-            self.browse_node = wx.Button(reference_page, label="&Browse")
-            runtime_row.Add(self.browse_node, 0, wx.ALL, 5)
-            first.Add(runtime_row, 0, wx.EXPAND)
-            self.browse_node.Bind(wx.EVT_BUTTON, self.choose_node)
             self.style.Bind(wx.EVT_CHOICE, self.invalidate)
             self.locale.Bind(wx.EVT_CHOICE, self.invalidate)
-            self.node.Bind(wx.EVT_TEXT, self.invalidate)
             reference_page.SetSizer(first)
 
             citation_page = wx.Panel(self.tabs)
@@ -543,7 +532,7 @@ def _native_types():
             self.regenerate_button.Bind(wx.EVT_BUTTON, self.open_regeneration)
             self.add_footer(layout, (self.format_button, self.export_button, self.regenerate_button))
             self.controls.extend((self.references_box, self.all_button, self.none_button, self.reload_button, self.style,
-                self.locale, self.node, self.browse_node, self.citation_reference, self.locator_kind, self.locator,
+                self.locale, self.citation_reference, self.locator_kind, self.locator,
                 self.verified, self.add_citation, self.citation_list, self.remove_citation, self.move_up, self.move_down,
                 self.document_title, self.format_button, self.export_button, self.regenerate_button))
             command = int(wx.NewIdRef())
@@ -605,11 +594,6 @@ def _native_types():
             for index in range(len(self.references)):
                 self.references_box.Check(index, checked)
             self.invalidate()
-
-        def choose_node(self, event=None):
-            with wx.FileDialog(self, "Choose the installed local Node.js executable", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
-                if dialog.ShowModal() == wx.ID_OK:
-                    self.node.SetValue(dialog.GetPath())
 
         def reset_verification(self, event=None):
             self.verified.SetValue(False)
@@ -682,7 +666,6 @@ def _native_types():
                 return
             style = self.styles[self.style.GetSelection()].id
             locale = LOCALES[self.locale.GetSelection()][0]
-            node = self.node.GetValue().strip() or None
             clusters = tuple(replace(cluster, note_index=index) for index, cluster in enumerate(self.clusters, 1))
             snapshot = self.snapshot
             self.result = None
@@ -699,7 +682,7 @@ def _native_types():
                 self.preview.SetFocus()
 
             self.run("Formatting citations locally", lambda: self.controller.render(snapshot, reference_ids=selected,
-                style=style, locale=locale, citations=clusters, node_path=node, cancelled=self.cancel_event.is_set), ready)
+                style=style, locale=locale, citations=clusters, cancelled=self.cancel_event.is_set), ready)
 
         def export(self, event=None):
             if self.pending or self.result is None:
@@ -722,7 +705,7 @@ def _native_types():
             try:
                 parent = self.GetParent()
                 _guard(parent, self.controller.library, self.controller.workspace)
-                dialog = RegenerationDialog(parent, self.controller, node=self.node.GetValue().strip())
+                dialog = RegenerationDialog(parent, self.controller)
                 dialog.ShowModal()
             except Exception as error:
                 self.report("Document regeneration could not open. " + str(error))
@@ -734,7 +717,7 @@ def _native_types():
                     self.regenerate_button.SetFocus()
 
     class RegenerationDialog(TaskDialog):
-        def __init__(self, parent, controller, *, node=''):
+        def __init__(self, parent, controller):
             super().__init__(parent, title="Regenerate saved citation document", size=(880, 740),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.SetName("Regenerate saved citation document")
@@ -757,13 +740,11 @@ def _native_types():
             self.style_button.SetName("Choose the exact custom CSL style file")
             self.style_button.Bind(wx.EVT_BUTTON, self.choose_style)
             layout.Add(self.style_button, 0, wx.ALL, 7)
-            self.node = labelled(self, layout, "Local Node.js executable; blank uses installed runtime",
-                                 wx.TextCtrl(self, value=node))
             self.save_button = wx.Button(self, label="Regenerate as &new DOCX...")
             self.save_button.SetName("Regenerate the reviewed snapshot as a new DOCX")
             self.save_button.Bind(wx.EVT_BUTTON, self.regenerate)
             self.add_footer(layout, (self.save_button,))
-            self.controls.extend((self.open_button, self.style_path, self.style_button, self.node, self.save_button))
+            self.controls.extend((self.open_button, self.style_path, self.style_button, self.save_button))
             self.SetSizer(layout)
             self.SetMinSize((680, 580))
             self.update_controls()
@@ -816,10 +797,9 @@ def _native_types():
                 destination = chooser.GetPath()
             document = self.document
             style = self.style_path.GetValue().strip() or None
-            node = self.node.GetValue().strip() or None
             self.run("Regenerating the reviewed citation snapshot",
                 lambda: self.controller.regenerate_docx(document, destination, style_path=style,
-                    node_path=node, cancelled=self.cancel_event.is_set),
+                    cancelled=self.cancel_event.is_set),
                 lambda path: self.report(f"Saved a new citation document: {path}\nThe selected document was not changed. "
                                         "Saved locator assertions were retained; source pages were not rechecked."),
                 published_result=True)
@@ -983,6 +963,8 @@ def install_citation_actions(frame):
     if getattr(frame, "_carr_citation_actions_installed", False):
         return
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     bar = frame.GetMenuBar()
     if bar is None:
         raise ValueError("Install the native menu bar before citation actions.")
@@ -998,6 +980,10 @@ def install_citation_actions(frame):
         menu.AppendSeparator()
     item = menu.Append(wx.ID_ANY, "Format bibliography and citations...\tCtrl+Alt+C")
     frame.Bind(wx.EVT_MENU, lambda event: show_citation_formatter(frame), item)
+    register_menu_command(frame, CommandSpec('academic.format_citations',
+        'Format bibliography and citations', 'main', 'Ctrl+Alt+C'), item)
     item = menu.Append(wx.ID_ANY, "Preview DOI metadata (opt-in)...")
     frame.Bind(wx.EVT_MENU, lambda event: show_doi_preview(frame), item)
+    register_menu_command(frame, CommandSpec('academic.preview_doi',
+        'Preview DOI metadata (opt-in)', 'main', ''), item)
     frame._carr_citation_actions_installed = True

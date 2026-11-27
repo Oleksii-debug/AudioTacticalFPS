@@ -55,7 +55,7 @@ def manifest_rehash(backup, name, value):
     raw = encode(value)
     (backup / 'state' / name).write_bytes(raw)
     manifest = read_json(backup / 'manifest.json')
-    entry = next(item for item in manifest['state'] if item['filename'] == name)
+    entry = next(item for item in manifest['sidecars'] if item['filename'] == 'state/' + name)
     entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
@@ -97,12 +97,12 @@ def test_real_render_backup_delete_original_state_restore_and_render_again(tmp_p
     digest = create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
     receipt = read_json(backup / 'state' / RECEIPT)
-    assert manifest['version'] == 5 and manifest['generated_audio_included'] is False
+    assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
     assert set(receipt['inputs']) == set(original_inputs)
     assert len(receipt['projects']) == 5  # current, revision, two jobs, completed export
-    assert not any('/cache/' in item['filename'] for item in manifest['state'])
+    assert not any('/cache/' in item['filename'] for item in manifest['sidecars'])
     for original, entry in receipt['inputs'].items():
-        assert entry in manifest['state']
+        assert dict(entry, filename='state/' + entry['filename']) in manifest['sidecars']
         assert (backup / 'state' / entry['filename']).read_bytes() == original_inputs[original]
         assert entry['sha256'] == sha256(original_inputs[original]).hexdigest()
         assert Path(original).read_bytes() == original_inputs[original]
@@ -220,8 +220,9 @@ def test_invalid_retained_inputs_or_project_bindings_never_publish(backed_up, tm
 def historical_v4(backup, *, forged_review=None, uppercase_job=False):
     from carr_library.studio.backup_inputs import REVIEW
     manifest = read_json(backup / 'manifest.json')
-    manifest.pop('extensions', None)
-    shutil.rmtree(backup / 'extensions', ignore_errors=True)
+    assert all(item['filename'].startswith('state/') for item in manifest['sidecars'])
+    manifest['state'] = [dict(item, filename=item['filename'].removeprefix('state/'))
+                         for item in manifest.pop('sidecars')]
     manifest['version'] = 4 if 'pending' in manifest else 3
     omitted = [item for item in manifest['state'] if item['filename'] == RECEIPT
                or item['filename'].startswith('studio/inputs/')]
@@ -309,7 +310,7 @@ def test_case_aliased_reserved_receipt_is_rejected(backed_up, tmp_path):
     alias = 'studio/Backup-Inputs.json'
     (backup / 'state' / RECEIPT).rename(backup / 'state' / alias)
     manifest = read_json(backup / 'manifest.json')
-    next(item for item in manifest['state'] if item['filename'] == RECEIPT)['filename'] = alias
+    next(item for item in manifest['sidecars'] if item['filename'] == 'state/' + RECEIPT)['filename'] = 'state/' + alias
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
     target = tmp_path / 'restored'
@@ -411,8 +412,9 @@ def test_modified_restored_input_is_refused_before_render(backed_up, tmp_path):
 def test_legacy_v4_without_studio_receipt_remains_readable(backed_up, tmp_path):
     _app, _source, project, backup, _digest = backed_up
     manifest = read_json(backup / 'manifest.json')
-    manifest.pop('extensions', None)
-    shutil.rmtree(backup / 'extensions', ignore_errors=True)
+    assert all(item['filename'].startswith('state/') for item in manifest['sidecars'])
+    manifest['state'] = [dict(item, filename=item['filename'].removeprefix('state/'))
+                         for item in manifest.pop('sidecars')]
     manifest['version'] = 4 if 'pending' in manifest else 3
     omitted = [item for item in manifest['state'] if item['filename'] == RECEIPT
                or item['filename'].startswith('studio/inputs/')]
@@ -440,7 +442,7 @@ def test_invalid_typed_project_fails_before_backup_publication(tmp_path):
     path = app.root / 'state/studio/projects' / project.id / 'project.json'
     atomic_json(path, value, replace=True)
     target = tmp_path / 'backup'
-    with pytest.raises(ValueError, match='Invalid typed Studio project'):
+    with pytest.raises(ValueError, match='(?:Invalid typed Studio project|invalid backup sidecar)'):
         create_backup(app, target)
     assert not target.exists()
 

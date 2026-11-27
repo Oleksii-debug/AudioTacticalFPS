@@ -326,7 +326,7 @@ def export_bibliography(frame):
 
         frame.run_job('Exporting bibliography', operation, done)
     except Exception as exc:
-        frame.report(f'Bibliography was not exported: {exc}')
+        frame.report(f'Bibliography export: {exc}')
 
 
 def export_research_outline(frame):
@@ -373,7 +373,7 @@ def export_research_outline(frame):
 
         frame.run_job('Exporting verified research outline', operation, done)
     except Exception as exc:
-        frame.report(f'Research outline was not exported: {exc}')
+        frame.report(f'Research outline export: {exc}')
 
 
 def install_academic_actions(frame):

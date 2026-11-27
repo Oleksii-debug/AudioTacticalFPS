@@ -30,8 +30,13 @@ ACTOR, runtime, requests = (_fixture_module.ACTOR, _fixture_module.runtime, _fix
 def configured(runtime, tmp_path):
     root = tmp_path / 'library'
     root.mkdir()
-    connect_runtime(root, str(runtime), python_executable=str(Path(sys.executable).resolve()),
-                    expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
+    # This cohort intentionally exercises retained legacy declarations and IDs.
+    # New UI connections are covered separately through canonical engines.json.
+    value = dordiai_settings.default_settings()
+    value.update(enabled=True, runtime_directory=str(runtime),
+                 python_executable=str(Path(sys.executable).resolve()),
+                 expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
+    dordiai_settings.save_settings(root, dordiai.validate_connection(value))
     return root
 
 
@@ -75,11 +80,16 @@ def test_native_connection_checks_worker_without_launching(runtime, tmp_path, mo
     monkeypatch.setattr(bridge.subprocess, 'Popen', lambda *a, **k: pytest.fail('Connection launched private code'))
     value = connect_runtime(root, str(runtime), python_executable=str(Path(sys.executable).resolve()),
                             expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
-    assert dordiai_settings.load_settings(root) == value
-    before = (root / dordiai_settings.FILENAME).read_bytes()
+    from carr_library import runtime_settings as engines
+    assert engines.load_settings(root / 'state')['dordiai'] == {
+        key: item for key, item in value.items() if key != 'version'}
+    selected = engines.settings_path(root / 'state')
+    assert not (root / dordiai_settings.FILENAME).exists()
+    before = selected.read_bytes()
     with pytest.raises(bridge.DordiaiProtocolError, match='fingerprint'):
         connect_runtime(root, str(runtime), python_executable=str(Path(sys.executable).resolve()), expected_worker_sha256='0' * 64)
-    assert (root / dordiai_settings.FILENAME).read_bytes() == before
+    assert selected.read_bytes() == before
+    assert not (root / dordiai_settings.FILENAME).exists()
 
 
 def test_disable_missing_runtime_is_pure_and_preserves_declaration(configured, monkeypatch):
@@ -163,14 +173,13 @@ def test_inventory_uses_canonical_voice_type_and_actual_installed_language_pairs
 
 def test_engine_settings_registry_binds_to_selected_library_root(configured, monkeypatch):
     from carr_library.runtime_settings import voice_registry
-    seen = []
     def discover(cls, **kwargs):
-        seen.extend(kwargs['extra_providers'])
-        return cls(kwargs['extra_providers'], cancelled=kwargs['cancelled'])
+        return cls((), cancelled=kwargs['cancelled'])
     monkeypatch.setattr(VoiceRegistry, 'discover', classmethod(discover))
     value = voice_registry(configured / 'state')
+    _REGISTRIES.append(value)
     assert len(value.voices()) == 5
-    assert len(seen) == 1 and seen[0].configuration_root == configured
+    assert len(value._providers) == 1 and value._providers[0].configuration_root == configured
 
 
 def test_registry_discovery_cancellation_propagates_from_real_private_probe(configured, runtime):

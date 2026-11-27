@@ -8,16 +8,21 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
-from carr_library.reader.reading_state import ReadingState
+from carr_library.speech.reading import ReadingDocument
+from carr_library.speech.session import ReaderDraftStore, ReaderResume
+
+
+READER_STATE = 'state/speech/' + sha256(b'manual').hexdigest() + '.reader.json'
 
 
 def populated(tmp_path):
     app = LibraryApp(tmp_path / 'data')
     workspace = app.create_workspace('Library')
     app.add_text(workspace, 'Source', 'Exact original source.')
-    state = app.root / 'state/speech/saved.json'
-    state.parent.mkdir(parents=True)
-    state.write_bytes(b'x' * (3 * 1024 * 1024))
+    store = ReaderDraftStore(app.root)
+    store.save(ReaderResume(ReadingDocument('ї' * 1_500_000)))
+    assert store.path == app.root / READER_STATE
+    assert store.path.stat().st_size > 2 * 1024 * 1024
     backup = tmp_path / 'backup'
     return backup, create_backup(app, backup)
 
@@ -30,7 +35,7 @@ def test_immediate_restore_cancel_does_not_touch_destination(tmp_path):
     assert not target.exists()
 
 
-@pytest.mark.parametrize('component', ['library.sqlite', 'state/speech/saved.json'])
+@pytest.mark.parametrize('component', ['library.sqlite', READER_STATE])
 def test_cancel_after_first_private_copy_chunk_never_publishes(tmp_path, component):
     source, digest = populated(tmp_path)
     target = tmp_path / 'restored'

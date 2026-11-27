@@ -2,14 +2,48 @@
 from hashlib import sha256
 import json
 import os
+import shutil
+import wave
 from pathlib import Path
 
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.assistant import AssistantService, Plan, Scope, Step
+from carr_library.assistant.profiles import ProfileStore, ProviderProfile
+from carr_library.runtime_settings import load_settings, save_settings
+from carr_library.speech import ReadingDocument, Voice
+from carr_library.speech.session import ReaderDraftStore, ReaderResume
+from carr_library.studio.render import ProductionService
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
 from carr_library.state_backup import snapshot_state, validate_state
+
+
+class InventoryOnly:
+    def voices(self):
+        return (Voice('test:inventory', 'Inventory fixture', 'test', 'en'),)
+
+
+def generated_cache(state):
+    key = sha256(b'synthetic completed PCM fixture').hexdigest()
+    path = state / 'studio/cache' / (key + '-0123456789.wav')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), 'wb') as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(8000)
+        stream.writeframes(b'\0\0' * 800)
+    atomic_json(path.with_name(key + '.json'), {
+        'schema': 1, 'key': key, 'file': path.name, 'sha256': sha256(path.read_bytes()).hexdigest(),
+        'duration': .1, 'sample_rate': 8000, 'channels': 1})
+    return path
+
+
+def resign(folder, manifest):
+    raw = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode()
+    (folder / 'manifest.json').write_bytes(raw)
+    return sha256(raw).hexdigest()
 
 
 @pytest.fixture
@@ -23,44 +57,74 @@ def populated(tmp_path):
     hit, = app.search(first, 'Точний')
     app.save_hit(first, topic, hit.ref, hit.revision, 'Separate private note')
     state = app.root / 'state'
-    values = {
-        'speech/settings.json': {'voice': 'installed-voice', 'rate': 1.0},
-        'speech/documents/читання.json': {'original': 'Точний текст', 'reading': 'Точний текст.'},
-        'studio/projects/project.json': {'schema': 1, 'roles': ['Narrator'], 'revision': 3},
-        'studio/jobs/job-1/job.json': {'status': 'paused', 'completed_chunks': ['first']},
-        'assistant/job.json': {'status': 'paused', 'plan': {'library': first}},
-        'providers/account.profile.json': {'credential_ref': 'carr/provider/account/' + 'a' * 32},
-    }
-    for name, value in values.items():
-        atomic_json(state / name, value)
-    cache = state / 'studio/cache/chunk.wav'
-    cache.parent.mkdir(parents=True)
-    cache.write_bytes(b'synthetic-generated-audio-cache')
+    # Use the selected primary producers rather than arbitrary JSON that no
+    # installed reader could validate or reopen.
+    save_settings(state, load_settings(state))
+    reader = ReaderDraftStore(app.root)
+    document = ReadingDocument('Точний текст')
+    document.replace(0, len(document.text), 'Точний текст.')
+    reader.save(ReaderResume(document, 'test:inventory', cursor=3))
+    profiles = ProfileStore(state / 'providers')
+    profiles.save(ProviderProfile('account', 'Synthetic account reference', 'openai-compatible',
+        'https://example.invalid/v1', 'fixture-model',
+        credential_ref='carr/provider/account/' + 'a' * 32))
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    studio = ProductionService(state / 'studio', voices=InventoryOnly())
+    project = studio.create('Narrator: Preserve a queued production.', voice_ids=('test:inventory',))
+    studio.request_pause(studio.submit(project, outputs))
+    assistant = AssistantService(app)
+    plan = Plan(Scope(workspace_id=first, output_root=outputs), (Step('library.list'),))
+    assistant_job = assistant.submit(plan)
+    assert assistant.run(assistant_job).status == 'complete'
+    assistant.pause(assistant_job)
+    values = {p.relative_to(state).as_posix(): read_json(p)
+              for p in state.rglob('*.json')}
+    generated_cache(state)
     (state / 'studio/.render.lock').write_bytes(b'')
     (state / 'studio/.pending-edit').write_bytes(b'not committed')
-    (state / 'speech/recovery.tmp').write_bytes(b'not committed')
+    (state / 'speech/.pending-recovery.tmp').write_bytes(b'not committed')
     return app, first, second, topic, values
 
 
-def test_backup_restores_exact_state_sources_and_evidence_without_cache(populated, tmp_path):
+@pytest.mark.parametrize('version', [3, 4])
+def test_backup_restores_exact_state_sources_and_evidence_without_cache(populated, tmp_path, version):
     app, first, second, topic, values = populated
     before = app.evidence(first, topic)[0]
     original_files = {p.name: p.read_bytes() for p in app.assets_dir.iterdir()}
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
+    manifest = json.loads((folder / 'manifest.json').read_text())
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
-    assert {entry['filename'] for entry in manifest['state']} == set(values)
-    for entry in manifest['state']:
-        raw = (folder / 'state' / entry['filename']).read_bytes()
+    assert {entry['filename'] for entry in manifest['sidecars']} == (
+        {'state/' + name for name in values} | {'state/studio/backup-inputs.json'})
+    for entry in manifest['sidecars']:
+        raw = (folder / entry['filename']).read_bytes()
         assert len(raw) == entry['size_bytes'] and sha256(raw).hexdigest() == entry['sha256']
+    if version == 3:
+        if manifest.pop('pending', None) is not None:
+            shutil.rmtree(folder / 'pending')
+        manifest['version'] = 3
+        manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
+                             for entry in manifest.pop('sidecars')]
+        digest = resign(folder, manifest)
     destination = restore_backup(folder, tmp_path / 'restored', digest)
     recovered = LibraryApp(destination)
     assert {w.id for w in recovered.workspaces()} == {first, second}
     assert recovered.evidence(first, topic)[0] == before
     assert {p.name: p.read_bytes() for p in recovered.assets_dir.iterdir()} == original_files
     for name, value in values.items():
-        assert read_json(destination / 'state' / name) == value
+        restored_value = read_json(destination / 'state' / name)
+        if name.startswith('studio/jobs/') and name.endswith('/job.json'):
+            assert restored_value['project'] == value['project']
+            assert restored_value['status'] == 'waiting-input' and restored_value['destination'] == ''
+            assert restored_value['recovery']['requires_output_directory'] is True
+            assert restored_value['recovery']['previous'] == dict(
+                project_fingerprint=value['fingerprint'], status=value['status'],
+                destination=value['destination'], artifacts=value['artifacts'])
+        else:
+            assert restored_value == value
+    assert not (destination / 'state/studio/backup-inputs.json').exists()
     assert not (destination / 'state/studio/cache').exists()
     assert not list((destination / 'state').rglob('*.lock'))
     assert not list((destination / 'state').rglob('*.tmp'))
@@ -71,10 +135,12 @@ def test_optional_generated_cache_roundtrips_exactly(populated, tmp_path):
     app, *_ = populated
     folder = tmp_path / 'with-cache'
     digest = create_backup(app, folder, include_generated=True)
-    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
+    manifest = json.loads((folder / 'manifest.json').read_text())
     assert manifest['generated_audio_included'] is True
     destination = restore_backup(folder, tmp_path / 'restored-with-cache', digest)
-    assert (destination / 'state/studio/cache/chunk.wav').read_bytes() == b'synthetic-generated-audio-cache'
+    original = app.root / 'state/studio/cache'
+    assert {p.name: p.read_bytes() for p in (destination / 'state/studio/cache').iterdir()} == {
+        p.name: p.read_bytes() for p in original.iterdir()}
 
 
 @pytest.mark.parametrize('damage', ['corrupt', 'missing', 'unlisted', 'missing-state-directory', 'wrong-manifest'])
@@ -82,7 +148,7 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
     app, first, second, topic, _ = populated
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    state_file = folder / 'state/speech/settings.json'
+    state_file = folder / 'state/audio/engines.json'
     if damage == 'corrupt':
         raw = bytearray(state_file.read_bytes())
         raw[-2] ^= 1
@@ -95,9 +161,9 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
         import shutil
         shutil.rmtree(folder / 'state')
     else:
-        manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-        manifest['state'][0]['size_bytes'] += 1
-        raw = json.dumps(manifest).encode('utf-8')
+        manifest = json.loads((folder / 'manifest.json').read_text())
+        manifest['sidecars'][0]['size_bytes'] += 1
+        raw = json.dumps(manifest).encode()
         (folder / 'manifest.json').write_bytes(raw)
         digest = sha256(raw).hexdigest()
     destination = tmp_path / 'restore'
@@ -155,7 +221,7 @@ def test_dangling_state_root_is_not_silently_omitted(tmp_path):
 def test_active_state_database_requires_consistent_adapter(populated, tmp_path):
     app, *_ = populated
     (app.root / 'state/active.sqlite').write_bytes(b'not a snapshot')
-    with pytest.raises(ValueError, match='snapshot adapter'):
+    with pytest.raises(ValueError, match='(?:snapshot|backup) adapter'):
         create_backup(app, tmp_path / 'backup')
 
 
@@ -183,84 +249,6 @@ def test_snapshot_detects_changes_to_already_copied_tree(tmp_path, mutation):
     with pytest.raises((ValueError, OSError), match='changed|snapshot|backup'):
         snapshot_state(root, target, cancelled=concurrent_writer)
     assert modified
-
-
-def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
-    from carr_library import state_backup
-    root, target = tmp_path / 'source', tmp_path / 'snapshot'
-    root.mkdir()
-    target.mkdir()
-    source = root / 'a.json'
-    source.write_bytes(b'old')
-    (root / 'b.json').write_bytes(b'other file')
-    # Windows can keep creation-time and last-write metadata stable until an
-    # open writer closes. Model that stat behavior while changing real bytes.
-    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
-    changed = False
-    def mutate_after_copy():
-        nonlocal changed
-        if not changed and (target / 'b.json').exists():
-            source.write_bytes(b'new')
-            changed = True
-        return False
-    with pytest.raises(ValueError, match='changed during backup'):
-        snapshot_state(root, target, cancelled=mutate_after_copy)
-    assert changed and (target / 'a.json').read_bytes() == b'old'
-def test_snapshot_rejects_same_metadata_content_change_before_publication(populated, tmp_path, monkeypatch):
-    """Windows timestamps can leave an in-place, equal-length update invisible."""
-    from carr_library import state_backup
-
-    app, *_ = populated
-    source = app.root / 'state/speech/settings.json'
-    original = source.read_bytes()
-    replacement = original.replace(b'installed-voice', b'different-voice')
-    assert replacement != original and len(replacement) == len(original)
-    before = source.stat()
-    # Windows st_ctime is creation time; POSIX ctime is not restorable. Model
-    # that distinction while retaining real file identity, size and mtime.
-    monkeypatch.setattr(state_backup, '_stamp', lambda value:
-        (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns))
-    modified = False
-
-    def concurrent_writer():
-        nonlocal modified
-        stages = list(tmp_path.glob('.carr-library-backup-*'))
-        copied = bool(stages and (stages[0] / 'state/studio/projects/project.json').exists())
-        if copied and not modified:
-            modified = True
-            source.write_bytes(replacement)
-            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
-        return False
-
-    destination = tmp_path / 'backup'
-    with pytest.raises((ValueError, OSError), match='changed|snapshot|backup'):
-        create_backup(app, destination, cancelled=concurrent_writer)
-    assert modified and source.read_bytes() == replacement
-    assert not destination.exists()
-
-
-def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tmp_path, monkeypatch):
-    app, *_ = populated
-    source = app.root / 'state/speech/settings.json'
-    source_reads = 0
-    original_open = Path.open
-
-    def observe_source_read(path, mode='r', *args, **kwargs):
-        nonlocal source_reads
-        if path == source and mode == 'rb':
-            source_reads += 1
-        return original_open(path, mode, *args, **kwargs)
-
-    monkeypatch.setattr(Path, 'open', observe_source_read)
-
-    def cancel_during_revalidation():
-        return source_reads >= 2
-
-    destination = tmp_path / 'backup'
-    with pytest.raises(InterruptedError, match='cancelled'):
-        create_backup(app, destination, cancelled=cancel_during_revalidation)
-    assert source_reads == 2
-    assert not destination.exists()
 
 
 @pytest.mark.parametrize('state_kind', ['absent', 'empty', 'zero-byte'])
@@ -300,22 +288,92 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     app.add_text(workspace, 'Source', 'Legacy source stays readable.')
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
-    # Construct the historical v2 shape from the same verified catalog bytes.
-    # New backups also preserve the import journal, which did not exist in v2.
-    import shutil
-    manifest = json.loads((backup / 'manifest.json').read_text(encoding='utf-8'))
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    assert manifest['version'] == 4 and manifest['sidecars'] == []
+    if manifest.pop('pending', None) is not None:
+        shutil.rmtree(backup / 'pending')
     manifest['version'] = 2
-    for key in ('state', 'generated_audio_included', 'pending'):
-        manifest.pop(key, None)
-    for name in ('state', 'pending'):
-        if (backup / name).exists():
-            shutil.rmtree(backup / name)
-    raw = (json.dumps(manifest, sort_keys=True, ensure_ascii=False, separators=(',', ':')) + '\n').encode('utf-8')
-    (backup / 'manifest.json').write_bytes(raw)
-    digest = sha256(raw).hexdigest()
+    del manifest['sidecars'], manifest['generated_audio_included']
+    digest = resign(backup, manifest)
+    assert json.loads((backup / 'manifest.json').read_text())['version'] == 2
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'
     assert not (restored.root / 'state').exists()
+
+
+def test_snapshot_rejects_same_metadata_content_change_before_publication(populated, tmp_path, monkeypatch):
+    """The current v4 producer must verify copied bytes, including valid metadata edits."""
+    from carr_library import backup_sidecars
+
+    app, *_ = populated
+    source = next(path for path in (app.root / 'state/providers').glob('*.json')
+                  if b'fixture-model' in path.read_bytes())
+    original = source.read_bytes()
+    replacement = original.replace(b'fixture-model', b'updated-model')
+    assert replacement != original and len(replacement) == len(original)
+    before = source.stat()
+    identity = backup_sidecars._identity
+    # Model Windows creation time while keeping actual identity, size and mtime.
+    monkeypatch.setattr(backup_sidecars, '_identity', lambda info: identity(info)[:-1] + (0,))
+    modified = False
+
+    def concurrent_writer():
+        nonlocal modified
+        copied = list(tmp_path.glob('.carr-library-backup-*/state/studio/projects/*/project.json'))
+        if copied and not modified:
+            modified = True
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+        return False
+
+    destination = tmp_path / 'backup'
+    with pytest.raises((ValueError, OSError), match='digest changed|state changed'):
+        create_backup(app, destination, cancelled=concurrent_writer)
+    assert modified and source.read_bytes() == replacement
+    assert not destination.exists()
+
+
+def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tmp_path, monkeypatch):
+    from carr_library import backup_sidecars
+
+    app, *_ = populated
+    revalidating = []
+    stream_file = backup_sidecars._stream_file
+
+    def observe_revalidation(source, **options):
+        if options.get('expected') is not None:
+            revalidating.append(Path(source))
+        return stream_file(source, **options)
+
+    monkeypatch.setattr(backup_sidecars, '_stream_file', observe_revalidation)
+    destination = tmp_path / 'backup'
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, destination, cancelled=lambda: bool(revalidating))
+    assert revalidating
+    assert not destination.exists()
+
+
+def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+    from carr_library import state_backup
+    root, target = tmp_path / 'source', tmp_path / 'snapshot'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'a.json'
+    source.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'other file')
+    # Windows can keep creation-time and last-write metadata stable until an
+    # open writer closes. Model that stat behavior while changing real bytes.
+    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
+    changed = False
+    def mutate_after_copy():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            source.write_bytes(b'new')
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed during backup'):
+        snapshot_state(root, target, cancelled=mutate_after_copy)
+    assert changed and (target / 'a.json').read_bytes() == b'old'
 
 
 @pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
@@ -352,3 +410,66 @@ def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkey
         create_backup(app, destination)
     assert not destination.exists()
     assert probes >= (1 if failure is PermissionError else 2)
+
+
+@pytest.mark.parametrize('name', ['reading-state.json', 'state'])
+@pytest.mark.parametrize('failure', [PermissionError, NotADirectoryError])
+def test_typed_backup_refuses_inaccessible_optional_root(tmp_path, monkeypatch, name, failure):
+    """Format-4 producers must not mistake an indeterminate lookup for absence."""
+    app = LibraryApp(tmp_path / 'data')
+    target = app.root / name
+    if name == 'state':
+        target.mkdir(exist_ok=True)
+        save_settings(target, load_settings(target))
+        retained = target / 'audio/engines.json'
+    else:
+        target.write_bytes(b'fixture must never be silently omitted')
+        retained = target
+    original = retained.read_bytes()
+    lstat = Path.lstat
+    lexists = os.path.lexists
+
+    def denied(path, *args, **kwargs):
+        if path == target:
+            raise failure('typed sidecar lookup unavailable')
+        return lstat(path, *args, **kwargs)
+
+    # Explicitly model the legacy lexists error suppression on every OS,
+    # including Python versions where pathlib implements lstat differently.
+    def suppressed(path):
+        return False if Path(path) == target else lexists(path)
+
+    destination = tmp_path / 'backup'
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'lstat', denied)
+        patch.setattr(os.path, 'lexists', suppressed)
+        with pytest.raises(failure, match='typed sidecar lookup unavailable'):
+            create_backup(app, destination)
+    assert not destination.exists()
+    assert retained.read_bytes() == original
+
+
+def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_path, monkeypatch):
+    from carr_library import backup_sidecars
+
+    root = tmp_path / 'data'
+    root.mkdir()
+    assert backup_sidecars._capture(root) == ({}, {})
+    target = root / 'state'
+    target.mkdir()
+    lstat = Path.lstat
+    probes = 0
+
+    def disappears(path, *args, **kwargs):
+        nonlocal probes
+        if path == target:
+            probes += 1
+            if probes > 1:
+                raise FileNotFoundError('optional root disappeared after presence probe')
+        return lstat(path, *args, **kwargs)
+
+    # Both presence and directory validation must succeed in one capture.
+    monkeypatch.setattr(Path, 'lstat', disappears)
+    with pytest.raises(FileNotFoundError, match='disappeared'):
+        backup_sidecars._capture(root)
+    assert probes == 2

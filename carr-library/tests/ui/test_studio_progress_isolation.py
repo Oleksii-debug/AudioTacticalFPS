@@ -59,6 +59,8 @@ def make(progress, executor, wx, report, service):
     busy, alive = False, True
     current_job = 'saved-production'
     cancel = threading.Event()
+    owned_progress_voices = set()
+    retire_progress_voice = lambda provider: provider.close()
     controls = lambda: None
     def close():
         nonlocal alive
@@ -214,12 +216,13 @@ def test_studio_close_retains_parent_observer_when_device_and_local_feedback_bot
     source = Path(find_spec('carr_library.ui.studio_dialog').origin)
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    names = {'close', 'cleanup', 'dispose', 'release_service'}
+    names = {'close', 'cleanup', 'dispose', 'retire_progress_voice', 'release_service'}
     handlers = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in handlers} == names
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
     alive, busy, cleanup_started = True, False, False
+    owned_progress_voices, cleanup_retry_registered = set(), False
     current_job = None
     frame = SimpleNamespace(report=report)
     return close

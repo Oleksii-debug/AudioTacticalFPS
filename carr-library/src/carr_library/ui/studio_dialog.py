@@ -9,7 +9,8 @@ from ..durable_state import atomic_json, encode, read_json
 from ..research.export_file import write_binary_export, export_completion
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
-from .operation_progress import OperationProgress, operation_outcome
+from .operation_progress import operation_outcome
+from .progress_panel import NativeProgressPanel
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from .export_destination import confirm_export_destination
 
@@ -108,6 +109,9 @@ def show_studio(frame):
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
+    saved_signature = None
+    owned_progress_voices = set()
+    cleanup_retry_registered = False
     cleanup_started = False
     native_id = dialog.GetId()
     dialog._native_id = native_id
@@ -145,10 +149,6 @@ def show_studio(frame):
     layout.Add(stems, 0, wx.ALL, 6)
     status = field('Production and save status', style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='Loading installed local voices. No audio starts automatically.', size=(-1, 100))
-    progress_label = wx.StaticText(dialog, label='Ready')
-    progress_gauge = wx.Gauge(dialog, range=100, style=wx.GA_HORIZONTAL)
-    layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
-    layout.Add(progress_gauge, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
     for row in ((('save', '&Save (Ctrl+S)'), ('open', '&Open project'), ('saveas', 'Save &as (Ctrl+Shift+S)'),
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
@@ -175,7 +175,14 @@ def show_studio(frame):
 
     dialog.library, dialog.status = frame.library, status
     dialog.report = lambda message: report(message, True)
-    progress = OperationProgress(dialog, progress_gauge, progress_label, wx_module=wx)
+    dialog.host, dialog.layout, dialog.working = dialog, layout, False
+    progress_panel = NativeProgressPanel(dialog, accessible_name='Audio Studio operation progress',
+        details_name='Audio Studio current progress and phase', query_name='Query Audio Studio progress')
+    parent_panel = getattr(frame, 'progress_panel', None)
+    if parent_panel is not None:
+        progress_panel.hub = parent_panel.hub
+    progress = progress_panel.legacy
+    dialog.progress_panel, dialog.operation_progress = progress_panel, progress
     parent_progress = getattr(frame, 'operation_progress', None)
     if parent_progress is not None and parent_progress.speech_provider is not None:
         try:
@@ -195,6 +202,8 @@ def show_studio(frame):
     def controls():
         if not alive:
             return
+        dialog.working = busy
+        progress_panel.settings_button.Enable(not busy)
         for name in ('render', 'open', 'roles', 'jobs'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
@@ -286,8 +295,17 @@ def show_studio(frame):
             observe('finalize', token=token)
             report(str(exc), True)
 
+        task = getattr(getattr(progress, 'tracker', None), 'task', None)
+
+        def perform():
+            from carr_library.progress import ProgressTask, bind_progress
+            if isinstance(task, ProgressTask):
+                with bind_progress(task):
+                    return operation(measured_phase) if with_progress else operation()
+            return operation(measured_phase) if with_progress else operation()
+
         try:
-            future = executor.submit(lambda: operation(measured_phase) if with_progress else operation())
+            future = executor.submit(perform)
         except Exception as exc:
             finished.set()
             busy = False
@@ -300,9 +318,9 @@ def show_studio(frame):
                 result = done.result()
             except Exception:
                 return
-            release = getattr(result, 'close', None)
-            if callable(release):
-                release()
+            if callable(getattr(result, 'close', None)):
+                owned_progress_voices.add(result)
+                retire_progress_voice(result)
 
         def finish(done):
             if not alive:
@@ -347,6 +365,22 @@ def show_studio(frame):
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
+    def retire_progress_voice(provider):
+        # Keep failed cleanup reachable independently of a delivered UI callback.
+        nonlocal cleanup_retry_registered
+        try:
+            if provider.close() is False:
+                raise RuntimeError('A progress voice has not confirmed closure.')
+        except (Exception, KeyboardInterrupt):
+            owned_progress_voices.add(provider)
+            if not cleanup_retry_registered:
+                import atexit
+                atexit.register(release_service)
+                cleanup_retry_registered = True
+            return False
+        owned_progress_voices.discard(provider)
+        return True
+
     def select_progress_voice(event=None):
         if not alive:
             return
@@ -356,30 +390,47 @@ def show_studio(frame):
         root = Path(dialog.library.root)
         voice_id = voices[selected].id
 
+        def activate():
+            provider = activate_progress_voice(root, voice_id, cancelled=cancel.is_set)
+            # The executor owns this result before any optional GUI delivery.
+            owned_progress_voices.add(provider)
+            return provider
+
         def activated(provider):
             try:
                 progress.set_speech_provider(provider, root=root)
-                if parent_progress is not None:
-                    parent_progress.set_speech_provider(provider.copy_selection(), root=root)
-            except Exception:
-                provider.close()
+            except (Exception, KeyboardInterrupt):
+                retire_progress_voice(provider)
                 raise
-            progress.settings_dialog()
+            owned_progress_voices.discard(provider)  # Ownership transferred.
             if parent_progress is not None:
+                copied = provider.copy_selection()
+                owned_progress_voices.add(copied)
+                try:
+                    parent_progress.set_speech_provider(copied, root=root)
+                except (Exception, KeyboardInterrupt):
+                    retire_progress_voice(copied)
+                    raise
+                owned_progress_voices.discard(copied)
+            progress.settings_dialog()
+            if not alive:
+                return
+            if parent_progress is not None and not parent_progress.closed:
                 parent_progress.reload_preferences()
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(root, voice_id, cancelled=cancel.is_set), activated,
-            phase='Selecting a local progress voice')
+        run(activate, activated, phase='Selecting a local progress voice')
 
     def save(event=None):
-        nonlocal draft_dirty
+        nonlocal draft_dirty, saved_signature
         if not alive:
             return
         try:
-            result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
+            signature = (editor.GetValue(), title.GetValue(), selected_voices())
+            result = controller.save(*signature)
             draft_dirty = False
+            saved_signature = signature
             report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
             return result
         except Exception as exc:
@@ -714,15 +765,38 @@ def show_studio(frame):
         show_text(dialog, 'Audio Studio keyboard and script guide', SCRIPT_HELP)
 
     def release_service():
-        # This runs behind owned work on the existing executor.
+        # This runs behind owned discovery/render on the existing executor.
+        nonlocal cleanup_retry_registered
+        pending = []
+        # An already detached panel retries only retained Python/native owners,
+        # without querying a destroyed control. Accepted selections also need
+        # this owner when their first close could not confirm native silence.
+        try:
+            if progress.close() is False:
+                raise RuntimeError('The progress view retains an unconfirmed voice owner.')
+        except (Exception, KeyboardInterrupt) as exc:
+            pending.append(str(exc)[:1000])
+        for provider in tuple(owned_progress_voices):
+            if not retire_progress_voice(provider):
+                pending.append('A progress voice has not confirmed closure.')
         try:
             if service.close() is False:
                 raise RuntimeError('An owned voice worker has not confirmed closure.')
-        except Exception as exc:
-            notice = 'Studio voice cleanup needs attention: ' + str(exc)[:1000]
+        except (Exception, KeyboardInterrupt) as exc:
+            pending.append(str(exc)[:1000])
+        import atexit
+        if pending and not cleanup_retry_registered:
+            atexit.register(release_service)
+            cleanup_retry_registered = True
+        elif not pending and cleanup_retry_registered:
+            atexit.unregister(release_service)
+            cleanup_retry_registered = False
+        if pending:
+            notice = 'Studio voice cleanup needs attention: ' + ' '.join(pending)
             def notify():
                 try:
-                    frame.report(notice)
+                    if frame and not getattr(frame, '_closing', False):
+                        frame.report(notice)
                 except (RuntimeError, AttributeError):
                     pass
             try:
@@ -766,7 +840,11 @@ def show_studio(frame):
         if close_notices:
             report(' '.join(close_notices))
 
-        progress.close()
+        try:
+            if progress.close() is False:
+                report('Progress voice cleanup remains pending; its owner will retry behind the worker.')
+        except (Exception, KeyboardInterrupt) as exc:
+            report(f'Progress voice cleanup needs attention: {exc}')
         # The same executor owns discovery/render and its registry cleanup.
         # Do not cancel the queued close or close an active borrowed registry.
         try:
@@ -812,7 +890,7 @@ def show_studio(frame):
     timer.Start(4000)
 
     def loaded(result):
-        nonlocal voices, draft_dirty
+        nonlocal voices, draft_dirty, saved_signature
         if not alive:
             return
         voices = result
@@ -836,16 +914,38 @@ def show_studio(frame):
                 return
         draft_dirty = False
         controls()
+        if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
+                controller.project.original_script, controller.project.title):
+            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
         report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(frame)
+    def unsaved():
+        return (alive and bool(editor.GetValue())
+                and (editor.GetValue(), title.GetValue(), selected_voices()) != saved_signature)
+    def save_registered(completed):
+        if not alive:
+            completed(SaveResult(False, 'The Audio Studio view has closed.'))
+        elif busy:
+            completed(SaveResult(False, 'Audio production is running; pause it before saving the project.'))
+        else:
+            completed(SaveResult(save() is not None, 'Project validation or saving did not complete.'))
+    def focus_registered():
+        if alive and dialog:
+            editor.SetFocus()
+    unregister = (coordinator.register('studio.' + str(id(controller)), 'Audio Studio project',
+                    dirty=unsaved, save=save_registered, focus=focus_registered)
+                  if coordinator is not None else lambda: None)
     run(lambda: service.discover_voices(cancelled=cancel.is_set).voices(), loaded,
         phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
         try:
+            unregister()
             if alive:
                 close()
         finally:
@@ -1048,24 +1148,29 @@ def show_audio_conversion(frame):
 
 def install_studio_actions(frame):
     import wx
-    from .keyboard_settings import register_command_identity
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_command_identity, register_menu_command
     from .engine_settings import show_engine_settings
     from .studio_clips import show_clip_editor
     from .studio_pronunciation import show_studio_pronunciations
     from .recording_dialog import show_recording
     from .transcription_dialog import show_transcription
     from .publishing_dialog import show_publishing
+    from .audio_metadata_dialog import show_audio_metadata
     menu = wx.Menu()
-    for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
-                            ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
-                            ('Review spoken-line pronunciation...', lambda e: show_studio_pronunciations(frame)),
-                            ('Record microphone...', lambda e: show_recording(frame)),
-                            ('Publish synchronized EPUB3 / DAISY...', lambda e: show_publishing(frame)),
-                            ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
-                            ('Local transcription...', lambda e: show_transcription(frame)),
-                            ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
-        item = menu.Append(wx.ID_ANY, title)
-        if title == 'Publish synchronized EPUB3 / DAISY...':
+    for identity, title, shortcut, handler in [
+            ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
+            ('audio.clips', 'Edit scene audio clips...', '', lambda e: show_clip_editor(frame)),
+            ('audio.pronunciation', 'Review spoken-line pronunciation...', '', lambda e: show_studio_pronunciations(frame)),
+            ('audio.recording', 'Record microphone...', '', lambda e: show_recording(frame)),
+            ('audio.publishing', 'Publish synchronized EPUB3 / DAISY...', '', lambda e: show_publishing(frame)),
+            ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
+            ('audio.metadata', 'Review audio metadata and cover...', '', lambda e: show_audio_metadata(frame)),
+            ('audio.transcription', 'Local transcription...', '', lambda e: show_transcription(frame)),
+            ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
+        item = menu.Append(wx.ID_ANY, title + ('\t' + shortcut if shortcut else ''))
+        if identity == 'audio.publishing':
             register_command_identity(frame.menu_bar, item, 'publish synchronized epub3')
         frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
     frame.menu_bar.Append(menu, 'Audio St&udio')

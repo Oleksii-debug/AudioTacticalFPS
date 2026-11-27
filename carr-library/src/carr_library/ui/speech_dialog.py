@@ -296,6 +296,38 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
         return True
 
+    def choose_voice_preferences(event=None):
+        if not alive:
+            return
+        from .voice_preferences import show_voice_preferences
+        library = getattr(parent, 'library', None)
+        root = getattr(library, 'root', None)
+        voices = tuple(live._voices)
+        def guard():
+            if (not alive or busy or live.core.busy or getattr(parent, '_closing', False)
+                    or root is None or getattr(parent, 'library', None) is not library
+                    or library.root != root or tuple(live._voices) != voices):
+                raise ValueError('The reader, library or installed voice list changed. Reopen voice preferences.')
+        try:
+            guard()
+            current = live.voice.GetSelection()
+            selected = voices[current].id if 0 <= current < len(voices) else ''
+            identity = show_voice_preferences(dialog, library_root=root, voices=voices,
+                selected_id=selected, guard=guard)
+            if identity is None:
+                return
+            guard()
+            index = next((i for i, voice in enumerate(voices) if voice.id == identity), None)
+            if index is None:
+                raise ValueError('The selected voice is no longer installed. Reload voices and choose explicitly.')
+            live.voice.SetSelection(index)
+            live.capabilities()
+            save_recovery(force=True)
+            report(f'Selected {voices[index].name}; {voices[index].language}. Press F6 when ready to read.')
+        except Exception as exc:
+            if alive:
+                report(str(exc), focus=True)
+
     def select_progress_voice(event=None):
         if not alive:
             return
@@ -909,6 +941,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     button('Reader appearance...', appearance.show, 'appearance')
     button('Pronunciatio&n rules', pronunciations, 'pronunciations')
     button('Save &WAV', save_audio, 'export_audio')
+    button('Voice preferences by language...', choose_voice_preferences, 'voice_preferences')
     progress_voice = button('Use voice for progress...', select_progress_voice, 'progress_voice')
     progress_voice.SetName('Use selected local voice for progress')
     progress_voice.Enable(progress is not None)

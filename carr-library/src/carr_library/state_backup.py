@@ -136,25 +136,25 @@ def _snapshot_locked_state(root, target, *, include_generated, max_bytes, cancel
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
-        source = root / relative
-        expected_stamp = before_inventory[relative]
-        if _stamp(regular(source)) != expected_stamp:
-            raise ValueError('Application state changed during backup; retry after saving.')
+        source = local_path(root / relative, root=root, exists=True)
+        expected = before_inventory[relative]
         digest, count = sha256(), 0
-        with source.open('rb') as read:
-            if _stamp(os.fstat(read.fileno())) != expected_stamp:
+        if _stamp(regular(source)) != expected:
+            raise ValueError('Application state changed during backup; retry after saving.')
+        with source.open('rb') as stream:
+            if _stamp(os.fstat(stream.fileno())) != expected:
                 raise ValueError('Application state changed during backup; retry after saving.')
-            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+            while block := stream.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
                 if cancelled():
                     raise InterruptedError('Backup cancelled.')
                 count += len(block)
                 if count > entry['size_bytes']:
-                    raise ValueError('Application state grew during backup; retry after saving.')
+                    raise ValueError('Application state changed during backup; retry after saving.')
                 digest.update(block)
-            if _stamp(os.fstat(read.fileno())) != expected_stamp:
+            if _stamp(os.fstat(stream.fileno())) != expected:
                 raise ValueError('Application state changed during backup; retry after saving.')
         if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
-                or _stamp(regular(source)) != expected_stamp):
+                or _stamp(regular(source)) != expected):
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')

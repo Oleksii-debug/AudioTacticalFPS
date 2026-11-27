@@ -29,7 +29,8 @@ def validate(publication, schemas):
             parsed = urlparse(url)
             name = Path(parsed.path).name
             allowed = {variant for path in paths.values()
-                       for variant in (str(path), path.as_posix(), path.as_uri())} | {
+                       for variant in (str(path), path.as_posix(), path.as_uri(),
+                                       path.as_uri().replace('file:///', 'file:/', 1))} | {
                 'http://www.w3.org/TR/xhtml1/DTD/' + name for name in paths if name != 'SMIL10.dtd'} | {
                 'http://www.w3.org/TR/REC-SMIL/SMIL10.dtd'}
             if url not in allowed or name not in paths:

@@ -1,7 +1,8 @@
 """Verify optional engines from the installed, sealed offline bundle.
 
-The same canonical audio/ and citation-runtime/ layouts are used by all launch
-entries. Missing optional components remain optional; damaged included files
+Audio discovery delegates to the canonical audio-runtime resolver, which also
+supports the explicitly sealed historical audio/ layout. The citation-runtime/
+contract remains unchanged across launch entries. Missing optional components remain optional; damaged included files
 must not silently fall back to a different executable on PATH.
 """
 import hashlib
@@ -99,6 +100,9 @@ def verify_optional_runtime(root, manifest, component, *, execute=False):
 
 def bundled_programs(component):
     """Verify one included component once and return its exact program paths."""
+    if component == 'audio':
+        from .audio_runtime import bundled_audio_tools
+        return bundled_audio_tools() or {}
     if component not in COMPONENTS:
         raise ValueError('Unknown bundled engine component.')
     root = Path(sys.prefix).absolute().parent

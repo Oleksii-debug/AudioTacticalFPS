@@ -733,6 +733,32 @@
           "value": "CPython 3.11 Windows x64"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-academic-quickjs-ng@0.18.0.2",
+      "name": "quickjs-ng",
+      "version": "0.18.0.2",
+      "purl": "pkg:pypi/quickjs-ng@0.18.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:target",
+          "value": "CPython 3.11 Windows x64"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1009,7 +1035,8 @@
         "wxpython-47@4.2.4",
         "comtypes@1.5.0",
         "carr-academic-bibtexparser@2.1.0",
-        "carr-academic-pylatexenc@2.11"
+        "carr-academic-pylatexenc@2.11",
+        "carr-academic-quickjs-ng@0.18.0.2"
       ]
     },
     {
@@ -1035,6 +1062,9 @@
     },
     {
       "ref": "carr-academic-pylatexenc@2.11"
+    },
+    {
+      "ref": "carr-academic-quickjs-ng@0.18.0.2"
     }
   ]
 }

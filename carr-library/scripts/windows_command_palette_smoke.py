@@ -46,7 +46,8 @@ def _run_native():
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui import command_palette as ui
-    from carr_library.ui import keyboard_settings, desktop_app
+    from carr_library.ui import keyboard_settings, desktop_app, command_registry
+    from carr_library import keyboard_preferences
 
     checks, errors, observed = [], [], []
     user32 = ctypes.WinDLL('user32', use_last_error=True)
@@ -155,12 +156,13 @@ def _run_native():
             if name == 'starting':
                 if frame.working or frame.evidence is None or frame.evidence.displayed is None:
                     return
-                binding, = [row for row in keyboard.commands if row.action == ui.PALETTE_IDENTITY]
+                binding = keyboard.registry.get(ui.PALETTE_IDENTITY)
+                palette_item = keyboard.bindings[ui.PALETTE_IDENTITY].item
                 check('palette belongs to the existing native shortcut inventory',
-                      binding.item.GetItemLabel().endswith('\tCtrl+Shift+P')
+                      palette_item.GetItemLabel().endswith('\tCtrl+Shift+P')
                       and sum(row.item.GetItemLabel().endswith('\tCtrl+Shift+P')
-                              for row in keyboard.commands) == 1)
-                save_binding, = [row for row in keyboard.commands if row.action == 'file/save']
+                              for row in keyboard.bindings.values()) == 1)
+                save_binding, = ui.CommandPalette(keyboard).matching('file/save Ctrl+S')
                 def observe_original_dispatch(event):
                     observed.append(not any(isinstance(window, wx.Dialog) and window.IsModal()
                                             for window in wx.GetTopLevelWindows()))
@@ -215,13 +217,13 @@ def _run_native():
                 advance('save_filtered')
             elif name == 'save_filtered' and dialog is not None:
                 check('filter resolves the existing native Save binding',
-                      len(dialog.rows) == 1 and dialog.rows[0].command is save_binding)
+                      len(dialog.rows) == 1 and dialog.rows[0].command is save_binding.command)
                 key(dialog.filter, wx.WXK_RETURN, 'save_accepted')
             elif name == 'save_accepted' and dialog is None and not frame.working:
                 check('original Save handler commits the synthetic research note',
                       library.evidence(workspace, topic)[0].note == saved_note)
                 check('original menu event runs after the palette closes', observed == [True])
-                keyboard.apply({save_binding.action: 'Ctrl+Shift+F12'})
+                keyboard.apply_overrides({save_binding.command.command_id: 'Ctrl+Shift+F12'})
                 advance('open_remapped')
             elif name == 'open_remapped':
                 open_palette('remapped_opened')
@@ -230,7 +232,7 @@ def _run_native():
                 advance('remapped_filtered')
             elif name == 'remapped_filtered' and dialog is not None:
                 check('palette search and list use the remapped native shortcut',
-                      len(dialog.rows) == 1 and dialog.rows[0].command is save_binding
+                      len(dialog.rows) == 1 and dialog.rows[0].command is save_binding.command
                       and dialog.rows[0].shortcut == 'Ctrl+Shift+F12')
                 key(dialog.filter, wx.WXK_ESCAPE, 'remapped_cancelled')
             elif name == 'remapped_cancelled' and dialog is None:
@@ -246,13 +248,13 @@ def _run_native():
                 advance('select_all_filtered')
             elif name == 'select_all_filtered' and dialog is not None:
                 check('Edit command comes from the same native menu registry',
-                      len(dialog.rows) == 1 and dialog.rows[0].command.action == 'edit/select all')
+                      len(dialog.rows) == 1 and dialog.rows[0].path == ('edit', 'select all'))
                 key(dialog.filter, wx.WXK_RETURN, 'select_all_accepted')
             elif name == 'select_all_accepted' and dialog is None:
                 check('original Edit Select all acts on the originating note after close',
                       frame.evidence.note.GetSelection() == (0, len(saved_note))
                       and wx.Window.FindFocus() is frame.evidence.note)
-                save_binding.item.Enable(False)
+                save_binding.binding.item.Enable(False)
                 advance('open_disabled')
             elif name == 'open_disabled':
                 open_palette('disabled_opened')
@@ -272,7 +274,7 @@ def _run_native():
                       dialog.IsModal() and dialog.result is None and observed == [True])
                 key(dialog.status, wx.WXK_ESCAPE, 'disabled_cancelled')
             elif name == 'disabled_cancelled' and dialog is None:
-                save_binding.item.Enable(True)
+                save_binding.binding.item.Enable(True)
                 frame.evidence.note.SetValue(unsaved)
                 advance('open_invalidation')
             elif name == 'open_invalidation':
@@ -285,7 +287,7 @@ def _run_native():
                 original_destroy = dialog.Destroy
                 def disable_during_destroy():
                     result = original_destroy()
-                    save_binding.item.Enable(False)
+                    save_binding.binding.item.Enable(False)
                     return result
                 dialog.Destroy = disable_during_destroy
                 advance('invalidation_filtered')
@@ -297,7 +299,7 @@ def _run_native():
                 check('invalidated command neither executes nor discards the draft',
                       observed == [True] and frame.evidence.note.GetValue() == unsaved
                       and library.evidence(workspace, topic)[0].note == saved_note)
-                save_binding.item.Enable(True)
+                save_binding.binding.item.Enable(True)
                 advance('complete')
                 timer.Stop()
                 application.ExitMainLoop()
@@ -305,7 +307,7 @@ def _run_native():
             abort(traceback.format_exc())
 
     try:
-        source_identity = _acceptance_bindings().verify_installed_sources(ui, keyboard_settings, desktop_app)
+        source_identity = _acceptance_bindings().verify_installed_sources(ui, keyboard_settings, desktop_app, command_registry, keyboard_preferences)
         check('command palette loads exact current installed bytes', bool(source_identity))
         check('native Windows wx is active', wx.Platform == '__WXMSW__')
         with TemporaryDirectory(prefix='research-command-palette-native-') as directory:
@@ -316,7 +318,7 @@ def _run_native():
             hit, = library.search(workspace, 'railway')
             library.save_hit(workspace, topic, hit.ref, hit.revision, 'Original synthetic note')
             frame = DesktopFrame(library)
-            keyboard = frame.keyboard_settings
+            keyboard = frame.keyboard_commands
             try:
                 application.SetTopWindow(frame)
                 frame.Show()
@@ -332,7 +334,7 @@ def _run_native():
                 release()
                 if frame and not frame.IsBeingDeleted():
                     if save_binding is not None:
-                        save_binding.item.Enable(True)
+                        save_binding.binding.item.Enable(True)
                     # This synthetic draft was intentionally left unsaved by
                     # the rejection case. Restore its already-committed text
                     # before normal teardown, avoiding an unrelated save prompt.

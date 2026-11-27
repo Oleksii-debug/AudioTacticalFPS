@@ -12,7 +12,7 @@ import pytest
 
 from carr_library.integrations import dordiai_voices as api
 from carr_library import speech
-from carr_library.speech import dordiai, live_adapter
+from carr_library.speech import dordiai, dordiai_settings, live_adapter
 from carr_library.ui.dordiai_settings import connect_runtime
 
 # Same authored peer and canonical settings fixture, with no import-path edits.
@@ -36,9 +36,11 @@ def _second_provider(runtime, tmp_path):
     shutil.copyfile(runtime.parent / 'manifest.ini', installed.parent / 'manifest.ini')
     root = tmp_path / 'second-library'
     root.mkdir()
-    connect_runtime(root, str(installed),
-                    python_executable=str(Path(sys.executable).resolve()),
-                    expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
+    legacy = dordiai_settings.default_settings()
+    legacy.update(enabled=True, runtime_directory=str(installed),
+                  python_executable=str(Path(sys.executable).resolve()),
+                  expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
+    dordiai_settings.save_settings(root, dordiai.validate_connection(legacy))
     return dordiai.DordiaiProvider(root), installed
 
 

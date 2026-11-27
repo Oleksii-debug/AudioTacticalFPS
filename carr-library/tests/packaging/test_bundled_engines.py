@@ -66,6 +66,7 @@ def test_damaged_included_engine_never_becomes_an_available_runtime(tmp_path, co
 def test_bundled_discovery_uses_installed_prefix_and_rejects_corruption(tmp_path, monkeypatch):
     seal(tmp_path, 'citation-runtime')
     monkeypatch.setattr(engines.sys, 'prefix', str(tmp_path / '.venv'))
+    monkeypatch.setattr(engines.sys, 'base_prefix', str(tmp_path / 'runtime'))
     assert engines.bundled_executable('node') == str(tmp_path / 'citation-runtime/node.exe')
     assert engines.bundled_executable('ffmpeg') is None
     (tmp_path / 'citation-runtime/node.exe').write_bytes(b'changed')

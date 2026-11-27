@@ -37,11 +37,15 @@ def local_path(value, *, root=None, exists=False):
     return path
 
 
-def digest_file(path):
+def digest_file(path, *, cancelled=lambda: False):
     regular(path)
     digest = sha256()
     with Path(path).open('rb') as stream:
+        if cancelled():
+            raise InterruptedError('File verification cancelled.')
         while block := stream.read(1024 * 1024):
+            if cancelled():
+                raise InterruptedError('File verification cancelled.')
             digest.update(block)
     return digest.hexdigest()
 
@@ -100,13 +104,15 @@ def _open_json_file(path):
         raise
 
 
-def read_json(path):
+def read_json(path, *, maximum=MAX_JSON_BYTES):
+    if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
+        raise ValueError('Choose a positive JSON byte budget within the shared limit.')
     # An atomic writer can win between lstat and open. Retry that race only;
     # linked paths and invalid opened objects still fail before reading bytes.
     for _ in range(8):
         path = local_path(path, exists=True)
         before = regular(path)
-        if before.st_size > MAX_JSON_BYTES:
+        if before.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
         with _open_json_file(path) as stream:
             opened = os.fstat(stream.fileno())
@@ -120,13 +126,13 @@ def read_json(path):
                 continue
             # Recheck ancestors after opening, before consuming the bound handle.
             local_path(path, exists=True)
-            if opened.st_size > MAX_JSON_BYTES:
+            if opened.st_size > maximum:
                 raise ValueError('State exceeds its configured JSON budget.')
-            raw = stream.read(MAX_JSON_BYTES + 1)
+            raw = stream.read(maximum + 1)
         break
     else:
         raise ValueError('State changed repeatedly while opening; retry the operation.')
-    if len(raw) > MAX_JSON_BYTES:
+    if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))

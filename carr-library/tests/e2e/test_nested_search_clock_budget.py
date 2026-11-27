@@ -34,6 +34,8 @@ def research(tmp_path, monkeypatch):
     def rank(query, candidates, *, timeout, cancelled, cache=None):
         calls.append(timeout)
         assert 0 < timeout <= 60
+        assert cache is app.semantic_cache
+        assert cache.directory == app.root / 'semantic-cache'
         return [identity for identity, _ in candidates]
 
     ranker.rank = rank

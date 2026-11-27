@@ -384,4 +384,7 @@ def install_language_actions(frame):
         menu.AppendSeparator()
     item = menu.Append(wx.ID_ANY, "Languages and capability evidence...")
     frame.Bind(wx.EVT_MENU, lambda event: show_language_matrix(frame), item)
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec("voice.languages", "Languages and capability evidence"), item)
     frame._carr_language_actions_installed = True

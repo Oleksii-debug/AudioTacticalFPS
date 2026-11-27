@@ -64,6 +64,8 @@ class MenuBar:
     def GetMenuCount(self): return len(self.menus)
     def GetMenu(self, index): return self.menus[index][1]
     def GetMenuLabel(self, index): return self.menus[index][0]
+    def IsEnabledTop(self, index): return True
+    def EnableTop(self, index, value): pass
     def FindMenu(self, label):
         return next((i for i, (title, _) in enumerate(self.menus)
                      if title.replace('&', '') == label), -1)
@@ -72,12 +74,21 @@ class MenuBar:
 class Control:
     def __init__(self, *args, **kwargs):
         self.value, self.enabled, self.name = '', True, ''
+        self.identity = next(_ids)
     def Bind(self, *args, **kwargs): pass
     def Disable(self): self.enabled = False
     def Enable(self, value=True): self.enabled = value
     def SetName(self, value): self.name = value
     def SetLabel(self, value): self.value = value
     def SetValue(self, value): self.value = value
+    def ChangeValue(self, value): self.value = value
+    def GetValue(self): return self.value
+    def GetId(self): return self.identity
+    def SetMinSize(self, value): self.minimum_size = value
+    def SetSizer(self, value): self.sizer = value
+    def Layout(self): pass
+    def Add(self, *args, **kwargs): pass
+    def Pulse(self): pass
     def SetRange(self, value): self.range = value
     def SetFocus(self): pass
     def Insert(self, *args, **kwargs): pass
@@ -91,12 +102,16 @@ def native_menus(tmp_path, monkeypatch, request):
     wx.Menu, wx.MenuBar = Menu, MenuBar
     wx.Dialog = wx.Frame = wx.Panel = wx.Window = Control
     wx.Button = wx.StaticText = wx.Gauge = wx.Timer = Control
+    wx.TextCtrl = wx.CheckBox = wx.WrapSizer = wx.BoxSizer = Control
+    wx.CallAfter = lambda callback, *args: callback(*args)
     wx.AcceleratorTable = tuple
     wx.NewIdRef = lambda: next(_ids)
-    for name in ('ALL', 'EXPAND', 'GA_HORIZONTAL', 'ACCEL_CTRL', 'ACCEL_ALT', 'ACCEL_SHIFT'):
+    for name in ('ALL', 'EXPAND', 'GA_HORIZONTAL', 'ACCEL_CTRL', 'ACCEL_ALT', 'ACCEL_SHIFT',
+                 'VERTICAL', 'HORIZONTAL', 'LEFT', 'RIGHT', 'TOP', 'TE_READONLY', 'TE_MULTILINE',
+                 'ALIGN_CENTER_VERTICAL'):
         setattr(wx, name, 1)
     wx.ID_ANY, wx.ID_EXIT = -1, 500
-    for name in ('EVT_MENU', 'EVT_BUTTON', 'EVT_WINDOW_DESTROY', 'EVT_TIMER'):
+    for name in ('EVT_MENU', 'EVT_BUTTON', 'EVT_WINDOW_DESTROY', 'EVT_TIMER', 'EVT_CHECKBOX'):
         setattr(wx, name, name)
     for number in range(1, 25): setattr(wx, 'WXK_F' + str(number), 2000 + number)
     if request.param == 'cached-native-import':
@@ -109,6 +124,8 @@ def native_menus(tmp_path, monkeypatch, request):
         cached = importlib.import_module('carr_library.ui.trust_status')
         monkeypatch.setattr(cached, 'wx', previous)
     monkeypatch.setitem(sys.modules, 'wx', wx)
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identity: (0, key, int(identity)))
     source = Path(importlib.util.find_spec('carr_library.ui.desktop_app').origin)
     tree = ast.parse(source.read_text(encoding='utf-8'))
     owner = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
@@ -116,6 +133,7 @@ def native_menus(tmp_path, monkeypatch, request):
     bindings, notices = {}, []
     frame = SimpleNamespace(library=LibraryApp(tmp_path / 'library'), cancel_event=Event(),
         _closing=False, working=False, busy=False, host=Control(), layout=Control(),
+        IsActive=lambda: True, IsEnabled=lambda: True, IsBeingDeleted=lambda: False,
         choice=Control(), status=Control(), GetId=lambda: 71, SetAcceleratorTable=lambda value: None,
         report=notices.append, Unbind=lambda *args, **kwargs: True)
     def bind(event, callback, item=None, **kwargs):
@@ -176,6 +194,9 @@ def test_actual_desktop_installers_retain_every_native_command_across_wrapper_re
     effective_shortcuts(commands, {})  # All actual unchanged defaults coexist.
     assert not native_menus.notices
     controller = frame.keyboard_settings
+    # wx can expose new Python wrappers while the retained native IDs survive.
+    for _, menu in frame.menu_bar.menus:
+        menu.wrappers.clear()
     change = controller.apply_with_undo({published.action: 'Ctrl+Shift+9'})
     controller._guard()
     assert effective_shortcuts(controller.commands, controller.overrides)[published.action] == 'Ctrl+Shift+9'
@@ -196,7 +217,10 @@ def test_publication_alias_and_saved_key_survive_discarded_item_wrapper(native_m
     bar.menus.clear()
     install_studio_actions(frame)
     menu = bar.GetMenu(0)
-    assert not menu.wrappers  # Append's temporary wrappers are really gone.
+    # Canonical pending CommandSpec entries retain their original wrappers;
+    # force a later wx wrapper view while preserving the actual native records.
+    menu.wrappers.clear()
+    assert not menu.wrappers
     controller = KeyboardSettings(frame, wx_module=native_menus.wx)
     row = next(row for row in controller.commands if row.action == action)
     assert row.default == '' and 'EPUB3 / DAISY' in row.title

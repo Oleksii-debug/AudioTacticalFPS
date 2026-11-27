@@ -34,6 +34,33 @@ class CIEntrypointTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('passed=1, failed=0, skipped=0', result.stdout)
 
+    def test_selected_node_executes_actual_case_without_running_other_cases(self):
+        result = self.run_fixture(
+            'def test_selected(): assert True\ndef test_unselected(): assert False\n',
+            'test_sample.py::test_selected')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('junit_passed=1, failed=0, skipped=0', result.stdout)
+
+    def test_selected_parameter_keeps_its_identity_and_does_not_collect_all_parameters(self):
+        source = ("import pytest\n@pytest.mark.parametrize('value', [1, 2], ids=['keep', 'reject'])\n"
+                  "def test_parameter(value): assert value == 1\n")
+        result = self.run_fixture(source, 'test_sample.py::test_parameter[keep]')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('junit_passed=1, failed=0, skipped=0', result.stdout)
+
+    def test_missing_selected_node_remains_failed_beside_actual_passing_node(self):
+        result = self.run_fixture('def test_ok(): assert True\n',
+                                  'test_sample.py::test_ok', 'test_sample.py::test_missing')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required suites complete: 2; passed=1; failed=1', result.stdout)
+
+    def test_selected_node_cannot_authorize_outside_tree_or_empty_file(self):
+        for selector in ('..::test_ok', '::test_ok', 'test_sample.py::'):
+            with self.subTest(selector=selector):
+                result = self.run_fixture('def test_ok(): assert True\n', selector)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn('missing or out-of-tree', result.stdout)
+
     def test_offline_gate_blocks_connections_and_name_resolution(self):
         source = '''import socket
 import pytest
@@ -141,6 +168,76 @@ def test_parallel_barrier():
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
 
+    def _run_report_cleanup_fixture(self, failures, *, timed_out=False):
+        spec = importlib.util.spec_from_file_location('cleanup_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        original_temp = tempfile.TemporaryDirectory
+        directories, attempts = [], []
+        output = io.StringIO()
+        with original_temp(prefix='CARR report cleanup ') as temporary:
+            root = Path(temporary).resolve()
+            (root / 'test_sample.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
+
+            def report_directory(*args, **kwargs):
+                directory = original_temp(*args, dir=root, **kwargs)
+                directories.append(directory)
+
+                def cleanup():
+                    attempts.append(directory.name)
+                    if len(attempts) <= failures:
+                        raise PermissionError('Synthetic report handle is still held')
+                    directory.cleanup()
+
+                return types.SimpleNamespace(name=directory.name, cleanup=cleanup)
+
+            def completed_child(command, *, env):
+                if timed_out:
+                    raise subprocess.TimeoutExpired('synthetic required suite', .15)
+                report = Path(command[command.index('--junitxml') + 1])
+                report.write_text(
+                    '<testsuites><testsuite><testcase name="test_ok"/></testsuite></testsuites>',
+                    encoding='utf-8')
+                return 0
+
+            try:
+                with (mock.patch.object(runner, 'ROOT', root),
+                      mock.patch.object(runner, 'tempfile',
+                          types.SimpleNamespace(TemporaryDirectory=report_directory)),
+                      mock.patch.object(runner, '_run_test_process', side_effect=completed_child) as child,
+                      mock.patch.object(runner, 'sleep'),
+                      contextlib.redirect_stdout(output)):
+                    result = runner.run_suite('test_sample.py')
+                child.assert_called_once()
+            finally:
+                for directory in directories:
+                    directory.cleanup()
+        return result, output.getvalue(), len(attempts)
+
+    def test_transient_report_cleanup_permission_error_is_retried_before_pass(self):
+        result, output, attempts = self._run_report_cleanup_fixture(1)
+        self.assertTrue(result, output)
+        self.assertEqual(attempts, 2)
+        self.assertIn('PASS: test_sample.py:', output)
+        self.assertNotIn('FAIL:', output)
+
+    def test_persistent_report_cleanup_permission_error_is_named_and_never_passes(self):
+        result, output, attempts = self._run_report_cleanup_fixture(5)
+        self.assertFalse(result, output)
+        self.assertEqual(attempts, 5)
+        self.assertIn('FAIL: test_sample.py:', output)
+        self.assertIn('PermissionError', output)
+        self.assertNotIn('PASS:', output)
+
+    def test_report_cleanup_permission_error_preserves_original_timeout(self):
+        result, output, attempts = self._run_report_cleanup_fixture(5, timed_out=True)
+        self.assertFalse(result, output)
+        self.assertEqual(attempts, 5)
+        self.assertIn('FAIL: test_sample.py:', output)
+        self.assertIn('TimeoutExpired', output)
+        self.assertIn('PermissionError', output)
+        self.assertNotIn('PASS:', output)
+
     def test_windows_delayed_descendant_exit_precedes_temporary_cleanup(self):
         spec = importlib.util.spec_from_file_location('reviewed_ci_check', SCRIPT)
         runner = importlib.util.module_from_spec(spec)
@@ -186,8 +283,8 @@ def test_parallel_barrier():
         directories = []
 
         @contextlib.contextmanager
-        def temporary_with_open_file_guard(*args, **kwargs):
-            with original_temp(*args, **kwargs) as name:
+        def temporary_with_open_file_guard(suite):
+            with original_temp(prefix='carr-ci-') as name:
                 directories.append(Path(name))
                 try:
                     yield name
@@ -204,8 +301,7 @@ def test_parallel_barrier():
                   mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt', environ=os.environ)),
                   mock.patch.object(runner, 'subprocess', api),
                   mock.patch.object(runner, '_WindowsDescendants', return_value=descendants),
-                  mock.patch.object(runner, 'tempfile', types.SimpleNamespace(
-                      TemporaryDirectory=temporary_with_open_file_guard)),
+                  mock.patch.object(runner, '_report_directory', temporary_with_open_file_guard),
                   contextlib.redirect_stdout(output)):
                 self.assertFalse(runner.run_suite('test_wait.py'))
             self.assertIn('TimeoutExpired', output.getvalue())

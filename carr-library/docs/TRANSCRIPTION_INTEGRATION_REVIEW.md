@@ -8,6 +8,30 @@ Windows acceptance is recorded by the exact-head checks in
 the source review below. This is a work package under the
 [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Historical adapter evidence — 2026-11-27
+
+The original review below remains a snapshot of the supplied source. The exact
+37,974-byte worker has since been bound to SHA256
+`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
+The [primary opt-in adapter](SUPPLIED_TRANSCRIPTION_ADAPTER.md) reuses the existing
+assistant JobStore, scoped plans and bounded audio process runner. It addresses
+ASR-01/02 by using immutable one-file staging and content/settings/runtime-bound
+receipts, ASR-03 through the exact reviewed no-fallback source correction, ASR-04
+through mandatory export verification, and ASR-05/06 through isolated single-file
+workers, serialized admission within one application store and owned-process
+cancellation. Interrupted files restart; generic hard-kill recovery and acoustic
+mid-file checkpoints are not qualified.
+
+The actual supplied worker protocol has been executed on Linux with a synthetic
+isolated SDK for successful Ukrainian exports and two truthful-failure cases.
+That run advances integration/protocol evidence only. The later composition
+routes the historical adapter through the same current TranscriptionService,
+native configuration, typed job store and common-format backup. Those composed
+paths require their exact-commit tests. ASR-07 real runtime/model and cold offline
+Windows qualification, ASR-08 additional capabilities and real recognition
+quality remain open. No private
+worker, source recordings, transcripts, models or dependencies were published.
+
 ## Source and boundary
 
 The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. Its original worker SHA256 is `1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`; the strict-3 prepared worker SHA256 is `597ad8182adc99a826798aa530fa792784679a5c2755c62a27c9bf0cf55dc2a6`. The preparation script accepts only that reviewed original and verifies its result. No redistributed private source snapshot or approved dependency/model pack was created.

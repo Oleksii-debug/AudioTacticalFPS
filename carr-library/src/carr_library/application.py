@@ -1,8 +1,9 @@
 """Local application services composed from the reviewed CARR components.
 
 Every public operation opens a fresh workspace-authorized transaction. Originals,
-historical quotations and mutable research notes remain separate. No network is
-used by this module; model installation is an explicit build-time operation.
+historical quotations and mutable research notes remain separate. Optional DOI
+acquisition uses separate, explicit per-operation consent; all other core
+services remain local. Model installation is an explicit build-time operation.
 """
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
@@ -739,26 +740,26 @@ class LibraryApp:
                     if result['state'] in ('complete', 'superseded') and not publisher.published_here:
                         if cancelled():
                             raise InterruptedError('Import cancelled before catalog registration.')
-                        # Recovery validates the retained asset/configuration and
-                        # checkpoint/page identity, but does not replay catalog
-                        # registration. Apply the same atomic membership and
-                        # metadata-conflict gate as the DOCX/EPUB replay path.
-                        # A journal's terminal state alone is not proof that its
-                        # source was actually published. Never reactivate an old
-                        # revision when current metadata has superseded it.
+                        # A terminal journal state is not proof of publication.
+                        # Validate the sealed source and active/result identity
+                        # even when the journal has no previously stored revision.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
-                            published = storage.db.execute(
+                            current = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (published is None or tuple(published[:3]) !=
+                            if (current is None or tuple(current[:3]) !=
                                     (workspace, record.edition_id, asset.digest)
-                                    or published[3] is None):
+                                    or current[3] is None):
                                 raise ValueError('Completed import is missing its sealed source revision.')
-                            if (published[3] == job) != (result['state'] == 'complete'):
+                            if (current[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
+                            # A replay may add membership with exact current
+                            # metadata, including after a metadata revision.
+                            # Registration rejects stale metadata atomically;
+                            # it never reactivates the old source revision.
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
                             if cancelled():
@@ -791,6 +792,8 @@ class LibraryApp:
                     progress = None
 
         cancelled = metadata.get('cancelled', lambda: False)
+        if not callable(cancelled):
+            raise ValueError('An import cancellation callback is required.')
         report(0)
         results = []
         for path in paths:
@@ -1246,6 +1249,8 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination, *, include_generated=False, cancelled=lambda: False):
+    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
         from .library_backup import create_backup
-        return create_backup(self, destination, include_generated=include_generated, cancelled=cancelled)
+        return create_backup(self, destination, max_bytes=max_bytes,
+                             include_generated=include_generated, cancelled=cancelled)
+

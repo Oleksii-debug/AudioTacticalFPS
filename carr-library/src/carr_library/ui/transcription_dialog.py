@@ -130,12 +130,22 @@ class TranscriptionController:
                 or self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library)
 
-    def _progress(self, token, text, progress_token):
+    def _progress(self, token, text, progress_token, *, progress_task=None):
         if self.closed or self._token is not token:
             return
-        progress = getattr(self.frame, 'operation_progress', None)
-        if progress is not None:
-            progress.update(phase=readable(text)[:512], token=progress_token)
+        if progress_task is not None:
+            from ..progress import ProgressError, ProgressState
+            try:
+                progress_task.update(phase=readable(text)[:200])
+            except ProgressError:
+                # A concurrent cancellation/terminal observer transition is
+                # not a failure of the actual ASR operation or its receipt.
+                if progress_task.snapshot().state == ProgressState.RUNNING:
+                    raise
+        else:
+            progress = getattr(self.frame, 'operation_progress', None)
+            if progress is not None:
+                progress.update(phase=readable(text)[:512], token=progress_token)
         def apply():
             if not self.closed and self._token is token and self.busy:
                 self.report(text)
@@ -159,10 +169,13 @@ class TranscriptionController:
 
         def work():
             self.guard()
-            progress = getattr(self.frame, 'operation_progress', None)
+            from ..progress import current_progress
+            progress_task = current_progress()
+            progress = getattr(self.frame, 'operation_progress', None) if progress_task is None else None
             progress_token = progress.event.token if progress is not None else None
             try:
-                return operation(lambda text: self._progress(token, text, progress_token))
+                return operation(lambda text: self._progress(
+                    token, text, progress_token, progress_task=progress_task))
             except AudioCancelled:
                 return {'status': 'cancelled', 'preparation_cancelled': True}
 
@@ -635,5 +648,9 @@ def install_transcription_actions(frame):
     if menu is None:
         raise RuntimeError('Install the shared Tools menu before transcription actions.')
     identity = wx.NewIdRef()
-    menu.Append(identity, 'Local audio and video &transcription...')
+    item = menu.Append(identity, 'Local audio and video &transcription...')
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('audio.transcription_panel',
+                                            'Local audio and video transcription'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_transcription(frame), id=int(identity))

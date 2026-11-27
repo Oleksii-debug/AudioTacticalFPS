@@ -84,9 +84,12 @@
   },
   "attribution": "Citations formatted with citeproc-js by Frank Bennett. Styles and locales from the Citation Style Language project, https://citationstyles.org/ (CC BY-SA 3.0).",
   "runtime": {
-    "name": "Node.js",
-    "minimum_major": 18,
+    "name": "QuickJS",
+    "distribution": "quickjs-ng",
+    "version": "0.18.0.2",
     "network": "none",
-    "automatic_download": false
+    "automatic_download": false,
+    "resource_profile": "document-v1-compatibility",
+    "executor": "carr_library.citations.csl._execute"
   }
 }
