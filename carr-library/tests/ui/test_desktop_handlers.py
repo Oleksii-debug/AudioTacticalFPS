@@ -133,6 +133,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     ebook = Mock(side_effect=lambda frame: installation_order.append('ebook'))
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
+    transcription = Mock(side_effect=lambda frame: installation_order.append('transcription'))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.transcription_dialog',
+                        SimpleNamespace(install_transcription_actions=transcription))
     keyboard = Mock(side_effect=lambda frame: installation_order.append('keyboard'))
     monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
                         SimpleNamespace(install_keyboard_settings=keyboard))
@@ -147,9 +150,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Save all open drafts\tCtrl+Alt+S' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, keyboard):
+    for installer in (*installers.values(), ebook, transcription, keyboard):
         installer.assert_called_once_with(value)
-    assert installation_order[-1] == 'keyboard'
+    assert installation_order[-2:] == ['transcription', 'keyboard']
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
