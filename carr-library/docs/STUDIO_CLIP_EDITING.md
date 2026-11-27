@@ -87,7 +87,9 @@ a clip or applying an edit does not start audio.
   It never replaces the destination scene or another clip.
 - **Split selected clip** asks for seconds from the beginning of that clip,
   rounds to the project's output-sample grid, and creates two contiguous
-  instructions referencing the same original. Existing outer fades stay at
+  instructions referencing the same original. Mixing resamples the original
+  stream before selecting sample intervals, so each new cut does not restart
+  the resampler at its own boundary. Existing outer fades stay at
   the outer boundaries. Splitting inside an existing fade is refused until
   the user adjusts that fade, because this schema cannot preserve a partial
   envelope across the new boundary.
@@ -118,7 +120,8 @@ does not delete retained originals.
 ### Verification of this extension
 
 The existing clip suites now cover actual FFmpeg PCM equivalence before/after
-split and join; cut/paste and durable undo/redo revisions; source tampering;
+split and join, including 44.1 kHz originals into 24/48 kHz projects and
+cuts between source samples; cut/paste and durable undo/redo revisions; source tampering;
 cancelled and stale operations; preserved originals; and owned/borrowed cleanup.
 The existing installed Windows clip probe drives the real copy, split, join,
 undo, redo, paste and cut controls, including actual numeric/choice dialogs.

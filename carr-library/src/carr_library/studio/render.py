@@ -633,7 +633,8 @@ class ProductionService:
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     tracks.extend(cue_tracks)
                     final_scene, final_info = node('scene mix',
-                        {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
+                        {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate,
+                         'selection_grid': 'resample-before-cut-v1'},
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
                                                    duration=voice_info.duration, cancelled=stopping))
                     scene_results.append((scene, final_scene, final_info))
@@ -654,7 +655,8 @@ class ProductionService:
                                 selected_tracks = tuple(track for track in cue_tracks if track.role == role)
                                 stem, _ = node('scene clip stem',
                                     {'tracks': [track_identity(track) for track in selected_tracks],
-                                     'duration': final_info.duration, 'sample_rate': project.sample_rate},
+                                     'duration': final_info.duration, 'sample_rate': project.sample_rate,
+                                     'selection_grid': 'resample-before-cut-v1'},
                                     lambda target, selected_tracks=selected_tracks: runtime.mix(
                                         selected_tracks, target, duration=final_info.duration,
                                         sample_rate=project.sample_rate, cancelled=stopping))
