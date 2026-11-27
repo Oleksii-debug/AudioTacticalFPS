@@ -86,6 +86,7 @@ packages = [
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",
   "carr_library.audio",
+  "carr_library.operations",
   "carr_library.speech",
   "carr_library.studio",
   "carr_library.assistant",

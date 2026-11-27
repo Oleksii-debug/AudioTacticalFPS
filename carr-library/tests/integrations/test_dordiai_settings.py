@@ -1,5 +1,6 @@
 """Actual persisted configuration and shared-registry lifecycle, using synthetic PCM."""
 from hashlib import sha256
+import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -9,7 +10,13 @@ import pytest
 from carr_library import runtime_settings as settings
 from carr_library.integrations import dordiai_speech
 from carr_library.speech import SpeechSettings, VoiceRegistry
-from test_dordiai_voices import ACTOR, runtime
+
+# Fixture reuse must also work under the installed gate's importlib mode.
+_voice_spec = importlib.util.spec_from_file_location('dordiai_voice_fixtures_for_settings',
+    Path(__file__).with_name('test_dordiai_voices.py'))
+_voice_fixtures = importlib.util.module_from_spec(_voice_spec)
+_voice_spec.loader.exec_module(_voice_fixtures)
+ACTOR, runtime = _voice_fixtures.ACTOR, _voice_fixtures.runtime
 
 
 def configured(runtime):

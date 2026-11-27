@@ -38,6 +38,7 @@ def _run_native():
     import carr_library.speech.reading as reading_module
     import carr_library.ui.pronunciation_dialog as pronunciation_module
     import carr_library.ui.speech_dialog as reader_module
+    import carr_library.ui.ebook_model as position_module
     import carr_library.runtime_settings as runtime_settings
 
     checks, errors, observed = [], [], {}
@@ -53,7 +54,7 @@ def _run_native():
           else 'site-packages' in origin.parts)
     checkout = Path(__file__).resolve().parents[1]
     source_identity = {}
-    for module in (reading_module, pronunciation_module, reader_module):
+    for module in (reading_module, pronunciation_module, reader_module, position_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -212,6 +213,14 @@ def _run_native():
             reader = top_with_title('Voice reader and reading copy')
             editor = named(reader, 'Reading copy (editable; Ctrl+S saves)')
             initial = editor.GetValue()
+            for offset in (1, initial.index('Dr. Second'), len(initial)):
+                reader_module._restore_character_cursor(editor, initial, offset)
+                check(f'native cursor roundtrip at character {offset}',
+                      reader_module._cursor_character_offset(editor, initial) == offset
+                      and editor.GetRange(editor.GetInsertionPoint(), editor.GetLastPosition()) == initial[offset:])
+            reader_module._restore_character_cursor(editor, source.text, source.text.index('Dr. Second'))
+            check('legacy retained line endings map to the exact native cursor',
+                  editor.GetRange(editor.GetInsertionPoint(), editor.GetLastPosition()) == 'Dr. Second listens.')
             # Subtract a known ASCII suffix from the native end. This never
             # probes an index in the middle of an emoji's UTF-16 surrogate pair.
             start = editor.GetLastPosition() - len('Dr. Second listens.')

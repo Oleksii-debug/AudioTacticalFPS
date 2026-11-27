@@ -7,6 +7,7 @@ import io
 import os
 from pathlib import Path
 import subprocess
+import tomllib
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import pytest
@@ -16,6 +17,18 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('source_wheel_probe', ROOT / 'packaging/source_wheel.py')
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
+
+
+def test_runtime_package_recipe_covers_every_application_package():
+    # The wheel verifier binds payloads to the explicit recipe. It cannot
+    # discover a missing package when both recipe and wheel omit that package.
+    # Guard that boundary against an undeclared new runtime subsystem.
+    recipe = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
+    declared = set(recipe['tool']['setuptools']['packages'])
+    source_root = ROOT / 'src'
+    actual = {'.'.join(path.parent.relative_to(source_root).parts)
+              for path in (source_root / 'carr_library').rglob('__init__.py')}
+    assert actual and actual <= declared, sorted(actual - declared)
 
 
 def git(repo, *args):

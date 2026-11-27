@@ -34,14 +34,32 @@ if hasattr(os, 'register_at_fork'):
     os.register_at_fork(before=_GUARD.acquire, after_in_parent=_GUARD.release, after_in_child=_after_fork)
 
 
+def _unowned_path(path):
+    """A normal owner release can remove the lock before we acquire it.
+
+    Revalidate the parent when that happens. Existing links and other path
+    failures remain errors; the native descriptor/path identity is checked
+    separately after acquisition, when disappearance is no longer allowed.
+    """
+    try:
+        selected = local_path(path)
+    except FileNotFoundError:
+        incoming = Path(path).absolute()
+        selected = local_path(incoming.parent, exists=True) / incoming.name
+    if os.path.lexists(selected):
+        try:
+            regular(selected)
+        except FileNotFoundError:
+            local_path(selected.parent, exists=True)
+    return selected
+
+
 class NativeLock:
     def __init__(self, path):
         expected = WindowsFileLock if sys.platform == 'win32' else UnixFileLock
         if version('filelock') != '3.29.0' or FileLock is not expected:
             raise ResourceStateError('The reviewed native file locking backend is unavailable.')
-        self.path = local_path(path)
-        if os.path.lexists(self.path):
-            regular(self.path)
+        self.path = _unowned_path(path)
         self.expected, self.pid = expected, os.getpid()
         with _GUARD:
             self.lock = FileLock(self.path, mode=0o600, thread_local=False)
@@ -50,9 +68,7 @@ class NativeLock:
     def acquire(self):
         if self.pid != os.getpid():
             raise ResourceStateError('A resource lock cannot be reused in a forked child.')
-        local_path(self.path)
-        if os.path.lexists(self.path):
-            regular(self.path)
+        _unowned_path(self.path)
         with _GUARD:
             try:
                 self.lock.acquire(timeout=0)

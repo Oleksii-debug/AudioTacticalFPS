@@ -1,6 +1,7 @@
 """Consumer tests against the real shared speech runtime, never acoustic proof."""
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -11,7 +12,14 @@ import pytest
 
 from carr_library.integrations.dordiai_speech import DordiaiSpeechProvider, install_dordiai_provider
 from carr_library.integrations.dordiai_voices import PCMChunk
-from test_dordiai_voices import ACTOR, runtime  # Same synthetic pipe actor, no second speech fixture engine.
+
+# Load only the shared test fixture file; installed product imports above keep
+# their normal origin. No checkout directory is added to sys.path.
+_voice_spec = importlib.util.spec_from_file_location('dordiai_voice_fixtures_for_speech',
+    Path(__file__).with_name('test_dordiai_voices.py'))
+_voice_fixtures = importlib.util.module_from_spec(_voice_spec)
+_voice_spec.loader.exec_module(_voice_fixtures)
+ACTOR, runtime = _voice_fixtures.ACTOR, _voice_fixtures.runtime
 
 
 @pytest.fixture

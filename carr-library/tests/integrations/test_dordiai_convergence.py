@@ -1,5 +1,6 @@
 """Regressions for the single published provider; audio fixtures are synthetic."""
 from hashlib import sha256
+import importlib.util
 from pathlib import Path
 import shutil
 import sys
@@ -10,8 +11,14 @@ import pytest
 
 from carr_library.integrations import dordiai_speech as bridge
 from carr_library.integrations import dordiai_voices as api
-from test_dordiai_speech import provider, shared_speech
-from test_dordiai_voices import ACTOR, requests, runtime
+
+_speech_spec = importlib.util.spec_from_file_location('dordiai_speech_fixtures_for_convergence',
+    Path(__file__).with_name('test_dordiai_speech.py'))
+_speech_fixtures = importlib.util.module_from_spec(_speech_spec)
+_speech_spec.loader.exec_module(_speech_fixtures)
+provider, shared_speech = _speech_fixtures.provider, _speech_fixtures.shared_speech
+ACTOR, runtime = _speech_fixtures.ACTOR, _speech_fixtures.runtime
+requests = _speech_fixtures._voice_fixtures.requests
 
 
 def test_two_installations_with_same_profiles_route_to_their_own_workers(provider, shared_speech, runtime, tmp_path):

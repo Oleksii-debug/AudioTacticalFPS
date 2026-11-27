@@ -11,6 +11,62 @@ from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
 
 
+def _cursor_character_offset(control, text):
+    """Read a native cursor as an exact Python offset in the displayed copy."""
+    position, last = control.GetInsertionPoint(), control.GetLastPosition()
+    if type(position) is not int or not 0 <= position <= last or control.GetValue() != text:
+        raise ValueError('The reading copy changed while locating its cursor.')
+    prefix, suffix = control.GetRange(0, position), control.GetRange(position, last)
+    if prefix + suffix != text:
+        raise ValueError('The native cursor does not identify an exact reading-copy position.')
+    return len(prefix)
+
+
+def _restore_character_cursor(control, text, offset):
+    """Reader-session v1 stores character offsets, never native wx positions."""
+    from .ebook_model import native_position
+    if type(offset) is not int or not 0 <= offset <= len(text):
+        raise ValueError('The saved cursor is outside the reading copy.')
+    displayed, prefix = control.GetValue(), text[:offset]
+    if displayed != text:
+        # A legacy/programmatically saved copy can retain CRLF or CR while wx
+        # presents LF. Map that known transformation without changing the copy.
+        if text.replace('\r\n', '\n').replace('\r', '\n') != displayed:
+            raise ValueError('The displayed reading copy differs from the saved cursor source.')
+        prefix = prefix.replace('\r\n', '\n').replace('\r', '\n')
+    control.SetInsertionPoint(native_position(control, displayed, len(prefix)))
+
+
+def _read_clipboard_text(wx):
+    """Take one explicit Unicode snapshot without modifying the clipboard."""
+    from ..speech._io import text_value
+    clipboard = wx.TheClipboard
+    if not clipboard.Open():
+        raise ValueError('The clipboard is busy. Try again when the other application releases it.')
+    try:
+        if not clipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT)):
+            raise ValueError('The clipboard does not contain Unicode text to read.')
+        data = wx.TextDataObject()
+        if not clipboard.GetData(data):
+            raise ValueError('The clipboard text could not be read. Copy the text again and retry.')
+        text = data.GetText()
+    finally:
+        clipboard.Close()
+    return text_value(text, 'Clipboard reading text')
+
+
+def show_clipboard_reader(parent):
+    """Open the existing reader; voice discovery never starts speech itself."""
+    import wx
+    try:
+        if getattr(parent, '_closing', False):
+            raise ValueError('The library is closing.')
+        text = _read_clipboard_text(wx)
+        show_speech_reader(parent, text=text, title='Clipboard reading copy', recovery_slot='clipboard')
+    except Exception as exc:
+        parent.report(f'The clipboard reading copy could not be opened. {exc}')
+
+
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
                        source_guard=lambda: None, recovery_slot='manual'):
     import wx
@@ -244,12 +300,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     + ' This is a separate narration copy; it does not approve quotations. '
                     + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
+            if recovered is not None:
+                _restore_character_cursor(editor, document.text, min(recovered.cursor, len(document.text)))
             if voices:
                 selected = next((i for i, voice in enumerate(voices)
                                  if recovered is not None and voice.id == recovered.voice_id), 0)
                 voice_choice.SetSelection(selected)
-                if recovered is not None:
-                    editor.SetInsertionPoint(min(recovered.cursor, len(editor.GetValue())))
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
@@ -276,7 +332,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else ''
         position = player.position_seconds if last_audio is not None else 0
-        cursor_offset = min(editor.GetInsertionPoint(), len(document.text))
+        cursor_offset = _cursor_character_offset(editor, document.text)
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
                      round(position, 1))
         if not force and signature == last_recovery_signature:
@@ -295,7 +351,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def selected_text(from_cursor=False):
         sync_document()
         if from_cursor:
-            return editor.GetValue()[editor.GetInsertionPoint():]
+            return document.text[_cursor_character_offset(editor, document.text):]
         selected = editor.GetStringSelection()
         return selected or editor.GetValue()
 
@@ -681,6 +737,8 @@ def install_speech_actions(frame):
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
+    clipboard = menu.Append(wx.ID_ANY, 'Read &clipboard...')
+    frame.Bind(wx.EVT_MENU, lambda event: show_clipboard_reader(frame), clipboard)
     from .reading_desk import ReadingActions
     from ..speech.source import read_source_range
 

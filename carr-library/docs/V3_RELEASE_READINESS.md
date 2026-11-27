@@ -150,8 +150,41 @@ including four real WAVE files larger than 3 MiB that stop after one 1 MiB read
 with no runtime launch or leaked reservation. See [audiobook chapters](AUDIOBOOK_CHAPTERS.md)
 and [shared resource behavior](runtime_resources.md).
 
-The composed Windows workflow selects 207 unique source suites and 114 unique
+The composed Windows workflow selects 210 unique source suites and 117 unique
 installed suites, including the new Studio pronunciation, Tasks/resources,
 ASR admission and microphone admission cases. Real-key Studio pronunciation and
 Tasks/resources probes are required for both the installed desktop and complete
 bundle. Selection and source checks alone are not Windows execution evidence.
+
+## Package and cursor corrections after the first composed candidate
+
+The explicit setuptools package list omitted the new operations package.
+An actual wheel built from `504ea2f` reproduced the omission; the corrected
+`37a0dc3` wheel contains all six operations modules. Exact Git/source verification
+passed for 313 payload files and 244 required runtime files, and ten relevant
+modules imported from an isolated installation of that wheel. A production-package
+inventory regression now prevents another declared-package omission. This local
+wheel result does not substitute for the composed Windows installer gate.
+
+The native lock preflight also had a release race: the previous owner could
+legitimately remove an unowned lock between existence and metadata checks.
+The original ASR mutation regression reproduced the failure four times in 100
+runs. The corrected preflight passed 100 repetitions and 50 distinct strict
+resource/admission/fork cases. Owned descriptor, replacement-link and native
+backend checks remain required.
+
+Reader cursor save, restoration and read-from-cursor now convert exact native
+text ranges to character offsets, preserving the existing session format.
+The explicit clipboard command opens a separate reading draft; it never watches
+the clipboard or starts speech automatically. The composed source `c4b548b`
+passed 252 cases with zero failures/errors/skips across package closure, resource
+admission, cursor/clipboard/session recovery, reader pronunciation and all six
+Dordiai fixture suites using importlib isolation. This run overlaps earlier
+tests and is reported separately. The preceding 116-suite installed selection
+collected all 2,946 cases successfully; collection is not execution of those
+cases. The later clipboard selector adds its 13 cases to that installed gate.
+
+Public source `5ba8389a193f1907810b8f00aba2e386993fd7a3` completed the
+[academic reconciliation run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45942462279)
+successfully. Its Windows/V3 jobs were queued when these corrections were
+prepared, and no Windows pass is inferred from that queue state.

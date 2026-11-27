@@ -221,6 +221,14 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetRange(self, start, end): self.native(); return self.value[start:end]
+        def XYToPosition(self, column, row):
+            self.native()
+            lines = self.value.split('\n')
+            if not 0 <= row < len(lines) or not 0 <= column <= len(lines[row]):
+                return -1
+            return sum(len(line) + 1 for line in lines[:row]) + column
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
         def SetFocus(self): self.native(); assert self.enabled

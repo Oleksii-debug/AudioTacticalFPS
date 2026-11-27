@@ -1,4 +1,5 @@
 """Real synthetic worker ownership across existing service and progress owners."""
+import importlib.util
 from pathlib import Path
 from threading import Event, Thread
 from time import monotonic, sleep
@@ -11,8 +12,13 @@ from carr_library.integrations import dordiai_voices as api
 from carr_library.speech import SpeechSettings
 from carr_library.speech.progress_speech import LocalProgressSpeech, activate_progress_voice
 from carr_library.studio.render import ProductionService
-from test_dordiai_settings import configured, no_platform_voices
-from test_dordiai_voices import runtime
+
+_settings_spec = importlib.util.spec_from_file_location('dordiai_settings_fixtures_for_ownership',
+    Path(__file__).with_name('test_dordiai_settings.py'))
+_settings_fixtures = importlib.util.module_from_spec(_settings_spec)
+_settings_spec.loader.exec_module(_settings_fixtures)
+configured, no_platform_voices = _settings_fixtures.configured, _settings_fixtures.no_platform_voices
+runtime = _settings_fixtures.runtime
 
 
 @pytest.fixture
