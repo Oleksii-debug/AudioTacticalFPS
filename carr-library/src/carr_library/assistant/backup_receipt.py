@@ -210,6 +210,8 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
             if (count != stamp[3] or digest.hexdigest() != expected
                     or _stamp(_plain(path)) != stamp):
                 raise ValueError('The backup tree changed during verification.')
+        except (InterruptedError, TimeoutError):
+            raise
         except OSError:
             raise ValueError('The backup tree changed during verification.') from None
     check()

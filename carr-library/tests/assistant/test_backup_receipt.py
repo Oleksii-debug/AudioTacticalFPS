@@ -183,3 +183,46 @@ def test_receipt_rechecks_names_after_an_earlier_directory_scan(tmp_path, monkey
     with pytest.raises(ValueError, match='changed during verification'):
         capture(root, digest)
     assert changed
+
+
+@pytest.mark.parametrize('phase', ['file', 'directory'])
+@pytest.mark.parametrize('failure', [InterruptedError, TimeoutError])
+def test_second_pass_preserves_cancellation_and_deadline(tmp_path, monkeypatch, phase, failure):
+    from carr_library.assistant import backup_receipt as receipt
+
+    root, digest = backup(tmp_path)
+    source = root / 'library.sqlite'
+    original = source.read_bytes()
+    entered, ready = [], []
+    if phase == 'file':
+        actual = receipt.os.open
+
+        def open_file(path, *args, **kwargs):
+            result = actual(path, *args, **kwargs)
+            if Path(path) == source:
+                entered.append(True)
+                if len(entered) == 2:
+                    ready.append(True)
+            return result
+        monkeypatch.setattr(receipt.os, 'open', open_file)
+    else:
+        actual = receipt.os.scandir
+
+        def scan_directory(path):
+            result = actual(path)
+            if Path(path) == root / 'originals':
+                entered.append(True)
+                if len(entered) == 2:
+                    ready.append(True)
+            return result
+        monkeypatch.setattr(receipt.os, 'scandir', scan_directory)
+
+    def cancelled():
+        if ready:
+            raise failure('Synthetic cancellation or deadline during re-attestation.')
+        return False
+
+    with pytest.raises(failure, match='Synthetic cancellation or deadline'):
+        capture(root, digest, cancelled=cancelled)
+    assert ready and len(entered) == 2
+    assert source.read_bytes() == original
