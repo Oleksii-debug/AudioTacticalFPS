@@ -27,18 +27,67 @@ def main():
     from carr_library.ui.book_audio_dialog import create_book_audio_dialog
     from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
     from carr_library.studio.project import Role
+    from carr_library.audio_runtime import bundled_audio_tools, verify_audio_runtime
+    from carr_library.runtime_settings import load_settings, save_settings
+    from carr_library.progress import ProgressState
+    from carr_library.speech.progress_speech import activate_progress_voice, SnapshotProgressSpeech
+    from carr_library.ui.progress_panel import NativeProgressPanel
+    from carr_library.ui import worker_cleanup
     gui_errors = []
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             gui_errors.append(traceback.format_exc())
             return True
     app = ProbeApp(False)
+    app.SetExitOnFrameDelete(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
-    with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
-        root = Path(temporary)
+    temporary = TemporaryDirectory(prefix='carr-native-v3-')
+    root = Path(temporary.name)
+    frame = library = registry = service = selected_progress = None
+    destroyed = threading.Event()
+    child_progress, cleanup_futures, cleanup_executors = [], [], []
+    failures, completed = [], threading.Event()
+    cleanup_deadline = [None]
+    original_cleanup = worker_cleanup.close_after_worker
+
+    def track_cleanup(executor, owner):
+        # Observe the real serial-worker release; never replace or run it on wx.
+        future = original_cleanup(executor, owner)
+        cleanup_futures.append(future)
+        cleanup_executors.append(executor)
+        return future
+
+    def remember_failure(error):
+        failures.append((error, error.__traceback__))
+
+    def scenario():
+        nonlocal frame, library, registry, service, selected_progress
         library = LibraryApp(root / 'library')
         workspace = library.create_workspace('Native acceptance')
-        registry = VoiceRegistry.discover(include_flite=False)
+        # CARR_V3_AUDIO is an explicit acceptance fixture, not a product override.
+        # An installed sealed bundle still verifies and supplies its own tools.
+        declared_audio = os.environ.get('CARR_V3_AUDIO')
+        bundled_tools = bundled_audio_tools()
+        if declared_audio:
+            audio_report = verify_audio_runtime(Path(declared_audio))
+            tools = audio_report['tools']
+            if bundled_tools is not None:
+                assert all(Path(tools[name]).samefile(bundled_tools[name])
+                           for name in ('ffmpeg', 'ffprobe'))
+                tools = bundled_tools
+            result['audio_runtime'] = {key: audio_report[key] for key in
+                ('package_id', 'source_lock_sha256', 'manifest_sha256')}
+        else:
+            if bundled_tools is None:
+                raise RuntimeError('Select the verified CARR_V3_AUDIO acceptance runtime.')
+            tools = bundled_tools
+            result['audio_runtime'] = {'selection': 'verified sealed audio-runtime'}
+        settings = load_settings(library.root / 'state')
+        settings.update(ffmpeg=tools['ffmpeg'], ffprobe=tools['ffprobe'])
+        save_settings(library.root / 'state', settings)
+        assert load_settings(library.root / 'state') == settings
+        result['checks'].append('verified canonical audio-runtime and explicit local engine selection')
+        registry = VoiceRegistry.discover(include_flite=False, ffmpeg=tools['ffmpeg'])
         sapi = tuple(voice for voice in registry.voices() if voice.engine.startswith('SAPI 5'))
         if not sapi:
             raise RuntimeError('Native SAPI discovery failed: ' + '; '.join(registry.notices))
@@ -66,7 +115,11 @@ def main():
         assert project.original_script == script
         assert report['status'] == 'complete' and report['result']['duration'] > 3
         assert len(report['result']['chapters']) == 2 and not report['result']['loudness']['silent']
-        resumed = ProductionService(service.root, voices=registry).run(job)
+        restarted_service = ProductionService(service.root, voices=registry)
+        try:
+            resumed = restarted_service.run(job)
+        finally:
+            restarted_service.close()
         assert resumed['artifacts'] == report['artifacts']
         result['checks'] += ['actual local three-role production with score and pause',
                              'WAV/FLAC, chapter and stem publication', 'completed-job restart and checksum verification']
@@ -74,8 +127,20 @@ def main():
                            'loudness': report['result']['loudness'],
                            'distinct_voice_tokens': len({role.voice_id for role in project.roles})}
         frame = DesktopFrame(library)
+        def frame_destroyed(event):
+            if event.GetEventObject() is frame:
+                destroyed.set()
+            event.Skip()
+        frame.Bind(wx.EVT_WINDOW_DESTROY, frame_destroyed)
         frame.Show()
-        app.Yield()
+        assert isinstance(frame.progress_panel, NativeProgressPanel)
+        assert frame.operation_progress is frame.progress_panel
+        selected_progress = activate_progress_voice(library.root, voice.id)
+        frame.progress_panel.set_speech_provider(selected_progress, root=library.root)
+        assert isinstance(frame.progress_panel.speech_provider, SnapshotProgressSpeech)
+        assert frame.progress_panel.speech_provider.provider is selected_progress
+        assert frame.progress_panel.preferences.mode == 'off'
+        assert not selected_progress._closed.is_set()
         labels = [frame.menu_bar.GetMenuLabel(i).replace('&', '') for i in range(frame.menu_bar.GetMenuCount())]
         assert all(name in labels for name in ('File', 'Edit', 'Library', 'Research', 'Audio Studio', 'Tools'))
         shortcuts = []
@@ -123,7 +188,6 @@ def main():
             wx.CallLater(500, visit)
             open_dialog(frame)
             assert inspected == [True], 'Native dialog lacked a required accessible control name'
-            app.Yield()
 
         def exercise_native_render():
             """Drive this architecture's real Render/resume button and worker."""
@@ -211,6 +275,20 @@ def main():
                     return
                 assert len(dialogs) == 1
                 active[0] = dialogs[0]
+                panel = active[0].progress_panel
+                assert isinstance(panel, NativeProgressPanel)
+                assert active[0].operation_progress is panel and panel is not frame.progress_panel
+                assert panel.hub is frame.progress_panel.hub
+                assert isinstance(panel.speech_provider, SnapshotProgressSpeech)
+                assert panel.speech_provider is not frame.progress_panel.speech_provider
+                assert panel.speech_provider.provider is not selected_progress
+                assert panel.speech_provider.provider.registry is selected_progress.registry
+                assert not panel.speech_provider.provider._closed.is_set()
+                child_progress.append(panel.speech_provider.provider)
+                assert panel.gauge.GetName() == 'Audio Studio operation progress'
+                assert panel.text.GetName() == 'Audio Studio current progress and phase'
+                assert panel.query_button.GetName() == 'Query Audio Studio progress'
+                assert panel.text.AcceptsFocusFromKeyboard() and panel.query_button.AcceptsFocusFromKeyboard()
                 controls.update(editor=named('Script', wx.TextCtrl),
                     title=named('Project title', wx.TextCtrl),
                     voices=named('Default voice', wx.Choice),
@@ -232,6 +310,7 @@ def main():
                 assert not list(destination.iterdir())
                 click(controls['render'])
                 assert choices == [wx.ID_OK]
+                assert active[0].progress_panel.active_task.snapshot().state == ProgressState.RUNNING
                 assert controls['pause'].IsEnabled()
                 assert not controls['editor'].IsEnabled() and not controls['render'].IsEnabled()
                 later(completed)
@@ -243,6 +322,9 @@ def main():
                 assert controls['status'].GetValue().startswith('Production complete.'), controls['status'].GetValue()
                 assert wx.Window.FindFocus() is controls['status']
                 assert controls['editor'].IsEnabled() and controls['preview'].IsEnabled()
+                snapshot = active[0].progress_panel.active_task.snapshot()
+                assert snapshot.state == ProgressState.SUCCEEDED and snapshot.percent == 100
+                assert frame.progress_panel.hub.snapshot(snapshot.operation_id) == snapshot
                 new_jobs = [row for row in service.jobs() if row['id'] not in previous_jobs]
                 assert len(new_jobs) == 1
                 row = new_jobs[0]
@@ -325,6 +407,13 @@ def main():
                 show_studio(frame)
                 assert not gui_errors, '\n'.join(gui_errors)
                 assert result.get('native_render', {}).get('status') == 'PASS'
+                assert child_progress and all(item._closed.is_set() for item in child_progress)
+                assert not selected_progress._closed.is_set()
+                assert selected_progress.registry.get(voice.id).id == voice.id
+                result['checks'].append('native private progress task and independently closed voice selection')
+                result['native_progress'] = {'status': 'PASS', 'shared_hub': True,
+                    'private_view': True, 'durable_completion': True,
+                    'child_voice_closed': True, 'parent_voice_retained': True}
             finally:
                 hard_watchdog.cancel()
                 for name, implementation in original_dialogs.items():
@@ -378,8 +467,90 @@ def main():
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
         inspect_dialog(show_translation, ('Google API account and edition', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
-        frame.Close()
-        app.Yield()
+
+    def poll_cleanup():
+        try:
+            executors = cleanup_executors + ([frame.executor] if frame is not None else [])
+            workers = [thread for executor in executors for thread in executor._threads]
+            voice_workers = [thread for thread in threading.enumerate()
+                             if thread.name == 'progress-voice-cleanup']
+            waiting = ((frame is not None and not destroyed.is_set())
+                       or any(not future.done() for future in cleanup_futures)
+                       or any(thread.is_alive() for thread in workers + voice_workers))
+            if waiting:
+                if monotonic() >= cleanup_deadline[0]:
+                    raise TimeoutError('Native window destruction or owned worker cleanup did not finish.')
+                wx.CallLater(25, poll_cleanup)
+                return
+            for future in cleanup_futures:
+                future.result()
+            if frame is not None:
+                assert frame.progress_panel.closed
+            if selected_progress is not None:
+                assert selected_progress._closed.is_set()
+                assert not selected_progress.registry.voices()
+            if not failures:
+                assert not gui_errors, '\n'.join(gui_errors)
+                assert cleanup_futures, 'The real Studio worker cleanup was not observed.'
+                result['checks'].append('actual wx MainLoop, Destroy event and completed owner cleanup')
+                result['native_cleanup'] = {'status': 'PASS', 'destroy_event': destroyed.is_set(),
+                    'private_worker_releases': len(cleanup_futures), 'voice_owner_released': True}
+        except BaseException as error:
+            remember_failure(error)
+        completed.set()
+        app.ExitMainLoop()
+
+    def run_scenario():
+        try:
+            scenario()
+        except BaseException as error:
+            remember_failure(error)
+        finally:
+            cleanup_deadline[0] = monotonic() + 60
+            try:
+                if frame is not None:
+                    frame.Close()
+                elif selected_progress is not None:
+                    selected_progress.close()
+            except BaseException as error:
+                remember_failure(error)
+            wx.CallLater(25, poll_cleanup)
+
+    def loop_timeout():
+        import faulthandler
+        print(json.dumps({'status': 'FAIL', 'native_loop': 'Native acceptance exceeded 420 seconds.',
+                          'errors': gui_errors}), flush=True)
+        faulthandler.dump_traceback(all_threads=True)
+        os._exit(1)
+
+    watchdog = threading.Timer(420, loop_timeout)
+    watchdog.daemon = True
+    worker_cleanup.close_after_worker = track_cleanup
+    try:
+        watchdog.start()
+        wx.CallAfter(run_scenario)
+        app.MainLoop()
+        if not completed.is_set():
+            raise AssertionError('The actual wx event loop exited before scenario cleanup.')
+    except BaseException as error:
+        remember_failure(error)
+    finally:
+        watchdog.cancel()
+        worker_cleanup.close_after_worker = original_cleanup
+        # These two explicitly borrowed owners have no pending GUI work now.
+        for owner in (service, registry):
+            if owner is not None:
+                try:
+                    owner.close()
+                except BaseException as error:
+                    remember_failure(error)
+        try:
+            temporary.cleanup()
+        except BaseException as error:
+            remember_failure(error)
+    if failures:
+        error, failure_traceback = failures[0]
+        raise error.with_traceback(failure_traceback)
     result['status'] = 'PASS'
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
 
