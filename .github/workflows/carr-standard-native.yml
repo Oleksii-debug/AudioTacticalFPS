@@ -1,0 +1,389 @@
+name: CARR exact standard native diagnostic
+
+on:
+  push:
+    branches: ['carr/v3-acceptance-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-standard-native.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-standard-native-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-standard-only:
+    name: Windows standard install and distinct A-to-B only
+    runs-on: windows-2022
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Check out the distinct reviewed previous standard generation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: f26c7eeef2ad3090ab531d1b8bca72ba68eb5991
+          path: carr-standard-source-a
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Compile the exact source and regression entrypoints
+        run: |
+          python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($path in @('scripts/ci_standard_installer.ps1', 'scripts/ci_standard_update.ps1', 'scripts/qualify_standard_library.ps1')) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath $path).Path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          }
+
+      - name: Install the actual desktop package in a fresh environment
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-results/tested-tree.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 setuptools==84.2.1 wheel==0.48.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Match production dependencies before required source suites
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-integrated-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==56 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,pathlib,sys,pythoncom,pywintypes,win32com.client; assert all(pathlib.Path(m.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()) for m in (pythoncom,pywintypes,win32com.client)); pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED); pythoncom.CoUninitialize(); print(json.dumps({'status':'PASS','pinned_pywin32_native_abi':'PASS','actual_office':'NOT_RUN'}))" | Tee-Object 'ci-results/word-runtime-abi.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the verified OCR engine before its required source regression
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare the sealed local FFmpeg runtime before audio regressions
+        timeout-minutes: 8
+        run: |
+          $audioRoot = Join-Path $env:RUNNER_TEMP 'carr-pinned-audio'
+          New-Item -ItemType Directory -Force $audioRoot | Out-Null
+          $pin = & $env:CARR_PYTHON -c "import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive mismatch.' }
+          $audioWork = Join-Path $audioRoot 'explicit-local-audio'
+          $audioBin = Join-Path $audioWork 'runtime'
+          & $env:CARR_PYTHON packaging/setup_local_audio.py --archive $archive --destination $audioWork --prepare | Tee-Object 'ci-results/local-audio-setup.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio.runtime import verify_runtime; value=verify_runtime(sys.argv[1]); assert value['native_validation']['status']=='PASS'; print(json.dumps(value,sort_keys=True))" $audioBin | Tee-Object 'ci-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Locate installed Microsoft x64 development tools
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }
+          "CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile private native launcher and test child with MSVC
+        shell: cmd
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "packaging\native-launcher\build_msvc.ps1" -OutputDirectory "%RUNNER_TEMP%\carr-native-launcher-private"
+          if errorlevel 1 exit /b %errorlevel%
+
+      - name: Execute exact launcher on native Windows with synthetic child
+        shell: pwsh
+        run: |
+          $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-private'
+          python packaging/native-launcher/probe_windows.py --launcher "$private/ResearchLibrary.exe" --child "$private/windows_child_probe.exe" --report "$private/windows-probe.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the exact nine native launcher checks
+        run: |
+          $nativeLauncher = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-private'
+          Copy-Item -LiteralPath "$nativeLauncher/build-evidence.json" -Destination 'ci-results/native-launcher-build.json'
+          Copy-Item -LiteralPath "$nativeLauncher/windows-probe.json" -Destination 'ci-results/native-launcher-process.json'
+          & $env:CARR_PYTHON -I -B -c "import json,pathlib; proof=json.loads(pathlib.Path('ci-results/native-launcher-process.json').read_text(encoding='utf-8-sig')); build=json.loads(pathlib.Path('ci-results/native-launcher-build.json').read_text(encoding='utf-8-sig')); expected=['unicode-spaces-fixed-argv-offline-optional-runtimes','read-only-ready-probe','fixed-installation-check','child-exit-status-propagated','extra-arguments-rejected','incomplete-state-preserved-without-reinstall','missing-runtime-does-not-search-path','fresh-package-reuses-fixed-offline-installer','research-data-sentinel-preserved']; assert proof['status']=='passed' and proof['checks']==expected and proof['check_count']==9; assert proof['launcher_sha256']==build['pe']['sha256'] and proof['native_launcher_execution_verified'] is True and proof['actual_python_installation_verified'] is False and proof['nvda_verified'] is False and proof['authenticode_verified'] is False; print('PASS: exact native launcher process evidence')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the pinned local model through the existing upstream verifier
+        timeout-minutes: 10
+        run: |
+          $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
+          $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-model-ci/model-manifest.json'
+          $acquire = @'
+          import importlib.util, json, pathlib, shutil, sys
+          from huggingface_hub import hf_hub_download
+          spec = importlib.util.spec_from_file_location('model_build', pathlib.Path('packaging/model_bundle.py').resolve())
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          target, manifest = map(pathlib.Path, sys.argv[1:])
+          target.mkdir(parents=True, exist_ok=False)
+          for name in sorted(helper.FILES):
+              source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
+              shutil.copyfile(source, target / name)
+          proof = helper.seal(target)
+          with manifest.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True)
+          print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
+          '@
+          # Only this explicit build-time child may fetch the pinned public model.
+          # Importing the application before acquisition would enforce offline mode.
+          $env:HF_HUB_OFFLINE = '0'
+          try {
+            $acquire | & $env:CARR_PYTHON -I -B - $model $modelManifest | Tee-Object 'ci-results/model-acquisition.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:HF_HUB_OFFLINE = '1'
+          }
+          & $env:CARR_PYTHON -I -B -c "import sys; from carr_library.semantic import verify_model_bundle; verify_model_bundle(sys.argv[1], sys.argv[2]); print('PASS: exact approved local model')" $model $modelManifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare the exact sealed bundle and installed interpreter without unrelated replays
+        timeout-minutes: 40
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $wheelhouse = Join-Path $bundleWork 'wheelhouse'
+          $applicationWheels = Join-Path $bundleWork 'application'
+          $baseBundle = Join-Path $bundleWork 'base bundle'
+          $nativeLauncher = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-private'
+          $bundle = Join-Path $bundleWork 'complete bundle'
+          New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-integrated-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $applicationWheels -Filter '*.whl')
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $applicationWheel = $wheels[0].FullName
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
+          Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
+          $archiveHash = (Get-FileHash -LiteralPath $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($archiveHash -ne $runtime.download.sha256) { throw 'Pinned Python archive checksum mismatch.' }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          if (!(Test-Path -LiteralPath $ocrSource -PathType Leaf) -or $ocr -ne $env:CARR_CI_OCR_DIR) { throw 'Verified source-test OCR runtime is missing.' }
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $bundleWork 'native-runtime.conda'
+          Invoke-WebRequest -Uri $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item -LiteralPath $nativePackage).Length -ne $nativeLock.package.size) { throw 'Pinned native package size mismatch.' }
+          if ((Get-FileHash -LiteralPath $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nativeLock.package.sha256) { throw 'Pinned native package checksum mismatch.' }
+          $nativeRuntime = Join-Path $bundleWork 'native-runtime'
+          & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'ci-results/native-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceTree = (git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-integrated-cp311.lock --sbom packaging/windows-integrated-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $env:CARR_CI_AUDIO_DIR --native-launcher "$nativeLauncher/ResearchLibrary.exe" --native-launcher-evidence "$nativeLauncher/build-evidence.json" --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $manifest = Join-Path $bundle 'bundle-manifest.json'
+          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-integrated-sbom.cdx.json').Hash.ToLowerInvariant()
+          $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
+          if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
+          $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
+          $sbomManifest = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json
+          if ($actualSbom -ne $expectedSbom -or $sbomManifest.files.'runtime-sbom.cdx.json' -ne $expectedSbom) { throw 'SBOM seal mismatch' }
+          @{ status='PASS'; sha256=$actualSbom } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
+          $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+          $bundledPython = Join-Path $bundle 'runtime/python.exe'
+          $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          # Finish test-only acquisition before the offline execution boundary.
+          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
+          New-Item -ItemType Directory -Force $testWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/ffmpeg.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+          # Temporary rules on this disposable CI VM. Fail before execution if
+          # Windows Firewall cannot enforce every runtime program's outbound block.
+          Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+          foreach ($program in $programs) {
+            $ruleName = $rulePrefix + '-' + $ruleNames.Count
+            $ruleNames += $ruleName
+            New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+          }
+          $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+          if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline checks require enabled Windows Firewall profiles.' }
+          $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+          if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline execution rules are not active.' }
+          $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+          if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
+          @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='sealed-bundle installation and native entrypoint' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
+          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report ci-results/native-launcher-installed.json 2>&1 | Tee-Object 'ci-results/native-launcher-installed.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import hashlib,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); proof=json.loads(pathlib.Path('ci-results/native-launcher-installed.json').read_text(encoding='utf-8')); manifest=json.loads((root/'bundle-manifest.json').read_text(encoding='utf-8')); digest=hashlib.sha256((root/'ResearchLibrary.exe').read_bytes()).hexdigest(); assert proof['status']=='passed' and proof['checks']==['--check-installation','--self-test'] and proof['launcher_sha256']==digest==manifest['files']['ResearchLibrary.exe']; assert manifest['bundled_native_launcher'] is True and manifest['source_commit']==sys.argv[2]; assert proof['actual_installed_app_self_test_verified'] is True and all(proof[key] is False for key in ('actual_fresh_installation_verified','gui_verified','nvda_verified','authenticode_verified')); proof.update(source_commit=sys.argv[2],source_tree=sys.argv[3],installed_package=True); print(json.dumps(proof,sort_keys=True))" $bundle $sourceCommit $sourceTree | Tee-Object 'ci-results/native-launcher-installed-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # This diagnostic runs installation/entrypoint and A-to-B checks only.
+          # Full source and installed regression replays remain in carr-windows.yml.
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime'] and manifest['bundled_native_launcher']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-integrated-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',audio_runtime='INCLUDED',native_launcher='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          # Test dependencies are installed only after production installation passes.
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime'] and manifest['bundled_native_launcher']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-integrated-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',audio_runtime='INCLUDED',native_launcher='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Retain the exact public source wheel used by the verified installed
+          # bundle. Private delivery must reuse these tested bytes, not rebuild.
+          $wheelKey = 'wheelhouse/' + $wheels[0].Name
+          $sealedWheel = Join-Path $bundle $wheelKey
+          $verifyWheel = @'
+          import importlib.util, json, pathlib, subprocess, sys
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('source_wheel', project / 'packaging/source_wheel.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          proof = module.verify_application_wheel(sys.argv[1], project.parent, sys.argv[2])
+          tree = subprocess.run(['git', 'rev-parse', sys.argv[2] + '^{tree}'], cwd=project.parent,
+                                check=True, capture_output=True, text=True).stdout.strip()
+          print(json.dumps(dict(status='PASS', source_tree=tree, **proof)))
+          '@
+          $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheelProof = Get-Content -LiteralPath 'ci-results/source-wheel-proof.json' -Raw | ConvertFrom-Json
+          $sealedWheelHash = $sbomManifest.files.PSObject.Properties[$wheelKey].Value
+          if (!$sealedWheelHash -or $wheelProof.wheel_sha256 -ne $sealedWheelHash) { throw 'Verified source wheel differs from the installed bundle seal.' }
+          $testedWheelDirectory = Join-Path 'ci-results' 'tested-application-wheel'
+          New-Item -ItemType Directory -Force $testedWheelDirectory | Out-Null
+          $testedWheel = Join-Path $testedWheelDirectory $wheels[0].Name
+          Copy-Item -LiteralPath $sealedWheel -Destination $testedWheel
+          if ((Get-FileHash -LiteralPath $testedWheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $wheelProof.wheel_sha256) {
+            Remove-Item -LiteralPath $testedWheel -Force
+            throw 'Tested application wheel copy differs.'
+          }
+          @{ status='PASS'; source_commit=$sourceCommit; source_tree=$wheelProof.source_tree; wheel=$wheels[0].Name; sha256=$wheelProof.wheel_sha256; installed_bundle='PASS' } | ConvertTo-Json | Set-Content 'ci-results/tested-application-wheel.json'
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
+      - name: Verify actual standard installation repair and uninstall with retained user work
+        timeout-minutes: 60
+        run: |
+          & ./scripts/ci_standard_installer.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify two distinct signed standard generations and native rollback
+        timeout-minutes: 120
+        run: |
+          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource 'f26c7eeef2ad3090ab531d1b8bca72ba68eb5991'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
+      # are uploaded. NVDA and final-download identity remain separate acceptance.
+
+      - name: State the exact bounded diagnostic result
+        run: |
+          @'
+          import json,pathlib
+          root=pathlib.Path('ci-results')
+          source=(root/'tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          tree=(root/'tested-tree.txt').read_text(encoding='utf-8-sig').strip()
+          install=json.loads((root/'standard-installer/proof.json').read_text(encoding='utf-8'))
+          upgrade=json.loads((root/'standard-update/proof.json').read_text(encoding='utf-8'))
+          assert install['status']=='passed' and install['source_commit']==source and install['check_count']==6
+          assert upgrade['status']=='passed' and upgrade['candidate_source']==source and upgrade['check_count']==15
+          assert upgrade['previous_source']=='f26c7eeef2ad3090ab531d1b8bca72ba68eb5991' and upgrade['previous_source']!=source
+          report={'schema':1,'status':'PASS','scope':'actual-standard-install-repair-uninstall-and-distinct-A-to-B',
+              'source_commit':source,'source_tree':tree,'standard_native_checks':6,'upgrade_native_checks':15,
+              'full_source_regression_replay':'NOT_RUN','full_installed_regression_replay':'NOT_RUN',
+              'full_platform_acceptance':'NOT_CLAIMED','production_authority':'NOT_CONFIGURED',
+              'authenticode':'NOT_RUN','nvda':'NOT_RUN'}
+          (root/'standard-native-diagnostic.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Only receipts, source identities and fixed synthetic logs are public.
+      # Setups, wheels, native/model/runtime payloads and failed generations
+      # stay on the disposable runner; the full main acceptance is unchanged.
+      - name: Preserve exact native diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-standard-native-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/**/*.json
+            carr-library/ci-results/**/*.txt
+            carr-library/ci-results/**/*.log
+            carr-library/ci-results/**/*.xml
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,5 +1,115 @@
 # Resonance integration checkpoint — 27 November 2026
 
+## Composed acceptance candidate r6 — execution in progress
+
+The current technical contract is `UNIVERSAL_SCOPE_V3_FINALIZATION.md` read from
+canonical `3beebd5aca900b8bf2e86498ae79db4015c96705`. Its contents are unchanged
+from the previously reviewed `4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`.
+The implementation remains scoped to `carr-library/**` and its CARR workflows.
+This checkpoint is not a declaration that every V3 release gate has passed.
+
+### Current composition and intended behavior
+
+The r6 candidate composes reviewed work on top of `498bf205`: bounded PDF
+streaming (`b12e63ca`), scan/EPUB continuation (`18f4249c` and the Windows
+fixture correction `3f95e47c`), exact final audio publication (`ed5d4333`),
+explicit local audio setup and installed-library qualification (`b8ca78ef`),
+protected standard recovery (`5760cc69`), scalable catalog/search queries
+(`51e55b37`), the native About probe (`683f315d`), and the native Trust-window
+lifecycle correction (`e5d03cca`). Durable product composition is
+`2f062a429054bc0f971accc7af6811151deb21d0`; native recovery composition is
+`e71ced734624320f2ef881158d0f8e590d319a79`.
+
+- PDF source identity, copying, parser access, retained readback and backup
+  paths use bounded streams. Scan continuation carries cancellation and its
+  deadline into PDF hashing. Existing originals remain immutable.
+- Scan pages retain a stable cursor across more than 5,000 sources. EPUB pages
+  retain edition identity and fresh catalog validation. Pagination has explicit
+  limits; a partial page is never mislabeled as complete import.
+- Audio publication checks cancellation after the last flush and before the
+  atomic move, while a completed move remains completed after late cancellation.
+- `SetupLocalAudio.cmd` and its two helpers are sealed into the bundle. Planning
+  is read-only; preparation requires an explicit local archive, destination and
+  confirmation. The setup path reuses the existing pinned native verifier.
+- Standard A/B updates retain the previous generation, verified research backup,
+  exact native activation and the existing A process. Same-release replacement
+  is refused. A failed B remains available for diagnostics and retry uses a new
+  generation.
+- Windows Vault recovery binds the transaction, prior native activation, exact
+  observed candidate generation, policy and backup. A fresh process must obtain
+  fresh TUF verification and the same protected authority before recovery.
+  Missing, changed or foreign authority fails closed. Generic memory-only
+  anchors do not authorize a fresh-process rollback.
+- The native probe now requires a real owned-process exit followed by recovery
+  in a separate process, two failed B generations, successful B activation and
+  a 50-case installed, offline, audio-free library qualification.
+- Catalog predicates use the existing workspace/id index. Search avoids
+  repeatedly constructing a revision index while preserving fresh full-source
+  fingerprints and stable continuation semantics.
+- The Trust owner-destroy handler uses the captured native owner ID, allowing
+  teardown to finish before queued workers can access destroyed wx objects.
+
+### Executed evidence retained from this run
+
+Results below belong to their named source snapshots; they are not a substitute
+for executing the complete composed candidate. Overlapping test groups are not
+added together.
+
+| Area | Actual result | Scope |
+| --- | --- | --- |
+| Scan, EPUB, resources, notices, About and legacy state | 262 passed locally | Linux; frozen 498 source |
+| Large PDF and scan composition | 25 passed locally | Actual 72/144 MiB parser/render/retained-readback cases |
+| Word integration boundaries | 49 passed locally; 36 passed on Windows | Real CSL with controlled COM; actual Office not run |
+| Standard, audio, engine and publication guards | 196 passed locally | Reviewed component composition |
+| Bundle helpers and local audio setup | 37 passed locally | Exact helper bytes, seal checks and tamper rejection |
+| Protected standard restart predecessor | 90 passed locally | 54d source; the later 5760 cleanup successor is separate |
+| Final protected cleanup successor | 33 focused passed, 61 deselected | 5760; whole 94-case gate still required on composed source |
+| Query performance composition | 124 passed locally | 66 new query cases, existing pagination and continuation |
+| Exact installed-library qualifier | 26 passed locally | Qualifier source; native 50-case execution still required |
+| Windows import and EPUB continuation | 174 source and 26 native checks passed | Run 45975256450, exact 3f95 source |
+| Windows About dialog | 19 native checks per profile passed | Run 45967011963, core 17 and integrated 56 dependencies |
+| Windows Trust lifecycle | 15 native checks passed | Run 45978658434, exact e5 source |
+| Private supplied ASR compatibility | 68 passed | Private checkpoint retained separately; synthetic decoder |
+
+The r5 complete integrated lane failed and remains recorded as failed. Its
+successful independent audio, keyboard, bibliography and sync lanes are retained
+in `docs/evidence/windows-r5-completed-lanes-20261127.json`; they do not turn the
+failed r5 integrated lane green. The original Windows CRLF fixture failure and
+Trust access violation were diagnosed and corrected in the named successor
+executions above.
+
+### Measured capacity and remaining release qualification
+
+Synthetic catalog runs fully paged 1,000 and 10,000 results. On the retained
+50,000-book fixture, the reviewed query change reduced the median first-page
+time from 8.0648 seconds to 1.3442 seconds (20 queries each). The last observed
+candidate checkpoint covered 25 pages / 2,500 exact unique results. The executor
+disconnected before the final 500-page receipt could be read. Full 50,000-result
+completion is therefore **NOT ESTABLISHED**; the original timeout and the
+interrupted baseline are retained in evidence rather than replaced by a PASS.
+
+The complete r6 Windows workflow retains all prior source, installed, native,
+firewall, provenance, ASR, Advanced, recording, Word and installer gates. It now
+declares 296 source selectors, 159 additive installed selectors plus the existing
+external installed list, and 94 exact standard-recovery source cases. A separate
+standard lane runs the same native A/B probe sooner; its success cannot replace
+the full integrated lane. A separate 2,049 MiB PDF measurement requires actual
+Windows parsing/rendering/readback and installed-source hashes.
+
+The following remain distinct qualifications until actual evidence is obtained:
+the full composed Windows run, the new native A/B/restart/50-case sequence, the
+multi-gigabyte measurement, full 50,000-result traversal, actual Word/Office,
+physical microphone and output, NVDA/manual accessibility, real acoustic model
+quality and the real user book corpus. Production entitlement issuance and
+signing are not synthesized from CI fixture authority. Private models, worker
+code, recordings, transcripts and credentials are not included in public source
+or artifacts.
+
+## Historical checkpoints
+
+The following sections describe earlier source snapshots and are retained for
+traceability. Their statuses are superseded only by the specific evidence above.
+
 ## Composed acceptance candidate r5 — current source, execution required
 
 The technical contract remains `UNIVERSAL_SCOPE_V3_FINALIZATION.md` at canonical

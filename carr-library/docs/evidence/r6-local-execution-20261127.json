@@ -1,0 +1,154 @@
+{
+  "schema": "carr-r6-local-execution-observations/1",
+  "status": "RECORDED_COMPONENT_EXECUTION_NOT_FULL_COMPOSED_WINDOWS",
+  "environment": "Linux CPython 3.12.14, pytest 9.0.2",
+  "source_basis": "498bf205c5313caf216f75d7006465267cc801e8 plus named reviewed component compositions",
+  "overlapping_groups_are_not_summed": true,
+  "runs": [
+    {
+      "label": "frozen baseline components",
+      "passed": 262,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "source": "498bf205c5313caf216f75d7006465267cc801e8"
+    },
+    {
+      "label": "PDF and continuation composition",
+      "passed": 25,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "source": "498bf205 + b12e63ca + two composition cases and continuation hash cancellation"
+    },
+    {
+      "label": "Word boundary and UI/profile",
+      "passed": 49,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "actual_office": "NOT_RUN"
+    },
+    {
+      "label": "standard/audio/engine/publication guards",
+      "passed": 196,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "label": "CI composition",
+      "passed": 87,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests": 8
+    },
+    {
+      "label": "Windows-canonical cursor fixture locally",
+      "passed": 9,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "label": "local setup/bundle/standard delivery",
+      "passed": 141,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests": 6
+    },
+    {
+      "label": "sealed local audio helper bundle",
+      "passed": 37,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests": 6
+    },
+    {
+      "label": "final workflow helper and standard installer",
+      "passed": 84,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests": 8
+    },
+    {
+      "label": "trust lifecycle composed with standard UI",
+      "passed": 77,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "label": "audio-free qualification verifier",
+      "passed": 26,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "label": "native hook and bundle/standard source",
+      "passed": 85,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests": 6
+    },
+    {
+      "label": "extended PDF helper 72/144 MiB only",
+      "passed": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "multi_gigabyte_execution": "NOT_RUN"
+    },
+    {
+      "label": "protected restart predecessor and boundaries",
+      "passed": 128,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "source": "d575da803732a4f4774304f329d7d638aa5a4a33",
+      "standard_cases": 86
+    },
+    {
+      "label": "observed-generation protected recovery predecessor",
+      "passed": 90,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "source": "54d54acc30958c270b46b85ee9c30b6dcc1e5923"
+    },
+    {
+      "label": "final protected cleanup focused independent execution",
+      "passed": 33,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "deselected": 61,
+      "source": "5760cc69927eb6c77ec4610462849965031dd88f",
+      "whole_source_expected": 94,
+      "whole_source_executed": "NOT_CONFIRMED"
+    },
+    {
+      "label": "SQL query composition with search continuation",
+      "passed": 124,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "source": "51e55b376edd33f4977112b1ec2892b03c98e6ff composed with current PDF and standard changes"
+    }
+  ],
+  "receipt_note": "Observed runner output and temporary JUnit files preceded executor disconnection. This retained observation does not invent absent durable JUnit hashes or claim a rerun on the reconstructed final tree.",
+  "limits": {
+    "full_composed_windows": "PENDING",
+    "native_standard_restart": "PENDING",
+    "native_installed_library_50": "PENDING",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "production_authority": "NOT_CONFIGURED"
+  }
+}

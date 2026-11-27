@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "source_commit": "683f315d9c33582e2f4ea8828d6a536b32c80b27",
+  "source_tree": "6451fa3571d74447ced6e8be0020122a628a212c",
+  "run_id": 45967011963,
+  "status": "PASS",
+  "profiles": [
+    {
+      "job_id": 140397990620,
+      "proof": {
+        "actual_background_workers": true,
+        "actual_installed_metadata": true,
+        "actual_native_keys": true,
+        "actual_offline_firewall": true,
+        "actual_window_destroyed": true,
+        "check_count": 19,
+        "checks": [
+          "installed-about-module-origins",
+          "one-native-help-about-command",
+          "native-help-event-opens-real-modal",
+          "named-read-only-about-and-status-controls",
+          "named-focusable-component-and-action-controls",
+          "real-installed-component-version-in-catalogue",
+          "real-product-version-and-component-specific-terms",
+          "catalogue-read-runs-on-owned-background-worker",
+          "native-choice-keys-select-installed-component",
+          "native-read-key-opens-notice-inventory",
+          "native-picker-lists-actual-installed-notices",
+          "native-picker-key-opens-upstream-text",
+          "upstream-text-matches-verified-installed-notice",
+          "upstream-reader-is-named-readonly-and-focused",
+          "native-escape-keeps-parent-about-open",
+          "native-refresh-rereads-installed-catalogue",
+          "all-product-notice-reads-use-background-workers",
+          "native-close-destroys-only-about",
+          "parent-library-and-notice-bytes-preserved"
+        ],
+        "component": "pypdf",
+        "component_version": "7.1.1",
+        "module_origins": {
+          "carr_library.component_notices": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+            "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+          },
+          "carr_library.ui.about_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+            "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "sha256": "aa638a0ee57c14a5ad38359550128deb6a2adfc0280c41799cf6b7c358b00b7f"
+          }
+        },
+        "notice_sha256": "adb53e8e9c8b50731c12ce58b408c6ad2bc27fbe79f2208663a1e7ca7d6e5fa3",
+        "nvda": "NOT_RUN",
+        "profile": "integrated",
+        "redistribution_clearance": "NOT_ASSESSED",
+        "source_commit": "683f315d9c33582e2f4ea8828d6a536b32c80b27",
+        "source_tree": "6451fa3571d74447ced6e8be0020122a628a212c",
+        "status": "PASS"
+      }
+    },
+    {
+      "job_id": 140397990936,
+      "proof": {
+        "actual_background_workers": true,
+        "actual_installed_metadata": true,
+        "actual_native_keys": true,
+        "actual_offline_firewall": true,
+        "actual_window_destroyed": true,
+        "check_count": 19,
+        "checks": [
+          "installed-about-module-origins",
+          "one-native-help-about-command",
+          "native-help-event-opens-real-modal",
+          "named-read-only-about-and-status-controls",
+          "named-focusable-component-and-action-controls",
+          "real-installed-component-version-in-catalogue",
+          "real-product-version-and-component-specific-terms",
+          "catalogue-read-runs-on-owned-background-worker",
+          "native-choice-keys-select-installed-component",
+          "native-read-key-opens-notice-inventory",
+          "native-picker-lists-actual-installed-notices",
+          "native-picker-key-opens-upstream-text",
+          "upstream-text-matches-verified-installed-notice",
+          "upstream-reader-is-named-readonly-and-focused",
+          "native-escape-keeps-parent-about-open",
+          "native-refresh-rereads-installed-catalogue",
+          "all-product-notice-reads-use-background-workers",
+          "native-close-destroys-only-about",
+          "parent-library-and-notice-bytes-preserved"
+        ],
+        "component": "pypdf",
+        "component_version": "7.1.1",
+        "module_origins": {
+          "carr_library.component_notices": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+            "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+          },
+          "carr_library.ui.about_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+            "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "sha256": "aa638a0ee57c14a5ad38359550128deb6a2adfc0280c41799cf6b7c358b00b7f"
+          }
+        },
+        "notice_sha256": "adb53e8e9c8b50731c12ce58b408c6ad2bc27fbe79f2208663a1e7ca7d6e5fa3",
+        "nvda": "NOT_RUN",
+        "profile": "core",
+        "redistribution_clearance": "NOT_ASSESSED",
+        "source_commit": "683f315d9c33582e2f4ea8828d6a536b32c80b27",
+        "source_tree": "6451fa3571d74447ced6e8be0020122a628a212c",
+        "status": "PASS"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15183791044,
+      "name": "carr-about-native-core-683f315d9c33582e2f4ea8828d6a536b32c80b27",
+      "sha256": "fd39996ac23a2ce5eae1a8e15ac1649386d4448217f5e99bb684412488e001f5"
+    },
+    {
+      "id": 15182778909,
+      "name": "carr-about-native-integrated-683f315d9c33582e2f4ea8828d6a536b32c80b27",
+      "sha256": "cd5f1eef357f911aadf63ccc576e9a33e54cc646e6b7cc7d637e4d1f92f077f2"
+    }
+  ],
+  "scope": "19 exact real native checks per separately installed core/integrated profile. Product modules match the tested source bytes; probes retain actual HWND destruction, worker and offline firewall evidence.",
+  "limits": {
+    "nvda": "NOT_RUN",
+    "redistribution_clearance": "NOT_ASSESSED",
+    "later_composed_source": "REQUIRES_CURRENT_GATES"
+  }
+}

@@ -1,0 +1,563 @@
+{
+  "schema": 1,
+  "source_commit": "2c040db358e64bdb1c6bc27b9c911de6e734d574",
+  "source_tree": "6d3db2653a6e844e1c7c575242e1f72b80b95cbc",
+  "scope": "Four completed independent Windows lanes. Main integrated run failed before downstream installed and installer gates.",
+  "audio": {
+    "status": "PASS",
+    "run_id": 45964386112,
+    "job_id": 140389464471,
+    "passed": 905,
+    "failed": 0,
+    "skipped": 7,
+    "subtests_passed": 22,
+    "native": {
+      "status": "PASS",
+      "checks": [
+        "actual SAPI synthesis",
+        "actual FFmpeg music and stereo render",
+        "measured duration and clipping",
+        "chapter, subtitle and stem output",
+        "immutable source",
+        "verified complete output reused without resynthesis",
+        "actual Windows Credential Manager round-trip and destination isolation",
+        "actual local assistant to SAPI/FFmpeg production and verified resume",
+        "native Studio named controls",
+        "real editable script focus",
+        "native voice list",
+        "native plan preview",
+        "project save and readback",
+        "native playback device, position and status controls",
+        "native playlist, A�B, segment and sleep controls; setup without device playback",
+        "native assistant plan preview, actual scoped execution and budget controls"
+      ],
+      "sapi_voices_available": 2,
+      "distinct_voices_used": 2,
+      "duration_seconds": 11.133,
+      "measurements": {
+        "peak": 0.730438232421875,
+        "clipped": false,
+        "frames": 534384,
+        "sample_rate": 48000,
+        "channels": 2,
+        "duration_seconds": 11.133,
+        "integrated_lufs": -20.63,
+        "true_peak_dbfs": -2.73,
+        "loudness_range_lu": 2,
+        "measurement": "FFmpeg loudnorm input measurements"
+      },
+      "manual_nvda": "NOT_RUN",
+      "physical_playback_device": "NOT_RUN",
+      "neural_music": "NOT_RUN",
+      "native_ukrainian_slovak_quality": "NOT_RUN"
+    },
+    "effects": {
+      "cancellation": "PASS",
+      "checks": 109,
+      "native_controls": "PASS",
+      "nvda": "NOT_RUN",
+      "signal_rendering": "NOT_RUN",
+      "status": "PASS",
+      "typed_parameters": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    "artifacts": [
+      {
+        "id": 15182661488,
+        "name": "carr-audio-2c040db358e64bdb1c6bc27b9c911de6e734d574-1",
+        "sha256": "806782b9a503ede079e43def4d645890ac356f4969e0032a4ef288719ce3115a",
+        "bytes": 22892
+      }
+    ]
+  },
+  "keyboard": {
+    "status": "PASS",
+    "run_id": 45964386110,
+    "job_id": 140389493146,
+    "source_suites": [
+      {
+        "selector": "tests/ui/test_command_registry.py",
+        "passed": 107,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/storage/test_keyboard_preferences.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_keyboard_manager.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_save_all.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_save_all_current_drafts.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_desktop_evidence_jobs.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_reader_command_dispatch.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_reader_keymap_context.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/storage/test_evidence_drafts.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_evidence_draft_recovery.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "source_passed": 270,
+    "source_failed": 0,
+    "source_skipped": 0,
+    "native_reports": [
+      {
+        "checks": 35,
+        "native_key_backend": "wx.UIActionSimulator",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+          "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+          "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+        },
+        "platform": "Windows",
+        "settings_controls": "native; command filter and shortcut text supplied by probe",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      },
+      {
+        "checks": 23,
+        "native_key_backend": "wx.UIActionSimulator",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+          "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+          "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+          "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+        },
+        "platform": "Windows",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      },
+      {
+        "checks": 15,
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+          "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+        },
+        "platform": "Windows",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      },
+      {
+        "checks": 27,
+        "deferred_close": "PASS",
+        "durable_stores": "PASS",
+        "native_events": "PASS",
+        "nvda": "NOT_RUN",
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 15182033190,
+        "name": "carr-keyboard-2c040db358e64bdb1c6bc27b9c911de6e734d574-1",
+        "sha256": "5ee634a6bb8e50e89ba976bdd99739cce998f80d2e558b9c3f90038ca23a6cb8",
+        "bytes": 9900
+      }
+    ]
+  },
+  "bibliography": {
+    "status": "PASS",
+    "run_id": 45964386115,
+    "job_id": 140389486651,
+    "source_suites": [
+      {
+        "selector": "tests/research/test_bibtex_import.py",
+        "passed": 68,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/research/test_csl_author_boundaries.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/citations/test_custom_csl.py",
+        "passed": 132,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/research/test_academic_library.py",
+        "passed": 107,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/citations/test_custom_workbench.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_citation_styles_jobs.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_academic_library_dialog.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_academic_actions.py",
+        "passed": 43,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_academic_tools.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ui/test_academic_export_handler.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/catalog/test_bibliography.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/catalog/test_ris_apply_v4.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/catalog/test_reference_exchange.py",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ingest/test_import_replay_identity.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/ingest/test_txt_replay_registration.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/reader/test_export_no_clobber.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/reader/test_file_export.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/reader/test_binary_file_export.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/reader/test_academic_documents.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/reader/test_bibliographic_locators.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/reader/test_evidence_export.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/storage/test_academic_migration.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/e2e/test_academic_workflow.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/e2e/test_academic_workflows.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/e2e/test_academic_document_export.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/e2e/test_export_destination.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "selector": "tests/citations/test_bibliography_workbench.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "source_passed": 1018,
+    "source_failed": 0,
+    "source_skipped": 0,
+    "native": {
+      "checks": 108,
+      "custom_style_file_choice": "controlled path only",
+      "export_file_choice": "controlled temporary paths only",
+      "installed_modules": {
+        "carr_library.citations.bibliography_workbench": "17dc684fe0984d3e382dc7eba2e34ad78f734fc611d6abd330f7de21103d9770",
+        "carr_library.citations.csl": "d5a7cff21c9b2cd44628ff2c66b3c2b6c79fba60cd2b4f6f8133a2e3ad604e95",
+        "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+        "carr_library.ui.academic_library_dialog": "1ed53cd13105b5eaeefb3a6c22942ec22cbcdf9a85ff572e3d315045167ee95e",
+        "carr_library.ui.citation_styles_dialog": "d86a3645e8d34d985d84b270a03615ab6c5023112fed9cd458971f044271b6d3"
+      },
+      "installer": "NOT_RUN",
+      "manual_keyboard": "NOT_RUN",
+      "native_clipboard": "PASS",
+      "native_custom_style": "PASS",
+      "native_export_format": "PASS",
+      "native_file_pickers": "NOT_RUN",
+      "native_keyboard": "PASS",
+      "native_overwrite_accessible_focus": "NOT_RUN",
+      "native_overwrite_confirmation": "PASS",
+      "nvda": "NOT_RUN",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "python": "3.11.9",
+      "result": "PASS",
+      "service_exports": [
+        "text",
+        "html",
+        "docx"
+      ],
+      "style": "harvard",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    "artifacts": [
+      {
+        "id": 15182433764,
+        "name": "bibliography-windows-2c040db358e64bdb1c6bc27b9c911de6e734d574",
+        "sha256": "fc9d3b77e27be6b96d9e5a7cd674b25311952a83e8c52dd5b6c4d16c76ddf00d",
+        "bytes": 22259
+      }
+    ]
+  },
+  "sync": {
+    "status": "PASS",
+    "run_id": 45964386176,
+    "job_id": 140391527244,
+    "source_passed": 320,
+    "installed_passed": 154,
+    "source_failed_or_skipped": 0,
+    "installed": {
+      "status": "PASS",
+      "installed_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\sync\\service.py",
+      "tests": 154,
+      "failed_or_skipped": 0,
+      "nvda": "NOT_RUN"
+    },
+    "native": {
+      "status": "PASS",
+      "checks": [
+        "modules are loaded from the installed distribution",
+        "real desktop Library menu opens the snapshot window",
+        "snapshot window is modeless and parent-owned",
+        "paths, code, history, preview and status have accessible names",
+        "native command is enabled: Refresh history",
+        "native button event: Refresh history",
+        "snapshot worker finishes through the event loop",
+        "native command is enabled: Publish snapshot…",
+        "password entry uses named native masked controls",
+        "native button event: Publish snapshot…",
+        "snapshot worker finishes through the event loop",
+        "real service publishes a transfer receipt",
+        "publication and listing never autofill the trust code",
+        "native command is enabled: Verify code…",
+        "password entry uses named native masked controls",
+        "native button event: Verify code…",
+        "snapshot worker finishes through the event loop",
+        "verified scope includes the archived library",
+        "restore becomes available only after verification",
+        "native command is enabled: Restore to new folder…",
+        "password entry uses named native masked controls",
+        "native button event: Restore to new folder…",
+        "snapshot worker finishes through the event loop",
+        "real verified library exists at the new destination",
+        "restored library retains archived scope",
+        "current library and notebook never switch",
+        "main frame stays available",
+        "native command is enabled: Verify code…",
+        "password entry uses named native masked controls",
+        "native button event: Verify code…",
+        "worker reaches cancellation boundary",
+        "native command is enabled: Cancel operation",
+        "native button event: Cancel operation",
+        "snapshot worker finishes through the event loop",
+        "cancelled work never accepts a verification preview",
+        "native command is enabled: Verify code…",
+        "password entry uses named native masked controls",
+        "native button event: Verify code…",
+        "second worker reaches close boundary",
+        "native command is enabled: Close",
+        "native button event: Close",
+        "normal close waits for worker cancellation",
+        "window closes after safe worker completion",
+        "parent drops the closed modeless window"
+      ],
+      "python": "3.11.9",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+      "encrypted": true,
+      "modules": {
+        "carr_library.ui.portable_sync": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+        "carr_library.sync.service": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\sync\\service.py"
+      },
+      "nvda": "NOT_RUN"
+    },
+    "artifacts": [
+      {
+        "id": 15183090013,
+        "name": "carr-sync-2c040db358e64bdb1c6bc27b9c911de6e734d574-1",
+        "sha256": "08b3269bbfb3954ad9528679ddc6d8253149319df2ac62a4ad2ff089e24299a2",
+        "bytes": 10051
+      }
+    ]
+  },
+  "main": {
+    "status": "FAIL",
+    "run_id": 45964386110,
+    "job_id": 140389492721,
+    "required_suites": 285,
+    "passed_suites": 275,
+    "failed_suites": 10,
+    "valid_junit_suites": 284,
+    "junit_passed": 7016,
+    "junit_failed_or_error": 32,
+    "skipped": 0,
+    "word_suite": "TIMEOUT after 600 seconds; no complete JUnit",
+    "downstream_installed_and_installer": "NOT_RUN",
+    "detailed_evidence": "windows-r5-main-20261127.json"
+  },
+  "limits": {
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "actual_Whisper": "NOT_RUN",
+    "neural_music_quality": "NOT_RUN",
+    "whole_release": "NOT_QUALIFIED"
+  }
+}

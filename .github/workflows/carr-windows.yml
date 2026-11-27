@@ -26,7 +26,7 @@ jobs:
     runs-on: windows-2022
     # Keep the original native/offline gates plus the explicit standard
     # installer lane and the added Word/trust/lease/component source suites.
-    timeout-minutes: 130
+    timeout-minutes: 330
     defaults:
       run:
         shell: pwsh
@@ -48,6 +48,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
+      - name: Check out the distinct previous standard generation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: f26c7eeef2ad3090ab531d1b8bca72ba68eb5991
+          path: carr-standard-source-a
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Set up native x64 CPython
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -58,6 +66,12 @@ jobs:
         run: |
           python -m compileall -q src tests scripts packaging
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($path in @('scripts/ci_standard_installer.ps1', 'scripts/ci_standard_update.ps1', 'scripts/qualify_standard_library.ps1')) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath $path).Path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          }
 
       - name: Install the actual desktop package in a fresh environment
         run: |
@@ -68,6 +82,8 @@ jobs:
           "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           New-Item -ItemType Directory -Force 'ci-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-results/tested-tree.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -185,15 +201,18 @@ jobs:
           $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'
           Invoke-WebRequest -Uri $pin.url -OutFile $archive
           if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive mismatch.' }
-          $audioBin = Join-Path $audioRoot 'audio-runtime'
-          & $env:CARR_PYTHON packaging/prepare_ffmpeg_runtime.py --archive $archive --destination $audioBin --verify-native | Tee-Object 'ci-results/audio-runtime.json'
+          $audioWork = Join-Path $audioRoot 'explicit-local-audio'
+          $audioBin = Join-Path $audioWork 'runtime'
+          & $env:CARR_PYTHON packaging/setup_local_audio.py --archive $archive --destination $audioWork --prepare | Tee-Object 'ci-results/local-audio-setup.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio.runtime import verify_runtime; value=verify_runtime(sys.argv[1]); assert value['native_validation']['status']=='PASS'; print(json.dumps(value,sort_keys=True))" $audioBin | Tee-Object 'ci-results/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_AUDIO_DIR=$audioBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Run required integrated source workflows
-        timeout-minutes: 40
+        timeout-minutes: 60
         run: |
           # These real-engine source tests must discover the exact prepared
           # runtime. Restrict the override to this source-test process.
@@ -463,6 +482,8 @@ jobs:
             'tests/e2e/test_google_translation_v3.py',
             'tests/ui/test_translation_advanced.py',
             'tests/packaging/test_standard_installer.py',
+            'tests/packaging/test_local_audio_setup.py',
+            'tests/packaging/test_standard_library_qualification.py',
             'tests/security/test_anchor_locking.py',
             'tests/security/test_canonical_boundary.py',
             'tests/security/test_controller.py',
@@ -486,8 +507,17 @@ jobs:
             'tests/security/test_domain_admission.py',
             'tests/security/test_audio_admission.py',
             'tests/search/test_search_pagination.py',
+            'tests/search/test_capacity_query_shapes.py',
             'tests/ui/test_search_paging.py',
-            'tests/e2e/test_search_continuation.py'
+            'tests/e2e/test_search_continuation.py',
+            'tests/storage/test_legacy_state_portability.py',
+            'tests/ingest/test_scan_continuation.py',
+            'tests/e2e/test_import_scan_continuation.py',
+            'tests/ingest/test_streaming_pdf.py',
+            'tests/e2e/test_large_pdf_original.py',
+            'tests/e2e/test_large_pdf_scan_continuation.py',
+            'tests/security/test_standard_update.py',
+            'tests/audio/test_production_integrity.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -502,7 +532,7 @@ jobs:
           for module,functions in oracle['source'].items():
               selector=module.replace('.','/')+'.py'
               expected=sum(functions.values())
-              matches=re.findall(r'^PASS: '+re.escape(selector)+r': junit_passed=(\d+), failed=0, skipped=0, pytest_exit=0$',text,re.M)
+              matches=re.findall(r'PASS: '+re.escape(selector)+r': junit_passed=(\d+), failed=0, skipped=0, pytest_exit=0$',text,re.M)
               assert matches==[str(expected)], (selector,expected,matches)
               observed[selector]=expected
           report={'status':'PASS','source_commit':pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),'required_modules':len(observed),'required_cases':sum(observed.values()),'cases':observed,'actual_word':'NOT_RUN','nvda':'NOT_RUN'}
@@ -770,7 +800,7 @@ jobs:
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
-        timeout-minutes: 20
+        timeout-minutes: 60
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -936,6 +966,63 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import json,pathlib,sys; records=[json.loads(line) for line in pathlib.Path('ci-results/full-bundle-native-state-matrix.txt').read_text(encoding='utf-8-sig').splitlines() if line.lstrip().startswith('{')]; report=records[-1]; assert report['status']=='PASS' and report['cases']==25 and report['failures']==[]; report.update(source_commit=sys.argv[1],source_tree=sys.argv[2],scope='native sharing and rename matrix; individual refused publications are expected controls'); print(json.dumps(report,sort_keys=True))" $sourceCommit $sourceTree | Tee-Object 'ci-results/full-bundle-native-state-matrix-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/probe_about_native.py --native 2>&1 | Tee-Object ci-results/full-bundle-native-about.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path('ci-results/full-bundle-native-about.txt').read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('scripts/about_native_oracle.json').read_text(encoding='utf-8'))
+          assert report['status']=='PASS' and report['check_count']==oracle['expected_check_count']
+          assert Counter(report['checks'])==Counter(oracle['checks'])
+          assert all(report[name] is True for name in oracle['required_true'])
+          assert all(report[name]==value for name,value in oracle['statuses'].items())
+          assert set(report['module_origins'])==set(oracle['module_origins'])
+          for name,record in report['module_origins'].items():
+              path=pathlib.Path(record['path']).resolve()
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()), str(path)
+              source=pathlib.Path('src')/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert record['sha256']==sha256(path.read_bytes()).hexdigest()==sha256(source.read_bytes()).hexdigest(), name
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          report['source_tree']=pathlib.Path('ci-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip()
+          report['profile']=sys.argv[1]
+          report['installed_package']=True
+          report['actual_offline_firewall']=True
+          pathlib.Path('ci-results/full-bundle-native-about-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $installedPython -I -B - 'integrated-sealed'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 tests/ui/probe_import_epub_continuation_native.py --native 2>&1 | Tee-Object ci-results/full-bundle-continuation-native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path('ci-results/full-bundle-continuation-native.txt').read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('docs/evidence/import-epub-continuation-native-oracle.json').read_text(encoding='utf-8'))
+          expected=oracle['strict_receipt']
+          assert report['result']=='PASS' and report['check_count']==expected['check_count']==26
+          assert Counter(report['checks'])==Counter(expected['checks']) and report['failures']==[]
+          assert all(report[name] is True for name in ('actual_native_keys','actual_domain_services','synthetic_sources'))
+          assert report['injected_test_page_limits']==expected['injected_test_page_limits']
+          assert report['nvda']==report['real_corpus_benchmark']=='NOT_RUN'
+          assert set(report['module_origins'])==set(oracle['required_module_origins'])
+          for name,record in report['module_origins'].items():
+              path=pathlib.Path(record['path']).resolve()
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()),str(path)
+              source=pathlib.Path('src')/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert record['sha256']==sha256(path.read_bytes()).hexdigest()==sha256(source.read_bytes()).hexdigest(),name
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          report['source_tree']=pathlib.Path('ci-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip()
+          report['installed_package']=True
+          report['actual_offline_firewall']=True
+          pathlib.Path('ci-results/full-bundle-continuation-native-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $installedPython -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/probe_search_continuation_native.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-search-pagination.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           @'
@@ -1007,7 +1094,7 @@ jobs:
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, os, pathlib, sys
+          import ctypes, hashlib, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
@@ -1019,6 +1106,9 @@ jobs:
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
+          with (root / 'audio-runtime' / 'ffmpeg.exe').open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == manifest['files']['audio-runtime/ffmpeg.exe']
+          os.environ['CARR_FFMPEG'] = str(root / 'audio-runtime' / 'ffmpeg.exe')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
           import carr_library.acquisition.service, carr_library.acquisition.transport
@@ -1108,7 +1198,7 @@ jobs:
           pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED)
           pythoncom.CoUninitialize()
           import importlib
-          for module_name in ['carr_library.security','carr_library.security._files','carr_library.security.anchors','carr_library.security.boundary','carr_library.security.controller','carr_library.security.entitlements','carr_library.security.installation','carr_library.security.polling','carr_library.security.refresh','carr_library.security.updates','carr_library.ui.trust_status','carr_library.installation_lease','carr_library.citations.word_com','carr_library.ui.word_citations_dialog','carr_library.component_notices','carr_library.ui.about_dialog','carr_library.security.admission','carr_library.search.pagination','carr_library.ui.search_paging']:
+          for module_name in ["carr_library.security","carr_library.security._files","carr_library.security.anchors","carr_library.security.boundary","carr_library.security.controller","carr_library.security.entitlements","carr_library.security.installation","carr_library.security.polling","carr_library.security.refresh","carr_library.security.updates","carr_library.ui.trust_status","carr_library.installation_lease","carr_library.citations.word_com","carr_library.ui.word_citations_dialog","carr_library.component_notices","carr_library.ui.about_dialog","carr_library.security.admission","carr_library.search.pagination","carr_library.ui.search_paging","carr_library.catalog.streaming_pdf","carr_library.ingest.batch_scan","carr_library.ingest.batches","carr_library.reader.ebook","carr_library.ui.import_center","carr_library.ui.ebook_reader","carr_library.security.standard_state","carr_library.security.standard_windows","carr_library.security.standard_installation","carr_library.security.standard_recovery"]:
               module = importlib.import_module(module_name)
               assert pathlib.Path(module.__file__).resolve().is_relative_to(root / '.venv'), module_name
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
@@ -1260,8 +1350,22 @@ jobs:
               'tests/security/test_domain_admission.py',
               'tests/security/test_audio_admission.py',
               'tests/search/test_search_pagination.py',
+              'tests/search/test_capacity_query_shapes.py',
               'tests/ui/test_search_paging.py',
-              'tests/e2e/test_search_continuation.py']
+              'tests/e2e/test_search_continuation.py',
+              'tests/storage/test_legacy_state_portability.py',
+              'tests/ingest/test_scan_continuation.py',
+              'tests/e2e/test_import_scan_continuation.py',
+              'tests/ingest/test_streaming_pdf.py',
+              'tests/e2e/test_large_pdf_original.py',
+              'tests/e2e/test_large_pdf_scan_continuation.py',
+              'tests/security/test_standard_update.py',
+              'tests/ui/test_desktop_query_jobs.py',
+              'tests/ui/test_desktop_result_modes.py',
+              'tests/ui/test_federated_labels.py',
+              'tests/audio/test_audio_publication.py',
+              'tests/audio/test_production_integrity.py'
+          ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
@@ -1418,6 +1522,12 @@ jobs:
         timeout-minutes: 60
         run: |
           & ./scripts/ci_standard_installer.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify two distinct signed standard generations and native rollback
+        timeout-minutes: 120
+        run: |
+          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource 'f26c7eeef2ad3090ab531d1b8bca72ba68eb5991'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
