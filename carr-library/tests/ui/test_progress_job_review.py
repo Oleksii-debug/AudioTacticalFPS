@@ -10,6 +10,8 @@ import pytest
 
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 from carr_library.ui.reader_playback import ReaderPlaybackControls
+from carr_library.ui.keyboard_settings import VoiceReaderKeyboardAdapter
+from carr_library.ui.reader_output import ReaderOutputControls
 
 
 class Progress:
@@ -383,11 +385,15 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     # The extracted finally block closes the controls created before the modal
     # try. Preserve that closure binding and its real keyword-only signature.
     env['transport'] = create_autospec(ReaderPlaybackControls, instance=True, spec_set=True)
+    env['keyboard'] = create_autospec(VoiceReaderKeyboardAdapter, instance=True, spec_set=True)
+    env['output_controls'] = create_autospec(ReaderOutputControls, instance=True, spec_set=True)
     env['unregister_save'] = Mock()
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['unregister_save'].assert_called_once_with()
+    env['keyboard'].close.assert_called_once_with()
+    env['output_controls'].close.assert_called_once_with()
     env['transport'].close.assert_called_once_with(stop=False)
     env['autosave_timer'].Stop.assert_called_once_with()
     env['cancel'].set.assert_called_once_with()
