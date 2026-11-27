@@ -93,6 +93,64 @@ Symbolic links, Windows reparse points, network paths and output traversal are
 rejected. A local trusted application data directory is still required; this
 is not a sandbox against another process running with the same user's rights.
 
+## Transcribe through the existing library service
+
+After configuring the local worker in the normal transcription interface, select
+an existing library and approved input/output folders in **Local assistant**.
+A typed plan can include:
+
+```json
+{
+  "steps": [
+    {"tool": "audio.transcribe",
+     "arguments": {"path": "C:/Recordings/chapter.wav", "name": "chapter-transcript",
+                   "language": "uk", "beam_size": 2, "vad_filter": true}}
+  ]
+}
+```
+
+The default assistant uses the same library-scoped transcription jobs, worker
+profiles, retained inputs, resource admission, receipt verification and export
+service as the native transcription interface and CLI. It does not configure or
+download a worker, runtime or model. This step needs an existing library; a
+create-library step does not silently select a transcription installation.
+
+Approval binds the input bytes, selected settings, engine configuration and,
+for the V5 profile, the exact local model inventory. Those identities are checked
+again inside the actual runner before resource admission or child execution.
+The receipt profile preserves its existing worker-established model identity
+rather than claiming an independently approved model inventory. Original media
+is retained unchanged. The four base formats and supported word-timing outputs
+are exported together with the existing transcription manifest.
+
+The selected export folder must be new and outside private application data.
+The assistant's byte and file budgets are checked inside the exporter before
+publication. A durable output inventory permits recovery after the export
+commits but its reply or assistant checkpoint is lost: recovery verifies the
+actual files and reuses the existing child job without running recognition
+again. Changed outputs or a replaced destination require review. The final
+directory checks do not claim a universal atomic exclusion against another
+process replacing an empty destination at the POSIX rename syscall.
+
+Pause/cancel preserves the existing retained job for explicit resume. If a
+process stops after input retention but before the child-job pointer is saved,
+the assistant stops for review of the Transcription jobs list; it does not
+silently submit another potentially duplicate job. Moving an assistant journal
+to another application directory does not approve its old input, runtime or
+output paths.
+
+The explicitly injected V4.3 adapter remains a separate compatibility protocol,
+described in [SUPPLIED_TRANSCRIPTION_ADAPTER.md](SUPPLIED_TRANSCRIPTION_ADAPTER.md).
+Old V4.3 intents are not reinterpreted as receipt/V5 jobs, and new library intents
+cannot be rerouted to that adapter. Product UI constructors use the existing
+library service by default.
+
+The exact new composition still requires its own strict execution evidence.
+`tests/assistant/test_library_transcription.py` uses real synthetic child processes
+for the accepted receipt and V5 file protocols. These tests do not qualify
+private model quality, acoustic accuracy, multilingual behavior, native Windows
+interaction or manual NVDA use.
+
 ## Optional profiles and OS credentials
 
 `ProfileStore(app.root / 'state' / 'providers')` stores non-secret
@@ -109,6 +167,41 @@ fallback, and non-Windows hosts cannot store these credentials through this
 adapter. Profile exports clear credential references and disable restored
 connections. The new device must reconnect each account. No provider test is
 performed on save, open, import or application startup.
+
+## Request and review a local model proposal
+
+The existing **Local assistant** dialog defaults to guided commands and typed
+JSON. Its **Planning source** selector additionally lists enabled, explicitly
+local `openai-compatible` profiles with `llm.chat`. Create these in **AI and API
+connections**, using a numeric loopback endpoint and the model ID your already
+running server exposes. Opening either dialog does not contact or start a server.
+
+Choose a local profile and **Preview plan** to request a proposal. Only the goal
+text is sent; selected folder contents and library documents are not added.
+The shared provider gateway uses a 120-second request budget and an 8 MiB response
+limit for planning. Cancellation or a reached deadline may wait for the pending
+network read, whose timeout is at most 30 seconds. The result must pass the same typed tool, argument, workspace
+and path checks as a guided plan. The request is cancellable in the background.
+Editing the goal, selected scope or profile discards a pending response and
+invalidates a reviewed plan. **Run / resume** is a separate action that records
+and executes the reviewed plan through `AssistantService`.
+
+The CLI uses the same boundary. In PowerShell, for a configured profile named
+`chosen_local`, the two separate invocations are:
+
+```powershell
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --list-local-profiles
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "goal.txt" --allow-create --local-profile chosen_local | Set-Content -Encoding utf8 "reviewed-plan.json"
+# Open and review reviewed-plan.json, including every operation and its scope.
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "reviewed-plan.json" --allow-create --run
+```
+
+Repeat the exact workspace, input/output folders and permissions when executing
+the reviewed JSON. Scope changes are rejected. `--local-profile` cannot be
+combined with `--run` or `--resume`, so execution never regenerates a different
+model proposal. Listing profiles makes no model request. Provider errors produce
+no executable proposal. The protocol and native control fixtures validate this
+flow; an actual local model and its planning quality require separate acceptance.
 
 ## Implemented provider protocol adapters
 
@@ -170,6 +263,15 @@ The user must reconcile the existing output/charge before authorizing another
 operation. No real paid or external provider call is part of the automated tests.
 
 ## Verification scope
+
+The reused local-planning checks cover offline permission guards, actual
+synthetic loopback HTTP and CLI calls, and native Windows proposal/review
+controls. The installed gate checks the exact application source and module
+bytes before and after those actions, rejects failed/skipped/expected-failure
+cases, and preserves the existing operation and source-integrity gates.
+This composition still requires its own exact-head execution evidence; donor
+runs do not qualify this assembled application. An actual local LLM, its model
+weights and planning quality, manual keyboard use and NVDA remain unqualified.
 
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create
