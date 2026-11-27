@@ -174,13 +174,13 @@ def reader(tmp_path, monkeypatch):
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
-        source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
+        source_status=Mock(), sync_document=lambda: None, save_project=lambda: True, reader_tabs=None,
         dialog=Mock(), autosave_timer=Mock(), playback_timer=Mock(),
         executor=CleanupQueue(), audio_files=Mock(),
         unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'playback_scope', 'playback_failed',
-         'start_playback', 'stop_audio', 'closing'],
+         'start_playback', 'stop_audio', 'confirm_current_close', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,

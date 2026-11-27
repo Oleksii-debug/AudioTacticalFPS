@@ -162,7 +162,8 @@ publish()
         capture_output=True, check=False, timeout=30, env=environment)
     assert result.returncode == 74, result.stderr.decode('utf-8', errors='replace')
     assert target.exists()
-    stages = list(tmp_path.glob('.pending-*'))
+    stage_pattern = '.research-export-*' if kind == 'citation-docx' else '.pending-*'
+    stages = list(tmp_path.glob(stage_pattern))
     if os.name == 'nt':
         assert stages == [] and target.stat().st_nlink == 1
         durable_state.regular(target)

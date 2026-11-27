@@ -166,6 +166,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     progress = Mock(side_effect=lambda frame: install_order.append('install_progress_panel'))
     monkeypatch.setitem(sys.modules, 'carr_library.ui.progress_panel',
                         SimpleNamespace(install_progress_panel=progress))
+    desktop = Mock(side_effect=lambda frame: install_order.append('install_desktop_integration'))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.desktop_integration',
+                        SimpleNamespace(install_desktop_integration=desktop))
 
     value._menus()
 
@@ -186,9 +189,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         assert any(call.args[2] is registered_item for call in value.Bind.call_args_list)
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress):
+    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress, desktop):
         installer.assert_called_once_with(value)
-    assert install_order[-2:] == ['install_keyboard_settings', 'install_progress_panel']
+    assert install_order[-3:] == ['install_keyboard_settings', 'install_progress_panel', 'install_desktop_integration']
     assert install_order.index('install_studio_actions') < install_order.index('install_book_audio_actions')
     assert install_order.index('install_book_audio_actions') < install_order.index('install_keyboard_settings')
     assert install_order.index('install_transcription_actions') < install_order.index('install_keyboard_settings')
@@ -271,17 +274,20 @@ def test_failed_submit_does_not_leave_application_disabled(classes):
 
 def test_running_job_vetoes_normal_close(classes):
     f = frame(classes)
+    f.desktop_integration = SimpleNamespace(close=Mock())
     f.working = True
     event = close_event(True)
     f.on_close(event)
     assert event.veto and not event.skipped
     assert not f._closing
     f.executor.shutdown.assert_not_called()
+    f.desktop_integration.close.assert_not_called()
 
 
 @pytest.mark.parametrize('already_queued',[False,True])
 def test_forced_close_blocks_late_ui_callbacks(classes,already_queued):
     f = frame(classes)
+    f.desktop_integration = SimpleNamespace(close=Mock())
     future = Future()
     f.executor.submit.return_value = future
     done = Mock()
@@ -290,6 +296,7 @@ def test_forced_close_blocks_late_ui_callbacks(classes,already_queued):
         future.set_result('finished')
     f.on_close(close_event(False))
     assert f._closing and f.cancel_event.is_set()
+    f.desktop_integration.close.assert_called_once_with()
     f.report.reset_mock()
     if not already_queued:
         future.set_result('finished')

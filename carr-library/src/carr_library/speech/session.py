@@ -2,12 +2,15 @@
 from dataclasses import dataclass
 from hashlib import sha256
 import math
+import os
 from pathlib import Path
 
-from ..durable_state import atomic_json, local_path, read_json, state_lock
+from ..durable_state import atomic_json, encode, local_path, read_json_snapshot, state_lock
 from .reading import ReadingDocument
 from .runtime import SpeechSettings
 from ._io import text_value
+
+_UNCHECKED = object()
 
 
 @dataclass(frozen=True)
@@ -41,6 +44,13 @@ class ReaderDraftStore:
         self.path = self.root / (self.key + '.reader.json')
 
     def save(self, resume):
+        return self._save(resume)[0]
+
+    def save_with_token(self, resume, *, expected_token):
+        """Save a reviewed tab only if its prior exact recovery bytes remain."""
+        return self._save(resume, expected_token=expected_token)[1]
+
+    def _save(self, resume, *, expected_token=_UNCHECKED):
         if not isinstance(resume, ReaderResume):
             raise ValueError('A validated reader recovery snapshot is required.')
         record = {'schema': 'carr.reader-session.v1', 'document': resume.document.to_dict(),
@@ -49,16 +59,24 @@ class ReaderDraftStore:
         with state_lock(self.root, self.key):
             if resume.document.format_notice and self.path.exists():
                 raise ValueError('Use Save As to preserve the original pre-release reading draft.')
+            if expected_token is not _UNCHECKED:
+                actual = (read_json_snapshot(self.path)[1]
+                          if os.path.lexists(self.path) else None)
+                if actual != expected_token:
+                    raise ValueError('Another window changed this reading draft. Save As to keep your copy.')
             atomic_json(self.path, record, replace=True)
-        return self.path
+        return self.path, sha256(encode(record)).hexdigest()
 
     def load(self):
+        return self.load_with_token()[0]
+
+    def load_with_token(self):
         if not self.path.exists():
-            return None
-        record = read_json(self.path)
+            return None, None
+        record, token = read_json_snapshot(self.path)
         if (not isinstance(record, dict) or set(record) != {'schema', 'document', 'voice_id',
                 'rate', 'volume', 'cursor', 'audio_seconds'} or record['schema'] != 'carr.reader-session.v1'):
             raise ValueError('Unsupported reading-session recovery state.')
         document = ReadingDocument.from_dict(record['document'])
-        return ReaderResume(document, record['voice_id'], record['rate'], record['volume'],
-                            record['cursor'], record['audio_seconds'])
+        return (ReaderResume(document, record['voice_id'], record['rate'], record['volume'],
+                             record['cursor'], record['audio_seconds']), token)

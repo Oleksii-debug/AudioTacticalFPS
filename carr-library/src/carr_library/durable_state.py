@@ -107,8 +107,16 @@ def _open_json_read(path):
 
 
 def read_json(path):
+    return read_json_snapshot(path)[0]
+
+
+def read_json_snapshot(path, *, max_bytes=None):
+    """Read one stable JSON snapshot and the digest of its exact encoded bytes."""
+    maximum = MAX_JSON_BYTES if max_bytes is None else max_bytes
+    if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
+        raise ValueError('Use a positive bounded JSON read budget.')
     path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
+    if regular(path).st_size > maximum:
         raise ValueError('State exceeds its configured JSON budget.')
     with _open_json_read(path) as stream:
         opened = os.fstat(stream.fileno())
@@ -116,19 +124,20 @@ def read_json(path):
                 or getattr(opened, 'st_file_attributes', 0) & 0x400
                 or opened.st_nlink not in (0, 1)):
             raise ValueError('State must use regular local files, without links.')
-        if opened.st_size > MAX_JSON_BYTES:
+        if opened.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
-        raw = stream.read(MAX_JSON_BYTES + 1)
+        raw = stream.read(maximum + 1)
         finished = os.fstat(stream.fileno())
-    if len(raw) > MAX_JSON_BYTES:
+    if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
     # A replacement may unlink this old snapshot while it is open. Its path,
     # link count and change time can change; its bytes and file identity cannot.
     fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
     if any(getattr(opened, name) != getattr(finished, name) for name in fields):
         raise ValueError('State changed while it was being read.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
-                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    return value, sha256(raw).hexdigest()
 
 
 def sync_directory(path):

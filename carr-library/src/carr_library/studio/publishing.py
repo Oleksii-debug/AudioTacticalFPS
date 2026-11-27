@@ -134,6 +134,57 @@ def _clock(value):
     return f'{0.0 if value == 0 else value:.6f}s'
 
 
+def validate_publication_receipt(value, identity=None):
+    """Validate historical receipt data without following its external paths."""
+    required = {'schema', 'id', 'status', 'studio_root', 'output', 'artifact', 'source', 'created', 'notice'}
+    if (type(value) is not dict or not required <= set(value) <= required | {'format'}
+            or value['schema'] != 'resonance-publication/1'
+            or type(value['id']) is not str or re.fullmatch('[0-9a-f]{32}', value['id']) is None
+            or identity is not None and value['id'] != identity
+            or value['status'] not in ('prepared', 'complete')
+            or value.get('format', 'epub') not in ('epub', 'daisy-2.02')):
+        raise ValueError('Invalid saved publication receipt.')
+    for key, maximum in (('studio_root', 32768), ('output', 32768), ('notice', 8192)):
+        _text(value[key], 'Publication ' + key, maximum=maximum)
+    if (type(value['created']) is not str or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', value['created'])):
+        raise ValueError('Invalid publication creation time.')
+    datetime.strptime(value['created'], '%Y-%m-%dT%H:%M:%SZ')
+    def digest(value):
+        if type(value) is not str or not _HASH.fullmatch(value):
+            raise ValueError('Invalid publication content digest.')
+    def artifact(value):
+        if (type(value) is not dict or set(value) != {'sha256', 'size'}
+                or type(value['size']) is not int or not 0 <= value['size'] <= 2**63 - 1):
+            raise ValueError('Invalid publication artifact receipt.')
+        digest(value['sha256'])
+    artifact(value['artifact'])
+    if value['artifact']['size'] == 0:
+        raise ValueError('A publication receipt cannot describe an empty archive.')
+    source = value['source']
+    if (type(source) is not dict or set(source) != {
+            'job_id', 'job_sha256', 'project_id', 'project_sha256', 'source_script_sha256', 'artifacts'}
+            or type(source['artifacts']) is not list or not 3 <= len(source['artifacts']) <= 100000):
+        raise ValueError('Invalid publication source receipt.')
+    _id(source['job_id'])
+    _id(source['project_id'])
+    for key in ('job_sha256', 'project_sha256', 'source_script_sha256'):
+        digest(source[key])
+    from ..state_backup import relative_name
+    names = set()
+    for row in source['artifacts']:
+        if type(row) is not dict or set(row) != {'name', 'size', 'sha256'}:
+            raise ValueError('Invalid retained publication source artifact.')
+        name = relative_name(row['name']).as_posix()
+        if name.casefold() in names:
+            raise ValueError('Duplicate publication source artifact.')
+        names.add(name.casefold())
+        artifact({'size': row['size'], 'sha256': row['sha256']})
+    if not {'master.wav', 'project.json', 'timeline.json'} <= names:
+        raise ValueError('Publication source receipts lack the original measured master graph.')
+    return value
+
+
 def _xml(element):
     # Literal carriage returns would be normalized by an XML reader. Character
     # references retain the exact source text, including CRLF scripts.
@@ -474,11 +525,7 @@ class PublicationService:
         local_path(self.receipts, exists=True)
         rows = []
         for path in sorted(self.receipts.glob('*.json')):
-            value = read_json(path)
-            if (value.get('schema') != 'resonance-publication/1' or value.get('id') != path.stem
-                    or value.get('status') not in ('prepared', 'complete')
-                    or value.get('format', 'epub') not in ('epub', 'daisy-2.02')):
-                raise ValueError('Invalid saved publication receipt.')
+            value = validate_publication_receipt(read_json(path), path.stem)
             rows.append(value)
         return tuple(rows)
 
@@ -711,11 +758,7 @@ class PublicationService:
         if not isinstance(publication_id, str) or not re.fullmatch('[0-9a-f]{32}', publication_id):
             raise ValueError('Choose a saved publication receipt ID.')
         path = self.receipts / (publication_id + '.json')
-        record = read_json(path)
-        if (record.get('schema') != 'resonance-publication/1' or record.get('id') != publication_id
-                or record.get('status') not in ('prepared','complete')
-                or record.get('format', 'epub') not in ('epub', 'daisy-2.02')):
-            raise ValueError('Invalid publication receipt.')
+        record = validate_publication_receipt(read_json(path), publication_id)
         inspect = inspect_epub
         if record.get('format', 'epub') == 'daisy-2.02':
             from .daisy import inspect_daisy

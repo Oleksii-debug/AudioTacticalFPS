@@ -26,7 +26,8 @@ MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 ENGINE_SETTINGS_BYTES = 32 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json')
+           'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json',
+           'desktop-preferences.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -68,6 +69,7 @@ def _validate_collections(db, stage, entries, cancelled):
     backup_producers.validate_collection(db, stage, entries, cancelled=cancelled)
     backup_studio.validate_collection(db, stage, entries, cancelled=cancelled)
     backup_transcription.validate_collection(db, stage, entries, cancelled=cancelled)
+    _model('speech.tabs').validate_collection(stage, entries)
 
 
 def _model(module):
@@ -97,12 +99,16 @@ def sidecar_limit(name):
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if name == 'progress-preferences.json':
         return _model('progress_preferences').MAX_BYTES
+    if name == 'desktop-preferences.json':
+        return _model('desktop_preferences').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
     if name == 'state/speech/reading-presentation.json':
         return _model('speech.presentation').MAX_PROFILE_BYTES
     if name == 'state/speech/pronunciations.json':
         return _model('speech.reading').MAX_DICTIONARY_BYTES
+    if name == 'state/speech/reading-tabs.json':
+        return _model('speech.tabs').MAX_BYTES
     if maximum := backup_studio.limit(name):
         return maximum
     if maximum := backup_transcription.limit(name):
@@ -324,6 +330,8 @@ def validate_sidecar(db, name, raw):
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name == 'progress-preferences.json':
             _model('progress_preferences').validate_progress_preferences(raw)
+        elif name == 'desktop-preferences.json':
+            _model('desktop_preferences').validate_desktop_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
         elif name == 'state/speech/reading-presentation.json':
@@ -332,6 +340,8 @@ def validate_sidecar(db, name, raw):
             # Retain rules as passive data. In particular, backup/restore must
             # never run their regex substitutions or discover any voice engine.
             _model('speech.reading').validate_dictionary(_json(raw))
+        elif name == 'state/speech/reading-tabs.json':
+            _model('speech.tabs').ReadingTabs.from_dict(_json(raw))
         elif backup_studio.limit(name) is not None:
             backup_studio.validate(db, name, _json(raw))
         elif backup_transcription.limit(name) is not None:
@@ -516,11 +526,15 @@ def _ignored(name):
         return True
     if re.fullmatch(r'state/studio/book-plans/[0-9a-f]{64}/\.book-[0-9a-f]{32}\.lock', name):
         return True
+    if re.fullmatch(r'state/studio/book-batches/[0-9a-f]{64}/\.batch-[0-9a-f]{32}\.lock', name):
+        return True
+    if re.fullmatch(r'state/studio/publications/\.[0-9a-f]{32}\.lock', name):
+        return True
     if name.startswith('state/studio/'):
         return path.name in ('.state.lock', '.render.lock') or path.name.startswith('.pending-')
     if path.parent.as_posix() == 'state/speech':
         return bool(re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name)
-                    or path.name in ('.reading-presentation.lock', '.pronunciations.lock')
+                    or path.name in ('.reading-presentation.lock', '.pronunciations.lock', '.reading-tabs.lock')
                     or path.name.startswith('.pending-'))
     if path.parent.as_posix() == 'state/audio':
         return path.name == '.state.lock' or path.name.startswith('.pending-')

@@ -219,6 +219,25 @@ def test_paused_source_job_restores_to_new_root_and_reuses_accepted_chunks(sourc
     assert app.assets.resolve(e.imported['asset']).read_bytes() == e.original.encode('utf-8')
 
 
+@pytest.mark.parametrize(('field', 'replacement'), [
+    ('model', 'nmt'), ('model', 'general/translation-llm'),
+    ('profile', 'different_account'), ('qualification', 'independently verified'),
+])
+def test_backup_rejects_changed_advanced_language_inventory_identity(
+        source_library, tmp_path, transport, field, replacement):
+    e = source_library
+    path = e.service._languages_path(e.p)
+    value = json.loads(path.read_bytes())
+    assert value['model'] == 'general/nmt'
+    value[field] = replacement
+    path.write_text(json.dumps(value), encoding='utf-8')
+    before = len(transport['calls'])
+    destination = tmp_path / 'rejected-inventory-backup'
+    with pytest.raises(ValueError, match='translation language inventory identity'):
+        e.app.backup(destination)
+    assert not destination.exists() and len(transport['calls']) == before
+
+
 def test_cli_library_review_binds_exact_source_revision_before_submit(source_library, monkeypatch, capsys):
     e = source_library
     monkeypatch.setattr(translation_cli, 'Gateway',

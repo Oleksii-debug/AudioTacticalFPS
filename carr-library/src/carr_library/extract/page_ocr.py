@@ -88,11 +88,10 @@ class Config:
             raise ValueError('unsupported OCR model profile')
         if self.model_policy == POLICY and self.model_profile == 'best':
             raise ValueError('the pinned Fast policy cannot use the Best model profile')
-        if self.model_policy == POLICY:
-            if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
-                raise ValueError('unsupported pinned OCR language')
         if len(self.languages) > 2048 or len(set(selected)) != len(selected):
             raise ValueError('duplicate or oversized language selection')
+        if self.model_policy == POLICY and any(lang not in MODELS for lang in selected):
+            raise ValueError('unsupported pinned OCR language')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 

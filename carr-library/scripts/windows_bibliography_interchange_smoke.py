@@ -420,7 +420,7 @@ def main():
                 yield from answer_yes(handle, attempts)
                 check('real Yes cannot replace a destination changed since the question was opened',
                       changed.read_bytes() == competing
-                      and academic.status.GetValue().startswith('Bibliography not exported:')
+                      and academic.status.GetValue().startswith('Bibliography export:')
                       and 'destination changed' in academic.status.GetValue() and focused(academic.status))
                 check('native export keeps references, original sources and exact saved evidence unchanged',
                       controller.get(reference.id) == reference

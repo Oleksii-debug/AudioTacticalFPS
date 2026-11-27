@@ -261,7 +261,7 @@ def test_passive_legacy_validation_keeps_old_f24_and_unknown_actions_without_io(
     b'"originals":{"old/a":"Ctrl+I","old/b":"Ctrl+N"}}',
     b'{"schema":1,"schema":1,"overrides":{},"originals":{}}',
     b' ' * (128 * 1024 + 1),
-])
+], ids=['boolean-version', 'missing-original', 'reserved-key', 'duplicate-key', 'duplicate-field', 'oversized'])
 def test_passive_legacy_validation_rejects_invalid_shape_or_unsafe_explicit_keys(raw):
     from carr_library.keyboard_preferences import validate_legacy_keymap
     with pytest.raises(ValueError):

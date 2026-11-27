@@ -25,7 +25,9 @@ def main():
     from carr_library.ui.engine_settings import show_engine_settings
     from carr_library.ui.translation_dialog import show_translation
     from carr_library.ui.book_audio_dialog import create_book_audio_dialog
+    from carr_library.ui.book_batch_dialog import create_book_batch_dialog
     from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
+    from carr_library.studio.book_batch import BookBatchService, select_books
     from carr_library.studio.project import Role
     from carr_library.audio_runtime import bundled_audio_tools, verify_audio_runtime
     from carr_library.runtime_settings import load_settings, save_settings
@@ -457,7 +459,154 @@ def main():
                     dialog.Destroy()
             inspect_dialog(book_dialog, ('Selected library source', 'Split mode',
                 'Installed local voice', 'Part name template', 'Book split preview and saved job status',
+                'Saved voice profile', 'Voice rate', 'Voice volume', 'Multiple books',
+                'Selected bookmark boundaries', 'Choose reading bookmarks',
                 'Prepare saved items', 'Run or resume saved items'), wx.ID_CANCEL)
+
+            def exercise_book_batch():
+                """Actual shared desktop worker and native batch review/Run controls."""
+                from hashlib import sha256
+                second_text = 'A separate second book keeps its own reviewed voice and output format.'
+                second_source = library.add_text(workspace, 'Native second batch book', second_text)
+                second_voice = sapi[1] if len(sapi) > 1 else voice
+                second = capture_plan(library, workspace, second_source['edition'], options=SplitOptions('document'),
+                    role=Role('narrator', 'Narrator', second_voice.id, second_voice.language, volume=55), format='flac')
+                second_output = root / 'explicit native second book output'
+                second_output.mkdir()
+                group_service = BookBatchService(books)
+                group = select_books((plan, second), title='Native ordered two-book batch')
+                parents = (book_output, second_output)
+                previewed = group_service.review(group, parents, plans=(plan, second))
+                prepared = group_service.prepare(group, parents, plans=(plan, second), approval=previewed.fingerprint)
+                assert prepared.prepared and not list(second_output.iterdir())
+                assert service.get(second.job_id(1))['status'] == 'pending'
+                dialog, close = create_book_batch_dialog(frame, service=books)
+                original_choice, original_message = wx.SingleChoiceDialog, wx.MessageBox
+                approvals, before, passed = [], {}, []
+                deadline = monotonic() + 90
+
+                class ExactBatch(original_choice):
+                    def __init__(self, parent, message, caption, choices):
+                        assert parent is dialog and caption == 'Saved book batches'
+                        super().__init__(parent, message, caption, choices)
+                        selected = [index for index, label in enumerate(choices) if group.id in label]
+                        assert len(selected) == 1
+                        self.SetSelection(selected[0])
+                    def ShowModal(self):
+                        return wx.ID_OK
+
+                def approve(message, caption, style, parent):
+                    assert parent is dialog and caption == 'Run reviewed book batch'
+                    assert '2 reviewed books' in message and style & wx.NO_DEFAULT
+                    approvals.append(message)
+                    return wx.YES
+
+                def children(parent):
+                    for child in parent.GetChildren():
+                        yield child
+                        yield from children(child)
+
+                def named(name, kind):
+                    found = [child for child in children(dialog)
+                             if isinstance(child, kind) and child.GetName() == name]
+                    assert len(found) == 1, (name, len(found))
+                    return found[0]
+
+                def click(name):
+                    control = named(name, wx.Button)
+                    assert control.IsShown() and control.IsEnabled() and control.AcceptsFocusFromKeyboard()
+                    event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
+                    event.SetEventObject(control)
+                    assert control.GetEventHandler().ProcessEvent(event)
+
+                def later(callback):
+                    def guarded():
+                        try:
+                            assert not gui_errors, '\n'.join(gui_errors)
+                            if monotonic() >= deadline:
+                                raise TimeoutError('Native multi-book review/Run did not finish.')
+                            callback()
+                        except BaseException:
+                            gui_errors.append(traceback.format_exc())
+                            dialog.Close()
+                    wx.CallLater(40, guarded)
+
+                def opened():
+                    if frame.working:
+                        later(opened)
+                        return
+                    assert not approvals and not list(second_output.iterdir())
+                    assert named('Ordered books; review each book before Preview', wx.Choice).AcceptsFocusFromKeyboard()
+                    click('Saved batches')
+                    later(loaded)
+
+                def loaded():
+                    if frame.working:
+                        later(loaded)
+                        return
+                    choice = named('Ordered books; review each book before Preview', wx.Choice)
+                    assert choice.GetCount() == 2
+                    assert not named('Run or resume batch', wx.Button).IsEnabled()
+                    assert not list(second_output.iterdir())
+                    click('Preview entire batch')
+                    later(reviewed)
+
+                def reviewed():
+                    if frame.working:
+                        later(reviewed)
+                        return
+                    status = named('Multiple book review and existing Studio checkpoints', wx.TextCtrl)
+                    assert 'Batch review SHA-256:' in status.GetValue()
+                    assert voice.id in status.GetValue() and second_voice.id in status.GetValue()
+                    assert '; volume 55' in status.GetValue() and str(second_output) in status.GetValue()
+                    assert wx.Window.FindFocus() is status and not list(second_output.iterdir())
+                    click('Run or resume batch')
+                    assert approvals and frame.working
+                    later(rendered)
+
+                def rendered():
+                    if frame.working:
+                        later(rendered)
+                        return
+                    status = named('Multiple book review and existing Studio checkpoints', wx.TextCtrl)
+                    assert status.GetValue().startswith('Batch invocation: complete'), status.GetValue()
+                    assert wx.Window.FindFocus() is status
+                    states = [service.get(item.job_id(index)) for item in (plan, second)
+                              for index in range(1, len(item.parts) + 1)]
+                    assert all(state['status'] == 'complete' for state in states)
+                    assert states[-1]['format'] == 'flac' and not states[-1]['result']['loudness']['silent']
+                    actual = {artifact['path']: (sha256(Path(artifact['path']).read_bytes()).hexdigest(),
+                                                Path(artifact['path']).stat().st_mtime_ns)
+                              for state in states for artifact in state['artifacts']}
+                    if not before:
+                        before.update(actual)
+                        click('Run or resume batch')
+                        later(rendered)
+                        return
+                    assert before == actual and len(approvals) == 2
+                    assert library.assets.resolve(second_source['asset']).read_bytes() == second_text.encode()
+                    assert library.assets.resolve(book_source['asset']).read_bytes() == book_text.encode()
+                    passed.append(True)
+                    click('Close')
+
+                try:
+                    wx.SingleChoiceDialog, wx.MessageBox = ExactBatch, approve
+                    later(opened)
+                    dialog.ShowModal()
+                    assert passed == [True] and not gui_errors, '\n'.join(gui_errors)
+                    assert not books._closed.is_set() and not service._closed.is_set()
+                    result['book_batch'] = {'status': 'PASS', 'books': 2, 'parts': 3,
+                        'shared_worker': True, 'explicit_run_confirmations': len(approvals),
+                        'verified_resume_preserves_hashes_and_mtimes': True,
+                        'per_book_formats': ['wav', 'flac'], 'source_originals_preserved': True,
+                        'manual_keyboard': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}
+                    result['checks'].append('actual native two-book review, explicit Run, separate settings and verified resume')
+                finally:
+                    wx.SingleChoiceDialog, wx.MessageBox = original_choice, original_message
+                    close()
+                    dialog.Destroy()
+
+            exercise_book_batch()
             result['checks'].append('actual installed SAPI source-bound book split, prepared names, verified resume and native controls')
             result['book_audio'] = {'parts': len(completed), 'voice_id': voice.id,
                                     'original_preserved': True, 'quotation_approval': False}

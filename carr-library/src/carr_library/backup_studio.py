@@ -16,6 +16,8 @@ INPUT = re.compile(r'state/studio/inputs/(' + HEX + r')\.audio\Z')
 RECORDING = re.compile(r'state/studio/recordings/(' + ID + r')\.(json|wav)\Z')
 PRESET = re.compile(r'state/studio/effect-presets/(' + ID + r')\.json\Z')
 BOOK = re.compile(r'state/studio/book-plans/(' + HEX + r')/(' + ID + r')\.json\Z')
+BATCH = re.compile(r'state/studio/book-batches/(' + HEX + r')/(' + ID + r')\.json\Z')
+PUBLICATION = re.compile(r'state/studio/publications/(' + ID + r')\.json\Z')
 BOOK_SOURCE = re.compile(r'state/studio/jobs/([A-Za-z0-9_-]{1,80})/book-source\.json\Z')
 INPUT_RECEIPT = 'state/studio/backup-inputs.json'
 INPUT_REVIEW = 'state/studio/legacy-input-review.json'
@@ -30,7 +32,10 @@ def limit(name):
         return MAX_RECORDING_BYTES if match[2] == 'wav' else 64 * 1024
     if PRESET.fullmatch(name):
         return 64 * 1024
-    if BOOK.fullmatch(name) or BOOK_SOURCE.fullmatch(name) or name in (INPUT_RECEIPT, INPUT_REVIEW):
+    if BATCH.fullmatch(name):
+        return 128 * 1024
+    if (BOOK.fullmatch(name) or BOOK_SOURCE.fullmatch(name) or PUBLICATION.fullmatch(name)
+            or name in (INPUT_RECEIPT, INPUT_REVIEW)):
         return 32 * 1024 * 1024
     return None
 
@@ -95,9 +100,21 @@ def validate(db, name, value):
                 or sha256(anchor['workspace'].encode('utf-8')).hexdigest() != match[1]):
             raise ValueError('Book plan differs from its saved scope or fingerprint.')
         validate_source_snapshot(db, anchor)
+    elif match := BATCH.fullmatch(name):
+        from .studio.book_batch import BookBatch
+        fields(value, {'batch', 'fingerprint'})
+        batch = BookBatch.from_dict(value['batch'])
+        if (batch.id != match[2] or batch.fingerprint != value['fingerprint']
+                or sha256(batch.workspace.encode('utf-8')).hexdigest() != match[1]
+                or not db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?',
+                                  (batch.workspace,)).fetchone()):
+            raise ValueError('Book batch differs from its saved library or fingerprint.')
+    elif match := PUBLICATION.fullmatch(name):
+        from .studio.publishing import validate_publication_receipt
+        validate_publication_receipt(value, match[1])
     elif BOOK_SOURCE.fullmatch(name):
         fields(value, {'schema', 'plan', 'plan_sha256', 'source_anchor', 'source_metadata',
-                       'source_topic', 'warnings', 'source_sha256', 'part', 'notice'})
+                       'source_topic', 'warnings', 'source_sha256', 'part', 'notice'}, {'landmarks'})
         if value['schema'] != 'carr-book-audio-source/1' or not re.fullmatch(ID, value['plan']):
             raise ValueError('Invalid book-source receipt identity.')
         for key in ('plan_sha256', 'source_sha256'):
@@ -109,6 +126,15 @@ def validate(db, name, value):
         digest(value['part']['text_sha256'])
         if value['notice'] != 'A literal reading derivative; this anchor never authorizes a quotation.':
             raise ValueError('Book-source receipt authority changed.')
+        if 'landmarks' in value:
+            fields(value['landmarks'], {'kind', 'review_sha256', 'boundaries'})
+            if (value['landmarks']['kind'] not in ('headings', 'bookmarks')
+                    or type(value['landmarks']['boundaries']) is not list
+                    or len(value['landmarks']['boundaries']) > 2000):
+                raise ValueError('Invalid captured book landmark receipt.')
+            digest(value['landmarks']['review_sha256'])
+            # The collection check below requires exact equality with the
+            # typed retained BookPlan, including every origin and source range.
         validate_source_snapshot(db, value['source_anchor'])
     elif name == INPUT_REVIEW:
         from .studio.backup_inputs import validate_input_review
@@ -129,13 +155,13 @@ def validate_collection(db, stage, entries, *, cancelled):
     from .durable_state import read_json
     from .studio.backup_inputs import validate_backup_inputs
     from .studio.book_audio import BookPlan
-    from .audio.recording import RecordingOptions, RecordingService
+    from .audio.recording import RecordingOptions, RecordingService, verify_recording_segments
 
     by_name = {entry['filename']: entry for entry in entries}
     state_entries = [dict(entry, filename=entry['filename'][6:])
                      for entry in entries if entry['filename'].startswith('state/')]
     validate_backup_inputs(Path(stage) / 'state', state_entries, cancelled=cancelled)
-    plans, scopes = {}, {}
+    plans, scopes, batches, batch_scopes = {}, {}, [], {}
     presets = 0
     for name, entry in by_name.items():
         if cancelled():
@@ -157,6 +183,7 @@ def validate_collection(db, stage, entries, *, cancelled):
             if RecordingService._audio(Path(stage) / audio_name,
                     RecordingOptions(**value['limits']), cancelled) != value['audio']:
                 raise ValueError('Recording PCM differs from its saved receipt.')
+            verify_recording_segments(Path(stage) / audio_name, value, cancelled=cancelled)
         elif PRESET.fullmatch(name):
             presets += 1
             if presets > 256:
@@ -169,6 +196,15 @@ def validate_collection(db, stage, entries, *, cancelled):
             scopes[match[1]] = scopes.get(match[1], 0) + 1
             if scopes[match[1]] > 4096:
                 raise ValueError('Book plan snapshot exceeds its scope limit.')
+        elif match := BATCH.fullmatch(name):
+            from .studio.book_batch import BookBatch
+            batches.append(BookBatch.from_dict(read_json(Path(stage) / name)['batch']))
+            batch_scopes[match[1]] = batch_scopes.get(match[1], 0) + 1
+            if batch_scopes[match[1]] > 4096:
+                raise ValueError('Book batch snapshot exceeds its scope limit.')
+    from .studio.book_batch import validate_plans
+    for batch in batches:
+        validate_plans(batch, tuple(plans.get(item.plan_id) for item in batch.items))
     for plan in plans.values():
         for index in range(1, len(plan.parts) + 1):
             if cancelled():

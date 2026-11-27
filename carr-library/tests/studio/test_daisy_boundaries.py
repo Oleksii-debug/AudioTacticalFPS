@@ -190,7 +190,7 @@ def test_daisy_queued_ui_preserves_destination_approval(desktop, tmp_path):
     output = tmp_path / 'queued.zip'; dialog.output.ChangeValue(str(output))
     dialog.publisher.ChangeValue('Explicit queued publisher')
     pending = []
-    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    frame.run_job = _ui_fixtures.queue_job(frame, pending)
     dialog.on_export()
     assert dialog.busy
     output.write_bytes(b'File appeared after explicit export approval')
