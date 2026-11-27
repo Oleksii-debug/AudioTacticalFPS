@@ -15,7 +15,10 @@ from test_translation_v3 import transport, translation_handlers
 
 
 @pytest.fixture
-def local_handlers(translation_handlers, ready):
+def local_handlers(translation_handlers, request):
+    # The existing widget fixture first installs its Google transport. Resolve
+    # the local protocol fixture afterwards, so setup order is explicit.
+    ready = request.getfixturevalue('ready')
     e = translation_handlers
     store = ProfileStore(e.frame.library.root / 'state/providers')
     store.remove(e.p.id)
