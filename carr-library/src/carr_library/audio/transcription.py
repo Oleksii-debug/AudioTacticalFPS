@@ -173,12 +173,17 @@ def _text(value, *, maximum=100000):
     return value.strip()
 
 
-def _validated_result(value):
+def _validated_result(value, *, requested_language='auto'):
     if not isinstance(value, dict) or set(value) != {'language', 'duration', 'segments', 'text'}:
         raise ValueError('Invalid transcription result fields.')
     language = value['language']
     if not isinstance(language, str) or not re.fullmatch('[a-z]{2,3}', language):
         raise ValueError('The transcription engine returned an invalid language code.')
+    # Whisper's translate task still reports the SOURCE language here; English
+    # is the output target. A cache digest does not establish this relationship.
+    if requested_language != 'auto' and language != requested_language:
+        raise ValueError('The transcript does not match the requested source language '
+                         f'({requested_language}); the engine reported {language}.')
     _seconds(value['duration'])
     segments = value['segments']
     if not isinstance(segments, list) or len(segments) > MAX_SEGMENTS:
@@ -275,6 +280,20 @@ class TranscriptionSession:
             self._model = self._factory(self.model_directory, device=settings.device,
                                         compute_type=settings.compute_type)
             self._signature = signature
+        if settings.language != 'auto':
+            # faster-whisper otherwise silently uses English on an English-only
+            # model after logging a warning. Capability comes from the loaded
+            # model, never its directory name or an assumed model family.
+            supported = getattr(self._model, 'supported_languages', None)
+            if (not isinstance(supported, (list, tuple)) or not supported
+                    or any(not isinstance(code, str) or not re.fullmatch('[a-z]{2,3}', code)
+                           for code in supported)):
+                raise EngineUnavailable('The selected Whisper runtime does not expose valid '
+                                        'supported source languages; use a compatible reviewed runtime.')
+            if settings.language not in supported:
+                raise EngineUnavailable('The selected Whisper model does not support the '
+                                        f'requested source language ({settings.language}). '
+                                        'Choose a compatible local model or a supported source language.')
         on_status('Transcribing locally. Cancellation takes effect after the current inference segment.')
         _cancel(cancelled)
         segments, info = self._model.transcribe(str(source),
@@ -310,7 +329,8 @@ class TranscriptionSession:
             if close is not None:
                 close()
         return _validated_result({'language': info.language, 'duration': _seconds(info.duration),
-            'segments': collected, 'text': '\n'.join(s['text'] for s in collected if s['text'])})
+            'segments': collected, 'text': '\n'.join(s['text'] for s in collected if s['text'])},
+            requested_language=settings.language)
 
     def transcribe(self, source, output_directory, *, settings=None, formats=FORMATS,
                    cancelled=lambda: False, on_status=lambda value: None):
@@ -370,7 +390,7 @@ class TranscriptionSession:
                             or saved['schema_version'] != 1 or saved['identity'] != key or saved['provenance'] != provenance
                             or digest(saved['result']) != saved['result_sha256']):
                         raise ValueError('The saved transcript does not match the selected audio, model and settings.')
-                    result = _validated_result(saved['result'])
+                    result = _validated_result(saved['result'], requested_language=settings.language)
                 cached = result is not None
                 if result is None:
                     result = self._infer(snapshot, settings, runtime, cancelled, on_status)

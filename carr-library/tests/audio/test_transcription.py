@@ -33,6 +33,8 @@ def runtime(version='test-runtime-1'):
 
 
 class FakeModel:
+    supported_languages = ['en', 'uk', 'sk']
+
     def __init__(self):
         self.calls = []
         self.fail = False
@@ -209,6 +211,95 @@ def test_engine_error_does_not_force_another_language_or_claim_success(setup):
     assert setup.model.calls[0][1]['language'] is None
     assert not list(setup.root.glob('transcript-*/complete-*.json'))
     assert not list((setup.root / '.transcription-cache').glob('*.json'))
+
+
+@pytest.mark.parametrize('task', ['transcribe', 'translate'])
+def test_english_only_model_rejects_explicit_uk_before_inference(setup, task):
+    # faster-whisper otherwise logs a warning and substitutes English itself.
+    setup.model.supported_languages = ['en']
+    with pytest.raises(module.EngineUnavailable, match='requested source language'):
+        setup.session.transcribe(setup.source, setup.root,
+            settings=TranscriptionSettings(language='uk', task=task))
+    assert not setup.model.calls
+    assert not list((setup.root / '.transcription-cache').glob('*.json'))
+    assert not list(setup.root.glob('transcript-*'))
+    assert setup.source.read_bytes() == b'synthetic media bytes'
+
+
+@pytest.mark.parametrize('supported', [None, 'en,uk', [], ['en', None]])
+def test_explicit_language_requires_actual_model_capabilities(setup, supported):
+    setup.model.supported_languages = supported
+    with pytest.raises(module.EngineUnavailable, match='supported source languages'):
+        setup.session.transcribe(setup.source, setup.root,
+            settings=TranscriptionSettings(language='uk'))
+    assert not setup.model.calls
+    assert not list(setup.root.glob('transcript-*'))
+
+
+@pytest.mark.parametrize('task', ['transcribe', 'translate'])
+def test_reported_source_language_must_match_explicit_selection(setup, task):
+    # A backend can advertise support but still violate the requested language.
+    original = setup.model.transcribe
+
+    def wrong_language(source, **options):
+        segments, info = original(source, **options)
+        info.language = 'en'
+        return segments, info
+
+    setup.model.transcribe = wrong_language
+    with pytest.raises(ValueError, match='requested source language'):
+        setup.session.transcribe(setup.source, setup.root,
+            settings=TranscriptionSettings(language='uk', task=task))
+    assert len(setup.model.calls) == 1 and setup.model.closed == 1
+    assert not list((setup.root / '.transcription-cache').glob('*.json'))
+    assert not list(setup.root.glob('transcript-*'))
+
+
+@pytest.mark.parametrize('task', ['transcribe', 'translate'])
+def test_previously_mislabelled_cache_cannot_publish_additional_formats(setup, task):
+    settings = TranscriptionSettings(language='uk', task=task)
+    first = setup.session.transcribe(setup.source, setup.root, settings=settings, formats=('txt',))
+    original_bytes = Path(first['files']['txt']).read_bytes()
+    cache = next((setup.root / '.transcription-cache').glob('*.json'))
+    saved = json.loads(cache.read_text('utf-8'))
+    # Earlier versions accepted this internally consistent but wrong-language
+    # cache. Its digest alone cannot bind it to the explicit source selection.
+    saved['result']['language'] = 'en'
+    saved['result_sha256'] = module.digest(saved['result'])
+    cache.write_text(json.dumps(saved), encoding='utf-8')
+    with pytest.raises(ValueError, match='requested source language'):
+        setup.session.transcribe(setup.source, setup.root, settings=settings, formats=('json',))
+    assert len(setup.model.calls) == 1
+    assert Path(first['files']['txt']).read_bytes() == original_bytes
+    assert not list(setup.root.glob('transcript-*/transcript.json'))
+    assert len(list(setup.root.glob('transcript-*/complete-*.json'))) == 1
+
+
+@pytest.mark.parametrize('language', ['en', 'auto'])
+def test_english_only_model_allows_english_and_auto_without_substitution(setup, language):
+    setup.model.supported_languages = ['en']
+    original = setup.model.transcribe
+
+    def english(source, **options):
+        segments, info = original(source, **options)
+        info.language = 'en'
+        return segments, info
+
+    setup.model.transcribe = english
+    result = setup.session.transcribe(setup.source, setup.root,
+        settings=TranscriptionSettings(language=language), formats=('json',))
+    details = json.loads(Path(result['files']['json']).read_text('utf-8'))
+    assert result['status'] == 'complete' and details['language'] == 'en'
+    assert details['settings']['language'] == language
+    assert setup.model.calls[0][1]['language'] == (None if language == 'auto' else language)
+
+
+def test_english_translation_keeps_the_explicit_source_language(setup):
+    result = setup.session.transcribe(setup.source, setup.root,
+        settings=TranscriptionSettings(language='uk', task='translate'), formats=('json',))
+    details = json.loads(Path(result['files']['json']).read_text('utf-8'))
+    assert details['language'] == 'uk' and details['translation_target'] == 'en'
+    assert details['settings']['language'] == 'uk'
 
 
 def test_cancelled_segment_closes_generator_and_preserves_no_false_result(setup):

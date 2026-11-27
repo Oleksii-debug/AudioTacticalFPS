@@ -26,6 +26,7 @@ The equivalent module is `python -m carr_library.transcription_cli`. Repeat inpu
 ## Accurate boundaries
 
 - Whisper's `translate` operation targets **English only**. The separate Google translation feature supports reviewed text translation requests.
+- An explicit source language must be supported by the loaded local model. An English-only model cannot silently replace a Ukrainian request with English. The returned source language and reused cache must match the explicit selection; automatic detection remains available. In translation mode the source-language check remains separate from the English output target.
 - Speaker diarization is not implemented by this adapter.
 - Cancellation is checked during copying, hashing and between yielded segments. A blocked native inference call cannot be interrupted by this in-process increment. Escape requests cancellation and keeps the dialog alive until completion.
 - Post-publication cleanup failure preserves successful transcript status and reports the retained temporary location. Such a location may contain a private source snapshot and needs cleanup.

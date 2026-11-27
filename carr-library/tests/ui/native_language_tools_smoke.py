@@ -105,6 +105,8 @@ def run_native(source=None):
               all(not Path(path).is_relative_to(checkout) for path in origins.values()))
 
     class SyntheticModel:
+        supported_languages = ['en', 'uk']
+
         def __init__(self):
             self.calls, self.closed = 0, 0
             self.block = False
