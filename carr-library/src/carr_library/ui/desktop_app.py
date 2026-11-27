@@ -40,6 +40,7 @@ from .query_manager import install_query_manager_actions
 from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
 from .acquisition_dialog import show_acquisition_dialog
+from .assistant_dialog import install_assistant_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -504,8 +505,8 @@ class DesktopFrame(WorkspaceFrame):
             self.status.SetValue('Welcome. Choose Library, New library to begin. All books stay on this computer.')
         if getattr(library,'semantic_notice',None):
             self.report(library.semantic_notice)
-        if keyboard.notice:
-            self.report(keyboard.notice)
+        if keyboard.load_notice:
+            self.report(keyboard.load_notice)
 
     def _menus(self):
         self.menu_bar = wx.MenuBar()
@@ -559,6 +560,7 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
+        install_assistant_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -733,9 +735,11 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        if getattr(self, 'keyboard_commands', None) is not None:
+            self.keyboard_commands.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
-        keyboard = getattr(self, 'keyboard_actions', None)
-        keyboard_notice = keyboard.reload() if keyboard is not None else ''
+        keyboard = getattr(self, 'keyboard_commands', None)
+        keyboard_notice = keyboard.load_notice if keyboard is not None else ''
         self.refresh_scopes()
         if self.scopes:
             self.choice.SetSelection(0)
@@ -1148,6 +1152,9 @@ class DesktopFrame(WorkspaceFrame):
         add_selected_book_reference(self)
 
     def help(self, event):
+        if getattr(self, 'keyboard_commands', None) is not None:
+            show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
+            return
         show_text(self, 'Keyboard guide',
             'Use Alt+F for File, Alt+O for Options, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+U for Audio, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'

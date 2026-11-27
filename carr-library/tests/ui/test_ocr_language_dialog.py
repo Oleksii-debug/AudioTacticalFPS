@@ -160,3 +160,137 @@ def test_invalid_preset_file_is_preserved_but_does_not_disable_manual_model_sele
     assert path.read_bytes() == b'not valid presets'
     dialog.accept()
     assert dialog.result == dialog.initial
+
+
+@pytest.fixture
+def pack_dialog(dialog, tmp_path):
+    dialog.active_pack = None
+    dialog.pack_profile = Control(selection=0)
+    dialog.pack_codes = Control('eng ukr slk')
+    dialog.pack_budget = Control('256')
+    dialog.pack_source = Control(str(tmp_path / 'models'))
+    dialog.pack_prepared = Control(str(tmp_path / 'prepared'))
+    dialog.pack_install_source = Control(str(tmp_path / 'prepared'))
+    dialog.pack_installed = Control(str(tmp_path / 'installed'))
+    dialog.pack_digest = Control('a' * 64)
+    dialog.pack_filter, dialog.pack_models = Control(), Control()
+    dialog.pack_stop = Control()
+    dialog.pack_controls = [dialog.pack_source, dialog.pack_prepared, dialog.pack_digest,
+                            dialog.pack_installed, dialog.pack_codes, dialog.pack_budget]
+    return dialog
+
+
+def test_pack_preparation_uses_explicit_snapshot_without_activating_models(pack_dialog, monkeypatch):
+    view = pack_dialog
+    prepare = Mock(return_value=SimpleNamespace(path=view.pack_prepared.value, models=('eng', 'slk', 'ukr'),
+                                                profile='fast', manifest_sha256='b' * 64))
+    monkeypatch.setattr('carr_library.extract.ocr_model_catalog.prepare_offline_pack', prepare)
+    source = view.pack_source.value
+    view.prepare_pack()
+    assert view.busy and not view.ok.enabled and all(not control.enabled for control in view.pack_controls)
+    work = view.executor.submit.call_args.args[0]
+    view.pack_source.value = 'Changed after request snapshot'
+    result = work()
+    assert prepare.call_args.args == (source, view.pack_prepared.value, ['eng', 'ukr', 'slk'])
+    assert prepare.call_args.kwargs['max_bytes'] == 256 * 1024**2
+    view.future.set_result(result)
+    assert view.pack_digest.value == 'a' * 64
+    view.pending.pop(0)()
+    assert not view.busy and view.pack_digest.value == 'b' * 64
+    assert view.active_pack is None and 'Keep this manifest SHA256 separately' in view.status.value
+
+
+@pytest.mark.parametrize('value', ['0', '-1', '4097', 'all', '1.5'])
+def test_invalid_pack_budget_does_not_start_preparation(pack_dialog, value):
+    pack_dialog.pack_budget.value = value
+    pack_dialog.prepare_pack()
+    pack_dialog.executor.submit.assert_not_called()
+    assert '1 to 4096' in pack_dialog.status.value
+
+
+def test_installation_requires_separate_use_and_retains_manifest_identity(pack_dialog, monkeypatch):
+    view = pack_dialog
+    install = Mock(return_value=dict(path=view.pack_installed.value, manifest_sha256='a' * 64, models=3))
+    monkeypatch.setattr('carr_library.extract.language_manager.install_offline_pack', install)
+    view.install_pack()
+    result = view.executor.submit.call_args.args[0]()
+    assert install.call_args.kwargs['expected_manifest_sha256'] == 'a' * 64
+    view.future.set_result(result)
+    view.pending.pop(0)()
+    assert view.active_pack is None and 'Choose Use verified pack' in view.status.value
+
+
+def test_pack_activation_binds_only_verified_inventory_and_preserves_language_intent(pack_dialog, monkeypatch):
+    view = pack_dialog
+    catalogue = LanguageCatalog(('ukr', 'slk'), 'tesseract 5.5.0', 'verified_model_pack', 'a' * 64)
+    discover = Mock(return_value=catalogue)
+    monkeypatch.setattr('carr_library.ui.ocr_language_dialog.discover_languages', discover)
+    view.use_pack()
+    result = view.executor.submit.call_args.args[0]()
+    assert discover.call_args.kwargs['model_pack_path'] == view.pack_installed.value
+    view.future.set_result(result)
+    view.pending.pop(0)()
+    assert view.active_pack == (view.pack_installed.value, 'a' * 64)
+    assert view.selected_codes == ['eng']  # No silent fallback to another language.
+    view.accept()
+    assert 'not installed: eng' in view.status.value
+    view.selected_codes = ['ukr']
+    view.accept()
+    assert view.result.model_pack_sha256 == 'a' * 64
+    assert view.result.model_pack_path == view.pack_installed.value
+    assert view.result.languages == 'ukr'
+
+
+def test_late_cancelled_pack_verification_does_not_activate(pack_dialog):
+    view = pack_dialog
+    view.use_pack()
+    view.future.set_result(LanguageCatalog(('eng',), integrity='verified_model_pack'))
+    view.stop_pack()
+    view.pending.pop(0)()
+    assert view.active_pack is None and 'selection is unchanged' in view.status.value
+
+
+def test_pack_verification_failure_preserves_previous_selection(pack_dialog):
+    view = pack_dialog
+    previous = view.catalog
+    view.use_pack()
+    view.future.set_exception(ValueError('Checksum mismatch'))
+    view.pending.pop(0)()
+    assert view.catalog is previous and view.active_pack is None
+    assert view.ok.enabled and 'Checksum mismatch' in view.status.value
+
+
+def test_successful_pack_check_recovers_acceptance_after_initial_discovery_failure(pack_dialog):
+    view = pack_dialog
+    view.catalog = None
+    view.ok.Disable()
+    view.use_pack()
+    view.future.set_result(LanguageCatalog(('eng',), integrity='verified_model_pack'))
+    view.pending.pop(0)()
+    assert view.ok.enabled and view.current_config().model_pack_path == view.pack_installed.value
+
+
+def test_builtin_language_preset_keeps_selected_pack_binding(pack_dialog):
+    view = pack_dialog
+    view.active_pack = (view.pack_installed.value, 'a' * 64)
+    view.catalog = LanguageCatalog(('eng', 'ukr', 'slk'), integrity='verified_model_pack')
+    view._presets()
+    view.presets.selection = next(i for i, row in enumerate(view.preset_items) if row[0] == 'Ukrainian')
+    view.apply_preset()
+    view.executor.submit.assert_not_called()
+    assert view.current_config().model_pack_path == view.pack_installed.value
+    assert view.current_config().languages == 'ukr'
+
+
+def test_saved_pack_preset_revalidates_before_replacing_current_selection(pack_dialog):
+    view = pack_dialog
+    config = Config(languages='ukr', model_pack_path=view.pack_installed.value, model_pack_sha256='a' * 64)
+    store_preset(view.preset_root, 'Reviewed model pack', config)
+    view._presets()
+    view.presets.selection = next(i for i, row in enumerate(view.preset_items) if row[2] == 'Reviewed model pack')
+    view.apply_preset()
+    assert view.busy and view.active_pack is None
+    view.future.set_result(LanguageCatalog(('ukr',), integrity='verified_model_pack'))
+    view.pending.pop(0)()
+    assert view.selected_codes == ['ukr']
+    assert view.current_config().model_pack_sha256 == 'a' * 64

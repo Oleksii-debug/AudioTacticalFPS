@@ -84,7 +84,12 @@ def wheel(tmp_path, payload, *, record_mutation=None, extra=None):
     csv.writer(output, lineterminator='\n').writerows(rows)
     with ZipFile(path, 'w', ZIP_DEFLATED) as archive:
         for name, data in payload.items():
-            archive.writestr(name, data)
+            # Keep deliberately unsafe raw names on Windows too; ZipInfo's
+            # constructor otherwise changes backslashes before RECORD checks.
+            info = ZipInfo('fixture-placeholder')
+            info.filename = info.orig_filename = name
+            info.compress_type = ZIP_DEFLATED
+            archive.writestr(info, data)
         archive.writestr(record, output.getvalue().encode())
         if extra:
             archive.writestr(*extra)

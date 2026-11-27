@@ -8,6 +8,8 @@ from ..extract.pinned_tessdata import POLICY
 
 def config_summary(config):
     profile = 'pinned fast models' if config.model_policy == POLICY else 'installed model profile'
+    if config.model_pack_path:
+        profile = 'verified offline pack; manifest SHA256 ' + config.model_pack_sha256
     names = ', '.join(model_label(code) for code in split_languages(config.languages))
     return names + '; ' + profile + ('; orientation check on' if config.orientation else '')
 

@@ -302,6 +302,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             destination = staged / "audio-runtime"
             destination.mkdir()
             for name in ARCHIVE_MEMBERS:
+                (destination / name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(regular(audio_dir / name), destination / name)
             (destination / "ffmpeg-runtime.json").write_bytes(audio_manifest_bytes)
             verify_runtime(destination)

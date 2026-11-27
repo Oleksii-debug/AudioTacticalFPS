@@ -38,12 +38,16 @@ should be loaded for every page.
   The ingest pipeline fingerprints its executable and each selected model and
   checks those identities again around extraction and resumable checkpoints.
 
-The chooser does not download or install models. It does not claim an arbitrary
-system model is an official upstream model, identify a document's language,
-automatically choose languages, or guarantee accuracy for every listed pack.
-OSD checks orientation and script; it does not identify the language. The
-`tessdata_best` profile, verified model acquisition and automatic/per-region
-language selection remain separate V3 work. Existing OCR size, runtime and pixel
+The **Offline packs** tab prepares selected already downloaded official fast or
+best models, installs a reviewed pack into a new directory, and explicitly binds
+that verified pack to the import configuration. See [OCR_MODELS.md](OCR_MODELS.md)
+for the preparation/checksum/install/use workflow. The chooser never downloads
+models. It does not claim an arbitrary system model is an official upstream model,
+identify a document's language, automatically choose languages, or guarantee
+accuracy for every listed pack.
+OSD checks orientation and script; it does not identify the language.
+Automatic/per-region language selection remains separate V3 work. Existing OCR
+size, runtime and pixel
 budgets remain in force. Raw OCR still requires independent review before it can
 be used as approved source evidence.
 
@@ -56,7 +60,9 @@ error and keeps acceptance disabled until a successful rescan.
 
 **Save preset** stores a named ordered model selection, model profile and
 orientation preference in the current library's `ocr-language-presets.json`.
-It contains no source passages, machine paths, passwords or credentials. Writes
+It contains no source passages, passwords or credentials. Version 1 preferences
+remain readable. Version 2 additionally retains the selected pack's private
+absolute path and independently recorded manifest checksum when applicable. Writes
 use the shared library writer lock, a flushed temporary file and atomic replace.
 Replacing a named preset is explicit. The versioned file is bounded and validates
 duplicate keys, names and model selectors; linked or malformed files are never
@@ -80,6 +86,10 @@ also cover nested script inventory integrity.
 dialog, model discovery, filter/list focus, ordered mixed selection, preset
 reopening and cancellation. `--require-bundled` additionally requires the sealed
 English/Ukrainian/Slovak/OSD inventory and actual English OCR on a synthetic image.
+It then drives the native prepare/install/use sequence in the same dialog while
+checking the original portable runtime is unchanged. The installed-package gate
+also runs actual pack recognition for English, Ukrainian and Slovak and the
+durable import/checkpoint regression.
 These tests do not establish NVDA speech behavior or multilingual OCR quality.
 
 The CLI adapter uses the upstream documented interfaces:

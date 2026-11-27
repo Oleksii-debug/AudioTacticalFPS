@@ -34,7 +34,7 @@ def engine_with_voice():
 @pytest.mark.parametrize('timeout', [True, 0, -1, float('nan'), float('inf'), '1', 10 ** 1000],
                          ids=['bool', 'zero', 'negative', 'nan', 'infinity', 'string', 'overflow'])
 def test_invalid_worker_deadline_never_launches(timeout, monkeypatch):
-    monkeypatch.setattr(engines.subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('Invalid timeout launched a worker.'))
+    monkeypatch.setattr(engines, '_start_process', lambda *args, **kwargs: pytest.fail('Invalid timeout launched a worker.'))
     with pytest.raises(ValueError):
         engines._run([sys.executable, '-c', 'pass'], timeout=timeout)
 
@@ -42,7 +42,7 @@ def test_invalid_worker_deadline_never_launches(timeout, monkeypatch):
 def test_finished_worker_still_obeys_absolute_deadline(monkeypatch):
     # Deterministic completion between polls, after the deadline has elapsed.
     process = type('Exited', (), {'returncode': 0, 'poll': lambda self: 0})()
-    monkeypatch.setattr(engines.subprocess, 'Popen', lambda *args, **kwargs: process)
+    monkeypatch.setattr(engines, '_start_process', lambda *args, **kwargs: process)
     monkeypatch.setattr(engines, '_stop', lambda process: None)
     ticks = iter((0.0, 2.0, 2.0, 2.0))
     monkeypatch.setattr(engines.time, 'monotonic', lambda: next(ticks))
@@ -245,20 +245,23 @@ Path(sys.argv[1]).write_text(json.dumps([child.pid, os.getpgrp()]), encoding='ut
                 pass
 
 
-def test_windows_cleanup_does_not_open_a_console(tmp_path, monkeypatch):
-    monkeypatch.setattr(engines, 'os', SimpleNamespace(name='nt', environ={'SystemRoot': str(tmp_path)}))
-    monkeypatch.setattr(engines.subprocess, 'CREATE_NO_WINDOW', 0x08000000, raising=False)
+def test_windows_cleanup_does_not_open_a_console(monkeypatch):
+    monkeypatch.setattr(engines, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(engines.subprocess, 'run',
+                        lambda *args, **kwargs: pytest.fail('Owned cleanup must not launch another process.'))
     calls = []
-    monkeypatch.setattr(engines.subprocess, 'run', lambda command, **options: calls.append((command, options)))
     class Process:
-        pid = 123
-        returncode = None
+        returncode = 0
+        _carr_job = SimpleNamespace(close=lambda: calls.append('job'))
+        _handle = SimpleNamespace(Close=lambda: calls.append('handle'))
         def poll(self): return self.returncode
-        def kill(self): self.returncode = 1
-        def wait(self, *, timeout): return self.returncode
+        def kill(self): pytest.fail('An exited helper does not need direct termination.')
+        def wait(self, *, timeout):
+            assert timeout == 5
+            calls.append('wait')
+            return self.returncode
     engines._stop(Process())
-    assert calls[0][1]['creationflags'] == 0x08000000
-    assert calls[0][1]['timeout'] == 5
+    assert calls == ['job', 'wait', 'handle']
 
 
 def test_dordiai_rejects_duplicate_completion_fields_from_actual_worker(tmp_path):

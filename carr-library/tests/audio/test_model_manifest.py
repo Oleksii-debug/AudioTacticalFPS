@@ -125,14 +125,14 @@ def test_worker_environment_excludes_host_credentials(monkeypatch):
 
 
 def test_complete_torch_sized_runtime_inventory_and_mutation(tmp_path, record_property):
-    """Real regular files and hashes, not weights or a model-inference claim."""
+    """Cover the measured 32,881-file runtime using only synthetic regular files."""
     import time
 
     started = time.perf_counter()
     empty_digest = hashlib.sha256(b'').hexdigest()
     names = ['state_dict.bin', 'compression_state_dict.bin']
     prefix = 'runtime/lib/python3.11/site-packages/synthetic_dependency_fixture/modules'
-    names.extend(f'{prefix}/module_{number:05}.py' for number in range(10701))
+    names.extend(f'{prefix}/module_{number:05}.py' for number in range(32879))
     for name in names:
         asset = tmp_path / name
         asset.parent.mkdir(parents=True, exist_ok=True)
@@ -150,7 +150,7 @@ def test_complete_torch_sized_runtime_inventory_and_mutation(tmp_path, record_pr
     before_verify = time.perf_counter()
     report = model.verify(require_complete=True)
     verify_seconds = time.perf_counter() - before_verify
-    assert report['files'] == 10703 and report['bytes'] == 0
+    assert report['files'] == 32881 and report['bytes'] == 0
     assert model.asset(names[-1]) == tmp_path / names[-1]
     with pytest.raises(ModelManifestError, match='relative paths'):
         model.asset('../outside.py')

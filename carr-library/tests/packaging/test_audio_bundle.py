@@ -39,6 +39,7 @@ def bundle(tmp_path, monkeypatch):
     members = {}
     for name in runtime.ARCHIVE_MEMBERS:
         raw = ('Synthetic reviewed runtime fixture: ' + name).encode()
+        (audio / name).parent.mkdir(parents=True, exist_ok=True)
         (audio / name).write_bytes(raw)
         members[name] = (name, len(raw), sha256(raw).hexdigest())
     monkeypatch.setattr(runtime, 'ARCHIVE_MEMBERS', members)
@@ -62,6 +63,15 @@ def test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory(bun
     assert manifest['bundled_audio_runtime'] is True
     assert (output / 'audio-runtime/ffmpeg.exe').read_bytes() == (bundle[5] / 'ffmpeg.exe').read_bytes()
     assert runtime.verify_runtime(output / 'audio-runtime')['files']
+    for name in runtime.ARCHIVE_MEMBERS:
+        assert (output / 'audio-runtime' / name).read_bytes() == (bundle[5] / name).read_bytes()
+
+
+def test_missing_original_build_documentation_rejects_runtime_before_copy(bundle):
+    (bundle[5] / 'doc/ffmpeg.html').unlink()
+    with pytest.raises(ValueError, match='integrity'):
+        build(bundle)
+    assert not bundle[6].exists()
 
 
 def test_runtime_corruption_fails_before_output_publication(bundle):

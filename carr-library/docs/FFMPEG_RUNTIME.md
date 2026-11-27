@@ -14,23 +14,26 @@ directory. The desktop and CLI use the same resolver.
 FFmpeg's [official download page](https://ffmpeg.org/download.html) links the
 [Gyan Windows builds](https://www.gyan.dev/ffmpeg/builds/). This optional private
 package uses the release archive below, rather than a moving `latest` URL.
-The exact archive, executable, original license and original build README were
-downloaded and SHA256 verified during preparation on Linux. That establishes
-the bytes, not native Windows compatibility or listening quality.
+The exact full-build inventory is reused from the reviewed PR112 head
+`6ad8b01cf690741fdb97835d82dcdade314577c3`. Its publisher source lock is retained
+at `packaging/audio-runtime/source-lock.json`; the GitHub release API separately
+confirms the archive size and SHA256. Preparation verifies every original file
+before use. This source update is not a new native Windows execution claim.
 
 | Item | Exact identity |
 | --- | --- |
-| Archive | [ffmpeg-9.0.2-essentials_build.zip](https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip) |
-| Archive size | 114,768,076 bytes |
-| Archive SHA256 | `60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba` |
-| FFmpeg source | [`946fcce07b6dcd0331c8cc609192aeff5e1924f8`](https://github.com/FFmpeg/FFmpeg/tree/946fcce07b6dcd0331c8cc609192aeff5e1924f8) |
-| `ffmpeg.exe` SHA256 | `3256173f3f8bffd7df12227c68adf68025edb1832273a9530688a7bb1ed8edec` |
+| Archive | [ffmpeg-9.1-full_build.zip](https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-full_build.zip) |
+| Archive size | 264,268,459 bytes |
+| Archive SHA256 | `f9a83be8f97b8989a223a15e4af234accd0842bacf7c126af5a3aae759785e48` |
+| FFmpeg source | [`74e4393595cf2b5857f0da925c4e0dd74ea306e5`](https://github.com/FFmpeg/FFmpeg/tree/74e4393595cf2b5857f0da925c4e0dd74ea306e5) |
+| `ffmpeg.exe` SHA256 | `3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf` |
 | Original license SHA256 | `8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903` |
-| Original build README SHA256 | `0342de6bb39dd421cbec2c00d89ad274b640d75ad3f2cab09ffd647ce2d8f949` |
+| Original build README SHA256 | `25b75c3ab76c07ddabc1d2312543b1d1795b1f745b349db4c18e58a77e448ec8` |
 | Build license | GPL v3, as documented by this static build; Python wrapper licenses do not replace the binary's license |
 
-The upstream [imageio-ffmpeg source manifest](https://github.com/imageio/imageio-ffmpeg/blob/26277bb102b64c42d939c3a550301edbe2c81921/tools/ffmpeg-sources.json)
-independently pins the same executable. No imageio dependency is required.
+This full build supplies `ffmpeg.exe`, `ffplay.exe`, `ffprobe.exe` and the Flite
+filter. Native verification requires that filter and all three version probes;
+an essentials build cannot satisfy this package contract.
 The executable, voice/model assets and generated private audio are not committed
 or published by this source change. Keep the original license/build notices and
 source provenance with a private package; this is not a redistribution waiver.
@@ -40,19 +43,20 @@ source provenance with a private package; this is not a redistribution waiver.
 Run from the source checkout on Windows, supplying the reviewed existing ZIP:
 
 ```powershell
-python packaging/prepare_ffmpeg_runtime.py --archive C:\Setup\ffmpeg-9.0.2-essentials_build.zip --destination C:\CARR\audio-runtime --verify-native
+python packaging/prepare_ffmpeg_runtime.py --archive C:\Setup\ffmpeg-9.1-full_build.zip --destination C:\CARR\audio-runtime --verify-native
 ```
 
 The preparer verifies the complete archive hash and size, then streams only
-three exact allowlisted members into a new local directory: `ffmpeg.exe`,
-`FFmpeg-LICENSE.txt`, and `FFmpeg-README.txt`. It verifies each size/hash and
+the complete fixed publisher inventory into a new local directory: the three
+executables, `FFmpeg-LICENSE.txt`, `FFmpeg-README.txt`, all original `doc/` and
+`presets/` files. It verifies each size/hash and
 writes `ffmpeg-runtime.json` last. Arbitrary ZIP paths are never extracted.
 Existing complete matching bundles can be checked again; existing unrelated or
 incomplete contents are not silently overwritten. Linux preparation is allowed
 without `--verify-native`, with `native_validation.status = NOT_RUN`.
 
 `--verify-native` requires Windows. It runs the selected executable's version,
-filter and license probes and requires the filters used by the integrated
+filter and license probes, verifies the ffplay/ffprobe versions, and requires the filters used by the integrated
 studio, including procedural synthesis, ducking, loudness analysis and the
 typed DSP effects. It does not prove all codecs, native SAPI, microphone/device
 behavior, NVDA navigation, musical continuity or human listening acceptance;

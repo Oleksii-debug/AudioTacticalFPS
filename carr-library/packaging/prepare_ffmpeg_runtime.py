@@ -38,7 +38,7 @@ def _native_check(directory: Path) -> dict:
         if len(combined) > 512 * 1024:
             raise ValueError("FFmpeg verification output exceeded its limit.")
         records[option] = combined.decode("utf-8", "replace")
-    if "ffmpeg version 9.0.2" not in records["-version"]:
+    if f"ffmpeg version {FFMPEG_VERSION}" not in records["-version"]:
         raise ValueError("FFmpeg runtime version does not match the selected build.")
     present = {parts[1] for line in records["-filters"].splitlines() if len(parts := line.split()) >= 2}
     missing = set(REQUIRED_FILTERS) - present
@@ -46,7 +46,19 @@ def _native_check(directory: Path) -> dict:
         raise ValueError("FFmpeg lacks required audio filters: " + ", ".join(sorted(missing)))
     if "GNU General Public License" not in records["-L"]:
         raise ValueError("FFmpeg did not report its expected GPL license.")
+    helpers = {}
+    for name in ('ffplay', 'ffprobe'):
+        probe = subprocess.run([str(directory / (name + '.exe')), '-version'],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=True, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        if len(probe.stdout) + len(probe.stderr) > 512 * 1024:
+            raise ValueError('Audio helper verification exceeded its output budget.')
+        report = (probe.stdout + probe.stderr).decode('utf-8', 'replace')
+        if f'{name} version {FFMPEG_VERSION}' not in report:
+            raise ValueError('Audio helper version differs from the selected build.')
+        helpers[name] = report.splitlines()[0]
     return {"status": "PASS", "platform": "Windows", "version": records["-version"].splitlines()[0],
+            "helpers": helpers,
             "required_filters": list(REQUIRED_FILTERS), "filter_count": len(present),
             "license_report": records["-L"]}
 
@@ -66,7 +78,7 @@ def prepare(archive, destination, *, verify_native: bool = False) -> dict:
             manifest["native_validation"] = _native_check(target)
             _manifest(target, manifest)
         return manifest
-    manifest = {"schema": 1, "name": "FFmpeg Windows essentials", "version": FFMPEG_VERSION,
+    manifest = {"schema": 1, "name": "FFmpeg Windows full", "version": FFMPEG_VERSION,
                 "platform": "Windows x86-64", "distribution": "private personal-use package",
                 "archive_url": FFMPEG_ARCHIVE_URL, "archive_sha256": FFMPEG_ARCHIVE_SHA256,
                 "source_commit": FFMPEG_SOURCE_COMMIT,
@@ -88,6 +100,7 @@ def prepare(archive, destination, *, verify_native: bool = False) -> dict:
                 if entry.file_size != expected_size or entry.is_dir():
                     raise ValueError("Pinned FFmpeg archive member differs from the expected file.")
                 target_file = stage / output_name
+                target_file.parent.mkdir(parents=True, exist_ok=True)
                 with source.open(entry) as src, target_file.open("xb") as dst:
                     copied = 0
                     while block := src.read(1024 * 1024):
@@ -109,6 +122,7 @@ def prepare(archive, destination, *, verify_native: bool = False) -> dict:
         try:
             for filename in (*ARCHIVE_MEMBERS, "ffmpeg-runtime.json"):
                 destination_file = target / filename
+                destination_file.parent.mkdir(parents=True, exist_ok=True)
                 with (stage / filename).open("rb") as src, destination_file.open("xb") as dst:
                     shutil.copyfileobj(src, dst, 1024 * 1024)
                     dst.flush()
@@ -118,6 +132,12 @@ def prepare(archive, destination, *, verify_native: bool = False) -> dict:
         except BaseException:
             for path in reversed(created):
                 path.unlink(missing_ok=True)
+            for directory in sorted((p for p in target.rglob('*') if p.is_dir()),
+                                    key=lambda p: len(p.parts), reverse=True):
+                try:
+                    directory.rmdir()
+                except OSError:
+                    pass
             try:
                 target.rmdir()
             except OSError:
@@ -142,7 +162,7 @@ def _manifest(directory: Path, value: dict):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--archive", required=True, help="Existing pinned Gyan FFmpeg 9.0.2 essentials ZIP")
+    parser.add_argument("--archive", required=True, help=f"Existing pinned Gyan FFmpeg {FFMPEG_VERSION} full ZIP")
     parser.add_argument("--destination", required=True, help="New private package audio-runtime folder")
     parser.add_argument("--verify-native", action="store_true", help="Require actual Windows version/filter/license probes")
     args = parser.parse_args(argv)
