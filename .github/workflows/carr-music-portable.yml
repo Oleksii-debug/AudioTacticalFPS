@@ -75,6 +75,7 @@ jobs:
         timeout-minutes: 10
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
           $audioCache = Join-Path $bundleWork 'audio-cache'
           $audioRuntime = Join-Path $bundleWork 'audio-runtime'
           & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioCache --download | Tee-Object 'ci-results/audio-acquisition.json'
