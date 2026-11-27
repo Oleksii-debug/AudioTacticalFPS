@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import threading
 from types import ModuleType, SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -61,7 +61,7 @@ def module():
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
-    wx.MessageBox = lambda *args: wx.YES
+    wx.MessageBox = Mock(return_value=wx.YES)
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -397,3 +397,28 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_each_catalog_export_preserves_competing_file_during_render(module, setup, kind, existing):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    if existing: destination.write_bytes(b'Previously approved output')
+    library.hook = lambda: destination.write_bytes(b'Newer independent work')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert destination.read_bytes() == b'Newer independent work'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(destination.parent.glob('.research-export-*'))
+    assert not form.pending
+
+
+def test_catalog_overwrite_decline_restores_button_without_render(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Keep work')
+    module.wx.MessageBox.return_value = module.wx.NO
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
+    assert destination.read_bytes() == b'Keep work'
+    module.wx.MessageBox.assert_called_once()

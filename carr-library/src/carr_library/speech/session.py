@@ -88,6 +88,7 @@ class ReaderDraftStore:
         self.key = sha256(slot.encode('utf-8')).hexdigest()
         self.path = self.root / (self.key + '.reader.json')
         self._family = None
+        self.discovery_warning = ''
 
     def save(self, resume):
         return self._save(resume, replace=True)
@@ -100,7 +101,7 @@ class ReaderDraftStore:
                   'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
         with state_lock(self.root, self.key):
             atomic_json(self.path, record, replace=replace)
-        self._remember()
+        self._remember_published()
         return self.path
 
     def save_if_absent(self, resume):
@@ -115,7 +116,7 @@ class ReaderDraftStore:
                       'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
                       'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
             atomic_json(self.path, record, replace=False)
-        self._remember()
+        self._remember_published()
         return resume
 
     def for_source(self, source):
@@ -141,6 +142,15 @@ class ReaderDraftStore:
                        for key in data['copies']) or len(set(data['copies'])) != len(data['copies'])):
             raise ValueError('Invalid reading-recovery links; saved drafts were kept unchanged.')
         return data['copies']
+
+    def _remember_published(self):
+        """Keep a committed draft successful if its discovery link fails."""
+        self.discovery_warning = ''
+        try:
+            self._remember()
+        except (OSError, ValueError, RuntimeError) as exc:
+            self.discovery_warning = ('Reading draft saved. Automatic source recovery could not be updated; '
+                                      f'use Recover saved draft or Save As. {exc}')
 
     def _remember(self):
         if self._family is None:

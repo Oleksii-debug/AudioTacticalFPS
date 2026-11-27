@@ -152,7 +152,7 @@ def reader(tmp_path, monkeypatch):
         dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing',
-         'open_project', 'recover_saved_draft'],
+         'open_project', 'recover_saved_draft', 'with_recovery_warning'],
         values, globals_={'activate_progress_voice': activate, 'ReadingDocument': ReadingDocument,
                          'ReaderDraftStore': ReaderDraftStore}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,

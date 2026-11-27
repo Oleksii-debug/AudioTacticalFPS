@@ -148,7 +148,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
                 shutil.copyfile(HERE / lock_name, stage / directory / 'provenance.json')
         (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
         manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
-        manifest.update(source_commit=source_commit, bundled_audio=bool(audio_files),
+        manifest.update(source_commit=source_commit, source_tree=identity['source_tree'],
+                        bundled_audio=bool(audio_files),
                         bundled_citation_runtime=bool(node_files), use_scope='private-personal-installation',
                         parent_source_commit=previous['source_commit'],
                         parent_manifest_sha256=parent_manifest_sha256,

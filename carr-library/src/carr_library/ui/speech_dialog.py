@@ -117,6 +117,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if focus:
                 status.SetFocus()
 
+    def with_recovery_warning(message):
+        warning = getattr(draft_store, 'discovery_warning', '')
+        return message + (f' {warning}' if warning else '')
+
     def capabilities(event=None):
         selected = voice_choice.GetSelection()
         current = voices[selected] if 0 <= selected < len(voices) else None
@@ -235,11 +239,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 voice_choice.SetSelection(selected)
                 if recovered is not None:
                     editor.SetInsertionPoint(min(recovered.cursor, len(editor.GetValue())))
-                report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
-                       'Voice pitch, emotional delivery and word timing depend on the selected engine.')
+                report(with_recovery_warning(recovery_notice + f'{len(voices)} installed voices available. '
+                       'Select text or press F6 to read. Voice pitch, emotional delivery and word timing '
+                       'depend on the selected engine.'))
             else:
-                report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
-                       'local engine. ' + ' '.join(registry.notices), focus=True)
+                report(with_recovery_warning(recovery_notice + 'No local voice is available. Install a SAPI 5 voice '
+                       'on Windows or an optional local engine. ' + ' '.join(registry.notices)), focus=True)
         run(lambda: (discover_configured(),
                      source_loader(cancel.is_set) if not source_loaded else None), loaded)
 
@@ -267,6 +272,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         draft_store.save(ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
                                      cursor_offset, position))
         last_recovery_signature = signature
+        if warning := getattr(draft_store, 'discovery_warning', ''):
+            report(warning)
         return True
 
     def autosave(event=None):
@@ -376,8 +383,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 save_recovery(force=True)
                 document._saved_signature = document._signature()
                 sync_document()
-                report('Reading draft, voice settings and current position saved for recovery. '
-                       'Save As exports an independent reading project.')
+                report(with_recovery_warning('Reading draft, voice settings and current position saved for recovery. '
+                       'Save As exports an independent reading project.'))
                 return True
             if choose or save_path is None:
                 with wx.FileDialog(dialog, 'Save reading-copy project',
@@ -391,9 +398,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             source_guard()
             document.save(selected)
             save_path = selected
-            save_recovery(force=True)
+            completion = f'Reading copy and undo history saved: {selected}. Original source retained exactly.'
+            try:
+                save_recovery(force=True)
+            except Exception as exc:
+                completion += f' The recovery draft could not be updated. {exc}'
+            else:
+                completion = with_recovery_warning(completion)
             sync_document()
-            report(f'Reading copy and undo history saved: {selected}. Original source retained exactly.')
+            report(completion)
             return True
         except Exception as exc:
             report(f'Reading copy was not saved. {exc}', focus=True)
@@ -478,8 +491,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             editor.SetInsertionPoint(min(resumed.cursor, len(document.text)))
             sync_document()
             editor.SetFocus()
-            report('Saved draft recovered as a separate editable copy. The previous draft is unchanged. '
-                   'No source identity was inferred or approved. Use Save As for a portable reading project.')
+            report(with_recovery_warning('Saved draft recovered as a separate editable copy. The previous draft '
+                   'is unchanged. No source identity was inferred or approved. Use Save As for a portable reading project.'))
 
         def choose_saved(listing):
             if not listing.copies:

@@ -264,3 +264,101 @@ def test_concurrent_first_seed_never_overwrites_the_winning_draft(tmp_path):
     before = store.path.read_bytes()
     assert store.save_if_absent(ReaderResume(ReadingDocument('Later seed'))).document.text == winner
     assert store.path.read_bytes() == before
+
+
+@pytest.mark.parametrize('operation', ['save', 'seed', 'separate'])
+@pytest.mark.parametrize('failure', ['invalid-links', 'busy-links', 'write-links'])
+def test_published_reading_draft_survives_discovery_failure(tmp_path, monkeypatch, operation, failure):
+    from contextlib import nullcontext
+    from carr_library.speech import session
+    from carr_library.durable_state import state_lock
+
+    store = ReaderDraftStore(tmp_path, slot='published-draft')
+    store._family = 'a' * 64
+    original = ReaderResume(ReadingDocument('Original retained source.'))
+    if operation != 'seed':
+        store.save(original)
+    previous = store.path.read_bytes() if store.path.exists() else None
+    links = store._links_path()
+    previous_links = links.read_bytes() if links.exists() else None
+    candidate = ReaderResume(ReadingDocument.from_dict(original.document.to_dict()),
+                             'fixture:voice', rate=2, volume=65, cursor=3)
+    candidate.document.set_text('Saved user edits with undo history.')
+    atomic_json = session.atomic_json
+    if failure == 'invalid-links':
+        links.write_bytes(b'{"schema":"invalid-recovery-links"}')
+    elif failure == 'write-links':
+        other = ReaderDraftStore(tmp_path, slot='another-published-copy')
+        other._family = store._family
+        other.save(original)
+
+        def fail_link_write(path, value, *, replace=False):
+            if path == links:
+                raise OSError('Synthetic discovery write failure.')
+            return atomic_json(path, value, replace=replace)
+        monkeypatch.setattr(session, 'atomic_json', fail_link_write)
+    unchanged_links = links.read_bytes() if links.exists() else None
+    lock = state_lock(store.root, 'recovery-' + store._family) if failure == 'busy-links' else nullcontext()
+    with lock:
+        if operation == 'save':
+            assert store.save(candidate) == store.path
+            saved = store
+        elif operation == 'seed':
+            assert store.save_if_absent(candidate) is candidate
+            saved = store
+        else:
+            resumed, saved = store.separate_copy(candidate)
+            assert isinstance(resumed, ReaderResume) and saved.path != store.path
+            assert resumed.document.to_dict() == candidate.document.to_dict()
+        assert 'Reading draft saved.' in saved.discovery_warning
+        assert 'Automatic source recovery could not be updated' in saved.discovery_warning
+    reopened = saved._referenced_store(saved.key).load()
+    assert reopened.document.to_dict() == candidate.document.to_dict()
+    assert (reopened.voice_id, reopened.rate, reopened.volume, reopened.cursor) == ('fixture:voice', 2, 65, 3)
+    assert reopened.document.undo() and reopened.document.text == original.document.source_text
+    assert set(json.loads(saved.path.read_bytes())) == {
+        'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}
+    assert (links.read_bytes() if links.exists() else None) == unchanged_links
+    if operation == 'separate':
+        assert store.path.read_bytes() == previous
+
+    # A later successful link update clears this operation's warning.
+    monkeypatch.setattr(session, 'atomic_json', atomic_json)
+    if failure == 'invalid-links':
+        if previous_links is None:
+            links.unlink()
+        else:
+            links.write_bytes(previous_links)
+    assert saved.save(candidate) == saved.path
+    assert saved.discovery_warning == ''
+    assert saved.latest_copy().key == saved.key
+
+
+@pytest.mark.parametrize('operation', ['save', 'seed', 'separate'])
+def test_draft_failure_before_publication_still_raises_and_preserves_saved_files(tmp_path, monkeypatch, operation):
+    from carr_library.speech import session
+
+    store = ReaderDraftStore(tmp_path, slot='prepublication-failure')
+    store._family = 'a' * 64
+    original = ReaderResume(ReadingDocument('Previously saved original.'))
+    if operation != 'seed':
+        store.save(original)
+    before = {path.name: path.read_bytes() for path in store.root.glob('*.json')}
+    candidate = ReaderResume(ReadingDocument('Replacement that was not published.'))
+    atomic_json = session.atomic_json
+
+    def fail_draft_write(path, value, *, replace=False):
+        if path.name.endswith('.reader.json'):
+            raise OSError('Synthetic draft write failure before publication.')
+        return atomic_json(path, value, replace=replace)
+
+    monkeypatch.setattr(session, 'atomic_json', fail_draft_write)
+    with pytest.raises(OSError, match='before publication'):
+        if operation == 'save':
+            store.save(candidate)
+        elif operation == 'seed':
+            store.save_if_absent(candidate)
+        else:
+            store.separate_copy(candidate)
+    assert {path.name: path.read_bytes() for path in store.root.glob('*.json')} == before
+    assert getattr(store, 'discovery_warning', '') == ''

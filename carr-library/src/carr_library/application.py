@@ -33,7 +33,7 @@ from .research.saved_topic_query import SavedTopicQueries
 from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
-from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
+from .storage.revisions import CURRENT_SCHEMA, Storage, Page, _schema_signature, _expected_signature
 from .data_paths import guard_data_directory
 
 
@@ -110,10 +110,12 @@ class _SearchBudget:
 
 class _CatalogPublisher:
     """Keep the existing ingest journal, with one atomic catalog publication."""
-    def __init__(self, storage, registration):
+    def __init__(self, storage, registration, *, attempt=None, config=None):
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
+        self.published_here = False
+        self.attempt, self.config = attempt, config
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
@@ -121,6 +123,10 @@ class _CatalogPublisher:
         with self.storage.transaction():
             LibraryApp._authorize(self.db, workspace)
             register_batch(Catalog(self.db, workspace), (self.record,))
+            if self.attempt is not None:
+                from .storage.publication_receipts import stage_receipt
+                stage_receipt(self.db, self.attempt, self.record, workspace,
+                              revision, asset, config, self.config)
             self.storage.stage_revision(workspace, edition, revision, asset, config, pages)
             self.db.execute('INSERT INTO source_metadata '
                 '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
@@ -140,6 +146,7 @@ class _CatalogPublisher:
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
             self.storage._check()
+        self.published_here = True
 
     def check(self):
         return self.storage.check()
@@ -163,7 +170,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
                 storage.check()
 
     def _check_database_paths(self):
@@ -194,7 +201,8 @@ class LibraryApp:
                 db.execute('PRAGMA recursive_triggers=ON')
                 db.execute('PRAGMA query_only=ON')
                 db.execute('BEGIN')
-                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
+                if (db.execute('PRAGMA user_version').fetchone()[0] != CURRENT_SCHEMA
+                        or _schema_signature(db) != _expected_signature(CURRENT_SCHEMA)):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
@@ -211,7 +219,7 @@ class LibraryApp:
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -361,7 +369,8 @@ class LibraryApp:
                                         collection=collection, cancelled=budget.stopped)
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
-                        language=None, edition=None, volume=None, expected_metadata=None):
+                        language=None, edition=None, volume=None, expected_metadata=None,
+                        selected_fields=None, cancelled=lambda: False):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -370,22 +379,56 @@ class LibraryApp:
         new citation snapshots when those fields change. Edition-specific fields
         change only on the selected edition. An optional prior EditionView guards
         interactive edits against overwriting a concurrently changed catalog.
+        Partial imports must supply both selected_fields and expected_metadata.
+        Unselected values are retained exactly from the locked current catalog;
+        only explicitly selected values receive the usual edit validation.
         """
-        title = _name(title)
-        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
-            raise ValueError('authors must be a list or tuple of at most 100 names.')
-        authors = tuple(_name(name) for name in authors)
-        language, edition, volume = map(_metadata, (language, edition, volume))
+        def check_cancelled():
+            if cancelled():
+                raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
+
+        check_cancelled()
+        allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
+        if selected_fields is None:
+            fields = allowed_fields
+        else:
+            if (not isinstance(selected_fields, (tuple, list, set, frozenset))
+                    or not selected_fields
+                    or any(not isinstance(field, str) for field in selected_fields)
+                    or expected_metadata is None):
+                raise ValueError('A partial metadata edit requires selected fields and the reviewed metadata.')
+            fields = frozenset(selected_fields)
+            if not fields <= allowed_fields:
+                raise ValueError('Select only supported metadata fields.')
+        if 'title' in fields:
+            title = _name(title)
+        if 'authors' in fields:
+            if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+                raise ValueError('authors must be a list or tuple of at most 100 names.')
+            authors = tuple(_name(name) for name in authors)
+        if 'language' in fields:
+            language = _metadata(language)
+        if 'edition' in fields:
+            edition = _metadata(edition)
+        if 'volume' in fields:
+            volume = _metadata(volume)
         revision = uuid4().hex
         with exclusive_writer(self.root):
+            check_cancelled()
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
                     current = get_edition(Catalog(db, workspace), edition_id)
                     if expected_metadata is not None and current != expected_metadata:
                         raise ValueError('Book metadata changed. Refresh the catalog before editing again.')
+                    if selected_fields is not None:
+                        title = title if 'title' in fields else current.title
+                        authors = authors if 'authors' in fields else current.authors
+                        language = language if 'language' in fields else current.language
+                        edition = edition if 'edition' in fields else current.edition
+                        volume = volume if 'volume' in fields else current.volume
                     row = db.execute('SELECT e.work,e.asset,a.revision,r.config FROM catalog_edition e '
                         'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
                         'JOIN revision r ON r.id=a.revision WHERE e.workspace=? AND e.id=?',
@@ -407,6 +450,7 @@ class LibraryApp:
                     db.execute('UPDATE catalog_edition SET language=?,edition=?,volume=? WHERE workspace=? AND id=?',
                         (language, edition, volume, workspace, edition_id))
                     for affected_row in affected:
+                        check_cancelled()
                         eid, asset, previous, config, previous_label, previous_volume = affected_row
                         source_pages = tuple(db.execute(
                             'SELECT * FROM page WHERE revision=? ORDER BY ordinal', (previous,)))
@@ -423,6 +467,7 @@ class LibraryApp:
                         db.execute('INSERT INTO source_metadata VALUES(?,?,?,?,?,?,?)',
                             (workspace, eid, next_revision, '; '.join(authors) or None,
                              title, next_volume, next_label))
+                    check_cancelled()
         return revision
 
     def rename_collection(self, workspace, collection, name):
@@ -546,7 +591,8 @@ class LibraryApp:
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
-                     _request_id=None, _resume_job=None, _expected_manifest=None):
+                     _request_id=None, _resume_job=None, _expected_manifest=None,
+                     _publication_attempt=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -572,16 +618,15 @@ class LibraryApp:
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
-                record_progress(self.root, _request_id, asset_sha256=asset.digest,
-                    publication_watermark=storage.db.execute(
-                        'SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0])
-                publisher = _CatalogPublisher(storage, record)
+                record_progress(self.root, _request_id, asset_sha256=asset.digest)
+                publisher = _CatalogPublisher(storage, record, attempt=_publication_attempt,
+                                              config=config or Config())
                 if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
@@ -643,7 +688,7 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] in ('complete', 'superseded'):
+                    if result['state'] in ('complete', 'superseded') and not publisher.published_here:
                         if cancelled():
                             raise InterruptedError('Import cancelled before catalog registration.')
                         # Recovery validates the retained asset/configuration and

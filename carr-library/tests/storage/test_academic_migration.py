@@ -23,7 +23,7 @@ from carr_library.research.academic_library import AcademicLibrary
 from carr_library.research.saved_evidence import SavedEvidenceStore
 from carr_library.research.topic_tree import TopicTree
 from carr_library.storage import revisions
-from carr_library.storage.revisions import Page, Storage, _expected_signature, _schema_signature
+from carr_library.storage.revisions import CURRENT_SCHEMA, Page, Storage, _expected_signature, _schema_signature
 from carr_library.storage.schema_identity import expected_schema_fingerprint
 
 
@@ -103,7 +103,7 @@ def test_exact_v3_upgrade_is_idempotent_and_preserves_historical_sources(tmp_pat
     assert app.search('a', 'Original')[0].revision == 'current'
     with pytest.raises(ValueError, match='archived'):
         app.search('b', 'Original')
-    with closing(Storage(path, schema_version=4)) as reopened:
+    with closing(Storage(path, schema_version=CURRENT_SCHEMA)) as reopened:
         assert source_rows(reopened.db) == before
 
 
@@ -150,29 +150,33 @@ def test_older_storage_has_no_implicit_guessed_upgrade(tmp_path, version):
 
 
 @pytest.mark.parametrize('manifest_version', [1, 2])
-def test_old_v3_backups_restore_unchanged_then_migrate_normally(tmp_path, manifest_version):
+@pytest.mark.parametrize('schema_version', [3, 4])
+def test_old_backups_restore_unchanged_then_migrate_normally(tmp_path, manifest_version, schema_version):
     path = v3_library(tmp_path / 'source')
+    if schema_version == 4:
+        with closing(Storage(path, schema_version=4)):
+            pass
     backup = tmp_path / 'legacy-backup'
     backup.mkdir()
     (backup / 'originals').mkdir()
-    with closing(Storage(path, schema_version=3)) as storage:
+    with closing(Storage(path, schema_version=schema_version)) as storage:
         storage.backup(backup / 'library.sqlite')
     filename = ASSET + '.txt'
     shutil.copyfile(path.parent / 'originals' / filename, backup / 'originals' / filename)
     snapshot = backup / 'library.sqlite'
-    manifest = dict(version=manifest_version, kind='carr-library', schema_version=3,
+    manifest = dict(version=manifest_version, kind='carr-library', schema_version=schema_version,
         database=dict(filename='library.sqlite', size_bytes=snapshot.stat().st_size,
                       sha256=sha256(snapshot.read_bytes()).hexdigest()),
         assets=[dict(filename=filename, sha256=ASSET, mime='text/plain', size_bytes=len(DATA))])
     if manifest_version == 2:
-        manifest['schema_fingerprint'] = expected_schema_fingerprint(3)
+        manifest['schema_fingerprint'] = expected_schema_fingerprint(schema_version)
     raw = (json.dumps(manifest, sort_keys=True) + '\n').encode('utf-8')
     (backup / 'manifest.json').write_bytes(raw)
     before = snapshot.read_bytes()
     target = restore_backup(backup, tmp_path / 'restored', sha256(raw).hexdigest())
     assert snapshot.read_bytes() == before
     with closing(sqlite3.connect(target / 'library.sqlite')) as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 3
+        assert db.execute('PRAGMA user_version').fetchone()[0] == schema_version
     app = LibraryApp(target)
     evidence, = app.evidence('a', 'topic')
     assert evidence.anchor.quote == RAW[:12]
@@ -181,7 +185,7 @@ def test_old_v3_backups_restore_unchanged_then_migrate_normally(tmp_path, manife
     assert (target / 'originals' / filename).read_bytes() == DATA
     assert snapshot.read_bytes() == before
     with app.read() as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 4
+        assert db.execute('PRAGMA user_version').fetchone()[0] == CURRENT_SCHEMA
 
 
 def test_v4_backup_restores_reading_data_and_archives_without_changing_quotes(tmp_path):
@@ -208,8 +212,8 @@ def test_v4_backup_restores_reading_data_and_archives_without_changing_quotes(tm
     directory = tmp_path / 'backup'
     digest = app.backup(directory)
     manifest = json.loads((directory / 'manifest.json').read_text())
-    assert manifest['schema_version'] == 4
-    assert manifest['schema_fingerprint'] == expected_schema_fingerprint(4)
+    assert manifest['schema_version'] == CURRENT_SCHEMA
+    assert manifest['schema_fingerprint'] == expected_schema_fingerprint(CURRENT_SCHEMA)
     restored = LibraryApp(restore_backup(directory, tmp_path / 'restored', digest))
     assert restored.evidence('a', 'topic') == (original_evidence,)
     with restored.read('a') as db:

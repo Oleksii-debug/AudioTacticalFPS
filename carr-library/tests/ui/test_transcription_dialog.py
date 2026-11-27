@@ -488,3 +488,83 @@ def test_dispose_requests_background_stop_and_never_touches_view_again(setup):
     assert setup.service.controls == ['run']
     assert setup.controller.closed and setup.controller._token is None
     assert setup.controller.record is None and setup.changes == changes
+
+
+def _deferred_native_dialog(controller):
+    """Execute the actual view methods against a delayed native-destruction boundary."""
+    import ast
+    from carr_library.ui import transcription_dialog
+
+    source = Path(transcription_dialog.__file__)
+    module = ast.parse(source.read_text(encoding='utf-8'))
+    factory = next(node for node in module.body
+                   if isinstance(node, ast.FunctionDef) and node.name == 'create_transcription_dialog')
+    view = next(node for node in factory.body if isinstance(node, ast.ClassDef))
+    definition = deepcopy(view)
+    definition.name = 'DeferredTranscriptionDialog'
+    definition.bases = [ast.Name(id='DeferredNativeDialog', ctx=ast.Load())]
+    definition.body = [node for node in definition.body
+                       if isinstance(node, ast.FunctionDef) and node.name in ('Destroy', 'on_destroy')]
+
+    class DeferredNativeDialog:
+        def __init__(self, controller):
+            self.controller = controller
+            self.destroy_requests = 0
+
+        def Destroy(self):
+            self.destroy_requests += 1
+            # Native top-level deletion and its event have not happened yet.
+            return True
+
+    namespace = {'DeferredNativeDialog': DeferredNativeDialog}
+    code = ast.Module(body=[definition], type_ignores=[])
+    exec(compile(ast.fix_missing_locations(code), str(source), 'exec'), namespace)
+    return namespace[definition.name](controller)
+
+
+@pytest.mark.parametrize('termination', ['destroy-request', 'destroy-event'])
+def test_view_destruction_detaches_active_worker_before_late_callbacks(setup, termination):
+    ready(setup)
+    setup.service.wait_for_stop = True
+    setup.controller.start()
+    pending = setup.host.launch()
+    assert setup.service.started.wait(1)
+    window = _deferred_native_dialog(setup.controller)
+    skipped = []
+
+    def event(target):
+        return SimpleNamespace(GetEventObject=lambda: target, Skip=lambda: skipped.append(target))
+
+    try:
+        child = object()
+        window.on_destroy(event(child))
+        assert skipped == [child] and not setup.controller.closed
+        if termination == 'destroy-request':
+            assert window.Destroy() is True
+            assert window.destroy_requests == 1
+        else:
+            # Parent-driven native deletion retains the event fallback.
+            window.on_destroy(event(window))
+        assert setup.controller.closed and setup.controller._token is None
+        status, changes = setup.controller.status, list(setup.changes)
+        setup.controller.dispose()  # Repeated disposal has no host or view side effects.
+        result = setup.host.finish(pending)['value']
+        for callback in setup.progress:
+            callback()
+        window.on_destroy(event(window))  # Eventual native notification is harmless.
+        assert result['status'] == 'cancelled'
+        assert setup.service.record['status'] == 'cancelled'
+        assert setup.service.controls == ['run']
+        assert not setup.host.cancel_event.is_set()
+        assert setup.controller.status == status and setup.changes == changes
+        assert setup.controller.record is None and setup.controller._token is None
+    finally:
+        setup.controller.dispose()
+        pending[2].join(3)
+
+
+def test_destroy_tolerates_partial_view_construction():
+    window = _deferred_native_dialog(None)
+    del window.controller
+    assert window.Destroy() is True
+    assert window.destroy_requests == 1

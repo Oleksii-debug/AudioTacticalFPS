@@ -177,6 +177,35 @@ def test_wrong_recorded_parent_hash_fails_before_publication(bundle):
     assert not bundle.output.exists()
 
 
+@pytest.mark.parametrize('parent_tree', [None, 'b' * 40])
+def test_refreshed_source_tree_comes_from_exact_verified_commit(bundle, parent_tree):
+    previous = bundle.source / 'bundle-manifest.json'
+    parent = json.loads(previous.read_bytes())
+    if parent_tree is not None:
+        parent['source_tree'] = parent_tree
+    raw = (json.dumps(parent, sort_keys=True) + '\n').encode()
+    previous.write_bytes(raw)
+    bundle.parent_hash = sha256(raw).hexdigest()
+
+    _refresh(bundle)
+
+    current = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    identity = json.loads((bundle.output / 'application-source.json').read_bytes())
+    expected = _git(bundle.repo, 'rev-parse', bundle.commit + '^{tree}')
+    assert current['source_tree'] == expected
+    assert identity['source_tree'] == expected
+    assert current['parent_source_commit'] == parent['source_commit']
+    assert current['parent_manifest_sha256'] == bundle.parent_hash
+    assert previous.read_bytes() == raw
+
+
+def test_actual_refresh_manifest_is_accepted_by_installation_diagnostic(bundle):
+    _refresh(bundle)
+    diagnostic = _load('review_refresh_native_checks', ROOT / 'src/carr_library/native_checks.py')
+    expected = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    assert diagnostic._manifest(bundle.output) == expected
+
+
 def test_manifest_is_never_reopened_after_verification_for_copy_paths(bundle, monkeypatch, tmp_path):
     original_verify = bundle.module.verify
     sentinel = tmp_path / 'outside-sentinel'

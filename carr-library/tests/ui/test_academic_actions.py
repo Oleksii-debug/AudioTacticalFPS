@@ -561,3 +561,36 @@ def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, editi
     library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
     assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
     assert file.destroyed and 'Research outline exported' in frame.reports[-1]
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_preserves_file_changed_during_render(module, edition, tmp_path, monkeypatch, action, existing):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'competing.txt'
+    if existing: destination.write_bytes(b'Approved earlier bytes')
+    choose(module, monkeypatch, path=destination)
+    def compete(*args, **kwargs):
+        destination.write_bytes(b'Newer independent work')
+        return 'Older rendered export'
+    method = library.export_bibliography if action == 'bibliography' else library.export_outline
+    method.side_effect = compete
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    assert len(frame.jobs) == 1
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Newer independent work'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_declining_overwrite_stops_before_render_and_queue(module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'declined.txt'
+    destination.write_bytes(b'Keep this work')
+    choose(module, monkeypatch, path=destination)
+    module.wx.MessageBox.return_value = module.wx.NO
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    assert not frame.jobs and destination.read_bytes() == b'Keep this work'
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()
+    module.wx.MessageBox.assert_called_once()

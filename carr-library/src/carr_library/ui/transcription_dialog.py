@@ -324,7 +324,7 @@ class TranscriptionController:
         return self._job('Checking local transcription result folder', work, done)
 
     def dispose(self):
-        """Detach without I/O; pending work observes cancellation and drops UI callbacks."""
+        """Idempotently detach without I/O; pending work stops and drops UI callbacks."""
         self.closed = True
         self._token = None
 
@@ -556,6 +556,13 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             output = self.selected_output()
             if output is not None:
                 self.controller.open_folder(output['file'], wx.LaunchDefaultApplication)
+
+        def Destroy(self):
+            """Detach callbacks before wx schedules deferred native deletion."""
+            controller = getattr(self, 'controller', None)
+            if controller is not None:
+                controller.dispose()
+            return super().Destroy()
 
         def on_destroy(self, event):
             if event.GetEventObject() is self:

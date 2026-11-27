@@ -8,7 +8,7 @@ from contextlib import closing
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import CURRENT_SCHEMA, Storage
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def test_shared_work_correction_updates_all_active_citations_and_preserves_editi
             assert hit.quote in app.preview(workspace, hit.ref, hit.revision)
             assert hit.verified
         assert hits['e1'].revision == revision
-    with closing(Storage(app.database, schema_version=4)) as storage:
+    with closing(Storage(app.database, schema_version=CURRENT_SCHEMA)) as storage:
         storage.check()
 
 

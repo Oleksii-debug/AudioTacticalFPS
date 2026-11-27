@@ -42,6 +42,14 @@ jobs:
           python -m pip install '.[test]'
           python -m pip freeze > ci-source-results/installed-dependencies.txt
           python -m pip check
+      - name: Prepare actual OCR for required source recovery tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-eng
+          dpkg-query -W tesseract-ocr tesseract-ocr-eng > ci-source-results/ocr-packages.txt
+          tesseract --version > ci-source-results/ocr-runtime-version.txt
+          tesseract --list-langs > ci-source-results/ocr-languages.txt
+          python -c "from carr_library.extract.ocr_runtime import discover_ocr_runtime; assert discover_ocr_runtime() is not None, 'Required local OCR runtime is unavailable'; print('PASS: actual OCR runtime discovered')"
       - name: Verify reconstructed source and durable boundaries
         run: |
           python -B -m pytest -p no:cacheprovider -q --import-mode=importlib \
@@ -50,16 +58,21 @@ jobs:
             tests/audio/test_process_start_cleanup.py \
             tests/ui/test_transcription_dialog.py tests/ui/test_progress_voice_actions.py \
             tests/ui/test_progress_media_quiet.py \
-            tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_isolated_launch.py \
+            tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_attempt_receipts.py \
+            tests/ingest/test_competing_publication_receipts.py \
+            tests/ingest/test_import_publication_point.py tests/storage/test_publication_migration.py \
+            tests/storage/test_backup_schema_identity.py tests/ingest/test_worker_isolated_launch.py \
             tests/e2e/test_import_worker.py tests/storage/test_atomic_state_publication.py \
-            tests/storage/test_state_backup_portability.py tests/storage/test_state_snapshot_portability.py \
             tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py \
-            tests/storage/test_complete_pending_backup.py tests/ui/test_academic_export_handler.py \
+            tests/storage/test_complete_pending_backup.py tests/storage/test_state_backup_portability.py \
+            tests/storage/test_state_snapshot_portability.py \
+            tests/ui/test_academic_export_handler.py \
             tests/ui/test_academic_library_dialog.py tests/ui/test_academic_actions.py \
             tests/ui/test_catalog_tools_dialog.py tests/ui/test_reading_desk_actions.py \
             tests/ui/test_import_center.py tests/ui/probe_catalog_insights_actions.py \
             tests/reader/test_file_export.py tests/reader/test_binary_file_export.py \
             tests/reader/test_export_no_clobber.py tests/reader/test_export_publication_boundary.py \
+            tests/packaging/test_worker_bytecode.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -106,6 +119,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify canonical citation and DOCX regeneration boundaries
+        timeout-minutes: 5
+        run: |
+          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/ci_check.py --jobs 3 tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime
         run: |
@@ -150,14 +170,21 @@ jobs:
       - name: Require progress isolation and actual selected-voice rendering regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_operation_progress.py tests/ui/test_progress_numeric_limits.py tests/ui/test_progress_job_review.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/e2e/test_import_progress.py tests/storage/test_progress_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
+          python scripts/ci_check.py --jobs 3 tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_operation_progress.py tests/ui/test_progress_numeric_limits.py tests/ui/test_progress_job_review.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/e2e/test_import_progress.py tests/storage/test_progress_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/ui/test_transcription_dialog.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_state_backup_portability.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_transcription_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_state_backup_portability.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual import-attempt, migration and export integrity regressions
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python scripts/ci_check.py --jobs 3 tests/ingest/test_import_publication_point.py tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_attempt_receipts.py tests/ingest/test_competing_publication_receipts.py tests/storage/test_publication_migration.py tests/storage/test_backup_schema_identity.py tests/reader/test_export_no_clobber.py tests/speech/test_source.py tests/packaging/test_worker_bytecode.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication-integrity.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

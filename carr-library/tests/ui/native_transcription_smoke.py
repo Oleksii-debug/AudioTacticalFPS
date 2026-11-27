@@ -181,9 +181,20 @@ def run_native_transcription(frame, directory):
         detached.files.Destroy()
         wx.YieldIfNeeded()
         assert not detached_controller.closed, 'A child-control destruction detached the whole dialog.'
+        before_status = detached_controller.status
+        detached_controller._token = object()
+        late_reports = []
+        def late_report():
+            late_reports.append(True)
+            detached_controller.report('Late progress after a destruction request.', focus=True)
+        wx.CallAfter(late_report)
         detached.Destroy()
-        wx.YieldIfNeeded()
         assert detached_controller.closed and detached_controller._token is None
+        # Pending Python callbacks must be harmless before/after the later
+        # native destruction event. Do not inspect deleted wx child controls.
+        wx.GetApp().ProcessPendingEvents()
+        wx.YieldIfNeeded()
+        assert late_reports == [True] and detached_controller.status == before_status
     return {'status': 'PASS', 'native_controls_and_async_completion': 'PASS',
             'synthetic_worker_all_formats': 'PASS', 'pause_cancel_resume': 'PASS',
             'derived_reader_handoff_and_reopen': 'PASS', 'nvda': 'NOT_RUN',

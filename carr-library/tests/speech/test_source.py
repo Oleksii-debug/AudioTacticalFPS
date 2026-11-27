@@ -4,6 +4,7 @@ from itertools import count
 from queue import Empty, Queue
 from threading import get_ident
 from types import SimpleNamespace
+import json
 import sys
 import time
 
@@ -67,12 +68,80 @@ def test_source_range_guard_cancel_and_character_budget(tmp_path):
 
 @pytest.mark.parametrize('archive_during_picker', [False, True], ids=['authorized', 'late-topic-archive'])
 def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive_during_picker):
+    _exercise_reader_project(tmp_path, monkeypatch, archive_during_picker=archive_during_picker)
+
+
+@pytest.mark.parametrize('open_case', ['legacy', 'foreign', 'legacy-foreign'])
+def test_bound_reader_rejects_unrelated_open_project(tmp_path, monkeypatch, open_case):
+    _exercise_reader_project(tmp_path, monkeypatch, open_case=open_case)
+
+
+@pytest.mark.parametrize('open_case', ['exact', 'legacy-origin'])
+def test_bound_reader_accepts_matching_open_project(tmp_path, monkeypatch, open_case):
+    _exercise_reader_project(tmp_path, monkeypatch, open_case=open_case)
+
+
+@pytest.mark.parametrize('open_case', ['foreign', 'text'])
+def test_standalone_reader_autosaves_same_title_project_identity(tmp_path, monkeypatch, open_case):
+    _exercise_reader_project(tmp_path, monkeypatch, open_case=open_case, standalone=True)
+
+
+@pytest.mark.parametrize('save_action', ['autosave', 'save', 'save-as'])
+def test_reader_reports_saved_draft_when_recovery_discovery_fails(tmp_path, monkeypatch, save_action):
+    _exercise_reader_project(tmp_path, monkeypatch, recovery_failure_action=save_action)
+
+
+def test_save_as_reports_portable_success_when_later_recovery_write_fails(tmp_path, monkeypatch):
+    _exercise_reader_project(tmp_path, monkeypatch, recovery_failure_action='save-as', fail_draft=True)
+
+
+def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=False,
+                             open_case=None, standalone=False, recovery_failure_action=None, fail_draft=False):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Synthetic source')
     topic = app.create_topic(workspace, 'Bound topic')
     original = 'Exact original source.\r\nRetain Ukrainian: оригінал.'
     imported = app.add_text(workspace, 'Synthetic source book', original)
     desk = ReadingDesk(app, workspace, imported['edition'], topic=topic)
+    source = read_source_range(desk, 1, 1)
+    store = ReaderDraftStore(app.root)
+    if standalone:
+        previous = (ReadingDocument(original, title=source.title) if open_case == 'text'
+                    else source.reading_document())
+        store.save(ReaderResume(previous))
+    candidate = None
+    candidate_path = tmp_path / 'opened.reading.json'
+    if open_case is not None:
+        if open_case in ('foreign', 'legacy-foreign'):
+            other_workspace = app.create_workspace('Another retained source')
+            other = app.add_text(other_workspace, source.title, original)
+            candidate = read_source_range(
+                ReadingDesk(app, other_workspace, other['edition']), 1, 1).reading_document()
+        elif open_case == 'text':
+            candidate = ReadingDocument('Different source text with the same title.', title=source.title)
+        elif open_case == 'legacy':
+            candidate = ReadingDocument(original, title=source.title)
+        else:
+            candidate = source.reading_document()
+        if not standalone:
+            candidate.set_text('Portable reading edit.')
+        candidate.save(candidate_path)
+        if open_case in ('legacy-origin', 'legacy-foreign'):
+            candidate_path.write_text(json.dumps(_legacy_origin_record(candidate)), encoding='utf-8')
+        candidate_bytes = candidate_path.read_bytes()
+    expected_final = candidate.text if standalone or open_case in ('exact', 'legacy-origin') else original
+    if recovery_failure_action:
+        expected_final = 'User edits that must survive the recovery failure.'
+        from carr_library.speech import session
+        atomic_json = session.atomic_json
+
+        def fail_recovery_metadata(path, value, *, replace=False):
+            suffix = '.reader.json' if fail_draft else '.reader-links.json'
+            if path.name.endswith(suffix):
+                raise OSError('Synthetic recovery metadata failure.')
+            return atomic_json(path, value, replace=replace)
+
+        monkeypatch.setattr(session, 'atomic_json', fail_recovery_metadata)
     output = tmp_path / 'reading.reading.json'
     main = get_ident()
     callbacks, controls = Queue(), []
@@ -146,7 +215,44 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
             assert editor.GetValue() == original
             scope()
-            named('Save &as').handlers['button'](None)
+            if standalone:
+                self.handlers['timer'](None)
+                assert store.load().document.source_origin == previous.source_origin
+            if candidate is not None:
+                named('&Open text / project').handlers['button'](None)
+                assert editor.GetValue() == expected_final
+                if not standalone and open_case not in ('exact', 'legacy-origin'):
+                    message = next(c for c in controls if c.name == 'Speech and save status').GetValue()
+                    assert 'standalone voice reader' in message
+                assert candidate_path.read_bytes() == candidate_bytes
+            if standalone:
+                self.handlers['timer'](None)
+                resumed = store.load().document
+                assert resumed.source_sha256 == candidate.source_sha256
+                assert resumed.source_origin == candidate.source_origin
+            if recovery_failure_action:
+                editor.ChangeValue(expected_final)
+                if recovery_failure_action == 'autosave':
+                    self.handlers['timer'](None)
+                elif recovery_failure_action == 'save':
+                    named('&Save reading copy').handlers['button'](None)
+                else:
+                    named('Save &as').handlers['button'](None)
+                message = next(c for c in controls if c.name == 'Speech and save status').GetValue()
+                assert 'was not saved' not in message and 'could not be autosaved' not in message
+                if fail_draft:
+                    assert 'Reading copy and undo history saved:' in message
+                    assert 'The recovery draft could not be updated.' in message
+                    assert store.for_source(source).load() is None
+                else:
+                    assert 'Reading draft saved.' in message
+                    assert 'Automatic source recovery could not be updated' in message
+                    saved_draft = store.for_source(source).load()
+                    assert saved_draft.document.text == expected_final
+                    assert saved_draft.document.source_origin == source.origin
+                    assert saved_draft.document.undo() and saved_draft.document.text == original
+            if recovery_failure_action != 'save-as':
+                named('Save &as').handlers['button'](None)
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             return 5101
 
@@ -159,7 +265,9 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
                 with app.topic_transaction(workspace) as tree:
                     tree.archive(topic)
             return 5100
-        def GetPath(self): self.native(); return str(output)
+        def GetPath(self):
+            self.native()
+            return str(candidate_path if self.label.startswith('Open ') else output)
 
     identifiers = count(10000)
     wx = SimpleNamespace(Dialog=Dialog, FileDialog=FileDialog, TextEntryDialog=FileDialog,
@@ -181,7 +289,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     parent = SimpleNamespace(library=app, report=statuses.append)
 
     ui.show_speech_reader(parent, source_guard=scope,
-        source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
+        source_loader=None if standalone else
+            lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
     if archive_during_picker:
@@ -190,10 +299,11 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         assert not output.exists(), ('A source-bound reading project was written after its topic '
                                      'was archived in Save As: ' + repr(statuses))
     else:
-        reopened = ReadingDocument.load(output)
-        assert reopened.source_text == original
-        assert reopened.source_anchor == read_source_range(desk, 1, 1).reading_document().source_anchor
-        assert reopened.source_anchor['quotation_authority'] is False
+        saved = ReadingDocument.load(output)
+        assert saved.source_text == (candidate.source_text if standalone else original)
+        assert saved.text == expected_final
+        expected_origin = candidate.source_origin if standalone or open_case in ('exact', 'legacy-origin') else source.origin
+        assert saved.source_origin == expected_origin
 
 
 
@@ -660,14 +770,12 @@ def test_source_lineage_is_distinct_and_survives_save_and_backup(tmp_path):
     assert ReadingDocument.from_dict(ReadingDocument(doc.source_text).to_dict()).source_anchor is None
 
 
-@pytest.mark.parametrize('mutation', ['authority', 'hash', 'range', 'kind', 'separator', 'extra', 'null'])
+@pytest.mark.parametrize('mutation', ['authority', 'hash', 'range', 'kind', 'separator', 'extra', 'null',
+    'missing', 'verified', 'ordinal', 'position-extra', 'positions', 'both', 'v1-anchor'])
 def test_portable_source_anchor_rejects_inconsistent_data(tmp_path, mutation):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Source')
-    imported = app.add_text(workspace, 'Source', 'A source\fSecond segment')
-    desk = ReadingDesk(app, workspace, imported['edition'])
-    doc = read_source_range(desk, 1, len(desk.pages)).reading_document()
-    data = doc.to_dict()
+    _, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    data = _canonical_anchor_record(source.reading_document())
     anchor = data['source_anchor']
     if mutation == 'authority':
         anchor['quotation_authority'] = True
@@ -681,7 +789,112 @@ def test_portable_source_anchor_rejects_inconsistent_data(tmp_path, mutation):
         anchor['positions'][1]['start'] -= 1
     elif mutation == 'extra':
         anchor['printed_page'] = 'iv'
-    else:
+    elif mutation == 'null':
         data['source_anchor'] = None
+    elif mutation == 'missing':
+        del anchor['positions'][0]['text_verified_at_capture']
+    elif mutation == 'verified':
+        anchor['positions'][0]['text_verified_at_capture'] = 1
+    elif mutation == 'ordinal':
+        anchor['positions'][0]['ordinal'] = True
+    elif mutation == 'position-extra':
+        anchor['positions'][0]['text_verified'] = True
+    elif mutation == 'positions':
+        anchor['positions'] *= 5001
+    elif mutation == 'both':
+        data['source_origin'] = source.origin
+    else:
+        data['schema'] = 'carr.reading-copy.v1'
+    before = json.dumps(data, sort_keys=True)
     with pytest.raises(ValueError):
         ReadingDocument.from_dict(data)
+    assert json.dumps(data, sort_keys=True) == before
+
+def _canonical_anchor_record(document):
+    """Canonical184 persisted format remains the current serialization."""
+    record = document.to_dict()
+    assert 'source_anchor' in record and 'source_origin' not in record
+    return record
+
+
+def _legacy_origin_record(document):
+    """Exact earlier95 producer shape, retained for compatibility reading."""
+    record = document.to_dict()
+    record.pop('source_anchor')
+    record['source_origin'] = document.source_origin
+    return record
+
+
+def test_canonical_anchor_v2_reopens_history_without_rewriting_old_project(tmp_path):
+    _, sources = _two_equal_sources(tmp_path)
+    source, other = sources[0][0], sources[1][0]
+    document = source.reading_document()
+    document.replace(0, 6, 'Reading')
+    document.replace(7, 7, 'only ')
+    assert document.undo()
+    record = _canonical_anchor_record(document)
+    path = tmp_path / 'canonical-anchor.reading.json'
+    path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    before = path.read_bytes()
+
+    reopened = ReadingDocument.load(path)
+    assert path.read_bytes() == before
+    assert reopened.source_origin == source.origin
+    assert reopened.source_origin['quotation_authority'] is False
+    assert reopened.source_sha256 == document.source_sha256
+    assert reopened.text == document.text and reopened.revision == document.revision
+    assert source.reading_document(reopened) is reopened
+    with pytest.raises(ValueError, match='source identity'):
+        other.reading_document(reopened)
+    assert reopened.undo() and reopened.text == source.text
+    first, second = source.origin['positions']
+    assert reopened.source_span(first['end'], second['start']) == SourceSpan(None, None, False)
+    assert not reopened.source_span(0, len(reopened.text)).exact
+    assert reopened.redo() and reopened.text == document.text
+    assert reopened.redo() and 'only ' in reopened.text
+    portable = tmp_path / 'canonical-roundtrip.reading.json'
+    reopened.save(portable)
+    written = json.loads(portable.read_text(encoding='utf-8'))
+    assert written['schema'] == 'carr.reading-copy.v2'
+    assert 'source_origin' not in written and written['source_anchor'] == source.source_anchor
+    assert path.read_bytes() == before
+
+
+def test_canonical_anchor_recovery_and_backup_keep_original_saved_bytes(tmp_path):
+    from carr_library.library_backup import restore_backup
+
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    document = source.reading_document()
+    document.set_text('Saved canonical edits with retained source identity.')
+    store = ReaderDraftStore(app.root, slot='canonical-book-reader')
+    store.save(ReaderResume(document, 'fixture:voice', rate=2, volume=65, cursor=3))
+    record = json.loads(store.path.read_bytes())
+    record['document'] = _canonical_anchor_record(document)
+    store.path.write_text(json.dumps(record, ensure_ascii=False) + '\n', encoding='utf-8')
+    before = store.path.read_bytes()
+
+    recovered, selected, detached = open_source_draft(source, store,
+        choose=lambda: pytest.fail('An exact old-format source needs no conflict choice.'))
+    assert not detached and selected.path != store.path
+    assert recovered.document.source_origin == source.origin
+    assert recovered.document.text == document.text
+    assert (recovered.voice_id, recovered.rate, recovered.volume, recovered.cursor) == ('fixture:voice', 2, 65, 3)
+    assert store.path.read_bytes() == before
+    summary, = store.list_saved().copies
+    assert summary.source_recorded
+    copied, separate_store = store.open_saved(summary)
+    assert separate_store.path != store.path and copied.document.source_origin == source.origin
+    assert copied.document.text == document.text
+    assert copied.document.undo() and copied.document.text == source.text
+    assert store.path.read_bytes() == before
+
+    backup = tmp_path / 'canonical-draft-backup'
+    manifest = app.backup(backup)
+    destination = tmp_path / 'canonical-draft-restored'
+    restore_backup(backup, destination, expected_manifest_sha256=manifest)
+    restored_store = ReaderDraftStore(destination, slot='canonical-book-reader')
+    restored = restored_store.load()
+    assert restored_store.path.read_bytes() == before
+    assert restored.document.source_origin == source.origin and restored.document.text == document.text
+    assert restored.document.undo() and restored.document.text == source.text

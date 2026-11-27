@@ -1,4 +1,4 @@
-"""Released V3 query definitions survive the real host's V4 migration."""
+"""Released V3 query definitions survive the real host's checked migrations."""
 from contextlib import closing
 from hashlib import sha256
 
@@ -15,7 +15,7 @@ from carr_library.research.query_manager import QueryManager
 from carr_library.research.saved_evidence import SavedEvidenceStore
 from carr_library.research.saved_topic_query import SavedTopicQueries
 from carr_library.research.topic_tree import TopicTree
-from carr_library.storage.revisions import Page, Storage, _expected_signature, _schema_signature
+from carr_library.storage.revisions import CURRENT_SCHEMA, Page, Storage, _expected_signature, _schema_signature
 
 
 def test_populated_v3_queries_preserve_all_criteria_and_run_after_v4_upgrade(tmp_path):
@@ -38,7 +38,7 @@ def test_populated_v3_queries_preserve_all_criteria_and_run_after_v4_upgrade(tmp
         'SELECT workspace,topic,id,payload,checksum,note '
         'FROM research_evidence ORDER BY workspace,topic,id')
 
-    # Build actual V3 storage without opening the V4 LibraryApp constructor.
+    # Build actual V3 storage without opening the current LibraryApp constructor.
     with closing(Storage(root / 'library.sqlite', schema_version=3)) as storage:
         db = storage.db
         with storage.transaction():
@@ -91,8 +91,8 @@ def test_populated_v3_queries_preserve_all_criteria_and_run_after_v4_upgrade(tmp
     # The production constructor performs the checked, transactional migration.
     app = LibraryApp(root)
     with app.read(workspace) as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 4
-        assert _schema_signature(db) == _expected_signature(4)
+        assert db.execute('PRAGMA user_version').fetchone()[0] == CURRENT_SCHEMA
+        assert _schema_signature(db) == _expected_signature(CURRENT_SCHEMA)
         assert tuple(tuple(row) for row in db.execute(query_rows_sql)) == before_queries
         assert tuple(tuple(row) for row in db.execute(evidence_rows_sql)) == before_evidence
         assert db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',

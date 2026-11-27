@@ -113,8 +113,8 @@ class Dialogs:
 
     def approve_export(self, parent, path, *, private_root):
         self._main()
-        from carr_library.research.export_file import capture_export_destination
-        return capture_export_destination(path, private_root=private_root)
+        from carr_library.ui.research_actions import NativeDialogs
+        return NativeDialogs().approve_export(parent, path, private_root=private_root)
 
     def show(self, parent, title, value):
         self._main()
@@ -145,6 +145,22 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.other_workspace = other
         self.frame = Frame(self.library, self.workspace, self.topic)
         self.destination = self.root / 'matrix.csv'
+        self.approve_overwrite = True
+        owner = self
+        def confirmation(*args, **kwargs):
+            assert threading.get_ident() == owner.frame.main_thread
+            return 1 if owner.approve_overwrite else 0
+        wx = SimpleNamespace(MessageBox=confirmation, YES=1, NO=0,
+                             YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8)
+        missing = object()
+        previous_wx = sys.modules.get('wx', missing)
+        sys.modules['wx'] = wx
+        def restore_wx():
+            if previous_wx is missing:
+                sys.modules.pop('wx', None)
+            else:
+                sys.modules['wx'] = previous_wx
+        self.addCleanup(restore_wx)
 
     def actions(self, answers=(0,), *, during=None, destination=None):
         dialogs = Dialogs(self.frame, answers,
@@ -415,6 +431,34 @@ class CatalogInsightsActionsTests(unittest.TestCase):
             actions.export_matrix()
         self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
         self.assertIn('cancelled', self.frame.messages[-1])
+
+    def test_matrix_render_cannot_replace_competing_destination_bytes(self):
+        from carr_library.research import literature_matrix
+        original = literature_matrix.render_literature_matrix
+        def competing(*args, **kwargs):
+            value = original(*args, **kwargs)
+            self.destination.write_bytes(b'Newer independently saved matrix')
+            return value
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                self.destination.unlink(missing_ok=True)
+                if existing:
+                    self.destination.write_bytes(b'Previously approved matrix')
+                actions, _ = self.actions((0, 0))
+                with patch.object(literature_matrix, 'render_literature_matrix', competing):
+                    actions.export_matrix()
+                self.assertEqual(self.destination.read_bytes(), b'Newer independently saved matrix')
+                self.assertIn('destination changed', self.frame.messages[-1])
+                self.assertEqual(list(self.root.glob('.research-export-*')), [])
+
+    def test_matrix_overwrite_decline_prevents_worker_and_restores_focus(self):
+        self.destination.write_bytes(b'Keep existing matrix')
+        self.approve_overwrite = False
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.frame.jobs, [])
+        self.assertEqual(self.destination.read_bytes(), b'Keep existing matrix')
+        self.assertTrue(self.frame.origin.focused)
 
     def test_cancellation_after_publication_is_reported_as_saved(self):
         original = ui.write_export

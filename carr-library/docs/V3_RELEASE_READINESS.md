@@ -14,9 +14,9 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives, portable edition/revision/asset lineage, explicit detached-draft recovery, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real source/backup/restart tests preserve original bytes and never infer identity from equal text; earlier Windows SAPI PCM and local Flite evidence remains specific to its tested build; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
-| Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state; snapshot byte recheck, discoverable reader drafts and durable import-publication reconciliation | Actual same-size/mtime mutation, post-commit worker interruption and fresh-session/backup recovery tests; externally exported audio and OS credential secrets are separate |
-| Exports | Destination state bound before one native confirmation; atomic create-only publication, scope checks through staging and truthful completed-save receipts | Real filesystem races preserve intervening files; persistent temporary-cleanup warnings do not turn a completed export into failure; final Windows head requires its own CI evidence |
+| Documents and citations | Bounded BibTeX/RIS import, selected-field metadata review, isolated conversion, local citeproc-js styles/locales and editable DOCX regeneration with citation provenance | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
+| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings, projects and discoverable reader drafts; catalog v5 records immutable request/attempt publication receipts in the import transaction | Real process interruption, competing imports, exact v3/v4/v5 schema validation, rollback, portable-name validation and restore tests; externally exported audio and OS credential secrets are separate |
+| Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 64 MiB overwrite-check limit require a new filename |
 | Supplied transcription | Existing Whisper worker protocol, strict source preparation, reviewed local runtime/model inventories, isolated processes, immutable input and atomic TXT/SRT/VTT/JSON receipts; native file/folder selection, jobs/status/pause/cancel/resume and separate transcript editing, plus CLI | Actual process/filesystem tests use synthetic recognition, including a separate execution of the supplied worker; real model inference, throughput, native runtime isolation and human NVDA remain unqualified |
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
@@ -60,6 +60,25 @@ Current integration is tracked in [PR143](https://github.com/Oleksii-debug/Audio
 Its Windows source and installed-package workflows select the new transcription,
 reader recovery, import-publication and export regressions. Read the checks for
 the exact final head: a predecessor's passing run does not qualify a later tree.
+
+The complete-backup format remains v4. Catalog schema v5 adds only import
+publication receipts; the exact earlier schema definitions remain unchanged.
+Opening a supported v3 or v4 library validates and migrates it transactionally.
+Restoring an older snapshot preserves its original version until that normal
+application-open migration. Recovery never infers completion from the timing of
+another import or from a matching pre-existing revision.
+The selected v5 layout uses `publication_receipt`. A different experimental v5
+layout named `import_publication` is not the same schema and is not silently
+accepted or merged by this migration.
+
+Existing v1 reading projects remain readable. Both reviewed v2 source dialects
+are checked: new portable projects use canonical `source_anchor`, while earlier
+`source_origin` projects retain their validated legacy recovery identity and
+family hashes. Reading an older project does not rewrite it or infer missing
+source identity; edits and undo history remain available. Neither dialect grants
+quotation authority. Matching text alone never attaches a draft to another source.
+A discovery-link failure after a committed draft, or a recovery-draft failure
+after a committed Save As, is reported separately from the successful save.
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,
