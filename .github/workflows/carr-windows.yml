@@ -1557,7 +1557,6 @@ jobs:
               'tests/audio/test_production_integrity.py',
               'tests/ui/test_import_center.py',
               'tests/ui/test_ebook_reader.py',
-              'tests/reader/test_ebook_reader.py',
               'tests/reader/test_export_change_time.py',
               'tests/reader/test_live_speech.py',
               'tests/ui/test_live_reading.py',

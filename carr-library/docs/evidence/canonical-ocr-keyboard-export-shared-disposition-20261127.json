@@ -450,7 +450,6 @@
   },
   "support_files": [
     "tests/__init__.py",
-    "tests/ui/__init__.py",
     "tests/ui/test_keyboard_manager.py",
     "tests/ui/test_import_center.py"
   ],

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "FIXTURE_ONLY_REPAIR_NOT_RUN",
+  "status": "OBSERVED_FINAL_PASS_WITH_RETAINED_PRIOR_FAILURES",
   "observed": {
     "source_commit": "4e570d78fd496a29f5afefd8789e8d8112e8ba5f",
     "run_id": 46049991116,
@@ -18,7 +18,7 @@
       "bytes": 111343,
       "digest": "sha256:4c73200e080aa2b323b530b9482e0315269aee2788f3e59efb4c128587d1d53a"
     },
-    "linux_status_at_authoring": "QUEUED"
+    "linux_status_at_authoring": "QUEUED_AT_FIRST_REPAIR"
   },
   "change": "The test deadline wrapper accepts the current keyword-only allow_loopback=False argument, asserts it stays false, and forwards it unchanged to the real run_suite for both timeout and later successful suites.",
   "preserved": [
@@ -29,10 +29,199 @@
     "The original frozen failing ref remains unchanged."
   ],
   "next_run": {
-    "status": "NOT_RUN",
-    "same_gate": ".github/workflows/carr-ci-runner.yml",
-    "windows_cases": 48,
-    "linux_cases": 49
+    "status": "PASS",
+    "run_id": 46054046014,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46054046014",
+    "frozen_branch": "carr/ci-runner-r25-atomic-ready-20261127",
+    "source_commit": "8feb19893acc97a94a6bdeafa4c15459117239a4",
+    "source_tree": "9303960cc923977484659b5261704fe7f33cb026",
+    "windows": {
+      "executable_sha256": "5f7b89a612c9b8af1d6456cdfcd1dbe5ca630849e79aebced9bee9a6694952ec",
+      "execution": {
+        "cases": 48,
+        "counter": {
+          "tests.packaging.test_ci_check.AudioCIEntrypointTests": {
+            "test_all_enabled_requested_long_cases_must_pass": 1,
+            "test_collection_only_cannot_claim_execution": 1,
+            "test_configured_addopts_cannot_replace_execution": 1,
+            "test_explicit_deselection_cannot_hide_requested_long_case": 1,
+            "test_inactive_xfail_marker_allows_a_real_pass": 1,
+            "test_inherited_addopts_cannot_turn_failure_into_collection_success": 1,
+            "test_inherited_plugin_selection_is_not_loaded": 1,
+            "test_missing_enabled_long_case_is_not_hidden_by_other_passes": 1,
+            "test_normal_fatal_handler_stays_enabled_and_old_dump_option_cannot_win": 1,
+            "test_progress_and_deliberate_optional_skip_are_preserved": 1,
+            "test_required_selection_binds_native_paths_and_exact_parameter_cases": 1,
+            "test_skipped_enabled_long_case_is_not_hidden_by_other_passes": 1,
+            "test_xfail_and_explicit_nonstrict_xpass_cannot_be_green": 1
+          },
+          "tests.packaging.test_ci_check.CIEntrypointTests": {
+            "test_empty_not_green": 1,
+            "test_explicit_nonstrict_xpass_not_green": 1,
+            "test_explicit_numeric_loopback_uses_real_tcp_but_refuses_external_names_and_bindings": 1,
+            "test_failure_not_green": 1,
+            "test_inactive_xfail_marker_allows_pass": 1,
+            "test_inherited_loopback_environment_does_not_change_default_offline_policy": 1,
+            "test_inherited_pytest_addopts_cannot_turn_failure_green": 1,
+            "test_missing_suite_not_hidden_by_passing_suite": 1,
+            "test_mixed_pass_xpass_not_green": 1,
+            "test_normal_fatal_handler_stays_enabled_without_scheduled_tracebacks": 1,
+            "test_numeric_loopback_rejects_directory_and_lexical_aliases": 1,
+            "test_numeric_loopback_requires_the_explicit_fixture_path": 1,
+            "test_offline_gate_blocks_connections_and_name_resolution": 1,
+            "test_outside_tree_rejected": 1,
+            "test_parallel_failures_remain_failed_required_suites": 1,
+            "test_parallel_missing_suite_cannot_hide_passing_suite": 1,
+            "test_parallel_skips_remain_failed_required_suites": 1,
+            "test_parallel_workers_are_real_independent_processes": 1,
+            "test_pass": 1,
+            "test_persistent_report_cleanup_permission_error_is_named_and_never_passes": 1,
+            "test_posix_settlement_waits_for_owned_descendant_confirmation": 1,
+            "test_report_cleanup_permission_error_preserves_original_timeout": 1,
+            "test_skipped_not_green": 1,
+            "test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed": 1,
+            "test_transient_report_cleanup_permission_error_is_retried_before_pass": 1,
+            "test_worker_limit_is_explicit_and_bounded": 1,
+            "test_xfail_not_green": 1
+          },
+          "tests.packaging.test_ci_check.CaseWatchdogTests": {
+            "test_completed_case_cancels_its_real_timer": 1,
+            "test_diagnostic_capture_and_write_errors_do_not_raise_or_print_data": 1,
+            "test_disabling_scheduled_dump_keeps_arguments_and_end_of_options": 1,
+            "test_real_short_timer_observes_an_active_child_without_private_data": 1,
+            "test_session_close_suppresses_an_inflight_snapshot": 1,
+            "test_stale_snapshot_and_old_finish_cannot_affect_the_new_case": 1
+          },
+          "tests.packaging.test_ci_check.RelocatedCIChildTests": {
+            "test_isolated_replay_loads_exact_sibling_helper_without_checkout_imports": 1,
+            "test_missing_exact_helper_cannot_fall_back_to_working_directory": 1
+          }
+        }
+      },
+      "fork": "NOT_APPLICABLE_ON_WINDOWS",
+      "oracle_sha256": "83a96ee75a3d70b77c3fac3d2f8e683ddf96c8cf323b9ba4a1f4797a472c90ed",
+      "platform": "win32",
+      "process_family": "CONFIRMED_QUIESCENT",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "required_cases": 48,
+      "runtime": {
+        "filelock": "3.29.0",
+        "packaging": "26.4",
+        "platformdirs": "4.10.0",
+        "pytest": "9.0.2"
+      },
+      "source_commit": "8feb19893acc97a94a6bdeafa4c15459117239a4",
+      "source_only": true,
+      "source_tree": "9303960cc923977484659b5261704fe7f33cb026",
+      "status": "PASS",
+      "job_id": 140692109321,
+      "runner": "windows-2022",
+      "artifact": {
+        "id": 15225941861,
+        "bytes": 107897,
+        "digest": "sha256:280f41b163545374efa3a8e046aaeab964e4fb8d6e1aea002d7569ac8671836d",
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46054046014/artifacts/15225941861"
+      }
+    },
+    "linux": {
+      "executable_sha256": "f85c83d76e58e52cc231fe99afe152ff8030a0c92aa0899af995fce839e2e044",
+      "execution": {
+        "cases": 49,
+        "counter": {
+          "tests.operations.test_resource_fork": {
+            "test_forked_child_cannot_release_parent_reservation": 1
+          },
+          "tests.packaging.test_ci_check.AudioCIEntrypointTests": {
+            "test_all_enabled_requested_long_cases_must_pass": 1,
+            "test_collection_only_cannot_claim_execution": 1,
+            "test_configured_addopts_cannot_replace_execution": 1,
+            "test_explicit_deselection_cannot_hide_requested_long_case": 1,
+            "test_inactive_xfail_marker_allows_a_real_pass": 1,
+            "test_inherited_addopts_cannot_turn_failure_into_collection_success": 1,
+            "test_inherited_plugin_selection_is_not_loaded": 1,
+            "test_missing_enabled_long_case_is_not_hidden_by_other_passes": 1,
+            "test_normal_fatal_handler_stays_enabled_and_old_dump_option_cannot_win": 1,
+            "test_progress_and_deliberate_optional_skip_are_preserved": 1,
+            "test_required_selection_binds_native_paths_and_exact_parameter_cases": 1,
+            "test_skipped_enabled_long_case_is_not_hidden_by_other_passes": 1,
+            "test_xfail_and_explicit_nonstrict_xpass_cannot_be_green": 1
+          },
+          "tests.packaging.test_ci_check.CIEntrypointTests": {
+            "test_empty_not_green": 1,
+            "test_explicit_nonstrict_xpass_not_green": 1,
+            "test_explicit_numeric_loopback_uses_real_tcp_but_refuses_external_names_and_bindings": 1,
+            "test_failure_not_green": 1,
+            "test_inactive_xfail_marker_allows_pass": 1,
+            "test_inherited_loopback_environment_does_not_change_default_offline_policy": 1,
+            "test_inherited_pytest_addopts_cannot_turn_failure_green": 1,
+            "test_missing_suite_not_hidden_by_passing_suite": 1,
+            "test_mixed_pass_xpass_not_green": 1,
+            "test_normal_fatal_handler_stays_enabled_without_scheduled_tracebacks": 1,
+            "test_numeric_loopback_rejects_directory_and_lexical_aliases": 1,
+            "test_numeric_loopback_requires_the_explicit_fixture_path": 1,
+            "test_offline_gate_blocks_connections_and_name_resolution": 1,
+            "test_outside_tree_rejected": 1,
+            "test_parallel_failures_remain_failed_required_suites": 1,
+            "test_parallel_missing_suite_cannot_hide_passing_suite": 1,
+            "test_parallel_skips_remain_failed_required_suites": 1,
+            "test_parallel_workers_are_real_independent_processes": 1,
+            "test_pass": 1,
+            "test_persistent_report_cleanup_permission_error_is_named_and_never_passes": 1,
+            "test_posix_settlement_waits_for_owned_descendant_confirmation": 1,
+            "test_report_cleanup_permission_error_preserves_original_timeout": 1,
+            "test_skipped_not_green": 1,
+            "test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed": 1,
+            "test_transient_report_cleanup_permission_error_is_retried_before_pass": 1,
+            "test_worker_limit_is_explicit_and_bounded": 1,
+            "test_xfail_not_green": 1
+          },
+          "tests.packaging.test_ci_check.CaseWatchdogTests": {
+            "test_completed_case_cancels_its_real_timer": 1,
+            "test_diagnostic_capture_and_write_errors_do_not_raise_or_print_data": 1,
+            "test_disabling_scheduled_dump_keeps_arguments_and_end_of_options": 1,
+            "test_real_short_timer_observes_an_active_child_without_private_data": 1,
+            "test_session_close_suppresses_an_inflight_snapshot": 1,
+            "test_stale_snapshot_and_old_finish_cannot_affect_the_new_case": 1
+          },
+          "tests.packaging.test_ci_check.RelocatedCIChildTests": {
+            "test_isolated_replay_loads_exact_sibling_helper_without_checkout_imports": 1,
+            "test_missing_exact_helper_cannot_fall_back_to_working_directory": 1
+          }
+        }
+      },
+      "fork": "REQUIRED_ACTUAL_LINUX_FORK",
+      "oracle_sha256": "83a96ee75a3d70b77c3fac3d2f8e683ddf96c8cf323b9ba4a1f4797a472c90ed",
+      "platform": "linux",
+      "process_family": "CONFIRMED_QUIESCENT",
+      "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+      "required_cases": 49,
+      "runtime": {
+        "filelock": "3.29.0",
+        "packaging": "26.4",
+        "platformdirs": "4.10.0",
+        "pytest": "9.0.2"
+      },
+      "source_commit": "8feb19893acc97a94a6bdeafa4c15459117239a4",
+      "source_only": true,
+      "source_tree": "9303960cc923977484659b5261704fe7f33cb026",
+      "status": "PASS",
+      "job_id": 140692109813,
+      "runner": "ubuntu-24.04",
+      "artifact": {
+        "id": 15224419945,
+        "bytes": 107692,
+        "digest": "sha256:0c41b6c8ce1d53469964957a2786cbe7c6906aee16c02cef55ee30478c0dd555",
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46054046014/artifacts/15224419945"
+      }
+    },
+    "independently_verified": "Fetched both completed job logs and artifact metadata. The full reported function/class multiplicity maps matched the frozen required oracle exactly; required case counts, source commit/tree, runtime pins, full-family quiescence and platform-specific fork policy also matched.",
+    "source_inventory_binding": "The unchanged strict gate compared the full tracked Python/pyproject/oracle SHA inventory before and after execution and retained it in before.json/gate.json. Its bounded stdout receipt omits that large per-file inventory.",
+    "limits": [
+      "This is source-only CI runner qualification, not installed application or model qualification.",
+      "No skipped Windows fork test is counted; its actual fork counterpart ran only on Linux.",
+      "Product installer, complete integrated application and manual accessibility require their own applicable gates.",
+      "Historical failed frozen runs remain failed and unchanged."
+    ]
   },
   "followup": {
     "source_commit": "668671ce245931e610780f335770030c1234a001",
@@ -63,5 +252,20 @@
     },
     "repair": "The synthetic child closes a same-directory ready file before atomically renaming it to the PID marker. Until the observing wrapper returns, it retains ownership and settles the complete existing process family on any observation exception. No product runner, timeout or case population changes."
   },
-  "receipt_visibility": "The unchanged strict gate additionally prints a fixed allowlist of existing validated receipt fields (exact execution Counter, required count, source identity, quiescence, runtime/oracle/interpreter hashes) to the job log. The large full source inventory stays in gate.json. No acceptance predicate changes."
+  "receipt_visibility": "The unchanged strict gate additionally prints a fixed allowlist of existing validated receipt fields (exact execution Counter, required count, source identity, quiescence, runtime/oracle/interpreter hashes) to the job log. The large full source inventory stays in gate.json. No acceptance predicate changes.",
+  "prior_linux_completion": {
+    "source_commit": "4e570d78fd496a29f5afefd8789e8d8112e8ba5f",
+    "run_id": 46049991116,
+    "job_id": 140678635460,
+    "status": "FAIL",
+    "passed": 48,
+    "failed": 1,
+    "elapsed_seconds": 7.02,
+    "error": "Same missing allow_loopback keyword in the deadline fixture, before its descendant control.",
+    "artifact": {
+      "id": 15225865870,
+      "bytes": 111079,
+      "digest": "sha256:ed8e94ff054c9083466a1bb56d700112a695c8b853bd1e1d9dfd6a1c170ef9da"
+    }
+  }
 }
