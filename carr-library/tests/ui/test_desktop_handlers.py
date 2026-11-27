@@ -151,6 +151,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('document_conversion', 'install_conversion_actions'),
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
+                              ('citation_formatting', 'install_citation_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
                               ('trust_status', 'install_trust_actions'),
                               ('operations_dialog', 'install_operations_actions')]:

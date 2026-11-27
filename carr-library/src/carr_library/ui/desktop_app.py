@@ -620,6 +620,8 @@ class DesktopFrame(WorkspaceFrame):
         from .language_matrix import install_language_actions
         install_conversion_actions(self)
         install_language_actions(self)
+        from .citation_formatting import install_citation_actions
+        install_citation_actions(self)
         from .transcription_dialog import install_transcription_actions
         from .trust_status import install_trust_actions
         from .operations_dialog import install_operations_actions
