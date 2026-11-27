@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/v3-final-delivery-gates-af5-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/v3-final-delivery-gates-af5-20261126, carr/v3-final-delivery-gates-af5-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -151,6 +151,12 @@ jobs:
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,runpy; read_lock=runpy.run_path('packaging/build_windows_bundle.py')['read_lock']; locked=read_lock(pathlib.Path('packaging/windows-semantic-cp311.lock')); pins={name:value[0] for name,value in locked.items()}; actual={name:m.version(name) for name in pins}; assert pins and actual==pins; print(json.dumps(dict(status='PASS',count=len(pins),versions=actual),sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check native citation dispatch before long source suites
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/native-citation-styles-early.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -786,6 +792,8 @@ jobs:
               'tests/research/test_bibtex_import.py',
               'tests/citations/test_csl.py',
               'tests/citations/test_bibliography_workbench.py',
+              'tests/reader/test_export_no_clobber.py',
+              'tests/ui/test_citation_styles_jobs.py',
               'tests/catalog/test_ris_apply.py',
               'tests/storage/test_backup_v4_sidecars.py',
               'tests/storage/test_backup_source_binding_review.py',
