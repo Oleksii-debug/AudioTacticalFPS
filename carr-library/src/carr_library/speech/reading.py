@@ -18,6 +18,8 @@ from ._io import check_cancelled, digest, local_file, new_output, run_process, t
 
 MAX_HISTORY = 500
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
+MAX_DICTIONARY_BYTES = 8_000_000
+MAX_DICTIONARY_RULES = 1000
 
 
 @dataclass(frozen=True)
@@ -453,7 +455,7 @@ class ReadingDocument:
 
 def export_dictionary(rules, path):
     rules = tuple(rules)
-    if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
+    if len(rules) > MAX_DICTIONARY_RULES or any(not isinstance(rule, PronunciationRule) for rule in rules):
         raise ValueError('Use at most 1000 validated pronunciation rules.')
     payload = json.dumps({'schema': 'carr.pronunciations.v1', 'rules': [asdict(rule) for rule in rules]}, ensure_ascii=False)
     with new_output(path) as temporary:
@@ -462,12 +464,17 @@ def export_dictionary(rules, path):
 
 def import_dictionary(path):
     source = local_file(path)
-    if source.stat().st_size > 8_000_000:
+    if source.stat().st_size > MAX_DICTIONARY_BYTES:
         raise ValueError('The pronunciation dictionary exceeds its size budget.')
     data = json.loads(source.read_text(encoding='utf-8'), object_pairs_hook=_unique)
+    return validate_dictionary(data)
+
+
+def validate_dictionary(data):
+    """Decode passive rule data without executing substitutions or voice engines."""
     if not isinstance(data, dict) or set(data) != {'schema', 'rules'} or data['schema'] != 'carr.pronunciations.v1':
         raise ValueError('Unsupported pronunciation dictionary.')
-    if not isinstance(data['rules'], list) or len(data['rules']) > 1000:
+    if not isinstance(data['rules'], list) or len(data['rules']) > MAX_DICTIONARY_RULES:
         raise ValueError('Invalid pronunciation rule count.')
     try:
         return tuple(PronunciationRule(**row) for row in data['rules'])

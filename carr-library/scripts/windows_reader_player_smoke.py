@@ -12,7 +12,7 @@ import time
 import wave
 
 
-def native_controls(player, check, commands):
+def native_controls(player, check, commands, selected_output):
     """Exercise real wx keyboard controls over this same measured MCI player."""
     import ctypes
     from ctypes import wintypes
@@ -69,6 +69,22 @@ def native_controls(player, check, commands):
             check('native playback Space up', simulator.KeyUp(wx.WXK_SPACE))
         gui.Yield()
 
+    def choose(control, index):
+        top = wx.GetTopLevelParent(control)
+        top.Raise()
+        user32.SetForegroundWindow(top.GetHandle())
+        control.SetFocus()
+        pump(lambda: wx.Window.FindFocus() is control
+             and user32.GetForegroundWindow() == top.GetHandle(), 'Native playback output focus')
+        for key in [wx.WXK_HOME, *([wx.WXK_DOWN] * index)]:
+            check('native playback output key down', simulator.KeyDown(key))
+            try:
+                gui.Yield()
+            finally:
+                check('native playback output key up', simulator.KeyUp(key))
+            gui.Yield()
+        pump(lambda: control.GetSelection() == index, 'Native playback output selection')
+
     def play_count():
         return sum(command.startswith(('play ', 'resume ')) for command in commands)
 
@@ -91,6 +107,25 @@ def native_controls(player, check, commands):
         try:
             popup, = [window for window in wx.GetTopLevelWindows()
                       if window.IsShown() and window.GetTitle() == 'Reader playback controls']
+            before = play_count()
+            output = find(popup, 'Requested playback output; apply explicitly after selection')
+            check('opening output controls does not enumerate or change the route',
+                  output.GetCount() == 1 and player.output_device is None)
+            press(find(popup, 'Reload available playback outputs without playing audio'))
+            outputs = player.output_devices()
+            check('actual native inventory is displayed without audio',
+                  output.GetCount() == len(outputs) + 1 and play_count() == before)
+            if selected_output is not None:
+                index = next(index for index, item in enumerate(outputs, 1)
+                             if item.identity == selected_output.identity)
+                choose(output, index)
+                check('native output selection alone does not apply or autoplay',
+                      player.output_device is None and play_count() == before)
+                press(find(popup, 'Stop audio and use selected playback output'))
+                check('native explicit output application stops and preserves identity',
+                      player.state == 'stopped' and not player._open
+                      and player.output_device.identity == selected_output.identity
+                      and play_count() == before)
             find(popup, 'Repeat A in seconds').ChangeValue('.2')
             find(popup, 'Repeat B in seconds').ChangeValue('.6')
             before = play_count()
@@ -106,6 +141,11 @@ def native_controls(player, check, commands):
                   and abs(player.position_seconds - .35) <= .02)
             press(find(popup, 'Play current recording'))
             pump(lambda: bool(repetitions), 'Actual native A–B did not repeat')
+            if selected_output is not None:
+                check('real selected MCI route confirms output before repeated playback',
+                      player._opened_output.identity == selected_output.identity
+                      and player._mci(f'status {player._alias} output').strip()
+                      == str(player._opened_output.index))
             check('native repeat uses reviewed endpoint',
                   any(command.startswith('play ') and command.endswith('from 200 to 600')
                       for command in commands))
@@ -133,6 +173,14 @@ def native_controls(player, check, commands):
             press(find(popup, 'Clear A–B repeat'))
             check('native clear repeat does not autoplay', player.ab_loop is None and play_count() == before)
             press(find(popup, 'Stop current recording'))
+            if selected_output is not None:
+                before = play_count()
+                choose(output, 0)
+                check('choosing automatic output still requires explicit application',
+                      player.output_device is not None and play_count() == before)
+                press(find(popup, 'Stop audio and use selected playback output'))
+                check('explicit automatic output clears only session routing without autoplay',
+                      player.output_device is None and not player._open and play_count() == before)
             press(find(popup, 'Close playback controls'))
         except Exception:
             errors.append(traceback.format_exc())
@@ -169,12 +217,19 @@ def native_controls(player, check, commands):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--require-output-device', action='store_true',
+                        help='Fail if the runner has no identifiable output for actual MCI routing.')
+    options = parser.parse_args()
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows MCI is required'}))
         return 77
     from carr_library.native_runtime import activate_bundled_runtime
     handle = activate_bundled_runtime()
     from carr_library.speech import player as implementation
+    from carr_library.speech import playback_devices
+    from carr_library.ui import reader_playback
     origin = Path(implementation.__file__).resolve()
     if 'site-packages' not in [part.casefold() for part in origin.parts]:
         raise RuntimeError('The player acceptance gate must load the installed package.')
@@ -191,6 +246,18 @@ def main():
                 raise TimeoutError('Actual MCI did not reach its measured playback state.')
             time.sleep(.02)
     try:
+        source_identity = {}
+        for module in (implementation, playback_devices, reader_playback):
+            loaded = Path(module.__file__).resolve()
+            check('installed reader output module: ' + module.__name__,
+                  'site-packages' in [part.casefold() for part in loaded.parts])
+            source_identity[module.__name__] = sha256(loaded.read_bytes()).hexdigest()
+        outputs = playback_devices.output_devices()
+        check('actual Windows output inventory stays within its bound',
+              len(outputs) <= playback_devices.MAX_DEVICES)
+        selected = next((value for value in outputs if value.selectable), None)
+        if options.require_output_device and selected is None:
+            raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')
         with TemporaryDirectory(prefix='resonance-native-player-') as temporary:
             path = Path(temporary) / 'Silent synthetic PCM — Україна.wav'
             with wave.open(str(path), 'wb') as stream:
@@ -229,7 +296,7 @@ def main():
                 wait_for(lambda: player.position_seconds >= .78)
                 player.stop()
                 check('native Stop ends playback', player.state == 'stopped')
-                native_controls(player, check, commands)
+                native_controls(player, check, commands, selected)
             finally:
                 player.close()
             check('native Close confirms alias closure', player._open is False and player.state == 'stopped')
@@ -238,7 +305,10 @@ def main():
             check('closed PCM is unchanged and releasable', renamed.read_bytes() == original)
             renamed.unlink()
             report = {'result': 'PASS', 'checks': checks, 'package_origin': str(origin),
+                'source_identity': source_identity,
                 'actual_windows_mci': 'PASS', 'synthetic_pcm_sha256': sha256(original).hexdigest(),
+                'actual_windows_output_inventory': 'PASS', 'output_count': len(outputs),
+                'selected_mci_output': 'PASS' if selected is not None else 'NOT_RUN_NO_IDENTIFIED_OUTPUT',
                 'paused_seek_no_play_command': 'PASS', 'native_ab_sleep_skip_controls': 'PASS', 'audible_listening': 'NOT_RUN', 'nvda': 'NOT_RUN'}
         print(json.dumps(report, ensure_ascii=False), flush=True)
         return 0

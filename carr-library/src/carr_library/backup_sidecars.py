@@ -99,6 +99,10 @@ def sidecar_limit(name):
         return _model('progress_preferences').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
+    if name == 'state/speech/reading-presentation.json':
+        return _model('speech.presentation').MAX_PROFILE_BYTES
+    if name == 'state/speech/pronunciations.json':
+        return _model('speech.reading').MAX_DICTIONARY_BYTES
     if maximum := backup_studio.limit(name):
         return maximum
     if maximum := backup_transcription.limit(name):
@@ -322,6 +326,12 @@ def validate_sidecar(db, name, raw):
             _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
+        elif name == 'state/speech/reading-presentation.json':
+            _model('speech.presentation').ReadingPresentation.from_dict(_json(raw))
+        elif name == 'state/speech/pronunciations.json':
+            # Retain rules as passive data. In particular, backup/restore must
+            # never run their regex substitutions or discover any voice engine.
+            _model('speech.reading').validate_dictionary(_json(raw))
         elif backup_studio.limit(name) is not None:
             backup_studio.validate(db, name, _json(raw))
         elif backup_transcription.limit(name) is not None:
@@ -509,7 +519,9 @@ def _ignored(name):
     if name.startswith('state/studio/'):
         return path.name in ('.state.lock', '.render.lock') or path.name.startswith('.pending-')
     if path.parent.as_posix() == 'state/speech':
-        return bool(re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name) or path.name.startswith('.pending-'))
+        return bool(re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name)
+                    or path.name in ('.reading-presentation.lock', '.pronunciations.lock')
+                    or path.name.startswith('.pending-'))
     if path.parent.as_posix() == 'state/audio':
         return path.name == '.state.lock' or path.name.startswith('.pending-')
     if path.parent.as_posix() in ('state/assistant', 'state/providers', 'state/providers/usage',

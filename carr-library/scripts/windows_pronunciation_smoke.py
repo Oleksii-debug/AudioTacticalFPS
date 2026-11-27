@@ -39,6 +39,9 @@ def _run_native():
     import carr_library.speech.navigation as navigation_module
     import carr_library.ui.pronunciation_dialog as pronunciation_module
     import carr_library.ui.speech_dialog as reader_module
+    import carr_library.speech.spelling as spelling_module
+    import carr_library.speech.spelling_worker as spelling_worker_module
+    import carr_library.ui.spelling_dialog as spelling_dialog_module
     import carr_library.runtime_settings as runtime_settings
 
     checks, errors, observed = [], [], {}
@@ -54,7 +57,8 @@ def _run_native():
           else 'site-packages' in origin.parts)
     checkout = Path(__file__).resolve().parents[1]
     source_identity = {}
-    for module in (reading_module, navigation_module, pronunciation_module, reader_module):
+    for module in (reading_module, navigation_module, pronunciation_module, reader_module,
+                   spelling_module, spelling_worker_module, spelling_dialog_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -187,6 +191,11 @@ def _run_native():
         original_asset = library.assets.resolve(imported['asset'])
         asset_bytes = original_asset.read_bytes()
         output = root / 'reviewed-pronunciations.json'
+        unavailable_engine = root / 'deliberately-unavailable-hunspell.dll'
+        unavailable_engine.write_bytes(b'Original non-executable fixture; no native Hunspell quality claim.')
+        spelling_affix, spelling_dictionary = root / 'original.aff', root / 'original.dic'
+        spelling_affix.write_text('SET UTF-8\n', encoding='utf-8')
+        spelling_dictionary.write_text('1\nhello\n', encoding='utf-8')
         frame = wx.Frame(None, title='Resonance pronunciation native acceptance', size=(600, 350))
         frame.library = library
         frame.report = lambda message: observed.setdefault('reader_notices', []).append(str(message))
@@ -366,7 +375,45 @@ def _run_native():
                   and recovered.document.source_anchor == source.reading_document().source_anchor
                   and recovered.document.source_text == source.text)
             press(dialog.buttons['close'], lambda: until(
-                lambda: top_with_title('Find and replace') is None, finish_reader))
+                lambda: top_with_title('Find and replace') is None, open_spelling))
+
+        def open_spelling():
+            press(named(observed['reader'], 'Spelling review with Hunspell'), lambda: until(
+                lambda: top_with_title('Spelling review — Hunspell') is not None, spelling_ready))
+
+        def spelling_ready():
+            dialog = top_with_title('Spelling review — Hunspell')
+            observed['spelling_dialog'] = dialog
+            check('native optional spelling starts without executable approval', dialog.profile is None
+                  and not dialog.buttons['check'].IsEnabled() and not dialog.buttons['apply'].IsEnabled())
+            check('native spelling controls have accessible names', all(control.GetName() for control in
+                  (dialog.library, dialog.affix, dialog.dictionary, dialog.language, dialog.provenance,
+                   dialog.identity, dialog.scope, dialog.issues, dialog.suggestions, dialog.replacement,
+                   dialog.preview_text, dialog.status)))
+            dialog.library.ChangeValue(str(unavailable_engine))
+            dialog.affix.ChangeValue(str(spelling_affix))
+            dialog.dictionary.ChangeValue(str(spelling_dictionary))
+            dialog.language.ChangeValue('synthetic en')
+            dialog.provenance.ChangeValue('Original non-executable fixture and dictionary; no engine qualification.')
+            press(dialog.buttons['review'], lambda: until(lambda: not dialog.busy, spelling_reviewed))
+
+        def spelling_reviewed():
+            dialog = observed['spelling_dialog']
+            check('native spelling reviews exact files without loading a library', dialog.profile is not None
+                  and dialog.buttons['check'].IsEnabled() and 'SHA256' in dialog.identity.GetValue()
+                  and not dialog.buttons['apply'].IsEnabled())
+            press(dialog.buttons['check'], lambda: until(lambda: not dialog.busy, spelling_unavailable))
+
+        def spelling_unavailable():
+            dialog = observed['spelling_dialog']
+            check('native spelling reports unavailable C API without offering corrections',
+                  'C API' in dialog.status.GetValue() and dialog.review is None
+                  and not dialog.buttons['apply'].IsEnabled())
+            check('native unavailable spelling preserves reading copy and retained source',
+                  observed['editor'].GetValue() == observed['initial'] and original_asset.read_bytes() == asset_bytes)
+            observed['spelling_unavailable_complete'] = True
+            press(dialog.buttons['close'], lambda: until(
+                lambda: top_with_title('Spelling review — Hunspell') is None, finish_reader))
 
         def finish_reader():
             reader = observed['reader']
@@ -462,10 +509,13 @@ def _run_native():
         if errors:
             raise RuntimeError('\n'.join(errors))
         check('normal native MainLoop completed the whole workflow', observed.get('workflow_complete') is True)
+        check('normal native spelling unavailable workflow completed', observed.get('spelling_unavailable_complete') is True)
         print(json.dumps({'result': 'PASS', 'checks': len(checks), 'package_origin': str(origin),
                           'source_identity': source_identity,
                           'source_sha256': sha256(asset_bytes).hexdigest(),
                           'dictionary_sha256': sha256(observed['exported']).hexdigest(),
+                          'native_spelling_controls_and_unavailable_runtime': 'PASS',
+                          'actual_hunspell_engine': 'NOT_RUN',
                           'native_keyboard_automation': 'PASS', 'native_file_picker': 'NOT_RUN',
                           'confirmation_dialog': 'NOT_RUN', 'nvda': 'NOT_RUN',
                           'voice_quality': 'NOT_RUN'}, ensure_ascii=False))

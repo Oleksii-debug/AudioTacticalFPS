@@ -11,7 +11,8 @@ permissions:
 
 concurrency:
   group: carr-portable-update-component-${{ github.ref_name }}
-  cancel-in-progress: true
+  # Let an active integrated native run finish while the next exact tree queues.
+  cancel-in-progress: ${{ (github.head_ref || github.ref_name) != 'carr/canonical-completion-2aa-20261127' }}
 
 jobs:
   native-lifetime:

@@ -93,6 +93,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(controls, 0, wx.EXPAND)
     editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    from .reading_presentation import load_reading_presentation
+    presentation_library = reader_library
+    presentation, presentation_store, presentation_notice = load_reading_presentation(
+        editor, reader_root, wx)
+    recovery_notice += presentation_notice
+    dialog.reading_presentation = presentation
     navigation = wx.BoxSizer(wx.HORIZONTAL)
     navigation.Add(wx.StaticText(dialog, label='Navigation unit'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
     navigation_unit = wx.Choice(dialog, choices=['Word', 'Sentence', 'Paragraph'])
@@ -135,17 +141,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     seek = wx.Button(dialog, label='Seek to &time')
     playback_controls = wx.Button(dialog, label='Playback controls...')
     playback_controls.SetName('Reader playback controls')
-    for control in (seek, playback_controls):
+    appearance_button = wx.Button(dialog, label='Text appearance...')
+    appearance_button.SetName('Reading appearance: font, colors and zoom')
+    for control in (seek, playback_controls, appearance_button):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
     cleanup = wx.Button(dialog, label='Normalize s&paces')
     find_button = wx.Button(dialog, label='Find and replace... (Ctrl+F)')
     find_button.SetName('Find and replace')
+    spelling_button = wx.Button(dialog, label='Spelling review...')
+    spelling_button.SetName('Spelling review with Hunspell')
     pronunciation = wx.Button(dialog, label='Pronunciatio&n rules')
     pronunciation.SetName('Pronunciation rules')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (cleanup, find_button, pronunciation, close):
+    for control in (cleanup, find_button, spelling_button, pronunciation, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -172,6 +182,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         voice_preferences_button.Enable(reader_root is not None and source_loaded and bool(voices) and not busy)
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
+        appearance_button.Enable(source_loaded and not busy and presentation_store is not None)
+        spelling_button.Enable(source_loaded and not busy)
         playback_controls.Enable(not busy and last_audio is not None and getattr(player, 'path', None) is not None)
         for button in (navigation_unit, previous_unit, current_unit, next_unit):
             button.Enable(source_loaded and not busy)
@@ -179,6 +191,26 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
+
+    def choose_reading_appearance(event=None):
+        from .reading_presentation import show_reading_presentation
+        def guard():
+            if (not alive or busy or not source_loaded or getattr(parent, '_closing', False)
+                    or presentation_store is None or getattr(parent, 'library', None) is not presentation_library
+                    or Path(presentation_library.root).absolute() != presentation_store.root):
+                raise ValueError('The reader or library changed. Reopen reading appearance.')
+            presentation_store.guard()
+            source_guard()
+        try:
+            guard()
+            applied = show_reading_presentation(dialog, library_root=presentation_store.root,
+                presenter=presentation, guard=guard)
+            guard()
+            if applied:
+                report('Reading appearance saved for this library. Text, source and editing history are unchanged.')
+            editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def run(work, on_done, *, on_failed=None):
         nonlocal busy
@@ -506,13 +538,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
-    def find_replace(event=None):
+    def find_replace(event=None, *, spelling=False):
         try:
             if busy or not source_loaded or not alive:
                 raise ValueError('Wait for the current reader operation before finding or replacing text.')
             from ..durable_state import local_path
             from .pronunciation_dialog import ReadingSnapshot
             from .find_replace_dialog import apply_find_preview, check_find_preview, create_find_dialog
+            if spelling:
+                from .spelling_dialog import apply_correction, create_spelling_dialog
             selected_library = getattr(parent, 'library', None)
             selected_root = (local_path(selected_library.root, exists=True)
                              if selected_library is not None else None)
@@ -531,13 +565,22 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
             def select(preview, index):
                 current = capture()
-                check_find_preview(document, preview, current)
-                if type(index) is not int or not 0 <= index < len(preview.matches):
-                    raise ValueError('Choose a match from this reviewed search.')
-                item = preview.matches[index]
-                start = native_cursor_position(editor, document.text, item.start)
-                end = native_cursor_position(editor, document.text, item.end)
+                if spelling:
+                    if current != preview or type(index) is not tuple or len(index) != 2:
+                        raise ValueError('The reading copy or spelling issue changed. Check again.')
+                    first, last = index
+                    document._range(first, last)
+                else:
+                    check_find_preview(document, preview, current)
+                    if type(index) is not int or not 0 <= index < len(preview.matches):
+                        raise ValueError('Choose a match from this reviewed search.')
+                    item = preview.matches[index]
+                    first, last = item.start, item.end
+                start = native_cursor_position(editor, document.text, first)
+                end = native_cursor_position(editor, document.text, last)
                 editor.SetSelection(start, end); editor.ShowPosition(end)
+                if native_selection(editor, document.text) != (first, last):
+                    raise ValueError('The text control could not select the exact reviewed range.')
                 return capture()
 
             def synchronize():
@@ -550,13 +593,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
                 return ''
 
-            def apply(preview, index):
+            def apply(preview, index=None):
                 guard(); current = capture()
-                check_find_preview(document, preview, current)
+                if not spelling:
+                    check_find_preview(document, preview, current)
                 player.stop()
                 if progress is not None:
                     progress.refresh_audio_state()
-                apply_find_preview(document, preview, current, index=index)
+                if spelling:
+                    apply_correction(document, preview, current)
+                else:
+                    apply_find_preview(document, preview, current, index=index)
                 warning = synchronize()
                 return capture(), warning
 
@@ -571,7 +618,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     raise ValueError('The replacement is no longer available to undo.')
                 return synchronize()
 
-            review = create_find_dialog(dialog, capture=capture, select=select, apply=apply,
+            factory = create_spelling_dialog if spelling else create_find_dialog
+            review = factory(dialog, capture=capture, select=select, apply=apply,
                 undo=undo_find, guard=guard, run=run, cancel=cancel)
             try:
                 review.ShowModal()
@@ -887,11 +935,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (playback_controls, show_playback),
+        (appearance_button, choose_reading_appearance),
         (cleanup, clean), (find_button, find_replace),
         (pronunciation, pronunciations), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     voice_preferences_button.Bind(wx.EVT_BUTTON, voice_preferences)
+    spelling_button.Bind(wx.EVT_BUTTON, lambda event: find_replace(event, spelling=True))
     dialog.Bind(wx.EVT_CLOSE, closing)
     accelerators = []
     for flags, key, handler in ((wx.ACCEL_CTRL, ord('S'), save_project),

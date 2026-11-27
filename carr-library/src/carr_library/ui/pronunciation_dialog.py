@@ -7,9 +7,8 @@ from tempfile import TemporaryDirectory
 
 from ..durable_state import atomic_bytes, local_path, regular, state_lock
 from ..speech._io import check_cancelled, new_output, text_value
-from ..speech.reading import ReadingDocument, PronunciationRule, export_dictionary, import_dictionary
-
-MAX_DICTIONARY_BYTES = 8_000_000
+from ..speech.reading import (MAX_DICTIONARY_BYTES, ReadingDocument, PronunciationRule,
+                             export_dictionary, import_dictionary)
 
 
 @dataclass(frozen=True)

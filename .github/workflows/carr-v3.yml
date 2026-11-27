@@ -14,7 +14,8 @@ permissions:
 
 concurrency:
   group: carr-v3-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  # Let an active integrated native run finish while the next exact tree queues.
+  cancel-in-progress: ${{ (github.head_ref || github.ref_name) != 'carr/canonical-completion-2aa-20261127' }}
 
 jobs:
   native-studio:
@@ -63,10 +64,77 @@ jobs:
         run: |
           python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/integrations/test_dordiai_probe_cancellation.py tests/integrations/test_dordiai_convergence.py tests/ui/test_studio_progress_results.py tests/ui/test_worker_cleanup.py tests/speech/test_discovery_cancellation.py tests/storage/test_state_snapshot_identity.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify canonical citation and DOCX regeneration boundaries
+      - name: Prepare exact official Hunspell source and installed compiler
         timeout-minutes: 5
         run: |
-          python scripts/ci_check.py tests/citations/test_csl.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
+          $source = Join-Path $env:RUNNER_TEMP 'carr-hunspell-official-source'
+          $build = Join-Path $env:RUNNER_TEMP 'carr-hunspell-native-build'
+          if ((Test-Path -LiteralPath $source) -or (Test-Path -LiteralPath $build)) { throw 'Hunspell acceptance directories must be new.' }
+          git init $source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $source config core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $source fetch --depth 1 https://github.com/hunspell/hunspell.git 2969be996acad84b91ab3875b1816636fe61a40e
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $source -c advice.detachedHead=false checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $commit = (& git -C $source rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $commit -ne '2969be996acad84b91ab3875b1816636fe61a40e') { throw 'Hunspell source identity differs.' }
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }
+          "CARR_HUNSPELL_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_HUNSPELL_SOURCE=$source" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_HUNSPELL_BUILD=$build" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build pinned Hunspell as an ephemeral native acceptance input
+        id: hunspell-build
+        timeout-minutes: 7
+        shell: cmd
+        run: |
+          call "%CARR_HUNSPELL_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          python -I -B -X utf8 scripts\build_hunspell_msvc.py --source "%CARR_HUNSPELL_SOURCE%" --output "%CARR_HUNSPELL_BUILD%" --msbuild "%VSINSTALLDIR%MSBuild\Current\Bin\MSBuild.exe" --vc-tools-dir "%VCToolsInstallDir%." --sdk-dir "%WindowsSdkDir%." --sdk-version "%WindowsSDKVersion:\=%"
+          if errorlevel 1 exit /b %errorlevel%
+      - name: Require actual installed Hunspell C API and owned child cleanup
+        timeout-minutes: 3
+        run: |
+          $dll = Join-Path $env:CARR_HUNSPELL_BUILD 'bin/libhunspell.dll'
+          python -I -B -X utf8 scripts/hunspell_acceptance.py --library $dll --output ci-v3-results/hunspell-native-acceptance.json 2>&1 | Tee-Object 'ci-v3-results/hunspell-native-acceptance.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verify = @'
+          from hashlib import sha256
+          import importlib, json, os
+          from pathlib import Path
+          root = Path.cwd().resolve()
+          build = json.loads((Path(os.environ['CARR_HUNSPELL_BUILD']) / 'build-report.json').read_bytes())
+          report = json.loads(Path('ci-v3-results/hunspell-native-acceptance.json').read_bytes())
+          assert build['status'] == 'BUILT' and build['source_commit'] == '2969be996acad84b91ab3875b1816636fe61a40e'
+          assert build['source_manifest_sha256'] == 'f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc'
+          assert report['status'] == 'PASS' and report['native_windows'] == 'EXECUTED'
+          assert len(report['checks']) == len(set(report['checks'])) == 14
+          assert report['native_library_sha256'] == build['dll']['sha256']
+          assert report['native_library_bytes'] == build['dll']['bytes']
+          for name, digest in report['application_modules'].items():
+              module = importlib.import_module(name)
+              loaded = Path(module.__file__).resolve()
+              source = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+              assert not loaded.is_relative_to(root) and 'site-packages' in loaded.parts, name
+              assert sha256(loaded.read_bytes()).hexdigest() == digest == sha256(source.read_bytes()).hexdigest(), name
+          print(json.dumps({'status': 'PASS', 'checks': 14, 'installed_modules': report['application_modules'], 'dll_sha256': report['native_library_sha256']}))
+          '@
+          $verify | python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve Hunspell build diagnostics without distributing native payloads
+        if: ${{ always() && steps.hunspell-build.outcome != 'skipped' }}
+        run: |
+          foreach ($name in @('build-report.json', 'build.log')) {
+            $candidate = Join-Path $env:RUNNER_TEMP ('carr-hunspell-native-build/' + $name)
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) { Copy-Item -LiteralPath $candidate -Destination (Join-Path ci-v3-results ('hunspell-' + $name)) }
+          }
+      - name: Verify canonical citation and DOCX regeneration boundaries
+        timeout-minutes: 12
+        run: |
+          python scripts/ci_check.py --jobs 2 tests/citations/test_csl.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require bounded provider transport and durable translation boundaries
         timeout-minutes: 5
@@ -202,9 +270,9 @@ jobs:
       - name: Require canonical capture, editing, publication and local planning
         timeout-minutes: 8
         run: |
-          python scripts/ci_check.py --jobs 2 tests/audio/test_recording.py tests/audio/test_capture_admission.py tests/audio/test_capture_windows_lifetime.py tests/ui/test_recording_dialog.py tests/studio/test_clip_editing.py tests/studio/test_clip_dialog.py tests/studio/test_project_effects.py tests/studio/test_studio_controller.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/ui/test_trust_lifetime.py tests/speech/test_player_controls.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/studio/test_publishing.py tests/studio/test_publishing_boundaries.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/assistant/test_translation_source.py tests/packaging/test_installer_process.py tests/packaging/test_standard_installer.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_translation_v3.py tests/reader/test_ebook_audio.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_handlers.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_voice_preferences.py tests/storage/test_voice_preferences_backup.py tests/ui/test_voice_preferences_dialog.py tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py tests/audio/test_audiobook.py tests/audio/test_effect_presets.py tests/studio/test_audiobook_publication.py tests/speech/test_navigation.py tests/ui/test_reader_navigation.py tests/speech/test_find_replace.py tests/speech/test_find_replace_reader_hook.py tests/speech/test_player_transport.py tests/ui/test_find_replace_dialog.py tests/operations/test_facade.py tests/operations/test_import_admission.py tests/operations/test_production_admission.py tests/operations/test_resources.py tests/operations/test_transcription_admission.py tests/ui/test_operations_dialog.py tests/ui/test_operations_policy.py tests/e2e/test_operations_cli.py tests/storage/test_state_replacement.py 2>&1 | Tee-Object 'ci-v3-results/canonical-production-tests.txt'
+          python scripts/ci_check.py --jobs 2 tests/audio/test_recording.py tests/audio/test_capture_admission.py tests/audio/test_capture_windows_lifetime.py tests/ui/test_recording_dialog.py tests/studio/test_clip_editing.py tests/studio/test_clip_dialog.py tests/studio/test_project_effects.py tests/studio/test_studio_controller.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/ui/test_trust_lifetime.py tests/speech/test_player_controls.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/studio/test_publishing.py tests/studio/test_publishing_boundaries.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/assistant/test_translation_source.py tests/packaging/test_installer_process.py tests/packaging/test_standard_installer.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_translation_v3.py tests/reader/test_ebook_audio.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_handlers.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_voice_preferences.py tests/storage/test_voice_preferences_backup.py tests/ui/test_voice_preferences_dialog.py tests/speech/test_reading_presentation.py tests/speech/test_reading_presentation_handlers.py tests/speech/test_reading_presentation_reader_hook.py tests/storage/test_reader_preferences_backup.py tests/speech/test_playback_devices.py tests/speech/test_spelling.py tests/speech/test_spelling_handlers.py tests/speech/test_spelling_reader_hook.py tests/packaging/test_hunspell_build.py tests/ui/test_native_reading_presentation_driver.py tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py tests/audio/test_audiobook.py tests/audio/test_effect_presets.py tests/studio/test_audiobook_publication.py tests/speech/test_navigation.py tests/ui/test_reader_navigation.py tests/speech/test_find_replace.py tests/speech/test_find_replace_reader_hook.py tests/speech/test_player_transport.py tests/ui/test_find_replace_dialog.py tests/operations/test_facade.py tests/operations/test_import_admission.py tests/operations/test_production_admission.py tests/operations/test_resources.py tests/operations/test_transcription_admission.py tests/ui/test_operations_dialog.py tests/ui/test_operations_policy.py tests/e2e/test_operations_cli.py tests/storage/test_state_replacement.py 2>&1 | Tee-Object 'ci-v3-results/canonical-production-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_reader_player_smoke.py', 'windows_effect_chain_smoke.py')) {
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_reader_player_smoke.py', 'windows_effect_chain_smoke.py', 'windows_reading_presentation_smoke.py')) {
             python -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-v3-results ('native-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }

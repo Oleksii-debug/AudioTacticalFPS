@@ -27,6 +27,8 @@ class WavePlayer:
         self._process = None
         self._alias = 'carr_' + uuid4().hex
         self._open = False
+        self._output_device = None
+        self._opened_output = None
         self._resume_from_seek = False
         self._identity = None
         self._end_seconds = None
@@ -43,6 +45,33 @@ class WavePlayer:
     @property
     def available(self):
         return os.name == 'nt' or bool(self._executable)
+
+    @property
+    def output_device(self):
+        """Explicit session choice; None retains the backend's automatic output."""
+        return self._output_device
+
+    def output_devices(self, *, cancelled=lambda: False):
+        from .playback_devices import output_devices
+        return output_devices(cancelled=cancelled)
+
+    def select_output(self, device):
+        """Select the next route only after explicit Stop; never start audio."""
+        if self.state in ('playing', 'paused'):
+            raise ValueError('Stop playback before selecting a different output.')
+        if device is not None:
+            from .playback_devices import resolve_output
+            device = resolve_output(device)
+        # Preserve the old choice and retry authority if native Close fails.
+        self.close()
+        self._output_device = device
+
+    def _confirm_output(self, output):
+        if self._mci(f'status {self._alias} output').strip() != str(output.index):
+            raise RuntimeError('Windows did not confirm the selected playback output.')
+        from .playback_devices import resolve_output
+        if resolve_output(output).index != output.index:
+            raise RuntimeError('The selected output moved during playback admission. Retry explicitly.')
 
     def _mci(self, command):
         buffer = ctypes.create_unicode_buffer(1024)
@@ -122,6 +151,10 @@ class WavePlayer:
             raise ValueError('The recording changed while its PCM header was read.')
         if not self.available:
             raise RuntimeError('No local playback engine is installed. Install ffplay or use Windows audio.')
+        output = None
+        if self._output_device is not None:
+            from .playback_devices import resolve_output
+            output = resolve_output(self._output_device)
         self.close()
         if self._stamp(target) != identity:
             raise ValueError('The recording changed before native playback.')
@@ -133,6 +166,10 @@ class WavePlayer:
             self._mci(f'open "{target}" type waveaudio alias {self._alias}')
             self._open = True
             try:
+                if output is not None:
+                    self._mci(f'set {self._alias} output {output.index}')
+                    self._confirm_output(output)
+                    self._opened_output = output
                 self._mci(f'set {self._alias} time format milliseconds')
                 self._mci(self._play_command(start_seconds))
             except Exception:
@@ -226,6 +263,16 @@ class WavePlayer:
             self.stop()
             raise ValueError('The opened recording changed. Select its current version explicitly.')
         if os.name == 'nt':
+            if self._output_device is not None:
+                try:
+                    if not self._open or self._opened_output is None:
+                        raise RuntimeError('The selected playback route is no longer open. Play explicitly again.')
+                    self._confirm_output(self._opened_output)
+                except Exception:
+                    # A paused route must never be resumed through a replacement
+                    # ordinal or silently fall back. Close retains retry authority.
+                    self.close()
+                    raise
             if self._resume_from_seek:
                 self._mci(self._play_command(self._offset))
             else:
@@ -373,6 +420,7 @@ class WavePlayer:
             # Successful close establishes silence even if Stop itself failed.
             self._mci(f'close {self._alias}')
             self._open = False
+            self._opened_output = None
             self._state, self._offset, self._started = 'stopped', 0.0, None
             self._resume_from_seek = False
         elif stop_error is not None:
