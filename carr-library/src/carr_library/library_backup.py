@@ -310,6 +310,10 @@ def _recording_path(value):
     return _recording_adapter().state_path(value)
 
 
+def _recording_allows_empty(value):
+    return _recording_path(value) and value.endswith('.wav')
+
+
 def _recording_files(root, *, cancelled=lambda: False):
     return _recording_adapter().state_paths(root, cancelled=cancelled)
 
@@ -406,7 +410,7 @@ def _sidecar_info(root, relative):
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if (_historical_path(relative) or _transcription_allows_empty(relative)
-                    or _recording_path(relative)
+                    or _recording_allows_empty(relative)
                     or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))) else 1
     if not minimum <= info.st_size <= limit:
         raise RestoreError('sidecar file exceeds its size limit')
@@ -1087,6 +1091,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     or type(entry['size_bytes']) is not int or not 0 <= entry['size_bytes'] <= MAX_SIDECAR_FILE_BYTES
                     or (entry['size_bytes'] == 0 and not _historical_path(entry[field])
                         and not _transcription_allows_empty(entry[field])
+                        and not _recording_allows_empty(entry[field])
                         and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta')))
                     or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
                 raise RestoreError('invalid backup sidecar manifest entry')
@@ -1094,6 +1099,9 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             total += entry['size_bytes']
             if total > max_sidecar_bytes:
                 raise RestoreError('sidecar manifest byte limit')
+            if (_recording_path(entry[field])
+                    and entry['size_bytes'] > _recording_adapter().state_limit(entry[field])):
+                raise RestoreError('recording sidecar byte limit')
             if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:
                 raise RestoreError('resource policy sidecar byte limit')
             if _reader_path(entry[field]):
