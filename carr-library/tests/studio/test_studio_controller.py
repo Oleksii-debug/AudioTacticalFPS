@@ -8,11 +8,31 @@ import pytest
 
 from carr_library.studio.project import Music, Project, ProjectStore, parse_script
 from carr_library.studio.pronunciation import StudioPronunciations
-from carr_library.ui.studio_dialog import StudioController
+from carr_library.ui.studio_dialog import StudioController, _playback_ranges
 
 
 def controller(tmp_path):
     return StudioController(SimpleNamespace(root=tmp_path))
+
+
+def test_playback_ranges_follow_completed_timeline_and_selected_scene():
+    result = {
+        'duration': 5,
+        'chapters': [{'id': 'first', 'title': 'Introduction', 'start': 0, 'end': 2},
+                     {'id': 'second', 'title': 'Друга сцена', 'start': 2, 'end': 5}],
+        'lines': [{'scene': 'first', 'line': 'line-1', 'text': 'First', 'start': 0.1, 'end': 1.9},
+                  {'scene': 'second', 'line': 'line-1', 'text': 'Українська репліка', 'start': 2.5, 'end': 4}],
+    }
+    assert _playback_ranges(result) == [
+        ('first', '1. Introduction', 0, 2), ('second', '2. Друга сцена', 2, 5),
+    ]
+    assert _playback_ranges(result, scene_id='second') == [('line-1', '1. Українська репліка', 2.5, 4)]
+    assert _playback_ranges(result, scene_id='missing') == []
+    result['lines'][1]['end'] = 5.0000000001
+    assert _playback_ranges(result, scene_id='second')[0][-1] == 5
+    result['lines'][1]['end'] = 6
+    with pytest.raises(ValueError, match='invalid playback timing'):
+        _playback_ranges(result, scene_id='second')
 
 
 def test_per_line_delivery_round_trips_after_reopening(tmp_path):

@@ -3,11 +3,12 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import json
+import math
 from pathlib import Path
 import threading
 from uuid import uuid4
 
-from ..durable_state import atomic_json, atomic_bytes, read_json
+from ..durable_state import atomic_json, atomic_bytes, local_path, read_json
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
 from ..progress import ProgressError, ProgressState, bind_progress, operation_outcome
@@ -37,7 +38,8 @@ rewritten automatically. Generated scripts are separate from saved quotations.
 Ctrl+S saves the project and draft. Ctrl+Shift+S exports project JSON.
 F6 renders or resumes. F8 pauses after cancelling the current audio process.
 WAV master, chapter files, speaker stems, subtitles and the source script are exported
-to a new project folder. Unavailable models/codecs report a clear error.'''
+to a new project folder. Listen to scene or line plays the selected part of a completed master.
+Unavailable models/codecs report a clear error.'''
 
 
 def _keep_spoken_edits(previous, revised):
@@ -89,6 +91,27 @@ def _keep_spoken_edits(previous, revised):
                 for line in scene.lines))
         scenes.append(scene)
     return replace(revised, scenes=tuple(scenes))
+
+
+def _playback_ranges(result, *, scene_id=None):
+    """Read only the producer's measured playback ranges, in scene or line order."""
+    if scene_id is None:
+        rows = ((row['id'], row['title'], row) for row in result.get('chapters', ()))
+    else:
+        rows = ((row['line'], row['text'], row) for row in result.get('lines', ())
+                if row['scene'] == scene_id)
+    duration = result.get('duration')
+    ranges = []
+    for index, (identity, label, row) in enumerate(rows, 1):
+        start, end = row['start'], row['end']
+        if (any(type(value) not in (int, float) or not math.isfinite(value)
+                for value in (start, end, duration)) or not 0 <= start < min(end, duration)
+                or end > duration + 1e-6):
+            raise ValueError('The completed master has invalid playback timing.')
+        end = min(end, duration)
+        spoken_label = ' '.join(label.split())[:120]
+        ranges.append((identity, f'{index}. {spoken_label}', start, end))
+    return ranges
 
 
 class StudioController:
@@ -162,6 +185,7 @@ def show_studio(frame):
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
     saved_signature = None
+    playback_generation = 0
     owned_progress_voices = set()
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
@@ -188,7 +212,8 @@ def show_studio(frame):
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
                  ('preview', 'Listen to &output'), ('close', '&Close')),
-                (('progress_voice', 'Use voice for progress...'),)):
+                (('preview_part', 'Listen to scene or &line'), ('stop_playback', 'Stop playback'),
+                 ('progress_voice', 'Use voice for progress...'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -243,7 +268,8 @@ def show_studio(frame):
         for name in ('render', 'open', 'roles', 'jobs'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
-        buttons['preview'].Enable(not busy and current_job is not None)
+        for name in ('preview', 'preview_part'):
+            buttons[name].Enable(not busy and current_job is not None)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
@@ -404,6 +430,7 @@ def show_studio(frame):
         nonlocal draft_dirty, current_job
         draft_dirty = True
         current_job = None
+        controls()
         event.Skip()
 
     def autosave(event=None):
@@ -632,27 +659,82 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
 
+    def master_to_play():
+        if current_job is None:
+            raise ValueError('Choose a completed production job first.')
+        row = service.get(current_job)
+        if row['status'] != 'complete':
+            raise ValueError('There is no completed master yet. Render or resume the job.')
+        directory = local_path(row['destination'], exists=True)
+        source = local_path(directory / 'master.wav', root=directory, exists=True)
+        receipts = [item for item in row['artifacts'] if Path(item['path']) == source]
+        if len(receipts) != 1 or source.stat().st_size != receipts[0]['size']:
+            raise ValueError('The rendered master no longer matches its saved output receipt.')
+        return source, row['result']
+
+    def play_output(source, message, *, start=0, end=None):
+        nonlocal playback_generation
+        from ..speech.player import WavePlayer
+        player = getattr(dialog, '_audio_player', None) or WavePlayer()
+        dialog._audio_player = player
+        progress.register_player(player)
+        if parent_progress is not None:
+            parent_progress.register_player(player)
+        playback_generation += 1
+        generation = playback_generation
+
+        def playing():
+            player.play(source, start_seconds=start, end_seconds=end)
+            report(message, True)
+        play_when_quiet((progress, parent_progress), playing, schedule=wx.CallLater,
+            alive=lambda: alive and generation == playback_generation,
+            on_error=lambda exc: report(f'Playback did not start. {exc}', True))
+
     def preview(event=None):
         try:
-            if current_job is None:
-                return
-            row = service.get(current_job)
-            source = Path(row['destination']) / 'master.wav'
-            if not source.exists():
-                raise ValueError('There is no completed master yet; render or resume the job.')
-            from ..speech.player import WavePlayer
-            player = getattr(dialog, '_audio_player', None) or WavePlayer()
-            dialog._audio_player = player
-            progress.register_player(player)
-            if parent_progress is not None:
-                parent_progress.register_player(player)
-            def playing():
-                player.play(source)
-                report('Playing the rendered master. Close this dialog to stop playback.', True)
-            play_when_quiet((progress, parent_progress), playing, schedule=wx.CallLater,
-                alive=lambda: alive, on_error=lambda exc: report(f'Playback did not start. {exc}', True))
+            source, _ = master_to_play()
+            play_output(source, 'Playing the rendered master. Use Stop playback to end listening.')
         except Exception as exc:
             report(str(exc), True)
+
+    def choose_playback_item(message, choices):
+        chooser = wx.SingleChoiceDialog(dialog, message, 'Listen to completed production', choices)
+        try:
+            return chooser.GetSelection() if chooser.ShowModal() == wx.ID_OK else -1
+        finally:
+            chooser.Destroy()
+
+    def preview_part(event=None):
+        try:
+            source, result = master_to_play()
+            chapters = _playback_ranges(result)
+            if not chapters:
+                raise ValueError('The saved job has no measured scene timing.')
+            selected = choose_playback_item('Choose a scene.', [item[1] for item in chapters])
+            if selected < 0:
+                return
+            scene_id, title, start, end = chapters[selected]
+            lines = _playback_ranges(result, scene_id=scene_id)
+            selected = choose_playback_item('Listen to the whole scene or choose a spoken line.',
+                                            ['Whole scene', *(item[1] for item in lines)])
+            if selected < 0:
+                return
+            if selected > 0:
+                _, title, start, end = lines[selected - 1]
+            play_output(source, f'Playing {title}.', start=start, end=end)
+        except Exception as exc:
+            report(str(exc), True)
+
+    def stop_playback(event=None):
+        nonlocal playback_generation
+        playback_generation += 1
+        player = getattr(dialog, '_audio_player', None)
+        if player is not None:
+            try:
+                player.stop()
+                report('Playback stopped.', True)
+            except Exception as exc:
+                report(str(exc), True)
 
     def help_text(event=None):
         from .desktop_app import show_text
@@ -702,7 +784,8 @@ def show_studio(frame):
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
-                           'preview': preview, 'help': help_text, 'close': close,
+                           'preview': preview, 'preview_part': preview_part, 'stop_playback': stop_playback,
+                           'help': help_text, 'close': close,
                            'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
