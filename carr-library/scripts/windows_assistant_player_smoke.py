@@ -35,7 +35,8 @@ def native():
     from carr_library.reader.reading_state import ReadingState
     from carr_library.speech.live_adapter import discover_voices, render_speech
     from carr_library.ui.reading_desk import ReadingDialog
-    from carr_library.assistant import player_tools, service, models
+    from carr_library.assistant import player_tools, service, models, state as assistant_state
+    from carr_library import durable_state
     from carr_library.reader import live_reading, reading_desk
     from carr_library.speech import live_adapter
     from carr_library.ui import assistant_dialog, live_reading as native_controls
@@ -44,7 +45,8 @@ def native():
     controls_probe, controls_path, controls_digest = sibling('windows_live_reading_smoke.py')
     modal_probe, modal_path, modal_digest = sibling('windows_epub_reading_smoke.py')
     bindings, bindings_path, bindings_digest = sibling('windows_publishing_smoke.py')
-    modules = (player_tools, service, models, live_reading, reading_desk, live_adapter,
+    modules = (player_tools, service, models, assistant_state, durable_state,
+               live_reading, reading_desk, live_adapter,
                assistant_dialog, native_controls, native_reader)
     identities = bindings.verify_installed_sources(*modules)
     checks, errors, failure_handler = [], [], None

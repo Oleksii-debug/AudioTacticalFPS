@@ -59,7 +59,7 @@ jobs:
       - name: Require every source assistant and conversion boundary
         run: |
           mkdir -p ci-assistant-tools
-          python scripts/ci_check.py --jobs 3 --diagnostics tests/assistant/test_local_tools.py tests/assistant/test_player_tools.py tests/audio/test_conversion_batch.py tests/assistant/test_local_assistant.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_supplied_transcription.py tests/assistant/test_backup_receipt.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_templates_cli.py tests/audio/test_dsp.py tests/reader/test_live_reading.py tests/reader/test_live_player.py tests/ui/test_live_reading_controls.py tests/ui/test_keyboard_convergence.py tests/audio/test_process_scratch.py 2>&1 | tee ci-assistant-tools/source.txt
+          python scripts/ci_check.py --jobs 3 --diagnostics tests/assistant/test_local_tools.py tests/assistant/test_player_tools.py tests/assistant/test_state_publication.py tests/audio/test_conversion_batch.py tests/assistant/test_local_assistant.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_supplied_transcription.py tests/assistant/test_backup_receipt.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_templates_cli.py tests/audio/test_dsp.py tests/reader/test_live_reading.py tests/reader/test_live_player.py tests/ui/test_live_reading_controls.py tests/ui/test_keyboard_convergence.py tests/audio/test_process_scratch.py 2>&1 | tee ci-assistant-tools/source.txt
       - name: Require the same installed modules and actual subprocess cases
         if: "!cancelled()"
         run: |
@@ -76,7 +76,7 @@ jobs:
           import pytest
           root = Path.cwd()
           installed = Path(sysconfig.get_path('purelib')).resolve()
-          names = ["carr_library.assistant.models","carr_library.assistant.service","carr_library.assistant.planner","carr_library.assistant.llm","carr_library.assistant.local_tools","carr_library.assistant.player_tools","carr_library.audio.conversion_batch","carr_library.audio.dsp","carr_library.audio.process","carr_library.audio.cleanup","carr_library.durable_state","carr_library.ui.assistant_dialog","carr_library.ui.live_reading","carr_library.ui.builtin_keyboard_commands","carr_library.transcription.service","carr_library.research.export_file","carr_library.reader.live_reading","carr_library.reader.live_player","carr_library.speech.runtime"]
+          names = ["carr_library.assistant.models","carr_library.assistant.service","carr_library.assistant.state","carr_library.assistant.planner","carr_library.assistant.llm","carr_library.assistant.local_tools","carr_library.assistant.player_tools","carr_library.audio.conversion_batch","carr_library.audio.dsp","carr_library.audio.process","carr_library.audio.cleanup","carr_library.durable_state","carr_library.ui.assistant_dialog","carr_library.ui.live_reading","carr_library.ui.builtin_keyboard_commands","carr_library.transcription.service","carr_library.research.export_file","carr_library.reader.live_reading","carr_library.reader.live_player","carr_library.speech.runtime"]
           def inventory():
               result = {}
               for name in names:
@@ -92,7 +92,7 @@ jobs:
           def offline(*args, **kwargs):
               raise OSError('Network access is disabled in these synthetic assistant and conversion tests.')
           socket.socket.connect = socket.socket.connect_ex = socket.create_connection = offline
-          suites = ["tests/assistant/test_local_tools.py","tests/assistant/test_player_tools.py","tests/audio/test_conversion_batch.py","tests/assistant/test_local_assistant.py","tests/assistant/test_local_planning.py","tests/assistant/test_planning_handlers.py","tests/assistant/test_supplied_transcription.py","tests/assistant/test_backup_receipt.py","tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_templates_cli.py","tests/audio/test_dsp.py","tests/reader/test_live_reading.py","tests/reader/test_live_player.py","tests/ui/test_live_reading_controls.py","tests/ui/test_keyboard_convergence.py","tests/audio/test_process_scratch.py"]
+          suites = ["tests/assistant/test_local_tools.py","tests/assistant/test_player_tools.py","tests/assistant/test_state_publication.py","tests/audio/test_conversion_batch.py","tests/assistant/test_local_assistant.py","tests/assistant/test_local_planning.py","tests/assistant/test_planning_handlers.py","tests/assistant/test_supplied_transcription.py","tests/assistant/test_backup_receipt.py","tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_templates_cli.py","tests/audio/test_dsp.py","tests/reader/test_live_reading.py","tests/reader/test_live_player.py","tests/ui/test_live_reading_controls.py","tests/ui/test_keyboard_convergence.py","tests/audio/test_process_scratch.py"]
           with tempfile.TemporaryDirectory(prefix='carr-assistant-tools-') as temporary:
               report = Path(temporary) / 'junit.xml'
               status = pytest.main(['-q', '-o', 'pythonpath=', '-o', 'addopts=',
