@@ -140,7 +140,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 autosave_timer.Stop()
             except RuntimeError:
                 pass
-            unregister()
+            try:
+                unregister()
+            except Exception:
+                pass  # Its dirty/save callbacks are already inert after detach.
         event.Skip()
 
     @contextmanager
@@ -205,7 +208,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             except Exception as exc:
                 report(f'Operation did not complete. {exc}', focus=True)
             capabilities()
-        executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+        executor.submit(work).add_done_callback(
+            lambda future: wx.CallAfter(finish, future) if alive else None)
 
     def select_progress_voice(event=None):
         if not alive:
@@ -385,6 +389,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 speak(destination=Path(chooser.GetPath()))
 
     def pause_audio(event=None):
+        if not alive:
+            return
         try:
             if player.state == 'paused':
                 def resumed():
@@ -402,6 +408,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def stop_audio(event=None):
         nonlocal playback_generation
+        if not alive:
+            return
         playback_generation += 1
         cancel.set()
         try:
@@ -413,6 +421,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
     def seek_audio(event=None):
+        if not alive:
+            return
         try:
             if last_audio is None:
                 raise ValueError('Read text once before seeking within its recording.')
