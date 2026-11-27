@@ -10,13 +10,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import subprocess
 import threading
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export
 from ..audio.ffmpeg import find_local_tool
+from ..audio.player import WavePlayer
 
 
 def _plain(value, label, *, limit=2048, empty=False):
@@ -362,47 +362,8 @@ class StudioController:
         write_export(selected, self.script, private_root=self.private_root)
 
 
-class LocalPlayback:
-    """Play/stop an explicitly rendered local WAV; never open a file association."""
-
-    def __init__(self):
-        self.process = None
-        self.windows = False
-
-    def play(self, path):
-        selected = _local_path(path, 'audio file')
-        with selected.open('rb') as stream:
-            header = stream.read(12)
-        if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
-            raise ValueError('Preview requires the rendered PCM WAV master.')
-        self.stop()
-        if os.name == 'nt':
-            import winsound
-            winsound.PlaySound(str(selected), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
-            self.windows = True
-        else:
-            player = find_local_tool('ffplay')
-            if player is None:
-                raise ValueError('Local playback is unavailable. Open the exported WAV in your audio player.')
-            self.process = subprocess.Popen([player, '-nodisp', '-autoexit', '-loglevel', 'error',
-                                             '-protocol_whitelist', 'file,pipe', '-i', str(selected)],
-                                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                            stderr=subprocess.DEVNULL, shell=False)
-
-    def stop(self):
-        if self.windows:
-            import winsound
-            winsound.PlaySound(None, 0)
-            self.windows = False
-        if self.process is not None:
-            if self.process.poll() is None:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=1)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                    self.process.wait(timeout=1)
-            self.process = None
+# Preserve the public UI import while sharing the reviewed per-player transport.
+LocalPlayback = WavePlayer
 
 
 SCRIPT_HELP = (
@@ -443,6 +404,9 @@ class AudioStudioDialog:
         self.editing_dirty = False
         self._script_dirty = False
         self.playback = LocalPlayback()
+        self._playback_closed = False
+        self.media_progress = None
+        self._remove_progress_playback = None
         self.voice_rows = []
         self.controls = []
         self._loading = True
@@ -472,6 +436,13 @@ class AudioStudioDialog:
         self._button(script_page, voice_row, 'Reload local voices', self.reload_voices)
         script_layout.Add(voice_row, 0, wx.EXPAND | wx.ALL, 5)
         self.language = self._text(script_page, script_layout, 'Language code, for example uk, sk or en', controller.language)
+        self.progress_voice_button = None
+        if getattr(parent, 'progress_panel', None) is not None:
+            progress_voice_row = wx.BoxSizer(wx.HORIZONTAL)
+            self.progress_voice_button = self._button(
+                script_page, progress_voice_row, 'Use selected voice for progress',
+                self.use_selected_voice_for_progress)
+            script_layout.Add(progress_voice_row, 0, wx.ALL, 5)
         script_layout.Add(wx.StaticText(script_page, label='Editable narration or dialogue script'), 0, wx.ALL, 5)
         self.script = wx.TextCtrl(script_page, value=controller.script, style=wx.TE_MULTILINE | wx.TE_RICH2)
         self.script.SetName('Editable narration or dialogue script')
@@ -553,6 +524,59 @@ class AudioStudioDialog:
         self.timer.Start(30000)
         self._loading = False
         self._refresh_text()
+        self._attach_media_progress()
+
+    def _attach_media_progress(self):
+        if self.media_progress is not None or getattr(self.parent, 'progress_panel', None) is None:
+            return
+        from ..audio.progress_bridge import install_media_progress
+        bridge = install_media_progress(self.parent)
+        remove = bridge.register_playback(self._current_playback)
+        self.media_progress = bridge
+        self._remove_progress_playback = remove
+
+    def _current_playback(self):
+        # Unregistration inspects silence_confirmed after close; keep the
+        # actual player available until that final observation has completed.
+        if self._playback_closed and self._remove_progress_playback is None:
+            return None
+        return self.playback
+
+    def _close_playback(self):
+        # Keep observing the player until its own transport has actually closed.
+        # Both the Close action and the modal-finally path call this helper.
+        if not self._playback_closed:
+            self.playback.close()
+            self._playback_closed = True
+        if self._remove_progress_playback is not None:
+            self._remove_progress_playback()
+            self._remove_progress_playback = None
+        self.media_progress = None
+
+    def use_selected_voice_for_progress(self, event=None):
+        if self.busy or self.closed:
+            return
+        try:
+            panel = getattr(self.parent, 'progress_panel', None)
+            if panel is None or not callable(getattr(panel, 'set_speech_provider', None)):
+                raise ValueError('Progress feedback is unavailable in this window.')
+            index = self.voice.GetSelection()
+            if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(self.voice_rows):
+                raise ValueError('Select an available local voice before using it for progress.')
+            row = self.voice_rows[index]
+            if not row.get('available', True):
+                raise ValueError('The selected local voice is unavailable. Reload voices and choose another.')
+            voice_id = _plain(row.get('id'), 'local voice identifier')
+            language = _plain(self.language.GetValue(), 'language code', limit=80)
+            self._attach_media_progress()
+            from ..audio.progress_bridge import LocalVoiceProgressSpeech
+            provider = LocalVoiceProgressSpeech(self.controller._registry(), voice_id=voice_id,
+                                                language=language, media=self.media_progress)
+            panel.set_speech_provider(provider)
+            self._message('Selected local voice connected for progress. Open Progress feedback settings '
+                          'to choose Speech or Beep and speech. The current feedback mode is unchanged.', focus=True)
+        except Exception as exc:
+            self._error(exc)
 
     def _text(self, parent, layout, label, value):
         wx = self.wx
@@ -1019,6 +1043,8 @@ class AudioStudioDialog:
             if self.editing_dirty:
                 raise ValueError('The script has unsaved edits. Preview and render it before playing a current result.')
             result_file = Path(self.controller.result['output'])
+            if self.media_progress is not None:
+                self.media_progress.before_playback()
             self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file)
             self._message('Playing the rendered master. Stop playback stops only this studio preview.', focus=True)
         except Exception as exc:
@@ -1044,7 +1070,7 @@ class AudioStudioDialog:
         self.closed = True
         self.cancelled.set()
         self.timer.Stop()
-        self.playback.stop()
+        self._close_playback()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -1060,7 +1086,7 @@ class AudioStudioDialog:
             self.closed = True
             self.cancelled.set()
             self.timer.Stop()
-            self.playback.stop()
+            self._close_playback()
             self.executor.shutdown(wait=False, cancel_futures=True)
             self.dialog.Destroy()
 

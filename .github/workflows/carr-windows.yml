@@ -2,7 +2,7 @@ name: CARR Windows integrated desktop
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-integrated-private-ce034-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -365,6 +365,17 @@ jobs:
             'tests/ui/test_evidence_draft_recovery.py',
             'tests/ui/test_integrated_commands.py',
             'tests/ui/test_keyboard_manager.py',
+            'tests/progress/test_progress_contract.py',
+            'tests/progress/test_progress_preferences.py',
+            'tests/progress/test_progress_feedback.py',
+            'tests/progress/test_progress_reporting_failure.py',
+            'tests/ui/test_progress_job_results.py',
+            'tests/ui/test_progress_panel_state.py',
+            'tests/storage/test_backup_progress_preferences.py',
+            'tests/audio/test_player.py',
+            'tests/audio/test_player_progress_safety.py',
+            'tests/audio/test_progress_bridge.py',
+            'tests/ui/test_audio_progress_hooks.py',
             'tests/ui/test_literature_matrix.py',
             'tests/ui/test_narration_editor.py',
             'tests/ui/test_ocr_language_dialog.py',
@@ -613,6 +624,7 @@ jobs:
             @{ Script='tests/ui/native_keyboard_settings_smoke.py'; Args=@('--native'); Output='native-keyboard-settings.txt' },
             @{ Script='tests/ui/native_reader_keymap_smoke.py'; Args=@('--native'); Output='native-reader-keymap.txt' },
             @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
+            @{ Script='tests/ui/native_progress_smoke.py'; Args=@('--native'); Output='native-progress.txt' },
             @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' }
           )
           foreach ($gate in $nativeGates) {
@@ -666,6 +678,11 @@ jobs:
               'carr_library.reader.reading_state',
               'carr_library.keyboard_preferences',
               'carr_library.evidence_drafts',
+              'carr_library.progress',
+              'carr_library.progress_preferences',
+              'carr_library.progress_feedback',
+              'carr_library.audio.player',
+              'carr_library.audio.progress_bridge',
               'carr_library.search.advanced',
               'carr_library.semantic_cache',
               'carr_library.extract.model_catalog',
@@ -679,6 +696,7 @@ jobs:
               'carr_library.ui.advanced_search',
               'carr_library.ui.narration_editor',
               'carr_library.ui.keyboard_settings',
+              'carr_library.ui.progress_panel',
               'carr_library.ui.evidence_panel',
               'carr_library.ui.audio_studio',
               'carr_library.ui.assistant_dialog',
@@ -738,6 +756,17 @@ jobs:
               'tests/storage/test_backup_source_binding_review.py',
               'tests/storage/test_backup_keyboard_drafts.py',
               'tests/storage/test_keyboard_preferences.py',
+              'tests/progress/test_progress_contract.py',
+              'tests/progress/test_progress_preferences.py',
+              'tests/progress/test_progress_feedback.py',
+              'tests/progress/test_progress_reporting_failure.py',
+              'tests/ui/test_progress_job_results.py',
+              'tests/ui/test_progress_panel_state.py',
+              'tests/storage/test_backup_progress_preferences.py',
+              'tests/audio/test_player.py',
+              'tests/audio/test_player_progress_safety.py',
+              'tests/audio/test_progress_bridge.py',
+              'tests/ui/test_audio_progress_hooks.py',
               'tests/storage/test_evidence_drafts.py',
               'tests/reader/test_narration.py',
               'tests/reader/test_narration_text.py',
@@ -842,5 +871,95 @@ jobs:
         with:
           name: carr-windows-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  keyboard-native:
+    name: Windows x64 / native commands, recovery and progress
+    runs-on: windows-2022
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the pinned desktop and record the tested source
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-keyboard-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'keyboard-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'keyboard-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require contextual commands and recovery regressions
+        id: keyboard-regressions
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py tests/progress/test_progress_contract.py tests/progress/test_progress_feedback.py tests/progress/test_progress_preferences.py tests/progress/test_progress_reporting_failure.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py tests/storage/test_backup_progress_preferences.py tests/audio/test_player.py tests/audio/test_player_progress_safety.py tests/audio/test_progress_bridge.py tests/ui/test_audio_progress_hooks.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native Main keyboard settings and command dispatch
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-keyboard-settings.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual contextual Reader key remapping
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native research-note draft recovery and explicit save
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native progress, cancellation, focus and feedback settings
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_progress_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve actual keyboard, progress and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-keyboard-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/keyboard-results/
           if-no-files-found: warn
           retention-days: 7
