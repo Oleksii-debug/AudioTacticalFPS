@@ -340,3 +340,9 @@ def test_initial_source_acceptance_keeps_async_voice_inventory_alive(monkeypatch
     owner.core.view = LiveStatus(sequence=3, state='playing')
     dialog._page(navigation)
     assert owner.core.calls == [('stop', None)], 'Navigation must still stop actual speech.'
+    accepted_before = tuple(accepted)
+    dialog.closed = True
+    dialog._page(SimpleNamespace(page=SimpleNamespace(raw_text='Rejected late source.')))
+    dialog._stop_live()
+    assert tuple(accepted) == accepted_before and dialog.text.value == 'Є source.\r\n'
+    assert owner.core.calls == [('stop', None)], 'Detached source callbacks touched the live owner.'

@@ -204,14 +204,35 @@ def test_forced_audio_destruction_retains_uncertain_device_and_reports_no_silenc
     owner = windows.make('audio')
     uncertain = RuntimeError('Synthetic native close refused')
     observed = object()
+    entered, permitted = Event(), Event()
+    ui_thread = get_ident()
+    def close():
+        assert get_ident() != ui_thread, 'Native destruction waited for device cleanup on the GUI thread.'
+        entered.set()
+        if not permitted.is_set():
+            raise uncertain
     owner.player = object()
-    owner.transport = SimpleNamespace(observed=observed, close=Mock(side_effect=uncertain))
+    owner.transport = SimpleNamespace(observed=observed, close=Mock(side_effect=close))
     owner.progress = SimpleNamespace(unregister_player=Mock())
-    NativeWidget.Destroy(owner.dialog)
-    assert owner.closed and owner.cancelled.is_set()
-    assert windows.parent._reader_playback_retained == [owner]
-    assert 'unconfirmed' in owner.cleanup_warning
-    owner.progress.unregister_player.assert_called_once_with(observed, silence_confirmed=False)
+    try:
+        NativeWidget.Destroy(owner.dialog)
+        assert owner.closed and owner.cancelled.is_set()
+        assert windows.parent._reader_playback_retained == [owner]
+        assert 'unconfirmed' in owner.cleanup_warning
+        owner.progress.unregister_player.assert_called_once_with(observed, silence_confirmed=False)
+        assert entered.wait(5), 'The retained native owner never attempted cleanup.'
+        assert not owner._cleanup_owner.quiescent
+        owner.dispose()
+        assert windows.parent._reader_playback_retained == [owner]
+    finally:
+        permitted.set()
+        cleanup = getattr(owner, '_cleanup_owner', None)
+        if cleanup is not None:
+            assert cleanup.quiescent_event.wait(5), 'Retained cleanup did not finish after release.'
+    windows.callbacks.get(timeout=5)()
+    assert owner._silence_confirmed and not windows.parent._reader_playback_retained
+    assert owner.progress.unregister_player.call_count == 2
+    owner.progress.unregister_player.assert_called_with(observed, silence_confirmed=True)
 
 
 @pytest.mark.parametrize('termination', ['direct', 'native-parent'])
@@ -376,3 +397,101 @@ def test_reading_disposal_attempts_all_owned_cleanup_and_retains_failed_retry(wi
         owner.dispose()
         owner.live.close = live
         owner.executor.shutdown = shutdown
+
+
+@pytest.mark.parametrize('detachment', ['native-deletion', 'missing-event-queue'])
+def test_failed_late_audio_discard_keeps_retry_owner_after_native_completion(windows, monkeypatch, tmp_path, detachment):
+    owner = windows.make('audio')
+    path = tmp_path / 'late-owned-recording.wav'
+    path.write_bytes(b'Synthetic retained result; no audio decoding claim.')
+    permitted, attempted, removed = Event(), Event(), Event()
+    accepted = []
+    class Result:
+        def close(self):
+            attempted.set()
+            if not permitted.is_set():
+                raise OSError('Synthetic late-file cleanup temporarily refused')
+            path.unlink()
+            removed.set()
+    result = Result()
+    if detachment == 'missing-event-queue':
+        def unavailable(callback):
+            raise RuntimeError('Synthetic native event queue is gone')
+        monkeypatch.setattr(windows.wx, 'CallAfter', unavailable)
+    owner._submit(lambda: result, accepted.append, lambda value: value.close())
+    try:
+        if detachment == 'native-deletion':
+            completed = windows.callbacks.get(timeout=5)
+            NativeWidget.Destroy(owner.dialog)
+            completed()
+        assert attempted.wait(5), 'Late completion never attempted its owned discard.'
+        owner.executor.shutdown(wait=True, cancel_futures=True)
+        assert not accepted and path.is_file()
+        assert owner._cleanup_owners and not owner._cleanup_owners[-1].quiescent
+        assert 'cleanup is unconfirmed' in owner.cleanup_warning
+    finally:
+        permitted.set()
+        if owner._cleanup_owners:
+            assert owner._cleanup_owners[-1].quiescent_event.wait(5)
+    assert removed.is_set() and not path.exists()
+
+
+@pytest.mark.parametrize(('busy', 'quiescent'), [(True, True), (False, False), (True, False)])
+def test_recorded_audio_waits_for_acknowledged_live_stop_and_clears_old_cancel(
+        windows, monkeypatch, busy, quiescent):
+    from carr_library.ui import ebook_audio_dialog
+    owner = windows.make('reading')
+    original_core = owner.live.core
+    core = SimpleNamespace(busy=busy, quiescent=quiescent,
+        status=lambda: SimpleNamespace(state='stopping'), stop=Mock())
+    owner.live.core = core
+    owner.controller.current = SimpleNamespace(ordinal=1)
+    errors, opened = [], []
+    owner._error = lambda error: errors.append(str(error))
+    class Nested:
+        def __init__(self, parent, desk, ordinal, guard, **options):
+            self.guard, self.closed = guard, False
+        def show(self):
+            self.guard()
+            opened.append(True)
+            self.closed = True
+    monkeypatch.setattr(ebook_audio_dialog, 'EbookAudioDialog', Nested)
+    try:
+        owner.open_audio()
+        assert not opened and len(errors) == 1 and 'finish stopping' in errors[0]
+        core.stop.assert_called_once()
+        assert owner._audio_dialog is None
+        core.busy, core.quiescent = False, True
+        owner.cancelled.set()
+        owner.open_audio()
+        assert opened == [True] and len(errors) == 1 and not owner.cancelled.is_set()
+        assert owner._audio_dialog is None
+    finally:
+        owner.live.core = original_core
+
+
+def test_recorded_audio_guard_rechecks_live_ownership_after_modal_handoff(windows, monkeypatch):
+    from carr_library.ui import ebook_audio_dialog
+    owner = windows.make('reading')
+    original_core = owner.live.core
+    core = SimpleNamespace(busy=False, quiescent=True,
+        status=lambda: SimpleNamespace(state='stopping'), stop=Mock())
+    owner.live.core = core
+    owner.controller.current = SimpleNamespace(ordinal=1)
+    guarded = []
+    class Nested:
+        def __init__(self, parent, desk, ordinal, guard, **options):
+            self.guard, self.closed = guard, False
+        def show(self):
+            self.guard()
+            core.busy, core.quiescent = True, False
+            with pytest.raises(ValueError, match='finish stopping'):
+                self.guard()
+            guarded.append(True)
+            self.closed = True
+    monkeypatch.setattr(ebook_audio_dialog, 'EbookAudioDialog', Nested)
+    try:
+        owner.open_audio()
+        assert guarded == [True] and owner._audio_dialog is None
+    finally:
+        owner.live.core = original_core

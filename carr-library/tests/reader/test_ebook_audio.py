@@ -597,3 +597,149 @@ def test_released_clip_metadata_warning_does_not_discard_valid_pcm(imported, mon
             prepared.close()
     finally:
         session.close()
+
+
+def test_pending_parser_keeps_its_exact_source_and_reservation_until_native_exit(imported, monkeypatch):
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.audio.models import AudioCleanupPending
+    from carr_library.operations import ResourceBroker
+    from carr_library.reader import ebook_audio
+    app, _, original, _, desk = imported
+    before = original.read_bytes()
+    permitted, streams, staged = Event(), [], []
+    def finish():
+        if not permitted.is_set():
+            return False
+        for stream in streams:
+            stream.close()
+        return True
+    owner = CleanupOwner(finish)
+    pending = AudioCleanupPending('Synthetic parser still owns its EPUB stream', cleanup_owner=owner)
+    broker = ResourceBroker.for_app(app.root)
+    def parser(arguments, **options):
+        source = Path(arguments[-3])
+        streams.append(source.open('rb'))
+        staged.append(source)
+        active = broker.snapshot()['leases']
+        assert len(active) == 1
+        assert active[0]['request']['memory_bytes'] >= 3 * 1024**3
+        raise pending
+    monkeypatch.setattr(ebook_audio, 'run_process', parser)
+    try:
+        with pytest.raises(AudioCleanupPending) as error:
+            EbookAudioSession(desk, 1)
+        assert error.value is pending
+        assert staged and staged[0].read_bytes() == before
+        assert not streams[0].closed and len(broker.snapshot()['leases']) == 1
+        assert owner.close() is False and staged[0].is_file()
+        assert original.read_bytes() == before and not app._selections
+    finally:
+        permitted.set()
+        assert owner.close() is True
+    assert staged and not staged[0].parent.exists()
+    assert streams[0].closed and not broker.snapshot()['leases']
+
+
+@pytest.mark.parametrize('boundary', ['inspect', 'convert'])
+def test_pending_clip_keeps_source_stage_lock_and_reservation_until_native_exit(imported, monkeypatch, boundary):
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.audio.models import AudioCleanupPending
+    app, _, original, _, desk = imported
+    before = original.read_bytes()
+    session = EbookAudioSession(desk, 1)
+    permitted, streams, staged = Event(), [], []
+    def finish():
+        if not permitted.is_set():
+            return False
+        for stream in streams:
+            stream.close()
+        return True
+    owner = CleanupOwner(finish)
+    pending = AudioCleanupPending('Synthetic clip worker still owns its recording', cleanup_owner=owner)
+    def native(runtime, selected, *args, **options):
+        source = Path(selected)
+        streams.append(source.open('rb'))
+        staged.append(source)
+        raise pending
+    monkeypatch.setattr(AudioRuntime, boundary, native)
+    root = session.root
+    try:
+        with pytest.raises(AudioCleanupPending) as error:
+            session.prepare(0)
+        assert error.value is pending
+        assert staged and staged[0].is_file() and not streams[0].closed
+        assert root.is_dir() and len(session.broker.snapshot()['leases']) == 1
+        with pytest.raises(ValueError, match='Wait for the current EPUB audio preparation'):
+            session.prepare(1)
+        session.close()
+        assert root.is_dir() and staged[0].is_file()
+        assert owner.close() is False and len(session.broker.snapshot()['leases']) == 1
+        assert original.read_bytes() == before and not app._selections
+    finally:
+        permitted.set()
+        assert owner.close() is True
+        session.close()
+    assert streams[0].closed and not staged[0].parent.exists() and not root.exists()
+    assert not session.broker.snapshot()['leases']
+    with pytest.raises(AudioCancelled):
+        session.prepare(0)  # Cleanup released the busy lock; a closed source still cannot restart.
+
+
+def test_failed_native_wave_close_does_not_forget_the_device_before_retry(monkeypatch):
+    from carr_library.speech import player as native
+    player = native.WavePlayer()
+    calls, permitted = [], [False]
+    def command(text):
+        calls.append(text)
+        if text.startswith('close ') and not permitted[0]:
+            raise RuntimeError('Synthetic native close still owns its WAV')
+        return ''
+    monkeypatch.setattr(native, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(player, '_mci', command)
+    player._open = True
+    with pytest.raises(RuntimeError, match='still owns'):
+        player.close()
+    assert player._open is True
+    permitted[0] = True
+    player.close()
+    assert player._open is False
+    assert [text for text in calls if text.startswith('close ')] == [
+        f'close {player._alias}', f'close {player._alias}']
+
+
+def test_owned_overlay_retry_keeps_actual_prepared_pcm_until_native_close_ack(imported, monkeypatch):
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.speech import player as native
+    session = EbookAudioSession(imported[-1], 1)
+    prepared = session.prepare(0)
+    player = native.WavePlayer()
+    permitted = [False]
+    def command(text):
+        if text.startswith('close ') and not permitted[0]:
+            raise RuntimeError('Synthetic native close still owns its PCM')
+        return ''
+    monkeypatch.setattr(native, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(player, '_mci', command)
+    transport = OverlayPlayback(session, player)
+    owner = CleanupOwner(transport.close)
+    try:
+        assert transport.start(prepared, transport.ticket)
+        with pytest.raises(RuntimeError, match='still owns'):
+            transport.stop()
+        assert prepared.path.is_file() and transport.prepared is prepared and player._open
+        assert owner.close() is False
+        assert prepared.path.is_file() and session.root.is_dir() and player._open
+    finally:
+        permitted[0] = True
+        assert owner.close() is True
+    assert not prepared.path.exists() and not session.root.exists() and not player._open
+
+
+def test_detached_overlay_observation_keeps_silence_latch_without_native_polling():
+    class NativePlayer:
+        @property
+        def state(self):
+            pytest.fail('Detached progress polled a native device while its cleanup owner was running.')
+    transport = OverlayPlayback(object(), NativePlayer())
+    transport.closed = True
+    assert transport.observed.state == 'stopping'

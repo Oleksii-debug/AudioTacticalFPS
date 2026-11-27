@@ -453,14 +453,22 @@ class ReadingDialog:
         if self.busy or self.closed or self.controller.current is None:
             return
         try:
+            self.cancelled.clear()
             self.controller.check()
+            self._stop_live()
             page = self.controller.current
             def guard():
                 self.controller.check()
                 if self.closed or self.controller.current != page:
                     raise ValueError('The source reading selection changed. Open recorded audio again.')
+                live = getattr(self, 'live', None)
+                if live is not None:
+                    core = live.core
+                    if (not core.quiescent
+                            or core.busy and core.status().state != 'discovering'):
+                        raise ValueError('Wait for live reading to finish stopping, then open recorded audio again.')
+            guard()
             from .ebook_audio_dialog import EbookAudioDialog
-            self._stop_live()
             reader = EbookAudioDialog(self.dialog, self.controller.desk, page.ordinal, guard,
                 progress=getattr(self.parent, 'operation_progress', None))
             self._audio_dialog = reader

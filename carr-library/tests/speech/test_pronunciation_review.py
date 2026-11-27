@@ -122,11 +122,14 @@ def test_dictionary_import_save_export_interoperates_without_execution(tmp_path)
     token = store.save(imported, expected=None)
     assert token == original_token and store.load() == (rules, token)
     target = tmp_path / 'new.json'
-    assert export_reviewed_dictionary(rules, target) == token
+    from carr_library.research.export_file import ExportReceipt
+    digest, receipt = export_reviewed_dictionary(rules, target, private_root=root)
+    assert digest == token and isinstance(receipt, ExportReceipt)
+    assert receipt.path.samefile(target) and receipt.cleanup_warning is None
     assert import_dictionary(target) == rules
     before = target.read_bytes()
     with pytest.raises(FileExistsError):
-        export_reviewed_dictionary((PronunciationRule('new', 'other'),), target)
+        export_reviewed_dictionary((PronunciationRule('new', 'other'),), target, private_root=root)
     assert target.read_bytes() == before
 
 
@@ -177,7 +180,7 @@ def test_dictionary_cancel_preserves_previous_library_state_and_exports(tmp_path
     with pytest.raises(InterruptedError):
         store.save((), expected=token, cancelled=lambda: True)
     with pytest.raises(InterruptedError):
-        export_reviewed_dictionary(rules, tmp_path / 'cancelled.json', cancelled=lambda: True)
+        export_reviewed_dictionary(rules, tmp_path / 'cancelled.json', private_root=root, cancelled=lambda: True)
     assert not (tmp_path / 'cancelled.json').exists() and store.path.read_bytes() == before
 
 

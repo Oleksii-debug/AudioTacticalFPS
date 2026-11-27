@@ -166,7 +166,7 @@ class WavePlayer:
             self.stop()
         finally:
             if os.name == 'nt' and self._open:
-                try:
-                    self._mci(f'close {self._alias}')
-                finally:
-                    self._open = False
+                # A rejected close still owns the device and its WAV. Keep
+                # the alias live so the retained cleanup owner can retry.
+                self._mci(f'close {self._alias}')
+                self._open = False

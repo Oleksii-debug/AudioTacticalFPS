@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
+from ..audio.cleanup import pending_cleanup
 from ..reader.ebook_audio import EbookAudioSession
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import play_when_quiet
@@ -15,6 +16,8 @@ class _ObservedTransport:
 
     @property
     def state(self):
+        if self.owner.closed:
+            return 'stopping'  # Keep progress quiet without polling a native owner being released.
         return self.owner.player.state
 
     def close(self):
@@ -106,6 +109,9 @@ class EbookAudioDialog:
         self.parent = parent
         self.closed, self.busy, self._destroy_requested = False, False, False
         self.cleanup_warning = ''
+        self._silence_confirmed = False
+        self._cleanup_owner = None
+        self._cleanup_owners = []
         self.cancelled = threading.Event()
         self.session = self.transport = self.player = self.executor = None
         self._pending = None
@@ -190,6 +196,28 @@ class EbookAudioDialog:
             error = f'{error}\nThe audio device has not confirmed closure: {cleanup}'
         self.report(error, focus=True)
 
+    def _discard_result(self, result, discard):
+        """A failed late release still needs an owner after native deletion."""
+        try:
+            if discard(result) is False:
+                raise RuntimeError('Owned EPUB result cleanup remains unconfirmed.')
+        except Exception as exc:
+            self.cleanup_warning = 'Late EPUB result cleanup is unconfirmed: ' + str(exc)
+            pending = pending_cleanup(lambda: discard(result),
+                message='Late EPUB result cleanup is pending.')
+            self._cleanup_owners.append(pending.cleanup_owner)
+
+    def _discard_future(self, future, discard):
+        try:
+            result = future.result()
+        except Exception as exc:
+            self.cleanup_warning = 'The detached EPUB worker ended: ' + str(exc)
+            owner = getattr(exc, 'cleanup_owner', None)
+            if owner is not None:
+                self._cleanup_owners.append(owner)
+        else:
+            self._discard_result(result, discard)
+
     def _submit(self, operation, complete, discard):
         if self.busy or self.closed:
             return
@@ -200,28 +228,28 @@ class EbookAudioDialog:
                 try:
                     result = future.result()
                     if self.closed or self.cancelled.is_set():
-                        discard(result)
+                        self._discard_result(result, discard)
                         return
                     self.guard()
                     complete(result)
                 except Exception as exc:
                     if result is not None:
-                        discard(result)
+                        self._discard_result(result, discard)
                     if not self.closed:
                         self._error(exc)
                 finally:
                     self.busy = False
                     if not self.closed:
                         self._enable(self.transport is not None)
-            # A completed worker always releases owned temporary files, even
-            # after the native dialog has already been destroyed.
+            # Completion owns its result even when the native event queue has
+            # gone away; failed release transfers to the canonical retry owner.
             if self.closed:
-                try:
-                    discard(future.result())
-                except Exception:
-                    pass
+                self._discard_future(future, discard)
             else:
-                self.wx.CallAfter(apply)
+                try:
+                    self.wx.CallAfter(apply)
+                except Exception:
+                    self._discard_future(future, discard)
         try:
             self.executor.submit(operation).add_done_callback(finished)
         except Exception:
@@ -385,8 +413,15 @@ class EbookAudioDialog:
             self.dispose()
         event.Skip()
 
+    def _unregister_player(self, confirmed):
+        if self.progress is not None and self.transport is not None:
+            try:
+                self.progress.unregister_player(self.transport.observed, silence_confirmed=confirmed)
+            except Exception as exc:
+                self.cleanup_warning += ' Recorded-audio progress cleanup was not confirmed: ' + str(exc)
+
     def dispose(self):
-        """Detach first; native parent deletion cannot wait for another callback."""
+        """Detach immediately; the canonical owner retries native I/O off the GUI."""
         if self.closed:
             return
         self.closed = True
@@ -398,36 +433,61 @@ class EbookAudioDialog:
                 timer.Stop()
             except (OSError, RuntimeError) as exc:
                 notices.append('The recorded-audio timer could not confirm shutdown: ' + str(exc))
-        silence_confirmed = self.player is None
-        try:
-            if self.transport is not None:
-                self.transport.close()
-            elif self.session is not None:
-                self.session.close()
-            silence_confirmed = True
-            if self._pending is not None:
-                self._pending.close()
-                self._pending = None
-        except Exception as exc:
-            notices.append('Recorded audio closure is unconfirmed; its owned files are retained: ' + str(exc))
-        if self.progress is not None and self.transport is not None:
-            try:
-                self.progress.unregister_player(self.transport.observed, silence_confirmed=silence_confirmed)
-            except Exception as exc:
-                notices.append('Recorded-audio progress cleanup was not confirmed: ' + str(exc))
+        if self.transport is not None:
+            self.transport.closed = True
+            self.transport.active = False
+            self.transport.generation = getattr(self.transport, 'generation', 0) + 1
         try:
             if self.executor is not None:
                 self.executor.shutdown(wait=False, cancel_futures=True)
         except (OSError, RuntimeError) as exc:
             notices.append('The recorded-audio worker could not confirm shutdown: ' + str(exc))
         self.cleanup_warning = ' '.join(notices)
-        if not silence_confirmed:
-            retained = getattr(self.parent, '_reader_playback_retained', None)
-            if not isinstance(retained, list):
-                retained = []
-                self.parent._reader_playback_retained = retained
-            # Keep the owner and its temporary inputs alive for a shutdown retry.
+        if self._silence_confirmed or all(value is None for value in
+                                         (self.transport, self.session, self.player, self._pending)):
+            self._unregister_player(True)
+            return
+        self.cleanup_warning += ' Recorded audio closure is unconfirmed; retained cleanup is pending.'
+        self._unregister_player(False)
+        retained = getattr(self.parent, '_reader_playback_retained', None)
+        if not isinstance(retained, list):
+            retained = []
+            self.parent._reader_playback_retained = retained
+        if not any(owner is self for owner in retained):
             retained.append(self)
+
+        def release():
+            if self.transport is not None:
+                if self.transport.close() is False:
+                    return False
+            else:
+                if self.player is not None and self.player.close() is False:
+                    return False
+                if self.session is not None and self.session.close() is False:
+                    return False
+            if self._pending is not None:
+                if self._pending.close() is False:
+                    return False
+                self._pending = None
+            return True
+
+        def acknowledged():
+            # Native audio/files are already quiescent. Only plain owner state
+            # changes on this worker; progress notification stays on the GUI.
+            self._silence_confirmed = True
+            self.cleanup_warning = ' '.join(notices)
+            retained[:] = [owner for owner in retained if owner is not self]
+            try:
+                self.wx.CallAfter(lambda: self._unregister_player(True))
+            except Exception:
+                # A dead application queue cannot revive native audio. Keep
+                # the progress controller's conservative silence latch.
+                pass
+
+        pending = pending_cleanup(release, message='Recorded EPUB playback cleanup is pending.',
+                                  callbacks=(acknowledged,))
+        self._cleanup_owner = pending.cleanup_owner
+        self._cleanup_owners.append(pending.cleanup_owner)
 
     def close(self, event=None):
         if self.closed:
@@ -443,6 +503,7 @@ class EbookAudioDialog:
             if event is not None and getattr(event, 'CanVeto', lambda: False)():
                 event.Veto()
             return
+        self._silence_confirmed = True
         self.dispose()
         if self.dialog and self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)

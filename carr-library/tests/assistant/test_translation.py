@@ -6,7 +6,7 @@ import json
 import ssl
 from time import time
 import pytest
-from carr_library.assistant.profiles import ProviderProfile
+from carr_library.assistant.profiles import ProviderProfile, ProfileStore
 from carr_library.assistant.providers import Authorization, Gateway, ProviderError
 from carr_library.assistant import providers
 from carr_library.assistant.translation import TranslationService, split_text, ENDPOINT
@@ -980,9 +980,9 @@ def translation_window(monkeypatch, tmp_path):
     from types import SimpleNamespace
     from carr_library.ui import translation_dialog as ui
 
-    controls, messages, menu_handlers, runs, errors = [], [], {}, [], []
+    controls, messages, menu_handlers, runs, errors, gateways = [], [], {}, [], [], []
     state = {'scenario': None, 'approval': 1, 'during_approval': None, 'range': '1-3',
-             'during_range': None, 'deferred': False, 'pending': []}
+             'during_range': None, 'deferred': False, 'pending': [], 'focused': None}
 
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
@@ -1008,7 +1008,9 @@ def translation_window(monkeypatch, tmp_path):
         def ChangeValue(self, value):
             assert not self.destroyed, 'Late callback touched a destroyed control'
             self.value = value
-        def SetFocus(self): pass
+        def SetFocus(self):
+            assert not self.destroyed, 'Late callback focused a destroyed control'
+            state['focused'] = self.name
         def Bind(self, event, callback, **kwargs): self.handlers[event] = callback
         def EndModal(self, value): self.result = value
         def ShowModal(self):
@@ -1097,16 +1099,21 @@ def translation_window(monkeypatch, tmp_path):
 
     def bind(case):
         frame = frame_for(case)
-        monkeypatch.setattr(ui, 'ProfileStore', lambda *args: SimpleNamespace(list=lambda: (case.profile,)))
-        monkeypatch.setattr(ui, 'Gateway', lambda *args, **kwargs: case.service.gateway)
+        ProfileStore(case.app.root / 'state' / 'providers').save(case.profile)
+        def gateway(*args, **kwargs):
+            gateways.append(True)
+            return case.service.gateway
+        monkeypatch.setattr(ui, 'Gateway', gateway)
         monkeypatch.setattr(ui, 'TranslationService', lambda *args, **kwargs: case.service)
         return frame
 
     return SimpleNamespace(ui=ui, state=state, controls=controls, messages=messages,
-        menu_handlers=menu_handlers, runs=runs, errors=errors, find=find, click=click, bind=bind)
+        menu_handlers=menu_handlers, runs=runs, errors=errors, gateways=gateways,
+        find=find, click=click, bind=bind)
 
 
-@pytest.mark.parametrize('approval', ['accepted', 'declined', 'revoked'], ids=['approved', 'no-transfer', 'late-revocation'])
+@pytest.mark.parametrize('approval', ['accepted', 'declined', 'revoked', 'account-revoked'],
+                         ids=['approved', 'no-transfer', 'late-source-revocation', 'late-account-revocation'])
 def test_native_source_translation_callbacks_require_preview_consent_and_keep_lineage(
         tmp_path, connection, translation_window, approval):
     case = bound_ready(tmp_path, connection, first=3, last=3)
@@ -1130,6 +1137,9 @@ def test_native_source_translation_callbacks_require_preview_consent_and_keep_li
             window.state['approval'] = 0
         elif approval == 'revoked':
             window.state['during_approval'] = lambda: case.app.archive_workspace(case.workspace)
+        elif approval == 'account-revoked':
+            window.state['during_approval'] = lambda: ProfileStore(
+                case.app.root / 'state' / 'providers').remove(case.profile.id)
         window.click('Translate / resume')
         assert len(window.messages) == 1
         assert f'exactly {len(case.source.text)}' in window.messages[0][0]
@@ -1401,3 +1411,176 @@ def test_source_job_cannot_downgrade_to_legacy_to_bypass_archival(
     assert len(connection['calls']) == calls and not (tmp_path / 'downgraded').exists()
     if not started:
         assert not case.service.gateway.ledger._path(approval.id).exists()
+
+
+def change_saved_account(case, mode):
+    from dataclasses import replace
+    store = ProfileStore(case.app.root / 'state' / 'providers')
+    if mode == 'missing':
+        store.remove(case.profile.id)
+    elif mode == 'disabled':
+        store.save(replace(case.profile, enabled=False))
+    else:
+        store.save(replace(case.profile, name='Changed account',
+                           credential_ref='carr/provider/google_test/' + 'b' * 32))
+
+
+@pytest.mark.parametrize('mode', ['missing', 'changed'])
+def test_native_saved_resume_requires_the_exact_visible_account_before_gateway(
+        tmp_path, connection, translation_window, mode):
+    case = bound_ready(tmp_path, connection)
+    identity, _ = submit_bound(case)
+    stop = []
+    case.service.resume(identity, cancelled=lambda: bool(stop), progress=lambda *args: stop.append(True))
+    saved = case.service.jobs.load(identity)
+    window = translation_window
+    frame = window.bind(case)
+    change_saved_account(case, mode)
+    calls = len(connection['calls'])
+    def scenario():
+        window.find('Optional price').ChangeValue('99')
+        window.click('Saved jobs')
+        account = window.find('Google API')
+        assert account.GetSelection() == -1
+        assert window.find('Optional price').GetValue() == ''
+        status = window.find('Preview, supported')
+        for value in (identity, case.profile.id, case.profile.name, 'en to uk', '2 USD'):
+            assert value in status.GetValue()
+        account.SetFocus()
+        window.click('Translate / resume')
+        assert 'Visible settings differ' in status.GetValue()
+        assert window.state['focused'] == status.name
+        assert case.service.jobs.load(identity) == saved
+        assert len(connection['calls']) == calls and not window.gateways
+        window.click('Close')
+    window.state['scenario'] = scenario
+    window.ui.show_translation(frame)
+    assert not window.errors
+
+
+@pytest.mark.parametrize('mode', ['missing', 'disabled', 'changed'])
+def test_native_saved_resume_rereads_catalog_after_dialog_and_worker_queue(
+        tmp_path, connection, translation_window, mode):
+    case = bound_ready(tmp_path, connection)
+    identity, _ = submit_bound(case)
+    stop = []
+    case.service.resume(identity, cancelled=lambda: bool(stop), progress=lambda *args: stop.append(True))
+    saved = case.service.jobs.load(identity)
+    window = translation_window
+    frame = window.bind(case)
+    calls = len(connection['calls'])
+    def scenario():
+        window.click('Saved jobs')
+        account = window.find('Google API')
+        assert account.GetSelection() == 0
+        window.state['deferred'] = True
+        account.SetFocus()
+        window.click('Translate / resume')
+        change_saved_account(case, mode)
+        pending, = window.state['pending']
+        window.state['pending'].clear()
+        pending()
+        status = window.find('Preview, supported')
+        assert 'unavailable, disabled or changed' in status.GetValue()
+        assert window.state['focused'] == status.name
+        assert case.service.jobs.load(identity) == saved
+        assert len(connection['calls']) == calls and not window.gateways
+        window.click('Close')
+    window.state['scenario'] = scenario
+    window.ui.show_translation(frame)
+    assert not window.errors
+
+
+@pytest.mark.parametrize('wrong_account', [False, True], ids=['exact-account', 'other-visible-account'])
+def test_native_saved_resume_matches_visible_account_and_numeric_budget(
+        tmp_path, connection, translation_window, wrong_account):
+    case = bound_ready(tmp_path, connection)
+    identity, _ = submit_bound(case)
+    stop = []
+    case.service.resume(identity, cancelled=lambda: bool(stop), progress=lambda *args: stop.append(True))
+    saved = case.service.jobs.load(identity)
+    window = translation_window
+    frame = window.bind(case)
+    ProfileStore(case.app.root / 'state' / 'providers').save(profile(
+        id='other_google', name='Another account', credential_ref='carr/provider/other_google/' + 'b' * 32))
+    calls = len(connection['calls'])
+    def scenario():
+        window.click('Saved jobs')
+        account = window.find('Google API')
+        assert account.GetSelection() == 0
+        account.SetSelection(1 if wrong_account else 0)
+        window.find('Maximum approved').ChangeValue('2.00')
+        account.SetFocus()
+        window.click('Translate / resume')
+        if wrong_account:
+            status = window.find('Preview, supported')
+            assert 'Visible settings differ' in status.GetValue()
+            assert window.state['focused'] == status.name
+            assert case.service.jobs.load(identity) == saved
+            assert len(connection['calls']) == calls and not window.gateways
+        else:
+            assert case.service.jobs.load(identity)['status'] == 'complete'
+            assert len(connection['calls']) - calls == len(saved['chunks']) - len(saved['receipts'])
+            assert window.gateways == [True]
+        window.click('Close')
+    window.state['scenario'] = scenario
+    window.ui.show_translation(frame)
+    assert not window.errors
+
+
+@pytest.mark.parametrize('mode', ['missing', 'changed'])
+def test_native_completed_export_keeps_original_lineage_without_current_account(
+        tmp_path, connection, translation_window, mode):
+    case = bound_ready(tmp_path, connection, first=3, last=3)
+    identity, _ = submit_bound(case)
+    case.service.resume(identity)
+    window = translation_window
+    frame = window.bind(case)
+    change_saved_account(case, mode)
+    calls, secrets = len(connection['calls']), len(case.vault.calls)
+    def scenario():
+        window.click('Saved jobs')
+        assert window.find('Google API').GetSelection() == -1
+        window.click('Export')
+        target, = tmp_path.glob('Translation-*')
+        reading = ReadingDocument.load(target / 'translation.reading.json')
+        assert reading.source_text == case.source.text
+        assert reading.source_anchor == case.document.source_anchor
+        assert read_json(target / 'translation-provenance.json')['job_id'] == identity
+        assert len(connection['calls']) == calls and len(case.vault.calls) == secrets
+        assert not window.gateways
+        window.click('Close')
+    window.state['scenario'] = scenario
+    window.ui.show_translation(frame)
+    assert not window.errors
+
+
+def test_native_account_revoked_after_accepted_chunk_stops_next_request(
+        tmp_path, connection, translation_window):
+    from types import SimpleNamespace
+    case = bound_ready(tmp_path, connection)
+    window = translation_window
+    frame = window.bind(case)
+    revoked = []
+    def progress(done, total, phase, *, token):
+        if done == 1 and not revoked:
+            change_saved_account(case, 'disabled')
+            revoked.append(True)
+    frame.operation_progress = SimpleNamespace(event=SimpleNamespace(token='account-test'), update=progress)
+    calls = len(connection['calls'])
+    def scenario():
+        window.find('Maximum approved').ChangeValue('2')
+        window.find('Source language').ChangeValue('en')
+        window.click('Preview')
+        window.click('Translate / resume')
+        job, = case.service.list()
+        assert revoked and len(job['receipts']) == 1 and len(job['chunks']) > 1
+        assert job['status'] == 'attention'
+        assert len(connection['calls']) == calls + 1 and window.gateways == [True]
+        status = window.find('Preview, supported')
+        assert 'unavailable, disabled or changed' in status.GetValue()
+        assert window.state['focused'] == status.name
+        window.click('Close')
+    window.state['scenario'] = scenario
+    window.ui.show_translation(frame, source_loader=lambda cancelled: case.source, source_topic=case.topic)
+    assert not window.errors

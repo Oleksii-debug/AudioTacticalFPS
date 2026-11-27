@@ -625,3 +625,69 @@ def test_advanced_glossary_source_job_retains_anchor_and_independent_decoded_rec
         service.export(identity, tmp_path / 'forged advanced export')
     assert not (tmp_path / 'forged advanced export').exists()
     assert len(transport['calls']) == calls and len(vault.calls) == credentials
+
+
+@pytest.mark.parametrize('mode', ['missing', 'disabled', 'changed'])
+def test_advanced_queued_translation_rechecks_current_account_before_credentials(
+        translation_handlers, transport, mode):
+    e = translation_handlers
+    def scenario():
+        prepare_handler(e)
+        e.press('Preview')
+        e.press('Translate / resume')
+        job, = e.service.list()
+        saved = e.service.jobs.load(job['id'])
+        credentials = list(e.vault.calls)
+        store = ProfileStore(e.frame.library.root / 'state' / 'providers')
+        if mode == 'missing':
+            store.remove(e.p.id)
+        elif mode == 'disabled':
+            store.save(replace(e.p, enabled=False))
+        else:
+            store.save(replace(e.p, credential_ref='carr/provider/advanced_test/' + 'b' * 32))
+        e.complete()
+        assert e.service.jobs.load(job['id']) == saved
+        assert len(transport['calls']) == 1 and e.vault.calls == credentials
+        status = e.find('Preview, supported languages and job status')
+        assert 'unavailable, disabled or changed' in status.value and status.focused
+    e.scenario(scenario)
+
+
+@pytest.mark.parametrize('mode', ['missing', 'disabled', 'changed'])
+def test_advanced_queued_language_discovery_rechecks_current_account(
+        translation_handlers, transport, mode):
+    e = translation_handlers
+    def scenario():
+        e.press('Fetch languages')
+        store = ProfileStore(e.frame.library.root / 'state' / 'providers')
+        if mode == 'missing':
+            store.remove(e.p.id)
+        elif mode == 'disabled':
+            store.save(replace(e.p, enabled=False))
+        else:
+            store.save(replace(e.p, name='Changed account'))
+        e.complete()
+        assert not transport['calls'] and not e.vault.calls and not e.service.list()
+        status = e.find('Preview, supported languages and job status')
+        assert 'unavailable, disabled or changed' in status.value and status.focused
+    e.scenario(scenario)
+
+
+def test_advanced_discovery_rechecks_account_after_gateway_construction(
+        translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    gateway = ui.Gateway
+    created = []
+    def changed_gateway(*args, **kwargs):
+        created.append(True)
+        ProfileStore(e.frame.library.root / 'state' / 'providers').save(replace(e.p, enabled=False))
+        return gateway(*args, **kwargs)
+    monkeypatch.setattr(ui, 'Gateway', changed_gateway)
+    def scenario():
+        e.press('Fetch languages')
+        e.complete()
+        assert created == [True] and not transport['calls'] and not e.vault.calls
+        assert not e.service.languages(e.p)
+        status = e.find('Preview, supported languages and job status')
+        assert 'unavailable, disabled or changed' in status.value and status.focused
+    e.scenario(scenario)

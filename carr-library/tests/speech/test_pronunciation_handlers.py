@@ -418,3 +418,106 @@ def test_idle_native_destruction_does_not_cancel_an_unrelated_reader_operation(v
     view.cancel.clear()
     dialog.Destroy()
     assert not dialog.alive and not view.cancel.is_set()
+
+
+def test_export_keeps_the_selected_parent_identity_while_reader_work_is_queued(view, tmp_path):
+    add_rule(view)
+    selected = tmp_path / 'selected-export-folder'
+    selected.mkdir()
+    destination = selected / 'reviewed-rules.json'
+    previous = tmp_path / 'original-export-folder'
+    view.worker.gate.clear()
+    view.picks.append(destination)
+    view.dialog.on_export()
+    assert view.dialog.busy
+    selected.rename(previous)
+    selected.mkdir()
+    view.worker.gate.set()
+    view.worker.drain()
+    assert not destination.exists()
+    assert not (previous / destination.name).exists()
+    assert 'destination changed' in view.dialog.status.GetValue()
+    assert view.state.document.text == view.state.document.source_text
+
+
+def test_dictionary_export_refuses_the_private_library_before_worker_admission(view):
+    add_rule(view)
+    destination = view.state.library.root / 'must-not-be-exported.json'
+    prior = view.worker.future
+    view.picks.append(destination)
+    view.dialog.on_export()
+    assert view.worker.future is prior and not view.dialog.busy
+    assert not destination.exists()
+    assert 'outside the private library' in view.dialog.status.GetValue()
+    assert view.state.document.text == view.state.document.source_text
+
+
+def test_export_scope_is_rechecked_after_the_native_file_choice(view, tmp_path, monkeypatch):
+    add_rule(view)
+    destination = tmp_path / 'stale-source-rules.json'
+    prior = view.worker.future
+    choose = view.wx.FileDialog.ShowModal
+    captures = []
+
+    def changed_scope(picker):
+        result = choose(picker)
+        view.state.authorized = False
+        return result
+
+    def forbidden_capture(*args, **kwargs):
+        captures.append((args, kwargs))
+        pytest.fail('A stale source scope reached destination inspection.')
+
+    monkeypatch.setattr(view.wx.FileDialog, 'ShowModal', changed_scope)
+    monkeypatch.setattr(ui, 'capture_export_destination', forbidden_capture)
+    view.picks.append(destination)
+    view.dialog.on_export()
+    assert not captures and view.worker.future is prior and not view.dialog.busy
+    assert not destination.exists()
+    assert 'scope is no longer available' in view.dialog.status.GetValue()
+
+
+def test_dictionary_export_keeps_committed_receipt_warning_after_late_cancel(view, tmp_path, monkeypatch):
+    rule = add_rule(view)
+    destination = tmp_path / 'completed-rules.json'
+    publish = ui.write_binary_export
+    warning = 'The file is saved. Temporary-file cleanup is still pending.'
+
+    def published(*args, **kwargs):
+        receipt = publish(*args, **kwargs)
+        view.cancel.set()
+        return ui.ExportReceipt(receipt.path, warning)
+
+    monkeypatch.setattr(ui, 'write_binary_export', published)
+    view.picks.append(destination)
+    view.dialog.on_export()
+    view.worker.drain()
+    assert view.cancel.is_set()
+    assert import_dictionary(destination) == (rule,)
+    assert 'New dictionary saved; SHA-256' in view.dialog.status.GetValue()
+    assert warning in view.dialog.status.GetValue()
+    assert view.state.document.text == view.state.document.source_text
+
+
+@pytest.mark.parametrize('stage', ['queued', 'published'])
+def test_destroy_during_export_preserves_the_real_publication_boundary(view, tmp_path, stage):
+    rule = add_rule(view)
+    destination = tmp_path / 'closing-rules.json'
+    if stage == 'queued':
+        view.worker.gate.clear()
+    view.picks.append(destination)
+    view.dialog.on_export()
+    assert view.dialog.busy
+    if stage == 'published':
+        view.worker.ready()
+        assert import_dictionary(destination) == (rule,)
+    view.dialog.Destroy()
+    assert not view.dialog.alive
+    view.worker.gate.set()
+    view.worker.drain()
+    assert not view.dialog.busy
+    if stage == 'queued':
+        assert not destination.exists()
+    else:
+        assert import_dictionary(destination) == (rule,)
+    assert view.state.document.text == view.state.document.source_text

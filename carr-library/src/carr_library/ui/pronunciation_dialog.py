@@ -6,7 +6,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from ..durable_state import atomic_bytes, local_path, regular, state_lock
-from ..speech._io import check_cancelled, new_output, text_value
+from ..speech._io import check_cancelled, text_value
+from ..research.export_file import (ExportReceipt, capture_export_destination,
+                                    export_completion, write_binary_export)
 from ..speech.reading import ReadingDocument, PronunciationRule, export_dictionary, import_dictionary
 
 MAX_DICTIONARY_BYTES = 8_000_000
@@ -121,11 +123,13 @@ def _dictionary_bytes(rules, cancelled):
     return raw
 
 
-def export_reviewed_dictionary(rules, destination, *, cancelled=lambda: False):
+def export_reviewed_dictionary(rules, destination, *, private_root, approval=None,
+                               cancelled=lambda: False) -> tuple[str, ExportReceipt]:
+    """Publish a new dictionary through the common export policy and receipt."""
     raw = _dictionary_bytes(rules, cancelled)
-    with new_output(destination, cancelled=cancelled) as staged:
-        staged.write_bytes(raw)
-    return sha256(raw).hexdigest()
+    receipt = write_binary_export(destination, raw, private_root=private_root,
+                                  cancelled=cancelled, require_absent=True, approval=approval)
+    return sha256(raw).hexdigest(), receipt
 
 
 class DictionaryStore:
@@ -436,7 +440,7 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
             try:
                 if self.busy:
                     return
-                self.entry_saved(); rules = self.rules
+                guard(); self.entry_saved(); rules = self.rules
                 picker = wx.FileDialog(self, 'Export rules to a new dictionary', defaultFile='pronunciations.json',
                                        wildcard='Pronunciation dictionary (*.json)|*.json', style=wx.FD_SAVE)
                 try:
@@ -445,8 +449,19 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
                     destination = Path(picker.GetPath())
                 finally:
                     picker.Destroy()
-                self.begin(lambda: export_reviewed_dictionary(rules, destination, cancelled=self.stopping),
-                           lambda digest: self.report(f'New dictionary saved; SHA-256 {digest}.'), committed=True)
+                if not self.alive:
+                    return
+                guard()
+                private_root = self.store.library_root
+                approval = capture_export_destination(destination, private_root=private_root,
+                                                      cancelled=self.stopping)
+
+                def saved(result):
+                    digest, receipt = result
+                    self.report(export_completion(f'New dictionary saved; SHA-256 {digest}.', receipt))
+
+                self.begin(lambda: export_reviewed_dictionary(rules, destination, private_root=private_root,
+                           approval=approval, cancelled=self.stopping), saved, committed=True)
             except Exception as exc:
                 self.report(exc)
 

@@ -24,6 +24,9 @@ ReadingDocument. No model or provider SDK is installed automatically.
 5. Pause/resume the same saved job. Accepted chunks are durably recorded before
    cancellation and reused. Uncertain charges are never retried automatically.
    Expired approval stops further calls; renewal requires a new explicit review.
+   Resume also requires the exact account snapshot to remain enabled in AI/API
+   connections. Removing, disabling or changing that account after opening the
+   window or queuing work blocks further requests before credential access.
 6. Export writes a fresh directory with original, translated and bilingual text,
    a reversible reading-copy project, and provenance/file hashes. The translation
    has no source-quotation authority. Existing outputs are never overwritten.
@@ -159,9 +162,13 @@ with an explicit legacy integrity label rather than invented proof.
 
 Saved jobs restore the exact visible account, source, languages, glossary and
 budget. Reading that list runs in the existing worker. Changing the visible
-scope blocks resume/export before a provider request or export picker; Preview
-or New translation begins an explicit new review. Missing/changed accounts block
-remote resume while preserving completed offline exports. Bound exports retain
+scope blocks resume before a provider request and export before any output is
+published. The selected scope is captured on the UI thread and the saved record
+is validated in the existing worker; Preview or New translation starts a new review. Missing/changed accounts block
+remote resume while preserving completed offline exports. The worker rereads the
+current profile before constructing a gateway and at existing remote-operation
+checks. Language discovery also checks the current account after queuing. Status
+errors focus the named status control. Bound exports retain
 the original source anchor in the reversible reading project and provenance;
 translated edits never acquire source-quotation authority. Publication rechecks
 source authorization and uses the existing writer guard, new output directory
@@ -217,3 +224,9 @@ exact installed build; source tests do not establish it.
 
 The Advanced REST/authentication references above were reviewed on 2026-11-27.
 No live provider pricing or account capability was inferred from them.
+
+The current-account catalog checks and saved-job regressions reuse public PR165
+at `5baee73ae94d860909152fb8c8434d5864c0e638`, adapted to retain Advanced v3
+project/glossary scope and the existing durable pasted-text capture. Reconstructed
+source and handler tests require execution on the composed candidate; prior donor
+results do not qualify this build.

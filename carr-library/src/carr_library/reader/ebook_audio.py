@@ -6,7 +6,7 @@ Untrusted ZIP/XML is parsed in a bounded child, using the existing EPUB parser.
 Only local recorded-audio seq/par overlays are supported; no remote resources,
 encrypted content, TTS substitution or executable markup is admitted.
 """
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass, field
 from copy import copy
 from decimal import Decimal
@@ -24,7 +24,7 @@ import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
 from ..audio import AudioRuntime
-from ..audio.models import AudioBudget, AudioCancelled
+from ..audio.models import AudioBudget, AudioCancelled, AudioCleanupPending
 from ..audio.process import run_process
 from ..catalog.office_archive import validate_office
 from ..durable_state import digest_file, local_path, regular
@@ -274,6 +274,7 @@ class EbookAudioSession:
         self._closed = threading.Event()
         self._lock = threading.Lock()
         self._temporary = None
+        self._pending_owner = None
         self.resource_notice = ''
         # Preserve the existing reader's immutable identity/descriptors while
         # giving this child transport its own cancellation lifetime.
@@ -292,7 +293,10 @@ class EbookAudioSession:
                 raise ValueError('Recorded media overlays require an imported EPUB source.')
             data = desk.library._asset_bytes(db, desk.workspace, identity, cancelled=budget.stopped)
         self.guard(); _check(self.stopped)
-        self.broker = ResourceBroker.for_app(desk.library.root, cancelled=self.stopped)
+        try:
+            self.broker = ResourceBroker.for_app(desk.library.root, cancelled=self.stopped)
+        except ResourceCancelled as exc:
+            raise AudioCancelled('EPUB audio reading cancelled while opening shared resources.') from exc
         try:
             self._temporary = TemporaryDirectory(prefix='carr-epub-audio-')
             self.root = local_path(self._temporary.name, exists=True)
@@ -306,35 +310,53 @@ class EbookAudioSession:
                          "runpy.run_module('carr_library.reader.ebook_audio',run_name='__main__')")
             budget = AudioBudget(timeout=60, threads=1, max_log_bytes=MAX_REPLY,
                                  max_output_bytes=epub.MAX_SOURCE_BYTES, reserve_disk_bytes=0)
-            with self._resources(budget, self.root, cancelled=self.stopped, source_bytes=len(data)) as lease:
+            with self._resources(budget, self.root, cancelled=self.stopped, source_bytes=len(data),
+                                 memory_bytes=3 * 1024**3) as lease:
                 with self.source.open('xb') as staged:
                     for offset in range(0, len(data), 64 * 1024):
                         _check(lease.cancelled)
                         staged.write(data[offset:offset + 64 * 1024])
+                del data
                 result = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap,
                     str(len(roots)), *roots, str(self.source), identity.asset_sha256, str(ordinal)],
                     budget=budget, cancelled=lease.cancelled)
             value = json.loads(result.stdout)
             self.chapter = _decode_chapter(value, self.page, identity)
             self.check()
+        except AudioCleanupPending as exc:
+            self._closed.set()
+            self._pending_owner = exc.cleanup_owner
+            temporary, self._temporary = self._temporary, None
+            if temporary is not None:
+                exc.cleanup_owner.add_quiescent_callback(temporary.cleanup)
+            raise
         except BaseException:
             self.close()
             raise
 
     @contextmanager
-    def _resources(self, budget, root, *, cancelled, source_bytes=32 * 1024**2):
+    def _resources(self, budget, root, *, cancelled, source_bytes=32 * 1024**2,
+                   memory_bytes=0):
         """Reserve the existing shared policy for isolated parsing or conversion."""
         request = ResourceRequest(cpu_slots=budget.threads,
-            memory_bytes=max(512 * 1024**2, 2 * budget.max_alloc_bytes),
+            memory_bytes=max(512 * 1024**2, 2 * budget.max_alloc_bytes, memory_bytes),
             disk_path=root, disk_bytes=budget.max_output_bytes + source_bytes + budget.reserve_disk_bytes)
         lease = None
         try:
-            with self.broker.reserve(request, operation_id='epub-audio:' + uuid4().hex,
-                    cancelled=cancelled, timeout=min(60, budget.timeout),
-                    run_timeout=budget.timeout) as lease:
-                self.check()
-                _check(lease.cancelled)
-                yield lease
+            with ExitStack() as reservations:
+                try:
+                    lease = reservations.enter_context(self.broker.reserve(request,
+                        operation_id='epub-audio:' + uuid4().hex, cancelled=cancelled,
+                        timeout=min(60, budget.timeout), run_timeout=budget.timeout))
+                    self.check()
+                    _check(lease.cancelled)
+                    yield lease
+                except AudioCleanupPending as exc:
+                    # The exact native owner keeps this reservation until its
+                    # process/streams actually finish, including failed cleanup.
+                    retained = reservations.pop_all()
+                    exc.cleanup_owner.add_quiescent_callback(retained.close)
+                    raise
         except ResourceCancelled as exc:
             raise AudioCancelled('EPUB audio reading cancelled while waiting for shared resources.') from exc
         finally:
@@ -358,6 +380,7 @@ class EbookAudioSession:
         if not self._lock.acquire(blocking=False):
             raise ValueError('Wait for the current EPUB audio preparation.')
         temporary = None
+        transferred = False
         stopped = lambda: self.stopped() or cancelled()
         try:
             self.guard(); _check(stopped)
@@ -401,11 +424,29 @@ class EbookAudioSession:
             _check(stopped)
             temporary = None
             return result
-        finally:
+        except AudioCleanupPending as exc:
+            self._pending_owner = exc.cleanup_owner
+            # No retry may reuse this session or remove its source while the
+            # previous native owner still holds the extracted recording.
+            transferred = True
             if temporary is not None:
-                temporary.cleanup()
+                exc.cleanup_owner.add_quiescent_callback(temporary.cleanup)
+                temporary = None
+            exc.cleanup_owner.add_quiescent_callback(self._finish_prepare)
+            raise
+        finally:
+            try:
+                if temporary is not None:
+                    temporary.cleanup()
+            finally:
+                if not transferred:
+                    self._finish_prepare()
+
+    def _finish_prepare(self):
+        try:
             if self._closed.is_set() and self._temporary is not None:
                 self._temporary.cleanup()
+        finally:
             self._lock.release()
 
     def admit(self, prepared):
