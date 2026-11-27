@@ -1,0 +1,88 @@
+name: CARR actual large retained sources
+
+on:
+  push:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
+    paths:
+      - carr-library/src/carr_library/ingest/**
+      - carr-library/src/carr_library/extract/page_ocr.py
+      - carr-library/src/carr_library/backup_capacity.py
+      - carr-library/src/carr_library/library_backup.py
+      - carr-library/src/carr_library/pending_backup.py
+      - carr-library/src/carr_library/storage/revisions.py
+      - carr-library/scripts/large_source_acceptance.py
+      - .github/workflows/carr-large-sources.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-large-sources-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  actual-size:
+    name: ${{ matrix.os }} actual ${{ matrix.txt }} MiB TXT and ${{ matrix.pdf }} MiB PDF
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            txt: 257
+            pdf: 129
+          - os: windows-2022
+            txt: 257
+            pdf: 129
+          - os: ubuntu-24.04
+            txt: 2048
+            pdf: 2048
+          - os: windows-2022
+            txt: 2048
+            pdf: 2048
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact portable package without model payloads
+        run: |
+          set -euo pipefail
+          mkdir -p large-source-results
+          git rev-parse HEAD > large-source-results/tested-commit.txt
+          python -m pip install '.[test,sync]'
+          python -m pip check
+          python -m pip list --format=json > large-source-results/installed-packages.json
+      - name: Require profile, backup, parser and real fixture contracts
+        run: |
+          set -euo pipefail
+          python -I -B scripts/ci_check.py --installed --jobs 3 tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/e2e/test_large_source_fixture.py 2>&1 | tee large-source-results/contracts.txt
+      - name: Execute actual retained bytes and current owned import recovery
+        run: |
+          set -euo pipefail
+          fixture_work="$RUNNER_TEMP/carr-large-${{ matrix.txt }}-${{ matrix.pdf }}"
+          mkdir -p "$fixture_work"
+          expected_package=$(python -I -B -c "import carr_library; print(carr_library.__file__)")
+          python -I -B scripts/large_source_acceptance.py --workdir "$fixture_work" --expected-package "$expected_package" --output large-source-results/actual-size.json --txt-mib ${{ matrix.txt }} --pdf-mib ${{ matrix.pdf }} --timeout 7200 2>&1 | tee large-source-results/actual-size.txt
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-large-${{ matrix.os }}-${{ matrix.txt }}-${{ matrix.pdf }}-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/large-source-results/
+          if-no-files-found: error
+          retention-days: 7

@@ -252,7 +252,10 @@ def main(arguments=None):
     workdir = args.workdir.resolve(strict=True)
     if not workdir.is_dir():
         raise ValueError('Choose an existing private fixture work directory.')
-    required = 12 * (args.txt_mib * MIB) + 2 * 1024**3
+    # The phases run in separate temporary trees. Admit the larger peak:
+    # TXT retains expanded journal/catalog copies; PDF retains its original,
+    # owned input and complete-backup copies without expanding the whole file.
+    required = max(12 * (args.txt_mib * MIB), 4 * (args.pdf_mib * MIB)) + 2 * 1024**3
     if shutil.disk_usage(workdir).free < required:
         raise ValueError('Insufficient free space for the declared measured fixture/backup phases.')
     report = dict(status='RUNNING', installed_package_verified=True, peak_ram='NOT_MEASURED',

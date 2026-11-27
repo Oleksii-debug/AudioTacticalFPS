@@ -36,3 +36,25 @@ def test_real_incremental_pdf_fixture_keeps_current_parser_and_render_semantics(
         with closing(document[0]) as page:
             with closing(page.get_textpage()) as text:
                 assert 'Pdfprofileproof exact painted source' in text.get_text_range()
+
+
+def test_independent_large_pdf_allowance_is_admitted_before_any_fixture(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import carr_library
+    import pytest
+
+    module = producers()
+    # Enough for the ordinary 257 MiB TXT phase, but insufficient for an
+    # independently selected 3 GiB PDF original and its retained backups.
+    available = 12 * 257 * module.MIB + 2 * 1024**3 + module.MIB
+    monkeypatch.setattr(module.shutil, 'disk_usage', lambda _: SimpleNamespace(free=available))
+    calls = []
+    monkeypatch.setattr(module, 'text_case', lambda *args: calls.append('txt'))
+    monkeypatch.setattr(module, 'pdf_case', lambda *args: calls.append('pdf'))
+    report = tmp_path / 'measured.json'
+    with pytest.raises(ValueError, match='Insufficient free space'):
+        module.main(['--workdir', str(tmp_path), '--output', str(report),
+                     '--expected-package', str(Path(carr_library.__file__).resolve(strict=True)),
+                     '--txt-mib', '257', '--pdf-mib', '3072'])
+    assert calls == []
+    assert not report.exists()
