@@ -367,6 +367,27 @@ class UpdateTransaction:
         return (self.work / record['stage'], self.installed.parent / record['previous'],
                 self.work / record['failed'])
 
+    def _program_identity(self):
+        """Capture a live directory and its exact bounded bundle manifest."""
+        before = directory(self.installed).stat()
+        manifest = read_bytes(self.installed / 'bundle-manifest.json', 16 * 1024**2)
+        after = directory(self.installed).stat()
+        identity = before.st_dev, before.st_ino
+        if identity != (after.st_dev, after.st_ino):
+            raise TrustError('The installed program changed while checking its identity.')
+        return (*identity, hashlib.sha256(manifest).hexdigest())
+
+    def _same_program(self, expected):
+        # This proof exists only in the current lease owner. It is not an
+        # extra recovery-journal authority or a guess based on path existence.
+        try:
+            if self._program_identity() != expected:
+                return False
+            self.adapter.verify(self.installed)
+            return self._program_identity() == expected
+        except (OSError, ValueError):
+            return False
+
     def _rollback(self, record):
         stage, previous, failed = self._paths(record)
         if os.path.lexists(previous):
@@ -425,7 +446,10 @@ class UpdateTransaction:
                 raise TrustError('The system clock moved backwards; update approval requires review.')
             if release.build <= max(before.sequence, self.policy.current_build):
                 raise TrustError('Protected update state refuses a rollback or replay.')
+            original_program = self._program_identity()
             self.adapter.verify(self.installed)
+            if self._program_identity() != original_program:
+                raise TrustError('The installed program changed during verification.')
             token = uuid.uuid4().hex
             record = dict(version=1, phase='prepared', program=str(self.installed), data=str(self.app.root),
                           transaction=token, stage='stage-' + token, previous='.carr-previous-' + token,
@@ -453,8 +477,10 @@ class UpdateTransaction:
                     # installed program's identity from directory existence.
                     self._write(record, 'rolled-back')
                     raise
+                old_moved = False
                 try:
                     os.rename(self.installed, previous)
+                    old_moved = True
                     sync_directory(self.installed.parent)
                     self._write(record, 'old-moved')
                     os.rename(stage, self.installed)
@@ -471,7 +497,16 @@ class UpdateTransaction:
                     # final-journal write failure. Recover() can finalize it.
                     current = self.anchor.load()
                     if current == before:
-                        self._rollback(record)
+                        if (not old_moved and record['phase'] == 'prepared'
+                                and not os.path.lexists(previous) and not os.path.lexists(failed)
+                                and self._same_program(original_program)):
+                            # The first native move can fail without moving A.
+                            # Only this live owner can verify the original
+                            # directory, manifest and sealed files, then publish
+                            # a durable terminal phase before allowing a retry.
+                            self._write(record, 'rolled-back')
+                        else:
+                            self._rollback(record)
                     raise
             self._write(record, 'complete')
             return {'status': 'complete', 'version': release.version, 'build': release.build,

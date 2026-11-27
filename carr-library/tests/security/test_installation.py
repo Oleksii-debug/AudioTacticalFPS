@@ -479,6 +479,7 @@ def test_failed_first_move_cannot_attest_a_different_or_modified_program(
     from carr_library.security import installation
     *_, package, transaction, anchor, adapter = setup_update
     original = installation.os.rename
+    initial = transaction.installed.stat()
     observed = []
 
     def interrupted(source, destination):
@@ -489,7 +490,10 @@ def test_failed_first_move_cannot_attest_a_different_or_modified_program(
             if replacement == 'modified-file':
                 (transaction.installed / 'version.txt').write_bytes(b'C')
             else:
-                with zipfile.ZipFile(io.BytesIO(bundle('C'))) as archive:
+                # An identical manifest is insufficient if the directory was
+                # replaced; the live owner retained A's actual filesystem ID.
+                version = 'A' if replacement == 'new-directory' else 'C'
+                with zipfile.ZipFile(io.BytesIO(bundle(version))) as archive:
                     archive.extractall(transaction.installed)
             raise PermissionError('Synthetic ambiguous first rename failure')
         return original(source, destination)
@@ -500,13 +504,16 @@ def test_failed_first_move_cannot_attest_a_different_or_modified_program(
     raw = transaction.journal.read_bytes()
     record = json.loads(raw)
     assert observed == [True] and record['phase'] == 'prepared'
-    assert (transaction.installed / 'version.txt').read_bytes() == b'C'
+    expected = b'A' if replacement == 'new-directory' else b'C'
+    assert (transaction.installed / 'version.txt').read_bytes() == expected
     assert not (transaction.installed.parent / record['previous']).exists()
     assert not (transaction.work / record['failed']).exists()
     assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
     assert (transaction.work / record['backup'] / 'manifest.json').is_file()
     assert anchor.load().sequence == 1 and adapter.activated_path is None
     if replacement == 'new-directory':
+        current = transaction.installed.stat()
+        assert (current.st_dev, current.st_ino) != (initial.st_dev, initial.st_ino)
         assert (transaction.work / 'externally-retained-A' / 'version.txt').read_bytes() == b'A'
     monkeypatch.undo()
     with pytest.raises(TrustError, match='Previous installation is unavailable'):

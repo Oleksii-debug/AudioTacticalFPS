@@ -2,8 +2,10 @@
 
 This bounded integration reuses PR152 at `76337dc932aec089e51813cb30cdbd0e6f21c42f`
 with the canonical delivery contract and existing assistant credential vault.
-It adds reviewed cancellation and native owner-lifetime corrections.
-Installer activation and its transaction are excluded from this increment.
+It adds reviewed cancellation and native owner-lifetime corrections. The
+portable activation backend is separately reused from reviewed checkpoint
+`8c981c7e947f8d144c8706b5ea022990517c7dd9`, with a narrow first-move recovery
+correction. No desktop or CLI action invokes application activation.
 
 
 This supplies neutral client contracts for V3-16, V3-17, V3-18 and V3-22.
@@ -26,7 +28,7 @@ only when trusted host code supplies configured clients.
 | Renewal | Explicitly enabled idle scheduler, one background request, synthetic 7/14-day cadence, separate expiry/grace, nonce binding, persistent backoff and changed-terms review | Configured signed-renewal provider and canonical OS-vault profile/reference |
 | Update | Real python-tuf verification of roles, signatures, version chains, expiry, target lengths/hashes | Independent bootstrap root/digest and product/channel/build policy |
 | Offline repository | Bounded local metadata/target fetcher without network or redirect fallback | Owner-produced signed repository and application bundle |
-| Activation and rollback | Not implemented by this client; a verified download never launches or installs code | A separate reviewed restart supervisor, idle lease, program/data transaction and qualified A-to-B recovery |
+| Activation and rollback | Portable transaction backend with verified staging, backup, protected commit and rollback; a download never invokes it | A separate reviewed restart supervisor, concrete idle lease and actual Windows A-to-B recovery qualification |
 | Native UI | Named status/terms controls, explicit acceptance before import, background offline check/download | Actual production authority and activation supervisor remain unconfigured |
 
 ## Permission format
@@ -179,15 +181,46 @@ before publication never produces a new destination; an existing verified
 package is retained. Verified downloads are reusable; partial byte-range
 download resume is not implemented.
 
-## Deliberate activation boundary
+## Portable activation backend and remaining host boundary
 
-This client implements review and download only. It does not unpack, execute,
-activate, replace or roll back an application, and it provides no activation
-button or managed-install lease. The donor installation module and its synthetic
-activation tests are excluded rather than presented as a working installed
-upgrade path. A→B activation, a supervisor outside the program directory,
-quiescent-work ownership and rollback after a real installed failure remain
-software integration and acceptance requirements. They are not only missing
+The existing UI and CLI implement review and download only. They provide no
+activation button or managed-install lease. Trusted host code can separately
+construct `security.installation.UpdateTransaction` with the existing library,
+protected update anchor, verified bundle adapter and an explicit `idle_lease`.
+The portable backend accepts only the existing TUF-issued package receipt,
+checks a private bounded ZIP snapshot, creates a checked library backup, and
+uses same-filesystem program-directory moves. Program, update workspace and
+research data must remain separate. The existing installer verifies the exact
+source/wheel receipt; it builds the new environment at its final path. Managed
+installations with their separate installer ownership receipt are rejected.
+
+The transaction retains the previous installation and backup until health and
+protected build advancement succeed. Recovery never rolls back an already
+committed protected build. Missing previous-installation bytes after an
+interrupted activation require owner recovery; the existence of a directory
+at the program pathname is not proof that the original program was restored.
+
+If the first native rename raises before moving the original, the still-live
+transaction may publish `rolled-back` only after matching its captured directory
+device/inode, exact manifest SHA256, and a fresh verification of every sealed
+bundle file. The protected anchor must remain unchanged and no previous or
+failed destination may exist. The original rename error is retained, and a
+later explicit retry creates a new transaction. A replaced directory, changed
+manifest, changed sealed file or failed terminal-journal write cannot acquire
+this successful-recovery state. This live proof is not a new journal authority:
+version 1 remains unchanged, and a restarted process still refuses to infer
+the original installation when its retained previous directory is missing.
+
+The Windows adapter uses the existing owned-process runner with bounded native
+attempts and diagnostics. If native cleanup remains unconfirmed, it waits off
+the desktop thread while retaining the caller's transaction/idle ownership;
+rollback cannot retarget a live installer. That wait can remain pending until
+the existing cleanup owner confirms quiescence. A concrete supervisor outside
+the program directory must prevent new work, retain ownership through shutdown,
+run the transaction and restart the accepted installation. This host is not
+provided by the backend or by its synthetic idle fixture. Actual installed
+Windows A-to-B activation, process-loss recovery and idle/restart ownership
+remain software integration and acceptance requirements, not only missing
 publisher keys.
 
 Signed state belongs outside the program directory. The current private
