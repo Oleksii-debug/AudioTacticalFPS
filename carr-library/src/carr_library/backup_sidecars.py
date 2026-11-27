@@ -659,6 +659,7 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
                 if entry.name not in missing:
                     raise RestoreError(message + ': ' + entry.name)
                 missing.remove(entry.name)
+        _check_cancelled(cancelled)
         if missing:
             raise RestoreError(message + ': ' + ', '.join(sorted(missing)[:10]))
 
@@ -671,6 +672,7 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
     for name in names:
         _check_cancelled(cancelled)
         _regular(directory / name)
+    _check_cancelled(cancelled)
 
 
 def restore(db, source, stage, inventory, *, cancelled=lambda: False):

@@ -468,3 +468,61 @@ def test_namespace_cancellation_prevents_verification_or_restore(tmp_path, monke
             verify_backup(backup, digest, cancelled=lambda: scanning)
     assert scanning
     assert not destination.exists()
+
+
+
+def test_namespace_cancel_on_final_scan_exit(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+
+    (tmp_path / 'originals').mkdir()
+    (tmp_path / 'library.sqlite').touch()
+    (tmp_path / 'manifest.json').touch()
+    inventory = SimpleNamespace(entries=(), empty_roots=set(), pending=None)
+    scandir = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with scandir(path) as entries:
+            yield entries
+        cancelled = True
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.check_namespace(tmp_path, inventory,
+                                        cancelled=lambda: cancelled)
+
+
+@pytest.mark.parametrize('restore', (False, True))
+def test_manifest_completion_cancellation_prevents_staging(tmp_path, monkeypatch, restore):
+    from carr_library import library_backup
+
+    app = LibraryApp(tmp_path / 'source')
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    destination = tmp_path / 'restored'
+    read_manifest = library_backup._read_manifest
+    cancelled = False
+
+    def observed(*args, **kwargs):
+        nonlocal cancelled
+        manifest = read_manifest(*args, **kwargs)
+        cancelled = True
+        return manifest
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('cancelled verification must not allocate a staging directory')
+
+    monkeypatch.setattr(library_backup, '_read_manifest', observed)
+    monkeypatch.setattr(library_backup, 'TemporaryDirectory', forbidden)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if restore:
+            library_backup.restore_backup(backup, destination, digest,
+                                          cancelled=lambda: cancelled)
+        else:
+            library_backup.verify_backup(backup, digest, cancelled=lambda: cancelled)
+    assert cancelled
+    assert not destination.exists()

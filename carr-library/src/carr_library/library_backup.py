@@ -232,6 +232,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
         raise RestoreError('invalid database manifest')
     filenames, digests, total = set(), set(), 0
     for asset in manifest['assets']:
+        backup_sidecars._check_cancelled(cancelled)
         if (type(asset) is not dict or set(asset) != {'filename','sha256','mime','size_bytes'}
                 or not isinstance(asset['sha256'], str)
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
@@ -246,6 +247,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    backup_sidecars._check_cancelled(cancelled)
     return manifest
 
 
@@ -317,6 +319,7 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
     with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
         _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
     return manifest
@@ -335,6 +338,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
