@@ -78,7 +78,8 @@ jobs:
     name: Measured ${{ matrix.books }} books with ${{ matrix.segments }} segments each
     needs: capacity-contracts
     runs-on: ubuntu-24.04
-    timeout-minutes: 315
+    # Five finite phases plus interpreter cleanup, setup and report retention.
+    timeout-minutes: 330
     strategy:
       fail-fast: false
       max-parallel: 4
