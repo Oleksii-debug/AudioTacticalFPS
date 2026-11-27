@@ -7,9 +7,9 @@ planner, engine, gateway, downloader, or automatic execution path.
 
 ## Pinned inputs
 
-- Official Qwen `Qwen3-1.7B-GGUF` revision
-  `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, Q8_0, 1,834,426,016 bytes.
-  The exact [model repository](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/tree/90862c4b9d2787eaed51d12237eafdfe7c5f6077)
+- Official Qwen `Qwen3-4B-GGUF` revision
+  `bc640142c66e1fdd12af0bd68f40445458f3869b`, Q4_K_M, 2,497,280,256 bytes.
+  The exact [model repository](https://huggingface.co/Qwen/Qwen3-4B-GGUF/tree/bc640142c66e1fdd12af0bd68f40445458f3869b)
   publishes Apache-2.0 terms in its LICENSE file.
 - Official llama.cpp `b12774`, commit
   `171527522610996f5f0acf12334e185156ca8f44`, Ubuntu x64 CPU archive,
@@ -25,7 +25,7 @@ With the neutral complete tool descriptions at commit 9685d79, actual run
 tool and omitted the requested count for the Ukrainian book request. The
 unchanged semantic assertion failed; the model proposal was never executed.
 
-The 1.7B candidate changes only the pinned model and service alias. Actual
+The preceding 1.7B candidate changed only the pinned model and service alias. Actual
 metadata-only run 45946912142 verified the immutable publisher pointer, exact
 Apache-2.0 license bytes and model-card bytes before model acquisition. Model
 weights plus the unchanged archive/expanded runtime occupy about 1.79 GiB.
@@ -53,6 +53,22 @@ weight buffers. Its exact `common/arg.cpp` maps this option to
 `llama_model_params.use_extra_bufts`. CPU, memory, time, source, model and
 semantic acceptance bounds are unchanged. This is a portable memory-layout
 selection, not an increased resource allowance or an inference result.
+
+Actual run 45951321339 at 0c51a59 loaded the 1.7B model with `--no-repack`
+within the unchanged cap. English listing validated in 16.864 seconds; the
+Ukrainian catalog response again omitted the requested limit in 7.478 seconds.
+The unchanged assertion failed. Artifact 15177285873 preserves the original
+response (SHA256 `5bd1d4c3593746da0e2e326f954a099b52d79a395455ad8b55c9aa627b1b50bb`).
+This candidate remains unqualified; no response was rewritten or executed.
+
+The next candidate is official Qwen3-4B Q4_K_M. Metadata-only run 45953463192
+at 361ad23 verified its immutable pointer, exact 2,497,280,256-byte size and
+Apache-2.0 license. Model bytes plus the capped runtime expansion require
+less than 2.53 GiB of the isolated runner's disk. It uses the same actual
+runtime, `--no-repack`, 3 GiB address-space ceiling, CPU/time bounds, seed,
+product prompt, grammar and fixed semantic/permission cases. Only the pinned
+model and its service alias change. Metadata verification is not inference
+qualification; an actual bounded result remains required.
 
 The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
 256-token prediction cap. Thinking is disabled with the pinned runtime's
@@ -104,7 +120,7 @@ The parser, tool validator, caller scope, gateway and approval logic remain
 unchanged. The pinned source hash binds actual inference to this product prompt;
 synthetic user instructions contain only their requested operations. The fixed
 sampling seed, generic JSON grammar, all four semantic/boundary cases and
-no-execution controls are unchanged. The generically corrected product prompt is exercised against the same pinned 1.7B candidate; a complete actual result is still required.
+no-execution controls are unchanged. The same generically corrected product prompt is exercised against the newly pinned official 4B Q4_K_M candidate; a complete actual result is still required.
 
 
 The probe requires actual English and Ukrainian model proposals to pass the
