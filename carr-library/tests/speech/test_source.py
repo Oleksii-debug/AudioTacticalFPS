@@ -226,6 +226,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             self.native()
             assert 0 <= start <= end <= len(self.value)
             return self.value[start:end]
+        def SetEditable(self, value): self.native(); self.editable = bool(value)
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
         def SetFocus(self): self.native(); assert self.enabled
@@ -254,7 +255,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
                     continue
                 callback(*args)
             editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
-            assert editor.GetValue() == expected_editor
+            assert editor.GetValue() == expected_editor and editor.editable
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             scope()
             named('Save &as').handlers['button'](None)
