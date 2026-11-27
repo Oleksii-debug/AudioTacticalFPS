@@ -440,7 +440,8 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
     with TemporaryFile(dir=stage) as incoming, TemporaryFile(dir=stage) as stdout, TemporaryFile(dir=stage) as stderr:
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)
-        process = subprocess.Popen([str(arg) for arg in args], cwd=stage, env=environment,
+        process = subprocess.Popen([str(arg) for arg in args], executable=str(args[0]),
+            cwd=stage, env=environment,
             stdin=incoming, stdout=stdout, stderr=stderr, shell=False,
             start_new_session=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
