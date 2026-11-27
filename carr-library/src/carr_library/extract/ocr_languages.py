@@ -262,14 +262,16 @@ def validate_presets_bytes(raw):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise OcrLanguageError('The saved OCR presets are invalid.') from exc
     if (type(data) is not dict or set(data) != {'version', 'presets'}
-            or type(data['version']) is not int or data['version'] not in (1, 2)
+            or type(data['version']) is not int or data['version'] not in (1, 2, 3)
             or type(data['presets']) is not list or len(data['presets']) > MAX_PRESETS):
         raise OcrLanguageError('The saved OCR preset format is unsupported.')
     names = set()
     for item in data['presets']:
         fields = {'name', 'languages', 'model_policy', 'orientation'}
-        if data['version'] == 2:
+        if data['version'] >= 2:
             fields.add('model_profile')
+        if data['version'] == 3:
+            fields.add('automatic_languages')
         if type(item) is not dict or set(item) != fields:
             raise OcrLanguageError('The saved OCR preset fields are invalid.')
         name = _name(item['name']).casefold()
@@ -278,6 +280,9 @@ def validate_presets_bytes(raw):
         names.add(name)
         codes = split_languages(item['languages'])
         profile = item.get('model_profile', 'installed')
+        automatic = item.get('automatic_languages', False)
+        if type(automatic) is not bool or automatic and len(codes) > 8:
+            raise OcrLanguageError('Automatic OCR requires a boolean choice and at most eight reviewed models.')
         if (type(item['orientation']) is not bool or item['model_policy'] not in ('default', POLICY)
                 or profile not in ('installed', 'fast', 'best')
                 or profile == 'best' and item['model_policy'] == POLICY
@@ -314,6 +319,8 @@ def store_preset(root, name, config, *, replace=False):
             'orientation': config.orientation, 'model_policy': config.model_policy}
     if config.model_profile != 'installed':
         item['model_profile'] = config.model_profile
+    if config.automatic_languages:
+        item['automatic_languages'] = True
     with exclusive_writer(root) as base:
         presets = list(load_presets(base))
         existing = next((i for i, old in enumerate(presets)
@@ -339,9 +346,13 @@ def delete_preset(root, name):
 
 
 def _write_presets(root, presets):
-    version = 2 if any('model_profile' in row for row in presets) else 1
-    if version == 2:
+    version = (3 if any('automatic_languages' in row for row in presets)
+               else 2 if any('model_profile' in row for row in presets) else 1)
+    if version >= 2:
         presets = [dict(model_profile='installed', **row) if 'model_profile' not in row
+                   else row for row in presets]
+    if version == 3:
+        presets = [dict(automatic_languages=False, **row) if 'automatic_languages' not in row
                    else row for row in presets]
     raw = (json.dumps({'version': version, 'presets': presets}, ensure_ascii=False,
                       sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')

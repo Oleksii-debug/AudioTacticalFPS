@@ -17,7 +17,6 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
-from types import SimpleNamespace
 import traceback
 import wave
 
@@ -25,6 +24,7 @@ import wave
 def run(args, report):
     if os.name != 'nt':
         raise RuntimeError('Actual Windows MCI and native controls are required.')
+    from carr_library.application import LibraryApp
     from carr_library.native_runtime import activate_bundled_runtime
     native = activate_bundled_runtime()
     import wx
@@ -70,8 +70,7 @@ def run(args, report):
     frame.SetSizer(layout)
     frame.report = lambda message: failures.append(str(message))
     frame._closing = False
-    progress = OperationProgress(frame, gauge, label)
-    frame.operation_progress = progress
+    progress = None
 
     def guarded(callback):
         if failures:
@@ -279,7 +278,9 @@ def run(args, report):
             root = Path(temporary)
             library = root / 'library'
             library.mkdir()
-            frame.library = SimpleNamespace(root=library)
+            frame.library = LibraryApp(library)
+            progress = OperationProgress(frame, gauge, label)
+            frame.operation_progress = progress
             source = root / 'synthetic PCM.wav'
             samples = array('h', (round(600 * math.sin(2 * math.pi * 220 * index / 16000))
                                  for index in range(64000)))
@@ -316,7 +317,8 @@ def run(args, report):
             timer.Stop()
         for value in players + ([active['other_player']] if 'other_player' in active else []):
             value.close()
-        progress.close()
+        if progress is not None:
+            progress.close()
         frame.Destroy()
         app.Yield()
         if native is not None:

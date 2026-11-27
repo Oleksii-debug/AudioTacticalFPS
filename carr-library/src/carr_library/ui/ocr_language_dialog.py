@@ -104,6 +104,7 @@ class OcrOptionsActions:
             raise OcrLanguageError('Choose a model profile.')
         config = replace(self.initial, languages='+'.join(self.selected_codes),
                          orientation=self.orientation.GetValue(),
+                         automatic_languages=self.automatic.GetValue(),
                          model_policy=('default', POLICY)[index],
                          model_profile=self.model_profile())
         if config.model_profile != self.catalog.model_profile:
@@ -158,6 +159,7 @@ class OcrOptionsActions:
             self.selected_codes = list(split_languages(settings['languages']))
             self.profile.SetSelection(0 if settings['model_policy'] == 'default' else 1)
             self.orientation.SetValue(settings['orientation'])
+            self.automatic.SetValue(settings.get('automatic_languages', False))
             self._show_selected(0)
             self.chosen.SetFocus()
             self.report('Applied ' + label + '. Review the order, then use these settings.', focus=False)
@@ -291,7 +293,7 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='ocr-models')
             layout = wx.BoxSizer(wx.VERTICAL)
             introduction = wx.StaticText(self, label='Choose installed languages or script models for scanned pages. '
-                'Filter, add models, then order them. Automatic language detection is not enabled. '
+                'Filter, add models, then order them. Automatic review is an explicit option within up to eight selected models. '
                 'Originals stay unchanged and recognized text still requires review.')
             introduction.Wrap(730)
             layout.Add(introduction, 0, wx.EXPAND | wx.ALL, 8)
@@ -357,6 +359,15 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             self.orientation.SetName('Check page orientation with the installed OSD model')
             self.orientation.SetValue(self.initial.orientation)
             layout.Add(self.orientation, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.automatic = wx.CheckBox(self, label='Automatic language review within selected models')
+            self.automatic.SetName('Automatic OCR language identification and regional candidates')
+            self.automatic.SetValue(self.initial.automatic_languages)
+            layout.Add(self.automatic, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            auto_notice = wx.StaticText(self, label='Automatic mode uses the installed pinned offline detector. '
+                'Uncertain or unavailable detection retains the first OCR pass with its reason; '
+                'model confidence never approves source text. Uncheck for an explicit manual override.')
+            auto_notice.Wrap(730)
+            layout.Add(auto_notice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 90))
             self.status.SetName('OCR model status and validation')
             layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)

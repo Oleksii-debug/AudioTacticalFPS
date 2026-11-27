@@ -18,7 +18,7 @@ from .voice_manifest import (LocalModelManifest, ModelManifestError, _relative,
 
 BACKENDS = ('holos', 'openvoice', 'omnivoice')
 RUNTIME_FIELDS = {'reference_engine', 'models', 'reference_model', 'references',
-                  'managed_profiles', 'profile_reviews'}
+                  'managed_profiles', 'profile_reviews', 'revoked_profiles'}
 ROLES = {'holos': {'holos_profile'}, 'openvoice': {'target_embedding'},
          'omnivoice': {'reference_audio', 'reference_text'}}
 ID = re.compile(r'[a-z][a-z0-9_-]{0,63}\Z')
@@ -67,6 +67,11 @@ def runtime_settings(settings):
               'references': settings.get('references', 'models/voices')}
     for key in ('models', 'reference_model', 'references'):
         _relative(result[key])
+    revoked = settings.get('revoked_profiles', [])
+    if (type(revoked) is not list or len(revoked) > MAX_PROFILES
+            or any(not isinstance(identity, str) or not ID.fullmatch(identity) for identity in revoked)
+            or len(set(revoked)) != len(revoked)):
+        raise ModelManifestError('Invalid explicit managed-profile revocations.')
     reviews = settings.get('profile_reviews', {})
     if type(reviews) is not dict or len(reviews) > MAX_PROFILES:
         raise ModelManifestError('Invalid managed profile reviews.')
@@ -150,7 +155,7 @@ def _document(value, *, backend=None):
 # Only this small bridge is shipped. Private modules are captured and checked in
 # the child, then compiled from those exact buffers; a stale .pyc is never loaded.
 _PACKAGE_BOOTSTRAP = r"""
-import contextlib, hashlib, json, pathlib, sys, types
+import contextlib, hashlib, json, os, pathlib, re, stat, sys, types
 def stable(value):
     return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False)
 def digest(value):
@@ -196,6 +201,101 @@ with contextlib.redirect_stdout(sys.stderr):
             if identity not in owned and policy.is_voice_allowed(identity):
                 allowed.append(identity)
         result={'profiles':profiles,'allowed_legacy':allowed,'owned':sorted(owned)}
+    elif action=='create_reference':
+        if engine!='omnivoice':
+            raise ValueError('Reviewed recording references require the configured OmniVoice adapter')
+        document=assets.validate_adapter(request['document'])
+        if document['engine']['id']!=engine or {row['role'] for row in document['files'].values()}!={'reference_audio','reference_text'}:
+            raise ValueError('Only the existing OmniVoice audio/text reference recipe is accepted')
+        if digest(document)!=request['expected_document_sha256']:
+            raise ValueError('The reviewed reference recipe changed')
+        source=pathlib.Path(request['source'])
+        packages.verify_assets(source,document)
+        packages.create_package(source,document,request['output'])
+        result=assets.validate_adapter(assets.inspect_package(request['output']))
+        if result!=document:
+            raise ValueError('The packaged reference differs from its reviewed data')
+    elif action=='export':
+        root=assets.package_root(references)
+        with packages._installation_lock(root):
+            rows=assets.voice_versions(references,request['profile'])
+            document=next(row for row in rows if row['version']==request['version'])
+            assets.validate_adapter(document)
+            policy.require_voice_allowed(document['id'])
+            if document['engine']['id']!=engine or digest(document)!=request['expected_document_sha256']:
+                raise ValueError('The exact installed profile changed after export review')
+            directory=root/document['id']/document['version']
+            packages.verify_assets(directory,document)
+            packages.create_package(directory,document,request['output'])
+            result=assets.validate_adapter(assets.inspect_package(request['output']))
+            if result!=document:
+                raise ValueError('The exported profile differs from its reviewed data')
+    elif action=='remove':
+        profile=request['profile']
+        if not isinstance(profile,str) or re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',profile) is None or type(request['delete_files']) is not bool:
+            raise ValueError('Explicit profile identity and removal mode are required')
+        root=assets.package_root(references)
+        original_lock=packages._installation_lock
+        @contextlib.contextmanager
+        def reviewed_lock(selected_root):
+            if pathlib.Path(selected_root).resolve()!=root.resolve():
+                raise ValueError('The owner selected a different installation')
+            with original_lock(selected_root):
+                index=root/'voice-packages.json'
+                with index.open('rb') as stream:
+                    raw=stream.read(1024*1024+1)
+                if len(raw)>1024*1024 or hashlib.sha256(raw).hexdigest()!=request['expected_index_sha256']:
+                    raise ValueError('Profile activation changed after removal review')
+                directory=root/profile
+                expected=request['expected_files']
+                found={}
+                if directory.is_symlink():
+                    raise ValueError('Linked reference data cannot be removed')
+                if directory.exists():
+                    if not directory.is_dir():
+                        raise ValueError('The selected profile is not a directory')
+                    for count,path in enumerate(directory.rglob('*'),1):
+                        if count>32768:
+                            raise ValueError('The selected profile exceeds its entry budget')
+                        info=path.lstat()
+                        if stat.S_ISLNK(info.st_mode) or getattr(info,'st_file_attributes',0)&0x400:
+                            raise ValueError('Linked reference data cannot be removed')
+                        if stat.S_ISDIR(info.st_mode):
+                            continue
+                        name=path.relative_to(directory).as_posix()
+                        row=expected.get(name)
+                        if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or row is None or info.st_size!=row['size_bytes']:
+                            raise ValueError('The selected profile files changed after review')
+                        def stamp(value):
+                            return (value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns,value.st_nlink)
+                        checksum=hashlib.sha256()
+                        with path.open('rb') as stream:
+                            if stamp(os.fstat(stream.fileno()))!=stamp(info):
+                                raise ValueError('A selected reference file changed before verification')
+                            remaining=info.st_size
+                            while remaining:
+                                block=stream.read(min(1024*1024,remaining))
+                                if not block:
+                                    raise ValueError('A selected reference became truncated')
+                                checksum.update(block)
+                                remaining-=len(block)
+                            if stream.read(1) or stamp(os.fstat(stream.fileno()))!=stamp(info):
+                                raise ValueError('A selected reference changed during verification')
+                        if stamp(path.lstat())!=stamp(info) or checksum.hexdigest()!=row['sha256']:
+                            raise ValueError('A selected reference changed after removal review')
+                        found[name]=row
+                if found!=expected:
+                    raise ValueError('The selected profile inventory changed after review')
+                yield
+        # Keep the owner's existing OS lock and deletion/tombstone implementation.
+        # Inject only a precondition immediately after that exact lock is held.
+        packages._installation_lock=reviewed_lock
+        try:
+            packages.uninstall_package(root,profile,keep_files=not request['delete_files'])
+        finally:
+            packages._installation_lock=original_lock
+            assets.clear_cache()
+        result={'profile':profile,'deleted':request['delete_files']}
     elif action=='versions':
         result=assets.voice_versions(references,request['profile'])
     else:
@@ -274,11 +374,16 @@ def managed_catalog(manifest, legacy, *, cancelled=lambda: False):
         profiles[identity] = document
     if set(result['allowed_legacy']) & set(result['owned']):
         raise ModelManifestError('An owned voice cannot fall back to a legacy profile.')
-    return ({key: value for key, value in legacy.items() if key in result['allowed_legacy']},
-            profiles, tuple(result['owned']))
+    revoked = set(manifest.settings.get('revoked_profiles', []))
+    return ({key: value for key, value in legacy.items()
+             if key in result['allowed_legacy'] and key not in revoked},
+            {key: value for key, value in profiles.items() if key not in revoked},
+            tuple(sorted(set(result['owned']) | revoked)))
 
 
 def approved_profile(manifest, document):
+    if document['id'] in manifest.settings.get('revoked_profiles', []):
+        return False
     record = manifest.settings.get('profile_reviews', {}).get(document['id'])
     references = {row['role']: row['sha256'] for row in document['files'].values()}
     return record == {'version': document['version'], 'document_sha256': _hash(document),
@@ -435,6 +540,8 @@ class VoicePackageManager:
         files = self._result_inventory(manifest, prefix, document, index_sha256, cancelled)
         settings = dict(manifest.settings)
         settings['managed_profiles'] = True
+        settings['revoked_profiles'] = [identity for identity in settings.get('revoked_profiles', [])
+                                        if identity != document['id']]
         settings['profile_languages'] = dict(settings.get('profile_languages', {}))
         settings['profile_languages'][document['id']] = {
             'supported': supported, 'candidates': [code for code in declared if code not in supported]}

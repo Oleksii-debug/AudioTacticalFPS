@@ -562,10 +562,15 @@ def test_failed_book_close_keeps_registered_owner_for_successful_worker_retry(ha
         e.frame.working = False
         monkeypatch.setattr(e.service, 'close', original_close)
 
-def test_direct_owner_destroy_revokes_queued_completion_without_native_calls(handlers):
+def test_direct_owner_destroy_revokes_queued_completion_without_native_calls(handlers, monkeypatch):
     e = handlers
     e.press('Load selected book')
     assert e.state['queue']
+    reads = []
+    def forbidden_source(*args, **kwargs):
+        reads.append(True)
+        raise AssertionError('A destroyed owner must cancel before source access.')
+    monkeypatch.setattr(ui, 'source_options', forbidden_source)
     e.dialog.Destroy()
     assert e.dialog._book_destroyed is True
     def dead(*args, **kwargs):
@@ -575,6 +580,7 @@ def test_direct_owner_destroy_revokes_queued_completion_without_native_calls(han
             setattr(widget, method, dead)
     result = e.complete()
     assert isinstance(result, InterruptedError)
+    assert reads == []
     assert not e.service.saved() and not e.production.jobs()
     assert not e.service._closed.is_set()  # Borrowed by this dialog.
     e.close()

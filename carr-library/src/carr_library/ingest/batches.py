@@ -22,7 +22,7 @@ from filelock import FileLock, Timeout
 
 from ..catalog.intake import MAX_BYTES
 from ..catalog.membership import Catalog
-from ..extract.page_ocr import Config
+from ..extract.page_ocr import Config, config_dict
 from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
@@ -222,7 +222,7 @@ class ImportBatchStore:
             raise ValueError('Invalid import batch options.')
         collections = tuple(dict.fromkeys(collections))
         config = config or Config()
-        settings = asdict(config)
+        settings = config_dict(config)
         Config(**settings)
         self._authorize(workspace, collections)
         with self.app.read(workspace) as db:

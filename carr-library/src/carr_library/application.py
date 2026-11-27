@@ -34,6 +34,7 @@ from .research.saved_topic_query import SavedTopicQueries
 from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
+from .search.pagination import CursorStore, catalog_snapshot, request_identity
 from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
                                 _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
@@ -113,15 +114,17 @@ class _SearchBudget:
 
 class _CatalogPublisher:
     """Keep the existing ingest journal, with one atomic catalog publication."""
-    def __init__(self, storage, registration, *, root=None, request_id=None):
+    def __init__(self, storage, registration, *, root=None, request_id=None, request_guard=None):
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
         self.root, self.request_id = root, request_id
+        self.request_guard = request_guard or (lambda: None)
         self.published_here = False
         self.publication_result = None
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
+        self.request_guard()
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
             raise ValueError('Import identity changed.')
         from .ingest.worker import publication_before, prepare_publication, confirm_publication
@@ -152,6 +155,7 @@ class _CatalogPublisher:
             result = self.publication_result or dict(state='complete', id=revision,
                 workspace=workspace, edition=edition, asset=asset, completed=count,
                 total=count, error=None, verified=self.record.manifest['mime'] == 'text/plain')
+            self.request_guard()
             prepare_publication(self.root, self.request_id, self.db, revision, before, result)
         # Set only after the catalog/source transaction committed. Replays must
         # still pass their independent cancellation and membership checks.
@@ -159,6 +163,7 @@ class _CatalogPublisher:
         confirm_publication(self.root, self.request_id)
 
     def check(self):
+        self.request_guard()
         return self.storage.check()
 
 
@@ -179,6 +184,7 @@ class LibraryApp:
         self.semantic_ranker = semantic_ranker
         self.semantic_cache = None
         self._selections = {}
+        self._search_cursors = CursorStore()
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
@@ -524,7 +530,8 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0,
+                    source_profile=None):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
@@ -532,15 +539,21 @@ class LibraryApp:
         if not isinstance(collections, (tuple, list)) or len(collections) > 100:
             raise ValueError('invalid collections')
         path = Path(path).absolute()
+        if source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            source_profile = profile_from_value(source_profile)
+            if path.suffix.casefold() != source_profile.suffix:
+                raise ValueError('The selected source format differs from its explicit profile.')
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+        if source_profile is not None or path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout,
+                               **(dict(source_profile=source_profile) if source_profile is not None else {}))
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
@@ -651,7 +664,12 @@ class LibraryApp:
                 raise ValueError('Import source or configuration changed.')
             if publication_pages(db, revision) != (intent['page_count'], intent['pages_sha256']):
                 raise ValueError('Sealed import publication pages changed.')
-            original = self.assets.resolve(published[2])
+            from .ingest.worker import request_profile
+            profile = request_profile(request)
+            if profile is not None and settings != profile.configuration():
+                raise ValueError('Streamed import publication source profile changed.')
+            original = (self.assets.resolve(published[2]) if profile is None else
+                        self.assets.resolve(published[2], profile=profile))
             manifest = db.execute('SELECT mime,size FROM catalog_asset WHERE digest=?',
                                   (published[2],)).fetchone()
             if (manifest is None or manifest[1] != original.stat().st_size
@@ -688,7 +706,8 @@ class LibraryApp:
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
-                     _request_id=None, _resume_job=None, _expected_manifest=None):
+                     _request_id=None, _resume_job=None, _expected_manifest=None,
+                     _source_profile=None, _request_sha256=None, _request_attempt=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -696,13 +715,32 @@ class LibraryApp:
         OCR is reported explicitly and never silently exposed as verified text.
         """
         from .extract.page_ocr import Config
+        profile = None
+        request_guard = lambda: None
+        if _source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            from .ingest.worker import request_profile, validate_request_admission
+            profile = profile_from_value(_source_profile)
+            if _request_id is None:
+                raise ValueError('Streamed text must use the existing owned import request.')
+            def request_guard():
+                record = validate_request_admission(self.root, _request_id,
+                    _request_sha256, _request_attempt)
+                if request_profile(record) != profile:
+                    raise ValueError('The admitted streamed source profile changed.')
+            request_guard()
+        elif _request_sha256 is not None or _request_attempt is not None:
+            raise ValueError('Frozen streamed admission cannot change the original source adapter.')
         path = Path(path).absolute()
         collections = tuple(collections)
         with self.read(workspace) as db:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
-        if _expected_manifest is None:
+        if profile is not None:
+            from .ingest.streamed_text import inspect_text
+            asset = inspect_text(path, profile, cancelled=cancelled)
+        elif _expected_manifest is None:
             asset = snapshot(path.parent, path.name)
         else:
             from .ingest.batch_scan import planned_snapshot
@@ -718,11 +756,15 @@ class LibraryApp:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
-                retained = self.assets.retain(asset.data, asset.mime, asset.digest)
+                request_guard()
+                retained = (self.assets.retain(asset.data, asset.mime, asset.digest) if profile is None else
+                    self.assets.retain_file(path, asset.mime, asset.digest, asset.size,
+                        profile=profile, expected_identity=asset.identity, cancelled=cancelled))
                 from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
                     publication_before, prepare_publication, confirm_publication)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
-                publisher = _CatalogPublisher(storage, record, root=self.root, request_id=_request_id)
+                publisher = _CatalogPublisher(storage, record, root=self.root, request_id=_request_id,
+                                              request_guard=request_guard)
                 if asset.mime in EXTENDED_MIMES or asset.mime in (
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         'application/epub+zip'):
@@ -788,6 +830,9 @@ class LibraryApp:
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
+                if profile is not None:
+                    from .ingest.streamed_ingest import StreamedTextIngest
+                    engine, extra = StreamedTextIngest, dict(profile=profile)
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
                         publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
@@ -800,8 +845,10 @@ class LibraryApp:
                         if previous['state'] in ('failed', 'cancelled', 'quarantined'):
                             ingest.retry(workspace, job)
                     else:
-                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings,
+                                           **(dict(cancelled=cancelled) if profile is not None else {}))
                     record_progress(self.root, _request_id, job=job)
+                    request_guard()
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     if result['state'] in ('complete', 'superseded') and not publisher.published_here:
@@ -831,6 +878,7 @@ class LibraryApp:
                                 raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
+                            request_guard()
                             prepare_publication(self.root, _request_id, storage.db, job, before, result)
                             if cancelled():
                                 raise InterruptedError('Import registration cancelled before commit.')
@@ -904,16 +952,19 @@ class LibraryApp:
         if row is None:
             raise ValueError('Source is outside the selected library.')
         mime, size = row
-        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+        if mime not in SUFFIXES or type(size) is not int or size < 1:
             raise ValueError('Invalid original source catalog manifest.')
+        from .ingest.streamed_text import catalog_profile
+        profile = catalog_profile(db, identity.asset_sha256, mime, size)
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
         key = identity.asset_sha256, mime, size
         if checked_assets is not None and key in checked_assets:
             return checked_assets[key], mime, size
-        # Existing retention resolution checks regular-file/link rules, the
-        # 64 MiB size bound, and the complete original-byte SHA256.
-        path = self.assets.resolve(identity.asset_sha256)
+        # Larger TXT admission comes only from exact sealed extraction state.
+        # Both paths still verify the complete original-byte SHA256 and links.
+        path = (self.assets.resolve(identity.asset_sha256) if profile is None else
+                self.assets.resolve(identity.asset_sha256, profile=profile, cancelled=cancelled))
         if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -934,6 +985,10 @@ class LibraryApp:
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
         resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
         text = strict_text_attestor(db, workspace, resolve_asset)
+        from .citations.streamed_text_attestation import streamed_text_attestor
+        streamed_paths = {}
+        streamed = streamed_text_attestor(db, workspace, lambda identity: self._retained_source(
+            db, workspace, identity, checked_assets=streamed_paths, cancelled=cancelled)[0], cancelled=cancelled)
 
         def review(identity, physical):
             row = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
@@ -948,7 +1003,8 @@ class LibraryApp:
         def attest(identity, locator, raw_hash):
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
-            verified = text(identity, locator, raw_hash) or pdf(identity, locator, raw_hash)
+            verified = (text(identity, locator, raw_hash) or streamed(identity, locator, raw_hash)
+                        or pdf(identity, locator, raw_hash))
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
             return verified
@@ -1009,6 +1065,44 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
+        return self._search(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition,
+            limit=limit, timeout=timeout, cancelled=cancelled,
+            authorized_topic=authorized_topic, on_status=on_status, result_mode=result_mode)
+
+    def search_page(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                    author=None, language=None, edition=None, limit=100, timeout=60.0,
+                    cancelled=lambda: False, authorized_topic=None, on_status=None,
+                    result_mode=None, cursor=None, page_budget=500,
+                    character_budget=5_000_000):
+        """Continue the current authorized source search through bounded pages.
+
+        Compatible exact scopes retain the existing literal route. Ranked and
+        larger scopes use source windows; their ordering never claims a global
+        relevance rank. An empty page may still carry a continuation.
+        """
+        from .search.source_windows import validate_budgets
+        validate_budgets(page_budget, character_budget)
+        if mode not in ('word', 'phrase', 'terms', 'advanced', 'thematic', 'semantic'):
+            raise ValueError('Unknown search mode.')
+        request = request_identity(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition, limit=limit,
+            authorized_topic=authorized_topic, result_mode=result_mode,
+            page_budget=page_budget, character_budget=character_budget)
+        continuation = self._search_cursors.begin(request, cursor)
+        if continuation.kind not in ('literal', 'window'):
+            raise ValueError('The search continuation belongs to another search scope.')
+        return self._search(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition,
+            limit=limit, timeout=timeout, cancelled=cancelled,
+            authorized_topic=authorized_topic, on_status=on_status,
+            result_mode=result_mode, _continuation=continuation,
+            _window_budget=(page_budget, character_budget))
+
+    def _search(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                author=None, language=None, edition=None, limit=100, timeout=60.0,
+                cancelled=lambda: False, authorized_topic=None, on_status=None,
+                result_mode=None, _continuation=None, _window_budget=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -1020,31 +1114,59 @@ class LibraryApp:
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
-            budget.check()
-            if len(views) == 500:
-                more = browse_editions(catalog, collection=collection, title=title, author=author,
-                    language=language, edition=edition, after=views[-1].edition_id, limit=1)
-                budget.check()
-                if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
-            allowed = {v.edition_id: v.work_id for v in views}
-            if mode in ('thematic', 'semantic'):
-                if mode == 'semantic' and self.semantic_ranker is not None:
-                    from .semantic import search_snapshot
-                    hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
-                else:
-                    if mode == 'semantic' and on_status is not None:
-                        on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
+            counts = None
+            windowed = False
+            if _continuation is not None:
+                from .search import source_windows
+                page_budget, character_budget = _window_budget
+                filters = dict(collection=collection, title=title, author=author,
+                               language=language, edition=edition)
+                counts = source_windows.scope_statistics(db, workspace, filters, budget)
+                windowed = (_continuation.kind == 'window' or (
+                    _continuation.after is None and (
+                        mode in ('thematic', 'semantic') or counts[0] > 500
+                        or counts[1] > literal.MAX_PAGES or counts[2] > literal.MAX_CHARS
+                        or page_budget != source_windows.DEFAULT_PAGE_SOURCES
+                        or character_budget != source_windows.MAX_PAGE_CHARACTERS)))
+            if windowed:
+                page = source_windows.candidates(db, workspace, query,
+                    continuation=_continuation, mode=mode, filters=filters,
+                    limit=limit, page_budget=page_budget, character_budget=character_budget,
+                    result_mode=result_mode, budget=budget, ranker=self.semantic_ranker,
+                    cache=self.semantic_cache, on_status=on_status)
+                hits = page.hits
             else:
-                hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                catalog = Catalog(db, workspace)
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
+                budget.check()
+                if len(views) == 500:
+                    more = browse_editions(catalog, collection=collection, title=title, author=author,
+                        language=language, edition=edition, after=views[-1].edition_id, limit=1)
+                    budget.check()
+                    if more:
+                        raise ValueError('Narrow the search to at most 500 editions using filters.')
+                allowed = {v.edition_id: v.work_id for v in views}
+                if _continuation is not None:
+                    page = literal.search_page(db, workspace, query, edition_ids=tuple(allowed),
+                        mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                        after=_continuation.after, expected_snapshot=_continuation.snapshot,
+                        scope_key=catalog_snapshot(_continuation.request, views), result_mode=result_mode)
+                    hits = page.hits
+                elif mode in ('thematic', 'semantic'):
+                    if mode == 'semantic' and self.semantic_ranker is not None:
+                        from .semantic import search_snapshot
+                        hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
+                                               limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                                               on_status=on_status, cache=self.semantic_cache)
+                    else:
+                        if mode == 'semantic' and on_status is not None:
+                            on_status('Local model unavailable; keyword search used.')
+                        hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
+                                                      timeout=budget.remaining(), cancelled=budget.stopped)
+                else:
+                    hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
+                                          mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1093,9 +1215,17 @@ class LibraryApp:
                     raw[selected.start:selected.end], citation, verified, reason))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
+        prepared = None
+        if _continuation is not None:
+            answer, prepared = self._search_cursors.prepare(_continuation, results, page,
+                scanned_segments=None if windowed else counts[1],
+                scope_editions=None if windowed else counts[0])
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
+        if _continuation is not None:
+            self._search_cursors.publish(prepared)
+            return answer
         return tuple(results)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):

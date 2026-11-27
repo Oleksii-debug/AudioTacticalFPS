@@ -68,7 +68,11 @@ def primary_completed(tmp_path_factory):
 def primary(tmp_path, primary_completed):
     original, project, result = primary_completed
     root, destination = tmp_path / 'library', tmp_path / 'rendered'
-    shutil.copytree(original.store.root, root)
+    # Copy durable test state only. A runtime coordinator is bound to its
+    # original absolute policy path and cannot be transplanted to a new root.
+    shutil.copytree(original.store.root, root, ignore=lambda directory, names:
+        ['runtime'] if Path(directory) == original.store.root else [])
+    assert not (root / 'runtime').exists()
     shutil.copytree(result['output_dir'], destination)
     source = DirectorPublicationSource(root, project.id)
     state = source.get(result['job_id'])

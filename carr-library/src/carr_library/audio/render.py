@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 import time
 
+from .cleanup import retained_temporary_directory
 from .effects import Effect, compile_effects, effected_duration, number
 
 
@@ -180,26 +181,6 @@ def file_sha256(path, cancelled=None):
     return digest.hexdigest()
 
 
-def _stop(process):
-    if process.poll() is not None:
-        return
-    try:
-        if os.name != 'nt':
-            os.killpg(process.pid, signal.SIGTERM)
-        else:
-            process.terminate()
-        process.wait(timeout=2)
-    except (OSError, subprocess.TimeoutExpired):
-        try:
-            if os.name != 'nt':
-                os.killpg(process.pid, signal.SIGKILL)
-            else:
-                process.kill()
-        except OSError:
-            pass
-        process.wait(timeout=5)
-
-
 def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=None,
                 maximum_log_bytes=2 * 1024 * 1024, watched_paths=(), max_output_bytes=None,
                 reserve_disk_bytes=0, maximum_staging_files=10000):
@@ -256,15 +237,12 @@ def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=Non
                          'Choose shorter local folders or filenames, or fewer simultaneous tracks.')
     started = time.monotonic()
     check_storage()
-    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+    from .process import owned_process
+    from .cleanup import retained_context
+    with retained_context(tempfile.TemporaryFile()) as stdout, retained_context(tempfile.TemporaryFile()) as stderr:
         options = dict(stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
                        cwd=cwd, env=env, shell=False)
-        if os.name == 'nt':
-            options['creationflags'] = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
-        else:
-            options['start_new_session'] = True
-        process = subprocess.Popen(args, **options)
-        try:
+        with owned_process(args, **options) as process:
             while process.poll() is None:
                 check_cancelled(cancelled)
                 check_storage()
@@ -285,8 +263,6 @@ def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=Non
                 detail = ''.join(c for c in err[-2400:] if c in '\n\t' or ord(c) >= 32).strip()
                 raise RuntimeError(f'Local audio worker failed (exit {process.returncode}): {detail}')
             return out, err
-        finally:
-            _stop(process)
 
 
 def _input_options(path):
@@ -619,7 +595,7 @@ def mix_tracks(tracks, output, *, duration_seconds=None, sample_rate=24000, chan
         final += ',' + master
     final += f',alimiter=limit=0.95:level=0:latency=1,aresample={sample_rate},atrim=end_sample={frames}[out]'
     graph.append(final)
-    with tempfile.TemporaryDirectory(prefix='.carr-audio-', dir=target.parent) as temp:
+    with retained_temporary_directory(prefix='.carr-audio-', dir=target.parent) as temp:
         stage = Path(temp)
         staged = stage / ('render' + target.suffix.lower())
         for _track, info, _values in prepared:
@@ -673,7 +649,7 @@ def convert_audio(source, output, *, sample_rate=24000, channels=2, effects=(),
     if chain:
         filters.append(chain)
     filters.append('alimiter=limit=0.95:level=0:latency=1')
-    with tempfile.TemporaryDirectory(prefix='.carr-audio-', dir=target.parent) as temp:
+    with retained_temporary_directory(prefix='.carr-audio-', dir=target.parent) as temp:
         stage = Path(temp)
         staged = stage / ('converted' + target.suffix.lower())
         args = [*_ffmpeg_base(ffmpeg), *_input_options(info.path)]
@@ -730,7 +706,7 @@ def concatenate_audio(paths, output, *, sample_rate=None, channels=None, repeat=
     rate, count = _settings(rate, count)
     frames = round(sum(i.frames for i in items) * repeat * rate / first.sample_rate)
     estimate = _disk_budget(target, frames, rate, count, max_output_bytes)
-    with tempfile.TemporaryDirectory(prefix='.carr-audio-', dir=target.parent) as temp:
+    with retained_temporary_directory(prefix='.carr-audio-', dir=target.parent) as temp:
         stage = Path(temp)
         names = {}
         for index, path in enumerate(cache):

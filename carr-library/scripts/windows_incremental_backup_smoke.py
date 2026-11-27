@@ -17,6 +17,16 @@ import time
 import traceback
 
 
+def _library_commands(menu_bar, label):
+    """Resolve the real Library menu after File and other menus are inserted."""
+    menus = [menu_bar.GetMenu(index) for index in range(menu_bar.GetMenuCount())
+             if menu_bar.GetMenuLabel(index).replace('&', '') == 'Library']
+    if len(menus) != 1:
+        raise AssertionError('Exactly one native Library menu must be registered.')
+    return [item for item in menus[0].GetMenuItems()
+            if item.GetItemLabelText() == label]
+
+
 def _run_probe(args):
     if os.name != 'nt':
         raise RuntimeError('This probe requires actual Windows and wx controls.')
@@ -113,9 +123,9 @@ def _run_probe(args):
         checksum = library_backup.create_backup(library, full)
         document.set_text('Revised reading copy.')
         with library.read(workspace) as db:
-            row = db.execute('SELECT e.active_revision,e.asset,p.ordinal,p.physical,p.digest '
-                'FROM catalog_edition e JOIN page p ON p.revision=e.active_revision '
-                'WHERE e.workspace=? AND e.id=? ORDER BY p.ordinal LIMIT 1',
+            row = db.execute('SELECT p.revision,p.asset,p.ordinal,p.physical,p.digest '
+                'FROM active_page p '
+                'WHERE p.workspace=? AND p.edition=? ORDER BY p.ordinal LIMIT 1',
                 (workspace, 'source')).fetchone()
         revision, asset, ordinal, physical, text_digest = row
         location = ReadingLocation(workspace, 'source', revision,
@@ -139,9 +149,7 @@ def _run_probe(args):
             def choose(label, folders, selected):
                 dialogs = Choices(frame, folders, selected)
                 frame.incremental_backup_actions.dialogs = dialogs
-                menu = frame.GetMenuBar().GetMenu(0)
-                candidates = [item for item in menu.GetMenuItems()
-                              if item.GetItemLabelText() == label]
+                candidates = _library_commands(frame.GetMenuBar(), label)
                 check('registered native Library command: ' + label, len(candidates) == 1)
                 event = wx.CommandEvent(wx.EVT_MENU.typeId, candidates[0].GetId())
                 check('actual native menu dispatch: ' + label, frame.GetEventHandler().ProcessEvent(event))

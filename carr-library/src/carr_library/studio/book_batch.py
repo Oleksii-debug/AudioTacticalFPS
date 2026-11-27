@@ -12,6 +12,7 @@ import re
 from uuid import uuid4
 
 from ..durable_state import atomic_json, encode, local_path, read_json, regular, state_lock, sync_directory
+from ..audio.cleanup import _pending_owners, retained_state_lock
 from .book_audio import (BookAudioService, BookPlan, BookReview, MAX_REVIEW_BYTES,
                          _check, _identity, _short)
 
@@ -279,7 +280,7 @@ class BookBatchService:
     def run(self, batch_id, outputs, *, approval, cancelled=lambda: False, cancel_action=lambda: 'pause',
             guard=lambda: None, progress=None):
         batch = self.load(batch_id)
-        with state_lock(self.root, 'batch-' + batch.id):
+        with retained_state_lock(self.root, 'batch-' + batch.id):
             plans = self.plans(batch)
             reviewed = self.review(batch, outputs, cancelled=cancelled, guard=guard)
             if not reviewed.prepared or approval != reviewed.fingerprint:
@@ -342,8 +343,8 @@ class BookBatchService:
                            'elapsed audio timing is available in each completed Studio receipt.')
                     if not items or any(item['status'] != 'complete' for item in items):
                         break
-            except InterruptedError:
-                if not stopped():
+            except InterruptedError as exc:
+                if _pending_owners(exc) or not stopped():
                     raise
             finally:
                 self._control(read_json(path), batch, token)

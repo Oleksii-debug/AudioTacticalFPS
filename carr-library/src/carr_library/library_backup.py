@@ -26,6 +26,7 @@ from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
 from .ingest.catalog_asset_copy import copy_catalog_assets, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
+from .ingest.streamed_text import MAX_BYTES as STREAMED_TEXT_MAX_BYTES
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
@@ -106,7 +107,8 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 raise RestoreError('database exceeds backup size limit')
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
-                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                    cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 # The canonical pending producer is the sole owner of imports
                 # in a new composite backup. Legacy sidecar-v3 remains readable.
@@ -237,6 +239,11 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
             if type(manifest.get('generated_audio_included')) is not bool or 'state' not in actual_files:
                 raise RestoreError('incomplete application state backup')
             validate_state(manifest.get('state'))
+            if not manifest['generated_audio_included']:
+                from . import backup_transcription
+                if any(backup_transcription.is_cache_file('state/' + entry['filename'])
+                       for entry in manifest['state']):
+                    raise RestoreError('Transcription cache requires explicit manifest inclusion.')
             required_files.add('state')
         elif 'state' in actual_files:
             raise RestoreError('unexpected state in legacy backup')
@@ -281,7 +288,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
                 or not isinstance(asset['mime'], str) or asset['mime'] not in SUFFIXES
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
-                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= MAX_BYTES):
+                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= (STREAMED_TEXT_MAX_BYTES if asset['mime'] == 'text/plain' else MAX_BYTES)):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')
@@ -344,11 +351,13 @@ def _verify_contents(source, stage, manifest, *, destination=None, cancelled=lam
         storage.check()
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
-            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+            cancelled=cancelled)
         if _asset_manifest(entries) != manifest['assets']:
             raise RestoreError('asset manifest disagrees with the database')
         copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+            cancelled=cancelled)
         sidecars = None
         if flat is not None:
             flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled,
@@ -406,7 +415,8 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False,
     return manifest
 
 
-def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
+def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False,
+                   _final_destination=None):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
@@ -423,12 +433,20 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
+    # Internal portable restore can prepare privately, then atomically rename
+    # the complete directory. Only typed path projection uses the final root;
+    # all byte publication below still targets the owned preparation directory.
+    projected = destination
+    if _final_destination is not None:
+        projected = _destination(_final_destination, source)
+        if projected == destination or projected.is_relative_to(destination) or destination.is_relative_to(projected):
+            raise RestoreError('final restore projection must be a separate new directory')
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
         entries, pending, flat, sidecars = _verify_contents(
-            source, stage, manifest, destination=destination, cancelled=cancelled)
+            source, stage, manifest, destination=projected, cancelled=cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)

@@ -17,6 +17,7 @@ class Control:
         self.focused = False
     def GetValue(self): return self.value
     def GetStringSelection(self): return self.value
+    def GetSelection(self): return self.value
     def SetStringSelection(self, value): self.value = value
     def SetValue(self, value): self.value = value
     def ChangeValue(self, value): self.value = value
@@ -28,12 +29,18 @@ class Control:
 def controller():
     value = object.__new__(VoicePackageDialog)
     value.closed, value.busy, value.review = False, False, None
+    value.destroyed, value._window_id = False, 31
+    value.removal_review = None
     value.cancelled = threading.Event()
     for name in ('backend', 'models', 'reference_model', 'references', 'profile', 'version',
                  'supported', 'rights', 'configure_button', 'inspect_button', 'versions_button',
-                 'review_button', 'apply_button', 'stop_button', 'status'):
+                 'review_button', 'apply_button', 'stop_button', 'status', 'export_rights',
+                 'create_reference_button',
+                 'export_button', 'removal_mode', 'removal_confirmation',
+                 'removal_review_button', 'removal_apply_button'):
         setattr(value, name, Control())
-    value.rights.value = False
+    value.rights.value = value.export_rights.value = False
+    value.removal_mode.value = 0
     value.revision = 4
     return value
 
@@ -178,3 +185,131 @@ def test_native_probe_missing_fixture_has_diagnostic_failure(tmp_path, native_pr
     with pytest.raises(AssertionError, match='Cannot identify the synthetic interpreter'):
         native_probe._synthetic_child_command([tmp_path / 'missing.exe', '-I', '-B', '-u'], tmp_path)
 
+
+
+def test_export_requires_separate_permission_and_captures_exact_review_and_destination(tmp_path):
+    form = controller()
+    review = SimpleNamespace(operation='activate', settings_revision=4)
+    form.review = review
+    starts, calls, destroyed = [], [], []
+    form.start = lambda action, complete: starts.append((action, complete))
+    target = tmp_path / 'private.dordiai-voice'
+    form.lifecycle = SimpleNamespace(export=lambda *args, **kwargs:
+        calls.append((args, kwargs)) or {'path': str(target), 'sha256': 'a' * 64})
+    picker = SimpleNamespace(ShowModal=lambda: 1, GetPath=lambda: str(target),
+                             Destroy=lambda: destroyed.append(True))
+    form.wx = SimpleNamespace(FileDialog=lambda *args, **kwargs: picker, FD_SAVE=1, ID_OK=1)
+    form.dialog = object()
+    form.rights.value = True
+    form.export_version()
+    assert starts == [] and calls == [] and 'permission to export' in form.status.value
+    form.export_rights.value = True
+    form.export_version()
+    assert destroyed == [True] and form.review is None and not form.export_rights.value
+    form.review = SimpleNamespace(operation='activate')
+    action, complete = starts.pop()
+    complete(action())
+    args, kwargs = calls[0]
+    assert args == (review, target) and kwargs['export_rights_approved'] is True
+    assert kwargs['cancelled']() is False and 'not encrypted' in form.status.value
+
+
+def test_removal_review_captures_profile_and_mode_and_never_prefills_confirmation():
+    form = controller()
+    form.profile.value, form.removal_mode.value = ' fixture ', 1
+    form.removal_confirmation.value = 'old confirmation'
+    starts, calls = [], []
+    reviewed = SimpleNamespace(settings_revision=8, summary=lambda: 'Exact deletion review')
+    form.lifecycle = SimpleNamespace(review_removal=lambda *args, **kwargs:
+        calls.append((args, kwargs)) or reviewed)
+    form.start = lambda action, complete: starts.append((action, complete))
+    form.review_removal()
+    form.profile.value, form.removal_mode.value = 'another', 0
+    action, complete = starts.pop()
+    complete(action())
+    args, kwargs = calls[0]
+    assert args == ('fixture',) and kwargs['delete_files'] is True
+    assert form.removal_review is reviewed and form.removal_confirmation.value == ''
+    assert form.review is None and form.revision == 8
+
+
+def test_exact_removal_confirmation_is_consumed_before_worker_and_cannot_switch_identity():
+    form = controller()
+    review = SimpleNamespace(confirmation='DELETE fixture')
+    form.removal_review = review
+    starts, calls = [], []
+    form.start = lambda action, complete: starts.append((action, complete))
+    form.lifecycle = SimpleNamespace(remove=lambda *args, **kwargs:
+        calls.append((args, kwargs)) or {'revision': 9})
+    form.removal_confirmation.value = 'DELETE another'
+    form.remove_profile()
+    assert starts == [] and calls == []
+    form.removal_confirmation.value = 'DELETE fixture'
+    form.remove_profile()
+    assert form.removal_review is None and form.removal_confirmation.value == ''
+    form.profile.value = 'another'
+    form.removal_confirmation.value = 'DELETE another'
+    action, complete = starts.pop()
+    complete(action())
+    args, kwargs = calls[0]
+    assert args == (review,) and kwargs['confirmation'] == 'DELETE fixture'
+    assert form.revision == 9 and 'permission is revoked' in form.status.value
+
+
+def test_changed_selection_invalidates_every_lifecycle_authorization():
+    form = controller()
+    form.review, form.removal_review = object(), object()
+    form.rights.value = form.export_rights.value = True
+    form.removal_confirmation.value = 'DELETE fixture'
+    form.invalidate()
+    assert form.review is form.removal_review is None
+    assert not form.rights.value and not form.export_rights.value
+    assert form.removal_confirmation.value == ''
+    assert not form.apply_button.enabled and not form.export_button.enabled
+    assert not form.removal_apply_button.enabled
+
+
+def test_current_worker_reports_failure_to_borrowed_dialog_only_while_owner_is_alive():
+    form = controller()
+    future = Future()
+    pending, errors = [], []
+    form.executor = SimpleNamespace(submit=lambda action: future)
+    form.wx = SimpleNamespace(CallAfter=pending.append)
+    form.start(lambda: None, lambda result: None, on_error=errors.append)
+    failure = ValueError('synthetic reviewed reference error')
+    future.set_exception(failure)
+    pending.pop()()
+    assert errors == [failure] and not form.busy and form.review is None
+
+
+def test_reference_creator_button_borrows_current_package_dialog_only_when_idle(monkeypatch):
+    from carr_library.ui import voice_reference
+    form = controller()
+    seen = []
+    monkeypatch.setattr(voice_reference, 'show_reference_from_packages',
+                        lambda owner: seen.append(owner) or 'reviewed result')
+    assert form.create_reference() == 'reviewed result'
+    assert seen == [form]
+    form.busy = True
+    form.enable()
+    assert not form.create_reference_button.enabled and form.create_reference() is None
+    form.busy, form.closed = False, True
+    assert form.create_reference() is None and seen == [form]
+
+
+def test_direct_package_owner_destruction_revokes_queued_completion_without_native_access():
+    form = controller()
+    future, pending, completed, shutdown = Future(), [], [], []
+    form.executor = SimpleNamespace(submit=lambda action: future,
+        shutdown=lambda **kwargs: shutdown.append(kwargs))
+    form.wx = SimpleNamespace(CallAfter=pending.append)
+    form.start(lambda: 'worker result', completed.append)
+    future.set_result('worker result')
+    skipped = []
+    form._destroyed(SimpleNamespace(GetId=lambda: 99, Skip=lambda: skipped.append(99)))
+    assert not form.closed and shutdown == []
+    form._destroyed(SimpleNamespace(GetId=lambda: 31, Skip=lambda: skipped.append(31)))
+    pending.pop()()
+    assert form.closed and form.destroyed and form.cancelled.is_set()
+    assert completed == [] and skipped == [99, 31]
+    assert shutdown == [{'wait': False, 'cancel_futures': True}]

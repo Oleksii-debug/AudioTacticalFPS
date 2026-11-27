@@ -7,6 +7,75 @@ bundle and a signed distribution-cleared release have separate acceptance
 requirements. Existing package, launch filenames and data locations remain
 unchanged until a verified migration; visible application titles use Resonance.
 
+
+## Current specification reconciliation — 2026-11-27
+
+The current finalization entry point is blob
+`db8adbdc483a03c262885928c7ed214ca70bbaa7`, read with audio/agent blob
+`d0b2761dd22b33233b311d4800230fb47f5d3d8b` and root AGENTS
+`080bb9104d3224749e9317c2273d803c0ac37835`. Canonical source was rechecked at
+`e5c64a5245583f8f8b404a0f042f6ca438c24d7f`; the current development composition
+is retained separately with exact checkpoints in the
+[integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md).
+The complete scope remains required. Historical evidence below describes its
+named predecessors; it does not qualify newly composed code.
+
+| Requirement area | Current implementation contribution | Execution and remaining dependency |
+| --- | --- | --- |
+| V3-01/02 | Explicit OCR language controls and finite reviewed reading preparation | Current native preparation has an observed failure; language/voice quality remains separate. |
+| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard and opt-in global/tray controls, measured progress | Required source/installed/native gates remain. The queue timeout has bounded diagnostics, not a guessed device fix. Manual Windows 11/NVDA remains open. |
+| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion, existing clip/player/Director contracts | Current batch dispatch and reader cleanup corrections require successor execution. Neural long-form quality and physical audio acceptance are independent. |
+| V3-06/08 | Incremental backup plus authenticated local portable snapshots over canonical format5/schema6 | Native encrypted source+installed review/restore passed at 142de6b6. Later compositions need their own gates. This does not establish cloud/WebDAV service or shared live databases. |
+| V3-07 | Explicit streamed UTF-8 originals up to a selected 128 MiB, bounded fragments, current original/quotation/backup authority; scoped/ranked source windows and federated continuation | Real greater-than-64-MiB and 601-source/25-library regression fixtures plus current native controls are integrated; current execution is pending. Ranking is local to each source window. Multi-gigabyte PDF, corpus-scale latency and hardware memory benchmarks remain open. |
+| V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | All four modeled source/installed APA/Chicago native review sequences passed at 142de6b6. Actual Microsoft Word, publisher deployment and human interaction remain separate. |
+| V3-09 | Typed current-reader and Book/batch assistant routes through existing services/stores | New source/installed/native gates are required. These deterministic tools do not certify a local LLM or grant model output shell authority. |
+| V3-21 | Owner reference creation/lifecycle and authenticated protected profile export/import using the same Sync crypto and package publisher | Native reference controls passed at 142de6b6. Protected transfer is integrated at 5fd41689 and NOT_RUN; real rights/model/language quality remains unqualified. |
+| V3-16/17 | Existing integrity/cleanup/publication boundaries plus exact cryptography/cffi/pycparser pins and supplemental SBOM records | Reviewed publisher hashes and actual earlier dependency installation are separate from final package/signature and per-profile distribution clearance. |
+| V3-11/12/13/14/15/18/22 | Existing provider, production, model, language, update and entitlement contracts remain in scope | Their prior implementation/evidence is preserved. New provider credentials, private authority/signing, real weights/inference and independent quality evidence are not invented or substituted. |
+
+The failed complete run 46031920263 at `94ecfdd4` retained no eligible wheel.
+Preflight 46048596823 at `142de6b6` has partial successful native evidence and
+observed DAISY/preparation/assistant failures and unfinished Book production. Its Word native review sequences passed independently. It is not a release gate PASS.
+Only a successful full Windows aggregate and all six required ordinary workflows
+at one exact head may supply the retained delivery wheel. The final owner
+application archive excludes the separately set up audio runtime. No final
+private archive, signed installer or whole-platform completion is claimed.
+
+
+## Observed failure reconciliation — 2026-11-27, 19:09 UTC
+
+The completed preflight at `142de6b6028cc86f9a5bf70c42e60adc40f96b77`
+(run 46048596823) reported 207 portable suites: 184 passed and 23 failed.
+Its Windows native Word review, reference-profile controls and encrypted Sync
+review/restore passed in the actual source and installed modes. These are
+synthetic, modeled/native-control results, not Microsoft Word installation,
+private speech inference, human listening or NVDA acceptance.
+
+The successor composes the concrete measured-publication timing repair, passive
+Book preparation with mandatory live Run voice admission, original-source notice
+validation, queued-close cancellation ordering, playback error reporting, typed
+playlist cancellation and current bounded Assistant state I/O. Durable checkpoint
+I/O reuses the existing Windows delete-sharing reader and bounded replacement
+helper. It retains the Assistant's 64 MiB envelope and current JobStore format.
+
+The original test expectations are retained where they express product behavior.
+Fixture corrections use current typed empty inventories/search rows, actual
+active source identities, a real format5 settings sidecar, and a new-root runtime
+coordinator rather than copied old-root locks. Native fixtures retain their real
+actions and success predicates while selecting the actual Library menu, native
+LF reading projection with exact original CRLF bytes, and canonical local paths.
+The DAISY validator admits only exact local URI spellings of its pinned schemas;
+its no-network and before/after digest checks remain.
+
+Windows BookBatch/BookCLI still exceeded their individual module deadlines on
+the prior head. The native batch's 80-second completion predicate is unchanged;
+new bounded thread/status diagnostics will identify the outstanding cause.
+Neither the whole-gate 25-minute cutoff nor a guessed device issue is treated
+as a successful test. Current fixes, recording/large-source/protected-transfer/
+source-window additions and their current installed wheel remain **NOT_RUN**
+until the next exact-head gates complete. No eligible delivery wheel or final
+private application archive has been produced.
+
 ## Implemented behavior and qualification boundaries
 
 | Area | Implemented behavior | Evidence and limits |
@@ -14,8 +83,8 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives with explicit source lineage, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; saved/recovered reading copies retain exact source spans; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
-| Local recording | Explicit DirectShow input selection, bounded PCM16 capture, Stop/save, Cancel/discard, retained retakes and attachment to existing Studio assets | Actual FFmpeg fixture capture and composed backup tests pass; Windows controls, native process ownership and measured virtual-input capture are required successor gates; physical microphones, live monitoring and human listening remain separate |
-| Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
+| Local recording | Explicit DirectShow input selection, bounded PCM16 capture, owned Pause/Resume, Stop/save, Cancel/discard, retained retakes and attachment to existing Studio assets | Earlier FFmpeg fixture capture and backup evidence is retained. New controlled segments, passive range verification and native Pause/Resume are INTEGRATED / NOT_RUN; exact current Windows/process/device gates, physical microphones, live monitoring and listening remain separate |
+| Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; the current source adds a reviewed live-COM citation workflow, while real Microsoft Word and manual accessibility qualification remain required |
 | Recovery | Manifest-bound composite backup v5 includes pending import bytes, identities, settings and both accepted project/state formats; historical v1–v4 formats remain readable | Real backup/restore and resumed import tests; restored external engines/jobs require review; externally exported audio and OS credential secrets are separate |
 | Shared resource admission | One persisted CPU/memory/disk/GPU policy and broker for production and transcription, queued admission and a bounded operations view over existing stores | Reservations remain owned through confirmed child cleanup. Declared GPU policy tests are not real model inference or platform-scale performance qualification |
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; recording keeps its quiet hold until confirmed capture cleanup; human NVDA and listening review remain required |
@@ -161,8 +230,8 @@ third-party EPUB interoperability remain separate requirements.
 
 The following cannot be labelled DONE by passing the current core tests:
 
-- Remaining reader routes include tabs, speed-reading, clipboard/tray automation,
-  the other explicitly Limited/Pending items in the
+- Remaining reader acceptance includes the current tabs/focus, clipboard/tray and
+  global-key implementations, the other explicitly Limited/Pending items in the
   [finite reader inventory](READING_WORKFLOW_ACCEPTANCE.md), and per-engine
   compatibility. RW-09/12/13/15 and the font/color/zoom part of RW-25 now have
   source implementations and required native gates; their presence is not an
@@ -177,8 +246,9 @@ The following cannot be labelled DONE by passing the current core tests:
 - Compatible private entitlement authority, account-optional perpetual policies,
   signed unattended refresh and offline renewal, and signed update A-to-B,
   interruption/recovery and key-rotation acceptance.
-- Actual owner-supplied cloning runtime, authorized reference recordings,
-  protected voice profiles and independent multilingual inference/listening.
+- Actual owner-supplied cloning runtime, authorized reference recordings and
+  independent multilingual inference/listening. Protected profile transfer is
+  now source-integrated; its exact candidate crypto/owner/native gates remain required.
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist, independently
   verified synchronized publishing/reading, DAISY and Braille interoperability.

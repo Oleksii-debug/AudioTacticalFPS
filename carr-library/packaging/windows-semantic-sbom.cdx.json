@@ -28,6 +28,14 @@
       {
         "name": "carr:academic-additions",
         "value": "bibtexparser 2.1.0, pylatexenc 2.11, quickjs-ng 0.18.0.2; verified Windows wheel hashes; prior uv inventory retained"
+      },
+      {
+        "name": "carr:automatic-ocr-addition",
+        "value": "py3langid 0.4.0 reviewed universal wheel and unchanged upstream model/source pins; manual addition to the retained uv inventory; no resolver or execution claim"
+      },
+      {
+        "name": "carr:encrypted-transfer-additions",
+        "value": "cryptography50.0.2, cffi2.1.1 and pycparser3.12; exact Windows wheel SHA-256 independently checked on official PyPI release file pages2026-11-27. Manual supplemental inventory over retained uv output; fresh resolver or execution is not claimed. Offline bundle dependency closure and installed versions remain required."
       }
     ]
   },
@@ -759,6 +767,144 @@
           "value": "sys_platform == 'win32'"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "py3langid@0.4.0",
+      "name": "py3langid",
+      "version": "0.4.0",
+      "purl": "pkg:pypi/py3langid@0.4.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:artifact",
+          "value": "py3langid-0.4.0-py3-none-any.whl"
+        },
+        {
+          "name": "carr:artifact:size_bytes",
+          "value": "4600605"
+        },
+        {
+          "name": "carr:upstream:commit",
+          "value": "3b99caf00d0dcbc9416a9d06f8e5b690e919a74e"
+        },
+        {
+          "name": "carr:model:sha256",
+          "value": "f4f4a2c3465ca1f081541037f9cac23021d68151c2f709c55ae5eedfca522963"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "cryptography@50.0.2",
+      "name": "cryptography",
+      "version": "50.0.2",
+      "purl": "pkg:pypi/cryptography@50.0.2",
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR BSD-3-Clause"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:artifact",
+          "value": "cryptography-50.0.2-cp311-abi3-win_amd64.whl"
+        },
+        {
+          "name": "carr:publisher-release",
+          "value": "https://pypi.org/project/cryptography/50.0.2/#files"
+        },
+        {
+          "name": "carr:publisher-hash-reviewed",
+          "value": "2026-11-27"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "cffi@2.1.1",
+      "name": "cffi",
+      "version": "2.1.1",
+      "purl": "pkg:pypi/cffi@2.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT-0"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:artifact",
+          "value": "cffi-2.1.1-cp311-cp311-win_amd64.whl"
+        },
+        {
+          "name": "carr:publisher-release",
+          "value": "https://pypi.org/project/cffi/2.1.1/#files"
+        },
+        {
+          "name": "carr:publisher-hash-reviewed",
+          "value": "2026-11-27"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pycparser@3.12",
+      "name": "pycparser",
+      "version": "3.12",
+      "purl": "pkg:pypi/pycparser@3.12",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:artifact",
+          "value": "pycparser-3.12-py3-none-any.whl"
+        },
+        {
+          "name": "carr:publisher-release",
+          "value": "https://pypi.org/project/pycparser/3.12/#files"
+        },
+        {
+          "name": "carr:publisher-hash-reviewed",
+          "value": "2026-11-27"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1036,7 +1182,9 @@
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
         "carr-academic-quickjs-ng@0.18.0.2",
-        "comtypes@1.5.0"
+        "comtypes@1.5.0",
+        "py3langid@0.4.0",
+        "cryptography@50.0.2"
       ]
     },
     {
@@ -1065,6 +1213,27 @@
     },
     {
       "ref": "comtypes@1.5.0"
+    },
+    {
+      "ref": "py3langid@0.4.0",
+      "dependsOn": [
+        "numpy-23@2.3.5"
+      ]
+    },
+    {
+      "ref": "cryptography@50.0.2",
+      "dependsOn": [
+        "cffi@2.1.1"
+      ]
+    },
+    {
+      "ref": "cffi@2.1.1",
+      "dependsOn": [
+        "pycparser@3.12"
+      ]
+    },
+    {
+      "ref": "pycparser@3.12"
     }
   ]
 }

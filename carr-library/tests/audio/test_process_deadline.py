@@ -21,10 +21,12 @@ def observed(monkeypatch):
     actual_start = process._start_process
     actual_monotonic = time.monotonic
     state = SimpleNamespace(children=[], offset=0.0, wait_before_return=True)
-    # Replacing this module reference leaves native wait/cleanup clocks and
-    # subprocess/threading's own timing unchanged.
+    # Offset only the audio module's clock at the observed verification
+    # boundary. Its owned POSIX waiter still uses the real sleep function;
+    # subprocess/threading and every existing wait allowance stay unchanged.
     monkeypatch.setattr(process, 'time',
-                        SimpleNamespace(monotonic=lambda: actual_monotonic() + state.offset))
+                        SimpleNamespace(monotonic=lambda: actual_monotonic() + state.offset,
+                                        sleep=time.sleep))
 
     def start(arguments, **options):
         child = actual_start(arguments, **options)

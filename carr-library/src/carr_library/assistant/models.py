@@ -11,7 +11,12 @@ import re
 TOOLS = frozenset({
     'library.create', 'library.list', 'library.catalog', 'library.import',
     'library.import_folder', 'library.search', 'library.extract',
-    'library.backup', 'audio.produce', 'audio.transcribe',
+    'library.backup', 'audio.produce', 'audio.render', 'audio.transcribe',
+    'reader.read', 'evidence.search', 'evidence.read', 'evidence.export',
+    'voice.list', 'audio.effects', 'audio.inspect', 'audio.convert',
+    'player.status', 'player.control',
+    'book.review', 'book.prepare', 'book.run',
+    'book.batch.review', 'book.batch.prepare', 'book.batch.run',
 })
 SCHEMA = 'carr-assistant-plan/1'
 

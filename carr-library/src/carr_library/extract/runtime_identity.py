@@ -11,6 +11,7 @@ import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
 from .ocr_languages import model_ids
+from .page_ocr import config_dict
 from . import ocr_runtime
 from .ocr_process import run_ocr
 
@@ -52,7 +53,7 @@ def runtime_identity(config):
     fails closed. Unpinned defaults are fingerprinted, not declared authentic.
     Caller must compare before resume, and after extraction before checkpoint.
     """
-    identity = dict(schema=1, config=asdict(config), source_sha256=_source_hashes(),
+    identity = dict(schema=1, config=config_dict(config), source_sha256=_source_hashes(),
                     packages={p: metadata.version(p) for p in ('pypdf', 'pypdfium2', 'Pillow')})
     deadline = time.monotonic() + config.timeout
 
@@ -61,6 +62,16 @@ def runtime_identity(config):
         if seconds <= 0:
             raise IdentityError('OCR fingerprint timed out')
         return seconds
+
+    if config.automatic_languages:
+        from .language_detection import detector_identity, DetectorUnavailable
+        identity['source_sha256'].update({
+            name: _hash(Path(__file__).parent / name, remaining=remaining)
+            for name in ('language_detection.py', 'ocr_regions.py')})
+        try:
+            identity['language_detector'] = detector_identity(remaining)
+        except DetectorUnavailable as exc:
+            identity['language_detector'] = {'state': 'unavailable', 'detail': str(exc)[:500]}
 
     try:
         selected = model_ids(config.languages)

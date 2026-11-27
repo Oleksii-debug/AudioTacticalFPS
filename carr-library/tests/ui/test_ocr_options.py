@@ -40,3 +40,13 @@ def test_cancel_prevents_import_and_closes_dialog(monkeypatch):
 def test_text_import_needs_no_window(monkeypatch):
     monkeypatch.setitem(sys.modules, 'wx', None)
     assert choose_ocr_config(None, ['source.txt', 'report.docx']).languages == 'eng'
+
+
+def test_summary_distinguishes_explicit_auto_pool_and_manual_override():
+    from carr_library.ui.ocr_options import config_summary
+    automatic = config_summary(Config(languages='ukr+eng', automatic_languages=True))
+    assert 'Ukrainian' in automatic and 'English' in automatic
+    assert 'automatic language and region review within this selected pool' in automatic
+    assert 'uncertain results keep the first pass' in automatic
+    manual = config_summary(Config(languages='ukr+eng'))
+    assert 'explicit manual language choice' in manual

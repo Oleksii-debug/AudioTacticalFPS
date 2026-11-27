@@ -11,8 +11,28 @@ from hashlib import sha256
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from urllib.parse import urlparse
 from zipfile import ZipFile
+
+
+def _schema_resolver(paths, etree):
+    # libxml can spell a local absolute URI as file:/... or file:///....
+    # Admit only those exact spellings of the already pinned local files.
+    resources = {}
+    for name, path in paths.items():
+        uri = path.as_uri()
+        for location in (str(path), uri, uri.replace('file:///', 'file:/', 1)):
+            resources[location] = path
+        public = ('http://www.w3.org/TR/REC-SMIL/SMIL10.dtd' if name == 'SMIL10.dtd'
+                  else 'http://www.w3.org/TR/xhtml1/DTD/' + name)
+        resources[public] = path
+
+    class Resolver(etree.Resolver):
+        def resolve(self, url, public_id, context):
+            path = resources.get(url)
+            if path is None:
+                raise ValueError('The schema validator refused an unapproved resource: ' + url)
+            return self.resolve_filename(str(path), context)
+    return Resolver()
 
 
 def validate(publication, schemas):
@@ -28,16 +48,8 @@ def validate(publication, schemas):
         if regular(path).st_size != expected['size'] or sha256(path.read_bytes()).hexdigest() != expected['sha256']:
             raise ValueError('The explicitly selected validation schema does not match its pin: ' + name)
         paths[name], identities[name] = path, expected['sha256']
-    class Resolver(etree.Resolver):
-        def resolve(self, url, public_id, context):
-            parsed = urlparse(url)
-            name = Path(parsed.path).name
-            allowed = {str(path) for path in paths.values()} | {
-                'http://www.w3.org/TR/xhtml1/DTD/' + name for name in paths if name != 'SMIL10.dtd'} | {
-                'http://www.w3.org/TR/REC-SMIL/SMIL10.dtd'}
-            if url not in allowed or name not in paths:
-                raise ValueError('The schema validator refused an unapproved resource: ' + url)
-            return self.resolve_filename(str(paths[name]), context)
+    def resolver():
+        return _schema_resolver(paths, etree)
     publication = local_path(publication, exists=True)
     provenance = daisy.inspect_daisy(publication)
     before = publishing._digest(publication, lambda: None, 32 * 1024**3)
@@ -46,13 +58,13 @@ def validate(publication, schemas):
         for name in ('ncc.html', 'content.html', 'source.html', 'book.smil'):
             parser = etree.XMLParser(load_dtd=True, dtd_validation=True, no_network=True,
                                      resolve_entities=False, huge_tree=False)
-            parser.resolvers.add(Resolver())
+            parser.resolvers.add(resolver())
             etree.fromstring(archive.read(name), parser)
             results.append({'file': name, 'dtd_valid': True})
         # A well-formed but structurally invalid XHTML must actually fail.
         invalid = archive.read('ncc.html').replace(b'<body>', b'<body><unsupported-element />', 1)
         try:
-            etree.fromstring(invalid, parser_for_html(Resolver, etree))
+            etree.fromstring(invalid, parser_for_html(resolver, etree))
         except etree.XMLSyntaxError:
             rejected = True
         else:

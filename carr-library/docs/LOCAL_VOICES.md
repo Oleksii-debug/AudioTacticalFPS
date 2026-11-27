@@ -226,6 +226,67 @@ backend, rights, language and installed-version controls with that same
 synthetic API. Its output separately labels real model inference, the native
 file picker, reference quality and NVDA speech as **NOT_RUN**.
 
+## Reviewed export, deactivation and deletion
+
+The existing **Reference voice packages** window also maintains an explicitly
+selected installed profile. It keeps one registration, voice registry, owner
+package API and shared resource broker.
+
+Review an installed version, then separately confirm permission to export its
+exact reference files. **Export reviewed installed version…** creates a new
+local .dordiai-voice or ZIP data package through the installed owner's
+create_package API. It contains that version's document and reference assets;
+shared models, interpreter, worker code and other profiles are excluded.
+The actual archive is inspected again, hashed and published without overwriting
+an existing file. The returned receipt includes its size and SHA-256.
+**The package is not encrypted.** The explicit private local destination and
+rights review do not constitute encrypted backup or permission to redistribute
+someone else's voice data.
+
+For removal, choose the installed profile ID and either **Deactivate and keep
+reference files** or **Delete all installed versions and reference files**.
+**Review profile removal** displays the selected identity, versions, exact file
+count and byte total. It never prefills confirmation. Type exactly the displayed
+REVOKE profile_id or DELETE profile_id phrase and choose **Apply confirmed
+removal**. Deletion is permanent for that selected installation's profile data.
+Close voice sessions in other applications that use this same installation;
+Carr's cooperative reservation covers Carr operations, not other programs.
+
+The bridge rechecks the activation index and every selected reference file
+after acquiring the actual owner's installation lock. It then calls the same
+owner uninstall_package API with its durable inactive tombstone. Deactivation
+keeps all versions; deletion removes only the selected profile's versions.
+Full post-operation inventory verification requires all unselected runtime,
+model and profile files to remain byte-identical before registration is rebound.
+
+Revocation is also retained in the existing reviewed installation manifest.
+Even after deletion removes the owner's package index entry, a legacy catalog
+voice with the same ID cannot become an automatic replacement. A fresh explicit
+installed-version or package review, reference-rights approval and production
+language selection are required to re-enable that identity. Inspecting or
+exporting a version does not itself restore synthesis permission.
+
+Cancellation and uncertain native shutdown retain the existing admission and
+private staging owners. An interrupted owner mutation can leave an inactive or
+partly removed package; the old registration then fails closed. There is no
+automatic deletion replay, arbitrary rollback or silent adoption of changed
+files. Review the actual installation and explicitly revalidate before reuse.
+
+The callable owner contract was checked at immutable source
+[a1c73a5747bc86eb11f0c037120442e0c2593e91](https://github.com/Oleksii-debug/ChatGPT-Autopilot-ExtensionChatGPT-Autopilot-Extension/tree/a1c73a5747bc86eb11f0c037120442e0c2593e91/dordiai-voices/source/0.12.2/kx47Runtime):
+voice_packages.py blob 2abe2a50bcf58aea423764ef15acc04538ee2f9b and
+voice_assets.py blob 6cabd9c44a3979e2b543f2272915fdc83523c87c.
+Only the public bridge and synthetic contract fixtures are added to Carr.
+The private owner implementation and reference payload are not copied.
+
+New prepared cases use actual isolated children, native locks, data archives,
+failure/cancellation paths and the existing UI worker. Native source, installed
+and bundle probes extend their unchanged synthetic-owner acceptance.
+At this source checkpoint the new lifecycle execution is **NOT_RUN**.
+Real owner-runtime inference, authorized human reference quality, manual NVDA,
+speaker similarity and multilingual quality remain distinct acceptance.
+
+
 ## Reading edits
 
 `NarrationDerivative` keeps an immutable original string and its checksum.

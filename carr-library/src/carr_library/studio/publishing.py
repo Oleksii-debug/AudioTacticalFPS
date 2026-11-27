@@ -31,6 +31,9 @@ from ..durable_state import (MAX_JSON_BYTES, atomic_json, encode, local_path,
 from .project import Project, _id
 
 
+MAX_XML_BYTES = 64 * 1024**2
+MAX_XML_TOTAL = 128 * 1024**2
+
 XHTML = 'http://www.w3.org/1999/xhtml'
 OPS = 'http://www.idpf.org/2007/ops'
 OPF = 'http://www.idpf.org/2007/opf'
@@ -285,11 +288,13 @@ def _segments(project, timeline, check=lambda: None):
         if abs(start - cursor) > tolerance or end <= start:
             raise ValueError('Measured chapters must cover the master in order without overlaps or gaps.')
         chapter_rows.append({'id': f'chapter-{index}', 'scene': scene.id, 'title': scene.title})
-        def append(kind, begin, finish, line=None):
+        def append(kind, begin, finish, line=None, *, measured_begin=None):
             if round(finish, 6) <= round(begin, 6):
                 return
             segment = {'id': f'interval-{len(segments) + 1}', 'chapter': f'chapter-{index}',
                 'kind': kind, 'start': round(begin, 6), 'end': round(finish, 6),
+                'measured_start': begin if measured_begin is None else measured_begin,
+                'measured_end': finish,
                 'text': line.text if line is not None else 'Audio interval without a scripted line.',
                 'role': line.role if line is not None else None,
                 'line': line.id if line is not None else None, 'scene': scene.id,
@@ -302,7 +307,9 @@ def _segments(project, timeline, check=lambda: None):
                 raise ValueError('A speech interval overlaps another line or exceeds its measured chapter.')
             if begin > cursor:
                 append('audio-interval', cursor, begin)
-            append('line', max(begin, cursor), finish, line)
+            # Playback stays contiguous within the accepted sample tolerance;
+            # the provenance retains the original measurement before clamping.
+            append('line', max(begin, cursor), finish, line, measured_begin=begin)
             cursor = finish
         if end > cursor:
             append('audio-interval', cursor, end)
@@ -425,14 +432,24 @@ def inspect_epub(path, *, cancelled=lambda: False, max_bytes=32 * 1024**3):
             raise ValueError('Unexpected EPUB container graph or size.')
         if archive.read('mimetype') != b'application/epub+zip':
             raise ValueError('Invalid EPUB mimetype member.')
+        xml_total = 0
         def document(name):
+            nonlocal xml_total
             check()
-            if archive.getinfo(name).file_size > MAX_JSON_BYTES * 4:
+            expected = archive.getinfo(name).file_size
+            if expected > MAX_XML_BYTES:
                 raise ValueError('EPUB XML exceeds its metadata budget.')
-            chunks = []
+            chunks, count = [], 0
             with archive.open(name) as stream:
-                while block := stream.read(1024 * 1024):
-                    check(); chunks.append(block)
+                while block := stream.read(min(1024 * 1024, expected - count + 1)):
+                    check()
+                    count += len(block)
+                    xml_total += len(block)
+                    if count > expected or xml_total > MAX_XML_TOTAL:
+                        raise ValueError('EPUB XML exceeds its total metadata budget.')
+                    chunks.append(block)
+            if count != expected:
+                raise ValueError('EPUB XML differs from its captured member size.')
             raw = b''.join(chunks)
             try:
                 return SafeET.fromstring(raw, forbid_dtd=True, forbid_entities=True, forbid_external=True)

@@ -398,8 +398,16 @@ def voice_reader_commands():
         ('voice_reader.find', 'Find in reading copy', 'Ctrl+F'),
         ('voice_reader.replace', 'Find and replace in reading copy', 'Ctrl+H'),
         ('voice_reader.pronunciation', 'Reading pronunciation dictionary', 'Ctrl+Shift+D'),
+        ('voice_reader.prepare', 'Prepare reading copy for speech', ''),
         ('voice_reader.settings', 'Voice reader keyboard shortcuts', 'Ctrl+Alt+K'),
         ('voice_reader.playback', 'Playback volume, skips, speed and pitch', ''),
+        ('voice_reader.read_word', 'Read current word', ''),
+        ('voice_reader.read_line', 'Read current logical line', ''),
+        ('voice_reader.read_sentence', 'Read current sentence', ''),
+        ('voice_reader.read_paragraph', 'Read current paragraph', ''),
+        ('voice_reader.previous_unit', 'Select previous text unit', ''),
+        ('voice_reader.current_unit', 'Select current text unit', ''),
+        ('voice_reader.next_unit', 'Select next text unit', ''),
     )
     return tuple(Command(identity, label, key, context='voice_reader')
                  for identity, label, key in rows)

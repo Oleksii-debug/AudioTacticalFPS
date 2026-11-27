@@ -16,6 +16,7 @@ from threading import Event, Thread
 from types import SimpleNamespace
 from time import monotonic
 import traceback
+import wave
 
 
 def run(arguments, report):
@@ -37,6 +38,8 @@ def run(arguments, report):
     deadline = monotonic() + 80
     stage, dialog, frame, finished = 0, None, None, False
     dialog_id, dialog_destroyed = None, False
+    pause_until, paused_seconds, paused_bytes = None, None, None
+    native_segments = []
 
     def check(name, condition):
         if not condition:
@@ -69,6 +72,7 @@ def run(arguments, report):
     app = ProbeApp(False)
     simulator = wx.UIActionSimulator()
     original_factory = dialog_module.RecordingService
+    original_process = recording_module.run_process
 
     with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
@@ -102,10 +106,38 @@ def run(arguments, report):
         service._input_arguments = synthetic_input
         real_capture = service.capture
 
+        def real_segment(command, **kwargs):
+            item = {'path': Path(command[-1]), 'active': True}
+            assert not any(part['active'] for part in native_segments)
+            native_segments.append(item)
+            try:
+                result = original_process(command, **kwargs)
+                with wave.open(str(item['path']), 'rb') as reader:
+                    count = reader.getnframes()
+                    assert 0 <= count <= 60 * reader.getframerate()
+                    digest, remaining = sha256(), count
+                    while remaining:
+                        frames = min(remaining, 32768)
+                        raw = reader.readframes(frames)
+                        assert len(raw) == frames * reader.getnchannels() * reader.getsampwidth()
+                        digest.update(raw)
+                        remaining -= frames
+                    item.update(frames=count, pcm_sha256=digest.hexdigest())
+                return result
+            finally:
+                item['active'] = False
+        recording_module.run_process = real_segment
+
         def capture(device_id, **kwargs):
             item = {'seconds': 0, 'active': True}
             captures.append(item)
             observe = kwargs['progress']
+            state_observer = kwargs['state_changed']
+            def state(value):
+                item['state'] = value.state
+                item['frames'] = value.frames
+                state_observer(value)
+            kwargs['state_changed'] = state
             def report(seconds):
                 item['seconds'] = seconds
                 observe(seconds)
@@ -156,7 +188,7 @@ def run(arguments, report):
             wx.CallLater(25, guarded(dispatch))
 
         def drive():
-            nonlocal stage, dialog, dialog_id, dialog_destroyed
+            nonlocal stage, dialog, dialog_id, dialog_destroyed, pause_until, paused_seconds, paused_bytes
             if errors or finished:
                 return
             if monotonic() >= deadline:
@@ -179,6 +211,8 @@ def run(arguments, report):
             start = control('Start recording')
             retake = control('Record retake of selected recording')
             stop = control('Stop and save recording')
+            pause = control('Pause recording')
+            resume = control('Resume recording')
             cancel = control('Cancel unfinished recording')
             selection = control('Microphone device (explicit selection required)')
             saved = control('Saved recordings')
@@ -190,6 +224,8 @@ def run(arguments, report):
                 check('recording progress has a native accessible gauge',
                       isinstance(control('Recording operation progress'), wx.Gauge))
                 check('native retake waits for a selected original', not retake.IsEnabled())
+                check('Pause and Resume never start capture from idle',
+                      not pause.IsEnabled() and not resume.IsEnabled())
                 check('native monitoring is unchecked by default', isinstance(monitoring, wx.CheckBox)
                       and not monitoring.GetValue())
                 check('native monitoring requires an explicit output selection',
@@ -230,12 +266,48 @@ def run(arguments, report):
             elif stage == 31 and wx.Window.FindFocus() == status:
                 check('explicit query is readable inside the actual modal dialog',
                       bool(status.GetValue()) and status.GetValue() == frame.status.GetValue())
+                stage = 32
+                press(pause)
+            elif stage == 32 and resume.IsEnabled() and captures[0].get('state') == 'paused':
+                check('Pause acknowledges the real FFmpeg tree exit before Resume is enabled',
+                      len(native_segments) == 1 and not native_segments[0]['active']
+                      and native_segments[0]['frames'] > 0)
+                check('Pause retains the same worker, quiet hold and shared device lease',
+                      frame.working and captures[0]['active']
+                      and any(hold.recording and not hold.closed for hold in frame.operation_progress._audio_holds))
+                from carr_library.operations import ResourceBroker
+                leases = ResourceBroker.for_app(library.root).snapshot()['leases']
+                check('paused input remains reserved by the shared resource broker',
+                      len(leases) == 1 and leases[0]['request']['devices'] == ['microphone:' + device.id])
+                paused_seconds = captures[0]['seconds']
+                paused_bytes = sha256(native_segments[0]['path'].read_bytes()).hexdigest()
+                pause_until = monotonic() + .2
+                stage = 33
+            elif stage == 33 and monotonic() >= pause_until:
+                check('paused wall time never appends PCM or opens another input',
+                      len(native_segments) == 1 and not native_segments[0]['active']
+                      and captures[0]['state'] == 'paused'
+                      and sha256(native_segments[0]['path'].read_bytes()).hexdigest() == paused_bytes)
+                stage = 34
+                press(resume)
+            elif stage == 34 and len(native_segments) == 2 and native_segments[1]['active'] and captures[0]['seconds'] >= paused_seconds + .1:
+                check('explicit Resume uses the same take and the next real owned segment',
+                      len(captures) == 1 and captures[0]['state'] == 'recording'
+                      and frame.working and not resume.IsEnabled())
                 stage = 4
                 press(stop)
             elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
                 check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
                     and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
                 check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                ranges = completed[0]['segments']
+                check('saved pause joins match both actual PCM segments exactly',
+                      completed[0]['schema'] == 'carr-recording/4' and len(ranges) == 2
+                      and [row['ended_by'] for row in ranges] == ['paused', 'stopped']
+                      and all(row['frames'] == part['frames']
+                              and row['pcm_sha256'] == part['pcm_sha256']
+                              for row, part in zip(ranges, native_segments))
+                      and completed[0]['audio']['frames'] == sum(row['frames'] for row in ranges))
                 check('native retake targets the displayed saved original', retake.IsEnabled()
                       and saved.GetSelection() == 0)
                 stage = 5
@@ -297,6 +369,7 @@ def run(arguments, report):
                 raise AssertionError('\n'.join(errors))
         finally:
             dialog_module.RecordingService = original_factory
+            recording_module.run_process = original_process
             if frame is not None:
                 frame.cancel_event.set()
                 frame.executor.shutdown(wait=True, cancel_futures=True)

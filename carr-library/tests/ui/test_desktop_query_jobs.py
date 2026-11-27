@@ -53,6 +53,9 @@ def panel(handlers):
     panel._refresh_details = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
         library=SimpleNamespace(search=Mock(), semantic_ranker=object()), report=Mock())
+    panel.bound_library = panel.frame.library
+    panel.previous_page, panel.next_page = Mock(), Mock()
+    panel._reset_pages()
     return panel
 
 
@@ -65,7 +68,7 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     panel.frame.library.search.side_effect = search
     panel.on_search(None)
     panel.frame.library.search.assert_not_called()
-    _, operation, complete = panel.frame.run_job.call_args.args
+    _, operation, complete = panel.frame.run_job.call_args.args[:3]
     rows = operation()
     panel.status.ChangeValue.assert_not_called()
     complete(rows)
@@ -98,11 +101,11 @@ def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(pa
         return ()
     panel.frame.library.search.side_effect = first
     panel.on_search(None)
-    _, old_operation, old_complete = panel.frame.run_job.call_args.args
+    _, old_operation, old_complete = panel.frame.run_job.call_args.args[:3]
     old_rows = old_operation()
     panel.frame.library.search.side_effect = lambda *args, **kwargs: ()
     panel.on_search(None)
-    _, operation, complete = panel.frame.run_job.call_args.args
+    _, operation, complete = panel.frame.run_job.call_args.args[:3]
     complete(operation())
     assert 'Old fallback notice.' not in panel.status.ChangeValue.call_args.args[0]
     previous = panel.status.ChangeValue.call_count

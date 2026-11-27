@@ -96,6 +96,8 @@ def panel(classes):
     value.collection_ids = [None]
     value.filters = {}
     value.grid,value.details,value.status = Mock(),Mock(),Mock()
+    value.previous_page, value.next_page = Mock(), Mock()
+    value._reset_pages()
     value._load_context,value._refresh_details = Mock(),Mock()
     value.verified_copy_service = Mock(return_value=hit.quote)
     value.selected = lambda: hit
@@ -134,20 +136,27 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     for module, installer in (
             ('academic_tools', 'install_source_comparison_actions'),
             ('audio_studio', 'install_audio_studio'),
+            ('audio_playback', 'install_audio_playback'),
+            ('book_audio_dialog', 'install_book_audio_actions'),
             ('audio_runtime_setup', 'install_audio_runtime_setup'),
             ('audio_effects', 'install_audio_effects'),
             ('local_assistant', 'install_local_assistant'),
             ('provider_settings', 'install_provider_settings'),
             ('speech_dialog', 'install_speech_actions'),
+            ('clipboard_reader', 'install_clipboard_reader'),
             ('language_matrix', 'install_language_actions'),
             ('translation_dialog', 'install_translation_actions'),
             ('document_conversion', 'install_conversion_actions'),
             ('citation_formatting', 'install_citation_actions'),
+            ('word_citations', 'install_word_citation_actions'),
+            ('portable_sync', 'install_portable_sync_actions'),
             ('operation_progress', 'install_operation_progress'),
             ('transcription_dialog', 'install_transcription_actions'),
             ('operations_dialog', 'install_operations_actions'),
             ('command_palette', 'install_command_palette'),
             ('diagnostics_dialog', 'install_diagnostics'),
+            ('backup_incremental_dialog', 'install_incremental_backup_actions'),
+            ('desktop_integration', 'install_desktop_integration'),
             ('delivery_dialog', 'install_delivery_actions')):
         callback = Mock()
         additional.append(callback)

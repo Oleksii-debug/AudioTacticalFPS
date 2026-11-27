@@ -135,13 +135,17 @@ def _layout(manifest):
     if type(assets) is not list or len(assets) > full.MAX_ASSETS:
         raise RestoreError('Invalid complete-backup original inventory.')
     rows, roots, digests, total = [database], {full.ORIGINALS}, set(), 0
+    # Match the full reader's outer size envelope only. The canonical verifier
+    # below still requires each large TXT original's exact sealed profile;
+    # MIME or an incremental manifest alone never grants source admission.
     for asset in assets:
         if (type(asset) is not dict or set(asset) != {'filename', 'size_bytes', 'sha256', 'mime'}
                 or type(asset['sha256']) is not str or _HASH.fullmatch(asset['sha256']) is None
                 or type(asset['mime']) is not str or asset['mime'] not in full.SUFFIXES
                 or asset['filename'] != asset['sha256'] + full.SUFFIXES[asset['mime']]
                 or asset['sha256'] in digests or type(asset['size_bytes']) is not int
-                or not 0 < asset['size_bytes'] <= full.MAX_BYTES):
+                or not 0 < asset['size_bytes'] <= (
+                    full.STREAMED_TEXT_MAX_BYTES if asset['mime'] == 'text/plain' else full.MAX_BYTES)):
             raise RestoreError('Invalid complete-backup original identity.')
         digests.add(asset['sha256'])
         total += asset['size_bytes']

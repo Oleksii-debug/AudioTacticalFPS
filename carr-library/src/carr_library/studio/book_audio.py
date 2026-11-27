@@ -17,6 +17,7 @@ import threading
 from uuid import uuid4
 
 from .book_source import capture_source, source_context, validate_source
+from ..audio.cleanup import retained_state_lock
 from ..durable_state import atomic_json, encode, local_path, read_json, regular, state_lock
 from ..reader.ebook_contents import open_ebook
 from ..speech._io import run_process
@@ -573,12 +574,13 @@ class BookAudioService:
                                      'historical jobs and their former paths remain unchanged.')
                 elif state is None:
                     self.production.submit(plan.project(index), reviewed.output_parent,
-                                           format=plan.format, stems=False, operation_id=plan.job_id(index))
+                                           format=plan.format, stems=False, operation_id=plan.job_id(index),
+                                           defer_voice_validation=True)
             return self.review(plan, reviewed.output_parent, cancelled=cancelled, guard=guard)
 
     def run(self, plan_id, destination, *, approval, cancelled=lambda: False,
             guard=lambda: None, progress=None):
-        with state_lock(self.plans, 'book-' + _identity(plan_id)):
+        with retained_state_lock(self.plans, 'book-' + _identity(plan_id)):
             plan = self.load(plan_id)
             review = self.review(plan, destination, cancelled=cancelled, guard=guard)
             if not review.prepared or approval != review.fingerprint:

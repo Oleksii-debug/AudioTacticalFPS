@@ -187,6 +187,55 @@ def main():
                     assert registry.voices_for_language('uk') == ()
                     assert wx.Window.FindFocus() is control.status
                     checks.append('native installed-version review resets consent and rebinds one existing profile identity')
+                    assert control.export_button.IsShown() and control.export_rights.GetName()
+                    assert not control.export_rights.GetValue()
+                    control.removal_mode.SetSelection(0)
+                    click(control.removal_review_button)
+                    later(lambda: idle(removal_reviewed))
+                def removal_reviewed():
+                    assert control.removal_review is not None, control.status.GetValue()
+                    assert control.removal_confirmation.GetValue() == ''
+                    assert control.removal_review.confirmation == 'REVOKE fixture'
+                    click(control.removal_apply_button)
+                    assert 'exact displayed confirmation' in control.status.GetValue()
+                    assert VoiceRegistry.for_library(library).list_voices()
+                    control.removal_confirmation.SetValue('REVOKE fixture')
+                    click(control.removal_apply_button)
+                    later(lambda: idle(revoked))
+                def revoked():
+                    assert not VoiceRegistry.for_library(library).list_voices()
+                    directory = runtime / 'models/voices/packages/fixture/1.0.0'
+                    assert all((directory / name).read_bytes() == data for name, data in reference_data.items())
+                    assert control.removal_review is None and control.removal_confirmation.GetValue() == ''
+                    checks.append('native removal review requires exact confirmation and revocation retains reference bytes')
+                    click(control.review_button)
+                    later(lambda: idle(fresh_activation))
+                def fresh_activation():
+                    assert control.review is not None and not control.rights.GetValue()
+                    control.rights.SetValue(True)
+                    control.supported.SetValue('uk')
+                    click(control.apply_button)
+                    later(lambda: idle(reactivated))
+                def reactivated():
+                    assert VoiceRegistry.for_library(library).choose_voice('uk').id == 'dordiai-voices:fixture'
+                    checks.append('revoked identity requires fresh native rights and language review before reuse')
+                    control.removal_mode.SetSelection(1)
+                    click(control.removal_review_button)
+                    later(lambda: idle(delete_reviewed))
+                def delete_reviewed():
+                    assert control.removal_review is not None and control.removal_review.delete_files
+                    assert control.removal_confirmation.GetValue() == ''
+                    control.removal_confirmation.SetValue('DELETE another')
+                    click(control.removal_apply_button)
+                    assert (runtime / 'models/voices/packages/fixture/1.0.0/sample.wav').is_file()
+                    control.removal_confirmation.SetValue('DELETE fixture')
+                    click(control.removal_apply_button)
+                    later(lambda: idle(deleted))
+                def deleted():
+                    assert not (runtime / 'models/voices/packages/fixture').exists()
+                    assert not VoiceRegistry.for_library(library).list_voices()
+                    assert wx.Window.FindFocus() is control.status
+                    checks.append('native explicit deletion removes only the reviewed synthetic profile and preserves revocation')
                     click(control.close_button)
                 later(lambda: idle(loaded))
                 control.dialog.ShowModal()

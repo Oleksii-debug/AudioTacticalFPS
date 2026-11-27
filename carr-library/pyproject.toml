@@ -15,6 +15,7 @@ dependencies = [
   "platformdirs==4.10.0",
   "filelock==3.29.0",
   "Pillow==13.0.0",
+  "py3langid==0.4.0",
   "defusedxml==0.7.1",
   "bibtexparser==2.1.0",
   "pylatexenc==2.11",
@@ -34,9 +35,11 @@ license-files = [
   "src/carr_library/speech/COMTYPES_LICENSE.txt",
   "src/carr_library/extract/TESSDATA_FAST_LICENSE",
   "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+  "src/carr_library/extract/PY3LANGID_LICENSE",
 ]
 
 [project.optional-dependencies]
+sync = ["cryptography==50.0.2"]
 desktop = ["wxPython==4.2.4"]
 semantic = [
   "fastembed==0.9.1",
@@ -94,6 +97,7 @@ packages = [
   "carr_library.ui._vendor.wx_grid",
   "carr_library.speech",
   "carr_library.studio",
+  "carr_library.sync",
   "carr_library.operations",
   "carr_library.transcription",
   "carr_library.conversion",
@@ -112,7 +116,7 @@ bootstrap = "bootstrap"
 "*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
 "carr_library.audio" = ["legacy-runtime-lock.json", "runtime-source-lock.json", "runtime-setup-README.txt"]
-"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
+"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE", "ocr-language-detector.json", "PY3LANGID_LICENSE"]
 "carr_library.academic_integration" = ["styles/*.csl", "locales/*.xml", "vendor/*", "csl_worker.cjs"]
 "carr_library.language_qualification" = ["data/*.md"]
 "carr_library.speech" = ["COMTYPES_LICENSE.txt"]

@@ -25,7 +25,7 @@ jobs:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
     # Preserve every installed/source case and the additive native reader/platform gates.
-    timeout-minutes: 180
+    timeout-minutes: 232
     defaults:
       run:
         shell: pwsh
@@ -432,7 +432,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert len(pins)==51 and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert len(pins)==55 and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -467,11 +467,161 @@ jobs:
           }
 
 
+      - name: Require exact source and installed OCR and result-page controls
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_automatic_ocr_smoke.py --source src --report ci-results/source-automatic-ocr.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-automatic-ocr' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_automatic_ocr_smoke.py --expect-installed --report ci-results/installed-automatic-ocr.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-automatic-ocr' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_search_pagination_smoke.py --source . --report ci-results/source-search-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-search-pagination' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_search_pagination_smoke.py --expect-installed --report ci-results/installed-search-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-search-pagination' }
+          if ($failures.Count) { throw ('Required native OCR/search failures: ' + ($failures -join ', ')) }
+
+      - name: Require actual reading preparation from source and installed package
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --source src --report ci-results/source-reading-preparation.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-reading-preparation' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --expect-installed --report ci-results/installed-reading-preparation.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-preparation' }
+          if ($failures.Count) { throw ('Required native reading preparation failures: ' + ($failures -join ', ')) }
+
+      - name: Require native Word review and current-reader assistant controls
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
+        timeout-minutes: 16
+        run: |
+          $failures = @()
+          foreach ($style in @('apa', 'chicago-notes')) {
+            & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_word_citations_smoke.py --source . --mode modeled --style $style --report (Join-Path ci-results ('source-word-' + $style + '.json'))
+            if ($LASTEXITCODE -ne 0) { $failures += ('source-word-' + $style) }
+            & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_word_citations_smoke.py --expect-installed --mode modeled --style $style --report (Join-Path ci-results ('installed-word-' + $style + '.json'))
+            if ($LASTEXITCODE -ne 0) { $failures += ('installed-word-' + $style) }
+          }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_assistant_domains_smoke.py --source . --report ci-results/source-assistant-domains.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-assistant-domains' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_assistant_domains_smoke.py --expect-installed --report ci-results/installed-assistant-domains.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-assistant-domains' }
+          if ($failures.Count) { throw ('Required native domain controls failed: ' + ($failures -join ', ')) }
+
+      - name: Require native reviewed recording-to-reference package controls
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_reference_smoke.py --source src --report ci-results/source-voice-reference.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-reference' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_reference_smoke.py --expect-installed --report ci-results/installed-voice-reference.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reference' }
+          if ($failures.Count) { throw ('Required native reference controls failed: ' + ($failures -join ', ')) }
+      - name: Require native encrypted portable snapshot review and restore
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted --source . --report ci-results/source-portable-sync.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-portable-sync' }
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted --expect-installed --report ci-results/installed-portable-sync.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-portable-sync' }
+          if ($failures.Count) { throw ('Required native encrypted transfer failed: ' + ($failures -join ', ')) }
+      - name: Require native streamed UTF-8 source intake
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_streamed_import_smoke.py --source (Get-Location).Path --report ci-results/source-streamed-import.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-streamed-import' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_streamed_import_smoke.py --expect-installed --report ci-results/installed-streamed-import.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-streamed-import' }
+          if ($failures.Count) { throw ('Required native streamed intake failed: ' + ($failures -join ', ')) }
+      - name: Require native protected voice-profile review and transfer
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_protected_voice_smoke.py --source (Get-Location).Path --report ci-results/source-protected-voice.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-protected-voice' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_protected_voice_smoke.py --expect-installed --report ci-results/installed-protected-voice.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-protected-voice' }
+          if ($failures.Count) { throw ('Required native protected voice controls failed: ' + ($failures -join ', ')) }
+      - name: Require native scoped ranked and federated result continuation
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_source_pagination_smoke.py --source . --report ci-results/source-source-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-source-pagination' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/installed-source-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-source-pagination' }
+          if ($failures.Count) { throw ('Required native source continuation failed: ' + ($failures -join ', ')) }
       - name: Record required integrated source-suite inventory
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/sync/test_archive.py',
+            'tests/sync/test_crypto.py',
+            'tests/sync/test_crypto_publication.py',
+            'tests/sync/test_vault.py',
+            'tests/sync/test_service.py',
+            'tests/sync/test_service_commit_boundaries.py',
+            'tests/sync/test_cli.py',
+            'tests/sync/test_complete_state.py',
+            'tests/sync/test_current_backup_composition.py',
+            'tests/sync/test_admission.py',
+            'tests/sync/test_state.py',
+            'tests/ui/test_portable_sync.py',
+            'tests/audio/test_recording_controls.py',
+            'tests/search/test_source_pagination.py',
+            'tests/search/test_federated_pagination.py',
+            'tests/audio/test_protected_voice_packages.py',
+            'tests/ui/test_protected_voice_packages.py',
+            'tests/citations/test_streamed_text_attestation.py',
+            'tests/e2e/test_streamed_import_cli.py',
+            'tests/e2e/test_streamed_source_import.py',
+            'tests/ingest/test_streamed_admission.py',
+            'tests/ingest/test_streamed_ingest.py',
+            'tests/ingest/test_streamed_text.py',
+            'tests/reader/test_streamed_source_view.py',
+            'tests/storage/test_streamed_source_backup.py',
+            'tests/ui/test_source_launch.py',
+            'tests/ui/test_streamed_import.py',
+            'tests/audio/test_package_publication.py',
+            'tests/audio/test_voice_reference.py',
+            'tests/ui/test_voice_reference.py',
+            'tests/academic_integration/test_word_fields.py',
+            'tests/academic_integration/test_word_com.py',
+            'tests/ui/test_word_citations.py',
+            'tests/assistant/test_local_tools.py',
+            'tests/assistant/test_state_io.py',
+            'tests/assistant/test_player_tools.py',
+            'tests/assistant/test_book_tools.py',
+            'tests/ui/test_assistant_domain_routes.py',
+            'tests/audio/test_assistant_domain_cli.py',
+            'tests/audio/test_director_resources.py',
+            'tests/audio/test_legacy_owned_process.py',
+            'tests/speech/test_preparation.py',
+            'tests/ui/test_reader_preparation.py',
+            'tests/speech/test_navigation.py',
+            'tests/ui/test_reader_navigation.py',
+            'tests/extract/test_language_detection.py',
+            'tests/extract/test_ocr_language_regions.py',
+            'tests/storage/test_ocr_language_presets.py',
+            'tests/search/test_literal_pagination.py',
+            'tests/e2e/test_search_pagination.py',
+            'tests/ui/test_search_pagination.py',
+            'tests/search/test_literal_catalog_api.py',
+            'tests/search/test_literal_filter.py',
+            'tests/search/test_literal_integrity.py',
+            'tests/search/test_literal_readonly.py',
+            'tests/search/test_literal_scoped.py',
+            'tests/extract/test_automatic_ocr_native.py',
             'tests/packaging/test_prepare_daisy_schemas.py',
             'tests/reader/test_ebook_audio.py',
             'tests/reader/test_ebook_audio_lifecycle.py',
@@ -863,7 +1013,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failures += 'source-desktop' }
             & $env:CARR_PYTHON -B -X utf8 scripts/windows_incremental_backup_smoke.py --output ci-results/source-incremental-backup.json 2>&1 | Tee-Object 'ci-results/source-incremental-backup.txt'
             if ($LASTEXITCODE -ne 0) { $failures += 'source-incremental-backup' }
-            & $env:CARR_PYTHON -B -X utf8 scripts/windows_book_audio_smoke.py --source . --output ci-results/source-book-audio.json 2>&1 | Tee-Object 'ci-results/source-book-audio.txt'
+            & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_book_audio_smoke.py --source . --output ci-results/source-book-audio.json 2>&1 | Tee-Object 'ci-results/source-book-audio.txt'
             if ($LASTEXITCODE -ne 0) { $failures += 'source-book-audio' }
             & $env:CARR_PYTHON -B -X utf8 scripts/windows_audio_conversion_smoke.py --report ci-results/source-conversion-batch.json 2>&1 | Tee-Object 'ci-results/source-conversion-batch.txt'
             if ($LASTEXITCODE -ne 0) { $failures += 'source-conversion-batch' }
@@ -906,7 +1056,7 @@ jobs:
 
       - name: Require source and installed reader editing, spelling, appearance and output controls
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.audio_endpoint.outcome == 'success' }}
-        timeout-minutes: 32
+        timeout-minutes: 38
         run: |
           $failures = @()
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reading_tools_smoke.py --source . --output ci-results/source-reading-tools.json
@@ -934,6 +1084,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failures += 'source-reader-output' }
             & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_player_smoke.py --source . --require-output-device --expected-device-identity ([string]$selected[0].identity) --ffmpeg (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe') --ffprobe (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffprobe.exe') --report ci-results/source-reader-player.json
             if ($LASTEXITCODE -ne 0) { $failures += 'source-reader-player' }
+            & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --source . --expected-device-identity ([string]$selected[0].identity) --output ci-results/source-reader-navigation.json
+            if ($LASTEXITCODE -ne 0) { $failures += 'source-reader-navigation' }
             & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --source . --output ci-results/source-ebook-daisy.json
             if ($LASTEXITCODE -ne 0) { $failures += 'source-ebook-daisy' }
             & $env:CARR_PYTHON -B -X utf8 scripts/windows_recording_monitor_probe.py --device-index $deviceIndex --expected-device-identity ([string]$selected[0].identity) --report ci-results/source-recording-monitor.json
@@ -947,6 +1099,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-reader-output' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_player_smoke.py --require-output-device --expected-device-identity ([string]$selected[0].identity) --ffmpeg (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe') --ffprobe (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffprobe.exe') --report ci-results/installed-reader-player.json
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-reader-player' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --expect-installed --expected-device-identity ([string]$selected[0].identity) --output ci-results/installed-reader-navigation.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reader-navigation' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --expect-installed --output ci-results/installed-ebook-daisy.json
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-ebook-daisy' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_recording_monitor_probe.py --expect-installed --device-index $deviceIndex --expected-device-identity ([string]$selected[0].identity) --report ci-results/installed-recording-monitor.json
@@ -1101,7 +1255,7 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.local_model.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.launcher_build.outcome == 'success' }}
-        timeout-minutes: 65
+        timeout-minutes: 97
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -1252,6 +1406,36 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reading_tools_smoke.py --expect-installed --output ci-results/bundle-reading-tools.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $previousExplicitOcr = $env:CARR_OCR_DIR
+          try {
+            $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+            & $installedPython -I -B -X utf8 scripts/windows_automatic_ocr_smoke.py --expect-installed --report ci-results/bundle-automatic-ocr.json
+            if ($LASTEXITCODE -ne 0) { throw 'bundle automatic OCR controls failed' }
+          } finally { $env:CARR_OCR_DIR = $previousExplicitOcr }
+          & $installedPython -I -B -X utf8 scripts/windows_search_pagination_smoke.py --expect-installed --report ci-results/bundle-search-pagination.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --expect-installed --report ci-results/bundle-reading-preparation.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($style in @('apa', 'chicago-notes')) {
+            & $installedPython -I -B -X utf8 scripts/windows_word_citations_smoke.py --expect-installed --mode modeled --style $style --report (Join-Path 'ci-results' ('bundle-word-' + $style + '.json'))
+            if ($LASTEXITCODE -ne 0) { throw ('bundle Word controls failed: ' + $style) }
+          }
+          & $installedPython -I -B -X utf8 scripts/windows_assistant_domains_smoke.py --expect-installed --report ci-results/bundle-assistant-domains.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle current-reader assistant controls failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_voice_reference_smoke.py --expect-installed --report ci-results/bundle-voice-reference.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle reviewed reference controls failed' }
+          & $installedPython -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted --expect-installed --report ci-results/bundle-portable-sync.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle encrypted portable snapshot controls failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_streamed_import_smoke.py --expect-installed --report ci-results/bundle-streamed-import.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle streamed source intake failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_protected_voice_smoke.py --expect-installed --report ci-results/bundle-protected-voice.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle protected voice controls failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/bundle-source-pagination.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle source continuation failed' }
+          $bundleRecordingFfmpeg = & $installedPython -I -B -X utf8 -c "from carr_library.audio.runtime import activate_bundled_audio_runtime; handle=activate_bundled_audio_runtime(); assert handle is not None; print(handle.directory/'ffmpeg.exe'); handle.close()"
+          if ($LASTEXITCODE -ne 0) { throw 'bundle recording runtime verification failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --ffmpeg $bundleRecordingFfmpeg --expect-installed --report ci-results/bundle-recording-controls.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle native Pause/Resume recording controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
           & $installedPython -I -B -X utf8 scripts/windows_incremental_backup_smoke.py --installed --output ci-results/bundle-incremental-backup.json 2>&1 | Tee-Object 'ci-results/bundle-incremental-backup.txt'
@@ -1280,6 +1464,8 @@ jobs:
           & $installedPython -I -B -X utf8 scripts/windows_reader_output_smoke.py --expect-installed --device-index ([int]$selectedOutput[0].index) --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-output.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reader_player_smoke.py --require-output-device --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-player.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --expect-installed --expected-device-identity ([string]$selectedOutput[0].identity) --output ci-results/bundle-reader-navigation.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --expect-installed --output ci-results/bundle-ebook-daisy.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1371,6 +1557,85 @@ jobs:
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = [
+              'tests/sync/test_archive.py',
+              'tests/sync/test_crypto.py',
+              'tests/sync/test_crypto_publication.py',
+              'tests/sync/test_vault.py',
+              'tests/sync/test_service.py',
+              'tests/sync/test_service_commit_boundaries.py',
+              'tests/sync/test_cli.py',
+              'tests/sync/test_complete_state.py',
+              'tests/sync/test_current_backup_composition.py',
+              'tests/sync/test_admission.py',
+              'tests/sync/test_state.py',
+              'tests/ui/test_portable_sync.py',
+              'tests/audio/test_recording_controls.py',
+              'tests/ui/test_federated_search.py',
+              'tests/search/test_source_pagination.py',
+              'tests/search/test_federated_pagination.py',
+              'tests/audio/test_protected_voice_packages.py',
+              'tests/ui/test_protected_voice_packages.py',
+              'tests/e2e/test_source_file.py',
+              'tests/ui/test_source_open_handler.py',
+              'tests/citations/test_streamed_text_attestation.py',
+              'tests/e2e/test_streamed_import_cli.py',
+              'tests/e2e/test_streamed_source_import.py',
+              'tests/ingest/test_streamed_admission.py',
+              'tests/ingest/test_streamed_ingest.py',
+              'tests/ingest/test_streamed_text.py',
+              'tests/reader/test_streamed_source_view.py',
+              'tests/storage/test_streamed_source_backup.py',
+              'tests/ui/test_source_launch.py',
+              'tests/ui/test_streamed_import.py',
+              'tests/audio/test_package_publication.py',
+              'tests/audio/test_voice_reference.py',
+              'tests/ui/test_voice_reference.py',
+              'tests/academic_integration/test_word_fields.py',
+              'tests/academic_integration/test_word_com.py',
+              'tests/ui/test_word_citations.py',
+              'tests/assistant/test_local_tools.py',
+              'tests/assistant/test_state_io.py',
+              'tests/assistant/test_player_tools.py',
+              'tests/assistant/test_book_tools.py',
+              'tests/ui/test_assistant_domain_routes.py',
+              'tests/audio/test_assistant_domain_cli.py',
+              'tests/audio/test_director_resources.py',
+              'tests/audio/test_legacy_owned_process.py',
+              'tests/speech/test_preparation.py',
+              'tests/ui/test_reader_preparation.py',
+              'tests/audio/test_director_path_identity.py',
+              'tests/audio/test_voices.py',
+              'tests/audio/test_model_voices.py',
+                            'tests/speech/test_navigation.py',
+                            'tests/ui/test_reader_navigation.py',
+                            'tests/extract/test_language_detection.py',
+                            'tests/extract/test_ocr_language_regions.py',
+                            'tests/storage/test_ocr_language_presets.py',
+                            'tests/ui/test_ocr_language_dialog.py',
+                            'tests/ui/test_ocr_selection.py',
+                            'tests/ui/test_ocr_options.py',
+                            'tests/search/test_literal_pagination.py',
+                            'tests/e2e/test_search_pagination.py',
+                            'tests/ui/test_search_pagination.py',
+                            'tests/ui/test_desktop_handlers.py',
+                            'tests/ui/test_desktop_query_jobs.py',
+                            'tests/ui/test_desktop_result_modes.py',
+                            'tests/e2e/test_advanced_research_search.py',
+                            'tests/e2e/test_nested_search_clock_budget.py',
+                            'tests/e2e/test_research_search_cli.py',
+                            'tests/e2e/test_retained_source_search_integrity.py',
+                            'tests/e2e/test_search_deadline.py',
+                            'tests/e2e/test_search_operation_budget.py',
+                            'tests/search/test_advanced_search.py',
+                            'tests/search/test_literal_catalog_api.py',
+                            'tests/search/test_literal_filter.py',
+                            'tests/search/test_literal_integrity.py',
+                            'tests/search/test_literal_long_source.py',
+                            'tests/search/test_literal_readonly.py',
+                            'tests/search/test_literal_scoped.py',
+                            'tests/search/test_literal_unicode_memory.py',
+                            'tests/search/test_literal_v2_composition.py',
+                            'tests/extract/test_automatic_ocr_native.py',
                             'tests/packaging/test_prepare_daisy_schemas.py',
                             'tests/reader/test_ebook_audio.py',
                             'tests/reader/test_ebook_audio_lifecycle.py',

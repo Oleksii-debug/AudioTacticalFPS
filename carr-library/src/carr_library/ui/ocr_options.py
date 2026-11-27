@@ -12,7 +12,9 @@ def config_summary(config):
         profile = 'managed ' + config.model_profile.title() + ' model profile' + (
             '; pinned fast verification' if config.model_policy == POLICY else '')
     names = ', '.join(model_label(code) for code in split_languages(config.languages))
-    return names + '; ' + profile + ('; orientation check on' if config.orientation else '')
+    automatic = ('; automatic language and region review within this selected pool; uncertain results keep the first pass'
+                 if config.automatic_languages else '; explicit manual language choice')
+    return names + '; ' + profile + ('; orientation check on' if config.orientation else '') + automatic
 
 
 def choose_model_config(parent, initial=None, *, preset_root=None):

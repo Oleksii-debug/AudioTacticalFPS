@@ -463,7 +463,8 @@ def test_completed_book_requires_its_retained_private_provenance_on_backup(book,
     assert not (tmp_path / 'missing-provenance').exists()
 
 
-@pytest.mark.parametrize('change', ['index', 'hash', 'range', 'authority'])
+@pytest.mark.parametrize('change', ['index', 'hash', 'range', 'authority',
+    'notice-empty', 'notice-type', 'notice-missing'])
 def test_renderer_refuses_mismatched_book_provenance_before_audio(book, change):
     candidate, ready = prepared(book)
     receipt = candidate.provenance(1)
@@ -473,8 +474,106 @@ def test_renderer_refuses_mismatched_book_provenance_before_audio(book, change):
         receipt['part']['text_sha256'] = '0' * 64
     elif change == 'range':
         receipt['part']['start'] += 1
-    else:
+    elif change == 'authority':
         receipt['notice'] = 'This text grants quotation authority.'
+    elif change == 'notice-empty':
+        receipt['notice'] = ''
+    elif change == 'notice-type':
+        receipt['notice'] = True
+    else:
+        del receipt['notice']
     with pytest.raises(ValueError):
         book.production.run(candidate.job_id(1), source_guard=lambda: receipt)
     assert not book.voices.received and not list(book.output.iterdir())
+
+
+# This helper models only delayed acknowledgement after a real ffprobe child
+# has exited. It never substitutes PCM inspection, process execution or locks.
+from contextlib import contextmanager as _contextmanager
+
+
+@_contextmanager
+def _uncertain_book_probe(e, monkeypatch):
+    from carr_library.audio import cleanup, process
+    owners, release, selected = [], threading.Event(), []
+    stop = process._stop_owned
+
+    def manual(attempt, *, message, callbacks=()):
+        owner = cleanup.CleanupOwner(attempt)
+        for callback in callbacks:
+            owner.add_quiescent_callback(callback)
+        owners.append(owner)
+        return cleanup.AudioCleanupPending(message, cleanup_owner=owner)
+
+    def uncertain(child):
+        assert stop(child) is True
+        args = tuple(map(str, child.args))
+        if (not selected and len(e.voices.received) == 2
+                and '-show_entries' in args
+                and Path(args[-1]).parent == e.production.cache):
+            selected.append(child)
+        if selected and child is selected[0] and not release.is_set():
+            raise TimeoutError('Modeled delayed exit acknowledgement after actual ffprobe')
+        return True
+
+    with monkeypatch.context() as patch:
+        patch.setattr(cleanup, 'pending_cleanup', manual)
+        patch.setattr(process, '_stop_owned', uncertain)
+        try:
+            yield owners, release, selected
+        finally:
+            release.set()
+            for owner in owners:
+                assert owner.close()
+
+
+@pytest.mark.parametrize('masked_journal', [False, True], ids=['direct-owner', 'failed-status-context'])
+def test_book_run_retains_same_plan_and_production_locks_until_native_owner_is_quiet(
+        book, monkeypatch, masked_journal):
+    from carr_library.audio.cleanup import AudioCleanupPending, _pending_owners
+    from carr_library.operations._locks import NativeLock
+
+    require_audio()
+    e = book
+    candidate, ready = prepared(e)
+    original = e.app.assets.resolve(e.imported['asset']).read_bytes()
+    write = e.production._save
+    if masked_journal:
+        def failed_status(state):
+            if state['status'] == 'failed':
+                raise OSError('Modeled failed status save during native cleanup')
+            return write(state)
+        monkeypatch.setattr(e.production, '_save', failed_status)
+    with _uncertain_book_probe(e, monkeypatch) as (owners, release, selected):
+        with pytest.raises((AudioCleanupPending, OSError)) as caught:
+            e.service.run(candidate.id, e.output, approval=ready.fingerprint)
+        assert selected and selected[0].poll() == 0 and _pending_owners(caught.value)
+        assert set(_pending_owners(caught.value)) == set(owners)
+        staged = Path(selected[0].args[-1])
+        with wave.open(str(staged), 'rb') as stream:
+            assert stream.getnframes() == 4800
+        first = e.production.get(candidate.job_id(1))
+        assert first['status'] == 'complete'
+        accepted = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+                    for row in first['artifacts']}
+        assert not Path(ready.destinations[1]).exists()
+        assert len(e.production.broker.snapshot()['leases']) == 1
+        locks = (NativeLock(e.service.plans / ('.book-' + candidate.id + '.lock')),
+                 NativeLock(e.production.jobs_root / candidate.job_id(2) / '.render.lock'))
+        assert all(lock.acquire() is False for lock in locks)
+        with pytest.raises(RuntimeError, match='already being changed'):
+            e.service.run(candidate.id, e.output, approval=ready.fingerprint)
+        assert len(e.voices.received) == 2 and staged.is_file()
+        release.set()
+        assert all(owner.close() for owner in owners)
+        assert not e.production.broker.snapshot()['leases']
+        for lock in locks:
+            assert lock.acquire()
+            lock.release()
+        monkeypatch.setattr(e.production, '_save', write)
+        done = e.service.run(candidate.id, e.output, approval=ready.fingerprint)
+        assert all(row['status'] == 'complete' for row in done)
+        assert len(e.voices.received) == 3  # Only the unaccepted second part reruns.
+        assert accepted == {path: sha256(Path(path).read_bytes()).hexdigest() for path in accepted}
+        assert e.app.assets.resolve(e.imported['asset']).read_bytes() == original
+        assert not e.production.broker.snapshot()['leases']

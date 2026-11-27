@@ -349,3 +349,134 @@ def test_resealed_monitored_retake_cannot_bypass_its_exact_retained_parent(
     with pytest.raises((ValueError, RestoreError), match='retake.*identity'):
         restore_backup(backup, target, checksum)
     assert not target.exists()
+
+
+def _segmented(folder, value):
+    """Bind Pause/Resume declarations to the fixture's actual retained PCM."""
+    with wave.open(str(folder / value['filename']), 'rb') as reader:
+        frames = reader.getnframes()
+        width = reader.getnchannels() * reader.getsampwidth()
+        pcm = reader.readframes(frames)
+    assert len(pcm) == frames * width
+    first = frames // 3
+    changed = {**value, 'schema': 'carr-recording/4',
+        'timeline': 'Retained PCM frames only; paused wall time is omitted. Review joins before use.',
+        'segments': [
+            {'start_frame': 0, 'frames': first, 'pcm_sha256': sha256(pcm[:first * width]).hexdigest(),
+             'ended_by': 'paused'},
+            {'start_frame': first, 'frames': frames - first,
+             'pcm_sha256': sha256(pcm[first * width:]).hexdigest(), 'ended_by': 'stopped'}]}
+    atomic_json(folder / (value['id'] + '.json'), changed, replace=True)
+    return changed
+
+
+@pytest.mark.parametrize('shape', ['composite', 'flat'])
+@pytest.mark.parametrize('monitored', [False, True], ids=['dry', 'monitored'])
+def test_segmented_retake_round_trip_preserves_exact_pcm_and_passive_lineage(
+        library, tmp_path, monkeypatch, shape, monitored):
+    app, _, folder = library
+    first = _record(folder, 'a' * 32)
+    second = _record(folder, 'b' * 32, previous=first)
+    if monitored:
+        second = _monitored(folder, second)
+    second = _segmented(folder, second)
+    captured = {path.name: path.read_bytes() for path in folder.iterdir() if path.is_file()}
+    monkeypatch.setattr(RecordingService, '_runtime',
+                        lambda *_a, **_k: pytest.fail('Backup or restore activated a recording runtime.'))
+    backup = tmp_path / 'backup'
+    manifest, checksum = _backup(app, backup, shape)
+    root = restore_backup(backup, tmp_path / 'restored', checksum)
+    actual = RecordingService(root).get(second['id'])
+    assert actual == {**second, 'path': str(root / recording_backup.DIRECTORY / second['filename'])}
+    assert {path.name: path.read_bytes() for path in (root / recording_backup.DIRECTORY).iterdir()
+            if path.is_file()} == captured
+    assert actual['retake'] == {'origin_id': first['id'], 'previous_id': first['id'],
+                               'previous_sha256': first['audio']['sha256']}
+    assert ('monitoring' in actual) is monitored
+    with wave.open(actual['path'], 'rb') as reader:
+        for segment in actual['segments']:
+            assert reader.tell() == segment['start_frame']
+            data = reader.readframes(segment['frames'])
+            assert sha256(data).hexdigest() == segment['pcm_sha256']
+        assert reader.tell() == actual['audio']['frames'] and reader.readframes(1) == b''
+    assert manifest['schema_version'] == 6 and not (root / INCOMPLETE).exists()
+
+
+@pytest.mark.parametrize('shape', ['composite', 'flat'])
+@pytest.mark.parametrize('change', ['frame-hash', 'overlap', 'boolean-frames', 'uncovered', 'foreign-parent'],
+                         ids=str)
+def test_resealed_segment_or_parent_mutation_rejects_even_with_unchanged_whole_pcm(
+        library, tmp_path, shape, change):
+    app, _, folder = library
+    first = _record(folder, 'a' * 32)
+    second = _segmented(folder, _record(folder, 'b' * 32, previous=first))
+    backup = tmp_path / 'backup'
+    manifest, _ = _backup(app, backup, shape)
+    changed = json.loads(_raw(second))
+    if change == 'frame-hash':
+        changed['segments'][0]['pcm_sha256'] = 'f' * 64
+    elif change == 'overlap':
+        changed['segments'][1]['start_frame'] -= 1
+    elif change == 'boolean-frames':
+        changed['segments'][0]['frames'] = True
+    elif change == 'uncovered':
+        changed['segments'][1]['frames'] -= 1
+    else:
+        changed['retake']['previous_id'] = 'c' * 32
+    checksum = _reseal_entry(backup, manifest, recording_backup.PREFIX + second['id'] + '.json',
+                            _raw(changed))
+    # The generic manifest and whole-file audio receipt still match. The
+    # additional rejection must come from the typed frame/retake contract.
+    assert RecordingService._audio(backup / recording_backup.PREFIX / second['filename'],
+                                   RecordingOptions(**second['limits']), lambda: False) == second['audio']
+    target = tmp_path / 'restored'
+    with pytest.raises((ValueError, RestoreError), match='segment|retake'):
+        restore_backup(backup, target, checksum)
+    assert not target.exists()
+
+
+def test_cancellation_inside_actual_segment_scan_prevents_snapshot_publication(
+        library, tmp_path, monkeypatch):
+    app, _, folder = library
+    value = _segmented(folder, _record(folder, 'a' * 32))
+    measured = RecordingService._audio
+    verify = recording_backup.verify_recording_segments
+    readframes = wave.Wave_read.readframes
+    verified, reads, checks = [], [], []
+    stopped = False
+    scanning = False
+
+    def measured_whole(path, options, cancelled):
+        result = measured(path, options, cancelled)
+        verified.append(Path(path).name)
+        return result
+
+    def observed_read(reader, count):
+        if scanning:
+            reads.append(count)
+        return readframes(reader, count)
+
+    def cancelled_during_segments(path, receipt, *, cancelled):
+        nonlocal scanning, stopped
+        assert verified == [value['filename']]
+        def checked():
+            nonlocal stopped
+            checks.append(len(reads))
+            if len(checks) == 3:
+                stopped = True
+            return cancelled()
+        scanning = True
+        try:
+            return verify(path, receipt, cancelled=checked)
+        finally:
+            scanning = False
+
+    monkeypatch.setattr(RecordingService, '_audio', staticmethod(measured_whole))
+    monkeypatch.setattr(wave.Wave_read, 'readframes', observed_read)
+    monkeypatch.setattr(recording_backup, 'verify_recording_segments', cancelled_during_segments)
+    target = tmp_path / 'backup'
+    with pytest.raises(InterruptedError, match='Recording snapshot verification was cancelled'):
+        create_backup(app, target, cancelled=lambda: stopped)
+    assert stopped and checks == [0, 0, 1]
+    assert reads == [value['segments'][0]['frames']]
+    assert not target.exists()

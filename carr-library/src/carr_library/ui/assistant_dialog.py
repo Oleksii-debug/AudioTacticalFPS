@@ -9,7 +9,7 @@ from uuid import uuid4
 from ..durable_state import atomic_bytes
 
 
-def create_assistant_dialog(frame, *, wx_module=None):
+def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
@@ -17,11 +17,16 @@ def create_assistant_dialog(frame, *, wx_module=None):
     from ..assistant.workflow_access import WorkflowAccess, workflow_name
     from ..studio.render import ProductionService
     library, active_scope = frame.library, frame.active
+    bridge = None
+    if reader_owner is not None:
+        from ..assistant.player_tools import LivePlayerBridge
+        bridge = LivePlayerBridge(library, getattr(frame, 'desktop_integration', None), reader_owner)
     production = ProductionService(frame.library.root / 'state' / 'studio')
-    service = AssistantService(frame.library, production=production.assistant_callback)
+    service = AssistantService(frame.library, production=production.assistant_callback, player=bridge)
     workflows = WorkflowAccess(service)
     dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    dialog.assistant_player_bridge = bridge
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     cancel = threading.Event()
@@ -166,7 +171,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
             def accept(candidate, source_label):
                 current_preview()
-                if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
+                if any(step.tool in ('audio.produce', 'audio.render') and not step.arguments.get('voice_ids') and 'script' not in step.arguments
                        for step in candidate.steps):
                     def discover():
                         current_preview(check_inputs=False)
@@ -191,7 +196,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                         if not 0 <= selected < len(voices):
                             raise ValueError('Install and choose a local voice before narration.')
                         steps = tuple(Step(item.tool, {**item.arguments, 'voice_ids': [voices[selected].id]})
-                            if item.tool == 'audio.produce' and not item.arguments.get('voice_ids')
+                            if item.tool in ('audio.produce', 'audio.render') and not item.arguments.get('voice_ids')
                             and 'script' not in item.arguments else item for item in candidate.steps)
                         selected_plan = Plan(scope, steps, candidate.summary)
                         service.validate(selected_plan)
@@ -410,6 +415,9 @@ def create_assistant_dialog(frame, *, wx_module=None):
         if not alive:
             return
         cancel.set()
+        selected_player = getattr(dialog, 'assistant_player_bridge', None)
+        if selected_player is not None:
+            selected_player.close()  # Withdraw queued authority; the reader owns playback.
         # The running service observes this same cancellation token and owns
         # its checkpoint. Closing must not block on a second filesystem review.
         alive = False
@@ -454,9 +462,9 @@ def create_assistant_dialog(frame, *, wx_module=None):
     return dialog
 
 
-def show_assistant(frame, *, on_ready=None):
+def show_assistant(frame, *, on_ready=None, reader_owner=None):
     import wx
-    dialog = create_assistant_dialog(frame)
+    dialog = create_assistant_dialog(frame, reader_owner=reader_owner)
     try:
         if on_ready is not None:
             wx.CallAfter(on_ready, dialog)

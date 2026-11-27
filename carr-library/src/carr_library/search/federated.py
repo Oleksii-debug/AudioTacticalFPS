@@ -234,6 +234,11 @@ class FederatedSearch:
         finally:
             self._search_lock.release()
 
+    def search_page(self, workspace_ids, query, **options):
+        """Continue a bounded page over explicitly selected libraries."""
+        from .federated_pages import search_page
+        return search_page(self, workspace_ids, query, **options)
+
     def _selected(self, hit, *, verified=False):
         self._check_host()
         current = self._completed

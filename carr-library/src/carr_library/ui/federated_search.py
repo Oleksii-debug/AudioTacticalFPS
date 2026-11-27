@@ -28,10 +28,14 @@ class SearchOptions:
     edition: str | None = None
     limit_per_library: int = 50
 
-    def validate(self):
+    def validate(self, *, paged=False):
+        from ..search.federated_pages import MAX_SELECTED_LIBRARIES
+        if type(paged) is not bool:
+            raise ValueError('Choose an explicit search-page policy.')
+        maximum = MAX_SELECTED_LIBRARIES if paged else 20
         if (not isinstance(self.workspaces, tuple) or not self.workspaces
-                or len(self.workspaces) > 20 or len(set(self.workspaces)) != len(self.workspaces)):
-            raise ValueError('Explicitly check between 1 and 20 libraries to search.')
+                or len(self.workspaces) > maximum or len(set(self.workspaces)) != len(self.workspaces)):
+            raise ValueError(f'Explicitly check between 1 and {maximum} libraries to search.')
         if not isinstance(self.query, str) or not self.query.strip():
             raise ValueError('Enter a search query.')
         if self.mode not in MODES or self.result_mode not in PRESENTATIONS:
@@ -94,6 +98,7 @@ class SearchCenter:
         self.service = service or FederatedSearch(self.library)
         self.dialogs = dialogs or NativeDialogs()
         self.rows = ()
+        self.next_cursor, self.page_options = None, None
         self.epoch = 0
         self.running = False
         self.alive = True
@@ -123,8 +128,11 @@ class SearchCenter:
     def _clear_rows(self):
         self.epoch += 1
         self.rows = ()
+        self.next_cursor, self.page_options = None, None
         if self.alive:
             self.view.clear_results()
+            if hasattr(self.view, 'set_next_page'):
+                self.view.set_next_page(False)
 
     def options_changed(self):
         self._clear_rows()
@@ -267,6 +275,66 @@ class SearchCenter:
         except Exception as exc:
             self._report_error(exc)
 
+    def search_page(self, options, *, continuing=False):
+        """One bounded page; next is explicit even when this window has no hits."""
+        try:
+            self._ready()
+            options.validate(paged=True)
+            cursor = None
+            if continuing:
+                if self.next_cursor is None or options != self.page_options:
+                    raise ValueError('Search options changed or no continuation is available. Choose Search.')
+                cursor = self.next_cursor
+            self._clear_rows()
+            epoch, notices = self.epoch, []
+
+            def done(page):
+                session = page.session
+                if (tuple(workspace for workspace, _ in session.collections) != options.workspaces
+                        or any(group.workspace not in options.workspaces for group in session.groups)):
+                    raise ValueError('The completed page differs from the selected libraries.')
+                self.rows = session.hits
+                self.next_cursor, self.page_options = page.next_cursor, options
+                labels = scope_labels((group.workspace, None, group.library_name) for group in session.groups)
+                names = dict(zip(session.workspaces, labels))
+                self.view.show_results(tuple(
+                    f'{number}. {result_label(hit, names[hit.workspace])}'
+                    for number, hit in enumerate(self.rows, 1)))
+                counts = '; '.join(f'{names[group.workspace]}: {len(group.hits)}' for group in session.groups)
+                text = (f'{len(self.rows)} results on this page. {counts}. '
+                        f'Inspected {page.scanned_segments} source segments in {page.scanned_libraries} '
+                        f'of {page.selected_libraries} explicitly selected libraries. '
+                        f'At most {options.limit_per_library} results per visited library on this page. '
+                        + page.ordering)
+                text += (' More source windows remain; choose Next results even if this page has no matches.'
+                         if page.next_cursor is not None else ' This selected search is complete.')
+                if any(hit.result.verified is not True for hit in self.rows):
+                    text += ' Unverified extraction is labelled and cannot be saved as a quotation.'
+                if notices:
+                    text += '\n' + '\n'.join(dict.fromkeys(notices))
+                if hasattr(self.view, 'set_next_page'):
+                    self.view.set_next_page(page.next_cursor is not None)
+                self.view.report(text, focus=not self.rows)
+                if self.rows:
+                    self.view.select(0)
+                    self.selection_changed()
+                    self.view.focus_results()
+
+            self._job('Searching a bounded page of selected libraries', lambda: self.service.search_page(
+                options.workspaces, options.query.strip(), mode=options.mode,
+                result_mode=options.result_mode, title=options.title, author=options.author,
+                language=options.language, edition=options.edition,
+                limit_per_library=options.limit_per_library, cursor=cursor,
+                cancelled=self._cancelled, on_status=notices.append), done, epoch=epoch)
+        except Exception as exc:
+            self._report_error(exc)
+
+    def next_page(self):
+        if self.page_options is None:
+            self._report_error(ValueError('Choose Search before requesting another page.'))
+            return
+        self.search_page(self.page_options, continuing=True)
+
     def context(self):
         try:
             hit = self.selected()
@@ -402,12 +470,14 @@ class NativeSearchCenter:
         self.wx = wx
         self.window = self.parent = wx.Dialog(frame, title='Research Search Center', size=(980, 850))
         self._window_alive = True
+        self._window_id = self.window.GetId()
         self._deferred_destroy = False
         self.window.SetMinSize((800, 700))
         self.libraries = tuple(libraries)
         layout = wx.BoxSizer(wx.VERTICAL)
         explanation = wx.StaticText(self.window, label=
             'Check the libraries to search. Space checks or unchecks a focused library. '
+            'Each page visits at most 20 libraries; Next results continues through the checked scope. '
             'Results retain their source library; quotations can be saved only to its topics.')
         explanation.Wrap(920)
         layout.Add(explanation, 0, wx.EXPAND | wx.ALL, 8)
@@ -444,8 +514,11 @@ class NativeSearchCenter:
         layout.Add(form, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         commands = wx.BoxSizer(wx.HORIZONTAL)
         self.search_button = wx.Button(self.window, label='&Search')
+        self.next_button = wx.Button(self.window, label='&Next results')
+        self.next_button.SetName('Next bounded selected-library results')
         self.cancel_button = wx.Button(self.window, label='Cancel &operation')
         commands.Add(self.search_button, 0, wx.ALL, 5)
+        commands.Add(self.next_button, 0, wx.ALL, 5)
         commands.Add(self.cancel_button, 0, wx.ALL, 5)
         layout.Add(commands, 0, wx.EXPAND)
         layout.Add(wx.StaticText(self.window, label='Results — grouped by source library'),
@@ -485,6 +558,7 @@ class NativeSearchCenter:
         wx, controller = self.wx, self.controller
         self.search_button.Bind(wx.EVT_BUTTON, self._search)
         self.query.Bind(wx.EVT_TEXT_ENTER, self._search)
+        self.next_button.Bind(wx.EVT_BUTTON, lambda event: controller.next_page())
         self.cancel_button.Bind(wx.EVT_BUTTON, lambda event: controller.cancel())
         self.context_button.Bind(wx.EVT_BUTTON, lambda event: controller.context())
         self.quote_button.Bind(wx.EVT_BUTTON, lambda event: controller.copy('quote'))
@@ -503,7 +577,7 @@ class NativeSearchCenter:
         self.window.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.window:
+        if event.GetId() == self._window_id:
             self._window_alive = False
             self._deferred_destroy = False
             self.controller.dispose()
@@ -523,7 +597,7 @@ class NativeSearchCenter:
                 mode=MODES[indices[0]], result_mode=PRESENTATIONS[indices[1]],
                 limit_per_library=LIMITS[indices[2]],
                 **{key: control.GetValue().strip() or None for key, control in self.filters.items()})
-            self.controller.search(options)
+            self.controller.search_page(options)
         except Exception as exc:
             self.report(str(exc), focus=True)
 
@@ -547,11 +621,15 @@ class NativeSearchCenter:
                         self.close_button):
             control.Enable(not busy)
         self.cancel_button.Enable(busy)
+        self.next_button.Enable(not busy and self.controller.next_cursor is not None)
         if busy:
             for control in (self.context_button, self.quote_button, self.citation_button, self.save_button):
                 control.Disable()
         else:
             self.controller.selection_changed()
+
+    def set_next_page(self, available):
+        self.next_button.Enable(bool(available) and not self.controller.running)
 
     def report(self, text, *, focus=False):
         self.status.ChangeValue(text)
@@ -631,6 +709,12 @@ class FederatedSearchActions:
             frame.report('Wait for the current operation before opening Research Search Center.')
             return
         library, active = frame.library, frame.active
+        frame_id, alive = frame.GetId(), [True]
+        def owner_destroyed(event):
+            if event.GetId() == frame_id:
+                alive[0] = False
+            event.Skip()
+        frame.Bind(wx.EVT_WINDOW_DESTROY, owner_destroyed)
         focus = wx.Window.FindFocus()
         try:
             libraries = library.workspaces()
@@ -639,13 +723,25 @@ class FederatedSearchActions:
                 return
             NativeSearchCenter(frame, libraries).show()
         except Exception as exc:
-            frame.report(f'Research Search Center could not open: {exc}')
+            if alive[0] and not getattr(frame, '_closing', False):
+                try:
+                    frame.report(f'Research Search Center could not open: {exc}')
+                except RuntimeError:
+                    pass
         finally:
-            if frame.library is library and frame.active == active and not frame.working:
+            if alive[0]:
+                try:
+                    frame.Unbind(wx.EVT_WINDOW_DESTROY, handler=owner_destroyed)
+                except RuntimeError:
+                    alive[0] = False
+            if (alive[0] and not getattr(frame, '_closing', False)
+                    and frame.library is library and frame.active == active and not frame.working):
                 try:
                     (focus or frame.status).SetFocus()
                 except (AttributeError, RuntimeError):
-                    frame.status.SetFocus()
+                    # A previous focus target can be destroyed during the modal.
+                    # Do not retry through another possibly deleted wrapper.
+                    pass
 
 
 def install_federated_search_actions(frame):

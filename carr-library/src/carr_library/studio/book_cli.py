@@ -8,7 +8,6 @@ import sys
 import threading
 
 from ..durable_state import atomic_json, encode, local_path, read_json, regular
-from ..installation_lease import installed_entrypoint
 from .book_voice import select_voice
 from .book_audio import BookAudioService, BookPlan, SplitOptions, capture_plan
 from .book_batch import BookBatch, BookBatchService, MAX_BOOKS, select_books, validate_plans
@@ -100,7 +99,6 @@ def review_summary(batch, plans, review):
                 **asdict(book)} for plan, book in zip(plans, review.books)]}
 
 
-@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Reviewed multi-book audio using existing local Studio jobs')
     parser.add_argument('--data-dir', type=Path)

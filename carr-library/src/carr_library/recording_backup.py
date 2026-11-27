@@ -11,7 +11,7 @@ import re
 
 from .durable_state import local_path, regular, read_json
 from .audio.recording import (AudioCancelled, RecordingService, RecordingOptions,
-                             validate_recording_receipt)
+                             validate_recording_receipt, verify_recording_segments)
 
 DIRECTORY = 'state/studio/recordings'
 PREFIX = DIRECTORY + '/'
@@ -157,10 +157,11 @@ def validate_state_root(state_root, *, cancelled=lambda: False):
             raise ValueError('A recording receipt lost its retained original WAV.')
         try:
             measured = RecordingService._audio(output, RecordingOptions(**value['limits']), cancelled)
+            if measured != value['audio']:
+                raise ValueError('A recording receipt differs from its retained original PCM.')
+            verify_recording_segments(output, value, cancelled=cancelled)
         except AudioCancelled:
             raise InterruptedError('Recording snapshot verification was cancelled.') from None
-        if measured != value['audio']:
-            raise ValueError('A recording receipt differs from its retained original PCM.')
         receipts[value['id']] = value
     parents = {}
     for identity, value in receipts.items():

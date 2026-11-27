@@ -173,3 +173,40 @@ def test_failed_prepare_has_an_explicit_failure_receipt_without_success_claim(tm
     value = json.loads(report.read_bytes())
     assert value['status'] == 'FAIL' and 'verification failed' in value['error']
     assert not target.exists()
+
+
+_acceptance_spec = importlib.util.spec_from_file_location('daisy_schema_acceptance_under_test',
+    Path(__file__).resolve().parents[2] / 'scripts' / 'daisy_schema_acceptance.py')
+acceptance = importlib.util.module_from_spec(_acceptance_spec)
+_acceptance_spec.loader.exec_module(acceptance)
+
+
+@pytest.mark.parametrize('short_file_uri', [False, True])
+def test_real_lxml_reads_only_the_reviewed_local_schema_uri(tmp_path, short_file_uri):
+    from lxml import etree
+    folder = tmp_path / 'selected schemas'; folder.mkdir()
+    schema = folder / 'xhtml-special.ent'
+    schema.write_bytes(b'<!ELEMENT root EMPTY>')
+    uri = schema.as_uri()
+    if short_file_uri:
+        uri = uri.replace('file:///', 'file:/', 1)
+    parser = etree.XMLParser(load_dtd=True, dtd_validation=True, no_network=True,
+                             resolve_entities=False, huge_tree=False)
+    parser.resolvers.add(acceptance._schema_resolver({schema.name: schema}, etree))
+    document = etree.fromstring(('<!DOCTYPE root SYSTEM "' + uri + '"><root/>').encode(), parser)
+    assert document.tag == 'root'
+
+
+@pytest.mark.parametrize('unapproved', [
+    'file://other-host/xhtml-special.ent',
+    'https://unapproved.invalid/xhtml-special.ent',
+    'http://www.w3.org/TR/xhtml1/DTD/xhtml-special.ent?different=1',
+    'file:/unreviewed/xhtml-special.ent',
+])
+def test_schema_resolver_does_not_admit_matching_basenames_or_uri_authorities(tmp_path, unapproved):
+    from lxml import etree
+    schema = tmp_path / 'xhtml-special.ent'
+    schema.write_bytes(b'<!ELEMENT root EMPTY>')
+    resolver = acceptance._schema_resolver({schema.name: schema}, etree)
+    with pytest.raises(ValueError, match='unapproved resource'):
+        resolver.resolve(unapproved, None, None)

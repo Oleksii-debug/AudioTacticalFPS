@@ -403,10 +403,12 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     env['reader_tabs'] = None
     env['dialog_destroyed'] = False
     env['unregister_save'] = Mock()
+    env['detach_reader'] = Mock()
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['unregister_save'].assert_called_once_with()
+    env['detach_reader'].assert_called_once_with()
     env['keyboard'].close.assert_called_once_with()
     env['output_controls'].close.assert_called_once_with()
     env['transport'].close.assert_called_once_with(stop=False)
