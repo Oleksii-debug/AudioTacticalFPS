@@ -6,6 +6,7 @@ on:
     paths:
       - carr-library/tests/transcription/test_completion_boundary.py
       - carr-library/tests/transcription/test_typed_backup.py
+      - carr-library/tests/transcription/fixtures/**
       - carr-library/src/carr_library/transcription/**
       - carr-library/src/carr_library/operations/process.py
       - .github/workflows/carr-asr-completion-boundary.yml
@@ -16,8 +17,17 @@ permissions:
 
 jobs:
   actual-protocol:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    name: Actual producer and immutable receipts (${{ matrix.os }}, Python ${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python: '3.12'
+          - os: windows-2022
+            python: '3.11'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
     defaults:
       run:
         shell: bash
@@ -34,7 +44,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
           architecture: x64
       - name: Install bounded test dependencies
         run: |
