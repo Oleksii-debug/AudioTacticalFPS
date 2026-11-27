@@ -100,12 +100,22 @@ def test_actual_source_change_cannot_be_recorded_as_a_successful_measurement(ben
     assert source.exists()
 
 
-def test_actual_search_deadline_is_reported_without_fabricating_a_fast_result(benchmark, tmp_path):
+def test_actual_search_deadline_is_reported_without_fabricating_a_fast_result(benchmark, tmp_path, monkeypatch):
+    from carr_library import application
     case = tmp_path / 'case'
     corpus = benchmark._page_build(case, benchmark._page_recipe(4, 128, 4, 1))
+    # Expire the real application budget deterministically, independently of
+    # host clock resolution. Corpus creation and search/deadline code stay real.
+    ticks = []
+    def advancing_clock():
+        value = 100.0 + len(ticks)
+        ticks.append(value)
+        return value
+    monkeypatch.setattr(application, 'monotonic', advancing_clock)
     measured = benchmark._page_measure(case, corpus, 'phrase', dict(
         repeats=2, pages_per_trial=2, result_limit=2, page_budget=2,
         character_budget=1000, search_timeout=1e-12))
+    assert len(ticks) >= 4, 'Both real search budgets must consult the controlled clock.'
     assert measured['search_timeouts'] == 2
     assert measured['sampling_complete_trials'] == 0
     assert measured['first_page']['samples'] == 0
