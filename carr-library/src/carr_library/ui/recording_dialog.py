@@ -74,6 +74,7 @@ def show_recording(frame, *, on_selected=None):
                  ('start', 'Start recording')),
                 (('pause', 'Pause microphone recording'), ('resume', 'Resume microphone recording')),
                 (('stop', 'Stop and save recording'), ('cancel', 'Cancel unfinished recording')),
+                (('retake', 'Record another take of selected recording'),),
                 (('preview', 'Listen to saved recording'), ('stop_preview', 'Stop playback'),
                  ('use', 'Use selected recording'), ('close', 'Close'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
@@ -144,6 +145,8 @@ def show_recording(frame, *, on_selected=None):
         buttons['refresh_monitor'].Enable(not busy)
         monitor_ready = not monitoring.GetValue() or 0 <= monitor_output.GetSelection() < len(monitor_outputs)
         buttons['start'].Enable(not busy and monitor_ready and 0 <= microphone.GetSelection() < len(devices))
+        buttons['retake'].Enable(not busy and monitor_ready
+            and 0 <= microphone.GetSelection() < len(devices) and 0 <= saved.GetSelection() < len(records))
         buttons['pause'].Enable(busy and capture_phase == 'recording' and not paused.is_set()
                                 and not stopped.is_set() and not cancelled.is_set())
         buttons['resume'].Enable(busy and capture_phase == 'paused' and paused.is_set()
@@ -217,6 +220,8 @@ def show_recording(frame, *, on_selected=None):
                 f"{audio['sample_rate']} Hz; {audio['channels']} channel(s).\n{value['path']}\n"
                 'Receipt: ' + value.get('receipt_status', value.get('status', 'complete'))
                 + '. Playback and selection verify the retained bytes before use.'
+                + ('\nAnother take of ' + value['retake_of']['id']
+                   + '; the original recording is preserved.' if value.get('retake_of') else '')
                 + ('\n' + '\n'.join(value.get('warnings', ())) if value.get('warnings') else ''))
         controls()
 
@@ -225,7 +230,9 @@ def show_recording(frame, *, on_selected=None):
         if not alive:
             return
         records = tuple(values)
-        saved.SetItems([f"{row['title']} ({row['created'][:19]})" for row in records])
+        saved.SetItems([f"{row['title']} ({row['created'][:19]})"
+            + (' — another take of ' + row['retake_of']['id'][:8] if row.get('retake_of') else '')
+            for row in records])
         selected = next((index for index, row in enumerate(records) if row['id'] == select_id), wx.NOT_FOUND)
         saved.SetSelection(selected)
         display_record()
@@ -330,7 +337,7 @@ def show_recording(frame, *, on_selected=None):
         run(lambda: service.monitoring_outputs(cancelled=cancelled.is_set), complete,
             'Listing monitoring outputs without playing audio')
 
-    def start(event=None):
+    def start(event=None, *, retake_of=None):
         nonlocal busy, generation, holds, capture_phase
         if not alive:
             return
@@ -422,11 +429,14 @@ def show_recording(frame, *, on_selected=None):
                     return service.capture(device_id, title=requested_title, options=options,
                         cancelled=cancelled.is_set, stop_requested=stopped.is_set,
                         progress=report, pause_requested=paused.is_set,
-                        state_changed=state_changed, monitor_output=output)
+                        state_changed=state_changed, monitor_output=output, retake_of=retake_of)
 
                 def complete(value):
                     show_records((*records, value), value['id'])
                     message = 'Saved and verified. The recording is retained as a new Studio input. Review pause joins before use.'
+                    if value.get('retake_of'):
+                        message = ('Saved and verified. Another take was created; the original recording and '
+                                   'Studio selection are unchanged. Choose Use selected recording to attach it.')
                     if value.get('warnings'):
                         message += '\n' + '\n'.join(value['warnings'])
                     report(message)
@@ -438,6 +448,20 @@ def show_recording(frame, *, on_selected=None):
             release_holds()
             controls()
             report(str(exc))
+
+    def retake(event=None):
+        if not alive or busy:
+            return
+        if frame.library is not library:
+            report('The library folder changed. Reopen recording before making another take.')
+            return
+        index = saved.GetSelection()
+        if not 0 <= index < len(records):
+            report('Select a saved recording before making another take.')
+            return
+        # Capture the chosen identity on the UI thread. The service verifies
+        # its real retained PCM on the existing capture executor before opening.
+        start(retake_of=records[index]['id'])
 
     def preview(event=None):
         if not alive:
@@ -542,7 +566,7 @@ def show_recording(frame, *, on_selected=None):
             controls()
 
     for key, callback in (('refresh', refresh), ('refresh_monitor', refresh_monitor),
-            ('start', start), ('stop', stop_recording), ('pause', pause_recording), ('resume', resume_recording),
+            ('start', start), ('retake', retake), ('stop', stop_recording), ('pause', pause_recording), ('resume', resume_recording),
             ('cancel', cancel_recording), ('preview', preview), ('stop_preview', stop_playback),
             ('use', use), ('close', close)):
         buttons[key].Bind(wx.EVT_BUTTON, callback)

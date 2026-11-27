@@ -472,3 +472,236 @@ def test_pending_process_and_monitor_keep_one_combined_owner_until_both_confirm_
             assert owner.quiescent and process_owner.quiescent
     assert not list(capture.service.root.glob('.pending-*'))
     assert not capture.service._broker.snapshot()['leases']
+
+
+def _retake_saved(capture, *, controlled=False):
+    options = replace(capture.options, max_seconds=1)
+    arguments = {'pause_requested': lambda: False} if controlled else {}
+    result = capture.service.capture(capture.device.id, options=options, **arguments)
+    receipt = capture.service.root / (result['id'] + '.json')
+    path = Path(result['path'])
+    info = path.stat()
+    return result, path.read_bytes(), receipt.read_bytes(), (info.st_dev, info.st_ino)
+
+
+def _assert_original_take(capture, original, audio, receipt, identity):
+    path = Path(original['path'])
+    info = path.stat()
+    assert path.read_bytes() == audio and (info.st_dev, info.st_ino) == identity
+    assert (capture.service.root / (original['id'] + '.json')).read_bytes() == receipt
+    assert capture.service.get(original['id']) == original
+
+
+@pytest.mark.parametrize('old_controlled,new_controlled', [(False, False), (False, True), (True, False), (True, True)])
+def test_actual_retake_is_a_distinct_verified_capture_and_never_replaces_original(capture, monkeypatch,
+                                                                              old_controlled, new_controlled):
+    original, audio, receipt, identity = _retake_saved(capture, controlled=old_controlled)
+    monkeypatch.setattr(capture.service, '_input_arguments', lambda selected: [
+        '-re', '-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=24000'])
+    arguments = {'pause_requested': lambda: False} if new_controlled else {}
+    result = capture.service.capture(capture.device.id, title='Explicit new take',
+        options=replace(capture.options, max_seconds=1), retake_of=original['id'], **arguments)
+    assert result['id'] != original['id'] and result['path'] != original['path']
+    assert result['schema'] == ('carr-recording/2' if new_controlled else 'carr-recording/1')
+    assert result['retake_of'] == {'id': original['id'], 'audio_sha256': sha256(audio).hexdigest()}
+    assert result['audio']['sha256'] != original['audio']['sha256']
+    assert capture.service.get(result['id']) == result
+    _assert_original_take(capture, original, audio, receipt, identity)
+    assert len(capture.runs) == 2 and all(not row['active'] for row in capture.runs)
+    assert {row['id'] for row in capture.service.list()} == {original['id'], result['id']}
+    assert not list(capture.service.root.glob('.pending-*'))
+
+
+def test_cancel_actual_retake_discards_only_new_unfinished_pcm(capture):
+    original, audio, receipt, identity = _retake_saved(capture)
+    cancelled = threading.Event()
+    with pytest.raises(AudioCancelled):
+        capture.service.capture(capture.device.id, options=capture.options,
+            retake_of=original['id'], pause_requested=lambda: False,
+            cancelled=cancelled.is_set,
+            progress=lambda seconds: cancelled.set() if seconds >= .15 else None)
+    assert cancelled.is_set() and len(capture.runs) == 2
+    assert all(not row['active'] for row in capture.runs)
+    _assert_original_take(capture, original, audio, receipt, identity)
+    assert [row['id'] for row in capture.service.list()] == [original['id']]
+    assert not list(capture.service.root.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('changed', ['pcm', 'declared_hash'])
+def test_changed_prior_take_is_refused_before_new_microphone_process(capture, monkeypatch, changed):
+    original, audio, receipt, identity = _retake_saved(capture)
+    from carr_library.durable_state import atomic_json, read_json
+    path = Path(original['path'])
+    saved = capture.service.root / (original['id'] + '.json')
+    if changed == 'pcm':
+        value = bytearray(audio)
+        value[-1] ^= 1
+        path.write_bytes(value)
+    else:
+        value = read_json(saved)
+        value['audio']['sha256'] = '0' * 64
+        atomic_json(saved, value, replace=True)
+    before = path.read_bytes(), saved.read_bytes()
+    with pytest.raises(ValueError):
+        capture.service.capture(capture.device.id, options=capture.options, retake_of=original['id'])
+    assert len(capture.runs) == 1 and (path.read_bytes(), saved.read_bytes()) == before
+    assert set(item.name for item in capture.service.root.glob('*.wav')) == {path.name}
+    assert not list(capture.service.root.glob('.pending-*'))
+
+
+def test_prior_take_changed_during_real_resource_admission_never_opens_input(capture, monkeypatch):
+    from contextlib import contextmanager
+    original, audio, receipt, identity = _retake_saved(capture)
+    broker = capture.service._admission_broker()
+    reserve = broker.reserve
+    changed = bytearray(audio)
+    changed[-1] ^= 1
+    @contextmanager
+    def admitted(*args, **kwargs):
+        with reserve(*args, **kwargs) as lease:
+            Path(original['path']).write_bytes(changed)
+            yield lease
+    monkeypatch.setattr(broker, 'reserve', admitted)
+    with pytest.raises(ValueError, match='prior recording changed'):
+        capture.service.capture(capture.device.id, options=capture.options, retake_of=original['id'])
+    assert len(capture.runs) == 1
+    assert Path(original['path']).read_bytes() == changed
+    assert (capture.service.root / (original['id'] + '.json')).read_bytes() == receipt
+    assert not list(capture.service.root.glob('.pending-*'))
+    assert 'microphone:' + capture.device.id not in broker.snapshot()['exclusive_devices']
+
+
+@pytest.mark.parametrize('changed', ['pcm', 'receipt', 'equal_byte_replacement'])
+def test_prior_take_is_rechecked_after_new_receipt_staging_before_publication(capture, monkeypatch, changed):
+    import os
+    original, audio, receipt, identity = _retake_saved(capture)
+    path = Path(original['path'])
+    saved = capture.service.root / (original['id'] + '.json')
+    actual = recording.atomic_json
+    prepared = []
+    def stage_receipt(target, value, **kwargs):
+        result = actual(target, value, **kwargs)
+        if value.get('retake_of') and value.get('status') == 'prepared':
+            prepared.append(value['id'])
+            if changed == 'pcm':
+                altered = bytearray(audio)
+                altered[-1] ^= 1
+                path.write_bytes(altered)
+            elif changed == 'receipt':
+                saved.write_bytes(receipt + b'\n')
+            else:
+                replacement = path.with_suffix('.replacement')
+                replacement.write_bytes(audio)
+                os.replace(replacement, path)
+        return result
+    monkeypatch.setattr(recording, 'atomic_json', stage_receipt)
+    with pytest.raises(ValueError, match='prior recording changed'):
+        capture.service.capture(capture.device.id, options=replace(capture.options, max_seconds=1),
+            retake_of=original['id'], pause_requested=lambda: False)
+    assert len(prepared) == 1 and len(capture.runs) == 2
+    assert not (capture.service.root / (prepared[0] + '.wav')).exists()
+    pending = recording.read_json(capture.service.root / (prepared[0] + '.json'))
+    assert pending['status'] == 'prepared' and pending['retake_of']['id'] == original['id']
+    assert not list(capture.service.root.glob('.pending-*'))
+    if changed == 'pcm':
+        expected = bytearray(audio)
+        expected[-1] ^= 1
+        assert path.read_bytes() == expected and saved.read_bytes() == receipt
+    elif changed == 'receipt':
+        assert path.read_bytes() == audio and saved.read_bytes() == receipt + b'\n'
+    else:
+        assert path.read_bytes() == audio and saved.read_bytes() == receipt
+        info = path.stat()
+        assert (info.st_dev, info.st_ino) != identity
+
+
+def test_late_cancel_cannot_erase_a_verified_retake_or_change_its_original(capture, monkeypatch):
+    original, audio, receipt, identity = _retake_saved(capture)
+    cancelled, actual = threading.Event(), recording.publish_file
+    def publish(*args, **kwargs):
+        actual(*args, **kwargs)
+        cancelled.set()
+    monkeypatch.setattr(recording, 'publish_file', publish)
+    result = capture.service.capture(capture.device.id, options=replace(capture.options, max_seconds=1),
+        retake_of=original['id'], pause_requested=lambda: False, cancelled=cancelled.is_set)
+    assert cancelled.is_set() and result['status'] == 'complete' and result['output_verified']
+    assert result['retake_of']['audio_sha256'] == sha256(audio).hexdigest()
+    assert capture.service.get(result['id']) == result
+    _assert_original_take(capture, original, audio, receipt, identity)
+
+
+def test_prepared_prior_take_is_not_finalized_by_the_new_take_action(capture):
+    original, audio, receipt, identity = _retake_saved(capture)
+    from carr_library.durable_state import atomic_json, read_json
+    path = capture.service.root / (original['id'] + '.json')
+    value = read_json(path)
+    value['status'] = 'prepared'
+    atomic_json(path, value, replace=True)
+    before = path.read_bytes()
+    with pytest.raises(ValueError, match='finish recovery'):
+        capture.service.capture(capture.device.id, retake_of=original['id'])
+    assert path.read_bytes() == before and Path(original['path']).read_bytes() == audio
+    assert len(capture.runs) == 1
+
+
+def test_extra_alias_on_prior_take_is_preserved_and_never_used_for_capture(capture):
+    import os
+    original, audio, receipt, identity = _retake_saved(capture)
+    alias = capture.service.root / 'foreign-alias.wav'
+    os.link(original['path'], alias)
+    with pytest.raises(ValueError):
+        capture.service.capture(capture.device.id, retake_of=original['id'])
+    assert len(capture.runs) == 1
+    assert alias.samefile(original['path']) and alias.read_bytes() == audio
+    assert (capture.service.root / (original['id'] + '.json')).read_bytes() == receipt
+
+
+def test_common_backup_restores_both_takes_without_reselecting_devices_or_starting_capture(capture, tmp_path, monkeypatch):
+    from carr_library.library_backup import restore_backup
+    original, audio, receipt, identity = _retake_saved(capture)
+    result = capture.service.capture(capture.device.id, options=replace(capture.options, max_seconds=1),
+        retake_of=original['id'], pause_requested=lambda: False)
+    second_audio = Path(result['path']).read_bytes()
+    second_receipt = (capture.service.root / (result['id'] + '.json')).read_bytes()
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive recording backup or restore activated a capture or output.')
+    monkeypatch.setattr(recording, 'run_process', forbidden)
+    monkeypatch.setattr(recording_monitor, '_api', forbidden)
+    monkeypatch.setattr(RecordingService, 'devices', forbidden)
+    archive = tmp_path / 'both-takes.carrbackup'
+    digest = capture.app.backup(archive)
+    shutil.rmtree(capture.app.root)
+    destination = tmp_path / 'restored-takes'
+    restore_backup(archive, destination, expected_manifest_sha256=digest)
+    service = RecordingService(destination)
+    assert service.runtime is None and service._devices == {} and service._engine_hash is None
+    recovered = {value['id']: service.get(value['id']) for value in service.list()}
+    assert set(recovered) == {original['id'], result['id']}
+    assert recovered[result['id']]['retake_of'] == result['retake_of']
+    assert Path(recovered[original['id']]['path']).read_bytes() == audio
+    assert Path(recovered[result['id']]['path']).read_bytes() == second_audio
+    assert (service.root / (original['id'] + '.json')).read_bytes() == receipt
+    assert (service.root / (result['id'] + '.json')).read_bytes() == second_receipt
+    assert service.runtime is None and service._devices == {} and service._engine_hash is None
+
+
+@pytest.mark.parametrize('previous', [
+    None, {}, {'id': 'b' * 32}, {'id': 'a' * 32, 'audio_sha256': 'c' * 64},
+    {'id': '../outside', 'audio_sha256': 'c' * 64},
+    {'id': 'B' * 32, 'audio_sha256': 'c' * 64},
+    {'id': True, 'audio_sha256': 'c' * 64},
+    {'id': 'b' * 32, 'audio_sha256': 'unknown'},
+    {'id': 'b' * 32, 'audio_sha256': 'c' * 64, 'path': '/external.wav'},
+])
+def test_retake_receipt_rejects_malformed_self_and_external_authority(receipt, previous):
+    _, value = receipt
+    value['retake_of'] = previous
+    with pytest.raises(ValueError, match='prior recording identity'):
+        recording.validate_recording_receipt(value)
+
+
+@pytest.mark.parametrize('identity', ['../outside', 'A' * 32, True, 'a' * 31])
+def test_retake_api_rejects_nonlocal_identity_before_any_capture(capture, identity):
+    with pytest.raises(ValueError, match='recording identity'):
+        capture.service.capture(capture.device.id, retake_of=identity)
+    assert capture.runs == [] and capture.service.list() == ()
