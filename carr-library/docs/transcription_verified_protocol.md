@@ -168,3 +168,10 @@ The shared view reads the product's existing assistant, translation, import and
 ASR journals. Audio Studio appears only after its current controller explicitly
 selects a render destination. The view never discovers external output directories
 from saved paths and never starts a worker by listing saved tasks.
+
+
+Application-owned Studio, audio CLI and assistant rendering enter the same
+resource wrapper with their actual private data root. The low-level
+audio.production.render_project function remains an embedding/testing API with
+no implicit library context; callers embedding it directly must supply their
+own admission policy. This is not a process-wide hardware sandbox.

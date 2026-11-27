@@ -120,8 +120,8 @@ def _snapshot(source, target, *, cancel=None):
 def _published_identity(path):
     """Verify this call's published file even if its staging hardlink remains.
 
-    The shared export writer reports that cleanup condition as successful
-    publication. This narrow post-publication check does not admit linked inputs.
+    This narrow post-publication check does not admit linked inputs. The
+    product export writer raises on incomplete staging cleanup; it returns no receipt.
     """
     path = Path(path)
     local_path(path.parent, exists=True)
@@ -180,7 +180,7 @@ class TranscriptionService:
         profile = {**inspected, 'id': identity, 'name': name, 'trusted': owner_trusted,
                    'qualification': 'unqualified', 'registered': time.time(), 'restored': False}
         stopped(cancel)
-        with state_lock(self.profiles_root, 'profiles'):
+        with state_lock(self.root, 'inventory'), state_lock(self.profiles_root, 'profiles'):
             target = self.profiles_root / (identity + '.json')
             atomic_json(target, profile, replace=target.exists())
         return profile
@@ -228,6 +228,12 @@ class TranscriptionService:
 
     def create_job(self, profile_id, sources, *, settings=None, title='Transcription',
                    recursive=False, cancel=None, progress=None):
+        with state_lock(self.root, 'inventory'):
+            return self._create_job(profile_id, sources, settings=settings, title=title,
+                recursive=recursive, cancel=cancel, progress=progress)
+
+    def _create_job(self, profile_id, sources, *, settings=None, title='Transcription',
+                    recursive=False, cancel=None, progress=None):
         profile = self._profile(profile_id)
         selected = expand_sources(sources, recursive=recursive, cancel=cancel)
         options = validate_settings(settings)
@@ -815,39 +821,33 @@ class TranscriptionService:
                 record = receipt['files'][name]
                 path = self._job_root(identity) / record['path']
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}.{name}"
-                published = write_binary_export(target, path.read_bytes(), private_root=self.library_root,
+                write_binary_export(target, path.read_bytes(), private_root=self.library_root,
                                                 cancelled=cancel or (lambda: False), require_absent=True)
-                if _published_identity(published.path) != {'sha256': record['sha256'], 'size': record['size']}:
+                if _published_identity(target) != {'sha256': record['sha256'], 'size': record['size']}:
                     raise OSError('An exported transcript failed byte verification.')
-                files.append({'path': str(published.path), 'source_id': result['source_id'], 'format': name,
+                files.append({'path': str(target), 'source_id': result['source_id'], 'format': name,
                               'sha256': record['sha256'], 'size': record['size'], 'edited': False})
-                if published.cleanup_warning:
-                    warnings.append(published.cleanup_warning)
             if include_edits and result['source_id'] in state.get('edits', {}):
                 edited = self.read_transcript(identity, result['source_id'], edited=True)
                 payload = edited['text'].encode('utf-8')
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}-edited.txt"
-                saved = write_binary_export(target, payload, private_root=self.library_root,
+                write_binary_export(target, payload, private_root=self.library_root,
                                            cancelled=cancel or (lambda: False), require_absent=True)
-                if _published_identity(saved.path) != {'sha256': sha256(payload).hexdigest(), 'size': len(payload)}:
+                if _published_identity(target) != {'sha256': sha256(payload).hexdigest(), 'size': len(payload)}:
                     raise OSError('The edited transcript export failed byte verification.')
-                files.append({'path': str(saved.path), 'source_id': result['source_id'], 'format': 'txt',
+                files.append({'path': str(target), 'source_id': result['source_id'], 'format': 'txt',
                               'sha256': sha256(payload).hexdigest(), 'size': len(payload), 'edited': True,
                               'provenance': edited['provenance']})
-                if saved.cleanup_warning:
-                    warnings.append(saved.cleanup_warning)
         if not files:
             raise ValueError('No verified transcript results are available to export.')
         manifest = {'schema': 'resonance-transcription-export/1', 'job_id': identity,
                     'status': 'complete', 'job_status': state['status'], 'files': files,
                     'derived': True, 'citation_authority': False, 'warnings': warnings}
         target = destination / f'transcripts-{identity[:12]}-manifest.json'
-        receipt = write_binary_export(target, encode(manifest), private_root=self.library_root,
+        write_binary_export(target, encode(manifest), private_root=self.library_root,
                                      cancelled=cancel or (lambda: False), require_absent=True)
-        manifest['manifest_path'] = str(receipt.path)
-        manifest['manifest_sha256'] = _published_identity(receipt.path)['sha256']
-        if receipt.cleanup_warning:
-            manifest['warnings'].append(receipt.cleanup_warning)
+        manifest['manifest_path'] = str(target)
+        manifest['manifest_sha256'] = _published_identity(target)['sha256']
         return manifest
 
 

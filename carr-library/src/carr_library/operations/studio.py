@@ -37,3 +37,27 @@ def read_studio_operation(controller):
     return OperationView('studio', identity, None, value['state'], value['completed_steps'],
         None, 'Stored Audio Studio render checkpoint; completed processing steps',
         '', (), 'Audio Studio / render-journal.json')
+
+
+def render_with_resources(private_root, plan, project_dir, *, engine, ffmpeg,
+                          cancelled=lambda: False, on_status=lambda message: None,
+                          operation_id=None, renderer=None, admission_timeout=60):
+    """Admit existing product rendering without replacing its journal or renderer."""
+    from ..audio.jobs import checked_directory, RenderCancelled
+    from ..data_paths import guard_data_directory
+    from ..audio.models import digest
+    from . import ResourceBroker, ResourceRequest, ResourceCancelled
+    root = checked_directory(guard_data_directory(private_root), create=True)
+    broker = ResourceBroker.for_app(root)
+    identity = operation_id or ('audio:' + digest(plan.to_dict())[:32])
+    request = ResourceRequest(cpu_slots=1, devices=('heavy-media',))
+    if renderer is None:
+        from ..audio.production import render_project
+        renderer = render_project
+    try:
+        with broker.reserve(request, operation_id=identity, cancelled=cancelled,
+                            timeout=admission_timeout) as lease:
+            return renderer(plan, project_dir, engine=engine, ffmpeg=ffmpeg,
+                cancelled=lambda: cancelled() or lease.cancelled(), on_status=on_status)
+    except ResourceCancelled as exc:
+        raise RenderCancelled(str(exc)) from exc

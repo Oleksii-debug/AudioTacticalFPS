@@ -400,7 +400,9 @@ class ReceiptReader:
                     raise ValueError('Worker checkpoint inventory exceeds its bound.')
                 if entry.name.startswith('.'):
                     continue  # An unpublished atomic stage grants no admission.
-                observed = entry.stat(follow_symlinks=False)
+                # Windows DirEntry.stat may report zero inode/link counts. Ask
+                # the filesystem for this exact final path before admitting it.
+                observed = Path(entry.path).lstat()
                 if (not stat.S_ISREG(observed.st_mode) or getattr(observed, 'st_file_attributes', 0) & 0x400):
                     raise ValueError('A checkpoint must be an ordinary local file.')
                 if observed.st_nlink != 1:

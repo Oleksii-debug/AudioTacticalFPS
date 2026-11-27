@@ -219,7 +219,7 @@ class TranscriptionActions:
 
         try:
             accepted = self.frame.run_job(title, work, done=finished, failed=failed,
-                progress_tracker=tracker, progress_outcome=transcription_outcome)
+                progress_tracker=tracker, progress_outcome=transcription_outcome, done_is_observer=True)
         except Exception as exc:
             failed(exc)
             return False

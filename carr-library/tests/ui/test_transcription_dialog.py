@@ -486,3 +486,30 @@ def test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives(vi
     assert {row['format'] for row in receipt['files']} == {'txt', 'srt', 'json'}
     assert any(row['edited'] for row in receipt['files'])
     assert all(Path(row['path']).is_file() for row in receipt['files'])
+
+
+@pytest.mark.parametrize(('status', 'expected'), [
+    ('complete', 'completed'), ('partial', 'failed'), ('failed', 'failed'),
+    ('interrupted', 'failed'), ('paused', 'paused'), ('cancelled', 'cancelled')])
+def test_typed_saved_outcome_wins_late_ui_cancel(view, status, expected):
+    view.fake_service.job.update(status=status, done=1)
+    view.submit('Inspect existing saved state', lambda *args: view.fake_service.job,
+                view.publish_job, kind='transcribe')
+    view.frame.cancel_event.set()
+    result = finish(view)
+    assert view.frame.progress_outcome(result) == expected
+    assert view.frame.run_job.call_args.kwargs['done_is_observer'] is True
+
+
+def test_source_retention_does_not_misreport_inference_progress_or_reset_known_work(view):
+    def operation(service, cancel, progress):
+        progress({'phase': 'Retaining original audio', 'done': 2, 'total': 2})
+        assert view.frame.operation_progress.snapshot().total is None
+        progress({'phase': 'Waiting for resources', 'done': 0, 'total': 2})
+        progress({'phase': 'Accepted transcript', 'done': 1, 'total': 2})
+        snapshot = view.frame.operation_progress.snapshot()
+        assert snapshot.completed == 1 and snapshot.total == 2
+        return saved_job('partial', 1)
+    view.submit('Synthetic pipeline progress', operation, view.publish_job, kind='transcribe')
+    result = finish(view)
+    assert result['status'] == 'partial'

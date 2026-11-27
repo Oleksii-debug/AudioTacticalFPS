@@ -724,10 +724,20 @@ class DesktopFrame(WorkspaceFrame):
     def progress_settings(self, event=None):
         self.progress_view.configure()
 
-    def run_job(self, title, operation, done=None, failed=None, *, progress_tracker=None, progress_outcome=None):
+    def run_job(self, title, operation, done=None, failed=None, *,
+                progress_tracker=None, progress_outcome=None, done_is_observer=False):
+        """Run work, accepting legacy results before classifying their outcome.
+
+        A caller may mark done as display-only when operation already validates
+        and publishes its result. That opt-in requires an explicit outcome;
+        observer failures must not relabel the committed operation.
+        """
         from ..progress import ProgressTracker
         if self._closing:
             return
+        if (type(done_is_observer) is not bool or
+                done_is_observer and not callable(progress_outcome)):
+            raise ValueError('A display-only result handler requires a callable progress outcome.')
         if self.working:
             self.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -761,34 +771,90 @@ class DesktopFrame(WorkspaceFrame):
         def finish(future):
             if self._closing:
                 return
+
             def apply():
                 if self._closing:
                     return
-                self._finish_job_controls()
-                try:
-                    result = future.result()
-                    # A typed result decides whether publication already committed.
-                    # Late cancellation must not mislabel an accepted result; a
-                    # paused/cancelled result must never announce completion.
+
+                def classify(result):
+                    # Explicit outcomes preserve accepted publication after a
+                    # late cancellation. Untyped jobs keep their Cancel state.
                     outcome = (progress_outcome(result) if progress_outcome is not None else
                                'cancelled' if self.cancel_event.is_set() else 'completed')
                     if outcome not in ('completed', 'cancelled', 'failed', 'paused'):
                         raise ValueError('The operation returned an invalid progress outcome.')
-                    self.report(title + ': ' + ('complete' if outcome == 'completed' else outcome) + '.')
-                    if done is not None:
-                        done(result)
+                    return outcome
+
+                def finalize(outcome):
                     if outcome == 'paused':
                         tracker.pause()
                     else:
                         tracker.finish(outcome, verified=outcome == 'completed')
-                except Exception as exc:
-                    tracker.finish('cancelled' if self.cancel_event.is_set() else 'failed', phase=str(exc))
+
+                def rejected(exc):
+                    # An actual worker/classifier error is not an observer
+                    # failure. Late Cancel must not hide it on committed-result
+                    # callers; their cooperative stop raises InterruptedError.
+                    cancelled = (isinstance(exc, InterruptedError) if done_is_observer
+                                 else self.cancel_event.is_set())
+                    tracker.finish('cancelled' if cancelled else 'failed', phase=str(exc))
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
-                finally:
-                    if view is not None:
-                        view.refresh(force=True)
+
+                if not done_is_observer:
+                    self._finish_job_controls()
+                    try:
+                        result = future.result()
+                        # Existing handlers may validate, publish, or set the
+                        # acceptance state consumed by progress_outcome (DOI).
+                        if done is not None:
+                            done(result)
+                        outcome = classify(result)
+                        self.report(title + ': ' + ('complete' if outcome == 'completed' else outcome) + '.')
+                        finalize(outcome)
+                    except Exception as exc:
+                        rejected(exc)
+                    finally:
+                        if view is not None:
+                            view.refresh(force=True)
+                    return
+
+                try:
+                    result = future.result()
+                    outcome = classify(result)
+                except Exception as exc:
+                    self._finish_job_controls()
+                    try:
+                        rejected(exc)
+                    finally:
+                        if view is not None:
+                            view.refresh(force=True)
+                    return
+
+                observer_failed = False
+
+                def observe(callback, *args, **kwargs):
+                    nonlocal observer_failed
+                    try:
+                        callback(*args, **kwargs)
+                    except Exception:
+                        observer_failed = True
+
+                label = 'complete' if outcome == 'completed' else outcome
+                observe(self._finish_job_controls)
+                observe(self.report, title + ': ' + label + '.')
+                if done is not None:
+                    observe(done, result)
+                observe(finalize, outcome)
+                if view is not None:
+                    observe(view.refresh, force=True)
+                if observer_failed:
+                    # This notice must not invoke failed(), which may claim
+                    # that the durable files or accepted receipts were not saved.
+                    observe(self.report, title + ': ' + label + '. The operation result is unchanged, '
+                            'but some result or progress details could not be displayed.')
+
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 

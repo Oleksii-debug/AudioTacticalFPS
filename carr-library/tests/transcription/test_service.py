@@ -11,7 +11,6 @@ import pytest
 
 from carr_library.operations.process import ProcessBudget
 from carr_library.durable_state import atomic_json, read_json
-from carr_library.research.export_file import ExportReceipt
 from carr_library.transcription import TranscriptionService, expand_sources
 from carr_library.transcription import service as module
 _spec = importlib.util.spec_from_file_location('transcription_service_fixture_builder', Path(__file__).with_name('fixture_runtime.py'))
@@ -310,21 +309,23 @@ def test_export_never_overwrites_and_rejects_entire_private_library(setup, tmp_p
     assert first.read_text() == 'Owner edit to exported copy'
 
 
-def test_saved_export_with_surviving_staging_link_remains_truthful_success(setup, tmp_path, monkeypatch):
+def test_product_export_failure_after_publication_retains_file_without_false_manifest(setup, tmp_path, monkeypatch):
     service, runtime, profile, audio = setup
     created = job(setup)
     service.run(created['id'])
     destination = tmp_path / 'exports'
     destination.mkdir()
     original = module.write_binary_export
-    def remaining_link(path, content, **kw):
-        receipt = original(path, content, **kw)
-        os.link(receipt.path, receipt.path.with_name('.owned-stage-' + receipt.path.name))
-        return ExportReceipt(receipt.path, 'Synthetic cleanup remains pending; publication succeeded.')
-    monkeypatch.setattr(module, 'write_binary_export', remaining_link)
-    result = service.export(created['id'], destination)
-    assert result['status'] == 'complete' and result['warnings']
-    assert Path(result['manifest_path']).is_file()
+    published = []
+    def cleanup_failure(path, content, **kwargs):
+        original(path, content, **kwargs)
+        published.append((Path(path), content))
+        raise OSError('Export was published, but its temporary link could not be removed.')
+    monkeypatch.setattr(module, 'write_binary_export', cleanup_failure)
+    with pytest.raises(OSError, match='published'):
+        service.export(created['id'], destination)
+    assert published and published[0][0].read_bytes() == published[0][1]
+    assert not list(destination.glob('*-manifest.json'))
 
 
 def test_model_rebinding_cannot_mix_changed_weights_in_one_job(setup, tmp_path):

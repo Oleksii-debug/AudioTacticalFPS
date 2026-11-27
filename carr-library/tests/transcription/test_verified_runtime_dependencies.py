@@ -1,0 +1,16 @@
+"""One required native runtime shard; assertions live in the common case module."""
+import importlib.util
+from pathlib import Path
+import pytest
+
+_spec = importlib.util.spec_from_file_location('verified_runtime_cases', Path(__file__).with_name('_verified_runtime_cases.py'))
+_cases = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_cases)
+runtime, setup = _cases.runtime, _cases.setup
+
+test_absent_vocabulary_cannot_be_admitted = _cases.test_absent_vocabulary_cannot_be_admitted
+test_missing_transitive_dependency_blocks_inspection = _cases.test_missing_transitive_dependency_blocks_inspection
+test_duplicate_distribution_metadata_is_not_silently_selected = _cases.test_duplicate_distribution_metadata_is_not_silently_selected
+test_environment_markers_are_resolved_before_closure_admission = _cases.test_environment_markers_are_resolved_before_closure_admission
+test_declared_version_requirement_cannot_be_ignored = _cases.test_declared_version_requirement_cannot_be_ignored
+test_runtime_inspection_includes_explicit_extra_dependencies = _cases.test_runtime_inspection_includes_explicit_extra_dependencies

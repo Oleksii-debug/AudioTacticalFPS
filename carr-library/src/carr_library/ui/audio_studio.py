@@ -350,21 +350,14 @@ class StudioController:
             if renderer is None:
                 from ..audio.production import render_project
                 renderer = render_project
-            from ..operations import ResourceBroker, ResourceRequest
+            from ..operations.studio import render_with_resources
             self._render_cancel.clear()
             self._operation_output = folder
-            stopped = lambda: cancelled() or self._render_cancel.is_set()
-            from ..audio.jobs import checked_directory
-            checked_directory(self.private_root, create=True)
-            broker = ResourceBroker.for_app(self.private_root)
-            # Existing voices do not all declare GPU placement. This cooperative
-            # media lease serializes ASR/Studio without claiming measured RAM/VRAM.
-            request = ResourceRequest(cpu_slots=1, devices=('heavy-media',))
-            with broker.reserve(request, operation_id='studio:' + self.project_id,
-                                cancelled=stopped, timeout=60) as lease:
-                result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
-                                  cancelled=lambda: stopped() or lease.cancelled(),
-                                  on_status=on_status)
+            result = render_with_resources(self.private_root, plan, folder,
+                engine=self._registry(), ffmpeg=ffmpeg, renderer=renderer,
+                operation_id='studio:' + self.project_id,
+                cancelled=lambda: cancelled() or self._render_cancel.is_set(),
+                on_status=on_status)
             if not isinstance(result, dict) or result.get('status') != 'complete':
                 raise ValueError('The production service did not confirm a complete audio render.')
             output = _local_path(result.get('output', ''), 'rendered audio file')

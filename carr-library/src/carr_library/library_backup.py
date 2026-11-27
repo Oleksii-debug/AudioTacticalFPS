@@ -15,8 +15,9 @@ settings and a checked SQLite ledger, with no restored remote authorization or
 credential references. Typed assistant checkpoints retain their history; every
 restored job requires a new review of its current permissions before execution.
 Version 5 adds a typed pending-import component to the exact version-4 shape.
-All new backups use version 5, including an empty typed pending manifest.
-Legacy version 1/2/3/4 backups and version 5 backups are accepted only for an exact
+Backups without ASR/resource-policy state use version 5, including an empty pending manifest.
+Version 6 adds a nonempty typed ASR/resource-policy component under the same aggregate ceilings.
+Legacy version 1/2/3/4/5 backups and version 6 backups are accepted only for an exact
 supported V3, V4 or V5 database schema. Older snapshots are restored unchanged;
 opening the restored library performs the normal checked upgrade to the current schema.
 Restoration always creates a new data directory and never merges or overwrites.
@@ -85,6 +86,12 @@ from .pending_backup import (
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
 PENDING = 'pending'
+TRANSCRIPTION = 'transcription'
+from .transcription.backup import (
+    snapshot as snapshot_transcription, restore as restore_transcription,
+    validate_manifest as validate_transcription_manifest,
+    MAX_FILES as MAX_TRANSCRIPTION_FILES, MAX_BYTES as MAX_TRANSCRIPTION_BYTES,
+)
 MANIFEST = 'manifest.json'
 INCOMPLETE = '.restore-incomplete'
 MAX_MANIFEST = 8 * 1024 * 1024
@@ -275,7 +282,7 @@ def _publish_sidecars(stage, destination, sidecars, *, cancelled=lambda: False):
         _sync_directory(parent)
 
 
-def _check_backup_namespace(directory, names, *, pending=False):
+def _check_backup_namespace(directory, names, *, pending=False, transcription=False):
     names = set(names)
     directories = {str(parent) for name in names for parent in PurePosixPath(name).parents
                    if str(parent) != '.'}
@@ -284,6 +291,9 @@ def _check_backup_namespace(directory, names, *, pending=False):
     if pending:
         expected_roots.add(PENDING)
         _plain(directory / PENDING, directory=True)
+    if transcription:
+        expected_roots.add(TRANSCRIPTION)
+        _plain(directory / TRANSCRIPTION, directory=True)
     if set(p.name for p in directory.iterdir()) != expected_roots:
         raise RestoreError('incomplete backup or unexpected files')
     for name in sorted(directories):
@@ -402,12 +412,24 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
             total_bytes += sum(entry['size_bytes'] for entry in pending['files'])
             total_files += len(pending['files'])
             _check_backup_budget(total_bytes, total_files, maximum_bytes, maximum_files)
-            manifest = dict(version=5,
+            try:
+                transcription = snapshot_transcription(app.root, stage / TRANSCRIPTION,
+                    cancelled=cancelled,
+                    max_bytes=min(MAX_TRANSCRIPTION_BYTES, maximum_bytes - total_bytes),
+                    max_files=min(MAX_TRANSCRIPTION_FILES, maximum_files - total_files))
+            except (ValueError, TypeError, KeyError) as exc:
+                raise RestoreError('invalid or inconsistent transcription state: ' + str(exc)) from exc
+            total_bytes += sum(entry['size_bytes'] for entry in transcription['files'])
+            total_files += len(transcription['files'])
+            _check_backup_budget(total_bytes, total_files, maximum_bytes, maximum_files)
+            manifest = dict(version=6 if transcription['files'] else 5,
                 kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=_sidecar_manifest(sidecars),
                 provider_restore_mode='LOCAL_ONLY', pending=pending)
+            if transcription['files']:
+                manifest['transcription'] = transcription
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -432,6 +454,9 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
             # The checked private component moves on this same filesystem.
             # No temporary hard links remain in its journal or source inventory.
             (stage / PENDING).rename(destination / PENDING)
+            if transcription['files']:
+                _check_cancelled(cancelled)
+                (stage / TRANSCRIPTION).rename(destination / TRANSCRIPTION)
             _sync_directory(destination / ORIGINALS)
             _check_cancelled(cancelled)
             os.link(stage / MANIFEST, destination / MANIFEST)
@@ -458,7 +483,7 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3, 4, 5)):
+            or manifest['version'] not in (1, 2, 3, 4, 5, 6)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
     if manifest['version'] >= 2:
@@ -467,8 +492,10 @@ def _read_manifest(directory, expected_manifest_sha256):
         fields.add('sidecars')
     if manifest['version'] >= 4:
         fields.add('provider_restore_mode')
-    if manifest['version'] == 5:
+    if manifest['version'] >= 5:
         fields.add('pending')
+    if manifest['version'] == 6:
+        fields.add('transcription')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
@@ -476,11 +503,18 @@ def _read_manifest(directory, expected_manifest_sha256):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 4 and manifest['provider_restore_mode'] != 'LOCAL_ONLY':
         raise RestoreError('restored provider state requires LOCAL ONLY mode')
-    if manifest['version'] == 5:
+    if manifest['version'] >= 5:
         try:
             validate_pending(manifest['pending'])
         except (ValueError, TypeError, KeyError) as exc:
             raise RestoreError('invalid pending import backup manifest') from exc
+    if manifest['version'] == 6:
+        try:
+            validate_transcription_manifest(manifest['transcription'])
+            if not manifest['transcription']['files']:
+                raise ValueError('version 6 requires typed transcription or resource-policy state')
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RestoreError('invalid transcription backup manifest') from exc
     if manifest['version'] >= 2:
         fingerprint = manifest['schema_fingerprint']
         if (not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint)
@@ -538,7 +572,8 @@ def _read_manifest(directory, expected_manifest_sha256):
     inventory = declared_backup_files(manifest)
     _check_backup_budget(size + sum(entry['size_bytes'] for entry in inventory.values()),
                          1 + len(inventory), MAX_BACKUP_BYTES, MAX_BACKUP_FILES)
-    _check_backup_namespace(directory, names, pending=manifest['version'] == 5)
+    _check_backup_namespace(directory, names, pending=manifest['version'] >= 5,
+                            transcription=manifest['version'] == 6)
     return manifest
 
 
@@ -555,7 +590,8 @@ def declared_backup_files(manifest):
     for prefix, entries in (
             (ORIGINALS + '/', manifest['assets']),
             ('', manifest.get('sidecars', [])),
-            (PENDING + '/', manifest.get('pending', {}).get('files', []))):
+            (PENDING + '/', manifest.get('pending', {}).get('files', [])),
+            (TRANSCRIPTION + '/', manifest.get('transcription', {}).get('files', []))):
         for entry in entries:
             files[prefix + entry['filename']] = {
                 key: entry[key] for key in ('size_bytes', 'sha256')}
@@ -628,8 +664,13 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
         pending = (restore_pending(source / PENDING, stage, destination, manifest['pending'],
-                                   cancelled=cancelled) if manifest['version'] == 5
+                                   cancelled=cancelled) if manifest['version'] >= 5
                    else {'assets': [], 'paths': []})
+        try:
+            transcription_paths = (restore_transcription(source / TRANSCRIPTION, stage,
+                manifest['transcription'], cancelled=cancelled) if manifest['version'] == 6 else [])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RestoreError('invalid or incomplete transcription backup: ' + str(exc)) from exc
         _check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -646,6 +687,11 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         for name in pending['paths']:
             _check_cancelled(cancelled)
             (stage / name).rename(destination / name)
+        for name in transcription_paths:
+            _check_cancelled(cancelled)
+            (destination / name).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            (stage / name).rename(destination / name)
+            _sync_directory((destination / name).parent)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

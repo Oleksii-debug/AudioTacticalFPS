@@ -78,6 +78,7 @@ class AudioCliTests(unittest.TestCase):
                 source.write_text('Synthetic narration.', encoding='utf-8')
                 args = SimpleNamespace(audio_voices=False, audio_script=source, audio_plan=None,
                     audio_preview=False, audio_output=Path(temp) / 'output', voice=None,
+                    data_dir=Path(temp) / 'private',
                     language='en', ffmpeg=None, dordiai_manifest=None,
                     piper_executable=None, piper_manifest=None)
                 registry = SimpleNamespace(voices=lambda: rows)
