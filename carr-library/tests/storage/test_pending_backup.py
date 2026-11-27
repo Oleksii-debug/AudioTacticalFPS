@@ -516,3 +516,77 @@ def test_pending_restore_rejects_unlisted_file_before_descending(app, tmp_path, 
     with pytest.raises(ValueError, match='missing or unlisted'):
         restore_pending(source, stage, tmp_path / 'restored', metadata)
     assert not (stage / '.pending-import-restore').exists()
+
+
+def test_pending_capture_streams_committed_files_and_ignores_known_transients(tmp_path, monkeypatch):
+    from carr_library.pending_backup import _inventory
+    root = tmp_path / 'library'
+    reviews = root / 'import-requests' / 'reviews'
+    reviews.mkdir(parents=True)
+    batches = root / 'import-batches'
+    batches.mkdir()
+    (reviews / ('a' * 32 + '.json')).touch()
+    (reviews / ('b' * 32 + '.tmp')).touch()
+    (batches / ('c' * 32 + '.json')).touch()
+    (batches / ('d' * 32 + '.lock')).touch()
+
+    def forbidden(path):
+        raise AssertionError('capture must not materialize a Path.iterdir listing')
+
+    monkeypatch.setattr(Path, 'iterdir', forbidden)
+    assert set(_inventory(root)) == {
+        'import-requests/reviews/' + 'a' * 32 + '.json',
+        'import-batches/' + 'c' * 32 + '.json',
+    }
+
+
+@pytest.mark.parametrize('scan_name', ('import-requests', 'reviews'))
+def test_pending_capture_cancel_when_scan_closes(tmp_path, monkeypatch, scan_name):
+    from contextlib import contextmanager
+    from carr_library.pending_backup import _inventory
+    root = tmp_path / 'library'
+    reviews = root / 'import-requests' / 'reviews'
+    reviews.mkdir(parents=True)
+    (reviews / ('a' * 32 + '.json')).touch()
+    real = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with real(path) as entries:
+            yield entries
+        if Path(path).name == scan_name:
+            cancelled = True
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'scandir', observed)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            _inventory(root, cancelled=lambda: cancelled)
+
+
+def test_pending_restore_cancel_at_namespace_scan_exit(app, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    backup, metadata = _snapshot(app, tmp_path)
+    source = backup / 'pending'
+    stage = tmp_path / 'restore-stage'
+    stage.mkdir()
+    shutil.copyfile(backup / 'library.sqlite', stage / 'library.sqlite')
+    real = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with real(path) as entries:
+            yield entries
+        if Path(path) == source:
+            cancelled = True
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'scandir', observed)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            restore_pending(source, stage, tmp_path / 'restored', metadata,
+                            cancelled=lambda: cancelled)
+    assert not (stage / '.pending-import-restore').exists()
+    assert not (tmp_path / 'restored').exists()

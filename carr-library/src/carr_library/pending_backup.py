@@ -493,36 +493,46 @@ def pending_roots(root):
                  if _present(Path(root) / name))
 
 
-def _inventory(root):
-    """Recognize canonical committed sidecars; ignore only known transient names."""
+def _inventory(root, *, cancelled=lambda: False):
+    """Recognize canonical committed sidecars; stream and allow cancellation."""
     found = {}
     for name in ('import-requests', 'import-batches'):
+        _check(cancelled)
         directory = root / name
         if not _present(directory):
             continue
         local_path(directory, exists=True)
         regular(directory, directory=True)
-        for path in directory.iterdir():
-            if path.name == 'reviews' and name == 'import-requests':
-                regular(path, directory=True)
-                for review in path.iterdir():
-                    info = regular(review)
-                    if re.fullmatch('[0-9a-f]{32}\\.tmp', review.name):
-                        continue
-                    if not re.fullmatch('[0-9a-f]{32}\\.json', review.name):
-                        raise ValueError('Unrecognized pending review journal file.')
-                    found[review.relative_to(root).as_posix()] = _stamp(info)
-                    if len(found) > MAX_FILES:
-                        raise ValueError('Too many pending import sidecars.')
-                continue
-            info = regular(path)
-            if re.fullmatch('[0-9a-f]{32}(?:-[0-9a-f]{32})?\\.tmp|[0-9a-f]{32}\\.lock', path.name):
-                continue
-            if not re.fullmatch('[0-9a-f]{32}\\.json', path.name):
-                raise ValueError('Unrecognized pending import journal file.')
-            found[path.relative_to(root).as_posix()] = _stamp(info)
-            if len(found) > MAX_FILES:
-                raise ValueError('Too many pending import sidecars.')
+        with os.scandir(directory) as children:
+            for child in children:
+                _check(cancelled)
+                path = directory / child.name
+                if path.name == 'reviews' and name == 'import-requests':
+                    regular(path, directory=True)
+                    with os.scandir(path) as reviews:
+                        for child_review in reviews:
+                            _check(cancelled)
+                            review = path / child_review.name
+                            info = regular(review)
+                            if re.fullmatch('[0-9a-f]{32}\\.tmp', review.name):
+                                continue
+                            if not re.fullmatch('[0-9a-f]{32}\\.json', review.name):
+                                raise ValueError('Unrecognized pending review journal file.')
+                            found[review.relative_to(root).as_posix()] = _stamp(info)
+                            if len(found) > MAX_FILES:
+                                raise ValueError('Too many pending import sidecars.')
+                    _check(cancelled)
+                    continue
+                info = regular(path)
+                if re.fullmatch('[0-9a-f]{32}(?:-[0-9a-f]{32})?\\.tmp|[0-9a-f]{32}\\.lock', path.name):
+                    continue
+                if not re.fullmatch('[0-9a-f]{32}\\.json', path.name):
+                    raise ValueError('Unrecognized pending import journal file.')
+                found[path.relative_to(root).as_posix()] = _stamp(info)
+                if len(found) > MAX_FILES:
+                    raise ValueError('Too many pending import sidecars.')
+        _check(cancelled)
+    _check(cancelled)
     return found
 
 
@@ -635,8 +645,9 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
     if expected_roots is not None and roots != expected_roots:
         raise ValueError('Pending import roots changed during backup; retry after pausing imports.')
     target = local_path(target)
+    before = _inventory(root, cancelled=cancelled)
+    _check(cancelled)
     target.mkdir(mode=0o700)
-    before = _inventory(root)
     catalog_path = target.parent / 'library.sqlite'
     if not catalog_path.exists():
         catalog_path = app.database
@@ -727,7 +738,7 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
             for asset in assets.values():
                 _check(cancelled)
                 _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
-        if _inventory(root) != before or pending_roots(root) != roots:
+        if _inventory(root, cancelled=cancelled) != before or pending_roots(root) != roots:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
         # Windows file timestamps can stay unchanged after a same-sized edit.
         # Recheck actual committed sidecar bytes before accepting the snapshot.
@@ -740,7 +751,9 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
     result = dict(version=1, data_dir=str(root), files=sorted(files, key=lambda item: item['filename']),
                   assets=sorted(assets.values(), key=lambda item: item['filename']), sources=bindings)
     validate_pending(result)
+    _check(cancelled)
     sync_directory(target)
+    _check(cancelled)
     return result
 
 
@@ -841,6 +854,8 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                     if relative not in missing:
                         raise ValueError('Pending import backup has missing or unlisted files.')
                     missing.remove(relative)
+        _check(cancelled)
+    _check(cancelled)
     if missing:
         raise ValueError('Pending import backup has missing or unlisted files.')
     # Verify into a fresh private component first. No database is queried and no
