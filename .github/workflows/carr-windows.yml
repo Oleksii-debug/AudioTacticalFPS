@@ -1361,6 +1361,14 @@ jobs:
           & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'keyboard-results/native-import-center.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise source native reading copies, save commands and keyboard preferences
+        timeout-minutes: 3
+        env:
+          CARR_UI_SOURCE_OVERRIDE: '1'
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_v3_reading_smoke.py 2>&1 | Tee-Object 'keyboard-results/native-v3-reading.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Require contextual commands and recovery regressions
         id: keyboard-regressions
         run: |
