@@ -38,6 +38,7 @@ def main():
     deadline = monotonic() + 120
     stage, key_pending, finished = 0, False, False
     frame = reader = overlay = service = None
+    shutdown = {'requested': False, 'reader_returned': False, 'attempted': set()}
 
     def check(name, condition):
         if not condition:
@@ -45,9 +46,15 @@ def main():
         checks.append(name)
         print('PASS:', name, flush=True)
 
+    def remember_failure(context):
+        message = context + '\n' + traceback.format_exc()
+        errors.append(message)
+        # Report the original failure before any nested modal cleanup can fail.
+        print('FAIL:', message, flush=True)
+
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
+            remember_failure('Native EPUB event callback failed.')
             abort()
             return True
 
@@ -60,15 +67,45 @@ def main():
     user32.GetForegroundWindow.restype = wintypes.HWND
 
     def abort():
-        for owner in (overlay, reader):
-            if owner is not None:
+        if shutdown['requested']:
+            return
+        shutdown['requested'] = True
+        for key in tuple(pressed):
+            try:
+                if not simulator.KeyUp(key):
+                    raise RuntimeError('The failed EPUB probe could not release its native key.')
+            except Exception:
+                remember_failure('Native EPUB key cleanup failed.')
+            finally:
+                pressed.discard(key)
+
+        def advance():
+            # End the innermost modal first. The Reading Desk clears its owned
+            # child only after that child's ShowModal/finally has returned.
+            if reader is None or shutdown['reader_returned']:
+                gui.ExitMainLoop()
+                return
+            owner = reader._audio_dialog or reader
+            if id(owner) not in shutdown['attempted']:
+                shutdown['attempted'].add(id(owner))
                 try:
                     owner.close()
-                    if owner.dialog.IsModal():
+                    if not owner.closed:
+                        raise RuntimeError('The owned EPUB reader did not confirm closure.')
+                except Exception:
+                    remember_failure('Native EPUB owner cleanup failed.')
+                try:
+                    # Failure-only modal unwind does not change the owner's
+                    # closure flag or claim that its retained resources closed.
+                    if owner.dialog and owner.dialog.IsModal():
                         owner.dialog.EndModal(wx.ID_CANCEL)
                 except Exception:
-                    errors.append(traceback.format_exc())
-        gui.ExitMainLoop()
+                    remember_failure('Native EPUB modal unwind failed.')
+            # This callback must remain runnable after errors suppress normal
+            # driver actions. Never close the parent inside its child loop.
+            wx.CallLater(25, advance)
+
+        wx.CallAfter(advance)
 
     def guarded(callback):
         def invoke():
@@ -77,7 +114,7 @@ def main():
             try:
                 callback()
             except Exception:
-                errors.append(traceback.format_exc())
+                remember_failure('Native EPUB driver callback failed at stage ' + str(stage))
                 abort()
         return invoke
 
@@ -126,6 +163,33 @@ def main():
         if len(matches) != 1:
             raise AssertionError('Unique accessible control missing: ' + name)
         return matches[0]
+
+    def expire():
+        if finished:
+            return
+        try:
+            raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
+        except Exception:
+            remember_failure('Native EPUB deadline expired.')
+            abort()
+
+    def trace_highlight():
+        # Bounded observation only: do not normalize, select or repair text.
+        print('EPUB diagnostic: inspecting the unchanged native highlight at stage ' + str(stage), flush=True)
+        cue = overlay.session.chapter.cues[0]
+        def text_record(value):
+            return {'characters': len(value), 'sha256': sha256(value.encode('utf-8')).hexdigest(),
+                    'prefix': value[:2048]}
+        print(json.dumps({'epub_highlight_diagnostic': {
+            'stage': stage, 'busy': overlay.busy, 'closed': overlay.closed,
+            'native_selection': list(overlay.text.GetSelection()),
+            'selected': text_record(overlay.text.GetStringSelection()),
+            'control': text_record(overlay.text.GetValue()),
+            'expected_fragment': text_record(expected_page.raw_text[cue.start:cue.end]),
+            'expected_source': text_record(expected_page.raw_text),
+            'session_source_matches': overlay.session.page.raw_text == expected_page.raw_text,
+            'status': text_record(overlay.status.GetValue()),
+        }}, ensure_ascii=True, sort_keys=True), flush=True)
 
     def verify_audio(runtime):
         bundle = Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR') else None
@@ -205,6 +269,7 @@ def main():
                             return
                         check('opening recorded audio does not start playback', overlay.player.state == 'stopped'
                               and not overlay.transport.active)
+                        trace_highlight()
                         check('native source highlight is an exact Unicode fragment', overlay.text.GetStringSelection()
                               == expected_page.raw_text[overlay.session.chapter.cues[0].start:overlay.session.chapter.cues[0].end])
                         check('existing progress observes the owned transport', overlay.transport.observed
@@ -259,7 +324,10 @@ def main():
                     return
                 reader = reading_desk.ReadingDialog(frame, desk, ReadingState(library.root), guard)
                 wx.CallLater(25, guarded(drive))
-                reader.show()
+                try:
+                    reader.show()
+                finally:
+                    shutdown['reader_returned'] = True
                 for key in tuple(pressed):
                     check('native key released after modal completion', simulator.KeyUp(key))
                     pressed.discard(key)
@@ -273,6 +341,9 @@ def main():
                 gui.ExitMainLoop()
 
             wx.CallAfter(guarded(open_reader))
+            # Unlike normal guarded actions, the deadline also reports an
+            # already failing modal unwind instead of silently disappearing.
+            wx.CallLater(max(1, int((deadline - monotonic()) * 1000)), expire)
             gui.MainLoop()
         finally:
             for key in tuple(pressed):
