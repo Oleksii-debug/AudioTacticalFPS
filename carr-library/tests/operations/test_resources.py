@@ -259,6 +259,8 @@ def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
         with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='after-crash', timeout=1):
             assert len(broker.snapshot()['leases']) == 1
         assert not path.exists()
+        assert not path.with_suffix('.lock').exists()
+        assert list(broker.leases_root.iterdir()) == []
     finally:
         stop.set()
         if process.is_alive():
@@ -353,6 +355,52 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
                    {'devices': ('microphone:one', 'microphone:one')}, {'cpu_slots': 0}):
         with pytest.raises(ValueError):
             ResourceRequest(**values)
+
+
+
+
+def test_many_completed_reservations_do_not_exhaust_inventory_or_unlink_a_live_owner(broker, monkeypatch):
+    import carr_library.operations.broker as module
+    from carr_library.operations._locks import NativeLock
+    # Keep the production bound intact. This lower fixture bound exposes a
+    # lifetime leak after only a few actual acquisitions instead of 8192.
+    monkeypatch.setattr(module, '_MAX_RECORDS', 4)
+    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='held-owner', timeout=0) as owner:
+        owner_path = broker.leases_root / (owner.id + '.lock')
+        before = owner_path.stat()
+        for index in range(32):
+            with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='completed-' + str(index), timeout=0):
+                assert len(broker.snapshot()['leases']) == 2
+                assert len(list(broker.leases_root.iterdir())) == 4
+            after = owner_path.stat()
+            assert (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+            contender = NativeLock(owner_path)
+            assert contender.acquire() is False
+            assert owner._lock.held
+            assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['held-owner']
+            assert len(list(broker.leases_root.iterdir())) == 2
+    assert broker.snapshot()['leases'] == []
+    assert list(broker.leases_root.iterdir()) == []
+
+
+def test_replaced_released_lock_is_not_unlinked(broker, monkeypatch, tmp_path):
+    from carr_library.operations._locks import NativeLock
+    # Create a distinct inode while the original lease still exists, then
+    # replace only its released path. This is not a concurrent live owner.
+    replacement = tmp_path / 'replacement-lock'
+    replacement.write_bytes(b'Unexpected replacement; preserve for inspection.')
+    actual = NativeLock.release
+    target = []
+    def replaced(lock):
+        actual(lock)
+        if target and lock.path == target[0] and replacement.exists():
+            os.replace(replacement, lock.path)
+    with pytest.raises(ResourceStateError, match='replaced'):
+        with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='replacement-guard', timeout=0) as lease:
+            target.append(broker.leases_root / (lease.id + '.lock'))
+            monkeypatch.setattr(NativeLock, 'release', replaced)
+    assert target[0].read_bytes() == b'Unexpected replacement; preserve for inspection.'
+
 
 
 if __name__ == '__main__':

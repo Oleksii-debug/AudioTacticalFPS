@@ -42,6 +42,29 @@ def _read(path):
         raise ResourceStateError('Resource policy or lease is invalid; admission stopped.') from exc
 
 
+def _release_reservation_lock(lock):
+    """Release one unique lease lock and its inert file while _gate is held.
+
+    UUID reservation names are allocated only under the coordinator gate.
+    No cooperating owner or waiter can acquire this identity between release
+    and deletion. The shared admission lock must never use this helper.
+    """
+    if not lock.held:
+        raise ResourceStateError('Only an owned reservation lock can be retired.')
+    try:
+        before = regular(lock.path)
+    finally:
+        # Always close the descriptor, including a changed-path failure.
+        # NativeLock validates ownership; Windows may remove the file here.
+        lock.release()
+    if os.path.lexists(lock.path):
+        after = regular(lock.path)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise ResourceStateError('A released reservation lock was replaced; it was not removed.')
+        lock.path.unlink()
+        sync_directory(lock.path.parent)
+
+
 class ResourceLease:
     def __init__(self, broker, record, lock, cancelled, run_timeout):
         self.broker, self.record, self._lock = broker, record, lock
@@ -85,7 +108,7 @@ class ResourceLease:
                         sync_directory(path.parent)
                     # Other callers must not observe a live lock after its
                     # corresponding record has been removed.
-                    self._lock.release()
+                    _release_reservation_lock(self._lock)
             except ResourceTimeout:
                 # Closing the native lock is sufficient to release ownership.
                 # The next admission reaps the now-unlocked stale metadata.
@@ -190,7 +213,7 @@ class ResourceBroker:
                         regular(path)
                         path.unlink()
                 finally:
-                    probe.release()
+                    _release_reservation_lock(probe)
                 continue
             if not os.path.lexists(path):
                 raise ResourceStateError('A live resource lock has no valid reservation record.')
@@ -338,7 +361,7 @@ class ResourceBroker:
                         atomic_json(self.leases_root / (identity + '.json'), record)
                         lease = ResourceLease(self, record, lock, cancelled, run_timeout)
                     except BaseException:
-                        lock.release()
+                        _release_reservation_lock(lock)
                         raise
             if lease is None:
                 if cancelled():
