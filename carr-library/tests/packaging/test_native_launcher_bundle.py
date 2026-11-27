@@ -100,7 +100,7 @@ def candidate(tmp_path, monkeypatch):
     for name in ('RUNNING.md', 'START_UK.txt', 'ACADEMIC_SEARCH.md', 'ADVANCED_SEARCH.md',
                  'ACADEMIC_LIBRARY.md', 'ACADEMIC_WORKFLOWS.md', 'CATALOG_TOOLS.md',
                  'READING_DESK.md', 'RESEARCH_NOTEBOOK.md', 'EPUB_READING.md',
-                 'IMPORT_CENTER.md', 'TRANSCRIPTION.md'):
+                 'IMPORT_CENTER.md', 'TRANSCRIPTION.md', 'academic_integration.md'):
         (docs / name).write_text('Synthetic packaging instructions.\n')
     package = packaging.parent / 'src/carr_library'
     package.mkdir(parents=True)
