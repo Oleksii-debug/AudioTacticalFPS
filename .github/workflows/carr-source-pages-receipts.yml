@@ -1,0 +1,30 @@
+name: CARR exact Windows 50000 measurement receipts
+on:
+  push:
+    branches: [carr/source-pages-windows50k-receipts-20261127]
+    paths: ['.github/workflows/carr-source-pages-receipts.yml', '.github/scripts/carr_source_pages_receipts.py']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  preserve-completed-receipts:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Preserve exact reader source bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Retrieve only the two exact completed synthetic artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:GITHUB_SHA) { throw 'Unexpected reader checkout.' }
+          python -I -B -X utf8 .github/scripts/carr_source_pages_receipts.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
