@@ -282,3 +282,38 @@ revisions, evidence identities, voice IDs or source hashes. Its proposal still
 passes the same scoped validator and the user approves Run separately. Voice
 inventory is not a pronunciation or quality qualification; audio capabilities
 report the actual selected runtime, not a guaranteed hardware resource ceiling.
+
+
+## Current reader player and search continuation
+
+Open **Assistant playback...** from the current reader to bind this assistant
+window to that exact existing player. Run **Player status** to obtain a captured
+status receipt, including its opaque session and source signature. To pause or
+stop, explicitly review a typed `player.control` step with that receipt's
+`session` and `source_sha256` and `action` equal to `pause` or `stop`.
+
+The worker dispatches through the existing native UI queue. Pause is idempotent:
+a paused player is never toggled into Resume. These commands cannot create a
+player, open a recording, Play, Resume, Seek or synthesize. Changing the reader,
+visible copy, opened recording or library selection invalidates the reviewed
+identity. Closing the assistant withdraws queued authority and leaves all player
+resources owned by the reader. An uncertain dispatched action is never repeated
+on resume; inspect the current state and submit a new explicit action. Completed
+receipts describe the acknowledged historical state, not continuous monitoring.
+
+`library.search` now uses the same canonical `LibraryApp.search_page` interface
+as desktop search. Its result keeps the existing `results` array and adds the
+opaque `cursor`, `next_source_cursor`, `has_more_results`, `offset`, bounded source
+counts and `window_identity`. For more result rows, pass the same cursor and the
+next explicit offset. To visit the next source window, copy `next_source_cursor`
+and reset offset to zero. A missing next source cursor means traversal is
+complete. Ranking is local to each visited window; a saved cursor grants no
+source authorization and is checked against the current selected scope.
+
+The source suite exercises real threaded handoff, cancelled and expired queued
+callbacks, lost acknowledgements, foreign or changed owners, idempotent controls
+and actual source search beyond 100 segments. The existing Windows desktop probe
+additionally opens the actual reader's assistant button, uses its actual worker
+and native controls, and pauses/stops that same WavePlayer while it plays an
+explicit silent synthetic PCM fixture. This is native lifecycle evidence when
+executed, not a speech-quality, physical audio routing or manual NVDA claim.

@@ -30,10 +30,10 @@ def show_recording(frame, *, on_selected=None):
         'No microphone opens automatically. Recording uses the selected Windows device locally.'),
         0, wx.EXPAND | wx.ALL, 8)
 
-    def field(label, factory, **kwargs):
-        layout.Add(wx.StaticText(panel, label=label), 0, wx.LEFT | wx.TOP, 8)
+    def field(accessible_name, factory, **kwargs):
+        layout.Add(wx.StaticText(panel, label=accessible_name), 0, wx.LEFT | wx.TOP, 8)
         control = factory(panel, **kwargs)
-        control.SetName(label)
+        control.SetName(accessible_name)
         layout.Add(control, 0, wx.EXPAND | wx.ALL, 6)
         return control
 

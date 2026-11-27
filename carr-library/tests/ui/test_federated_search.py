@@ -735,11 +735,13 @@ def test_native_checklist_preserves_checked_library_identity_with_distinct_label
     for control in (native.retrieval, native.presentation, native.limit):
         control.GetSelection.return_value = 0
     native.query.GetValue.return_value = 'history'
+    native.timeout.GetValue.return_value = '300'
     for control in native.filters.values():
         control.GetValue.return_value = ''
     native._search()
     options, = native.controller.search.call_args.args
     assert options.workspaces == ('library-1',)
+    assert options.timeout == 300
 
 
 @pytest.mark.parametrize('names', [('Same', 'Same'), ('Café', 'Cafe\u0301'),
@@ -828,7 +830,7 @@ def test_native_library_checklist_uses_distinct_choices_without_reordering(monke
     wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate((
         'VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL',
         'LEFT', 'RIGHT', 'TE_PROCESS_ENTER', 'LB_SINGLE', 'TE_READONLY',
-        'TE_MULTILINE', 'ALIGN_RIGHT'))})
+        'TE_MULTILINE', 'ALIGN_RIGHT', 'EVT_BUTTON'))})
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer', 'CheckListBox',
                  'TextCtrl', 'Choice', 'Button', 'ListBox'):
         setattr(wx, name, Mock(side_effect=lambda *args, **kwargs: Mock()))
@@ -888,7 +890,7 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
                               groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),))
     controller = SimpleNamespace(view=View(), epoch=0, _ready=Mock(), _clear_rows=Mock(),
         selection_changed=Mock(), _report_error=Mock(), _cancelled=lambda: False,
-        _refresh_navigation=Mock(),
+        _refresh_navigation=Mock(), source_history=[],
         service=SimpleNamespace(search=Mock(return_value=session)))
     controller._job = lambda title, operation, done, **kwargs: done(operation())
     SearchCenter.search(controller, SearchOptions(('w',), 'test'))
@@ -919,6 +921,13 @@ def test_source_windows_continue_on_existing_worker_and_keep_exact_library(cente
     assert tuple((hit.result.edition_id, hit.result.page, hit.result.quote)
                  for hit in center.controller.rows) == first
     assert center.app.assets.resolve(imported['asset']).read_bytes() == text.encode('utf-8')
+    center.controller.navigate_scope('sources', 1)
+    assert center.controller.source_history
+    center.controller.search(options)
+    assert center.controller.source_history == []
+    assert tuple((hit.result.edition_id, hit.result.page, hit.result.quote)
+                 for hit in center.controller.rows) == first
+    assert center.view.scope_navigation == (False, True, False, False)
     center.controller.options_changed()
     assert center.controller.source_history == [] and center.controller.rows == ()
     assert center.view.scope_navigation == (False, False, False, False)

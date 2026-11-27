@@ -999,7 +999,7 @@ class ProductionService:
                           stems=arguments.get('stems', True), operation_id=arguments.get('operation_id'))
         result = self.run(job, cancelled=cancelled, progress=progress)
         return {'job_id': job, 'status': result['status'],
-                'artifacts': [item['path'] for item in result['artifacts']]}
+                'artifacts': [dict(item) for item in result['artifacts']]}
 
 
 def _retained_bytes(roots, cancelled):

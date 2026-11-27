@@ -46,7 +46,9 @@ def main():
     temporary = TemporaryDirectory(prefix='carr-native-v3-')
     root = Path(temporary.name)
     frame = library = registry = service = selected_progress = None
-    destroyed = threading.Event()
+    bootstrap = None
+    destroyed, bootstrap_destroyed, loop_started = (threading.Event() for _ in range(3))
+    bootstrap_closing = [False]
     child_progress, cleanup_futures, cleanup_executors = [], [], []
     failures, completed = [], threading.Event()
     cleanup_deadline = [None]
@@ -61,6 +63,11 @@ def main():
 
     def remember_failure(error):
         failures.append((error, error.__traceback__))
+
+    def bootstrap_closed(event):
+        if event.GetEventObject() is bootstrap:
+            bootstrap_destroyed.set()
+        event.Skip()
 
     def scenario():
         nonlocal frame, library, registry, service, selected_progress
@@ -129,6 +136,7 @@ def main():
                            'loudness': report['result']['loudness'],
                            'distinct_voice_tokens': len({role.voice_id for role in project.roles})}
         frame = DesktopFrame(library)
+        app.SetTopWindow(frame)
         def frame_destroyed(event):
             if event.GetEventObject() is frame:
                 destroyed.set()
@@ -645,6 +653,17 @@ def main():
                     raise TimeoutError('Native window destruction or owned worker cleanup did not finish.')
                 wx.CallLater(25, poll_cleanup)
                 return
+            # Keep a real top-level owner until all actual GUI/worker cleanup
+            # has finished, then observe its native destruction before exiting.
+            if bootstrap is not None and not bootstrap_destroyed.is_set():
+                if monotonic() >= cleanup_deadline[0]:
+                    raise TimeoutError('Native event-loop bootstrap destruction did not finish.')
+                if not bootstrap_closing[0]:
+                    bootstrap_closing[0] = True
+                    bootstrap.Destroy()
+                wx.CallLater(25, poll_cleanup)
+                return
+            assert loop_started.is_set() and bootstrap_destroyed.is_set()
             for future in cleanup_futures:
                 future.result()
             if frame is not None:
@@ -657,7 +676,9 @@ def main():
                 assert cleanup_futures, 'The real Studio worker cleanup was not observed.'
                 result['checks'].append('actual wx MainLoop, Destroy event and completed owner cleanup')
                 result['native_cleanup'] = {'status': 'PASS', 'destroy_event': destroyed.is_set(),
-                    'private_worker_releases': len(cleanup_futures), 'voice_owner_released': True}
+                    'private_worker_releases': len(cleanup_futures), 'voice_owner_released': True,
+                    'scenario_started_in_main_loop': loop_started.is_set(),
+                    'bootstrap_destroy_event': bootstrap_destroyed.is_set()}
         except BaseException as error:
             remember_failure(error)
         completed.set()
@@ -665,6 +686,8 @@ def main():
 
     def run_scenario():
         try:
+            assert app.IsMainLoopRunning(), 'The native scenario must run inside the actual wx MainLoop.'
+            loop_started.set()
             scenario()
         except BaseException as error:
             remember_failure(error)
@@ -691,10 +714,20 @@ def main():
     worker_cleanup.close_after_worker = track_cleanup
     try:
         watchdog.start()
+        # wxPython 4.2.4 wxPyApp::MainLoop returns without dispatching anything
+        # when there are no top-level windows, even with exit-on-delete disabled.
+        # The real application frame is created by the queued scenario, so keep
+        # a hidden native bootstrap owner alive before entering that first loop.
+        bootstrap = wx.Frame(None, title='Native acceptance event-loop owner', size=(1, 1))
+        bootstrap.Bind(wx.EVT_WINDOW_DESTROY, bootstrap_closed)
+        app.SetTopWindow(bootstrap)
+        assert bootstrap in wx.GetTopLevelWindows()
         wx.CallAfter(run_scenario)
         app.MainLoop()
         if not completed.is_set():
-            raise AssertionError('The actual wx event loop exited before scenario cleanup.')
+            raise AssertionError('The actual wx event loop exited before scenario cleanup. '
+                                 f'Scenario started: {loop_started.is_set()}; '
+                                 f'bootstrap destroyed: {bootstrap_destroyed.is_set()}.')
     except BaseException as error:
         remember_failure(error)
     finally:

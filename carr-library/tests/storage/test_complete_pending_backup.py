@@ -1,5 +1,6 @@
 """Enclosing manifest and publication integration for resumable import backups."""
 from uuid import uuid4
+import sqlite3
 
 from carr_library.application import LibraryApp
 from carr_library.catalog.intake import snapshot
@@ -17,11 +18,14 @@ def test_complete_backup_survives_lost_original_and_resumes_identical_import(tmp
                     collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     planned = snapshot(original.parent, original.name).manifest()
     request = prepare_request(app.root, workspace, original, metadata, Config(), expected_manifest=planned)
-    calls = 0
     def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Stop after an actual durable checkpoint, independently of how often
+        # source hashing and copy loops consult their cancellation callback.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with sqlite3.connect(journal) as observer:
+            return observer.execute('SELECT count(*) FROM checkpoint').fetchone()[0] >= 1
     initial = app._import_file(workspace, original, **metadata, cancelled=cancelled,
                               _request_id=request['request_id'], _expected_manifest=planned)
     assert initial['completed'] == 1

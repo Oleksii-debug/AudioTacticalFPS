@@ -311,7 +311,7 @@ def conversion(e, sources, name='converted'):
                                                for path in sources],
                                  'name': name, 'format': 'wav',
                                  'settings': {'channels': 1, 'sample_rate': 24000,
-                                              'effects': [{'kind': 'gain', 'parameters': {'db': -6}, 'enabled': True}]}})
+                                              'effects': [{'kind': 'gain', 'parameters': {'gain_db': -6}, 'enabled': True}]}})
 
 
 def test_actual_audio_inspection_effects_and_conversion_keep_exact_source_hashes(env):
@@ -324,7 +324,7 @@ def test_actual_audio_inspection_effects_and_conversion_keep_exact_source_hashes
     assert measured['source_sha256'] == sha256(before).hexdigest()
     assert measured['audio']['frames'] == 3000 and measured['audio']['sample_rate'] == 24000
     assert 'gain' in controls['typed_controls']
-    assert 'wav' in controls['installed_runtime']['formats']
+    assert '.wav' in controls['installed_runtime']['formats']
     assert controls['installed_runtime']['local_only'] is True
     identity, converted = execute(e, conversion(e, [source]))
     assert converted.status == 'complete', converted
@@ -440,3 +440,217 @@ def test_render_alias_uses_existing_production_callback_and_verifies_output(env)
     assert service.resume(identity).results == result.results and len(calls) == 1
     (e.outputs / 'rendered.wav').write_bytes(b'Changed')
     assert service.resume(identity).status == 'failed' and len(calls) == 1
+
+
+@pytest.mark.parametrize('changed', ['audio', 'manifest'])
+@pytest.mark.parametrize('stop_after_publication', [False, True])
+def test_conversion_cannot_adopt_replaced_publication_at_checkpoint(env, monkeypatch, changed, stop_after_publication):
+    e = env
+    from carr_library.audio import AudioRuntime
+    from carr_library.durable_state import encode
+    source = tone(e.inputs / 'reviewed.wav')
+    original_source = source.read_bytes()
+    stopped, calls, mutation = threading.Event(), [], {}
+    convert = AudioRuntime.convert
+    def counted(runtime, *args, **kwargs):
+        calls.append(args[0])
+        return convert(runtime, *args, **kwargs)
+    monkeypatch.setattr(AudioRuntime, 'convert', counted)
+    save = e.service.store.save
+    def replace_after_receipt(record):
+        result = save(record)
+        checkpoint = record['steps'][0]
+        if checkpoint['intent'].get('publication_committed') and not mutation:
+            manifest_path = e.outputs / 'converted' / 'conversion-manifest.json'
+            raw_manifest = manifest_path.read_bytes()
+            producer = json.loads(raw_manifest)
+            assert producer['status'] == 'completed' and producer['done'] == 1
+            assert encode(producer) == raw_manifest
+            candidate = producer['items'][0]['candidate']
+            target = Path(candidate['path']) if changed == 'audio' else manifest_path
+            expected = target.read_bytes()
+            if changed == 'audio':
+                assert candidate['size'] == len(expected)
+                assert candidate['sha256'] == sha256(expected).hexdigest()
+            # Same-sized replacement forces hash verification, not only a size
+            # test. The producer completed real FFmpeg output before this swap.
+            replacement = bytes([expected[0] ^ 1]) + expected[1:]
+            staged = target.with_name(target.name + '.replacement')
+            staged.write_bytes(replacement)
+            os.replace(staged, target)
+            mutation.update(path=target, original=expected, replacement=replacement,
+                            producer=producer)
+            if stop_after_publication:
+                stopped.set()
+        return result
+    monkeypatch.setattr(e.service.store, 'save', replace_after_receipt)
+    identity, result = execute(e, conversion(e, [source]), cancelled=stopped.is_set)
+    assert mutation and len(calls) == 1
+    assert result.status in ('failed', 'attention') and result.completed == 0
+    assert mutation['path'].read_bytes() == mutation['replacement']
+    record = e.service.store.load(identity)
+    assert record['steps'][0]['intent']['publication_committed'] is True
+    assert record['steps'][0]['status'] != 'complete'
+    assert source.read_bytes() == original_source
+    assert e.broker.snapshot()['leases'] == []
+    def no_repeat(*args, **kwargs):
+        pytest.fail('A published but unaccepted conversion cannot rerender or adopt an edited receipt.')
+    monkeypatch.setattr(AudioRuntime, 'convert', no_repeat)
+    stopped.clear()
+    resumed = e.service.resume(identity)
+    assert resumed.status == 'attention' and resumed.completed == 0
+    assert mutation['path'].read_bytes() == mutation['replacement']
+    assert source.read_bytes() == original_source
+
+
+@pytest.mark.parametrize('format,suffix', [('markdown', 'md'), ('docx', 'docx')])
+def test_evidence_export_cannot_adopt_replaced_publication_at_checkpoint(env, monkeypatch, format, suffix):
+    e = env
+    name = 'reviewed.' + suffix
+    target = e.outputs / name
+    mutation = {}
+    save = e.service.store.save
+    def replace_after_receipt(record):
+        result = save(record)
+        intent = record['steps'][0]['intent']
+        if intent.get('publication_committed') and not mutation:
+            expected = target.read_bytes()
+            receipt = dict(intent['export_attempt'])
+            assert receipt['size'] == len(expected)
+            assert receipt['output_sha256'] == sha256(expected).hexdigest()
+            replacement = bytes([expected[0] ^ 1]) + expected[1:]
+            staged = target.with_name(target.name + '.replacement')
+            staged.write_bytes(replacement)
+            os.replace(staged, target)
+            mutation.update(receipt=receipt, replacement=replacement)
+        return result
+    monkeypatch.setattr(e.service.store, 'save', replace_after_receipt)
+    identity, result = execute(e, Step('evidence.export',
+        {'topic': e.topic, 'evidence_ids': [e.evidence], 'name': name, 'format': format}))
+    assert mutation and result.status in ('failed', 'attention') and result.completed == 0
+    assert target.read_bytes() == mutation['replacement']
+    saved = e.service.store.load(identity)['steps'][0]
+    assert saved['intent']['publication_committed'] is True
+    assert saved['intent']['export_attempt'] == mutation['receipt']
+    def no_repeat(*args, **kwargs):
+        pytest.fail('A published evidence export cannot be repeated after receipt rejection.')
+    monkeypatch.setattr(export_file, 'write_export', no_repeat)
+    monkeypatch.setattr(export_file, 'write_binary_export', no_repeat)
+    assert e.service.resume(identity).status == 'attention'
+    assert target.read_bytes() == mutation['replacement']
+    assert e.app.evidence(e.workspace, e.topic)[0].evidence_id == e.evidence
+
+
+@pytest.mark.parametrize('declared', [True, False])
+def test_artifact_verification_refuses_oversized_file_before_open(env, monkeypatch, declared):
+    e = env
+    from carr_library.audio import conversion_batch
+    target = e.outputs / 'oversized.bin'
+    limit = e.scope.max_bytes
+    extent = 128 if declared else limit + 1
+    with target.open('wb') as stream:
+        stream.truncate(extent)
+    expected = {'path': str(target), 'size': 4, 'sha256': sha256(b'good').hexdigest()}
+    def forbidden(*args, **kwargs):
+        pytest.fail('An oversized or receipt-size-mismatched artifact cannot be opened for hashing.')
+    monkeypatch.setattr(conversion_batch, '_open_json_read', forbidden)
+    # Guard the previous unbounded implementation too, so baseline failure is
+    # observable even when it does not use the canonical descriptor reader.
+    monkeypatch.setattr(Path, 'open', forbidden)
+    with pytest.raises(ValueError, match='receipt|budget'):
+        e.service._artifacts({'artifacts': [expected if declared else str(target)]}, e.scope, lambda: False)
+    assert target.stat().st_size == extent
+
+
+def test_artifact_hashing_retains_descriptor_identity_and_a_fixed_growth_bound(env, monkeypatch):
+    e = env
+    from carr_library.audio import conversion_batch
+    target = e.outputs / 'growing.bin'
+    expected_raw = b'receipt'
+    target.write_bytes(expected_raw)
+    expected = {'path': str(target), 'size': len(expected_raw),
+                'sha256': sha256(expected_raw).hexdigest()}
+    original_open, original_read = Path.open, conversion_batch._open_json_read
+    reads, grown, opening_reader = [], False, False
+    class Observed:
+        def __init__(self, stream):
+            self.stream = stream
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+        def fileno(self):
+            return self.stream.fileno()
+        def read(self, size=-1):
+            nonlocal grown
+            assert size >= 0, 'Artifact verification must use bounded reads.'
+            if not grown:
+                grown = True
+                with original_open(target, 'ab') as writer:
+                    writer.write(b'x' * 4096)
+            data = self.stream.read(size)
+            reads.append(len(data))
+            return data
+    def observe(path):
+        nonlocal opening_reader
+        opening_reader = True
+        try:
+            return Observed(original_read(path))
+        finally:
+            opening_reader = False
+    monkeypatch.setattr(conversion_batch, '_open_json_read', observe)
+    # Legacy baseline opens via Path.open, which must face the same real growth.
+    def path_open(path, *args, **kwargs):
+        stream = original_open(path, *args, **kwargs)
+        return Observed(stream) if path == target and args and args[0] == 'rb' and not opening_reader else stream
+    monkeypatch.setattr(Path, 'open', path_open)
+    with pytest.raises(ValueError, match='grew|changed|receipt'):
+        e.service._artifacts({'artifacts': [expected]}, e.scope, lambda: False)
+    assert grown and 0 < sum(reads) <= len(expected_raw) + 1
+    assert target.read_bytes() == expected_raw + b'x' * 4096
+
+
+@pytest.mark.parametrize('change', ['hash', 'size', 'missing_hash', 'boolean_size'])
+def test_declared_production_receipt_cannot_be_replaced_with_current_file_identity(env, change):
+    e = env
+    target = tone(e.outputs / 'producer.wav')
+    raw = target.read_bytes()
+    receipt = {'path': str(target), 'size': len(raw), 'sha256': sha256(raw).hexdigest()}
+    if change == 'hash':
+        receipt['sha256'] = '0' * 64
+    elif change == 'size':
+        receipt['size'] -= 1
+    elif change == 'missing_hash':
+        del receipt['sha256']
+    else:
+        receipt['size'] = True
+    calls = []
+    def production(*args):
+        calls.append(True)
+        return {'status': 'complete', 'artifacts': [receipt]}
+    service = AssistantService(e.app, production=production)
+    identity = service.submit(plan(e, Step('audio.render',
+        {'text': 'Exact source', 'voice_ids': ['selected:exact']})))
+    result = service.run(identity)
+    assert calls == [True] and result.status == 'failed' and result.completed == 0
+    assert target.read_bytes() == raw
+
+
+@pytest.mark.parametrize('producer_status,assistant_status', [
+    ('paused', 'paused'), ('cancelled', 'paused'), ('failed', 'failed'),
+])
+def test_partial_production_artifacts_do_not_complete_the_assistant_step(env, producer_status, assistant_status):
+    e = env
+    target = tone(e.outputs / 'partial.wav')
+    raw = target.read_bytes()
+    receipt = {'path': str(target), 'size': len(raw), 'sha256': sha256(raw).hexdigest()}
+    def production(*args):
+        return {'job_id': 'existing-production', 'status': producer_status, 'artifacts': [receipt]}
+    service = AssistantService(e.app, production=production)
+    identity = service.submit(plan(e, Step('audio.render',
+        {'text': 'Reviewed production', 'voice_ids': ['selected:exact']})))
+    result = service.run(identity)
+    assert result.status == assistant_status and result.completed == 0
+    assert result.results == ()
+    assert target.read_bytes() == raw

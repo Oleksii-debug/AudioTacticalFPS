@@ -26,6 +26,7 @@ from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
 from .ingest.catalog_asset_copy import catalog_inventory, _checked_path, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
+from .catalog.intake import source_limit
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
@@ -92,7 +93,7 @@ def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cance
     destination.mkdir(mode=0o700)
     for entry in entries:
         backup_sidecars._check_cancelled(cancelled)
-        path = _checked_path(source, entry)
+        path = _checked_path(source, entry, cancelled=cancelled)
         count, digest = 0, sha256()
         with path.open('rb') as incoming, (destination / entry.filename).open('xb') as output:
             while block := incoming.read(min(1024 * 1024, entry.size + 1 - count)):
@@ -107,7 +108,7 @@ def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cance
         if count != entry.size or digest.hexdigest() != entry.digest:
             raise RestoreError('original file changed during backup')
     backup_sidecars._check_cancelled(cancelled)
-    return verify_catalog_assets(db, RetainedAssets(destination), **limits)
+    return verify_catalog_assets(db, RetainedAssets(destination), cancelled=cancelled, **limits)
 
 
 def create_backup(app, destination, *, include_generated=False, max_bytes=None, cancelled=lambda: False):
@@ -234,7 +235,7 @@ def _read_manifest(directory, expected_manifest_sha256):
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
                 or not isinstance(asset['mime'], str) or asset['mime'] not in SUFFIXES
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
-                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= MAX_BYTES):
+                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= source_limit(asset['mime'])):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')

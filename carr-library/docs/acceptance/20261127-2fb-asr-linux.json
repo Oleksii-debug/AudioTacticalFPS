@@ -1,0 +1,136 @@
+{
+  "schema": "carr-source-acceptance/1",
+  "commit": "2fb57880c4e0fa377ff7fdecfecd749c95b97c95",
+  "tree": "f94f7d8e77a8771f3530bdf0f5053220ad2ba503",
+  "run": 45998184117,
+  "job": 140503899302,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45998184117/job/140503899302",
+  "conclusion": "PASS",
+  "suite_count": 15,
+  "passed": 354,
+  "failed": 0,
+  "skipped": 0,
+  "suites": [
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_supplied_worker_bridge.py",
+      "passed": 65,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_v5_worker_profile.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_runtime_review.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_profile_controls.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_transcription_review_restore.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_transcription_dialog.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/operations/test_facade.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_transcription_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_backup_incremental_dialog.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_incremental.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_job_review.py",
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_durable_state_read.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_state_replacement.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_transcription.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_durable_state_publication.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "qualification": "Historical exact-source execution on Ubuntu. No later source, actual private ASR model, native Windows, hardware, NVDA or distribution qualification."
+}

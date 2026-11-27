@@ -1,0 +1,554 @@
+{
+  "schema": "carr-source-acceptance/1",
+  "commit": "ad679edd1b326f00d073e8994b0e2b2158a374ca",
+  "tree": "5ca9f32acc354e3b44b39a8d6a5ddcb062f639e0",
+  "run": 45995072797,
+  "job": 140492319730,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45995072797/job/140492319730",
+  "conclusion": "FAIL",
+  "rows": [
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_search_operation_budget.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_catalog_insights_workflow.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/research/test_academic_library.py",
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_search_deadline.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_academic_migration.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_ocr_model_cli.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/citations/test_pdf_mapping_contradiction.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_ocr_languages.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_ocr_model_store.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_special_ocr_models.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_ocr_selection.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_managed_ocr.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/academic_integration/test_documents.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/citations/test_csl.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/academic_integration/test_citation_ui.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/academic_integration/test_regeneration.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_managed_ocr_import.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_advanced_search.py",
+      "passed": 86,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_federated_advanced.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_federated.py",
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_federated_independent.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_literal_long_source.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_literal_unicode_memory.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_federated_search.py",
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_federated_labels.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "FAIL",
+      "path": "tests/ui/test_desktop_handlers.py",
+      "passed": 60,
+      "failed": 1,
+      "skipped": 0,
+      "exit": 1
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_desktop_query_jobs.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_advanced_research_search.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_research_search_cli.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_document_formats_text.py",
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_document_formats_xml.py",
+      "passed": 88,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_extended_document_workflows.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/acquisition/test_acquisition_cli.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/acquisition/test_acquisition_security.py",
+      "passed": 78,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/acquisition/test_acquisition_workflow.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/acquisition/test_identifier_lookup_security.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/acquisition/test_providers.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_library_backup_reading_state.py",
+      "passed": 89,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_v3_state_backup.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_state_backup_portability.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_pending_backup.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_complete_pending_backup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_studio_input_authority.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_durable_state_read.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/academic_integration/test_formatting.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_v4_review.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_schema_identity.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_v4_sidecars.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/academic_integration/test_end_to_end.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_primary_producers.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_translation.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_book_plan_bindings.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_generated_audio.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_keyboard_drafts.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_pending_common4.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/reader/test_export_reconciliation.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/reader/test_export_no_clobber.py",
+      "passed": 80,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ingest/test_worker_publication_boundary.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ingest/test_import_publication_point.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_keyboard_manager.py",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_studio_keyboard_registration.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_studio_progress_results.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_worker_cleanup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_keyboard_preferences.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_transcription.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/packaging/test_ci_check.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_import_worker_publication.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "suites": 67,
+  "passed": 2292,
+  "failed": 1,
+  "skipped": 0,
+  "repair_checkpoint": "dc477add6db2fc0348637dd460d03b76d8e1c75f",
+  "repair_execution": "NOT_RUN",
+  "qualification": "Historical exact-source evidence; failures are retained. No native, model or distribution qualification."
+}

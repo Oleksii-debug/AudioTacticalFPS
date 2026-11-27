@@ -6,6 +6,8 @@ an independently validated, immutable revision snapshot connection. Do not
 expose this all-workspace operation directly to unscoped UI.
 """
 import os
+
+from carr_library.catalog.intake import source_snapshot
 from pathlib import Path
 
 from carr_library.ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets, RetentionError
@@ -68,8 +70,14 @@ def copy_revision_assets(db, source, destination, *, include_all_workspaces=Fals
     target = RetainedAssets(destination)
     mime_for_suffix = {suffix: mime for mime, suffix in SUFFIXES.items()}
     for path in paths:
-        with path.open('rb') as stream:
-            data = stream.read(MAX_BYTES + 1)
-        target.retain(data, mime_for_suffix[path.suffix], path.stem)
+        if path.stat().st_size > MAX_BYTES:
+            asset = source_snapshot(path.parent, path.name)
+            if asset.digest != path.stem or asset.mime != mime_for_suffix[path.suffix]:
+                raise RetentionError('retained original identity changed')
+            target.retain_snapshot(asset)
+        else:
+            with path.open('rb') as stream:
+                data = stream.read(MAX_BYTES + 1)
+            target.retain(data, mime_for_suffix[path.suffix], path.stem)
     return verify_revision_assets(db, target, include_all_workspaces=include_all_workspaces,
                                   max_assets=max_assets, max_bytes=max_bytes)

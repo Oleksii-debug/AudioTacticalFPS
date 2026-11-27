@@ -103,14 +103,29 @@ def extract_page(asset, physical_index, config=Config()):
     Optional orientation evidence has its own pixel coordinate frame.
     Parser isolation and durable job checkpoints belong to the ingest runner.
     """
+    from ..catalog.intake import MAX_BYTES, file_snapshot
     deadline = time.monotonic() + config.timeout
+    path = Path(asset)
+    if path.stat().st_size > MAX_BYTES:
+        original = file_snapshot(path.parent, path.name)
+        if original.mime != 'application/pdf':
+            raise ValueError('The page adapter requires a PDF source.')
+        with original.open() as stream:
+            result = _extract_page_stream(stream, original.digest, physical_index, config, deadline)
+        original.verify()
+        return result
+    with path.open('rb') as source:
+        data = source.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise ValueError('source changed beyond its byte profile')
+    return _extract_page_stream(BytesIO(data), sha256(data).hexdigest(), physical_index, config, deadline)
+
+
+def _extract_page_stream(data, asset_sha256, physical_index, config, deadline):
+    """The same pinned parsers consume a held, seekable original stream."""
     from pypdf import PdfReader
     import pypdfium2 as pdfium
-    with Path(asset).open('rb') as f:
-        data = f.read(64 * 1024 * 1024 + 1)
-    if len(data) > 64 * 1024 * 1024:
-        raise ValueError('source too large')
-    reader = PdfReader(BytesIO(data))
+    reader = PdfReader(data)
     if reader.is_encrypted or not 1 <= len(reader.pages) <= 1000:
         raise ValueError('encrypted or oversized PDF')
     if type(physical_index) is not int or not 1 <= physical_index <= len(reader.pages):
@@ -119,7 +134,7 @@ def extract_page(asset, physical_index, config=Config()):
     native = source.extract_text() or ''
     result = dict(physical_index=physical_index, printed_label=None,
                   printed_label_verified=False, raw_text=native, blocks=[], warnings=[],
-                  provenance=dict(asset_sha256=sha256(data).hexdigest(), native_text=native,
+                  provenance=dict(asset_sha256=asset_sha256, native_text=native,
                                   native_engine='pypdf', native_version=metadata.version('pypdf'),
                                   rotation=source.rotation, config=vars(config).copy()))
     provenance = result['provenance']

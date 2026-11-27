@@ -13,13 +13,15 @@ List books / Покажи книги
 List libraries / Покажи бібліотеки
 List voices / Покажи голоси
 Audio effects / Покажи аудіоефекти
+Player status / Стан програвача (open Assistant playback from the current reader)
 Inspect audio "C:/Audio/source.wav" / Перевір аудіо "C:/Audio/source.wav"
 Search evidence "railway" / Знайди докази "залізниця"
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Produce audio: [script text] / Озвуч: [текст сценарію]
 Use typed JSON for exact reader edition/revision/range, saved evidence IDs/exports,
-reviewed audio conversion hashes/settings, and structured audio.render scripts.
+reviewed audio conversion hashes/settings, structured audio.render scripts,
+and player.control with an explicitly reviewed session, source_sha256 and action pause/stop.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
 
 
@@ -65,6 +67,9 @@ def preview(value, scope):
             continue
         if re.fullmatch(r'(?:audio\s+effects|покажи\s+аудіоефекти)\.?', line, re.IGNORECASE):
             steps.append(Step('audio.effects'))
+            continue
+        if re.fullmatch(r'(?:player\s+status|стан\s+програвача)\.?', line, re.IGNORECASE):
+            steps.append(Step('player.status'))
             continue
         match = re.fullmatch(r'(?:extract|експортуй\s+текст)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:

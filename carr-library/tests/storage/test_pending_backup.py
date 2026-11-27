@@ -62,11 +62,14 @@ def _partial(app, tmp_path):
     metadata = _metadata()
     planned = snapshot(source.parent, source.name).manifest()
     request = prepare_request(app.root, workspace, source, metadata, Config(), expected_manifest=planned)
-    calls = 0
     def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Stop after an actual durable checkpoint, independently of how often
+        # source hashing and copy loops consult their cancellation callback.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with sqlite3.connect(journal) as observer:
+            return observer.execute('SELECT count(*) FROM checkpoint').fetchone()[0] >= 1
     result = app._import_file(workspace, source, **metadata, cancelled=cancelled,
                               _request_id=request['request_id'], _expected_manifest=planned)
     assert result['state'] == 'cancelled' and result['completed'] == 1

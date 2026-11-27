@@ -373,3 +373,45 @@ def test_recording_progress_uses_actual_duration_in_the_bound_canonical_task(vie
     assert current_progress() is None and view.values['dialog'].working is False
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
     assert len(view.captures) == 1 and view.values['saved'].items
+
+
+def test_complete_dialog_construction_keeps_monitoring_off_and_never_opens_input(tmp_path, monkeypatch):
+    """Run the complete production constructor with explicit native/device stand-ins."""
+    import sys
+    from unittest.mock import MagicMock
+    import carr_library.ui.recording_dialog as module
+
+    wx = MagicMock()
+    wx.CheckBox.return_value.GetValue.return_value = False
+    def choice(*args, **kwargs):
+        control = MagicMock()
+        control.GetSelection.return_value = -1
+        return control
+    wx.Choice.side_effect = choice
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    service, player, progress, executor = (MagicMock() for _ in range(4))
+    future = Future()
+    executor.submit.return_value = future
+    executor.shutdown.side_effect = lambda **kwargs: future.cancel()
+    monkeypatch.setattr(module, 'RecordingService', Mock(return_value=service))
+    monkeypatch.setattr(module, 'WavePlayer', Mock(return_value=player))
+    monkeypatch.setattr(module, 'NativeProgressPanel', Mock(return_value=progress))
+    monkeypatch.setattr(module, 'ThreadPoolExecutor', Mock(return_value=executor))
+    frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path), working=False,
+                            progress_panel=None, report=Mock())
+
+    assert module.show_recording(frame) is None
+    wx.Dialog.return_value.ShowModal.assert_called_once_with()
+    wx.CheckBox.assert_called_once_with(wx.ScrolledWindow.return_value,
+                                       label='Enable dry input monitoring')
+    wx.CheckBox.return_value.SetValue.assert_called_once_with(False)
+    wx.CheckBox.return_value.SetName.assert_any_call('Enable dry input monitoring')
+    service.devices.assert_not_called()
+    service.capture.assert_not_called()
+    service.monitoring_outputs.assert_not_called()
+    player.play.assert_not_called()
+    player.close.assert_called_once_with()
+    progress.unregister_player.assert_called_once_with(player, silence_confirmed=True)
+    progress.close.assert_called_once_with()
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    wx.Dialog.return_value.Destroy.assert_called_once_with()

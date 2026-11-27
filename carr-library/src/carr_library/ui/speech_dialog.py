@@ -205,11 +205,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     seek = wx.Button(dialog, label='Seek to &time')
     playback_controls = wx.Button(dialog, label='Playback controls...')
     playback_controls.SetName('Reader playback controls')
+    assistant_button = wx.Button(dialog, label='Assistant playback...')
+    assistant_button.SetName('Review assistant commands for this player')
     appearance_button = wx.Button(dialog, label='Text appearance...')
     appearance_button.SetName('Reading appearance: font, colors and zoom')
     focus_button = wx.Button(dialog, label='Reading focus...')
     focus_button.SetName('Reading focus and approximate audio follow')
-    for control in (seek, playback_controls, appearance_button, focus_button):
+    for control in (seek, playback_controls, assistant_button, appearance_button, focus_button):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -255,6 +257,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         appearance_button.Enable(source_loaded and not busy and presentation_store is not None)
         spelling_button.Enable(source_loaded and not busy)
         playback_controls.Enable(not busy and last_audio is not None and getattr(player, 'path', None) is not None)
+        assistant_button.Enable(source_loaded and not busy and getattr(parent, 'desktop_integration', None) is not None)
         if reader_tabs is not None:
             reader_tabs.set_busy(busy)
         for button in (navigation_unit, previous_unit, current_unit, next_unit):
@@ -439,6 +442,33 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             raise ValueError('The active library changed. Open the voice reader again.')
         if source:
             source_guard()
+
+    def assistant_player_guard():
+        playback_scope(source=False)
+        if busy or getattr(parent, '_closing', False):
+            raise ValueError('Finish the active reader operation before reviewing current-player commands.')
+
+    def assistant_player_snapshot():
+        from hashlib import sha256
+        from ..assistant.models import canonical
+        assistant_player_guard()
+        # The opaque signature binds this live document, its visible copy and
+        # already-opened recording. It never authorizes reading a new pathname.
+        value = {'document': id(document), 'source': document._text_signature(),
+            'visible_text_sha256': sha256(editor.GetValue().encode('utf-8')).hexdigest(),
+            'audio': str(player.path) if player.path is not None else None,
+            'audio_identity': getattr(player, '_identity', None)}
+        return sha256(canonical(value).encode('utf-8')).hexdigest()
+
+    def choose_player_assistant(event=None):
+        from .assistant_dialog import show_assistant
+        try:
+            assistant_player_guard()
+            show_assistant(parent, reader_owner=dialog)
+            if alive:
+                editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def playback_failed(exc):
         nonlocal playback_generation, repeat_scheduled
@@ -1241,6 +1271,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (playback_controls, show_playback),
+        (assistant_button, choose_player_assistant),
         (appearance_button, choose_reading_appearance),
         (text_tools_button, choose_reading_tools),
         (focus_button, choose_reading_focus),
@@ -1297,7 +1328,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     try:
         desktop = getattr(parent, 'desktop_integration', None)
         if desktop is not None:
-            dialog._desktop_cleanup = desktop.attach_reader(dialog, pause, stop, lambda: alive)
+            dialog._desktop_cleanup = desktop.attach_reader(dialog, pause, stop, lambda: alive,
+                player=player, source_snapshot=assistant_player_snapshot, player_guard=assistant_player_guard,
+                pause_action=pause_audio, stop_action=stop_audio)
         capabilities()
         reload()
         autosave_timer.Start(5000)

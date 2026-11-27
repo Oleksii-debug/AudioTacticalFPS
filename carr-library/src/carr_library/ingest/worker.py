@@ -22,12 +22,15 @@ from uuid import uuid4
 
 from .pipeline import Ingest, canonical
 from ..extract.document_formats import MIME_SUFFIXES
+from ..catalog.intake import (MAX_BYTES, MAX_STREAM_BYTES, FileSnapshot, source_snapshot,
+    file_snapshot, source_limit, text_segments)
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
 MAX_LOG = 1_000_000
 MAX_REVIEWS = 1_000_000
 MAX_RECOVERY_SECONDS = 5.0
+MAX_STREAM_RECOVERY_SECONDS = 15.0
 MAX_RECOVERY_TEXT = 64 * 1024 * 1024
 FIELDS = {'title', 'authors', 'language', 'edition', 'volume', 'collections', 'work_id', 'edition_id'}
 
@@ -316,10 +319,13 @@ def _recover_publication(root, request_id, attempt, request_digest):
     from ..catalog.read_views import get_edition
     from ..durable_state import regular
     from ..storage.revisions import CURRENT_SCHEMA_VERSION, _schema_signature, _expected_signature
-    from .retained_assets import RetainedAssets, SUFFIXES, MAX_BYTES
+    from .retained_assets import RetainedAssets, SUFFIXES
     from .writer_guard import exclusive_writer, _regular_if_present
 
-    deadline = time.monotonic() + MAX_RECOVERY_SECONDS
+    declared = receipt.get('manifest')
+    large = (isinstance(declared, dict) and declared.get('mime') in ('text/plain', 'application/pdf')
+             and type(declared.get('size')) is int and MAX_BYTES < declared['size'] <= MAX_STREAM_BYTES)
+    deadline = time.monotonic() + (MAX_STREAM_RECOVERY_SECONDS if large else MAX_RECOVERY_SECONDS)
 
     def check():
         if time.monotonic() >= deadline:
@@ -395,12 +401,13 @@ def _recover_publication(root, request_id, attempt, request_digest):
                     or expected != dict(sha256=receipt['asset'], mime=manifest[0], size=manifest[1])
                     or (record.get('expected_manifest') is not None and record['expected_manifest'] != expected)
                     or expected['mime'] not in SUFFIXES or type(expected['size']) is not int
-                    or not 0 < expected['size'] <= MAX_BYTES):
+                    or not 0 < expected['size'] <= source_limit(expected['mime'])):
                 raise ValueError('Stopped import source manifest changed.')
             _validate_recovery_settings(record, config, expected['mime'], revision)
             count, size = db.execute('SELECT count(*),sum(length(CAST(raw AS BLOB))) FROM page '
                                      'WHERE revision=?', (revision,)).fetchone()
-            if count != receipt['completed'] or size is None or size > MAX_RECOVERY_TEXT:
+            text_limit = MAX_STREAM_BYTES if expected['mime'] == 'text/plain' and large else MAX_RECOVERY_TEXT
+            if count != receipt['completed'] or size is None or size > text_limit:
                 raise ValueError('Stopped import pages exceed the verification bound.')
             state = _publication_state(db, record, revision, check=check)
             if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
@@ -429,7 +436,6 @@ def _recover_publication(root, request_id, attempt, request_digest):
             fingerprint = lambda info: (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
                                         info.st_size, info.st_mtime_ns, info.st_ctime_ns)
             hashed, size = sha256(), 0
-            retained_text = bytearray() if expected['mime'] == 'text/plain' else None
             with source.open('rb') as stream:
                 if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
                     raise ValueError('Stopped import original changed during read.')
@@ -439,22 +445,26 @@ def _recover_publication(root, request_id, attempt, request_digest):
                     if size > expected['size']:
                         raise ValueError('Stopped import original grew during read.')
                     hashed.update(block)
-                    if retained_text is not None:
-                        retained_text.extend(block)
                 if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
                     raise ValueError('Stopped import original changed during read.')
             if (fingerprint(regular(source)) != fingerprint(before) or size != expected['size']
                     or hashed.hexdigest() != receipt['asset']):
                 raise ValueError('Stopped import original checksum changed.')
-            if retained_text is not None:
-                expected_pages = retained_text.decode('utf-8-sig').split('\f')
-                if len(expected_pages) != count:
-                    raise ValueError('Stopped import text no longer matches its retained original.')
-                for index, (raw,) in enumerate(db.execute(
-                        'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (revision,))):
+            if expected['mime'] == 'text/plain':
+                from itertools import zip_longest
+                missing = object()
+                source_asset = file_snapshot(source.parent, source.name, cancelled=lambda: (check(), False)[1])
+                actual = text_segments(source_asset, cancelled=lambda: (check(), False)[1])
+                stored = (raw for raw, in db.execute(
+                    'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (revision,)))
+                compared = 0
+                for original, saved in zip_longest(actual, stored, fillvalue=missing):
                     check()
-                    if raw != expected_pages[index]:
+                    if original is missing or saved is missing or original != saved:
                         raise ValueError('Stopped import text no longer matches its retained original.')
+                    compared += 1
+                if compared != count:
+                    raise ValueError('Stopped import text count differs from its retained original.')
             check()
             return dict(state='complete', workspace=workspace, edition=edition, id=revision,
                 asset=receipt['asset'], completed=count, total=count,
@@ -498,18 +508,21 @@ class RuntimeBoundIngest(Ingest):
         if review is None:
             return False
         if (record.get('status') != 'review_required' or not record.get('raw_text', '').strip()
-                or type(physical) is not int or not isinstance(self.review_asset, bytes)
+                or type(physical) is not int or not isinstance(self.review_asset, (bytes, FileSnapshot))
                 or not isinstance(review, dict)
                 or review.get('physical') != physical
                 or review.get('asset_sha256') != record['provenance'].get('asset_sha256')
-                or review.get('asset_sha256') != sha256(self.review_asset).hexdigest()
+                or review.get('asset_sha256') != (self.review_asset.verify(
+                    cancelled=getattr(self, '_cancelled', lambda: False)).digest
+                    if isinstance(self.review_asset, FileSnapshot) else sha256(self.review_asset).hexdigest())
                 or review.get('raw_sha256') != sha256(record['raw_text'].encode('utf-8')).hexdigest()
                 or review.get('checkpoint_sha256') != sha256(canonical(record).encode('utf-8')).hexdigest()
                 or not isinstance(review.get('reviewer'), str) or not review['reviewer'].strip()):
             raise ValueError('Reviewed checkpoint identity differs from the extracted source.')
         if physical not in self.validated_reviews:
             from ..citations.pdf_review_attestation import render_fingerprint
-            renderer, fingerprint = render_fingerprint(self.review_asset, physical)
+            renderer, fingerprint = render_fingerprint(self.review_asset, physical,
+                cancelled=getattr(self, '_cancelled', lambda: False))
             if review.get('renderer') != renderer or review.get('render_sha256') != fingerprint:
                 raise ValueError('Reviewed PDF page rendering changed.')
             self.validated_reviews[physical] = dict(review)
@@ -599,7 +612,9 @@ def _pending_review(root, workspace, request_id):
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
             raise ValueError('No intact extracted PDF text is available for review.')
         from .retained_assets import RetainedAssets
-        data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
+        retained = RetainedAssets(Path(root) / 'originals').resolve(job['asset'])
+        asset = source_snapshot(retained.parent, retained.name)
+        data = asset if isinstance(asset, FileSnapshot) else asset.data
         renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'])
         binding = dict(request_id=request_id, workspace=workspace, job=job['id'], edition=job['edition'],
                        asset_sha256=job['asset'], physical=row['ordinal'],
@@ -688,14 +703,13 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=asdict(config), state='pending')
     if expected_manifest is not None:
-        from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or not 0 < expected_manifest['size'] <= source_limit(expected_manifest['mime'])):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -786,7 +800,7 @@ def _published_after_stop(app, initial, watermark, *, revision=None):
             row = rows[0]
             if (row['work'] != metadata['work_id'] or row['active'] is None
                     or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
-                    or not 0 < row['size'] <= 64 * 1024 * 1024
+                    or not 0 < row['size'] <= source_limit(row['mime'])
                     or not isinstance(row['config'], str)
                     or len(row['config'].encode('utf-8')) > 4 * 1024 * 1024):
                 return None
@@ -828,8 +842,10 @@ def _published_after_stop(app, initial, watermark, *, revision=None):
                         (workspace, edition, collection)).fetchone():
                     return None
             count, text_bytes, nonempty = 0, 0, False
-            expected_text = (original.read_bytes().decode('utf-8-sig').split('\f')
+            missing = object()
+            expected_text = (iter(text_segments(file_snapshot(original.parent, original.name)))
                              if mime == 'text/plain' else None)
+            text_limit = MAX_STREAM_BYTES if mime == 'text/plain' and row['size'] > MAX_BYTES else MAX_RECOVERY_TEXT
             for page in db.execute(
                     'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
                     'FROM page p LEFT JOIN indexed i ON i.id=p.id '
@@ -840,17 +856,17 @@ def _published_after_stop(app, initial, watermark, *, revision=None):
                     return None
                 encoded = raw.encode('utf-8')
                 text_bytes += len(encoded)
-                if (count > 10000 or text_bytes > 64 * 1024 * 1024
+                if (count > 10000 or text_bytes > text_limit
                         or page['ordinal'] != count
                         or page['digest'] != sha256(encoded).hexdigest()
                         or page['printed'] is not None or page['verified'] != 0
                         or page['physical'] != (count if mime == 'application/pdf' else None)
                         or (row['active'] == row['id'] and page['indexed'] != raw)):
                     return None
-                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
+                if expected_text is not None and raw != next(expected_text, missing):
                     return None
                 nonempty = nonempty or bool(raw.strip())
-            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
+            if not count or not nonempty or (expected_text is not None and next(expected_text, missing) is not missing):
                 return None
             return dict(state='complete' if row['active'] == row['id'] else 'superseded',
                         workspace=workspace, edition=edition, id=row['id'], asset=digest,
@@ -1012,8 +1028,9 @@ def _resource_limits(timeout):
         import resource
     except ImportError:
         return
-    # Runtime libraries and a bounded 64 MiB source fit well below this address
-    # limit. Windows uses process/time isolation; POSIX limits are not claimed there.
+    # Keep the existing 3 GiB parser address ceiling for the 128 MiB TXT/PDF
+    # streaming profile and the unchanged 64 MiB memory formats. Windows uses
+    # process/time isolation; POSIX address limits are not claimed there.
     for key, value in ((resource.RLIMIT_AS, 3 * 1024**3),
                        (resource.RLIMIT_CPU, max(1, math.ceil(timeout)))):
         _, hard = resource.getrlimit(key)
@@ -1026,14 +1043,22 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
     """Reuse the citation renderer in the same bounded isolated worker."""
     if not callable(cancelled):
         raise ValueError('A review cancellation callback is required.')
-    if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
+    if isinstance(data, FileSnapshot):
+        if data.mime != 'application/pdf' or not 0 < data.size <= source_limit(data.mime):
+            raise ValueError('Invalid file-backed PDF review source.')
+    elif type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
         raise ValueError('Invalid PDF review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
         raise ValueError('Invalid PDF review page.')
     with TemporaryDirectory(prefix='carr-review-') as temporary:
         source = Path(temporary) / 'page-source.pdf'
-        source.write_bytes(data)
-        result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
+        if isinstance(data, FileSnapshot):
+            data.copy_to(source, cancelled=cancelled)
+            digest = data.digest
+        else:
+            source.write_bytes(data)
+            digest = sha256(data).hexdigest()
+        result = _invoke(dict(action='render', source=str(source), sha256=digest,
                               physical=physical, timeout=30), timeout=30, cancelled=cancelled)
     if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
         raise InterruptedError('PDF source verification cancelled.')
@@ -1068,12 +1093,10 @@ def main():
             if message['action'] != 'render' or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')
             source = Path(message['source'])
-            info = source.lstat()
-            if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
-                raise ValueError('Invalid PDF review source.')
-            data = source.read_bytes()
-            if sha256(data).hexdigest() != message['sha256']:
+            original = source_snapshot(source.parent, source.name)
+            if original.mime != 'application/pdf' or original.digest != message['sha256']:
                 raise ValueError('PDF review source digest changed.')
+            data = original if isinstance(original, FileSnapshot) else original.data
             from ..citations.pdf_review_attestation import render_fingerprint
             with redirect_stdout(sys.stderr):
                 renderer, fingerprint = render_fingerprint(data, message['physical'])

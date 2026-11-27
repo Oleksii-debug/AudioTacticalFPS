@@ -1,0 +1,21 @@
+{
+  "schema": "carr-source-acceptance/1",
+  "observed_utc": "2026-11-27T13:33:00Z",
+  "source_commit": "2fb57880c4e0fa377ff7fdecfecd749c95b97c95",
+  "workflow_run": 45998184117,
+  "job": 140503898799,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45998184117/job/140503898799",
+  "status": "FAIL",
+  "platform": "Windows / actual child workers with explicit synthetic engine fixtures",
+  "passed": 352,
+  "failed": 1,
+  "skipped": 0,
+  "suites": 15,
+  "failure": "Cancellation was armed before runtime admission; on Windows no first child had started, so the explicitly resumed pause-once child correctly timed out.",
+  "correction": "11c24615635a05697b5cfdc6740d52191314c44b observes actual running progress and matching durable child run_id before requesting cancellation; stopped and resumed receipt assertions are retained and strengthened.",
+  "correction_execution": "NOT_RUN",
+  "limits": [
+    "Protocol and application integration fixture only, not recognition or model qualification.",
+    "The companion Linux job passed 354 cases; this Windows result remains failed."
+  ]
+}

@@ -1,0 +1,565 @@
+{
+  "schema": "carr-source-acceptance/1",
+  "observed_utc": "2026-11-27T13:35:00Z",
+  "source_commit": "dc477add6db2fc0348637dd460d03b76d8e1c75f",
+  "source_tree": "098a1dbbe6ea60995145db3835d1dceb5eaa5027",
+  "workflow_run": 46002976711,
+  "job": 140523527636,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46002976711/job/140523527636",
+  "status": "FAIL",
+  "suites": 68,
+  "passed": 2291,
+  "failed": 36,
+  "skipped": 0,
+  "rows": [
+    {
+      "suite": "tests/e2e/test_search_operation_budget.py",
+      "status": "PASS",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_catalog_insights_workflow.py",
+      "status": "PASS",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/research/test_academic_library.py",
+      "status": "PASS",
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_search_deadline.py",
+      "status": "PASS",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_academic_migration.py",
+      "status": "PASS",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_model_cli.py",
+      "status": "PASS",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/citations/test_pdf_mapping_contradiction.py",
+      "status": "PASS",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_languages.py",
+      "status": "PASS",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_model_store.py",
+      "status": "PASS",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_special_ocr_models.py",
+      "status": "PASS",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_ocr_selection.py",
+      "status": "PASS",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_managed_ocr.py",
+      "status": "PASS",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/academic_integration/test_documents.py",
+      "status": "PASS",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/citations/test_csl.py",
+      "status": "PASS",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/academic_integration/test_citation_ui.py",
+      "status": "PASS",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/academic_integration/test_regeneration.py",
+      "status": "PASS",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_managed_ocr_import.py",
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_advanced_search.py",
+      "status": "PASS",
+      "passed": 86,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_federated_advanced.py",
+      "status": "PASS",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_federated.py",
+      "status": "PASS",
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_search_paging.py",
+      "status": "PASS",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_federated_independent.py",
+      "status": "PASS",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_literal_long_source.py",
+      "status": "PASS",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/search/test_literal_unicode_memory.py",
+      "status": "PASS",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_federated_search.py",
+      "status": "FAIL",
+      "passed": 92,
+      "failed": 22,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "suite": "tests/ui/test_federated_labels.py",
+      "status": "FAIL",
+      "passed": 26,
+      "failed": 14,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "suite": "tests/ui/test_desktop_handlers.py",
+      "status": "PASS",
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_query_jobs.py",
+      "status": "PASS",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_advanced_research_search.py",
+      "status": "PASS",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_research_search_cli.py",
+      "status": "PASS",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_document_formats_text.py",
+      "status": "PASS",
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/extract/test_document_formats_xml.py",
+      "status": "PASS",
+      "passed": 88,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_extended_document_workflows.py",
+      "status": "PASS",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/acquisition/test_acquisition_cli.py",
+      "status": "PASS",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/acquisition/test_acquisition_security.py",
+      "status": "PASS",
+      "passed": 78,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/acquisition/test_acquisition_workflow.py",
+      "status": "PASS",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/acquisition/test_identifier_lookup_security.py",
+      "status": "PASS",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/acquisition/test_providers.py",
+      "status": "PASS",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/academic_integration/test_end_to_end.py",
+      "status": "PASS",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/academic_integration/test_formatting.py",
+      "status": "PASS",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_state_backup_portability.py",
+      "status": "PASS",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_v3_state_backup.py",
+      "status": "PASS",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_complete_pending_backup.py",
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_studio_input_authority.py",
+      "status": "PASS",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_durable_state_read.py",
+      "status": "PASS",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_v4_review.py",
+      "status": "PASS",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_library_backup_reading_state.py",
+      "status": "PASS",
+      "passed": 89,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_schema_identity.py",
+      "status": "PASS",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_pending_backup.py",
+      "status": "PASS",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_v4_sidecars.py",
+      "status": "PASS",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_primary_producers.py",
+      "status": "PASS",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_translation.py",
+      "status": "PASS",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_book_plan_bindings.py",
+      "status": "PASS",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_generated_audio.py",
+      "status": "PASS",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_keyboard_drafts.py",
+      "status": "PASS",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_pending_common4.py",
+      "status": "PASS",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/reader/test_export_reconciliation.py",
+      "status": "PASS",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/reader/test_export_no_clobber.py",
+      "status": "PASS",
+      "passed": 80,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ingest/test_worker_publication_boundary.py",
+      "status": "PASS",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ingest/test_import_publication_point.py",
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_keyboard_manager.py",
+      "status": "PASS",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_studio_keyboard_registration.py",
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_transcription.py",
+      "status": "PASS",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_worker_cleanup.py",
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/ui/test_studio_progress_results.py",
+      "status": "PASS",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/storage/test_keyboard_preferences.py",
+      "status": "PASS",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_ci_check.py",
+      "status": "PASS",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_import_worker_publication.py",
+      "status": "PASS",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "corrections": "The candidate corrects all observed typed-tool and native-control fixture contracts without removing original assertions. Fresh composed execution is NOT_RUN.",
+  "limitations": [
+    "Exact historical source tree only.",
+    "Portable controls/device and engine stand-ins do not qualify native Windows/NVDA or model output."
+  ]
+}

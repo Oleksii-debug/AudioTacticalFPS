@@ -237,7 +237,7 @@ class SearchCenter:
             if (direction == 1 and not self.has_more) or (direction == -1 and not options.offset_per_library):
                 raise ValueError('There is no further result page in that direction.')
             offset = max(0, options.offset_per_library + direction * options.limit_per_library)
-            self.search(replace(options, offset_per_library=offset))
+            self.search(replace(options, offset_per_library=offset), continuing=True)
         except Exception as exc:
             self._report_error(exc)
 
@@ -266,7 +266,7 @@ class SearchCenter:
                 # Navigation history is bounded; total forward traversal is not.
                 del self.source_history[:-128]
                 following = replace(options, source_cursors=self.next_source_cursors, offset_per_library=0)
-            self.search(following)
+            self.search(following, continuing=True)
         except Exception as exc:
             self._report_error(exc)
 
@@ -349,9 +349,11 @@ class SearchCenter:
         except Exception as exc:
             failed(exc)
 
-    def search(self, options):
+    def search(self, options, *, continuing=False):
         try:
             self._ready()
+            if not continuing:
+                self.source_history.clear()
             self._clear_rows()
             options.validate()
             epoch = self.epoch

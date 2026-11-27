@@ -9,15 +9,18 @@ from uuid import uuid4
 from ..durable_state import atomic_bytes
 
 
-def create_assistant_dialog(frame, *, wx_module=None):
+def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
     from ..studio.render import ProductionService
+    from ..assistant.player_tools import LivePlayerBridge
+    player_bridge = (LivePlayerBridge(frame.library, getattr(frame, 'desktop_integration', None), reader_owner)
+                     if reader_owner is not None else None)
     production = ProductionService(frame.library.root / 'state' / 'studio')
-    service = AssistantService(frame.library, production=production.assistant_callback)
-    dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
+    service = AssistantService(frame.library, production=production.assistant_callback, player=player_bridge)
+    dialog = wx.Dialog(reader_owner or frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
@@ -327,6 +330,8 @@ def create_assistant_dialog(frame, *, wx_module=None):
         if busy == 'run' and job_id:
             service.pause(job_id)
         alive = False
+        if player_bridge is not None:
+            player_bridge.close()
         executor.submit(production.close)
         executor.shutdown(wait=False, cancel_futures=False)
         if dialog.IsModal():
@@ -356,8 +361,8 @@ def create_assistant_dialog(frame, *, wx_module=None):
     return dialog
 
 
-def show_assistant(frame):
-    dialog = create_assistant_dialog(frame)
+def show_assistant(frame, *, reader_owner=None):
+    dialog = create_assistant_dialog(frame, reader_owner=reader_owner)
     try:
         dialog.ShowModal()
     finally:
