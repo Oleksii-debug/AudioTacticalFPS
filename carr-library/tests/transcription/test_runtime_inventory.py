@@ -198,3 +198,89 @@ def test_record_mutated_after_parse_rejected(root, monkeypatch):
     monkeypatch.setattr(module, '_record_labels', mutate_after_parse)
     with pytest.raises(ValueError, match='RECORD changed during verification'):
         module._runtime_inventory([base])
+
+
+
+# CARR-SEC-ASR-PYC-001: installed Python may execute existing .pyc
+# under -I -B; RECORD need not list these files. No inference or network.
+@pytest.mark.parametrize('module_name', [
+    'alpha', 'script-name', 'розмова', 'δοκιμή', 'Nød', '日本語', '𐍈text', 'long_module',
+])
+@pytest.mark.parametrize('subdirectory', [
+    '', '__pycache__', 'nested/__pycache__', 'nested/level/__pycache__',
+])
+@pytest.mark.parametrize('change', ['same_size', 'increased_size'])
+def test_unrecorded_bytecode_mutation_invalidates_profile_auxiliary(
+        root, module_name, subdirectory, change):
+    base, site = root
+    folder = site / subdirectory
+    folder.mkdir(parents=True, exist_ok=True)
+    payload = folder / (module_name + '.cpython-311.pyc')
+    payload.write_bytes(b'PYC-A')
+    previous_packages, previous_auxiliary = module._runtime_inventory([base])
+    assert str(payload) in previous_auxiliary
+    assert previous_auxiliary[str(payload)]['size'] == 5
+    payload.write_bytes(b'PYC-B' if change == 'same_size' else b'PYC-INCREASED')
+    next_packages, next_auxiliary = module._runtime_inventory([base])
+    assert next_packages == previous_packages
+    assert next_auxiliary != previous_auxiliary
+    assert next_auxiliary[str(payload)]['sha256'] != previous_auxiliary[str(payload)]['sha256']
+
+
+def test_installed_bytecode_identity_stable_when_unchanged(root):
+    base, site = root
+    folder = site / '__pycache__'
+    folder.mkdir()
+    (folder / 'warm.cpython-311.pyc').write_bytes(b'PYC-WARM')
+    assert module._runtime_inventory([base]) == module._runtime_inventory([base])
+
+
+def test_bytecode_inventory_recognizes_legacy_pyo(root):
+    base, site = root
+    legacy = site / 'old.pyo'
+    legacy.write_bytes(b'PYO')
+    _, auxiliary = module._runtime_inventory([base])
+    assert auxiliary[str(legacy)]['size'] == 3
+
+
+def test_bytecode_inventory_scans_optional_recorded_cache(root):
+    base, site = root
+    cached = site / '__pycache__' / 'tqdm.cpython-311.pyc'
+    cached.parent.mkdir()
+    cached.write_bytes(b'RECORDED-PYC')
+    _, info = install(site, 'tqdm')
+    with (info / 'RECORD').open('a', encoding='utf-8') as stream:
+        stream.write('__pycache__/tqdm.cpython-311.pyc,,\n')
+    inventory, auxiliary = module._runtime_inventory([base])
+    assert inventory['tqdm']['file_count'] == 3
+    assert auxiliary[str(cached)]['size'] == len(b'RECORDED-PYC')
+
+
+def test_bytecode_inventory_honors_file_budget(root, monkeypatch):
+    base, site = root
+    (site / 'payload.pyc').write_bytes(b'PYC')
+    monkeypatch.setattr(module, 'MAX_RUNTIME_BYTECODE_FILES', 0)
+    with pytest.raises(ValueError, match='bytecode file budget'):
+        module._runtime_inventory([base])
+
+
+def test_bytecode_inventory_honors_byte_budget(root, monkeypatch):
+    base, site = root
+    (site / 'payload.pyc').write_bytes(b'PYC')
+    monkeypatch.setattr(module, 'MAX_RUNTIME_BYTECODE_BYTES', 2)
+    with pytest.raises(ValueError, match='byte budget'):
+        module._runtime_inventory([base])
+
+
+def test_bytecode_inventory_honors_walk_budget(root, monkeypatch):
+    base, _ = root
+    monkeypatch.setattr(module, 'MAX_RUNTIME_SCAN_ENTRIES', 0)
+    with pytest.raises(ValueError, match='bytecode-scan entry budget'):
+        module._runtime_inventory([base])
+
+
+def test_bytecode_inventory_cancelled_on_empty_directory(tmp_path):
+    directory = tmp_path / 'empty'
+    directory.mkdir()
+    with pytest.raises(InterruptedError):
+        module._bytecode_inventory([directory], cancel=lambda: True)
