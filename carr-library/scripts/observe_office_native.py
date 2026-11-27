@@ -63,23 +63,27 @@ def failure_frames(error):
     while trace is not None and count < 32:
         frame = trace.tb_frame
         if (frame.f_globals.get('__name__') == 'carr_library.extract.document_formats_xml'
-                and frame.f_code.co_name in ('_odf_blocks', '_odf_text')):
+                and frame.f_code.co_name in ('_odf_blocks', '_odf_text', '_check_odf_visibility')):
             element = frame.f_locals.get('element')
             if element is not None:
                 rows.append({'function': frame.f_code.co_name, 'line': trace.tb_lineno,
                     'tag': str(element.tag)[:512],
                     'child_tags': [str(child.tag)[:512] for child in list(element)[:32]],
                     'attribute_names': sorted(str(key)[:512] for key in element.attrib)[:32],
+                    'attributes': {str(key)[:512]: str(value)[:256]
+                                   for key, value in list(element.attrib.items())[:32]},
+                    'text': (element.text or '')[:256], 'tail': (element.tail or '')[:256],
                     'path': list(frame.f_locals.get('path', ()))[:32]})
         trace, count = trace.tb_next, count + 1
     return rows
 
 
-def odf_census(root):
+def odf_census(root, extension='odt'):
     """Read only this authored operation's bounded generated content.xml."""
     from defusedxml import ElementTree
     from carr_library.conversion.office import file_identity, regular_file, verified_reader
-    output = root / 'office-output/source.odt'
+    assert extension in ('odt', 'odp', 'ods')
+    output = root / ('office-output/source.' + extension)
     if not output.exists():
         return {'present': False}
     info = regular_file(output)
@@ -98,12 +102,19 @@ def odf_census(root):
             if len(raw) != choices[0].file_size:
                 raise ValueError('Authored content.xml changed during its bounded capture.')
     tree = ElementTree.fromstring(raw)
-    counts, nodes = Counter(), 0
+    counts, nodes, visibility = Counter(), 0, []
     for node in tree.iter():
         nodes += 1
         if nodes > 4096:
             raise ValueError('Authored XML node census exceeded its bound.')
         counts[str(node.tag)] += 1
+        if any(key.rsplit('}', 1)[-1] in ('display', 'visibility')
+               for key in node.attrib) and len(visibility) < 64:
+            visibility.append({'tag': str(node.tag)[:512],
+                'attributes': {str(key)[:512]: str(value)[:256]
+                               for key, value in list(node.attrib.items())[:32]},
+                'child_tags': [str(child.tag)[:512] for child in list(node)[:32]],
+                'text': (node.text or '')[:256]})
         if len(counts) > 256:
             raise ValueError('Authored XML tag census exceeded its bound.')
     office = '{urn:oasis:names:tc:opendocument:xmlns:office:1.0}'
@@ -114,6 +125,9 @@ def odf_census(root):
         rows.append({'path': list(path), 'tag': str(node.tag)[:512],
                      'child_tags': [str(child.tag)[:512] for child in list(node)[:32]],
                      'attribute_names': sorted(str(key)[:512] for key in node.attrib)[:32],
+                     'attributes': {str(key)[:512]: str(value)[:256]
+                                    for key, value in list(node.attrib.items())[:32]},
+                     'text': (node.text or '')[:256], 'tail': (node.tail or '')[:256],
                      'form_flags': {key: str(node.get(
                          '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}' + key))[:32]
                          for key in ('apply-design-mode', 'automatic-focus')
@@ -124,12 +138,14 @@ def odf_census(root):
     return {'present': True, 'archive_bytes': info.st_size,
             'content_bytes': len(raw), 'content_sha256': sha256(raw).hexdigest(),
             'tag_counts': dict(sorted(counts.items())), 'body_nodes': rows,
+            'visibility_nodes': visibility,
             'body_census_bounded': bool(pending)}
 
 
-def observations(root):
+def observations(root, extension='odt'):
     result = {'stage_path': str(root), 'stage_length': len(str(root))}
-    for key, operation in (('stage_files', namespace), ('odf_census', odf_census)):
+    for key, operation in (('stage_files', namespace),
+                           ('odf_census', lambda path: odf_census(path, extension))):
         try:
             result[key] = operation(root)
         except Exception as error:
@@ -137,12 +153,12 @@ def observations(root):
     return result
 
 
-def child(mode, root):
+def child(mode, root, kind='doc'):
     from carr_library.conversion import office
     from carr_library.conversion.models import ConversionBudget
-    assert mode in MODES and root.is_dir()
+    assert mode in MODES and root.is_dir() and kind in ('doc', 'ppt', 'xls')
     selected = json.loads((root / 'selection.json').read_text('utf-8'))
-    source = root / 'source.doc'
+    source = root / ('source.' + kind)
     before = sha256(source.read_bytes()).hexdigest()
     inherited = {key: os.environ[key] for key in KEYS if key in os.environ}
     original_popen = office.subprocess.Popen
@@ -166,10 +182,10 @@ def child(mode, root):
         office._runtime_lease = observed_lease
     budget = ConversionBudget(timeout=60, memory_bytes=4 * 1024**3)
     deadline = monotonic() + budget.timeout
-    result = {'mode': mode, 'status': 'OBSERVED_FAILURE'}
+    result = {'mode': mode, 'kind': kind, 'status': 'OBSERVED_FAILURE'}
     try:
         engine, separator, records, warnings = office.office_records(
-            source, source.read_bytes(), '.doc', budget, deadline, selected)
+            source, source.read_bytes(), '.' + kind, budget, deadline, selected)
         text = separator.join(item['raw_text'] for item in records)
         assert TEXT in text, 'Authored text did not survive conversion.'
         result.update(status='OBSERVED_SUCCESS', engine=engine,
@@ -179,8 +195,8 @@ def child(mode, root):
         result['rejected_parser_frames'] = failure_frames(exc)
     finally:
         assert sha256(source.read_bytes()).hexdigest() == before
-        office._admit(selected, '.doc', monotonic() + 20)
-        result.update(observations(root))
+        office._admit(selected, '.' + kind, monotonic() + 20)
+        result.update(observations(root, {'doc': 'odt', 'ppt': 'odp', 'xls': 'ods'}[kind]))
         result['source_sha256'] = before
         print(json.dumps(result, ensure_ascii=True), flush=True)
 
@@ -198,14 +214,15 @@ def matrix_stage(root, label, length, unicode):
     return stage
 
 
-def worker_observation(stage, selected, native, time_left):
+def worker_observation(stage, selected, native, time_left, kind='doc'):
     """Use the real isolated worker, request, environment and process owner."""
     from carr_library.audio.process import run_process
     from carr_library.conversion import ConversionBudget, ConversionService
     from carr_library.conversion.service import _read_bytes
     from carr_library.conversion.office import MAX_STAGE_ENTRIES, PROFILE_BYTES
     budget = ConversionBudget(timeout=min(60, time_left), memory_bytes=4 * 1024**3)
-    source, output, report = stage / 'source.doc', stage / 'reading.txt', stage / 'details.json'
+    assert kind in ('doc', 'ppt', 'xls')
+    source, output, report = stage / ('source.' + kind), stage / 'reading.txt', stage / 'details.json'
     service = ConversionService(stage, input_roots=(source,), office=native, budget=budget)
     assert service.office.snapshot() == selected
     request = stage / 'request.json'
@@ -223,13 +240,17 @@ def worker_observation(stage, selected, native, time_left):
         payload = _read_bytes(output, budget.max_text_bytes)
         details = json.loads(_read_bytes(report, 16 * 1024**2).decode('utf-8'))
         assert TEXT in payload.decode('utf-8')
-        assert details['engine'] == 'selected-libreoffice-doc'
+        assert details['engine'] == 'selected-libreoffice-' + kind
         assert details['metadata']['selected_components_sha256'] == sha256(
             json.dumps(selected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return outcome
 
 
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == '--format-child':
+        kind, root = sys.argv[2], Path(sys.argv[3]).resolve(strict=True)
+        child('original', root, kind)
+        return
     if len(sys.argv) == 4 and sys.argv[1] == '--child':
         mode, root = sys.argv[2], Path(sys.argv[3]).resolve(strict=True)
         child(mode, root)
@@ -304,6 +325,38 @@ def main():
                     'stderr': outcome.stderr.decode('utf-8', 'replace')[:8192],
                     **observations(stage)}, ensure_ascii=True), flush=True)
                 assert original.read_bytes() == captured
+        # These are the exact two new failures from b398 Windows acceptance.
+        # Keep all earlier matrix cases; only capture finite authored ODP/ODS
+        # structure. No generated content is admitted or published by this probe.
+        for kind, extension in (('ppt', 'odp'), ('xls', 'ods')):
+            original_format = fixture.legacy_office(root, kind, TEXT)
+            format_bytes = original_format.read_bytes()
+            for route in ('direct', 'worker'):
+                remaining = diagnostic_deadline - monotonic()
+                if remaining < 1:
+                    raise TimeoutError('The bounded Office format census did not finish.')
+                stage = matrix_stage(root, kind + '-' + route[0], short_length, False)
+                source = stage / ('source.' + kind)
+                source.write_bytes(format_bytes)
+                (stage / 'selection.json').write_text(json.dumps(selected), encoding='utf-8')
+                if route == 'worker':
+                    outcome = worker_observation(stage, selected, native, remaining, kind)
+                else:
+                    outcome = run_process([sys.executable, '-I', '-B', '-X', 'utf8',
+                        str(Path(__file__).resolve()), '--format-child', kind, str(stage)],
+                        budget=AudioBudget(timeout=min(90, remaining),
+                            max_output_bytes=128 * 1024**2, max_staging_files=4096),
+                        owned_tree=True, cwd=stage, watch=(stage,), allow_failure=True)
+                assert source.read_bytes() == original_format.read_bytes() == format_bytes
+                from carr_library.conversion.office import _admit
+                _admit(selected, '.' + kind, monotonic() + 20)
+                print(json.dumps({'case': 'actual_failed_format', 'kind': kind,
+                    'route': route, 'exit': outcome.returncode,
+                    'source_bytes': len(format_bytes),
+                    'source_sha256': sha256(format_bytes).hexdigest(),
+                    'stdout': outcome.stdout.decode('utf-8', 'replace')[:65536],
+                    'stderr': outcome.stderr.decode('utf-8', 'replace')[:8192],
+                    **observations(stage, extension)}, ensure_ascii=True), flush=True)
     assert identities() == installed
     assert sha256(fixture_path.read_bytes()).hexdigest() == fixture_before
     print('OBSERVATIONS_COMPLETE: exact installed sources and authored input unchanged', flush=True)
