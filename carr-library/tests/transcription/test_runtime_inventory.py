@@ -139,3 +139,62 @@ def test_valid_absolute_record(root):
         encoding='utf-8')
     inventory, _ = module._runtime_inventory([base])
     assert inventory['tqdm']['file_count'] == 3
+
+
+@pytest.mark.parametrize('entry', ('absent_dependency.py', 'absent_dependency.pyd'))
+def test_missing_recorded_payload_rejected(root, entry):
+    base, site = root
+    _, info = install(site, 'tqdm')
+    with (info / 'RECORD').open('a', encoding='utf-8') as stream:
+        stream.write(f'{entry},,\n')
+    with pytest.raises((FileNotFoundError, ValueError)):
+        module._runtime_inventory([base])
+
+
+def test_dangling_recorded_link_rejected(root):
+    base, site = root
+    payload, _ = install(site, 'tqdm')
+    payload.unlink()
+    try:
+        payload.symlink_to(site / 'missing.py')
+    except OSError:
+        pytest.skip('No symlink permission')
+    with pytest.raises((FileNotFoundError, ValueError)):
+        module._runtime_inventory([base])
+
+
+def test_missing_generated_bytecode_is_explicitly_excluded(root):
+    base, site = root
+    _, info = install(site, 'tqdm')
+    with (info / 'RECORD').open('a', encoding='utf-8') as stream:
+        stream.write('__pycache__/tqdm.cpython-311.pyc,,\n')
+    inventory, _ = module._runtime_inventory([base])
+    assert inventory['tqdm']['file_count'] == 3
+
+
+@pytest.mark.parametrize('row', ('only_one_column\n', 'file.py,,,\n', ',,\n'))
+def test_malformed_raw_record_row(root, row):
+    base, site = root
+    _, info = install(site, 'tqdm')
+    with (info / 'RECORD').open('a', encoding='utf-8') as stream:
+        stream.write(row)
+    with pytest.raises(ValueError, match='malformed RECORD'):
+        module._runtime_inventory([base])
+
+
+def test_record_mutated_after_parse_rejected(root, monkeypatch):
+    base, site = root
+    _, info = install(site, 'tqdm')
+    record = info / 'RECORD'
+    original = module._record_labels
+
+    def mutate_after_parse(path, **kwargs):
+        labels, identity = original(path, **kwargs)
+        if path == record:
+            with record.open('a', encoding='utf-8') as stream:
+                stream.write('absent_dependency.py,,\n')
+        return labels, identity
+
+    monkeypatch.setattr(module, '_record_labels', mutate_after_parse)
+    with pytest.raises(ValueError, match='RECORD changed during verification'):
+        module._runtime_inventory([base])

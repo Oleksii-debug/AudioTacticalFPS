@@ -1,6 +1,8 @@
 """Read-only admission of explicit local worker/interpreter/model installations."""
 from hashlib import sha256
 from importlib import metadata
+import csv
+import io
 import json
 import os
 import re
@@ -127,6 +129,40 @@ def _python_layout(python, resolved_python, *, cancel=None):
     return roots, configurations, support
 
 
+def _record_labels(record_path, *, cancel=None):
+    """Parse the actual RECORD, including missing files hidden by metadata.files."""
+    record_path = local_path(record_path, exists=True)
+    maximum = 16 * 1024**2
+    identity = file_identity(record_path, cancel=cancel, maximum=maximum)
+    stopped(cancel)
+    with record_path.open('rb') as stream:
+        raw = stream.read(maximum + 1)
+    stopped(cancel)
+    if len(raw) != identity['size'] or sha256(raw).hexdigest() != identity['sha256']:
+        raise ValueError('The installed RECORD changed during verification.')
+    labels, seen = [], set()
+    try:
+        rows = csv.reader(io.StringIO(raw.decode('utf-8'), newline=''), strict=True)
+        for row in rows:
+            stopped(cancel)
+            if len(labels) >= 65536:
+                raise ValueError('A selected ASR distribution exceeds its installed-record budget.')
+            if len(row) != 3 or not row[0] or '\x00' in row[0]:
+                raise ValueError('A selected ASR distribution has a malformed RECORD row.')
+            # Preserve the existing importlib.metadata PackagePath label dialect
+            # used by the supplied worker's seven-package checkpoint hashes.
+            label = str(metadata.PackagePath(row[0]))
+            if label in seen:
+                raise ValueError('A selected distribution has a duplicate installed-file record.')
+            seen.add(label)
+            labels.append(label)
+    except (csv.Error, UnicodeDecodeError) as exc:
+        raise ValueError('A selected ASR distribution has a malformed RECORD.') from exc
+    if not labels:
+        raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
+    return labels, identity
+
+
 def _runtime_inventory(roots, *, cancel=None, progress=None):
     """Read all recorded distributions in the selected environment without importing them."""
     auxiliary = {}
@@ -179,12 +215,11 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
         record_path = distribution._path / 'RECORD'
         if not record_path.exists() or regular(local_path(record_path, exists=True)).st_size > 16 * 1024**2:
             raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
-        entries = distribution.files
-        if not entries or len(entries) > 65536:
-            raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
+        record_path = local_path(record_path, exists=True)
+        entries, record_identity = _record_labels(record_path, cancel=cancel)
         files = {}
         recorded_paths = set()
-        for relative in sorted(entries, key=str):
+        for relative in sorted(entries):
             stopped(cancel)
             label = str(relative)
             if '__pycache__' in Path(label).parts or label.endswith(('.pyc', '.pyo')):
@@ -204,6 +239,8 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
                 raise ValueError('A selected distribution has duplicate resolved installed-file records.')
             recorded_paths.add(path)
             identity = file_identity(path, cancel=cancel, maximum=MAX_RUNTIME_BYTES - total_bytes)
+            if path == record_path and identity != record_identity:
+                raise ValueError('The installed RECORD changed during verification.')
             total_bytes += identity['size']
             if total_bytes > MAX_RUNTIME_BYTES:
                 raise ValueError('The selected runtime exceeds its total installed-byte budget.')
