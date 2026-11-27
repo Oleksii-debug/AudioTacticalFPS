@@ -4,14 +4,16 @@ from contextlib import closing
 from decimal import Decimal
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import shutil
 import socket
 import sqlite3
 from threading import Event, Thread
+from tempfile import TemporaryDirectory
 import pytest
 
-from carr_library.assistant.models import canonical
+from carr_library.assistant.models import canonical, local_path
 from carr_library.assistant.state import atomic_json
 from carr_library.assistant.translation import (
     TranslationService, language_approval, translation_approval, split_text)
@@ -587,3 +589,104 @@ def test_typed_translation_rejects_invalid_decoded_receipt_before_backup(ready, 
     job['receipts'][0]['decoded_translation_sha256'] = digest
     with pytest.raises(ValueError):
         validate_state_document(identity + '.json', canonical(job).encode())
+
+
+@pytest.mark.parametrize('kind', ['relative', 'dot-parent'])
+def test_translation_connection_paths_use_the_same_safe_canonical_library(ready, tmp_path, monkeypatch, kind):
+    service, selected, vault, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    before = service.jobs.path(identity).read_bytes()
+    monkeypatch.chdir(service.root.parent)
+    if kind == 'relative':
+        alias = Path(service.root.name)
+    else:
+        intermediate = service.root.parent / 'existing-intermediate'
+        intermediate.mkdir()
+        alias = intermediate / '..' / service.root.name
+        assert alias.absolute() != service.root
+    profiles = ProfileStore(alias / 'api-connections.json', vault)
+    ledger = BudgetLedger(alias / 'api-operations.sqlite')
+    reopened = TranslationService(alias, profiles=profiles,
+        gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+    assert reopened.root == service.root
+    assert reopened.resume(identity)['status'] == 'complete'
+    assert reopened.charge_report(identity)['operations'] == service.charge_report(identity)['operations']
+    output = tmp_path / 'canonical-path-export'
+    reopened.export(identity, output)
+    assert json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))[
+        'chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert service.jobs.path(identity).read_bytes() == before and len(text_calls(transport)) == 1
+
+
+@pytest.mark.parametrize('component', ['profiles', 'ledger'])
+@pytest.mark.parametrize('alias_kind', ['foreign-copy', 'foreign-hardlink', 'symbolic-link', 'linked-parent'])
+def test_translation_safe_path_binding_refuses_foreign_and_linked_connections(
+        ready, tmp_path, component, alias_kind):
+    service, _, vault, transport = ready
+    foreign = tmp_path / 'outside-library'
+    foreign.mkdir()
+    filename = 'api-connections.json' if component == 'profiles' else 'api-operations.sqlite'
+    original = service.root / filename
+    selected = foreign / filename
+    if alias_kind == 'foreign-copy':
+        shutil.copyfile(original, selected)
+    elif alias_kind == 'foreign-hardlink':
+        os.link(original, selected)
+    elif alias_kind == 'symbolic-link':
+        selected.symlink_to(original)
+    else:
+        parent = foreign / 'linked-library'
+        parent.symlink_to(service.root, target_is_directory=True)
+        selected = parent / filename
+    profiles = ProfileStore(service.root / 'api-connections.json', vault)
+    ledger = service.gateway.ledger
+    # Existing object paths are mutable; recheck them at the service boundary
+    # even if the object was initially constructed from an ordinary local file.
+    if component == 'profiles':
+        profiles.path = selected
+    else:
+        ledger = BudgetLedger(service.root / 'api-operations.sqlite')
+        ledger.path = selected
+    calls = len(transport.calls)
+    before = original.read_bytes()
+    with pytest.raises(ValueError):
+        TranslationService(service.root, profiles=profiles,
+            gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+    assert original.read_bytes() == before and len(transport.calls) == calls
+
+
+def test_windows_native_short_path_connections_bind_the_same_real_library(ready):
+    service, _, vault, transport = ready
+    if os.name != 'nt':
+        # The native alias branch is Windows-only. Portable runs still prove
+        # the exact path normalizer; they do not claim a Windows API verdict.
+        assert local_path(service.root / '..' / service.root.name) == service.root
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    short_path = kernel.GetShortPathNameW
+    short_path.argtypes = (wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD)
+    short_path.restype = wintypes.DWORD
+    with TemporaryDirectory(prefix='carr-translation-path-') as directory:
+        root = (Path(directory) / 'native library identity').resolve()
+        root.mkdir()
+        needed = short_path(str(root), None, 0)
+        assert needed > 0, ctypes.get_last_error()
+        buffer = ctypes.create_unicode_buffer(needed)
+        written = short_path(str(root), buffer, needed)
+        assert 0 < written < needed, ctypes.get_last_error()
+        alias = Path(buffer.value)
+        assert local_path(alias) == root
+        profiles = ProfileStore(alias / 'api-connections.json', vault)
+        profiles.save(ProviderProfile(
+            'native-path-account', 'Synthetic path account', 'google-translation-v2',
+            GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',)), secret=SECRET)
+        ledger = BudgetLedger(alias / 'api-operations.sqlite')
+        opened = TranslationService(root, profiles=profiles,
+            gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+        assert opened.root == root
+        assert opened._ledger_identity() == [ledger.path.stat().st_dev, ledger.path.stat().st_ino]
+        assert opened.available_profiles()[0].id == 'native-path-account'
+        assert not text_calls(transport)

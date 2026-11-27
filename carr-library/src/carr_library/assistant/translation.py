@@ -79,13 +79,13 @@ class TranslationService:
         self.jobs = TranslationStore(library_root)
         self.root, self.directory = self.jobs.root, self.jobs.directory
         self.profiles = profiles or ProfileStore(self.root / 'api-connections.json')
-        if Path(self.profiles.path).absolute() != self.root / 'api-connections.json':
+        if local_path(self.profiles.path, must_exist=False) != self.root / 'api-connections.json':
             raise ValueError('Translation must use this library\'s existing connection profiles.')
         if gateway is None:
             with exclusive_writer(self.root):
                 gateway = ProviderGateway(BudgetLedger(self.root / 'api-operations.sqlite'),
                                           vault=self.profiles.vault)
-        if Path(gateway.ledger.path).absolute() != self.root / 'api-operations.sqlite':
+        if local_path(gateway.ledger.path) != self.root / 'api-operations.sqlite':
             raise ValueError('Translation must use this library\'s existing provider ledger.')
         self.gateway = gateway
         self._ledger_identity()
