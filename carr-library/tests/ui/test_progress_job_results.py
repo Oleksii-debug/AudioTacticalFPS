@@ -225,3 +225,40 @@ def test_result_callback_owns_focus_and_detailed_status(host):
     frame.report.assert_not_called()
     frame.status.SetValue.assert_not_called()
     assert frame.progress_panel.active_task.snapshot().state == 'succeeded'
+
+
+@pytest.mark.parametrize('target_name', [None, 'Search status', 'Search results'])
+def test_completion_summary_preserves_the_callback_focus_target(host, target_name):
+    """Retain the canonical focus regression on the composed progress service."""
+    frame, callbacks = host
+    focused = []
+
+    def control(name):
+        widget = SimpleNamespace(name=name, value='Ready')
+        widget.GetValue = lambda: widget.value
+        widget.SetValue = lambda text: setattr(widget, 'value', text)
+        widget.SetFocus = lambda: focused.append(widget)
+        return widget
+
+    frame.status = control('Library operation status')
+    target = control(target_name) if target_name is not None else frame.status
+
+    def report(message):
+        frame.status.SetValue(message)
+        frame.status.SetFocus()
+
+    frame.report = report
+
+    def display_result(result):
+        target.SetValue(result)
+        target.SetFocus()
+
+    frame.run_job('Open source', lambda: 'Readable source result',
+                  display_result if target_name is not None else None)
+    finish(callbacks)
+
+    assert frame.status.GetValue() == 'Open source: complete.'
+    assert focused[-1] is target
+    if target_name is not None:
+        assert target.GetValue() == 'Readable source result'
+    assert frame.progress_panel.active_task.snapshot().percent == 100

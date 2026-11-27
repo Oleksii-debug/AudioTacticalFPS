@@ -6,10 +6,21 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
+import logging
 from pathlib import Path, PureWindowsPath
 import os
 import stat
 from tempfile import NamedTemporaryFile
+
+
+@dataclass(frozen=True)
+class ExportReceipt:
+    """A completed publication, with any remaining private-file cleanup notice."""
+    path: Path
+    cleanup_warning: str | None = None
+
+
+_logger = logging.getLogger(__name__)
 
 
 def _filename(name):
@@ -127,11 +138,12 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     changes since the caller selected and confirmed the destination. A captured
     absent destination always uses atomic no-clobber publication. Once atomic
     replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
+    The receipt distinguishes a saved file from a remaining staging-cleanup warning.
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
-    _write_payload(path, content.encode('utf-8'), private_root=private_root,
-                   cancelled=cancelled, require_absent=require_absent, approval=approval)
+    return _write_payload(path, content.encode('utf-8'), private_root=private_root,
+                          cancelled=cancelled, require_absent=require_absent, approval=approval)
 
 
 def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
@@ -144,8 +156,8 @@ def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
     """
     if not isinstance(content, bytes):
         raise ValueError('Binary document export required.')
-    _write_payload(path, content, private_root=private_root,
-                   cancelled=cancelled, require_absent=require_absent, approval=approval)
+    return _write_payload(path, content, private_root=private_root,
+                          cancelled=cancelled, require_absent=require_absent, approval=approval)
 
 
 def _write_payload(path, payload, *, private_root, cancelled, require_absent=False, approval=None):
@@ -172,6 +184,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     if require_absent and previous is not None:
         raise FileExistsError('The export destination already exists; replacement was not authorized.')
     temporary = None
+    cleanup_warning = None
     try:
         check_cancelled()
         with NamedTemporaryFile(mode='wb', prefix='.research-export-',
@@ -187,16 +200,34 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
-        if require_absent:
-            # Unlike replace(), creating a hard link fails atomically if any
-            # file appeared after the last check. Both paths are on the same
-            # filesystem. If that filesystem lacks this operation, fail without
-            # weakening the caller's explicit no-replacement policy.
+        if require_absent and os.name == 'nt':
+            # Windows rename fails if the destination exists. The single
+            # same-directory move avoids the link/unlink crash window.
+            os.rename(temporary, target)
+        elif require_absent:
+            # POSIX rename can overwrite. Preserve atomic no-clobber via
+            # hard-link publication; never fall back to unconditional replace.
             os.link(temporary, target, follow_symlinks=False)
-            os.unlink(temporary)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError:
+                    cleanup_warning = ('The file is saved. Temporary-file cleanup is still pending; '
+                                       'the export does not need to be repeated.')
+                    # Existing callers may ignore the additive receipt return.
+                    # Logging is a fallback, never a reason to report a saved
+                    # file as failed, even if an application log handler raises.
+                    try:
+                        _logger.warning('%s Export destination: %s', cleanup_warning, target)
+                    except Exception:
+                        pass
         else:
             os.replace(temporary, target)
         temporary = None
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+    return ExportReceipt(target, cleanup_warning)

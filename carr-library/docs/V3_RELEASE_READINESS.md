@@ -1,8 +1,11 @@
-# V3 implementation and private delivery status
+# Resonance V3 implementation and owner-test delivery status
 
-This document describes implemented behavior. It does not close the complete
-V3 specification or the finalization addendum. A private application bundle and
-a signed production release have separate acceptance requirements.
+This document describes the implemented library, reading and audio preview of
+Resonance by Sceneria Innovative Technologies. It does not close the complete
+platform specification or the finalization addendum. An owner-test application
+bundle and a signed distribution-cleared release have separate acceptance
+requirements. Existing package, launch filenames and data locations remain
+unchanged until a verified migration; visible application titles use Resonance.
 
 ## Implemented and exercised
 
@@ -37,15 +40,20 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
-  full Balabolka parity and remaining synchronized publishing/Braille workflows.
+  the remaining approved Balabolka-equivalent workflow checklist and synchronized
+  publishing/Braille workflows.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The owner-supplied standalone transcription project remains a future integration
-outside the current core delivery gate. No competing ASR stack is bundled.
+The supplied Whisper Transcribe V4.3 implementation has been received and
+statically reviewed; transcription is part of the approved platform scope.
+The current library/audio preview leaves its integration, real execution and
+qualification pending. The existing worker must be corrected and adapted through
+shared jobs and an isolated reviewed engine pack; no competing ASR stack or
+unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
-The private build retains local operation and access to user-owned data. This
-work does not authorize external distribution, pricing, billing, a public site,
+The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
+This work does not authorize external distribution, pricing, billing, a public site,
 automatic model acquisition or publishing private voice profiles.

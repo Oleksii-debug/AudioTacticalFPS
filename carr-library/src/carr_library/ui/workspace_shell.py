@@ -16,7 +16,7 @@ from .scope_bindings import ScopeServices, bind_scope_services, scope_labels
 
 class WorkspaceFrame(wx.Frame):
     def __init__(self, parent, list_scopes, bind_scope):
-        super().__init__(parent, title='Research Library', size=(900, 700))
+        super().__init__(parent, title='Resonance', size=(900, 700))
         self.list_scopes, self.bind_scope = list_scopes, bind_scope
         self.active = self.book = self.evidence = None
         self.scopes = []

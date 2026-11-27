@@ -3,6 +3,7 @@ from copy import deepcopy
 from decimal import Decimal
 from hashlib import sha256
 import json
+import shutil
 import subprocess
 
 import pytest
@@ -82,6 +83,15 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     assert 'state/providers/usage/envelope.usage.json' in names
     assert not any(name.endswith('.lock') for name in names)
     if version == 3:
+        # The historical state-only format predates the pending producer.
+        # This fixture has only a finished add_text journal. Its source remains
+        # in the completed library's originals when the newer journal namespace
+        # is removed to construct the exact historical format.
+        pending = manifest.pop('pending', None)
+        if pending is not None:
+            assert pending['sources'] == []
+            assert all(asset in manifest['assets'] for asset in pending['assets'])
+            shutil.rmtree(folder / 'pending')
         manifest['version'] = 3
         manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
                              for entry in manifest.pop('sidecars')]

@@ -1,4 +1,7 @@
 """Real export publication must preserve files created after caller preflight."""
+import os
+from pathlib import Path
+
 import pytest
 
 from carr_library.research import export_file
@@ -14,17 +17,121 @@ def export(request, tmp_path):
     expected = payload.encode('utf-8') if isinstance(payload, str) else payload
 
     def publish(**options):
-        writer(target, payload, private_root=private, **options)
+        return writer(target, payload, private_root=private, **options)
 
     return target, expected, publish
 
 
 def test_create_only_export_publishes_exact_bytes_without_staging_residue(export):
     target, expected, publish = export
-    publish(require_absent=True)
+    receipt = publish(require_absent=True)
+    assert receipt.path == target and receipt.cleanup_warning is None
     assert target.read_bytes() == expected
     assert target.stat().st_nlink == 1
     assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_create_only_export_recovers_transient_staging_cleanup(export, monkeypatch):
+    target, expected, publish = export
+    unlink = os.unlink
+    failed = False
+
+    def fail_once(path, *args, **kwargs):
+        nonlocal failed
+        if Path(path).name.startswith('.research-export-') and not failed:
+            # Inject only after actual publication. Windows no-replace rename
+            # avoids this separate cleanup operation entirely.
+            assert target.read_bytes() == expected
+            failed = True
+            raise PermissionError('Synthetic transient cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', fail_once)
+    receipt = publish(require_absent=True)
+    assert failed is (os.name != 'nt')
+    assert receipt.path == target and receipt.cleanup_warning is None
+    assert target.read_bytes() == expected
+    assert target.stat().st_nlink == 1
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('broken_logger', [False, True])
+def test_create_only_cleanup_cannot_reverse_completed_export(
+        export, monkeypatch, caplog, broken_logger):
+    target, expected, publish = export
+    unlink = os.unlink
+
+    def locked_stage(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-'):
+            assert target.read_bytes() == expected
+            raise PermissionError('Synthetic persistent cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', locked_stage)
+    if broken_logger:
+        def unavailable_log(*args):
+            raise OSError('Synthetic unavailable log sink')
+        monkeypatch.setattr(export_file._logger, 'warning', unavailable_log)
+    try:
+        receipt = publish(require_absent=True)
+        assert receipt.path == target
+        assert target.read_bytes() == expected
+        if os.name == 'nt':
+            # No staging link needs cleanup after Windows no-replace rename.
+            assert receipt.cleanup_warning is None
+            assert not list(target.parent.glob('.research-export-*'))
+        else:
+            assert 'file is saved' in receipt.cleanup_warning
+            assert 'does not need to be repeated' in receipt.cleanup_warning
+            if not broken_logger:
+                assert receipt.cleanup_warning in caplog.text
+            stage, = target.parent.glob('.research-export-*')
+            assert os.path.samefile(stage, target)
+    finally:
+        # Remove only this test's own staging link with the real OS operation.
+        for stage in target.parent.glob('.research-export-*'):
+            unlink(stage)
+    assert target.stat().st_nlink == 1
+    assert target.read_bytes() == expected
+
+
+def test_cli_reports_completed_export_when_staging_cleanup_is_denied(
+        tmp_path, monkeypatch, capsys):
+    import json
+
+    from carr_library.application import LibraryApp
+    from carr_library.bibliography_cli import main
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Publication receipt')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))
+    destination = tmp_path / 'bibliography.txt'
+    unlink = os.unlink
+
+    def locked_stage(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-'):
+            raise PermissionError('Synthetic persistent cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', locked_stage)
+    try:
+        result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
+                       '--reference', reference.id, '--output', str(destination)])
+        report = json.loads(capsys.readouterr().out)
+        assert result == 0 and report['result'] == 'SAVED'
+        assert 'Synthetic source' in destination.read_text(encoding='utf-8')
+        if os.name == 'nt':
+            assert not any('cleanup' in warning for warning in report['warnings'])
+            assert not list(tmp_path.glob('.research-export-*'))
+        else:
+            assert any('file is saved' in warning for warning in report['warnings'])
+            stage, = tmp_path.glob('.research-export-*')
+            assert os.path.samefile(stage, destination)
+    finally:
+        for stage in tmp_path.glob('.research-export-*'):
+            unlink(stage)
 
 
 def test_create_only_export_rejects_existing_file_without_touching_it(export):

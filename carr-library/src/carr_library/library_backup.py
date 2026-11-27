@@ -2,9 +2,9 @@
 
 Backups include all workspaces, saved research, registered original files and
 explicitly validated reader/editor/settings sidecars. Unknown application state
-is refused, never silently discarded. Active job checkpoint formats require
-their producer's snapshot adapter; this is not a live-job backup claim.
-Retained files from failed/unpublished imports are deliberately not included.
+is refused, never silently discarded. The canonical pending-import producer
+preserves journals, requests, batch/review identities and required original bytes.
+Restore rebinds locations without executing or automatically resuming a job.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Format 4 unifies registered sidecars. Exact legacy formats 1/2 and the three
@@ -29,9 +29,10 @@ from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
+from .durable_state import local_path
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
-from . import backup_sidecars
+from . import backup_sidecars, pending_backup
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -44,7 +45,7 @@ MAX_ASSET_BYTES = 8 * 1024**3
 
 
 def _destination(value, source):
-    path = guard_data_directory(value, purpose='backup or restored library')
+    path = local_path(guard_data_directory(value, purpose='backup or restored library'))
     _plain(path.parent, directory=True)
     if os.path.lexists(path):
         raise FileExistsError(path)
@@ -141,6 +142,13 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                                           max_bytes=asset_budget, cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
+                pending = None
+                if any(os.path.lexists(app.root / name) for name in
+                       ('imports.sqlite', 'import-requests', 'import-batches')):
+                    pending = pending_backup.snapshot_pending(app, stage / 'pending',
+                        max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
+                        cancelled=cancelled)
+                    total += sum(entry['size_bytes'] for entry in pending['files'])
                 state_budget = (backup_sidecars.MAX_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
                     if include_generated else 0)) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
@@ -149,6 +157,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
+            if pending is not None:
+                manifest['pending'] = pending
             backup_sidecars.normalize_manifest(manifest)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
@@ -166,6 +176,12 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             backup_sidecars.publish(stage, destination, sidecars, sync_directory=_sync_directory)
+            if pending is not None:
+                (destination / 'pending').mkdir(mode=0o700)
+                backup_sidecars.publish(stage, destination,
+                    [dict(entry, filename='pending/' + entry['filename']) for entry in pending['files']],
+                    sync_directory=_sync_directory)
+                _sync_directory(destination / 'pending')
             _sync_directory(destination / ORIGINALS)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
@@ -191,7 +207,7 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3, 4)):
+            or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
     inventory = backup_sidecars.normalize_manifest(manifest)
     backup_sidecars.check_namespace(directory, inventory)
@@ -259,7 +275,7 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def _verify_contents(source, stage, manifest, *, copy_originals=False, cancelled=lambda: False):
+def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=None, cancelled=lambda: False):
     """Authenticate the common backup format using only a private database copy."""
     inventory = backup_sidecars.normalize_manifest(manifest)
     _plain(source / ORIGINALS, directory=True)
@@ -275,8 +291,15 @@ def _verify_contents(source, stage, manifest, *, copy_originals=False, cancelled
         if copy_originals:
             _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
         backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
+    pending_entries = []
+    if inventory.pending is not None:
+        recovered = pending_backup.restore_pending(source / 'pending', stage,
+            stage if new_root is None else new_root, inventory.pending, cancelled=cancelled)
+        pending_entries.extend(dict(filename=entry['filename']) for entry in inventory.pending['files']
+                               if not entry['filename'].startswith('originals/'))
+        pending_entries.extend(dict(filename='originals/' + entry['filename']) for entry in recovered['assets'])
     backup_sidecars._check_cancelled(cancelled)
-    return inventory, entries
+    return inventory, entries, pending_entries
 
 
 def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
@@ -287,7 +310,7 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
     source file or completed backup is opened writable.
     """
     backup_sidecars._check_cancelled(cancelled)
-    source = Path(source).absolute()
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     manifest = _read_manifest(source, expected_manifest_sha256)
@@ -304,7 +327,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     the application must reject such a root instead of opening partial data.
     """
     backup_sidecars._check_cancelled(cancelled)
-    source = Path(source).absolute()
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
@@ -312,8 +335,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        inventory, entries = _verify_contents(source, stage, manifest,
-            copy_originals=True, cancelled=cancelled)
+        inventory, entries, pending_entries = _verify_contents(source, stage, manifest,
+            copy_originals=True, new_root=destination, cancelled=cancelled)
         backup_sidecars._check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -323,6 +346,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
+        backup_sidecars.publish(stage, destination, pending_entries, sync_directory=_sync_directory)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

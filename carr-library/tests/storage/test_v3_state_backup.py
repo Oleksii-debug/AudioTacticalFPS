@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+import shutil
 import wave
 from pathlib import Path
 
@@ -100,6 +101,8 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
         raw = (folder / entry['filename']).read_bytes()
         assert len(raw) == entry['size_bytes'] and sha256(raw).hexdigest() == entry['sha256']
     if version == 3:
+        if manifest.pop('pending', None) is not None:
+            shutil.rmtree(folder / 'pending')
         manifest['version'] = 3
         manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
                              for entry in manifest.pop('sidecars')]
@@ -276,6 +279,8 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     digest = create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_text())
     assert manifest['version'] == 4 and manifest['sidecars'] == []
+    if manifest.pop('pending', None) is not None:
+        shutil.rmtree(backup / 'pending')
     manifest['version'] = 2
     del manifest['sidecars'], manifest['generated_audio_included']
     digest = resign(backup, manifest)
