@@ -1,0 +1,57 @@
+{
+  "schema": "resonance-reconciliation-evidence/1",
+  "baseline": {
+    "commit": "e5da666c3794f34f4b6acdfeb41c917cf69ec349",
+    "tree": "6c332c9b67b67c49402b29bdf4d45e2e06bc98e4"
+  },
+  "canonical": "e69ba2403515f21509686d66f4bc8b3673756d81",
+  "publisher_producer_base": "32eeff526cfd00e51eb5ce2abd166bc8b5916ed0",
+  "production_checkpoint": {
+    "commit": "b82afc001307c6644fbe3bdadb3f83e512441733",
+    "tree": "c922884c9a327503cd1eaffbd3b7122d4e21cb49"
+  },
+  "scope": "Selected compatible contracts only; this tree is not a whole canonical or publisher merge.",
+  "retained": [
+    "One current typed backup producer registry and workspace-scoped ASR validation",
+    "Translation/2 source UUID, root identity, decoded-output ledger and restored-approval boundaries",
+    "Publisher artifact-version, LRC and bounded warning declarations",
+    "Native delete-sharing snapshot reader, identity-checked FileRenameInfoEx writer and create-only publication",
+    "Native ChangeTime plus full export byte hashes, cancellation and source-route checks"
+  ],
+  "added": [
+    "Historical bounded publication_watermark is passive and cleared during restoration; immutable DB receipts still prove completion",
+    "Advanced glossary ignoreCase must be literal False; optional display name bounded to512 characters",
+    "Studio attention status and passive schema/disk-path validation for resource estimates",
+    "Existing canonical export_completion helper",
+    "At most six Windows sharing-error delays totaling0.63seconds, around the same captured staged file and native writer"
+  ],
+  "regressions": {
+    "new_cases": 30,
+    "paths": [
+      "tests/storage/test_pending_backup.py",
+      "tests/storage/test_durable_state_publication.py",
+      "tests/reader/test_export_reconciliation.py",
+      "tests/storage/test_backup_translation.py",
+      "tests/operations/test_resource_backup.py"
+    ],
+    "boundaries": [
+      "Actual restored pending import resumes the same revision after an inert watermark is cleared",
+      "Re-signed Advanced glossary type tampering fails without new provider or process authority",
+      "Empty/maximum Advanced display names roundtrip, over-budget declarations refuse",
+      "One flushed file is retained through bounded sharing retries; unrelated errors do not retry and a replaced stage is refused",
+      "Restored resource estimates never reserve or run work and keep explicit output review",
+      "Successful export completion text retains its real destination and cleanup notice"
+    ]
+  },
+  "excluded": {
+    "alternate_flat_transcription_backup": "NOT_ADOPTED; its separate profiles/jobs store and restore service require an explicit compatibility contract",
+    "workflow_changes": "Root-owned; this checkpoint changes no workflow",
+    "actual_common4_mime_fix": "Owned separately by root; tests/storage/test_backup_pending_common4.py must be selected alongside these files"
+  },
+  "runtime": {
+    "status": "NOT_RUN",
+    "reason": "Executor unavailable during exact source/test reconciliation; no baseline or donor runtime result is transferred to this candidate.",
+    "native_windows": "NOT_RUN",
+    "new_platform_retry_error_inputs": "Controlled winerror injection with actual staged files and the real native writer on success"
+  }
+}

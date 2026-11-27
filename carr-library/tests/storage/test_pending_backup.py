@@ -518,3 +518,43 @@ def test_pending_restore_rejects_unlisted_file_before_descending(app, tmp_path, 
     with pytest.raises(ValueError, match='missing or unlisted'):
         restore_pending(source, stage, tmp_path / 'restored', metadata)
     assert not (stage / '.pending-import-restore').exists()
+
+
+@pytest.mark.parametrize('watermark', [None, 0, 2**63 - 1], ids=['null', 'zero', 'maximum'])
+def test_historical_watermark_is_inert_and_cleared_before_restored_resume(app, tmp_path, watermark):
+    from carr_library.ingest.worker import _store
+    workspace, source, request, result = _partial(app, tmp_path)
+    request['publication_watermark'] = watermark
+    _store(app.root, request['request_id'], request)
+    request_path = app.root / 'import-requests' / (request['request_id'] + '.json')
+    before = request_path.read_bytes()
+    backup, metadata = _snapshot(app, tmp_path)
+    assert request_path.read_bytes() == before
+    assert load_request(app.root, request['request_id'])['state'] == 'cancelled'
+    source.unlink()
+    restored, _ = _restore(backup, metadata, tmp_path)
+    rebound = load_request(restored.root, request['request_id'])
+    assert 'publication_watermark' not in rebound
+    assert 'attempt' not in rebound and 'publication_candidate' not in rebound
+    assert rebound['state'] == 'cancelled' and rebound['result']['completed'] == 1
+    resumed = restored.resume_import(workspace, request['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == result['id']
+    assert resumed['edition'] == result['edition'] and resumed['completed'] == 3
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page').fetchone()[0] == 3
+    assert len(restored.search(workspace, 'second')) == 1
+
+
+@pytest.mark.parametrize('watermark', [True, -1, 2**63, 1.0, '0', {}])
+def test_historical_watermark_requires_a_bounded_integer_without_completion_authority(
+        app, tmp_path, watermark):
+    from carr_library.ingest.worker import _store
+    _, source, request, _ = _partial(app, tmp_path)
+    request['publication_watermark'] = watermark
+    _store(app.root, request['request_id'], request)
+    request_path = app.root / 'import-requests' / (request['request_id'] + '.json')
+    before, original = request_path.read_bytes(), source.read_bytes()
+    with pytest.raises(ValueError, match='publication boundary'):
+        _snapshot(app, tmp_path)
+    assert request_path.read_bytes() == before and source.read_bytes() == original

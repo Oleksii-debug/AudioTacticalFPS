@@ -212,3 +212,85 @@ def test_advanced_backup_rejects_text_and_self_hash_tamper_against_unchanged_usa
     with pytest.raises(ValueError, match='decoded-output'):
         restore_backup(folder, destination, resign(folder, manifest))
     assert not destination.exists() and ledger.read_bytes() == original_usage
+
+
+@pytest.mark.parametrize('non_boolean', [0, 0.0], ids=['integer-zero', 'float-zero'])
+def test_resigned_advanced_glossary_requires_literal_false_without_renewing_authority(
+        advanced_source, tmp_path, monkeypatch, non_boolean):
+    case, identity, approval, transport = advanced_source
+    assert case.service.resume(identity)['status'] == 'complete'
+    original_job = case.service.jobs.path(identity).read_bytes()
+    calls, credentials = len(transport['calls']), len(case.vault.calls)
+    folder = tmp_path / 'glossary-backup'
+    create_backup(case.app, folder)
+    relative = 'state/translation/jobs/' + identity + '.json'
+    path = folder / relative
+    saved = json.loads(path.read_bytes())
+    assert saved['receipts'][0]['glossary_config']['ignoreCase'] is False
+    saved['receipts'][0]['glossary_config']['ignoreCase'] = non_boolean
+    raw = json.dumps(saved, ensure_ascii=False).encode('utf-8')
+    path.write_bytes(raw)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    row = next(row for row in manifest['sidecars'] if row['filename'] == relative)
+    row.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    usage = folder / 'state/translation/provider/usage' / (approval.id + '.usage.json')
+    original_usage = usage.read_bytes()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Typed restoration cannot renew provider or executable authority.')
+
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    destination = tmp_path / 'rejected-glossary'
+    with pytest.raises(ValueError, match='Advanced translation provenance'):
+        restore_backup(folder, destination, resign(folder, manifest))
+    assert not destination.exists()
+    assert usage.read_bytes() == original_usage and path.read_bytes() == raw
+    assert case.service.jobs.path(identity).read_bytes() == original_job
+    assert len(transport['calls']) == calls and len(case.vault.calls) == credentials
+
+
+@pytest.mark.parametrize('name', ['', 'я' * 512], ids=['omitted-display-name', 'maximum-display-name'])
+def test_advanced_language_display_names_roundtrip_as_passive_bounded_declarations(
+        advanced_source, tmp_path, monkeypatch, name):
+    case, _, _, transport = advanced_source
+    language_path = case.service._languages_path(case.p)
+    value = json.loads(language_path.read_bytes())
+    value['languages'][0]['name'] = name
+    value['languages_sha256'] = sha256(canonical(value['languages']).encode()).hexdigest()
+    raw = (canonical(value) + '\n').encode()
+    language_path.write_bytes(raw)
+    calls, credentials = len(transport['calls']), len(case.vault.calls)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('A passive language inventory must not call a provider or runtime.')
+
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    folder = tmp_path / 'language-backup'
+    checksum = create_backup(case.app, folder)
+    target = restore_backup(folder, tmp_path / 'restored-languages', checksum)
+    relative = language_path.relative_to(case.app.root)
+    assert (folder / relative).read_bytes() == raw
+    assert (target / relative).read_bytes() == raw
+    restored = TranslationService(target / 'state/translation', gateway=SimpleNamespace())
+    assert restored.languages(case.p) == tuple(value['languages'])
+    assert language_path.read_bytes() == raw
+    assert len(transport['calls']) == calls and len(case.vault.calls) == credentials
+
+
+def test_advanced_language_display_name_over_budget_fails_before_backup_publication(
+        advanced_source, tmp_path):
+    case, _, _, transport = advanced_source
+    path = case.service._languages_path(case.p)
+    value = json.loads(path.read_bytes())
+    value['languages'][0]['name'] = 'x' * 513
+    value['languages_sha256'] = sha256(canonical(value['languages']).encode()).hexdigest()
+    raw = (canonical(value) + '\n').encode()
+    path.write_bytes(raw)
+    calls = len(transport['calls'])
+    destination = tmp_path / 'oversized-language-backup'
+    with pytest.raises(ValueError):
+        create_backup(case.app, destination)
+    assert not destination.exists() and path.read_bytes() == raw
+    assert len(transport['calls']) == calls
