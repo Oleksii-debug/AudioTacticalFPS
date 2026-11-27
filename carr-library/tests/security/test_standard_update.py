@@ -1025,3 +1025,51 @@ def test_recovery_ui_reverifies_chosen_repository_without_restarting_install(set
     else:
         assert recovery_state(setup) == before
         assert any('not started' in report for report in reports)
+
+
+def test_recovery_refuses_coherently_rewritten_prior_uninstaller_even_with_fresh_signed_b(setup, monkeypatch):
+    from carr_library.security.standard_state import pending_bytes
+    package = interrupted_update(setup, monkeypatch)
+    record = json.loads(setup.transaction.journal.read_bytes())
+    foreign = b'UNAPPROVED UNINSTALLER BYTES FROM A MUTABLE JOURNAL'
+    record['prior']['uninstallers']['unins000.exe'] = _binary(foreign)
+    raw_prior = json_bytes(record['prior'])
+    record['pending']['prior_sha256'] = sha256(raw_prior).hexdigest()
+    atomic_write(setup.transaction.journal, json_bytes(record))
+    atomic_write(setup.root / PRIOR, raw_prior)
+    atomic_write(setup.root / PENDING, pending_bytes(record['pending'], setup.root))
+    parsed, _, _ = setup.transaction._read()
+    assert parsed['prior']['uninstallers']['unins000.exe'] == _binary(foreign)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='prior native activation'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+    assert (setup.root / 'unins000.exe').read_bytes() != foreign
+
+
+def test_new_process_cannot_authorize_prior_native_bytes_from_its_journal(setup, monkeypatch):
+    package = interrupted_update(setup, monkeypatch)
+    restarted = StandardUpdateTransaction(setup.app, setup.generation,
+        setup.transaction.work, setup.policy, setup.anchor, setup.host)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='no retained live authority'):
+        restarted.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+    assert setup.app.search(setup.workspace, 'exact research source')
+
+
+def test_retained_target_failure_never_unlinks_foreign_stage_replacement(setup, monkeypatch):
+    import carr_library.audio.jobs as jobs
+    package = verified(setup)
+    retained = []
+    def replace_then_fail(source, destination):
+        owned = source.with_name(source.name + '-moved-owned')
+        source.rename(owned)
+        source.write_bytes(b'Foreign competing bytes must remain')
+        retained.append(source)
+        raise OSError('Synthetic publication interruption')
+    monkeypatch.setattr(jobs, 'publish_noreplace', replace_then_fail)
+    with pytest.raises(OSError, match='publication interruption'):
+        setup.transaction._retain_target(package, setup.transaction.work / 'never-published.zip', lambda: False)
+    assert len(retained) == 1 and retained[0].read_bytes() == b'Foreign competing bytes must remain'
+    assert not (setup.transaction.work / 'never-published.zip').exists()

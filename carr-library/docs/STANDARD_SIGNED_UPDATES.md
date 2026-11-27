@@ -138,13 +138,23 @@ generation and research data are not moved or deleted.
 
 The journal is mutable recovery evidence, not publisher approval. A live apply
 failure still holds its original verified package and may perform the guarded
-rollback. After a crash, pre-commit recovery requires a freshly verified
+rollback. A retry through that same live controller requires a freshly verified
 `VerifiedPackage` with the same pinned publisher root, product, channel, schema
 and exact release. The existing controller obtains it only from an explicitly
 selected or already configured signed repository. With no fresh proof,
 `recover(package=None)` refuses without changing activation, pending receipts
 or research data. Different roots, different releases and rewritten journal
 metadata cannot authorize rollback.
+
+The signed B package does not authenticate A's original native registration,
+shortcut or generated uninstaller bytes. Their exact prior snapshot is retained
+only in the original controller's memory. If that controller/process restarts,
+or if a journal rewrite changes the prior snapshot, automatic pre-commit
+rollback is refused even with a valid fresh B package. This distinct attention
+state does not repeatedly ask for a repository: it requires owner-assisted
+repair using retained A, research data, backup and diagnostics. No new protected
+store or changed anchor schema is introduced, and no automatic restart rollback
+is claimed.
 
 A crash before the complete new activation can be observed may leave
 `recovery-required`. The application does not guess a registry/shortcut
@@ -179,7 +189,9 @@ Its registry/shortcut/installer adapter is explicitly synthetic. It tests
 foreign-root refusal, exact metadata rollback, interruption before/after anchor
 commit, newer-state refusal, complete-backup tampering, pending/rejected startup,
 old-process lifetime, GUI review choice, CLI/controller parity and bounded
-cleanup. These tests do not claim that an inert setup image is a native EXE.
+cleanup. Restarted pre-commit controllers and coherent prior-component rewrites
+are explicitly tested to refuse changes. These tests do not claim that an inert
+setup image is a native EXE.
 
 Run it with the current reviewed optional trusted-client dependencies:
 

@@ -145,12 +145,18 @@ class StandardUpdateTransaction:
             if one.is_relative_to(other) or other.is_relative_to(one):
                 raise TrustError('Program, signed-update staging and research data must be separate.')
         self.journal = self.work / 'standard-activation.json'
+        # Native registration, shortcut and uninstaller bytes are not signed
+        # payload files. Only the original live controller has an authenticated
+        # in-memory copy of the prior activation. A mutable restart journal
+        # cannot confer authority to restore those components.
+        self._live_prior = None
 
     def _retain_target(self, package, destination, cancelled):
         """Retain exact verified bytes, with no overwrite or hard-link window."""
         from ..audio.jobs import publish_noreplace
         with _verified_snapshot(package, self.work, cancelled) as source:
             descriptor, name = tempfile.mkstemp(prefix='.standard-target-', dir=self.work)
+            owned = os.fstat(descriptor)
             try:
                 with os.fdopen(descriptor, 'wb') as target:
                     total = 0
@@ -167,8 +173,14 @@ class StandardUpdateTransaction:
                 _cancel(cancelled)
                 publish_noreplace(Path(name), destination)
             finally:
-                if os.path.lexists(name):
-                    Path(name).unlink()
+                try:
+                    current = os.lstat(name)
+                except FileNotFoundError:
+                    pass
+                else:
+                    if ((current.st_dev, current.st_ino) == (owned.st_dev, owned.st_ino)
+                            and current.st_nlink == 1):
+                        Path(name).unlink()
 
     def _review_recovery_target(self, record, release, package, *, committed, cancelled):
         """Journal fields never recreate publisher approval for a fresh action."""
@@ -342,6 +354,10 @@ class StandardUpdateTransaction:
                 raise TrustError('A newer installation changed the completed rollback.')
             if not os.path.lexists(self.root / PENDING) and not os.path.lexists(self.root / PRIOR):
                 return 'rolled-back'
+        if self._live_prior != (record['transaction'], json_bytes(record['prior'])):
+            raise TrustError('The prior native activation has no retained live authority. '
+                'Owner recovery is required; no restart journal can authorize replacing '
+                'registration, shortcut or uninstaller bytes. The previous program and data are preserved.')
         self._review_recovery_target(record, release, package, committed=False, cancelled=cancelled)
         _cancel(cancelled)
         return self._rollback(record)
@@ -414,6 +430,7 @@ class StandardUpdateTransaction:
                 'backup_sha256': backup_sha, 'before': json_value(before.encode()), 'release': asdict(release),
                 'prior': prior, 'observed': None, 'candidate': candidate,
                 'pending': self._pending(token, prior, candidate)}
+            self._live_prior = (token, json_bytes(prior))
             self._write(record, 'prepared')
             begin_pending(self.root, record['pending'], prior)
             self._write(record, 'installing')
