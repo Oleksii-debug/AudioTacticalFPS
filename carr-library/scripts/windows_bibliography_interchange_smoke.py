@@ -61,7 +61,7 @@ def main():
     from carr_library.academic_integration import citation_attribution, formatting
     from carr_library.research import academic_library, bibtex_import, export_file
     from carr_library.ui import academic_library_dialog as ui
-    from carr_library.ui import desktop_app, workspace_shell
+    from carr_library.ui import desktop_app, save_actions, workspace_shell
 
     checks, failures, network_attempts = [], [], []
     failure_exit = [None]
@@ -235,7 +235,7 @@ def main():
             return super().export_to(destination, **options)
 
     modules = (ui, academic_library, bibtex_import, export_file,
-               desktop_app, workspace_shell, formatting)
+               desktop_app, save_actions, workspace_shell, formatting)
     installed = Path(sysconfig.get_path('purelib')).resolve()
     check('isolated installed CPython 3.11 x64 is running',
           sys.flags.isolated == 1 and sys.version_info[:2] == (3, 11)
@@ -282,11 +282,18 @@ def main():
                 check('startup citation credit does not take keyboard focus',
                       not credit.AcceptsFocusFromKeyboard() and wx.Window.FindFocus() is not credit)
                 startup_executor, startup_cancel = startup.executor, startup.cancel_event
+                startup_timer = startup._draft_save_timer
+                startup_interval = startup_timer.GetInterval()
+                check('startup draft autosave uses a running native three-second timer',
+                      startup_timer.IsRunning() and startup_interval == 3000)
                 startup.Close()
                 yield from until(lambda: not startup, 'The startup host did not close normally.')
                 check('startup host closes its executor without ending the interchange event loop',
                       startup_executor._shutdown and startup_cancel.is_set()
                       and gui.GetMainLoop() is not None and frame.IsShown())
+                check('closing the startup host stops its native draft timer before owner deletion',
+                      not startup_timer.IsRunning())
+                former_timer_deadline = monotonic() + startup_interval / 1000 + .1
                 startup = None
                 workspace = library.create_workspace('Synthetic native interchange')
                 other_workspace = library.create_workspace('Separate native interchange')
@@ -477,6 +484,10 @@ def main():
                 yield from key(wx.WXK_ESCAPE)
                 yield from until(lambda: not academic.IsShown(), 'Escape did not close the actual academic window.')
                 check('real Escape closes the academic window', True)
+                yield from until(lambda: monotonic() >= former_timer_deadline,
+                                 'The native loop did not continue beyond the former draft timer interval.')
+                check('native event loop remains usable past the destroyed owner timer deadline',
+                      gui.GetMainLoop() is not None and not startup_timer.IsRunning())
                 check('all interchange operations stayed offline', not network_attempts)
                 print(json.dumps({
                     'result': 'PASS', 'checks': len(checks), 'python': platform.python_version(),
@@ -485,6 +496,7 @@ def main():
                                           for module in modules},
                     'native_keyboard': 'PASS', 'native_bibtex_import': 'PASS',
                     'native_startup_citation_attribution': 'PASS',
+                    'native_startup_draft_timer_shutdown': 'PASS',
                     'native_export_options': 'PASS', 'native_overwrite_confirmation': 'PASS',
                     'file_choices': 'controlled temporary paths only',
                     'native_overwrite_accessible_focus': 'NOT_RUN', 'manual_keyboard': 'NOT_RUN',
