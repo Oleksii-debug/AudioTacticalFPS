@@ -316,6 +316,9 @@ class ManagedProjects:
                         published.append((target, actual, receipt))
                     _sync_directory(assets)
                     for _copied, target, _copied_identity, receipt in prepared:
+                        # Observe post-publication cancellation before opening
+                        # the Windows file handle needed for its content check.
+                        _check(cancelled)
                         _copy(target, None, maximum=MAX_INPUT_FILE_BYTES, expected=receipt,
                               cancelled=lambda: _check(cancelled))
                     receipts = {target: receipt for _, target, _, receipt in prepared}

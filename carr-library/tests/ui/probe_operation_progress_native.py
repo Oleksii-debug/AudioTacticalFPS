@@ -51,6 +51,12 @@ def run_native(source=None):
     except (Exception, SystemExit):
         return not_run('A native wx application could not open.')
 
+    # Yield outside MainLoop does not itself activate a Windows dispatch loop.
+    # Retain the real loop for native timer delivery, as the other desktop
+    # acceptance probes do; no production tick or gauge method is called here.
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
+
     def check(label, condition):
         if not condition:
             # Capture the real control and producer state before cleanup. These

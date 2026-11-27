@@ -13,8 +13,21 @@ product acceptance work are complete.
 The next exact-source Windows integrated run passed actual managed Unicode OCR
 and the installed native assistant approval/restart probe. It then failed the
 native progress assertion that the real gauge reaches the observed 99 percent.
-That failure is unresolved at this diagnostic checkpoint; later probes and the
-long source gate were skipped by the workflow and are not claimed as passing.
+Later probes and the long source gate were skipped by that workflow and are
+not claimed as passing. Source review identified a probe-only event-loop gap:
+wxWidgets Windows Yield dispatches WM_TIMER through the currently active loop,
+but the probe had not activated one. The probe now retains a real GUIEventLoop
+and EventLoopActivator, as the assistant/language probes already do. Its gauge,
+focus and lifecycle assertions remain unchanged; exact Windows retesting is
+pending, and no production progress callback is manually invoked by the probe.
+
+The same source's audio group passed 416 cases and failed one cleanup case:
+the first cancellation observation after publishing a new input occurred inside
+its verification read handle, where Windows refuses the test's competing file
+replacement. The managed producer now checks cancellation before opening each
+published input for readback. The unchanged regression still requires retaining
+the competing bytes and leaving the project uncommitted. This correction needs
+its actual Windows run; it is not counted as an already passing test.
 
 The native progress probe now records the real gauge, timer, binding and producer
 state on failure. Independent native and source checks may proceed after another
@@ -302,3 +315,12 @@ introduced. A bounded library/audio preview is not the complete platform.
 Public changes contain source and synthetic test evidence only. No installers,
 model weights, private voices, user books, credentials or generated recordings
 are included. There is no public-release or final-delivery claim.
+
+## Bounded familiar reading workflows
+
+[READING_WORKFLOW_ACCEPTANCE.md](READING_WORKFLOW_ACCEPTANCE.md) records 28 finite
+workflow rows, current producer/test entry points and the complete requested
+input-format groups against reviewed official references. Missing regex/spell,
+legacy-engine, global-key/tray, editor-presentation and signed maintenance work
+remain explicit. The checklist adds traceability; it does not certify those
+features or shrink the approved platform scope.
