@@ -3162,6 +3162,21 @@
       "test_declined_keymap_replacement_never_validates_or_writes": 1,
       "test_approved_keymap_export_preserves_live_bindings": 2,
       "test_ocr_model_choice_is_not_applied_after_library_changes": 1
+    },
+    "tests.audio.test_generated_backup_authority": {
+      "test_resealed_wrong_container_is_a_refusal_not_a_regeneration_request": 10,
+      "test_completed_receipt_must_match_actual_pcm_and_stems": 10,
+      "test_pcm_inspection_keeps_the_checksum_file_identity_held": 1,
+      "test_real_encoder_outputs_have_passive_runtime_free_completion_checks": 10,
+      "test_old_or_incomplete_cache_backup_stays_passive_until_explicit_reuse": 4,
+      "test_restored_resealed_bad_completion_refuses_before_any_fresh_work": 1
+    },
+    "tests.extract.test_odf_print_layout": {
+      "test_empty_disabled_print_region_preserves_exact_body_and_locators": 18,
+      "test_disabled_print_region_never_swallows_source_or_unknown_structure": 8,
+      "test_disabled_region_requires_exact_print_layout_ancestry": 4,
+      "test_disabled_print_region_does_not_override_other_hidden_content_rules": 4,
+      "test_content_xml_cannot_impersonate_styles_print_layout": 1
     }
   },
   "installed": {
@@ -6101,6 +6116,21 @@
       "test_declined_keymap_replacement_never_validates_or_writes": 1,
       "test_approved_keymap_export_preserves_live_bindings": 2,
       "test_ocr_model_choice_is_not_applied_after_library_changes": 1
+    },
+    "tests.audio.test_generated_backup_authority": {
+      "test_resealed_wrong_container_is_a_refusal_not_a_regeneration_request": 10,
+      "test_completed_receipt_must_match_actual_pcm_and_stems": 10,
+      "test_pcm_inspection_keeps_the_checksum_file_identity_held": 1,
+      "test_real_encoder_outputs_have_passive_runtime_free_completion_checks": 10,
+      "test_old_or_incomplete_cache_backup_stays_passive_until_explicit_reuse": 4,
+      "test_restored_resealed_bad_completion_refuses_before_any_fresh_work": 1
+    },
+    "tests.extract.test_odf_print_layout": {
+      "test_empty_disabled_print_region_preserves_exact_body_and_locators": 18,
+      "test_disabled_print_region_never_swallows_source_or_unknown_structure": 8,
+      "test_disabled_region_requires_exact_print_layout_ancestry": 4,
+      "test_disabled_print_region_does_not_override_other_hidden_content_rules": 4,
+      "test_content_xml_cannot_impersonate_styles_print_layout": 1
     }
   },
   "native_trust": [

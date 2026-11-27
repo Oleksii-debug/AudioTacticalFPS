@@ -16,7 +16,7 @@ import uuid
 from . import ffmpeg as audio
 from .jobs import (ChunkCache, RenderCancelled, atomic_json, checked_directory,
                    check_cancelled, file_identity, project_lock, publish_new,
-                   publish_noreplace, read_json, regular_file, sha256_file)
+                   publish_noreplace, read_json, regular_file, sha256_file, verified_reader)
 from .models import (Clip, Effect, Line, MusicCue, Pause, ProductionPlan, Role, Scene,
                      Sound, canonical, digest, text)
 
@@ -385,6 +385,54 @@ def _write_text_new(path, value):
         os.fsync(stream.fileno())
 
 
+class _CompletedOutputInvalid(ValueError):
+    """A hash-consistent completion claim must not trigger fresh production."""
+
+
+def _completed_media(path, stream, size):
+    """Inspect retained media without activating a decoder, runtime or voice."""
+    suffix = path.suffix.lower()
+    if suffix == '.wav':
+        try:
+            # The outer verified reader remains held during this second
+            # bounded PCM inspection, excluding writers on Windows.
+            return audio.wav_info(path)
+        except ValueError as error:
+            raise _CompletedOutputInvalid(
+                'A completed production contains invalid PCM audio. '
+                'Its existing files were kept; review the saved production.') from error
+    if suffix[1:] not in audio.FORMATS:
+        return None
+    header = stream.read(32)
+    valid = False
+    if suffix == '.flac':
+        valid = size >= 42 and header.startswith(b'fLaC')
+    elif suffix == '.mp3':
+        valid = size >= 10 and (header.startswith(b'ID3') or
+            len(header) >= 2 and header[0] == 0xff and header[1] & 0xe0 == 0xe0)
+    elif suffix in ('.ogg', '.opus'):
+        valid = size >= 27 and header.startswith(b'OggS\x00')
+    elif suffix in ('.m4a', '.m4b'):
+        valid = (size >= 16 and header[4:8] == b'ftyp'
+                 and 8 <= int.from_bytes(header[:4], 'big') <= size)
+    elif suffix == '.aiff':
+        valid = size >= 12 and header[:4] == b'FORM' and header[8:12] in (b'AIFF', b'AIFC')
+    elif suffix == '.wma':
+        valid = size >= 30 and header.startswith(bytes.fromhex('3026b2758e66cf11a6d900aa0062ce6c'))
+    elif suffix == '.aac':
+        # The existing encoder selects ADTS explicitly. Check only its bounded
+        # sync/layer/frame header, never claim a full decode or audio quality.
+        # https://ffmpeg.org/doxygen/trunk/adts__header_8c_source.html
+        if len(header) >= 7 and header[0] == 0xff and header[1] & 0xf6 == 0xf0:
+            frame_bytes = ((header[3] & 3) << 11) | (header[4] << 3) | (header[5] >> 5)
+            valid = 7 <= frame_bytes <= size and ((header[2] >> 2) & 15) < 13
+    if not valid:
+        raise _CompletedOutputInvalid(
+            'A completed production does not match its declared audio container. '
+            'Its existing files were kept; review the saved production.')
+    return None
+
+
 def _verified_output(directory, run_key, cancelled):
     marker = directory / 'complete.json'
     if not marker.exists():
@@ -393,14 +441,24 @@ def _verified_output(directory, run_key, cancelled):
         result = _read_json(marker)
         if result.get('schema_version') != 1 or result.get('run_key') != run_key or result.get('status') != 'complete':
             return None
-        names = set()
+        names, pcm = set(), {}
         for record in result['files']:
+            check_cancelled(cancelled)
             name = record['name']
             if not isinstance(name, str) or Path(name).name != name or name in ('.', '..'):
                 return None
             path = directory / name
-            if regular_file(path).st_size != record['size'] or sha256_file(path, cancelled=cancelled) != record['sha256']:
+            identity = file_identity(regular_file(path))
+            if identity[2] != record['size']:
                 return None
+            # Keep the same immutable input handle over checksum and media
+            # inspection. A format check must not open replacement bytes.
+            with verified_reader(path, expected_identity=identity) as stream:
+                if sha256_file(path, cancelled=cancelled, expected_identity=identity) != record['sha256']:
+                    return None
+                info = _completed_media(path, stream, record['size'])
+            if info is not None:
+                pcm[name] = info
             if name in names:
                 return None
             names.add(name)
@@ -410,7 +468,31 @@ def _verified_output(directory, run_key, cancelled):
             return None
         if 'subtitles.srt' not in names:
             return None
+        # The current producer always retains its PCM master, including when
+        # the selected public output is encoded. Bind measured metadata to
+        # actual samples before returning a completed result from old bytes.
+        master = pcm.get('master.wav')
+        if (master is None or master.channels != 2
+                or result['output_name'] not in {'master.' + value for value in audio.FORMATS}
+                or type(result.get('frames')) is not int or result['frames'] != master.frames
+                or type(result.get('sample_rate')) is not int or result['sample_rate'] != master.rate
+                or type(result.get('duration_seconds')) not in (int, float)
+                or result['duration_seconds'] != master.seconds):
+            raise _CompletedOutputInvalid(
+                'The completed production metadata differs from its actual PCM master. '
+                'Its existing files were kept; review the saved production.')
+        for name in result['stem_names']:
+            info = pcm.get(name)
+            if info is None or (info.frames, info.rate, info.channels) != (
+                    master.frames, master.rate, master.channels):
+                raise _CompletedOutputInvalid(
+                    'A completed stem differs from the measured programme. '
+                    'Its existing files were kept; review the saved production.')
         return result
+    except _CompletedOutputInvalid:
+        # A forged/resealed completion is not a cache miss. Refuse before
+        # fresh-operation admission, quarantine, synthesis or encoding.
+        raise
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
         return None
 

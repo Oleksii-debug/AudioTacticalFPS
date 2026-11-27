@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "component": "current-restored-runtime-workflow-cardinality",
+  "source_parent": "f2cec75d737936f1153674dd5c567505d5b9c09b",
+  "source_tree": "80fc01b5f2e6203ba4bdd1d5184e829fe9a63710",
+  "status": "SOURCE_REVIEW_RUNTIME_NOT_RUN",
+  "reason": "The previously restored desktop pywin32==312 dependency makes the current core and semantic locks contain exactly18 and54 pins. These three historical workflow assertions retained17 and53 and would fail before their qualification phases.",
+  "locks": {
+    "carr-library/packaging/windows-cp311.lock": {
+      "git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "raw_declarations": 18,
+      "unique_names": 18,
+      "pins": {
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4",
+        "bibtexparser": "2.1.0",
+        "pylatexenc": "2.11",
+        "quickjs-ng": "0.18.0.2",
+        "cryptography": "50.0.2",
+        "cffi": "2.1.1",
+        "pycparser": "3.12",
+        "pywin32": "312"
+      }
+    },
+    "carr-library/packaging/windows-semantic-cp311.lock": {
+      "git_blob": "96b9a0d1bbf2cdbf981c579065bb815f6c72adea",
+      "raw_declarations": 54,
+      "unique_names": 54,
+      "pins": {
+        "defusedxml": "0.7.1",
+        "annotated-doc": "0.0.7",
+        "annotated-types": "0.8.0",
+        "anyio": "4.16.0",
+        "certifi": "2026.11.20",
+        "charset-normalizer": "3.5.3",
+        "colorama": "0.4.6",
+        "fastembed": "0.9.1",
+        "filelock": "3.29.0",
+        "flatbuffers": "25.12.19",
+        "fsspec": "2026.9.0",
+        "h11": "0.16.0",
+        "hf-xet": "1.8.0",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "huggingface-hub": "1.16.1",
+        "idna": "3.20",
+        "loguru": "0.7.3",
+        "lxml": "6.1.3",
+        "markdown-it-py": "4.3.0",
+        "mdurl": "0.1.2",
+        "mmh3": "5.3.1",
+        "numpy": "2.3.5",
+        "onnxruntime": "1.32.0",
+        "packaging": "26.4",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "protobuf": "7.36.2",
+        "py-rust-stemmers": "0.1.8",
+        "pydantic": "2.14.4",
+        "pydantic-core": "2.50.5",
+        "pygments": "2.21.0",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "pyyaml": "6.0.4",
+        "requests": "2.34.2",
+        "rich": "15.0.0",
+        "shellingham": "1.5.4",
+        "tokenizers": "0.23.3",
+        "tqdm": "4.70.1",
+        "typer": "0.29.3",
+        "typing-extensions": "4.16.0",
+        "typing-inspection": "0.4.5",
+        "urllib3": "2.8.0",
+        "win32-setctime": "1.2.1",
+        "wxpython": "4.2.4",
+        "bibtexparser": "2.1.0",
+        "pylatexenc": "2.11",
+        "quickjs-ng": "0.18.0.2",
+        "cryptography": "50.0.2",
+        "cffi": "2.1.1",
+        "pycparser": "3.12",
+        "pywin32": "312"
+      }
+    }
+  },
+  "pywin32_wheel_sha256": "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a",
+  "workflow_changes": [
+    {
+      "path": ".github/workflows/carr-local-translation.yml",
+      "before_blob": "a19640adb2b67e750bc85b30d3e02481954946b1",
+      "old_expected_count": 17,
+      "current_expected_count": 18,
+      "lock": "carr-library/packaging/windows-cp311.lock",
+      "receipt_basenames_retained": "runtime-17-pins.json",
+      "guard": "Complete installed name/version mapping still must equal every parsed lock pin. Exact count is retained; no subset, lower bound or bypass is introduced."
+    },
+    {
+      "path": ".github/workflows/carr-translation-scopes.yml",
+      "before_blob": "11c3532fc65b6e71629f4f3e0dbf6bdc7513610e",
+      "old_expected_count": 17,
+      "current_expected_count": 18,
+      "lock": "carr-library/packaging/windows-cp311.lock",
+      "receipt_basenames_retained": "runtime-17-pins.json",
+      "guard": "Complete installed name/version mapping still must equal every parsed lock pin. Exact count is retained; no subset, lower bound or bypass is introduced."
+    },
+    {
+      "path": ".github/workflows/carr-publication.yml",
+      "before_blob": "ece2089c49b9b52ec690047467d66da4494421a5",
+      "old_expected_count": 53,
+      "current_expected_count": 54,
+      "lock": "carr-library/packaging/windows-semantic-cp311.lock",
+      "receipt_basenames_retained": "runtime-53-pins.json / runtime-53-pins-after-test-tools.json",
+      "guard": "Complete installed name/version mapping still must equal every parsed lock pin. Exact count is retained; no subset, lower bound or bypass is introduced."
+    }
+  ],
+  "acceptance_script_scan": [
+    {
+      "path": "carr-library/scripts/local_translation_acceptance.py",
+      "git_blob": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+      "stale_17_or_53_runtime_cardinality": false,
+      "historical_runtime_receipt_filename_reference": false
+    },
+    {
+      "path": "carr-library/scripts/translation_scope_acceptance.py",
+      "git_blob": "60d841da5b74fde0ee8491899c12aa516b461851",
+      "stale_17_or_53_runtime_cardinality": false,
+      "historical_runtime_receipt_filename_reference": false
+    },
+    {
+      "path": "carr-library/scripts/epubcheck_acceptance.py",
+      "git_blob": "98195ba8c808d93c321a9d3344cbc22e2e6ed7d9",
+      "stale_17_or_53_runtime_cardinality": false,
+      "historical_runtime_receipt_filename_reference": false
+    },
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "git_blob": "7afba062aa2c3aebdafc257e60cfe5ff5d977d5e",
+      "stale_17_or_53_runtime_cardinality": false,
+      "historical_runtime_receipt_filename_reference": false
+    }
+  ],
+  "closure": "local_translation_acceptance imports translation_scope_acceptance; daisy_schema_acceptance imports epubcheck_acceptance. All four exact current scripts were inspected. No downstream runtime receipt rename is needed or performed.",
+  "unchanged": [
+    "runtime locks and package hashes",
+    "installed package identity and version equality",
+    "wheel and source identity checks",
+    "test and native populations",
+    "publication checker pins and invalid controls",
+    "converter workflows owned by the other component",
+    "frozen branches and main workflow"
+  ],
+  "qualification": {
+    "actual_execution": "NOT_RUN",
+    "prior_results_transferred": false,
+    "new_tests": 0,
+    "scope": "Only three workflow assertions and explanatory comments change. Existing exact gates remain required on any subsequent run."
+  }
+}

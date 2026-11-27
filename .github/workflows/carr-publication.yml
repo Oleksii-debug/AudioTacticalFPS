@@ -128,7 +128,8 @@ jobs:
           import importlib.metadata as metadata, json, pathlib, re
           pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(), re.M))
           actual = {name: metadata.version(name) for name in pins}
-          assert len(pins) == 53 and actual == pins
+          # Keep the historical runtime-53 receipt names; the restored lock has 54 pins.
+          assert len(pins) == 54 and actual == pins
           print(json.dumps(actual, sort_keys=True))
           '@
           & $python -I -B -c $inventory | Tee-Object 'publication-ci-results/runtime-53-pins.json'

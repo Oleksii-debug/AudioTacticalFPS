@@ -85,7 +85,8 @@ jobs:
           $inventory = @'
           import importlib.metadata as metadata, json, pathlib, re, struct, sys
           pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-cp311.lock').read_text(), re.M))
-          assert len(pins) == 17 and {name: metadata.version(name) for name in pins} == pins
+          # Keep the historical runtime-17 receipt name; the restored lock has 18 pins.
+          assert len(pins) == 18 and {name: metadata.version(name) for name in pins} == pins
           assert sys.platform == 'win32' and sys.flags.isolated and struct.calcsize('P') == 8
           print(json.dumps(pins, sort_keys=True))
           '@

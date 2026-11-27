@@ -819,7 +819,7 @@
       "canonical_path": "tests/conversion/test_conversion.py",
       "canonical_function": "test_eml_chooses_body_and_never_reads_attachment",
       "canonical_cases": 1,
-      "disposition": "OPEN_BOUNDED_RECEIPT_METADATA_RECONCILIATION",
+      "disposition": "RESTORED_CURRENT_TYPED_RECEIPT_BOUNDARY_RUNTIME_PENDING",
       "current_tests": [
         {
           "path": "tests/extract/test_document_formats_text.py",
@@ -835,14 +835,21 @@
           "path": "tests/conversion/test_conversion.py",
           "function": "test_current_text_adapters_execute_in_supervised_worker",
           "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_email_metadata.py",
+          "function": "test_actual_email_subject_is_passive_source_bound_report_data",
+          "cases": 3,
+          "source_commit": "9cd60ad11dc1301a8b307db9e362dd9f1452806e",
+          "component_blob": "05e8c53e5be360f9e2cc4efd0feb0000725a6658"
         }
       ],
       "current_source_owners": [
-        "src/carr_library/extract/document_formats_text.py::_eml",
+        "src/carr_library/extract/document_formats_text.py::_mail",
         "src/carr_library/conversion/service.py",
         "src/carr_library/conversion/worker.py"
       ],
-      "reason": "Plain body selection/attachment suppression remain. Reader still exposes Subject as inert metadata.title; current fixed worker details omit it from derivative receipts, unlike canonical report.metadata.subject. Root requested inspection of ingest/title consumers and a bounded typed restoration if user-visible; this ledger does not claim that report field is preserved."
+      "reason": "Canonical report.metadata.subject is restored by separate source component9cd60ad through the current bounded MIME reader, exact EML-only worker details and typed parent validation. The field is passive512-character UTF-8 data bound to the same original SHA/size; body selection, attachment omission and warning that headers are unauthenticated remain. Catalog registration's explicitly selected title is unchanged. Sixteen meaningful actual-worker and forged-reply regression cases are authored; runtime still pending."
     },
     {
       "canonical_path": "tests/conversion/test_conversion.py",
@@ -1315,7 +1322,8 @@
     "canonical_presentation": "e0ba9cfe516eaa2533db752e7db28b94bff7d5b8",
     "music_key_and_hopeful": "55b3a646ed2df646bdd63d5141143000d9536ea5",
     "public_backup_verification": "this component;7 new cases; existing successful and twoV3 cases strengthened without count change",
-    "midi_tempo_program_note_assertions": "this component; existing actual-score case strengthened without count change"
+    "midi_tempo_program_note_assertions": "this component; existing actual-score case strengthened without count change",
+    "eml_subject_metadata": "9cd60ad11dc1301a8b307db9e362dd9f1452806e"
   },
   "new_case_counter": {
     "tests.storage.test_backup_recovery_and_verify": {
@@ -1329,18 +1337,28 @@
   },
   "new_source_cases": 7,
   "new_installed_cases": 7,
-  "open_followup": [
-    {
-      "topic": "EML Subject in conversion receipt",
-      "status": "ROOT_REQUESTED_BOUNDED_CURRENT_PROTOCOL_RECONCILIATION",
-      "reason": "Reader metadata survives but current derivative receipt omits it. Inspect actual ingest/title consumer and restore bounded typed Subject if user-visible; do not label this an intentional loss."
-    }
-  ],
+  "open_followup": [],
   "runtime": "NOT_RUN",
   "limits": [
     "No Python compilation or local runtime available during this audit; source/test name checks are not collection or execution.",
     "Current Calibre six exact suffixes, DjVu, optional native converters and model workers retain their separate exact frozen qualification scope.",
     "HTML image-alt and formula placeholder policy differs explicitly; original bytes and omission warnings remain, with no active content or invented quote source.",
-    "The optional historical named SFX generator and mutable AudioRuntime inference flags are retired APIs, not falsely mapped to identical current features."
-  ]
+    "The optional historical named SFX generator and mutable AudioRuntime inference flags are retired APIs, not falsely mapped to identical current features.",
+    "The EML source restoration is a separately identified16-case component, to be composed with this seven-new-case backup assertion component; their code/test populations are not implicitly included by this documentation-only update."
+  ],
+  "followup_components": {
+    "email_metadata": {
+      "commit": "9cd60ad11dc1301a8b307db9e362dd9f1452806e",
+      "tree": "30b0d18cf316c5d58fdca4acbc66f31f45f64a84",
+      "new_cases": 16,
+      "tests_blob": "05e8c53e5be360f9e2cc4efd0feb0000725a6658",
+      "evidence": "email-subject-receipt-restoration-20261127.json",
+      "source_review": [
+        "root",
+        "capacity_measurements"
+      ],
+      "runtime": "NOT_RUN",
+      "composition_required": true
+    }
+  }
 }

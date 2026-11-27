@@ -352,7 +352,7 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
                             'include_audio': include_audio,
                             'limitations': ['Audio Studio project only; not a full research-library backup.',
                                 'API profiles, credentials, executable helpers and installed voice/music models are excluded.',
-                                'Only completed/cache files are copied. Interrupted working scratch files are excluded.']}
+                                'Known cache and render files are retained passively and revalidated before use. Interrupted working scratch files are excluded.']}
                 raw_manifest = _json(manifest)
                 if len(raw_manifest) > MANIFEST_BUDGET:
                     raise ValueError('Snapshot manifest exceeds its metadata budget.')

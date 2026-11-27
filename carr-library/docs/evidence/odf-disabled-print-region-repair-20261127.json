@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "component": "Bounded empty ODF page-region declarations",
+  "status": "SOURCE_REVIEW_PENDING",
+  "parent_commit": "cb585676c82f56f7c12fa5235a14d376ccfdfa47",
+  "observed_failure": {
+    "source_commit": "65ae1e9cac0352ae950b92f0f58ad6449728a0a9",
+    "run_id": 46054956286,
+    "job_id": 140695074052,
+    "native_source": {
+      "passed": 6,
+      "failed": 1
+    },
+    "format": "XLS",
+    "content_xml_hidden_nodes": 0,
+    "styles_xml_hidden_nodes": 12,
+    "observed_tags": [
+      "style:header-left",
+      "style:header-first",
+      "style:footer-left",
+      "style:footer-first"
+    ],
+    "observed_attribute": "style:display=false",
+    "observed_ancestry": [
+      "office:document-styles",
+      "office:master-styles",
+      "style:master-page"
+    ],
+    "descendant_emptiness": "Additional exact native census pending; this source patch admits only empty leaf declarations."
+  },
+  "primary_standard": "https://docs.oasis-open.org/office/OpenDocument/v1.3/os/part3-schema/OpenDocument-v1.3-os-part3-schema.html#property-style_display",
+  "acceptance_contract": {
+    "permitted": "Only six documented header/footer region tags directly under a master page directly under document-styles/master-styles, exactly one style:display=false attribute, no children or non-whitespace text/tail.",
+    "remaining_rejections": [
+      "Populated or unknown print-layout structure",
+      "Other hidden attributes including text:display and fo:visibility",
+      "Disabled elements at a different ancestry or in content.xml",
+      "Inherited table visibility, active/conditional/tracked text"
+    ],
+    "warning": "empty_disabled_page_regions_not_read",
+    "original_warning_retained": "headers_footers_styles_not_rendered",
+    "test_module": "tests/extract/test_odf_print_layout.py",
+    "support_files": [
+      "tests/extract/test_document_formats_xml.py"
+    ],
+    "exact_counter": {
+      "test_empty_disabled_print_region_preserves_exact_body_and_locators": 18,
+      "test_disabled_print_region_never_swallows_source_or_unknown_structure": 8,
+      "test_disabled_region_requires_exact_print_layout_ancestry": 4,
+      "test_disabled_print_region_does_not_override_other_hidden_content_rules": 4,
+      "test_content_xml_cannot_impersonate_styles_print_layout": 1
+    },
+    "new_cases": 35
+  },
+  "runtime_status": "NOT_RUN",
+  "limits": "No claim that the failed XLS is fixed until the exact native conversion is rerun. Native typography/layout and manual NVDA are not qualified by synthetic static reading cases."
+}

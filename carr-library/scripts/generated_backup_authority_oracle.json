@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "status": "AUTHORED_NOT_RUN",
+  "module": "tests.audio.test_generated_backup_authority",
+  "required_cases": 36,
+  "functions": {
+    "test_resealed_wrong_container_is_a_refusal_not_a_regeneration_request": 10,
+    "test_completed_receipt_must_match_actual_pcm_and_stems": 10,
+    "test_pcm_inspection_keeps_the_checksum_file_identity_held": 1,
+    "test_real_encoder_outputs_have_passive_runtime_free_completion_checks": 10,
+    "test_old_or_incomplete_cache_backup_stays_passive_until_explicit_reuse": 4,
+    "test_restored_resealed_bad_completion_refuses_before_any_fresh_work": 1
+  },
+  "required_runtime": "Existing reviewed CARR_FFMPEG for eleven real-format/restore cases; no new pins.",
+  "native_cases": 0
+}

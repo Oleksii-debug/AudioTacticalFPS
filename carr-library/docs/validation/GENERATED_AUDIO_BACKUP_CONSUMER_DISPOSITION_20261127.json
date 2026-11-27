@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "kind": "generated-audio-backup-consumer-disposition",
+  "status": "SOURCE_REPAIRED_RUNTIME_PENDING",
+  "canonical": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "path": "src/carr_library/backup_generated.py",
+    "blob": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947",
+    "contract": "Before canonical backup accepts completed generated media, require a one-to-one receipt/media graph, receipt SHA256 equality and bounded container signatures."
+  },
+  "source_base": "f1ee73aa62a28aa26c5ceff81d12611fa70a0ef1",
+  "repair_core": "7e2c4424183e13afc5bae7e9f5fe70aaf3672722",
+  "current_semantics": [
+    {
+      "owner": "library_backup.py::_studio_files/_validate_studios/_verify_contents",
+      "classification": "passive retained Studio/cache bytes",
+      "contract": "Exact registered path inventory, independent-copy identity/SHA256/size, link and budget guards, saved/recovery source and input-asset validation. It does not claim canonical backup-time completion-receipt graph validation."
+    },
+    {
+      "owner": "audio/backup.py::backup_project/restore_project",
+      "classification": "passive project snapshot",
+      "contract": "Retains known old/incomplete cache files and independently verified file bytes, relocates the saved output folder and keeps recovery/source identity. Manifest limitation now explicitly states passive retention and validation before use."
+    },
+    {
+      "owner": "ui/audio_studio.py::StudioController.open/recover",
+      "classification": "no restored completion authority",
+      "contract": "Opening or recovering a draft clears result. Backup restoration never starts a worker, selects a provider, or turns a saved journal into a playable/complete Studio result."
+    },
+    {
+      "owner": "audio/jobs.py::ChunkCache.get",
+      "classification": "explicit cache consumer",
+      "contract": "On an explicit consumer call, validate current receipt/key, media size/SHA256, real PCM frames/rate/channels and companion hashes; quarantine invalid data without silently releasing its storage budget."
+    },
+    {
+      "owner": "audio/production.py::_verified_output/_render_locked",
+      "classification": "repaired completed-result consumer",
+      "contract": "Hold an immutable verified reader across current checksum and bounded media validation; verify actual PCM master/stems and measured result fields, plus selected encoded-container signatures. A self-consistent malformed completion raises before new operation admission, quarantine or regeneration. Existing explicit-render repair of checksum-damaged output remains a separate retained behavior."
+    },
+    {
+      "owner": "audio/publishing.py::PublicationService._source",
+      "classification": "separate existing publication authority",
+      "contract": "A new publication independently validates exact typed-plan/source/timeline/artifact binding and actual master PCM. The passive backup never supplies publication approval."
+    },
+    {
+      "owner": "audio_batch_backup.py;audio/playlist.py",
+      "classification": "typed completed producers",
+      "contract": "These current completed-output namespaces already validate their own typed graphs and actual PCM during backup; they are not weakened to the passive Studio-cache policy."
+    },
+    {
+      "owner": "backup_historical.py;backup_legacy_state.py",
+      "classification": "inert historical envelopes",
+      "contract": "Preserve original historical state and manifests passively under existing bounds. This repair does not reinterpret their old cache format as current completion or reject valid historical drafts."
+    }
+  ],
+  "concrete_gap": {
+    "before": "A caller could reseal invalid audio bytes into complete.json and satisfy old _verified_output SHA/size/name checks, then receive a completed result. The existing cache-only PCM check did not cover this completed-render path.",
+    "after": "The existing completed-output consumer now rejects that internally inconsistent media claim without activating a decoder/voice, mutating its directory or converting it into a fresh regeneration request."
+  },
+  "new_regressions": {
+    "module": "tests.audio.test_generated_backup_authority",
+    "cases": 36,
+    "function_counter": {
+      "test_resealed_wrong_container_is_a_refusal_not_a_regeneration_request": 10,
+      "test_completed_receipt_must_match_actual_pcm_and_stems": 10,
+      "test_pcm_inspection_keeps_the_checksum_file_identity_held": 1,
+      "test_real_encoder_outputs_have_passive_runtime_free_completion_checks": 10,
+      "test_old_or_incomplete_cache_backup_stays_passive_until_explicit_reuse": 4,
+      "test_restored_resealed_bad_completion_refuses_before_any_fresh_work": 1
+    },
+    "actual_ffmpeg_required_cases": 11,
+    "other_cases": 25
+  },
+  "existing_regressions_retained": [
+    "tests/audio/test_project_backup.py::test_snapshot_roundtrip_relocates_settings_and_recovery_with_exact_source",
+    "tests/storage/test_library_backup.py::test_v4_exact_reading_and_audio_drafts_roundtrip",
+    "tests/audio/test_audio_backup.py::test_canonical_managed_studio_restores_into_new_output_root_and_resumes[False,True]",
+    "tests/audio/test_production.py::ProductionRenderTests.test_output_corruption_is_not_returned_as_success",
+    "tests/audio/test_production_integrity.py::test_editing_export_cannot_damage_sealed_scene",
+    "tests/audio/test_chunk_cache_budget.py::test_corrupt_companion_remains_accounted_and_valid_replacement_can_resume"
+  ],
+  "limits": [
+    "Source-only review and authored tests are not execution results.",
+    "Backup-time canonical graph validation and current passive-cache retention are deliberately distinguished; no blanket timing or case-count equivalence is claimed.",
+    "Encoded-container signature checks are bounded identification, not a complete decode, perceptual audio assessment, real-model qualification or NVDA acceptance.",
+    "No arbitrary runtime/model/profile authority is restored or inferred from cached paths.",
+    "Historical malformed or incomplete cache bytes can remain archived passively; only explicit consumers may evaluate or quarantine them."
+  ]
+}
