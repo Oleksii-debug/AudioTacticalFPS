@@ -562,7 +562,9 @@ class AcquisitionDialog(wx.Dialog):
                 f'Downloaded source: {result.path}', f'Provenance receipt: {result.receipt_path}',
                 f'File SHA-256: {result.sha256}', f'Reference ID: {_value(result.reference_id)}',
                 f'Edition ID: {_value(result.edition_id)}',
-                'Use Import Center to inspect pending or quarantined imports.')))
+                ('Use the academic library to review or link the already imported edition.'
+                 if result.state == 'imported_reference_pending'
+                 else 'Use Import Center to inspect pending or quarantined imports.'))))
 
         return self._start('Downloading and importing selected PDF', lambda cancelled:
             self.library.acquire_doi_source(self.workspace, preview, index, destination,

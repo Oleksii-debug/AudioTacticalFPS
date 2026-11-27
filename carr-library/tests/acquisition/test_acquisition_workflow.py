@@ -45,11 +45,11 @@ def unpaywall(**changes):
     return json.dumps(record).encode()
 
 
-def pdf_bytes():
+def pdf_bytes(text='Synthetic public research preserves source wording.'):
     from reportlab.pdfgen.canvas import Canvas
     buffer = io.BytesIO()
     canvas = Canvas(buffer)
-    canvas.drawString(72, 700, 'Synthetic public research preserves source wording.')
+    canvas.drawString(72, 700, text)
     canvas.showPage()
     canvas.save()
     return buffer.getvalue()
@@ -277,7 +277,7 @@ def test_failed_import_keeps_verified_download_with_truthful_partial_result(samp
     preview = lookup(app, workspace, oa=True)
     def fail(*args, **kwargs):
         raise ValueError('Synthetic parser failure')
-    monkeypatch.setattr(app, 'import_file', fail)
+    monkeypatch.setattr(app, 'resume_import', fail)
     result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'recovery',
         online_allowed=True, rights_confirmed=True)
     assert result.state == 'downloaded' and result.edition_id is None
@@ -325,7 +325,7 @@ def test_download_publication_on_filesystem_without_hardlinks(sample, tmp_path, 
     monkeypatch.setattr(service.os, 'link', unsupported)
     # RetainedAssets has a separate filesystem contract, so this case verifies
     # completed download publication and its truthful import-recovery result.
-    monkeypatch.setattr(app, 'import_file', lambda *a, **k: {'state': 'quarantined'})
+    monkeypatch.setattr(app, 'resume_import', lambda *a, **k: {'state': 'quarantined'})
     result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'portable-destination',
         online_allowed=True, rights_confirmed=True)
     assert result.state == 'quarantined'
@@ -352,3 +352,192 @@ def test_copy_publication_fallback_never_overwrites_and_cancels_cleanly(tmp_path
     with pytest.raises(InterruptedError):
         service._publish_file(source, target, lambda: checks.pop(0))
     assert not target.exists() and source.read_bytes() == b'A' * 200000
+
+
+def test_ambiguous_identical_editions_do_not_auto_link_or_assign(sample, tmp_path):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'same-original.pdf'
+    original.write_bytes(transfers.pdf)
+    for identity, title in (('a' * 32, 'Synthetic edition A'), ('b' * 32, 'Synthetic edition B')):
+        imported = app.import_file(workspace, original, title=title,
+            authors=('Synthetic Author',), edition_id=identity)
+        assert imported['state'] == 'complete'
+    before = app.browse(workspace)
+    assert len(before) == 2
+    assert {e.asset for e in before} == {sha256(transfers.pdf).hexdigest()}
+    collection = app.create_collection(workspace, 'Requires explicit edition selection')
+    preview = lookup(app, workspace, oa=True)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'ambiguous-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert result.state == 'downloaded'
+    assert result.edition_id is None and result.reference_id is None
+    assert 'Multiple editions' in result.message
+    assert result.path.read_bytes() == transfers.pdf
+    assert json.loads(result.receipt_path.read_text(encoding='utf-8'))['sha256'] == result.sha256
+    assert app.browse(workspace) == before
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+
+def test_duplicate_match_changes_during_asset_verification(sample, tmp_path, monkeypatch):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'race-original.pdf'
+    original.write_bytes(transfers.pdf)
+    first = app.import_file(workspace, original, title='Synthetic first edition',
+        edition_id='a' * 32)
+    assert first['state'] == 'complete'
+    collection = app.create_collection(workspace, 'Must remain empty after race')
+    preview = lookup(app, workspace, oa=True)
+    resolve = app.assets.resolve
+    armed = True
+
+    def add_competing_edition(digest):
+        nonlocal armed
+        verified = resolve(digest)
+        if armed and digest == sha256(transfers.pdf).hexdigest():
+            armed = False
+            # Another app instance commits after the read snapshot, before
+            # the acquisition publishes a reference or collection membership.
+            competitor = LibraryApp(app.root)
+            second = competitor.import_file(workspace, original,
+                title='Synthetic second edition', edition_id='b' * 32)
+            assert second['state'] == 'complete'
+        return verified
+
+    monkeypatch.setattr(app.assets, 'resolve', add_competing_edition)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'race-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert not armed
+    assert result.state == 'downloaded'
+    assert result.edition_id is None and result.reference_id is None
+    assert result.path.read_bytes() == transfers.pdf
+    assert result.receipt_path.is_file()
+    assert len(app.browse(workspace)) == 2
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+
+
+def test_duplicate_membership_rolls_back_on_reference_failure(sample, tmp_path, monkeypatch):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'rollback-original.pdf'
+    original.write_bytes(transfers.pdf)
+    imported = app.import_file(workspace, original, title='Synthetic retained edition')
+    assert imported['state'] == 'complete'
+    collection = app.create_collection(workspace, 'Must remain empty on rollback')
+    preview = lookup(app, workspace, oa=True)
+
+    def fail(*args, **kwargs):
+        raise ValueError('Synthetic reference update failure')
+
+    monkeypatch.setattr(AcademicLibrary, 'update', fail)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'rollback-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert result.state == 'downloaded' and result.edition_id is None
+    assert result.path.read_bytes() == transfers.pdf and result.receipt_path.is_file()
+    assert len(app.browse(workspace)) == 1
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+
+
+@pytest.mark.parametrize('failure', ['reference_update', 'cancel_after_reference_update'])
+def test_new_import_remains_committed_when_reference_linking_stops(sample, tmp_path, monkeypatch, failure):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    collection = app.create_collection(workspace, 'Retain completed import')
+    preview = lookup(app, workspace, oa=True)
+    cancelled = [False]
+    original_update = AcademicLibrary.update
+
+    def stop_link(*args, **kwargs):
+        if failure == 'reference_update':
+            raise ValueError('Synthetic reference update failure')
+        reference = original_update(*args, **kwargs)
+        cancelled[0] = True
+        return reference
+
+    with monkeypatch.context() as patch:
+        patch.setattr(AcademicLibrary, 'update', stop_link)
+        result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'committed-download',
+            online_allowed=True, rights_confirmed=True, collection=collection,
+            cancelled=lambda: cancelled[0])
+    assert result.state == 'imported_reference_pending'
+    assert result.reference_id is None and result.edition_id is not None
+    assert result.path.read_bytes() == transfers.pdf
+    assert json.loads(result.receipt_path.read_text(encoding='utf-8'))['sha256'] == result.sha256
+    edition, = app.browse(workspace)
+    assert edition.edition_id == result.edition_id
+    assert app.browse(workspace, collection=collection)[0].edition_id == result.edition_id
+    assert app.assets.resolve(edition.asset).read_bytes() == transfers.pdf
+    assert references(app, workspace) == ()
+    assert 'do not import or download it again' in result.message
+
+    # Existing local reference workflow can link the committed edition without
+    # starting another import or transfer; the original receipt remains intact.
+    reference = app.save_doi_reference(workspace, preview)
+    with app.write(workspace) as db:
+        linked = AcademicLibrary(db, workspace).update(
+            reference.id, expected=reference, edition_id=result.edition_id)
+    assert linked.edition_id == edition.edition_id
+    assert len(references(app, workspace)) == len(app.browse(workspace)) == 1
+    assert transfers.downloads == [SOURCE]
+    assert result.receipt_path.is_file()
+
+
+def test_acquisition_rejects_replaced_download_before_isolated_import(sample, tmp_path, monkeypatch):
+    from carr_library.ingest.worker import load_request
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    replacement = pdf_bytes('Different synthetic document, not the acquired source.')
+    assert sha256(replacement).hexdigest() != sha256(transfers.pdf).hexdigest()
+    preview = lookup(app, workspace, oa=True)
+    collection = app.create_collection(workspace, 'Do not register replacement')
+    target = tmp_path / 'replaced-download'
+    original_import, original_resume = app.import_file, app.resume_import
+    swapped = []
+
+    def replace_download():
+        assert (target / 'document.pdf').read_bytes() == transfers.pdf
+        (target / 'document.pdf').write_bytes(replacement)
+        swapped.append(True)
+
+    def replace_before_unbound_import(*args, **kwargs):
+        replace_download()
+        return original_import(*args, **kwargs)
+
+    def replace_before_bound_resume(*args, **kwargs):
+        replace_download()
+        return original_resume(*args, **kwargs)
+
+    # Both entry points are hooked so the regression also exposes the old
+    # unbound import path. Parsing, catalog publication and recovery stay real.
+    with monkeypatch.context() as patch:
+        patch.setattr(app, 'import_file', replace_before_unbound_import)
+        patch.setattr(app, 'resume_import', replace_before_bound_resume)
+        result = app.acquire_doi_source(workspace, preview, 0, target,
+            online_allowed=True, rights_confirmed=True, collection=collection)
+    assert swapped == [True]
+    assert result.state == 'failed'
+    assert result.edition_id is None and result.reference_id is None
+    assert result.path.read_bytes() == replacement  # Do not erase user changes.
+    receipt = json.loads(result.receipt_path.read_text(encoding='utf-8'))
+    assert receipt['sha256'] == result.sha256 == sha256(transfers.pdf).hexdigest()
+    assert not app.browse(workspace)
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+    pending, = app.import_requests(workspace)
+    request = load_request(app.root, pending['request_id'])
+    assert request['expected_manifest'] == dict(
+        sha256=result.sha256, mime='application/pdf', size=len(transfers.pdf))
+    assert 'restore the exact bytes' in result.message
+
+    # Restore the exact download and resume the same durable import identity.
+    result.path.write_bytes(transfers.pdf)
+    resumed = app.resume_import(workspace, pending['request_id'])
+    assert resumed['state'] == 'complete', resumed
+    edition, = app.browse(workspace, collection=collection)
+    assert edition.edition_id == request['metadata']['edition_id']
+    assert edition.asset == result.sha256
+    assert app.assets.resolve(edition.asset).read_bytes() == transfers.pdf
+    assert transfers.downloads == [SOURCE]
