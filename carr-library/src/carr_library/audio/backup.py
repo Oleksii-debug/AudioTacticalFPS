@@ -72,6 +72,8 @@ def _allowed(name):
         return True
     if name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name):
         return True
+    if re.fullmatch(r'audio/publications/[0-9a-f]{32}\.json', name):
+        return True
     # Referenced input names and PCM bytes are checked by input_assets().
     if re.fullmatch(r'audio/assets/[^/]+', name):
         return True
@@ -274,6 +276,8 @@ def _inventory(project_file, project_dir, *, include_cache, include_audio,
     files.update(input_assets(project_file, project_dir, file_budget=file_budget, cancelled=cancelled))
     if project_dir is None:
         return files
+    from .publishing import publication_receipts
+    files.update(publication_receipts(project_dir, cancelled=cancelled))
     for base, directories, names in os.walk(project_dir, followlinks=False, onerror=_walk_error):
         directory = Path(base)
         relative = directory.relative_to(project_dir)
@@ -497,6 +501,10 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
             raise ValueError('The snapshot sound inputs do not match its saved and recovery scripts.')
         output_root = target / 'project' / 'audio'
         (stage / 'audio').mkdir(exist_ok=True)
+        from .publishing import publication_receipts
+        publications = publication_receipts(stage / 'audio', cancelled=cancelled)
+        if set(publications) != {name for name in records if name.startswith('audio/publications/')}:
+            raise ValueError('The snapshot publication receipts do not match their typed inventory.')
         old_hash = records['studio/project.json']['sha256']
         project['output_dir'] = str(output_root)
         relocated = _json(project)

@@ -7,28 +7,17 @@ not add a renderer, codec, provider, job registry or network transport.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from hashlib import sha256
-import math
 import os
 from pathlib import Path
 import stat
 import struct
-import subprocess
-import tempfile
-from time import monotonic, sleep
 from types import SimpleNamespace
 from zipfile import ZipFile
 
 from ..durable_state import local_path, regular
+from ..operations.process import ProcessBudget, finite, run_process
 from .jobs import RenderCancelled, checked_directory
 from .runtime import trusted_executable
-
-
-def finite(value, label, minimum=None, maximum=None):
-    if type(value) not in (int, float) or not math.isfinite(value):
-        raise ValueError(label + ' must be a finite number.')
-    if minimum is not None and value < minimum or maximum is not None and value > maximum:
-        raise ValueError(label + ' is outside the supported range.')
-    return value
 
 
 @dataclass(frozen=True)
@@ -195,7 +184,7 @@ def bounded_zip(path, expected_count, max_bytes, check):
 
 
 def inspect_audio(path, ffmpeg, *, check, timeout=30):
-    """Reuse the canonical ffprobe query with current explicit sibling tools."""
+    """Reuse the canonical ffprobe query and the existing owned worker runner."""
     path = local_path(path, exists=True)
     check()
     selected = trusted_executable(ffmpeg)
@@ -207,42 +196,25 @@ def inspect_audio(path, ffmpeg, *, check, timeout=30):
             '-of', 'json', str(path)]
     environment = dict(os.environ)
     environment.pop('FFREPORT', None)
-    started = monotonic()
     before = _stamp(regular(path))
-    with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as error:
-        process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=output, stderr=error,
-            env=environment, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        try:
-            while process.poll() is None:
-                check()
-                if monotonic() - started > timeout:
-                    raise TimeoutError('Local audio inspection exceeded its time budget.')
-                if os.fstat(output.fileno()).st_size > 65536 or os.fstat(error.fileno()).st_size > 65536:
-                    raise ValueError('Local audio inspection exceeded its response budget.')
-                sleep(.02)
-            check()
-            if process.returncode or max(os.fstat(output.fileno()).st_size, os.fstat(error.fileno()).st_size) > 65536:
-                raise ValueError('The selected local audio tools could not inspect this recording.')
-            output.seek(0)
-            from .publishing import _json
-            data = _json(output.read(65537))
-            stream, = data['streams']
-            rate, channels = int(stream['sample_rate']), int(stream['channels'])
-            if not 8000 <= rate <= 192000 or channels not in (1, 2):
-                raise ValueError('Publication needs supported mono or stereo audio.')
-            duration = finite(float(stream.get('duration', data['format'].get('duration'))),
-                              'Actual audio duration', 0, 365 * 86400)
-            if _stamp(regular(path)) != before:
-                raise ValueError('A staged recording changed during native inspection.')
-            return SimpleNamespace(duration=duration, sample_rate=rate, channels=channels,
-                                   codec=str(stream['codec_name']), container=str(data['format']['format_name']))
-        except (KeyError, TypeError, OverflowError, ZeroDivisionError) as exc:
-            raise ValueError('The selected recording has no measurable supported audio stream.') from exc
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=5)
+    def stopped():
+        check()
+        return False
+    result = run_process(args, budget=ProcessBudget(timeout=timeout, max_log_bytes=65536),
+                         cancelled=stopped, env=environment)
+    check()
+    try:
+        from .publishing import _json
+        data = _json(result.stdout)
+        stream, = data['streams']
+        rate, channels = int(stream['sample_rate']), int(stream['channels'])
+        if not 8000 <= rate <= 192000 or channels not in (1, 2):
+            raise ValueError('Publication needs supported mono or stereo audio.')
+        duration = finite(float(stream.get('duration', data['format'].get('duration'))),
+                          'Actual audio duration', 0, 365 * 86400)
+        if _stamp(regular(path)) != before:
+            raise ValueError('A staged recording changed during native inspection.')
+        return SimpleNamespace(duration=duration, sample_rate=rate, channels=channels,
+                               codec=str(stream['codec_name']), container=str(data['format']['format_name']))
+    except (KeyError, TypeError, OverflowError, ZeroDivisionError) as exc:
+        raise ValueError('The selected recording has no measurable supported audio stream.') from exc

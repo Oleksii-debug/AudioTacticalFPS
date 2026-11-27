@@ -1641,6 +1641,8 @@ def install_audio_studio_actions(frame):
                            ('Prepare selected book for narration...', actions.from_selected_book)):
         item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, handler, item)
+    from .audio_publication import install_publication_actions
+    install_publication_actions(frame, menu)
     frame.menu_bar.Append(menu, 'A&udio')
     frame.audio_studio_actions = actions
     return actions
