@@ -657,7 +657,7 @@ def test_progress_observer_failure_preserves_real_child_or_receipt_failure(prepa
 
     result = service.run(identity, timeout=1, progress=broken)
     assert result == service.get(identity) and result['status'] == 'failed'
-    assert error in result['last_error']
+    assert error in result['last_error'], result['last_error']
     assert 'observer' not in result['last_error'] and result['artifacts'] == []
 
 
@@ -725,8 +725,114 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     configure('complete')
     tracker.start('Resuming retained inputs', 2)
     completed = service.run(identity, timeout=30, progress=progress)
-    assert completed['status'] == 'completed' and completed['done'] == 2
+    assert completed['status'] == 'completed' and completed['done'] == 2, completed
     assert operation_outcome(completed) == 'succeeded'
     assert all(event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
+
+
+def _status_replace_policy(native, platform='nt'):
+    """Execute the actual bootstrap installer with isolated OS/clock bindings."""
+    import ast
+    import ntpath
+    from types import SimpleNamespace
+    from carr_library.transcription import _WORKER_BOOTSTRAP
+
+    clock = {'now': 0.0, 'sleeps': []}
+    def sleep(delay):
+        clock['sleeps'].append(delay)
+        clock['now'] += delay
+    local_os = SimpleNamespace(name=platform, path=ntpath, fsdecode=os.fsdecode, replace=native)
+    local_time = SimpleNamespace(monotonic=lambda: clock['now'], sleep=sleep)
+    function = next(node for node in ast.parse(_WORKER_BOOTSTRAP).body
+                    if isinstance(node, ast.FunctionDef) and node.name == '_install_status_replace')
+    namespace = {'os': local_os, 'time': local_time}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), '<actual-status-installer>', 'exec'), namespace)
+    namespace['_install_status_replace'](r'C:\jobs\selected')
+    return local_os.replace, clock
+
+
+def _native_status_refusal(code):
+    error = PermissionError('Synthetic native replacement refusal')
+    error.winerror = code
+    return error
+
+
+@pytest.mark.parametrize('code', [5, 32, 33])
+def test_status_publication_retries_only_transient_native_refusals(code):
+    calls = []
+    error = _native_status_refusal(code)
+    def native(*args, **kwargs):
+        calls.append((args, kwargs))
+        if len(calls) == 1:
+            raise error
+        return 'published'
+    replace, clock = _status_replace_policy(native)
+    args = (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json')
+    assert replace(*args) == 'published'
+    assert calls == [(args, {}), (args, {})]
+    assert clock['sleeps'] == [.01]
+
+
+@pytest.mark.parametrize('source,destination,extra,options', [
+    (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\other.json', (), {}),
+    (r'C:\jobs\selected\nested\status.tmp', r'C:\jobs\selected\job_status.json', (), {}),
+    (r'C:\elsewhere\status.tmp', r'C:\jobs\selected\job_status.json', (), {}),
+    (r'C:\jobs\selected\status.tmp', r'C:\jobs\other\job_status.json', (), {}),
+    (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json', (), {'dst_dir_fd': None}),
+    (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json', (None,), {}),
+])
+def test_status_publication_leaves_other_paths_and_signatures_native(source, destination, extra, options):
+    calls = []
+    error = _native_status_refusal(5)
+    def native(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise error
+    replace, clock = _status_replace_policy(native)
+    arguments = (source, destination, *extra)
+    with pytest.raises(PermissionError) as caught:
+        replace(*arguments, **options)
+    assert caught.value is error
+    assert calls == [(arguments, options)]
+    assert clock['sleeps'] == []
+
+
+@pytest.mark.parametrize('error', [
+    PermissionError('The write audit denied this operation.'),
+    _native_status_refusal(87),
+    FileNotFoundError('Source disappeared.'),
+    KeyboardInterrupt(),
+])
+def test_status_publication_propagates_other_errors_and_cancellation_immediately(error):
+    calls = []
+    def native(*args):
+        calls.append(args)
+        raise error
+    replace, clock = _status_replace_policy(native)
+    with pytest.raises(type(error)) as caught:
+        replace(r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json')
+    assert caught.value is error and len(calls) == 1
+    assert clock['sleeps'] == []
+
+
+def test_status_publication_permanent_native_lock_keeps_error_and_half_second_bound():
+    calls = []
+    error = _native_status_refusal(5)
+    def native(*args):
+        calls.append(args)
+        raise error
+    replace, clock = _status_replace_policy(native)
+    with pytest.raises(PermissionError) as caught:
+        replace(r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json')
+    assert caught.value is error
+    assert clock['now'] == pytest.approx(.5)
+    assert 2 <= len(calls) <= 52
+    assert clock['sleeps'] and all(0 < delay <= .01 for delay in clock['sleeps'])
+
+
+def test_status_publication_posix_keeps_the_native_callable():
+    def native(*args, **kwargs):
+        return args, kwargs
+    replace, clock = _status_replace_policy(native, platform='posix')
+    assert replace is native and clock['sleeps'] == []

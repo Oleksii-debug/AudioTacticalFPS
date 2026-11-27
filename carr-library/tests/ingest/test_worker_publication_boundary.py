@@ -227,7 +227,8 @@ def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, chan
     else:
         changed['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], changed)
-    assert worker._published_after_stop(app, initial, 0) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, initial['request_id'], initial['attempt'])
 
 
 def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
@@ -240,11 +241,12 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
     raw = bytearray(retained.read_bytes())
     raw[-1] ^= 1
     retained.write_bytes(raw)
-    assert worker._published_after_stop(app, initial, 0) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, initial['request_id'], initial['attempt'])
 
 
-def test_recovered_superseded_txt_does_not_claim_current_verified_completion(tmp_path):
-    """Exercise both receipt states against real storage and retained bytes.
+def test_superseded_txt_receipt_cannot_claim_current_verified_completion(tmp_path):
+    """An active receipt can recover; a historical receipt cannot claim completion.
 
     The fixture reselects an older sealed revision after a genuine child import.
     It does not replace the verifier, query results, source bytes or worker.
@@ -254,7 +256,7 @@ def test_recovered_superseded_txt_does_not_claim_current_verified_completion(tmp
     from carr_library.catalog.registration import Registration
     from carr_library.extract.page_ocr import Config
     from carr_library.ingest.writer_guard import exclusive_writer
-    from carr_library.storage.revisions import Page, Storage
+    from carr_library.storage.revisions import Page, Storage, CURRENT_SCHEMA_VERSION
 
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Superseded publication')
@@ -271,7 +273,7 @@ def test_recovered_superseded_txt_does_not_claim_current_verified_completion(tmp
         [workspace, metadata['edition_id'], asset.digest, old_settings]).encode('utf-8')).hexdigest()
     registration = Registration(metadata['work_id'], metadata['edition_id'],
         asset.manifest(), metadata['title'], (), metadata['language'], None, None, ())
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
         app.assets.retain(asset.data, asset.mime, asset.digest)
         _CatalogPublisher(storage, registration).publish_revision(
             workspace, metadata['edition_id'], old_revision, asset.digest,
@@ -281,12 +283,14 @@ def test_recovered_superseded_txt_does_not_claim_current_verified_completion(tmp
     result = worker.run_request(app.root, workspace, source, {}, None,
                                 request_id=initial['request_id'])
     assert result['state'] == 'complete' and result['verified'] is True
-    active = worker._published_after_stop(app, initial, 0)
+    published = worker.load_request(app.root, result['request_id'])
+    active = worker._reconcile_publication(app.root, published['request_id'], published['attempt'])
     assert active['state'] == 'complete' and active['verified'] is True
+    assert active['publication_recovered'] is True
 
     # Retain both immutable revisions and construct a valid historical pointer
     # using the same index/active relationship enforced by Storage._check.
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
         with storage.transaction():
             storage.db.execute('DELETE FROM indexed WHERE id IN '
                 '(SELECT id FROM active_page WHERE workspace=? AND edition=?)',
@@ -297,10 +301,10 @@ def test_recovered_superseded_txt_does_not_claim_current_verified_completion(tmp
                 (old_revision,))
             storage._check()
 
-    recovered = worker._published_after_stop(app, initial, 0)
-    assert recovered['state'] == 'superseded'
-    assert recovered['id'] == result['id'] and recovered['verified'] is False
-    assert recovered['recovered_publication'] is True
+    # A genuine historical receipt still cannot authorize current completion
+    # after another revision becomes active. The immutable original stays intact.
+    with pytest.raises(ValueError, match='publication identity changed'):
+        worker._reconcile_publication(app.root, published['request_id'], published['attempt'])
     assert source.read_bytes() == original
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 2
