@@ -326,3 +326,41 @@ def test_real_hardlink_alias_remains_refused_after_fresh_windows_stat(tmp_path):
     assert alias.stat().st_nlink == 2
     with pytest.raises(ConversionUnavailable, match='unsupported'):
         legacy_runtime.ToolSelection.capture(executable, 'chm')
+
+
+@pytest.mark.parametrize('last', ['Block', 'Method'])
+def test_native_chm_empty_final_property_keeps_its_delimiter(last):
+    raw = ('Path = page.htm\r\nSize = 12\r\n' + last + ' = \r\n\r\n').encode()
+    assert legacy._chm_listing(raw, 100) == [{'name': 'page.htm', 'bytes': 12, 'directory': False}]
+
+
+@pytest.mark.parametrize('public,system', [
+    ('-//W3C//DTD HTML 3.2 Final//EN', ''),
+    ('-//W3C//DTD HTML 4.0 Transitional//EN', ''),
+    ('-//W3C//DTD HTML 4.01 Transitional//EN', 'http://www.w3.org/TR/html4/loose.dtd'),
+    ('-//W3C//DTD HTML 4.01//EN', 'http://www.w3.org/TR/html4/strict.dtd'),
+])
+def test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound(public, system):
+    from carr_library.extract.document_formats import extract_document
+    body = b'<html><body><p>Local reading text.</p><script>ACTIVE_SECRET</script></body></html>'
+    declaration = ('<!DOCTYPE HTML PUBLIC "' + public + '"' + (' "' + system + '"' if system else '') + '>').encode()
+    original = declaration + body
+    reading = legacy._chm_html(original)
+    assert reading == b'<!DOCTYPE html>' + body and original == declaration + body
+    extracted = extract_document(reading, '.html')
+    text = '\n'.join(row['raw_text'] for row in extracted['records'])
+    assert 'Local reading text.' in text and 'ACTIVE_SECRET' not in text
+
+
+@pytest.mark.parametrize('declaration', [
+    b'<!DOCTYPE HTML SYSTEM "file:///private.txt">',
+    b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "https://unselected.example/dtd">',
+    b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" [<!ENTITY private SYSTEM "file:///private.txt">]>',
+    b'<!DOCTYPE HTML PUBLIC "-//UNSELECTED//DTD HTML 4.0//EN">',
+])
+def test_chm_undeclared_or_complex_doctype_remains_refused(declaration):
+    from carr_library.extract.document_formats import extract_document
+    raw = declaration + b'<html><body><p>Reading text.</p></body></html>'
+    assert legacy._chm_html(raw) == raw
+    with pytest.raises(ValueError, match='document type|doctype|DOCTYPE'):
+        extract_document(raw, '.html')

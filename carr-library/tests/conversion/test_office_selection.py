@@ -175,3 +175,38 @@ def test_profile_is_per_operation_and_disables_active_content_and_external_updat
     assert not values[scripting, 'SecureURL']
     assert values['/org.openoffice.Office.Calc/Content/Update', 'Link'] == '1'
 
+
+
+@pytest.mark.parametrize('outcome', ['timed_out', 'failed', 'cleanup-error'])
+def test_private_phase_survives_failure_without_publishing_source_or_native_logs(tmp_path, monkeypatch, outcome):
+    from carr_library.conversion import service
+    path = installed(tmp_path)
+    source, output = tmp_path / 'original.doc', tmp_path / 'output'
+    source.write_bytes(bytes.fromhex('d0cf11e0a1b11ae1') + b'ORIGINAL PRIVATE TEXT')
+    before = source.read_bytes()
+    output.mkdir()
+    def invoke(message, **options):
+        stage = Path(message['source']).parent
+        office._progress(stage, 'runtime-held')
+        if outcome == 'cleanup-error':
+            raise PermissionError('synthetic sharing cleanup failure')
+        return {'state': outcome, 'message': 'fixed synthetic failure'}
+    monkeypatch.setattr(service, '_invoke', invoke)
+    with pytest.raises((TimeoutError, ConversionError, PermissionError)) as raised:
+        ConversionService(output, input_roots=(source,), office=path).extract(source, 'reading.txt')
+    diagnostic = str(raised.value) + ' '.join(getattr(raised.value, '__notes__', ()))
+    assert 'LibreOffice last observed phase: runtime-held.' in diagnostic
+    assert 'ORIGINAL PRIVATE TEXT' not in diagnostic
+    assert source.read_bytes() == before and list(output.iterdir()) == []
+
+
+def test_progress_refuses_untrusted_marker_content_and_aliased_marker(tmp_path):
+    office._progress(tmp_path, 'native-version-start')
+    assert office.progress_detail(tmp_path).endswith('native-version-start.')
+    marker = tmp_path / '.office-phase-native-version-start'
+    marker.write_bytes(b'UNTRUSTED DIAGNOSTIC CONTENT')
+    assert office.progress_detail(tmp_path).endswith('unavailable.')
+    marker.unlink()
+    office._progress(tmp_path, 'native-version-start')
+    os.link(marker, tmp_path / 'alias')
+    assert office.progress_detail(tmp_path).endswith('unavailable.')

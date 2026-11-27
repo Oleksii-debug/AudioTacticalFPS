@@ -222,16 +222,26 @@ class ConversionService:
                 message['adapter'] = dict(kind='raster-ocr')
             elif suffix in OFFICE_SUFFIXES:
                 message['adapter'] = dict(kind='libreoffice', runtime=self.office.snapshot(cancelled=cancelled))
-            result = _invoke(message,
-                timeout=self.budget.timeout, cancelled=cancelled)
+            try:
+                result = _invoke(message,
+                    timeout=self.budget.timeout, cancelled=cancelled)
+            except Exception as error:
+                if suffix in OFFICE_SUFFIXES:
+                    from .office import progress_detail
+                    error.add_note(progress_detail(stage))
+                raise
             _check(cancelled)
             if not isinstance(result, dict) or result.get('state') != 'complete':
                 state = result.get('state') if isinstance(result, dict) else None
+                detail = ''
+                if suffix in OFFICE_SUFFIXES:
+                    from .office import progress_detail
+                    detail = ' ' + progress_detail(stage)
                 if state == 'cancelled':
                     raise InterruptedError('Document conversion stopped before publication.')
                 if state == 'timed_out':
-                    raise TimeoutError('Document conversion exceeded the selected time limit.')
-                raise ConversionError('The existing document reader could not produce a complete derivative. ' +
+                    raise TimeoutError('Document conversion exceeded the selected time limit.' + detail)
+                raise ConversionError('The existing document reader could not produce a complete derivative.' + detail + ' ' +
                                       str(result.get('message', '') if isinstance(result, dict) else '')[:2000])
             details = read_json(details_path, limit=MAX_REPORT_BYTES)
             expected = {'engine', 'separator', 'segments', 'warnings', 'source_sha256', 'source_size'}

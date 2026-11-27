@@ -294,6 +294,47 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
             process.wait()
 
 
+
+_PROGRESS_PHASES = (
+    'admitting-runtime', 'runtime-admitted', 'profile-ready', 'runtime-held',
+    'native-version-start', 'native-version-complete', 'native-conversion-start',
+    'native-conversion-complete', 'extracting-text', 'text-extracted',
+)
+
+
+def _progress(stage, phase):
+    """Only fixed phase labels, never document content or native diagnostics."""
+    if phase not in _PROGRESS_PHASES:
+        raise ValueError('Unknown selected LibreOffice progress phase.')
+    path = checked_directory(stage) / ('.office-phase-' + phase)
+    with path.open('xb') as stream:
+        stream.write(phase.encode('ascii'))
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def progress_detail(stage):
+    """Best-effort diagnostic after the existing owner has settled the child."""
+    phase = 'not-started'
+    try:
+        root = checked_directory(stage)
+        for candidate in _PROGRESS_PHASES:
+            path = root / ('.office-phase-' + candidate)
+            try:
+                info = regular_file(path)
+            except FileNotFoundError:
+                continue
+            if info.st_nlink != 1 or info.st_size != len(candidate):
+                return 'LibreOffice last observed phase: unavailable.'
+            with verified_reader(path, expected_identity=file_identity(info)) as stream:
+                if stream.read(128) != candidate.encode('ascii'):
+                    return 'LibreOffice last observed phase: unavailable.'
+            phase = candidate
+    except (OSError, ValueError, RuntimeError):
+        return 'LibreOffice last observed phase: unavailable.'
+    return 'LibreOffice last observed phase: ' + phase + '.'
+
+
 def office_records(source, data, suffix, budget, deadline, selection):
     if suffix in ('.doc', '.ppt', '.xls') and not data.startswith(bytes.fromhex('d0cf11e0a1b11ae1')):
         raise ConversionError('Legacy Office input must be its actual binary compound document; renamed text is not accepted.')
@@ -301,7 +342,9 @@ def office_records(source, data, suffix, budget, deadline, selection):
         raise ConversionError('Only the WordPerfect document-header family is enabled.')
     if suffix == '.pdb' and (len(data) < 78 or data[60:68] != b'TEXtREAd'):
         raise ConversionError('Only PalmDoc TEXt/REAd PDB containers are enabled; other PDB subtypes need explicit adapters.')
+    _progress(source.parent, 'admitting-runtime')
     executable = _admit(selection, suffix, deadline)
+    _progress(source.parent, 'runtime-admitted')
     profile, output_dir = source.parent / 'libreoffice-profile', source.parent / 'office-output'
     if os.path.lexists(profile) or os.path.lexists(output_dir):
         raise ConversionError('Private LibreOffice staging already exists.')
@@ -313,20 +356,26 @@ def office_records(source, data, suffix, budget, deadline, selection):
         os.fsync(stream.fileno())
     base = [executable, '-env:UserInstallation=' + profile.as_uri(), '--headless',
             '--nologo', '--nodefault', '--nofirststartwizard', '--norestore']
+    _progress(source.parent, 'profile-ready')
     with _runtime_lease(selection):
+        _progress(source.parent, 'runtime-held')
         _admit(selection, suffix, deadline)
         stage_limit = 2 * budget.max_source_bytes + PROFILE_BYTES
+        _progress(source.parent, 'native-version-start')
         version, _ = _run([*base, '--version'], source.parent, deadline, stage_limit=stage_limit)
+        _progress(source.parent, 'native-version-complete')
         version = version.decode('utf-8', 'strict').strip()
         if not re.fullmatch(r'LibreOffice(?:Dev)? [0-9][^\r\n\x00]{0,240}', version):
             raise ConversionUnavailable('The selected executable did not identify a bounded LibreOffice runtime.')
         _admit(selection, suffix, deadline)
         input_filter, _, output_suffix, export_filter = FILTERS[suffix]
         output = output_dir / ('source.' + output_suffix)
+        _progress(source.parent, 'native-conversion-start')
         _, warnings = _run([*base, '--infilter=' + input_filter,
             '--convert-to', output_suffix + ':' + export_filter, '--outdir', output_dir, source],
             source.parent, deadline, output=output, output_limit=budget.max_source_bytes,
             stage_limit=stage_limit)
+        _progress(source.parent, 'native-conversion-complete')
         _admit(selection, suffix, deadline)
     if {path.name for path in output_dir.iterdir()} != {output.name}:
         raise ConversionError('Selected LibreOffice did not produce its single declared intermediate.')
@@ -336,8 +385,10 @@ def office_records(source, data, suffix, budget, deadline, selection):
     with verified_reader(output, expected_identity=file_identity(info)) as stream:
         converted = stream.read(budget.max_source_bytes + 1)
     _admit(selection, suffix, deadline)
+    _progress(source.parent, 'extracting-text')
     result = extract_document(converted, '.' + output_suffix, max_bytes=budget.max_source_bytes,
                               max_chars=min(budget.max_text_bytes, 10_000_000), deadline=deadline)
+    _progress(source.parent, 'text-extracted')
     identity = sha256(json.dumps(selection, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     for record in result['records']:
         record['status'] = 'review_required'

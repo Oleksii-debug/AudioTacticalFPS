@@ -189,6 +189,10 @@ def test_real_chm_static_toc_order_does_not_execute_or_read_active_content(tmp_p
     source = tmp_path / 'Синтетична довідка.chm'
     source.write_bytes(FIXTURES['sample_chm']())
     before = source.read_bytes()
+    listing = subprocess.run([str(selected('chm')), 'l', '-slt', '-ba', '-sccUTF-8',
+        '-tchm', '--', str(source)], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, timeout=20, check=True)
+    print('SYNTHETIC_CHM_NATIVE_LISTING', listing.stdout.decode('utf-8', 'replace')[:12000], flush=True)
     result = convert(tmp_path, source, 'chm')
     text = result.path.read_text(encoding='utf-8')
     assert text.index('FIRST CHM READING PAGE') < text.index('SECOND CHM READING PAGE')

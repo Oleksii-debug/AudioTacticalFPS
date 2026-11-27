@@ -255,7 +255,7 @@ def _member(value):
 
 def _chm_listing(raw, maximum):
     rows, aliases, total = [], set(), 0
-    text = _text(raw).replace('\r\n', '\n').strip()
+    text = _text(raw).replace('\r\n', '\n').strip('\n')
     if not text:
         raise ConversionError('CHM member inventory is empty.')
     for block in text.split('\n\n'):
@@ -265,7 +265,7 @@ def _chm_listing(raw, maximum):
             if (separator != ' = ' or key in fields or key not in {
                     'Path', 'Size', 'Packed Size', 'Method', 'Block', 'Folder',
                     'Attributes', 'Encrypted', 'CRC', 'Modified', 'Created', 'Accessed', 'Offset'}):
-                raise ConversionError('CHM listing is ambiguous or uses unsupported fields.')
+                raise ConversionError('CHM listing is ambiguous or uses unsupported fields: ' + repr(key[:80]))
             fields[key] = value
         if 'Path' not in fields or not re.fullmatch('[0-9]{1,12}', fields.get('Size', '')):
             raise ConversionError('CHM listing lacks a bounded member identity.')
@@ -295,6 +295,30 @@ class _Toc(HTMLParser):
             if len(self.links) >= MAX_MEMBERS:
                 raise ConversionError('CHM table of contents exceeds its entry budget.')
             self.links.append(attrs.get('value', ''))
+
+
+
+_LEGACY_HTML_DOCTYPES = {
+    '-//W3C//DTD HTML 3.2 Final//EN': frozenset(('', 'http://www.w3.org/TR/REC-html32.dtd')),
+    '-//W3C//DTD HTML 4.0 Transitional//EN': frozenset(('', 'http://www.w3.org/TR/REC-html40/loose.dtd')),
+    '-//W3C//DTD HTML 4.01 Transitional//EN': frozenset(('', 'http://www.w3.org/TR/html4/loose.dtd')),
+    '-//W3C//DTD HTML 4.01//EN': frozenset(('', 'http://www.w3.org/TR/html4/strict.dtd')),
+}
+
+
+def _chm_html(raw):
+    """Discard a known inert legacy declaration; never open or resolve its DTD."""
+    pattern = (rb"""\A(?P<prefix>(?:\xef\xbb\xbf)?[ \t\r\n]*)<!DOCTYPE[ \t\r\n]+HTML"""
+        rb"""[ \t\r\n]+PUBLIC[ \t\r\n]+(?P<q>['"])(?P<public>[^'"<>\[\]\r\n]{1,100})(?P=q)"""
+        rb"""(?:[ \t\r\n]+(?P<sq>['"])(?P<system>[^'"<>\[\]\r\n]{1,120})(?P=sq))?[ \t\r\n]*>""")
+    match = re.match(pattern, raw, flags=re.IGNORECASE)
+    if match is None:
+        return raw
+    public = match.group('public').decode('ascii', 'strict')
+    system = (match.group('system') or b'').decode('ascii', 'strict')
+    if system not in _LEGACY_HTML_DOCTYPES.get(public, ()):
+        return raw
+    return match.group('prefix') + b'<!DOCTYPE html>' + raw[match.end():]
 
 
 def _chm(source, data, budget, deadline, selection):
@@ -350,7 +374,10 @@ def _chm(source, data, budget, deadline, selection):
         for name in order:
             _remaining(deadline)
             raw = read_member(html[name])
-            extracted = extract_document(raw, '.html', max_bytes=MAX_MEMBER_BYTES,
+            reading_bytes = _chm_html(raw)
+            if reading_bytes != raw and 'known_legacy_html_doctype_ignored_without_dtd_resolution' not in notices:
+                notices.append('known_legacy_html_doctype_ignored_without_dtd_resolution')
+            extracted = extract_document(reading_bytes, '.html', max_bytes=MAX_MEMBER_BYTES,
                 max_chars=min(budget.max_text_bytes - characters, 10_000_000), deadline=deadline)
             for record in extracted['records']:
                 characters += len(record['raw_text'])
@@ -359,6 +386,7 @@ def _chm(source, data, budget, deadline, selection):
                 record = dict(record)
                 record.update(physical_index=None, status='review_required',
                     logical_locator={'chm_member': name, 'member_sha256': sha256(raw).hexdigest(),
+                                     'parsed_member_sha256': sha256(reading_bytes).hexdigest(),
                                      'html_location': record.get('logical_locator'),
                                      'selected_components_sha256': identity})
                 records.append(record)

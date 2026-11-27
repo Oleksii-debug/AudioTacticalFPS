@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "NOT_RUN",
-  "portable_cases": 137,
+  "portable_cases": 151,
   "portable": {
     "tests.conversion.test_conversion": {
       "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
@@ -56,7 +56,9 @@
       "test_expired_deadline_never_spawns_a_native_process": 1,
       "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
       "test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
-      "test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1
+      "test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+      "test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+      "test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1
     },
     "tests.conversion.test_legacy_adapters": {
       "test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
@@ -78,7 +80,10 @@
       "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 5,
       "test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
       "test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
-      "test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1
+      "test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+      "test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+      "test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+      "test_chm_undeclared_or_complex_doctype_remains_refused": 4
     }
   },
   "native_cases": 17,
