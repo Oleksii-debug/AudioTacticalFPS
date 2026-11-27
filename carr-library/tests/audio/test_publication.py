@@ -192,8 +192,8 @@ def test_move_then_sync_failure_is_recovered_without_reencoding_or_overwrite(ren
     _, _, _, service, result = rendered
     output = tmp_path / 'recover.epub'
     original_publish = publishing.publish_noreplace
-    def failed_sync(source, destination):
-        original_publish(source, destination)
+    def failed_sync(source, destination, **options):
+        original_publish(source, destination, **options)
         raise OSError('Injected post-publication directory flush failure')
     monkeypatch.setattr(publishing, 'publish_noreplace', failed_sync)
     with pytest.raises(RuntimeError, match='explicit verification'):
@@ -213,8 +213,8 @@ def test_late_cancel_after_new_file_move_does_not_turn_publication_into_a_retry(
     _, _, _, service, result = rendered
     stop, output = Event(), tmp_path / 'complete.epub'
     original = publishing.publish_noreplace
-    def moved(source, destination):
-        original(source, destination)
+    def moved(source, destination, **options):
+        original(source, destination, **options)
         stop.set()
     monkeypatch.setattr(publishing, 'publish_noreplace', moved)
     record = _export(service, result, output, cancelled=stop.is_set)
@@ -301,3 +301,34 @@ def test_literal_page_boundaries_keep_exact_source_in_provenance_without_invalid
     with ZipFile(output) as archive:
         assert b'[Source page boundary]' in archive.read('EPUB/source.xhtml')
         assert b'\x0c' not in archive.read('EPUB/source.xhtml')
+
+
+
+@pytest.mark.parametrize('book_format', ['epub', 'daisy'])
+def test_cancellation_during_final_book_flush_keeps_prepared_receipt_without_output(
+        rendered, tmp_path, monkeypatch, book_format):
+    import os
+    from carr_library.audio import jobs
+    _, _, _, service, result = rendered
+    suffix = '.epub' if book_format == 'epub' else '.zip'
+    target = tmp_path / ('flush-cancelled' + suffix)
+    stop, flushed = Event(), []
+    actual_fsync = os.fsync
+
+    def cancel_book_flush(descriptor):
+        actual_fsync(descriptor)
+        current = os.fstat(descriptor)
+        for staged in tmp_path.glob('.publication-*/publication' + suffix):
+            saved = staged.stat()
+            if (current.st_dev, current.st_ino) == (saved.st_dev, saved.st_ino):
+                flushed.append(staged.name)
+                stop.set()
+
+    monkeypatch.setattr(jobs.os, 'fsync', cancel_book_flush)
+    with pytest.raises(publishing.PublicationCancelled):
+        _export(service, result, target, kind=book_format, cancelled=stop.is_set)
+    assert flushed == ['publication' + suffix]
+    assert not target.exists()
+    record, = service.publications()
+    assert record['status'] == 'prepared'
+    assert Path(result['output']).is_file()

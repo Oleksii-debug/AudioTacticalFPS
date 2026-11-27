@@ -99,7 +99,7 @@ jobs:
       - name: Require recording state and native-control contracts without skips
         timeout-minutes: 5
         run: |
-          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
+          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py tests/ui/test_audio_native_probe_policy.py tests/audio/test_publication_fsync.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run provider safety, source integrity and audio recovery regressions

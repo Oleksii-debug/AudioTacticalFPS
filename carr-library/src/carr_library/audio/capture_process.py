@@ -401,7 +401,10 @@ def publish_file(staged, destination, *, cancelled=lambda: False):
     before = regular_file(staged)
     if before.st_nlink != 1:
         raise ValueError('Captured originals cannot have hard-link aliases.')
-    if cancelled():
-        raise AudioCancelled('Audio operation cancelled before publication.')
+    def check():
+        if cancelled():
+            raise AudioCancelled('Audio operation cancelled before publication.')
+        return False
+    check()
     # This moves the closed stage; there is no intermediate hard-link alias.
-    publish_noreplace(staged, destination)
+    publish_noreplace(staged, destination, cancelled=check)

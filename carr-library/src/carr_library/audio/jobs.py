@@ -98,10 +98,8 @@ def sha256_file(path, *, cancelled=lambda: False, expected_identity=None):
     return result.hexdigest()
 
 
-def _open_json_file(path):
-    """Read one snapshot without blocking another process's atomic replacement."""
-    if os.name != 'nt':
-        return path.open('rb')
+def _windows_descriptor(path, access, *, directory=False, share=0x7):
+    """Own one noninheritable native descriptor without following a reparse point."""
     import ctypes
     from ctypes import wintypes
     import msvcrt
@@ -113,9 +111,8 @@ def _open_json_file(path):
     create.restype = wintypes.HANDLE
     close = kernel.CloseHandle
     close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
-    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
-    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
-    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    flags = 0x00200000 | (0x02000000 if directory else 0)
+    handle = create(str(path), access, share, None, 3, flags, None)
     if handle == ctypes.c_void_p(-1).value:
         raise ctypes.WinError(ctypes.get_last_error())
     try:
@@ -125,6 +122,19 @@ def _open_json_file(path):
         raise
     try:
         os.set_inheritable(descriptor, False)
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _open_json_file(path):
+    """Share deletion with the atomic publisher while retaining one snapshot."""
+    if os.name != 'nt':
+        return path.open('rb')
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE. No write/delete access.
+    descriptor = _windows_descriptor(path, 0x80000000)
+    try:
         return os.fdopen(descriptor, 'rb')
     except BaseException:
         os.close(descriptor)
@@ -204,6 +214,120 @@ def _json_bytes(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False).encode('utf-8')
 
 
+def _replacement_identity(info):
+    return (*file_identity(info), info.st_mode, info.st_nlink)
+
+
+def _replace_json_windows(source, destination, source_identity, directory_identity, unchanged):
+    """Use one native rename, retaining the source and destination-directory handles."""
+    import msvcrt
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+    # Traverse/read attributes; do not share directory deletion. The handle pins
+    # the publication directory, and RootDirectory binds the native destination.
+    directory_fd = _windows_descriptor(destination.parent, 0xA0, directory=True, share=0x3)
+    try:
+        directory_info = os.fstat(directory_fd)
+        if (not stat.S_ISDIR(directory_info.st_mode)
+                or getattr(directory_info, 'st_file_attributes', 0) & 0x400
+                or (directory_info.st_dev, directory_info.st_ino) != directory_identity):
+            raise ValueError('JSON publication directory changed while opening.')
+        # GENERIC_READ | DELETE; rename needs DELETE on the owned staging file.
+        source_fd = _windows_descriptor(source, 0x80010000)
+        try:
+            info = os.fstat(source_fd)
+            if (not stat.S_ISREG(info.st_mode)
+                    or getattr(info, 'st_file_attributes', 0) & 0x400
+                    or _replacement_identity(info) != source_identity):
+                raise ValueError('JSON staging file changed while opening.')
+            unchanged()
+            encoded = destination.name.encode('utf-16-le')
+
+            class RenameInfo(ctypes.Structure):
+                _fields_ = [('Flags', ctypes.c_uint32), ('RootDirectory', ctypes.c_void_p),
+                            ('FileNameLength', ctypes.c_uint32),
+                            ('FileName', ctypes.c_uint16 * (len(encoded) // 2 + 1))]
+
+            request = RenameInfo()
+            request.Flags = 0x3  # REPLACE_IF_EXISTS | POSIX_SEMANTICS
+            request.RootDirectory = msvcrt.get_osfhandle(directory_fd)
+            request.FileNameLength = len(encoded)
+            ctypes.memmove(ctypes.addressof(request) + RenameInfo.FileName.offset,
+                           encoded, len(encoded))
+            # FileRenameInfoEx=22 is required: MoveFileExW (os.replace) rejects
+            # open destinations even when their readers share deletion.
+            # Microsoft contract: https://learn.microsoft.com/windows-hardware/
+            # drivers/ddi/ntifs/ns-ntifs-_file_rename_information
+            if not rename(msvcrt.get_osfhandle(source_fd), 22,
+                          ctypes.byref(request), ctypes.sizeof(request)):
+                error = ctypes.get_last_error()
+                if error not in (1, 50, 87, 120):
+                    raise ctypes.WinError(error)
+                # Older filesystems may not support this information class.
+                # Retry only the ordinary atomic primitive after proving that
+                # neither file nor its directory changed; never unlink first.
+                unchanged()
+                os.replace(source, destination)
+        finally:
+            os.close(source_fd)
+    finally:
+        os.close(directory_fd)
+
+
+def replace_json_file(source, destination):
+    """Atomically publish a flushed JSON staging file in the same local directory.
+
+    Callers retain their existing state writer lock and fsync the staged bytes.
+    This function does not grant overwrite authority or remove a destination
+    before publication. Read-only, linked and replaced inputs remain errors.
+    """
+    source, destination = Path(source).absolute(), Path(destination).absolute()
+    parent = checked_directory(destination.parent)
+    if source == destination or source.parent != parent or destination.parent != parent:
+        raise ValueError('JSON staging and destination must share one local directory.')
+    source_info = regular_file(source)
+    if source_info.st_nlink != 1:
+        raise ValueError('JSON staging file cannot have hard-link aliases.')
+    source_identity = _replacement_identity(source_info)
+    parent_info = parent.lstat()
+    directory_identity = (parent_info.st_dev, parent_info.st_ino)
+
+    def target_identity():
+        try:
+            info = regular_file(destination)
+        except FileNotFoundError:
+            return None
+        if info.st_nlink != 1:
+            raise ValueError('JSON destination cannot have hard-link aliases.')
+        return _replacement_identity(info)
+
+    before_target = target_identity()
+
+    def unchanged():
+        checked_directory(parent)
+        info = parent.lstat()
+        if ((info.st_dev, info.st_ino) != directory_identity
+                or _replacement_identity(regular_file(source)) != source_identity
+                or target_identity() != before_target):
+            raise ValueError('JSON publication paths changed before replacement.')
+
+    unchanged()
+    if os.name == 'nt':
+        _replace_json_windows(source, destination, source_identity, directory_identity, unchanged)
+    else:
+        os.replace(source, destination)
+    published = regular_file(destination)
+    # Rename may update ctime; content size/mtime and the retained inode cannot
+    # change. An unconfirmed publication is never returned as a successful save.
+    if ((published.st_dev, published.st_ino, published.st_size, published.st_mtime_ns)
+            != source_identity[:4] or published.st_nlink != 1):
+        raise ValueError('JSON publication identity changed during replacement.')
+
+
 def atomic_json(path, value):
     path = Path(path)
     parent = checked_directory(path.parent)
@@ -216,20 +340,23 @@ def atomic_json(path, value):
             stream.write(encoded)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(name, path)
+        replace_json_file(name, path)
         _sync_directory(parent)
     finally:
         if os.path.exists(name):
             os.unlink(name)
 
 
-def publish_noreplace(source, destination):
+def publish_noreplace(source, destination, *, cancelled=lambda: False):
     """Move a complete local stage atomically without replacing any destination.
 
     Windows rename has no-replace semantics. Linux needs RENAME_NOREPLACE,
     including for empty destination directories. No hardlink aliases remain
     after a crash. A directory-sync error can occur after the move succeeds.
     """
+    if not callable(cancelled):
+        raise ValueError('An audio publication cancellation callback is required.')
+    check_cancelled(cancelled)
     source, destination = Path(source), Path(destination)
     checked_directory(source.parent)
     checked_directory(destination.parent)
@@ -242,6 +369,9 @@ def publish_noreplace(source, destination):
         # writable; immutable/read-only inputs use publish_new's private copy.
         with source.open('r+b') as stream:
             os.fsync(stream.fileno())
+    # A flush can block while the user requests Stop. This is the final
+    # pre-commit check; after the move succeeds, the output is published.
+    check_cancelled(cancelled)
     if os.name == 'nt':
         os.rename(source, destination)
     elif sys.platform.startswith('linux'):
@@ -287,7 +417,7 @@ def publish_new(source, destination, *, cancelled=lambda: False, expected_identi
             target.flush()
             os.fsync(target.fileno())
         check_cancelled(cancelled)
-        publish_noreplace(stage, destination)
+        publish_noreplace(stage, destination, cancelled=cancelled)
     finally:
         stage.unlink(missing_ok=True)
 

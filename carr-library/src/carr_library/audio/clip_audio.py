@@ -78,7 +78,7 @@ def process_clip(source, output, clip, *, ffmpeg, sample_rate, cancelled=lambda:
         if file_identity(regular_file(source)) != identity:
             raise RuntimeError('The retained clip source changed during processing.')
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output
 
 
@@ -163,5 +163,5 @@ def mix_tracks(core, clips, output, *, ffmpeg, music=None, music_gain=0.15,
         if any(file_identity(regular_file(path)) != stamp for path, stamp in inputs):
             raise RuntimeError('An audio input changed during clip mixing.')
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output

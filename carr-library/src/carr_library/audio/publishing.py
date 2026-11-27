@@ -947,7 +947,7 @@ class PublicationService:
                 progress('Publication prepared; recovery receipt ' + identity)
                 scope()
                 try:
-                    publish_noreplace(staged, output)
+                    publish_noreplace(staged, output, cancelled=stopping)
                     # The move is the publication boundary. Late cancellation
                     # cannot erase a completed book or turn it into a retry.
                     final_deadline = monotonic() + min(60, self.timeout)
@@ -960,6 +960,10 @@ class PublicationService:
                         raise ValueError('The published book changed before final receipt verification.')
                     record['status'] = 'complete'
                     atomic_json(receipt_path, record)
+                except PublicationCancelled:
+                    # The final publication callback runs only before the move.
+                    # A prepared receipt is retained, but no new book exists.
+                    raise
                 except Exception as exc:
                     raise RuntimeError('Publication needs explicit verification using saved receipt '
                                        + identity + '. Do not repeat the export over an existing book.') from exc

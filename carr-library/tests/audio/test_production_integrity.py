@@ -113,10 +113,10 @@ def test_final_directory_race_preserves_other_empty_directory(tmp_path, monkeypa
     original = production.publish_noreplace
     raced = []
 
-    def race(source, destination):
+    def race(source, destination, **options):
         destination.mkdir()
         raced.append(destination.stat().st_ino)
-        return original(source, destination)
+        return original(source, destination, **options)
 
     monkeypatch.setattr(production, 'publish_noreplace', race)
     plan = production.parse_script('[output sample_rate=8000 stems=false]\n[pause .1]')
@@ -136,8 +136,8 @@ class UnusedEngine:
     def synthesize(self, *args, **kwargs):
         raise AssertionError('Silence requires no speech engine')
 original = production.publish_noreplace
-def stop_after_move(source, destination):
-    original(source, destination)
+def stop_after_move(source, destination, **options):
+    original(source, destination, **options)
     os._exit(17)
 production.publish_noreplace = stop_after_move
 plan = production.parse_script('[output sample_rate=8000 stems=false]\\n[pause .1]')

@@ -171,7 +171,7 @@ def _publish(source, target, *, cancelled=lambda: False):
     _cancelled(cancelled)
     # The voice worker owns this private stage; moving it also avoids a
     # hardlink alias if the application exits before temporary cleanup.
-    publish_noreplace(source, target)
+    publish_noreplace(source, target, cancelled=lambda: _cancelled(cancelled))
 
 
 def _stop(process):

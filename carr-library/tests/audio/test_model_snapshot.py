@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from carr_library.audio import model_manifest as module
+from carr_library.audio.jobs import replace_json_file
 
 
 def write_manifest(root, asset):
@@ -50,7 +51,7 @@ def test_approval_hash_cannot_authenticate_a_different_parsed_snapshot(tmp_path,
             data = self.stream.read(size)
             if not replaced:
                 observed.append(data)
-                os.replace(staged, path)
+                replace_json_file(staged, path)
                 replaced = True
             return data
 
@@ -59,7 +60,7 @@ def test_approval_hash_cannot_authenticate_a_different_parsed_snapshot(tmp_path,
         return ReplaceAfterRead(stream) if selected == path and not replaced else stream
 
     # Use the real descriptor-backed reader on both platforms. In Windows its
-    # FILE_SHARE_DELETE handle allows this actual atomic name replacement.
+    # FILE_SHARE_DELETE handle pairs with the actual FileRenameInfoEx publisher.
     monkeypatch.setattr(module, '_open_json_file', racing_open)
     with pytest.raises(module.ModelManifestError, match='changed|snapshot'):
         module.LocalModelManifest.load(path, expected_sha256=expected)

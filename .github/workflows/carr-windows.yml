@@ -110,6 +110,8 @@ jobs:
             'tests/ui/test_audio_publication.py',
             'tests/audio/test_clips.py',
             'tests/ui/test_audio_clips.py',
+            'tests/ui/test_audio_native_probe_policy.py',
+            'tests/audio/test_publication_fsync.py',
             'tests/audio/test_canonical_project_import.py',
             'tests/ui/test_legacy_studio_import.py',
             'tests/conversion/test_selected_adapters.py',
@@ -867,6 +869,7 @@ jobs:
                             'tests/citations/test_regeneration.py',
                             'tests/conversion/test_conversion.py',
                             'tests/conversion/test_selected_adapters.py',
+                            'tests/audio/test_publication_fsync.py',
                             'tests/conversion/test_selected_adapters_native.py::test_real_existing_ocr_bridge_reads_every_selected_image_frame',
                             'tests/conversion/test_selected_adapters_native.py::test_cancel_settles_existing_ocr_family_before_removing_its_private_files',
                             'tests/storage/test_legacy_ui_preferences.py',
@@ -1159,6 +1162,8 @@ jobs:
             tests/audio/test_clips.py \
             tests/audio/test_clip_render.py \
             tests/ui/test_audio_clips.py \
+            tests/ui/test_audio_native_probe_policy.py \
+            tests/audio/test_publication_fsync.py \
             tests/audio/test_canonical_project_import.py \
             tests/ui/test_legacy_studio_import.py \
             tests/conversion/test_selected_adapters.py \
