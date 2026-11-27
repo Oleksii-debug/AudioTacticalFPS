@@ -556,8 +556,9 @@ jobs:
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # The package and test dependencies are already installed offline.
-          # Only this bounded protocol phase permits the owned 127.0.0.1 listener;
-          # all other addresses and every non-Python runtime remain blocked.
+          # The bounded protocol fixtures use only numeric 127.0.0.1. Keep all
+          # runtime outbound Any block rules active throughout; the Python
+          # protocol and native-planner callers reuse the same loopback guard.
           $runInstalledNative = @'
           import pathlib, runpy, sys
           import carr_library
@@ -576,27 +577,20 @@ jobs:
           $protocolPrograms = @($bundledPython, $installedPython) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $protocolRules = @($active | Where-Object { $program = ($_ | Get-NetFirewallApplicationFilter -ErrorAction Stop).Program; $protocolPrograms -contains [System.IO.Path]::GetFullPath($program) })
           if ($protocolRules.Count -ne $protocolPrograms.Count) { throw 'Protocol firewall coverage is incomplete.' }
-          $outsideFixture = @('0.0.0.0-127.0.0.0', '127.0.0.2-255.255.255.255', '::/0')
-          try {
-            foreach ($rule in $protocolRules) { Set-NetFirewallRule -Name $rule.Name -RemoteAddress $outsideFixture -ErrorAction Stop }
-            foreach ($rule in $protocolRules) {
-              $narrowed = Get-NetFirewallRule -PolicyStore ActiveStore -Name $rule.Name -ErrorAction Stop
-              if ($narrowed.Enabled -ne 'True' -or $narrowed.Direction -ne 'Outbound' -or $narrowed.Action -ne 'Block') { throw 'Protocol firewall rule is inactive or has changed action.' }
-              $addresses = @(($narrowed | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress)
-              if (@(Compare-Object ($outsideFixture | Sort-Object) ($addresses | Sort-Object)).Count -ne 0) { throw 'Protocol firewall permits an unexpected destination.' }
-            }
-            @{ status='PASS'; python_programs=$protocolPrograms; blocked_remote_addresses=$outsideFixture; only_allowed_destination='127.0.0.1'; external_provider='NOT_RUN' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/installed-protocol-firewall.json'
-            & $python -I -B scripts/installed_protocol_check.py --bundle $bundle --junit 'ci-results/installed-protocol.xml' --report 'ci-results/installed-protocol.json' 2>&1 | Tee-Object 'ci-results/installed-protocol.txt'
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_local_planning_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-local-planning-native.txt'
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          } finally {
-            foreach ($rule in $protocolRules) { Set-NetFirewallRule -Name $rule.Name -RemoteAddress Any -ErrorAction Stop }
+          foreach ($rule in $active) {
+            $unchanged = Get-NetFirewallRule -PolicyStore ActiveStore -Name $rule.Name -ErrorAction Stop
+            $addresses = @(($unchanged | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress)
+            if ($unchanged.Enabled -ne 'True' -or $unchanged.Direction -ne 'Outbound' -or $unchanged.Action -ne 'Block' -or $addresses.Count -ne 1 -or $addresses[0] -ne 'Any') { throw 'Full offline runtime enforcement changed before the protocol fixtures.' }
           }
+          @{ status='PASS'; python_programs=$protocolPrograms; blocked_remote_addresses=@('Any'); rules_narrowed=$false; python_fixture_destination='127.0.0.1'; external_provider='NOT_RUN' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/installed-protocol-firewall.json'
+          & $python -I -B scripts/installed_protocol_check.py --bundle $bundle --junit 'ci-results/installed-protocol.xml' --report 'ci-results/installed-protocol.json' 2>&1 | Tee-Object 'ci-results/installed-protocol.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_local_planning_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-local-planning-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($rule in $active) {
             $restored = Get-NetFirewallRule -PolicyStore ActiveStore -Name $rule.Name -ErrorAction Stop
             $addresses = @(($restored | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress)
-            if ($restored.Enabled -ne 'True' -or $restored.Direction -ne 'Outbound' -or $restored.Action -ne 'Block' -or $addresses.Count -ne 1 -or $addresses[0] -ne 'Any') { throw 'Full offline runtime enforcement was not restored.' }
+            if ($restored.Enabled -ne 'True' -or $restored.Direction -ne 'Outbound' -or $restored.Action -ne 'Block' -or $addresses.Count -ne 1 -or $addresses[0] -ne 'Any') { throw 'Full offline runtime enforcement changed during the protocol fixtures.' }
           }
           $previousProgramDirectory = $env:CARR_PROGRAM_DIR
           try {
@@ -1034,7 +1028,9 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.media_runtimes.conclusion == 'success' }}
-        timeout-minutes: 20
+        # The previous 216-suite gate took 19m17s. Keep every required suite and
+        # its own deadline while allowing the expanded 226-suite gate to finish.
+        timeout-minutes: 30
         run: |
           $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           $suites = @(

@@ -10,12 +10,17 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 
 import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
+
+
+STARTUP_ALLOWANCE = 30.0
+BOUNDARY_TIMEOUT = 0.25
 
 
 def _source(root, kind):
@@ -41,14 +46,16 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False, startup_delay=0):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
+    processes = []
     code = f'''
 import os, time
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
+time.sleep({startup_delay!r})
 def _pause():
     Path({str(marker)!r}).write_text('observed', encoding='utf-8')
     if {exit_after!r}:
@@ -93,9 +100,49 @@ LibraryApp._import_file = _replay
             return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-        return popen(command, **options)
+        process = popen(command, **options)
+        processes.append(process)
+        return process
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    return processes
+
+
+def _timeout_after_barrier(monkeypatch, marker, processes):
+    """Arm a real supervisor timeout only after the intended commit boundary.
+
+    A cold Windows PDF import can legitimately take more than three seconds.
+    Give the owned child a bounded startup interval, then reuse _invoke's
+    existing on_started boundary to start its actual monotonic deadline.
+    Neither the clock, the result nor process termination is substituted.
+    """
+    invoke = worker._invoke
+    observed = {}
+
+    def controlled(message, *, timeout, cancelled):
+        assert timeout == STARTUP_ALLOWANCE
+        started = time.monotonic()
+
+        def ready():
+            assert len(processes) == 1
+            process = processes[0]
+            deadline = started + STARTUP_ALLOWANCE
+            while not marker.exists():
+                assert process.poll() is None, 'Owned import child exited before the publication barrier.'
+                assert time.monotonic() < deadline, 'Owned import child did not reach the publication barrier.'
+                time.sleep(0.01)
+            assert process.poll() is None, 'Owned import child exited before timeout could be armed.'
+            observed['armed'] = time.monotonic()
+            observed['startup_seconds'] = observed['armed'] - started
+
+        # The message retains the startup/CPU allowance for the real child;
+        # only the parent supervisor's post-barrier wall timeout is shortened.
+        result = invoke(message, timeout=BOUNDARY_TIMEOUT, cancelled=cancelled, on_started=ready)
+        observed['elapsed_after_arming'] = time.monotonic() - observed['armed']
+        return result
+
+    monkeypatch.setattr(worker, '_invoke', controlled)
+    return observed
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -120,13 +167,22 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    processes = _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+        startup_delay=3.25 if termination == 'timeout' and kind == 'pdf' else 0)
+    if termination == 'timeout':
+        timing = _timeout_after_barrier(monkeypatch, marker, processes)
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=STARTUP_ALLOWANCE if termination == 'timeout' else 15.0)
     assert marker.exists(), result
+    assert len(processes) == 1 and processes[0].poll() is not None
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
+    assert result['worker_state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
+    if termination == 'timeout':
+        assert timing['elapsed_after_arming'] >= BOUNDARY_TIMEOUT
+        if kind == 'pdf':
+            assert timing['startup_seconds'] > 3.0
     assert result['verified'] is (kind == 'txt')
     record = worker.load_request(app.root, result['request_id'])
     assert record['state'] == 'complete' and record['result'] == result
@@ -155,12 +211,20 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    processes = _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+        startup_delay=3.25 if termination == 'timeout' and kind == 'pdf' else 0)
+    if termination == 'timeout':
+        timing = _timeout_after_barrier(monkeypatch, marker, processes)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=STARTUP_ALLOWANCE if termination == 'timeout' else 15.0)
     assert marker.exists(), result
+    assert len(processes) == 1 and processes[0].poll() is not None
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
+    if termination == 'timeout':
+        assert timing['elapsed_after_arming'] >= BOUNDARY_TIMEOUT
+        if kind == 'pdf':
+            assert timing['startup_seconds'] > 3.0
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0

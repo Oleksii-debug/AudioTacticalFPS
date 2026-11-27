@@ -125,3 +125,48 @@ keeps its source invocation and has an explicit installed mode that refuses
 checkout modules; full Windows acceptance includes this mode and all four new
 strict suites. The synthetic XLSX interoperability fixture is original test
 data, not a user document or executable dependency.
+
+## Resolved exact Windows acceptance failures
+
+Published candidate `e2567344c17c6671ff5081b39629bf6e58bff0f4` passed its
+complete [V3 workflow](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45958710380).
+Mandatory installed recovery passed 316 cases without skips; native SAPI, Studio,
+CSL and atomic conversion passed. Its broad exploratory sweep had 1,458 passes
+and 22 platform skips, which are not counted as mandatory coverage.
+
+The separate [Desktop workflow](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45958710545)
+failed. The complete required source gate ran all 216 selected suites in 1,157
+seconds: 214 passed and two failed. One final-page search fixture still requested
+schema 4 after the application had moved to schema 5. Two PDF timeout cases
+expired before their controlled commit markers. These failures are retained as
+failures, rather than attributed to retrieval or publication without evidence.
+
+The schema fixture now uses the existing `CURRENT_SCHEMA_VERSION` API while
+retaining all 10,001 rows and final-page/copy assertions. Its five-suite source
+gate passed 241 cases and the installed federated suite passed 37. Publication
+tests use the existing owned-process `on_started` hook to wait for the actual
+commit marker before arming a real 0.25-second timeout, with a bounded 30-second
+startup interval. Both PDF cases deliberately exceed the old three-second
+startup assumption. The corrected related gate passed 116 cases; restoring the
+old deadline reproduced precisely the two original failures. Production code
+and the original receipt/rollback assertions are unchanged.
+
+The Desktop full-bundle step stopped because Windows rejected the attempted
+complement-address filter. The repair keeps every selected runtime's outbound
+`Any` block rule active throughout the protocol phase, with exact readback before
+and after. Both Python callers use the same existing numeric-loopback guard.
+A focused [Windows 2022 diagnostic](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45963008240)
+at `9877d694d333bbb0447b64efcde85c3d4a03e959` completed a real owned parent/child
+127.0.0.1 exchange while both Python program rules remained unchanged. It made
+no external connection attempt and is not application acceptance. Original
+diagnostic artifact SHA256:
+`c926733111388644989ee1d26fdd2c2dfb8bb95f6bbd65c00589ca9da8c74fe0`.
+The [NetSecurity address-filter contract](https://learn.microsoft.com/en-us/powershell/module/netsecurity/set-netfirewallrule)
+provides the retained `Any` setting; no new remote-address exception is added.
+
+The expanded 226-suite source gate has a 30-minute step budget based on the
+measured previous 19m17s run. Each suite retains its existing deadline and strict
+zero-failure/zero-skip policy. Both complete workflows, all installed native
+features, original wheel/proof captures and the separate no-audio transfer
+installation still have to pass on the final source. Earlier V3 or diagnostic
+success is never substituted for that final result.

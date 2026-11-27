@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import runpy
 from tempfile import TemporaryDirectory
 from threading import Event, Thread
 from time import monotonic, sleep
@@ -17,6 +18,11 @@ def main():
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows is required.', 'nvda': 'NOT_RUN'}))
         return 77
+    # Reuse the same numeric-loopback policy in this separate native process.
+    # The caller keeps every selected runtime's outbound Any block rule active.
+    policy = runpy.run_path(str(Path(__file__).with_name('installed_protocol_check.py')),
+                            run_name='_carr_installed_protocol_policy')
+    policy['loopback_only']()
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
     import wx
@@ -133,6 +139,7 @@ def main():
         if native_handle is not None:
             native_handle.close()
     print(json.dumps({'result': 'PASS', 'checks': checks,
+                      'python_network_policy': 'shared numeric 127.0.0.1 fixture guard',
                       'actual_llm_model': 'NOT_RUN — synthetic protocol fixture',
                       'manual_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN'}, indent=2))
     return 0
