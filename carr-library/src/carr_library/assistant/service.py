@@ -3,7 +3,7 @@ from dataclasses import asdict, is_dataclass, replace
 from hashlib import sha256
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import stat
 from tempfile import NamedTemporaryFile
@@ -77,6 +77,66 @@ def _plain(value):
     return value
 
 
+def _verify_published_backup(directory, checksum, receipt, scope, cancelled):
+    """An interrupted first receipt must attest the producer's original bytes.
+
+    A newly scanned tree digest alone could approve post-publication tampering.
+    Reconstruct the versioned receipt inventory from the independently saved
+    manifest hash and compare it with the already bounded, twice-scanned tree.
+    No backup is restored, rewritten or copied for this recovery check.
+    """
+    from ..library_backup import _read_manifest
+    from .backup_receipt import BackupReceipt
+
+    def check():
+        if cancelled():
+            raise InterruptedError('Backup recovery verification was cancelled.')
+
+    check()
+    manifest = _read_manifest(directory, checksum)
+    # The library validator owns supported schema versions and component shapes.
+    # A pending component's files are its complete delivered inventory; its
+    # assets/sources are indices, not additional files to count a second time.
+    groups = (('originals/', manifest['assets']), ('', manifest.get('sidecars', [])),
+              ('pending/', manifest.get('pending', {}).get('files', [])))
+    if 2 + sum(len(rows) for _prefix, rows in groups) > scope.max_files:
+        raise ValueError('Published backup exceeds the approved file budget.')
+    database = manifest['database']
+    files = {'manifest.json': ((directory / 'manifest.json').lstat().st_size, checksum),
+             database['filename']: (database['size_bytes'], database['sha256'])}
+    for prefix, rows in groups:
+        for row in rows:
+            check()
+            files[prefix + row['filename']] = (row['size_bytes'], row['sha256'])
+    total = sum(size for size, _digest in files.values())
+    if total > scope.max_bytes:
+        raise ValueError('Published backup exceeds the approved byte budget.')
+    directories = {'originals', 'pending'} if 'pending' in manifest else {'originals'}
+    for name in files:
+        directories.update(str(parent) for parent in PurePosixPath(name).parents if str(parent) != '.')
+    children = {name: [] for name in ('', *directories)}
+    for name in (*files, *directories):
+        children[name.rpartition('/')[0]].append(name)
+    digest = sha256()
+
+    def walk(parent):
+        for name in sorted(children[parent]):
+            check()
+            is_directory = name in directories
+            size, file_digest = (0, '') if is_directory else files[name]
+            raw = json.dumps(['directory' if is_directory else 'file', name, size, file_digest],
+                             ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+            digest.update(len(raw).to_bytes(8, 'big'))
+            digest.update(raw)
+            if is_directory:
+                walk(name)
+
+    walk('')
+    expected = BackupReceipt(checksum, digest.hexdigest(), total, len(files), len(directories))
+    if receipt != expected:
+        raise ValueError('Published backup changed; review its database, originals and sidecars before resuming.')
+
+
 class AssistantService:
     def __init__(self, app, *, state_dir=None, production=None):
         self.app = app
@@ -136,7 +196,7 @@ class AssistantService:
         return identity
 
     def _load(self, identity):
-        from .backup_state import require_reviewed
+        from .backup_state import backup_manifest_intent, require_reviewed
         require_reviewed(self.store.directory, identity)
         record = self.store.load(identity)
         plan = Plan.from_dict(record['plan'])
@@ -157,6 +217,7 @@ class AssistantService:
             _check_arguments(step)
             if type(checkpoint) is not dict or checkpoint.get('status') not in ('pending', 'running', 'complete', 'failed'):
                 raise ValueError('Invalid assistant step checkpoint.')
+            backup_manifest_intent(step.tool, checkpoint.get('intent'))
         return record, plan
 
     @staticmethod
@@ -495,13 +556,27 @@ class AssistantService:
             if not scope.allow_full_backup:
                 raise PermissionError('Full-library backup was not authorized.')
             target = scope.output(args['name'])
-            if target.exists():
-                raise FileExistsError('Backup output already exists. Review its manifest before submitting a new backup.')
-            checksum = self.app.backup(target, max_bytes=scope.max_bytes, max_files=scope.max_files,
-                                       cancelled=cancelled)
+            from .backup_state import backup_manifest_intent
+            checksum = backup_manifest_intent(step.tool, intent)
+            recovering = checksum is not None
+            if recovering:
+                if not target.is_dir():
+                    raise PermissionError('The published backup is missing or unavailable; review its saved manifest before resuming.')
+            else:
+                if target.exists():
+                    raise FileExistsError('Backup output already exists. Review its manifest before submitting a new backup.')
+                checksum = self.app.backup(target, max_bytes=scope.max_bytes, max_files=scope.max_files,
+                                           cancelled=cancelled)
+                backup_manifest_intent(step.tool, {'backup_manifest_sha256': checksum})
+                # Persist producer ownership before any cancellable receipt scan.
+                # A crash before this durable write still requires manual review;
+                # the backup publication and job checkpoint are not one transaction.
+                intent['backup_manifest_sha256'] = checksum
+                persist()
             from .backup_receipt import capture_backup_receipt
             receipt = capture_backup_receipt(target, checksum, max_bytes=scope.max_bytes,
                                              max_files=scope.max_files, cancelled=cancelled)
+            _verify_published_backup(target, checksum, receipt, scope, cancelled)
             return {'directory': str(target), 'manifest_sha256': checksum,
                     'backup_receipt': receipt.to_dict(),
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}

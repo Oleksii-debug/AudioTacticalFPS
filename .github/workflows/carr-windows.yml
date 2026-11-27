@@ -355,10 +355,13 @@ jobs:
             'tests/assistant/test_local_llm.py',
             'tests/assistant/test_audio_bridge.py',
             'tests/assistant/test_backup_receipt.py',
+            'tests/assistant/test_backup_late_recovery.py',
             'tests/assistant/test_budget_resume.py',
             'tests/assistant/test_complete_recovery.py',
             'tests/storage/test_assistant_restored_history.py',
             'tests/storage/test_backup_operation_budget.py',
+            'tests/storage/test_pending_backup.py',
+            'tests/storage/test_complete_pending_backup.py',
             'tests/audio/test_narration_plan.py',
             'tests/packaging/test_native_fresh_launcher.py'
           )
@@ -713,10 +716,13 @@ jobs:
             'tests/assistant/test_local_llm.py',
               'tests/assistant/test_audio_bridge.py',
               'tests/assistant/test_backup_receipt.py',
+              'tests/assistant/test_backup_late_recovery.py',
               'tests/assistant/test_budget_resume.py',
               'tests/assistant/test_complete_recovery.py',
               'tests/storage/test_assistant_restored_history.py',
               'tests/storage/test_backup_operation_budget.py',
+              'tests/storage/test_pending_backup.py',
+              'tests/storage/test_complete_pending_backup.py',
               'tests/audio/test_narration_plan.py',
           ]
           # Preserve option/value pairs and run overlapping required suites once.

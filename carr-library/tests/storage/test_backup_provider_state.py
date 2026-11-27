@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import shutil
 from threading import Event
 
 import pytest
@@ -95,7 +96,7 @@ def test_provider_backup_restores_disconnected_profiles_and_every_budget_state(
     folder = tmp_path / 'Резервна копія'
     digest = create_backup(app, folder)
     manifest = read_manifest(folder)
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert manifest['provider_restore_mode'] == 'LOCAL_ONLY'
     assert {item['filename'] for item in manifest['sidecars']} == {PROFILES_FILENAME, LEDGER_FILENAME}
     raw = (folder / PROFILES_FILENAME).read_bytes()
@@ -353,6 +354,8 @@ def test_provider_manifest_version_and_local_only_policy_are_strict(provider_lib
     if damage == 'version3':
         manifest['version'] = 3
         del manifest['provider_restore_mode']
+        del manifest['pending']
+        shutil.rmtree(folder / 'pending')
     elif damage == 'remote-mode':
         manifest['provider_restore_mode'] = 'APPROVED_REMOTE'
     elif damage == 'missing-mode':
@@ -390,7 +393,7 @@ def test_external_audio_projects_and_credentials_are_not_followed(provider_libra
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     assert set(p.name for p in folder.iterdir()) == {
-        'library.sqlite', 'originals', 'manifest.json', PROFILES_FILENAME, LEDGER_FILENAME}
+        'library.sqlite', 'originals', 'pending', 'manifest.json', PROFILES_FILENAME, LEDGER_FILENAME}
     assert b'Private unrelated value' not in (folder / LEDGER_FILENAME).read_bytes()
 
 
@@ -447,7 +450,7 @@ def test_profiles_without_prior_calls_still_use_disconnected_v4_backup(provider_
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = read_manifest(folder)
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert [item['filename'] for item in manifest['sidecars']] == [PROFILES_FILENAME]
     target = restore_backup(folder, tmp_path / 'restored', digest)
     assert not (target / LEDGER_FILENAME).exists()
@@ -488,7 +491,7 @@ def test_progress_preferences_roundtrip_as_v4_with_or_without_provider_files(
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = read_manifest(folder)
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert manifest['provider_restore_mode'] == 'LOCAL_ONLY'
     assert any(row['filename'] == PROGRESS_SETTINGS for row in manifest['sidecars'])
     assert (folder / PROGRESS_SETTINGS).read_bytes() == before
@@ -523,6 +526,8 @@ def test_progress_preferences_require_valid_schema_and_v4_manifest(provider_libr
     if damage == 'version3':
         manifest['version'] = 3
         del manifest['provider_restore_mode']
+        del manifest['pending']
+        shutil.rmtree(folder / 'pending')
     digest = resign(folder, manifest=manifest)
     target = tmp_path / 'rejected'
     with pytest.raises(ValueError):

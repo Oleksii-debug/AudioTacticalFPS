@@ -38,12 +38,54 @@ This does not capture text still only in an open control: save it or allow its
 recovery draft to finish before starting the backup.
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
-The reader/editor/keyboard/OCR files use manifest version 3; backups containing
-progress preferences, API profiles or the operations ledger use version 4 with
-an explicit LOCAL ONLY restoration policy. Libraries with none of these files
-retain the existing version-2 format. Restore also accepts supported version-1, version-2 and
-version-3 backups and validates their exact database schema. Older backups
-contain only the state that existed in their original format.
+New backups use version 5 with the existing typed sidecars, explicit LOCAL ONLY
+restoration policy and a separate typed pending-import component. Even an empty
+queue has an explicit empty component. Restore still accepts the exact supported
+version-1 through version-4 layouts and validates their database schema. Older
+backups contain only the state supported by their original format; unknown or
+mixed manifest fields are rejected.
+
+## Unfinished imports and prepared requests
+
+The pending component includes supported import batches, durable requests,
+review attestations and the SQLite import journal, together with all original
+bytes they reference. It retains queued, paused, failed and quarantined work,
+prepared requests that have never launched a child, and completed journal entries
+needed for replay or a partially finished batch. Missing or changed pinned source
+bytes fail the backup; the program does not omit those jobs and claim completion.
+
+Batch/request guards are acquired without waiting. Pause a running import before
+making a complete backup. The root writer lock prevents catalog publication
+while its snapshot is taken. Committed SQLite WAL pages enter the journal through
+SQLite's backup API; transient lock files, partial writes and WAL companions do
+not become delivered files. Unknown files and orphaned SQLite companions are
+rejected, and directory traversal, byte counts and journal rows are bounded.
+
+Restore checks file hashes, the exact journal schema, workspace and publication
+bindings, checkpoint digests, source manifests and saved OCR review identities in
+private staging. TXT checkpoints are compared with the captured original bytes.
+The current retained-format registry also covers accepted queued HTML, Markdown,
+email and other supported document types; restoration does not parse them into
+new quotations.
+
+Only the data-root and selected source paths are rebased to the new folder. A
+prepared request that had neither an asset hash nor a planned manifest receives
+the verified captured asset hash before it can be resumed. Existing pins are
+preserved. The final rebased request and batch bytes must still fit their readers'
+size limits. Original request IDs, batch IDs, work/edition IDs, journal jobs,
+runtime/model identities, checkpoints, statuses and exact review attestations
+remain bound to the same source.
+
+Restoration never starts an import or external retry. Review the restored queue
+and explicitly resume the selected work. The normal runtime and review checks
+still apply. A later backup preserves both its finished history and remaining
+work; no completed journal entries are filtered merely to keep an older manifest
+version.
+
+Typed assistant checkpoints and their history also remain included. Every
+restored assistant job requires a new review of its current permissions, even
+when restored to the same path. The old scope is readable history and does not
+authorize execution.
 
 ## API restoration and possible charges
 
@@ -100,7 +142,7 @@ the original library and backup remain unchanged.
 The programmatic `create_backup` operation accepts optional `max_bytes`,
 `max_files` and `cancelled` arguments. A byte or file allowance covers the
 whole delivered backup: the SQLite database, registered originals, every selected
-state file and the final manifest. Directories and temporary staging links do
+state file, pending component files and the final manifest. Directories and temporary staging links do
 not count as delivered files. The final manifest's own serialized bytes count
 toward the byte allowance. Limits must be positive integers and cannot exceed
 the sum of the existing supported component limits.
@@ -116,15 +158,24 @@ Cancellation during publication may leave an incomplete folder without its final
 manifest. Restore rejects that folder; retry to a different new destination.
 After the final manifest has been published, a later cancellation does not relabel
 that completed backup as cancelled. Existing overwrite protection, component
-size limits and version-1 through version-4 restore validation still apply.
+size limits and exact version-1 through version-5 restore validation still apply.
+
+Pending files consume the existing aggregate byte and file ceilings and the
+caller's lower allowances; adding this component does not raise those ceilings.
+Its additional limits are 25,000 files, 8 GiB total bytes, a 512 MiB journal,
+10,000 journal jobs and 100,000 checkpoints. Each source remains subject to the
+existing 64 MiB input limit. The component metadata is part of the final manifest,
+not a second delivered manifest. A source present in both catalog originals and
+pending originals counts twice because two regular files are delivered.
+Pending copy/hash loops check cancellation per chunk; one bounded source read
+or SQLite operation may finish before the next cooperative check.
 
 ## Boundaries
 
 The backup does not copy arbitrary neighboring files, API credentials, runtime
-model weights, temporary render files or external documents. Pending import
-queues/journals and unpublished retained originals are not included in this
-version; complete those imports before using a backup to move all work to another
-computer.
+model weights, temporary render files or arbitrary external documents. A selected
+pending import contributes only its validated, referenced source bytes. Unreferenced
+retained files without a supported request, batch or journal identity are excluded.
 
 Audio Studio projects and their output directories are deliberately stored
 outside the private research library. Use **Back up audio project** for their

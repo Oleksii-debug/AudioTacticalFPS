@@ -98,6 +98,23 @@ def main():
         frame.Show()
         started = monotonic()
         state = {'phase': 'open', 'dialog': None}
+        cleanup_deadline = [None]
+
+        def force_failure():
+            # This watchdog owns only the disposable acceptance process. A failed
+            # native callback must not leave ShowModal or executor shutdown hung.
+            import os
+            try:
+                print(json.dumps({'status': 'FAIL', 'windows_execution': 'FAIL',
+                                  'forced_process_exit': True,
+                                  'error': 'Native assistant acceptance exceeded its bounded process deadline.',
+                                  'failures': failures}, ensure_ascii=False), flush=True)
+            finally:
+                os._exit(1)
+
+        from threading import Timer
+        watchdog = Timer(60, force_failure)
+        watchdog.daemon = True
 
         def descendants(window):
             for child in window.GetChildren():
@@ -117,6 +134,28 @@ def main():
             dialog = state['dialog']
             if dialog is not None:
                 click(button(dialog, 'Close'))
+
+        def finish_failure():
+            # Close requests cooperative stop while the dialog is busy. Poll
+            # again until that work has yielded; one Close is not enough.
+            if cleanup_deadline[0] is None:
+                cleanup_deadline[0] = monotonic() + 8
+            if monotonic() >= cleanup_deadline[0]:
+                force_failure()
+            dialog = state['dialog']
+            if dialog is None:
+                dialog = next((window for window in wx.GetTopLevelWindows()
+                               if isinstance(window, wx.Dialog) and window.GetTitle().startswith('Local assistant')), None)
+                state['dialog'] = dialog
+            if dialog is not None and dialog.IsModal():
+                try:
+                    close()
+                except BaseException as exc:
+                    failures.append(type(exc).__name__ + ': ' + str(exc))
+                if dialog.IsModal():
+                    wx.CallLater(100, finish_failure)
+            elif dialog is None:
+                wx.CallLater(100, finish_failure)
 
         def poll():
             try:
@@ -193,10 +232,14 @@ def main():
                 wx.CallLater(50, poll)
             except BaseException as exc:
                 failures.append(type(exc).__name__ + ': ' + str(exc))
-                close()
+                finish_failure()
 
+        watchdog.start()
         wx.CallAfter(poll)
-        assistant_dialog.show_assistant(frame)
+        try:
+            assistant_dialog.show_assistant(frame)
+        finally:
+            watchdog.cancel()
         assert refreshed == [tuple(row.id for row in frame.library.workspaces())]
         checks.append('created libraries refresh in the dialog and desktop without reopening')
         frame.Destroy()

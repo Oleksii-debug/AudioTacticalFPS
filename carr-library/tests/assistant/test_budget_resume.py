@@ -9,6 +9,7 @@ import pytest
 from carr_library.assistant import AssistantService, Plan, Scope, Step
 from carr_library.assistant.backup_state import validate_state_bytes
 from carr_library.assistant.models import canonical
+from carr_library.storage.schema_identity import expected_schema_fingerprint
 
 
 @pytest.fixture
@@ -16,17 +17,29 @@ def environment(tmp_path):
     data, output, inputs = (tmp_path / name for name in ('data', 'output', 'inputs'))
     for path in (data, output, inputs):
         path.mkdir()
+    # Typed inventory for isolated budget checks; database bytes stay synthetic.
+    database = b'Synthetic database' * 8
+    manifest = (canonical({
+        'version': 2, 'kind': 'carr-library', 'schema_version': 4,
+        'schema_fingerprint': expected_schema_fingerprint(4),
+        'database': {'filename': 'library.sqlite', 'size_bytes': len(database),
+                     'sha256': sha256(database).hexdigest()},
+        'assets': [],
+    }) + '\n').encode('utf-8')
+    payload = {'manifest.json': manifest, 'library.sqlite': database}
+
     def backup(destination, *, max_bytes, max_files, cancelled):
-        payload = {'manifest.json': b'{"synthetic":true}\n', 'database.sqlite': b'Synthetic database' * 8}
         if len(payload) > max_files:
             raise ValueError('Synthetic producer file budget exhausted.')
         if sum(map(len, payload.values())) > max_bytes:
             raise ValueError('Synthetic producer byte budget exhausted.')
         destination.mkdir()
+        (destination / 'originals').mkdir()
         for name, raw in payload.items():
             (destination / name).write_bytes(raw)
         return sha256(payload['manifest.json']).hexdigest()
-    app = SimpleNamespace(root=data, backup=backup, read=lambda _workspace: nullcontext(), workspaces=lambda: ())
+    app = SimpleNamespace(root=data, backup=backup, backup_bytes=sum(map(len, payload.values())),
+                          read=lambda _workspace: nullcontext(), workspaces=lambda: ())
     return app, output, inputs
 
 
@@ -104,7 +117,7 @@ def test_completed_backup_requires_receipt_on_resume_and_pure_restore(environmen
     else:
         result['manifest_sha256'] = '0' * 64
     service.store.save(record)
-    (output / 'backup/database.sqlite').write_bytes(b'Altered database; manifest left unchanged')
+    (output / 'backup/library.sqlite').write_bytes(b'Altered database; manifest left unchanged')
     assert service.resume(identity).status == 'failed'
     with pytest.raises(ValueError):
         validate_state_bytes('state/assistant/' + identity + '.json', canonical(record).encode())
@@ -128,7 +141,7 @@ def test_resume_reconstructs_remaining_budget_without_repeating_completed_output
 
 def test_whole_backup_bytes_are_charged_once_before_another_output(environment):
     app, output, _ = environment
-    size = len(b'{"synthetic":true}\n') + len(b'Synthetic database' * 8)
+    size = app.backup_bytes
     calls = []
     service = AssistantService(app, production=produce_six_bytes(calls))
     identity = service.submit(Plan(Scope(output_root=output, allow_full_backup=True, max_bytes=size + 5, max_files=3),
