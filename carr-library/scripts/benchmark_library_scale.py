@@ -11,6 +11,7 @@ Use --installed with the selected installed interpreter. No model, microphone,
 provider or network service is used. Large runs are deliberately opt-in commands.
 """
 from array import array
+from contextlib import closing, contextmanager
 import argparse
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -161,7 +162,10 @@ def save_json(path, value):
     atomic_json(path, value)  # Existing create-only writer; no overwrite/recovery claim.
 
 
-def activate(source_root=None):
+def activate(source_root=None, *, modules=None):
+    modules = MODULES if modules is None else tuple(modules)
+    require(len(modules) == len(set(modules)) and set(modules) in (
+        set(MODULES), set(MODULES + CAPACITY_MODULES)), 'Invalid measurement module inventory.')
     if source_root is not None:
         selected = local(source_root, exists=True)
         plain(selected, directory=True)
@@ -175,7 +179,7 @@ def activate(source_root=None):
         sys.path.insert(0, str(selected.parent))
         sys.path.insert(0, str(selected))
     origins = {}
-    for name in MODULES:
+    for name in modules:
         module = importlib.import_module(name)
         path = local(module.__file__, exists=True)
         require(path.suffix == '.py', 'Benchmark requires inspectable production source.')
@@ -188,7 +192,7 @@ def activate(source_root=None):
 
 
 def check_origins(expected):
-    actual = activate()
+    actual = activate(modules=tuple(expected))
     require(actual == expected, 'Production module origin or bytes changed.')
     return actual
 
@@ -399,6 +403,492 @@ def build_corpus(directory, spec, *, cancelled=lambda: False, progress=None):
             'elapsed_seconds': perf_counter() - started, 'disk': disk}
 
 
+
+# This optional construction mode is adapted from the existing retained-corpus
+# fixture at upstream 187a10493d4015e37de2b2d2d01e9efb0bbe62cf. It is not an
+# application fast path and must never be reported as public import throughput.
+CAPACITY_MODULES = (
+    'carr_library.catalog.registration', 'carr_library.catalog.membership',
+    'carr_library.citations.text_attestation', 'carr_library.ingest.retained_assets',
+    'carr_library.ingest.pipeline', 'carr_library.ingest.worker',
+    'carr_library.ingest.publication', 'carr_library.ingest.batches',
+    'carr_library.ingest.writer_guard', 'carr_library.operations.broker',
+    'carr_library.library_backup', 'carr_library.pending_backup',
+)
+CAPACITY_DEFAULTS = {'construction': 'ordinary-import', 'public_samples': 0,
+                     'complete_backup': False}
+SEED_BATCH_BOOKS = 250
+SEED_BATCH_SOURCE_BYTES = 16 * 1024 * 1024
+
+
+class CapacityNotAdmitted(BudgetExceeded):
+    """The requested measurement is outside current supported backup bounds."""
+
+
+def capacity_options(value=None):
+    if value is None:
+        return dict(CAPACITY_DEFAULTS)
+    require(type(value) is dict and set(value) == set(CAPACITY_DEFAULTS),
+            'Invalid capacity measurement options.')
+    require(value['construction'] in ('ordinary-import', 'retained-fixture')
+            and type(value['construction']) is str, 'Choose an explicit construction method.')
+    require(type(value['public_samples']) is int and
+            (value['public_samples'] == 0 or 3 <= value['public_samples'] <= 20),
+            'Choose zero or 3 through 20 actual public import samples.')
+    require(type(value['complete_backup']) is bool, 'Backup measurement must be explicit.')
+    return dict(value)
+
+
+def capacity_enabled(options):
+    return capacity_options(options) != CAPACITY_DEFAULTS
+
+
+def phase_names(options):
+    options = capacity_options(options)
+    names = ['build', 'measure', 'restart']
+    if options['public_samples']:
+        names.append('operations')
+    if options['complete_backup']:
+        names.append('backup')
+    return names
+
+
+@contextmanager
+def sqlite_budget(db, budget):
+    """Preserve the original budget error when SQLite interrupts its VM."""
+    interrupted = []
+    def check():
+        try:
+            budget.check()
+        except (InterruptedError, TimeoutError) as error:
+            interrupted.append(error)
+            return 1
+        return 0
+    db.set_progress_handler(check, 10000)
+    try:
+        yield
+    except sqlite3.OperationalError:
+        if interrupted:
+            raise interrupted[0]
+        raise
+    finally:
+        db.set_progress_handler(None, 0)
+
+
+def build_retained_fixture(directory, spec, *, cancelled=lambda: False, progress=None):
+    from carr_library.application import LibraryApp
+    from carr_library.catalog.membership import Catalog
+    from carr_library.catalog.registration import Registration, register_batch
+    from carr_library.citations.text_attestation import CONFIG
+    from carr_library.ingest.writer_guard import exclusive_writer
+    from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Page, Storage
+    spec = validate_case(spec)
+    directory = local(directory, exists=True)
+    require(not os.path.lexists(directory / 'library'), 'Corpus library already exists.')
+    budget = Budget(directory, spec, cancelled=cancelled)
+    progress = progress if progress is not None else {}
+    progress.update(phase='build', constructed_books=0, construction='retained-fixture',
+                    imported_books=0)
+    budget.check()
+    started = perf_counter()
+    app = LibraryApp(directory / 'library')
+    startup = perf_counter() - started
+    workspace = app.create_workspace('Measured selected corpus')
+    excluded = app.create_workspace('Excluded source-isolation control')
+    # Keep the ordinary source-isolation control and all source-window semantics.
+    result = app.add_text(excluded, 'Excluded corpus control', QUERY + ' outside selected workspace.',
+                          edition_id='excluded-control', work_id='excluded-work',
+                          cancelled=budget.stopped)
+    require(result.get('state') == 'complete', 'Isolation fixture import did not complete.')
+    metadata = {'schema': SCHEMA, 'spec': spec, 'workspace': workspace,
+                'excluded_workspace': excluded, 'construction': 'retained-fixture'}
+    book_bytes = spec['segments_per_book'] * spec['segment_bytes'] + spec['segments_per_book'] - 1
+    batch_size = min(SEED_BATCH_BOOKS, max(1, SEED_BATCH_SOURCE_BYTES // book_bytes))
+    chain, batches = sha256(), 0
+    budget.disk()
+    with exclusive_writer(app.root), closing(
+            Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
+        for first in range(0, spec['books'], batch_size):
+            budget.check()
+            with sqlite_budget(storage.db, budget), storage.transaction():
+                catalog = Catalog(storage.db, workspace)
+                for number in range(first, min(spec['books'], first + batch_size)):
+                    budget.check()
+                    text = source_text(number, spec)
+                    data = text.encode('utf-8')
+                    digest = sha256(data).hexdigest()
+                    retained = app.assets.retain(data, 'text/plain', digest)
+                    require(plain(retained).st_size == len(data), 'Retained fixture original size differs.')
+                    edition = edition_id(number)
+                    record = Registration(f'bench-work-{number:08d}', edition,
+                        {'sha256': digest, 'size': len(data), 'mime': 'text/plain'}, title(number))
+                    register_batch(catalog, (record,))
+                    revision = f'bench-fixture-revision-{number:08d}'
+                    storage.stage_revision(workspace, edition, revision, digest, CONFIG,
+                                           (Page(part) for part in text.split('\f')))
+                    storage.db.execute('INSERT INTO source_metadata '
+                        '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
+                        (workspace, edition, revision, None, title(number), None, None))
+                    chain.update((edition + ':' + digest + '\n').encode('ascii'))
+            batches += 1
+            progress['constructed_books'] = min(spec['books'], first + batch_size)
+            progress['committed_fixture_batches'] = batches
+            budget.disk()
+        budget.check()
+        audit_started = perf_counter()
+        with sqlite_budget(storage.db, budget):
+            storage.check()
+        audit_seconds = perf_counter() - audit_started
+    metadata['corpus_sha256'] = chain.hexdigest()
+    verified = verify_corpus(app, metadata, spec, budget)
+    require(verified['corpus_sha256'] == metadata['corpus_sha256'], 'Fixture source chain mismatch.')
+    disk = budget.disk()
+    # Only a fully audited fixture receives the receipt consumed by later phases.
+    save_json(directory / 'corpus.json', metadata)
+    return {'status': 'PASS', 'phase': 'build', **verified,
+            'startup_seconds': startup, 'construction': 'retained-fixture',
+            'setup': {'method': 'RetainedAssets, Catalog/register_batch and Storage.stage_revision',
+                      'committed_batches': batches, 'maximum_books_per_transaction': batch_size,
+                      'maximum_declared_source_bytes_per_transaction': SEED_BATCH_SOURCE_BYTES,
+                      'full_integrity_seconds': audit_seconds},
+            'imports': {**samples([]), 'status': 'NOT_MEASURED_BY_FIXTURE_CONSTRUCTION'},
+            'elapsed_seconds': perf_counter() - started, 'disk': disk}
+
+
+def _measurement_input(directory, name, data):
+    path = directory / name
+    with path.open('xb') as output:
+        output.write(data)
+        output.flush()
+        os.fsync(output.fileno())
+    return path
+
+
+def _journal_receipt(root, workspace, job):
+    with closing(sqlite3.connect((root / 'imports.sqlite').as_uri() + '?mode=ro', uri=True)) as db:
+        row = db.execute('SELECT id,workspace,edition,asset,config,count,expected_active,state,error '
+                         'FROM job WHERE id=? AND workspace=?', (job, workspace)).fetchone()
+        checkpoints = tuple(db.execute(
+            'SELECT ordinal,payload,digest FROM checkpoint WHERE job=? ORDER BY ordinal', (job,)))
+    require(row is not None, 'The actual import journal lost its job identity.')
+    digest = sha256()
+    for checkpoint in checkpoints:
+        digest.update(json.dumps(list(checkpoint), ensure_ascii=True, separators=(',', ':')).encode('ascii') + b'\n')
+    return {'row': tuple(row), 'checkpoints': checkpoints,
+            'checkpoint_sha256': digest.hexdigest()}
+
+
+def _published_receipt(app, workspace, edition, job, digest, text, budget):
+    from carr_library.reader.reading_desk import ReadingDesk
+    budget.check()
+    with app.read(workspace) as db:
+        row = db.execute('SELECT e.asset,a.revision,r.asset,s.revision FROM catalog_edition e '
+            'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
+            'JOIN revision r ON r.id=a.revision JOIN sealed s ON s.revision=r.id '
+            'WHERE e.workspace=? AND e.id=?', (workspace, edition)).fetchone()
+        pages = tuple(tuple(value) for value in db.execute(
+            'SELECT ordinal,raw,digest FROM page WHERE revision=? ORDER BY ordinal', (job,)))
+    parts = text.split('\f')
+    require(row is not None and tuple(row) == (digest, job, digest, job),
+            'The returned public import is not bound to its sealed active source.')
+    require(pages == tuple((i, part, sha256(part.encode('utf-8')).hexdigest())
+                           for i, part in enumerate(parts, 1)), 'Published source pages differ.')
+    original = app.prepare_edition_file(workspace, edition, cancelled=budget.stopped)
+    require(file_hash(original.path, maximum=MAX_SOURCE_BYTES, check=budget.check) == digest,
+            'Public source reopening did not preserve its exact original.')
+    desk = ReadingDesk(app, workspace, edition, cancelled=budget.stopped,
+                       timeout=min(300.0, budget.spec['phase_timeout']))
+    require(desk.page(len(parts)).raw_text == parts[-1], 'Public source reader differs.')
+    return {'edition': edition, 'revision': job, 'asset_sha256': digest,
+            'segments': len(parts), 'exact_source': True}
+
+
+def _public_recovery(app, workspace, inputs, budget, progress):
+    """Use the same public batch/owned-worker/retained-source resume path as the UI."""
+    from carr_library.application import LibraryApp
+    from carr_library.ingest.worker import load_request
+    from carr_library.operations import ResourceBroker
+    text = '\f'.join(f'CapacityRecoveryNeedle segment {index:04d}. ' + 'x' * 16300
+                     for index in range(256))
+    original = text.encode('utf-8')
+    digest = sha256(original).hexdigest()
+    source = _measurement_input(inputs, 'checkpoint-recovery.txt', original)
+    planned = app.plan_import_batch(workspace, [source], recursive=False, cancelled=budget.stopped)
+    require(len(planned['rows']) == 1, 'Recovery plan contains an unexpected row.')
+    request_id, edition = planned['rows'][0]['request_id'], planned['rows'][0]['edition_id']
+    observed, requested = 0, None
+    def cancelled():
+        nonlocal observed, requested
+        budget.check()
+        journal = app.root / 'imports.sqlite'
+        if not os.path.lexists(journal):
+            return False
+        try:
+            with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True, timeout=0)) as db:
+                observed = db.execute('SELECT count(*) FROM checkpoint c JOIN job j ON j.id=c.job '
+                    'WHERE j.workspace=? AND j.edition=? AND j.asset=?',
+                    (workspace, edition, digest)).fetchone()[0]
+        except sqlite3.OperationalError as error:
+            if getattr(error, 'sqlite_errorcode', None) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                return False
+            # The new journal may be opened before its initial tables commit.
+            if 'no such table' in str(error):
+                return False
+            raise
+        if observed >= 2:
+            if requested is None:
+                requested = perf_counter()
+            return True
+        return False
+    def worker_timeout():
+        budget.check()
+        remaining = budget.deadline - monotonic() - 15.0
+        if remaining < 1:
+            raise BudgetExceeded('Insufficient remaining phase budget for owned worker cleanup.')
+        return min(600.0, remaining)
+    started = perf_counter()
+    stopped = app.run_import_batch(workspace, planned['batch_id'], cancelled=cancelled,
+                                   timeout=worker_timeout())
+    returned = perf_counter()
+    require(requested is not None and observed >= 2 and len(stopped['rows']) == 1
+            and stopped['rows'][0]['state'] == 'queued'
+            and stopped['rows'][0].get('result', {}).get('state') == 'cancelled',
+            'The actual worker did not stop after durable checkpoints.')
+    record = load_request(app.root, request_id)
+    job = record.get('job')
+    require(record.get('asset_sha256') == digest and isinstance(job, str),
+            'The stopped request lost its retained source/job binding.')
+    before = _journal_receipt(app.root, workspace, job)
+    require(before['row'][7] in ('pending', 'cancelled') and len(before['checkpoints']) >= 2,
+            'Stopped durable checkpoint state differs.')
+    with app.read(workspace) as db:
+        require(not db.execute('SELECT 1 FROM revision WHERE id=?', (job,)).fetchone()
+                and not db.execute('SELECT 1 FROM catalog_edition WHERE workspace=? AND id=?',
+                                   (workspace, edition)).fetchone(),
+                'Cancelled work published an incomplete source.')
+    require(ResourceBroker.for_app(app.root).snapshot()['leases'] == [],
+            'Stopped import retained a native resource owner.')
+    source.unlink()  # This measurement's newly created synthetic input only.
+    progress.update(operation='resume-retained-request', recovery_checkpoint_count=len(before['checkpoints']))
+    began = perf_counter()
+    reopened = LibraryApp(app.root)
+    reopen_seconds = perf_counter() - began
+    began = perf_counter()
+    resumed = reopened.resume_import(workspace, request_id, cancelled=budget.stopped,
+                                      timeout=worker_timeout())
+    resume_seconds = perf_counter() - began
+    require(resumed.get('state') == 'complete' and resumed.get('id') == job,
+            'Public resume did not complete the same retained job.')
+    recovered_batch = reopened.run_import_batch(workspace, planned['batch_id'],
+        cancelled=budget.stopped, timeout=worker_timeout())
+    require(recovered_batch['state'] == 'complete' and recovered_batch['rows'][0]['state'] == 'complete'
+            and recovered_batch['rows'][0]['request_id'] == request_id,
+            'Completed retained resume did not reconcile its existing batch row.')
+    after = _journal_receipt(app.root, workspace, job)
+    require(after['row'][:7] == before['row'][:7] and after['row'][7] == 'complete'
+            and after['checkpoints'][:len(before['checkpoints'])] == before['checkpoints'],
+            'Resume changed an already accepted checkpoint or job identity.')
+    receipt = _published_receipt(reopened, workspace, edition, job, digest, text, budget)
+    with reopened.read(workspace) as db:
+        published = tuple(tuple(row) for row in db.execute(
+            'SELECT * FROM import_publication WHERE request_id=?', (request_id,)))
+    require(len(published) == 1, 'Resume lacks one immutable request publication receipt.')
+    began = perf_counter()
+    repeated = reopened.resume_import(workspace, request_id, cancelled=budget.stopped,
+                                      timeout=worker_timeout())
+    replay_seconds = perf_counter() - began
+    with reopened.read(workspace) as db:
+        final = tuple(tuple(row) for row in db.execute(
+            'SELECT * FROM import_publication WHERE request_id=?', (request_id,)))
+        revisions = db.execute('SELECT count(*) FROM revision WHERE workspace=? AND edition=?',
+                               (workspace, edition)).fetchone()[0]
+    require(repeated.get('state') == 'complete' and repeated.get('id') == job
+            and final == published and revisions == 1, 'Completed resume republished its source or receipt.')
+    require(not source.exists() and ResourceBroker.for_app(app.root).snapshot()['leases'] == [],
+            'Recovery depended on the retired external input or left an owned worker.')
+    return {'status': 'PASS', 'route': 'LibraryApp.plan_import_batch/run_import_batch/resume_import',
+            'actual_owned_import_worker': True, 'request_id': request_id,
+            'worker_peak_memory': 'NOT_MEASURED; phase RSS belongs to the supervising measurement process.',
+            'operation_seconds': returned - started, 'cancellation_seconds': returned - requested,
+            'observed_checkpoints': len(before['checkpoints']), 'checkpoint_prefix_preserved': True,
+            'fresh_application_reopen_seconds': reopen_seconds, 'resume_seconds': resume_seconds,
+            'terminal_replay_seconds': replay_seconds, 'same_job': True,
+            'external_original_removed': True, 'immutable_publication_receipt_unchanged': True,
+            'native_reservations_released': True, 'source': receipt}
+
+
+def measure_public_operations(directory, spec, samples_count, *, cancelled=lambda: False, progress=None):
+    from carr_library.application import LibraryApp
+    spec = validate_case(spec)
+    capacity_options({'construction': 'retained-fixture', 'public_samples': samples_count,
+                      'complete_backup': False})
+    require(samples_count > 0, 'Public operation sampling must be selected explicitly.')
+    directory = local(directory, exists=True)
+    metadata = read_json(directory / 'corpus.json')
+    require(metadata.get('schema') == SCHEMA and metadata.get('spec') == spec, 'Corpus configuration changed.')
+    budget = Budget(directory, spec, cancelled=cancelled)
+    progress = progress if progress is not None else {}
+    progress.update(phase='operations', completed_public_imports=0)
+    budget.check()
+    started = perf_counter()
+    app = LibraryApp(directory / 'library')
+    verified = verify_corpus(app, metadata, spec, budget)
+    require(verified['corpus_sha256'] == metadata['corpus_sha256'], 'Saved corpus digest differs.')
+    workspace = app.create_workspace('Measured public-operation samples')
+    inputs = directory / 'public-operation-inputs'
+    inputs.mkdir(mode=0o700)
+    times, retry_times, refusal_times, receipts = array('d'), array('d'), array('d'), []
+    for index in range(samples_count):
+        budget.check()
+        edition, work = f'capacity-sample-{index:04d}', f'capacity-sample-work-{index:04d}'
+        sample_title = f'Public import sample {index:04d}'
+        text = f'CapacityPublicNeedle sample {index:04d}. Україна.\fExact second source segment.'
+        data = text.encode('utf-8')
+        digest = sha256(data).hexdigest()
+        source = _measurement_input(inputs, f'import-{index:04d}.txt', data)
+        began = perf_counter()
+        result = app.import_file(workspace, source, title=sample_title, work_id=work,
+            edition_id=edition, cancelled=budget.stopped)
+        times.append(perf_counter() - began)
+        require(result.get('state') == 'complete' and result.get('asset') == digest,
+                'Actual sampled public import did not complete.')
+        receipt = _published_receipt(app, workspace, edition, result['id'], digest, text, budget)
+        journal = _journal_receipt(app.root, workspace, result['id'])
+        require(journal['row'][7] == 'complete', 'Public import journal is not complete.')
+        began = perf_counter()
+        retry = app.import_file(workspace, source, title=sample_title, work_id=work,
+            edition_id=edition, cancelled=budget.stopped)
+        retry_times.append(perf_counter() - began)
+        require(retry.get('state') == 'complete' and retry.get('id') == result['id']
+                and _journal_receipt(app.root, workspace, result['id']) == journal,
+                'Exact public retry changed its completed source/checkpoints.')
+        # Existing edition identity is immutable. Measure a refused replacement;
+        # never turn a different original into that edition through fixture SQL.
+        replacement = _measurement_input(inputs, f'conflict-{index:04d}.txt',
+                                          (text + ' Different immutable original.').encode('utf-8'))
+        began = perf_counter()
+        try:
+            app.import_file(workspace, replacement, title=sample_title, work_id=work,
+                            edition_id=edition, cancelled=budget.stopped)
+        except ValueError as error:
+            require('edition identity conflict' in str(error),
+                    'Replacement failed before the actual immutable-edition boundary.')
+        else:
+            raise BenchmarkFailure('A different source replaced an existing immutable edition.')
+        refusal_times.append(perf_counter() - began)
+        require(_published_receipt(app, workspace, edition, result['id'], digest, text, budget) == receipt
+                and _journal_receipt(app.root, workspace, result['id']) == journal,
+                'Refused replacement changed the prior publication or checkpoints.')
+        require(source.read_bytes() == data, 'Public import changed its external original.')
+        receipts.append(receipt)
+        progress['completed_public_imports'] = index + 1
+        budget.disk()
+    recovery = _public_recovery(app, workspace, inputs, budget, progress)
+    final = verify_corpus(app, metadata, spec, budget)
+    require(final == verified, 'Public samples changed the selected baseline corpus.')
+    return {'status': 'PASS', 'phase': 'operations', **verified,
+            'sample_workspace': workspace, 'sampled_public_imports': samples_count,
+            'public_imports': samples(times), 'exact_public_retries': samples(retry_times),
+            'immutable_edition_replacement_refusals': samples(refusal_times),
+            'scope': 'Separate sample workspace against the fully populated same database.',
+            'throughput_scope': 'Bounded public samples, not sustained construction of the declared corpus.',
+            'receipts': receipts, 'checkpoint_recovery': recovery,
+            'elapsed_seconds': perf_counter() - started, 'disk': budget.disk()}
+
+
+def catalog_receipt(app, budget):
+    """Digest every persisted edition and its current sealed source identity."""
+    digest, count = sha256(), 0
+    with app.read() as db:
+        cursor = db.execute('SELECT e.workspace,e.id,e.asset,a.revision FROM catalog_edition e '
+            'LEFT JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
+            'ORDER BY e.workspace,e.id')
+        while rows := cursor.fetchmany(500):
+            budget.check()
+            for row in rows:
+                digest.update(json.dumps(list(row), ensure_ascii=True,
+                                         separators=(',', ':')).encode('ascii') + b'\n')
+                count += 1
+    return {'editions': count, 'ordered_identity_sha256': digest.hexdigest()}
+
+
+def measure_complete_backup(directory, spec, *, cancelled=lambda: False, progress=None):
+    from carr_library.application import LibraryApp
+    from carr_library import library_backup
+    spec = validate_case(spec)
+    directory = local(directory, exists=True)
+    metadata = read_json(directory / 'corpus.json')
+    require(metadata.get('schema') == SCHEMA and metadata.get('spec') == spec, 'Corpus configuration changed.')
+    budget = Budget(directory, spec, cancelled=cancelled)
+    progress = progress if progress is not None else {}
+    progress.update(phase='backup')
+    budget.check()
+    started = perf_counter()
+    app = LibraryApp(directory / 'library')
+    verified = verify_corpus(app, metadata, spec, budget)
+    require(verified['corpus_sha256'] == metadata['corpus_sha256'], 'Saved corpus digest differs.')
+    expected = catalog_receipt(app, budget)
+    with app.read() as db:
+        count, asset_bytes = db.execute('SELECT count(DISTINCT e.asset), '
+            'coalesce(sum(a.size),0) FROM catalog_asset a JOIN '
+            '(SELECT DISTINCT asset FROM catalog_edition) e ON e.asset=a.digest').fetchone()
+    database_bytes = plain(app.database).st_size
+    admission = {'status': 'ADMITTED', 'observed_assets': count, 'observed_database_bytes': database_bytes,
+                 'observed_catalog_asset_bytes': asset_bytes,
+                 'max_assets': library_backup.MAX_ASSETS,
+                 'max_database_bytes': library_backup.MAX_DATABASE,
+                 'max_catalog_asset_bytes': library_backup.MAX_ASSET_BYTES,
+                 'profile': 'Current supported complete-backup defaults; no limit overrides.'}
+    progress['backup_admission'] = admission
+    if (count > library_backup.MAX_ASSETS or database_bytes > library_backup.MAX_DATABASE
+            or asset_bytes > library_backup.MAX_ASSET_BYTES):
+        admission['status'] = 'NOT_ADMITTED'
+        raise CapacityNotAdmitted('Current complete-backup limits do not admit this populated corpus.')
+    disk = budget.disk()
+    allowance = (spec['max_disk_bytes'] - disk['bytes']) // 3
+    if allowance < database_bytes + asset_bytes:
+        admission['status'] = 'NOT_ADMITTED'
+        raise BudgetExceeded('Declared disk allowance cannot hold the backup and independent restore.')
+    source_identity = _identity(plain(app.root, directory=True))[:2]
+    backup, target = directory / 'complete-backup', directory / 'restored-library'
+    timings = {}
+    def measured(name, action):
+        budget.check()
+        progress['operation'] = name
+        began = perf_counter()
+        value = action()
+        timings[name + '_seconds'] = perf_counter() - began
+        budget.disk()
+        return value
+    identity = measured('create', lambda: app.backup(backup, max_bytes=allowance,
+                                                      cancelled=budget.stopped))
+    manifest = measured('verify', lambda: library_backup.verify_backup(
+        backup, identity, cancelled=budget.stopped))
+    require(type(manifest) is dict, 'Complete-backup verification returned no manifest.')
+    # Preserve the baseline files but remove their old absolute path before the
+    # independent restore. Never prune another library or the user's input.
+    budget.check()
+    require(_identity(plain(app.root, directory=True))[:2] == source_identity,
+            'Synthetic source library was replaced before retirement.')
+    retired = directory / 'retained-baseline-library'
+    require(not os.path.lexists(retired), 'Retired baseline path already exists.')
+    app.root.rename(retired)
+    root = measured('restore', lambda: library_backup.restore_backup(
+        backup, target, identity, cancelled=budget.stopped))
+    restored = LibraryApp(root)
+    require(not os.path.lexists(app.root) and catalog_receipt(restored, budget) == expected,
+            'Independent restore changed catalog/source identity or reused the old root.')
+    final = verify_corpus(restored, metadata, spec, budget)
+    require(final == verified, 'Restored retained source bytes differ.')
+    reading = reader_samples(restored, metadata, spec, budget)
+    return {'status': 'PASS', 'phase': 'backup', **verified,
+            'admission': admission, 'manifest_sha256': identity,
+            'catalog': expected, 'all_manifest_files_verified': True,
+            'source_root_retired': True, 'retired_baseline_preserved': True,
+            'restored_root_differs': True, 'old_absolute_root_absent': True,
+            'reading': reading, **timings, 'elapsed_seconds': perf_counter() - started,
+            'disk': budget.disk(), 'scope': 'Actual complete library backup; not whole-machine migration.'}
+
 def _query(app, workspace, spec, budget, **options):
     budget.check()
     return app.search_page(workspace, QUERY, mode='terms',
@@ -578,16 +1068,18 @@ def _deny_network(event, args):
 
 def child_main(config_path, expected_digest, phase, case_dir):
     bootstrap_started = perf_counter()
-    require(phase in ('build', 'measure', 'restart'), 'Invalid benchmark phase.')
     require(file_hash(config_path, maximum=MAX_JSON) == expected_digest, 'Child configuration digest differs.')
     # The preliminary check alone cannot authorize a later opened snapshot.
     config = read_json(config_path, expected_sha256=expected_digest)
     require(config.get('schema') == SCHEMA, 'Invalid benchmark configuration.')
+    options = capacity_options(config.get('capacity'))
+    require(phase in phase_names(options), 'Invalid benchmark phase.')
     directory = local(case_dir, exists=True)
     require(str(directory.parent) == config['output'], 'Child corpus is outside the selected output.')
     require(directory.name in {str(value) for value in config['sizes']}, 'Unknown child corpus size.')
     source_root = config['source_root']
-    origins = activate(source_root)
+    modules = MODULES + CAPACITY_MODULES if capacity_enabled(options) else MODULES
+    origins = activate(source_root, modules=modules)
     require(origins == config['origins'], 'Child imported different production code.')
     kernel, kernel_identity = memory_kernel()
     require(kernel_identity == config['memory_kernel']
@@ -599,7 +1091,12 @@ def child_main(config_path, expected_digest, phase, case_dir):
     before = kernel.peak_rss_bytes()
     try:
         if phase == 'build':
-            result = build_corpus(directory, spec, progress=progress)
+            build = build_retained_fixture if options['construction'] == 'retained-fixture' else build_corpus
+            result = build(directory, spec, progress=progress)
+        elif phase == 'operations':
+            result = measure_public_operations(directory, spec, options['public_samples'], progress=progress)
+        elif phase == 'backup':
+            result = measure_complete_backup(directory, spec, progress=progress)
         else:
             result = measure_corpus(directory, spec, restart=phase == 'restart', progress=progress)
         check_origins(origins)
@@ -669,13 +1166,15 @@ def run_phase(config_path, config_digest, phase, directory, config):
             'process_wall_seconds': perf_counter() - phase_started}
 
 
-def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_application=None):
+def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_application=None, capacity=None):
     require(__debug__, 'Run the benchmark without optimization flags.')
     require(type(sizes) in (list, tuple) and 1 <= len(sizes) <= 10
             and len(set(sizes)) == len(sizes), 'Choose distinct corpus sizes.')
     for count in sizes:
         validate_case({**case, 'books': count})
-    origins = activate(source_root)
+    options = capacity_options(capacity)
+    modules = MODULES + CAPACITY_MODULES if capacity_enabled(options) else MODULES
+    origins = activate(source_root, modules=modules)
     if expected_application is not None:
         require(origins['carr_library.application']['path'] == str(local(expected_application, exists=True)),
                 'Actual application origin differs from the requested parent origin.')
@@ -691,6 +1190,8 @@ def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_applica
               'case': dict(case), 'source_root': str(local(source_root, exists=True)) if source_root else None,
               'origins': origins, 'memory_kernel': kernel_identity,
               'harness_sha256': file_hash(Path(__file__))}
+    if capacity_enabled(options):
+        config['capacity'] = options
     config_path = output / 'configuration.json'
     save_json(config_path, config)
     config_digest = file_hash(config_path, maximum=MAX_JSON)
@@ -703,7 +1204,7 @@ def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_applica
         directory = output / str(count)
         directory.mkdir(mode=0o700, exist_ok=False)
         phases = []
-        for phase in ('build', 'measure', 'restart'):
+        for phase in phase_names(options):
             try:
                 result = run_phase(config_path, config_digest, phase, directory, config)
                 if result['status'] == 'PASS':
@@ -719,7 +1220,7 @@ def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_applica
                 break
         status = phases[-1]['status']
         if status == 'PASS':
-            require([value['phase'] for value in phases] == ['build', 'measure', 'restart']
+            require([value['phase'] for value in phases] == phase_names(options)
                     and all(value['process_reaped'] for value in phases),
                     'Fresh-process phase completion could not be established.')
             require(len({value['corpus_sha256'] for value in phases}) == 1, 'Restarted corpus identity differs.')
@@ -736,6 +1237,18 @@ def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_applica
                               'machine': platform.machine(), 'logical_cpus': os.cpu_count()},
               'origins': origins, 'harness_sha256': config['harness_sha256'],
               'memory_kernel': kernel_identity, 'method': METHOD, 'claims': CLAIMS, 'cases': cases}
+    if capacity_enabled(options):
+        report['capacity'] = options
+        report['method'] = dict(METHOD,
+            corpus=('Deterministic retained TXT originals through bounded Catalog/Storage fixture transactions '
+                    'and full integrity audit; not public import throughput.'
+                    if options['construction'] == 'retained-fixture' else METHOD['corpus']),
+            public_operations='Separate measured public imports, exact retries, refused immutable replacement '
+                              'and checkpoint cancellation/retained-source resume after baseline reads.',
+            backup='Explicit current complete-backup/verify/new-root restore, only within supported product bounds.')
+        report['claims'] = dict(CLAIMS,
+            sustained_declared_corpus_import_throughput='NOT_MEASURED_BY_CAPACITY_SETUP_OR_BOUNDED_SAMPLES',
+            backup_capacity='Only an actual PASS backup phase qualifies its reported populated corpus.')
     save_json(output / 'library-corpus-scale.json', report)
     return report
 
@@ -753,6 +1266,12 @@ def main(argv=None):
     parser.add_argument('--segment-bytes', type=int, default=2048)
     parser.add_argument('--result-page-size', type=int, default=37)
     parser.add_argument('--repeats', type=int, default=9)
+    parser.add_argument('--construction', choices=('ordinary-import', 'retained-fixture'),
+                        default='ordinary-import', help='Retained fixture setup is not public import throughput.')
+    parser.add_argument('--public-samples', type=int,
+                        help='Zero or 3 through 20 measured public imports; defaults to 12 for retained fixtures.')
+    parser.add_argument('--complete-backup', action='store_true',
+                        help='Explicit actual complete backup/restore; unsupported product bounds yield PARTIAL.')
     parser.add_argument('--phase-timeout', type=float, default=3600)
     parser.add_argument('--max-disk-bytes', type=int, default=24 * 1024 ** 3,
                         help='Measured per-case checkpoint budget; not a filesystem quota.')
@@ -767,8 +1286,12 @@ def main(argv=None):
     case = {name: getattr(args, name) for name in (
         'segments_per_book', 'segment_bytes', 'result_page_size', 'repeats',
         'phase_timeout', 'max_disk_bytes', 'min_free_bytes')}
+    options = {'construction': args.construction,
+               'public_samples': (12 if args.construction == 'retained-fixture' else 0)
+                                  if args.public_samples is None else args.public_samples,
+               'complete_backup': args.complete_backup}
     report = run_benchmark(args.output_dir, args.sizes, case, source_root=root,
-                           expected_application=args.expected_application_origin)
+                           expected_application=args.expected_application_origin, capacity=options)
     print(json.dumps({'status': report['status'],
                       'evidence': str(args.output_dir / 'library-corpus-scale.json')}, ensure_ascii=True), flush=True)
     return 0 if report['status'] == 'PASS' else 2 if report['status'] == 'PARTIAL' else 1

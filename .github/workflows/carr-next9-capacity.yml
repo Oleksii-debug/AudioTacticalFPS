@@ -1,0 +1,237 @@
+name: CARR retained capacity contracts and measured profiles
+
+on:
+  push:
+    branches: ['carr/ci-next9-capacity-*']
+    paths: ['carr-library/**', '.github/workflows/carr-next9-capacity.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capacity-contracts:
+    name: Exact source and installed capacity contracts on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    concurrency:
+      group: carr-capacity-contracts-${{ github.sha }}-${{ matrix.os }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare the existing hashed application and test closure
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact capacity source changed.' }
+          if ($env:RUNNER_OS -eq 'Windows') {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='223d8103219b56f740e2b7cba4d1e965b2554b16'; compile(raw,str(p),'exec')"
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
+      - name: Require all 42 source and 42 isolated installed cases
+        timeout-minutes: 40
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & python -I -B scripts/ci_capacity_contracts.py --evidence ci-capacity-contracts --expected-head $env:EXPECTED_SOURCE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Whole source and installed capacity contracts did not pass.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: capacity-contracts-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-capacity-contracts/
+          if-no-files-found: error
+
+  retained-capacity:
+    name: Measured ${{ matrix.books }} books with ${{ matrix.segments }} segments each
+    needs: capacity-contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 315
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - books: 1000
+            segments: 20
+            complete_backup: 'yes'
+          - books: 10000
+            segments: 20
+            complete_backup: 'no'
+          - books: 50000
+            segments: 20
+            complete_backup: 'no'
+          - books: 50000
+            segments: 40
+            complete_backup: 'no'
+    concurrency:
+      group: carr-retained-capacity-${{ github.sha }}-${{ matrix.books }}-${{ matrix.segments }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+      CARR_MEASURED_BOOKS: ${{ matrix.books }}
+      CARR_MEASURED_SEGMENTS: ${{ matrix.segments }}
+      CARR_COMPLETE_BACKUP: ${{ matrix.complete_backup }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Bind the actual retained fixture harness and declared profile
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          mkdir ci-capacity-results
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git rev-parse HEAD > ci-capacity-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' > ci-capacity-results/tested-tree.txt
+          python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          python -I -B -m pip check
+          python -I -B - <<'PY'
+          from hashlib import sha1, sha256
+          import json, os
+          from pathlib import Path
+          pins = {
+            'scripts/benchmark_library_scale.py':'ee805f665bd1722f0464860ac662af6981567666',
+            'scripts/benchmark_semantic_cache.py':'898b05e37b5a50c018567e35c44ef71f1393535d',
+          }
+          inputs = {}
+          for name, wanted in pins.items():
+              raw = Path(name).read_bytes()
+              actual = sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+              assert actual == wanted, name
+              inputs[name] = dict(git_blob=actual,sha256=sha256(raw).hexdigest(),bytes=len(raw))
+          books, segments = int(os.environ['CARR_MEASURED_BOOKS']), int(os.environ['CARR_MEASURED_SEGMENTS'])
+          assert (books, segments) in ((1000,20),(10000,20),(50000,20),(50000,40))
+          assert os.environ['CARR_COMPLETE_BACKUP'] == ('yes' if books == 1000 else 'no')
+          value = dict(source_commit=os.environ['EXPECTED_SOURCE_SHA'],inputs=inputs,
+              books=books,segments_per_book=segments,segment_bytes=256,source_segments=books*segments,
+              construction='retained-fixture',public_samples=12,result_page_size=37,repeats=9,
+              phase_timeout=3600,max_disk_bytes=25769803776,min_free_bytes=1073741824,
+              complete_backup=os.environ['CARR_COMPLETE_BACKUP']=='yes',
+              import_throughput='NOT_MEASURED_BY_FIXTURE_CONSTRUCTION',
+              large_backup='NOT_SELECTED; current default bounds are not widened by this workflow')
+          Path('ci-capacity-results/declared-profile.json').write_text(json.dumps(value,indent=2)+'\n',encoding='utf-8')
+          PY
+      - name: Construct audit traverse reopen and exercise actual public operations
+        timeout-minutes: 304
+        run: |
+          set -euo pipefail
+          backup_args=()
+          if [[ "$CARR_COMPLETE_BACKUP" == "yes" ]]; then backup_args+=(--complete-backup); fi
+          python -B scripts/benchmark_library_scale.py \
+            --output-dir "$RUNNER_TEMP/resonance-capacity-$CARR_MEASURED_BOOKS-$CARR_MEASURED_SEGMENTS" \
+            --source-root "$GITHUB_WORKSPACE/carr-library/src" \
+            --expected-application-origin "$GITHUB_WORKSPACE/carr-library/src/carr_library/application.py" \
+            --sizes "$CARR_MEASURED_BOOKS" --construction retained-fixture \
+            --segments-per-book "$CARR_MEASURED_SEGMENTS" --segment-bytes 256 \
+            --public-samples 12 --result-page-size 37 --repeats 9 --phase-timeout 3600 \
+            --max-disk-bytes 25769803776 --min-free-bytes 1073741824 \
+            "${backup_args[@]}" 2>&1 | tee ci-capacity-results/benchmark.txt
+      - name: Retain bounded reports and partial results with exact source identity
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json, os, shutil
+          from pathlib import Path
+          count, segments = int(os.environ['CARR_MEASURED_BOOKS']), int(os.environ['CARR_MEASURED_SEGMENTS'])
+          source = Path(os.environ['RUNNER_TEMP']) / f'resonance-capacity-{count}-{segments}'
+          destination = Path('ci-capacity-results')
+          profile = json.loads((destination/'declared-profile.json').read_text(encoding='utf-8'))
+          assert profile['source_commit'] == os.environ['EXPECTED_SOURCE_SHA']
+          for name, expected in profile['inputs'].items():
+              assert sha256(Path(name).read_bytes()).hexdigest() == expected['sha256'], name
+          allowed = ['configuration.json','library-corpus-scale.json']
+          for phase in ('build','measure','restart','operations','backup'):
+              allowed.extend((f'{count}/{phase}.json',f'{count}/{phase}.stdout.txt',f'{count}/{phase}.stderr.txt'))
+          retained = {}
+          for relative in allowed:
+              path = source / relative
+              if path.is_file() and not path.is_symlink():
+                  assert path.stat().st_nlink == 1 and path.stat().st_size <= 8*1024**2
+                  target = destination / relative
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copyfile(path,target)
+                  digest = sha256(target.read_bytes()).hexdigest()
+                  assert digest == sha256(path.read_bytes()).hexdigest()
+                  retained[relative] = dict(bytes=target.stat().st_size,sha256=digest)
+          report_path = destination / 'library-corpus-scale.json'
+          if report_path.exists():
+              report = json.loads(report_path.read_text(encoding='utf-8'))
+              assert report['requested_sizes'] == [count] and report['mode'] == 'source'
+              assert report['capacity'] == {'construction':'retained-fixture','public_samples':12,
+                  'complete_backup':os.environ['CARR_COMPLETE_BACKUP']=='yes'}
+              assert report['harness_sha256'] == profile['inputs']['scripts/benchmark_library_scale.py']['sha256']
+              for case in report['cases']:
+                  assert case['requested_books'] == count
+                  for phase in case['phases']:
+                      if phase['status'] == 'PASS':
+                          assert phase['books']==count and phase['segments']==count*segments
+                          assert phase['process_reaped'] and phase['exit_code']==0
+              summary = dict(status=report['status'],books=count,segments=count*segments,
+                  phases=[dict(phase=p['phase'],status=p['status'],reason=p.get('reason'))
+                          for p in report['cases'][0]['phases']])
+          else:
+              summary = dict(status='NO_COMPLETED_REPORT',books=count,segments=count*segments)
+          assert all(p.suffix.lower() in {'.json','.txt'} and p.stat().st_size <= 8*1024**2
+              for p in destination.rglob('*') if p.is_file())
+          summary.update(source_commit=profile['source_commit'],retained=retained,
+              qualification='Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.')
+          (destination/'retention.json').write_text(json.dumps(summary,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(summary,sort_keys=True),flush=True)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: retained-capacity-${{ matrix.books }}x${{ matrix.segments }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-capacity-results/
+          if-no-files-found: error

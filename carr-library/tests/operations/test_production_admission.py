@@ -477,7 +477,7 @@ def test_visible_control_during_writer_cleanup_keeps_exact_requested_outcome(
     # staging cleanup/return, while the other real thread acknowledges the stop.
     monkeypatch.setattr(durable_state.os, 'link', after_publication(durable_state.os.link))
     monkeypatch.setattr(durable_state.os, 'rename', after_publication(durable_state.os.rename))
-    monkeypatch.setattr(durable_state, 'replace_file', after_publication(durable_state.replace_file))
+    monkeypatch.setattr(durable_state.os, 'replace', after_publication(durable_state.os.replace))
     def work():
         try:
             service.run(job, progress=lambda _: queued.set())
@@ -496,12 +496,15 @@ def test_visible_control_during_writer_cleanup_keeps_exact_requested_outcome(
         try:
             assert queued.wait(3)
             assert service.get(job)['status'] == 'queued'
+            assert not control.exists(), 'The first mutable control publication must also be atomic.'
             writer.start()
             assert published.wait(3)
             worker.join(3)
             assert not worker.is_alive()
             assert len(errors) == 1 and isinstance(errors[0], InterruptedError)
             assert service.get(job)['status'] == expected
+            assert writer.is_alive(), 'The real publication writer must still be held before cleanup.'
+            assert control.stat().st_nlink == 1
             assert durable_state.read_json(control) == {'action': action}
             assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['occupied']
             assert not engines and not list(output.iterdir())
@@ -513,4 +516,10 @@ def test_visible_control_during_writer_cleanup_keeps_exact_requested_outcome(
                 service.cancel(job)
             worker.join(3)
     assert not writer_errors and not worker.is_alive() and not writer.is_alive()
+    # Later requests keep the documented mutable last-write behavior too.
+    service.request_pause(job)
+    assert durable_state.read_json(control) == {'action': 'pause'}
+    service.cancel(job)
+    assert durable_state.read_json(control) == {'action': 'cancel'}
+    assert control.stat().st_nlink == 1 and not list(control.parent.glob('.pending-*'))
     assert not broker.snapshot()['leases']

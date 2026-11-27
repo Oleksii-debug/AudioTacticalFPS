@@ -74,6 +74,7 @@ def test_actual_isolated_cli_reuses_imported_package_and_utf8_resource_paths(tmp
     import subprocess
     import sys
     import carr_library
+    import bootstrap as selected_bootstrap
     from carr_library.operations import ResourceRequest
     from carr_library.operations import cli
 
@@ -84,17 +85,22 @@ def test_actual_isolated_cli_reuses_imported_package_and_utf8_resource_paths(tmp
     broker = ResourceBroker.for_app(root, limits=ResourceLimits(cpu_slots=2, min_free_disk_bytes=0))
     bootstrap = (
         "import importlib.util,pathlib,runpy,sys; "
+        "helper=pathlib.Path(sys.argv[3]).resolve(strict=True); "
+        "helper_spec=importlib.util.spec_from_file_location('bootstrap',helper,submodule_search_locations=[str(helper.parent)]); "
+        "helper_module=importlib.util.module_from_spec(helper_spec);sys.modules['bootstrap']=helper_module;helper_spec.loader.exec_module(helper_module); "
+        "assert pathlib.Path(helper_module.__file__).resolve()==helper; "
         "origin=pathlib.Path(sys.argv[1]).resolve(strict=True); "
         "spec=importlib.util.spec_from_file_location('carr_library',origin,submodule_search_locations=[str(origin.parent)]); "
         "module=importlib.util.module_from_spec(spec);sys.modules['carr_library']=module;spec.loader.exec_module(module); "
         "from carr_library.operations import cli; "
         "assert pathlib.Path(cli.__file__).resolve()==pathlib.Path(sys.argv[2]).resolve(); "
-        "sys.argv=['carr_library',*sys.argv[3:]];runpy.run_module('carr_library',run_name='__main__')"
+        "sys.argv=['carr_library',*sys.argv[4:]];runpy.run_module('carr_library',run_name='__main__')"
     )
     with broker.reserve(ResourceRequest(cpu_slots=1, disk_bytes=4096, disk_path=selected),
                         operation_id='unicode-path-owner', timeout=0):
         result = subprocess.run([sys.executable, '-I', '-B', '-c', bootstrap,
             str(Path(carr_library.__file__).resolve()), str(Path(cli.__file__).resolve()),
+            str(Path(selected_bootstrap.__file__).resolve()),
             'operations', '--data-dir', str(root), 'resources'], capture_output=True,
             env=dict(os.environ, PYTHONIOENCODING='ascii', PYTHONDONTWRITEBYTECODE='0'), timeout=30)
         assert result.returncode == 0, result.stderr.decode('utf-8', 'replace')

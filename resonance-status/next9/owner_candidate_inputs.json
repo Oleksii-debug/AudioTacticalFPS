@@ -1,0 +1,154 @@
+{
+  "schema": "resonance-owner-candidate-input-retention/1",
+  "status": "SOURCE_CHECKPOINT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "bfcde86f3af2817df6469c4fec8f15f8089c79a8",
+      "sha": "add4ce001affacc7dd5c8fc47dfcbd67f640cef7",
+      "readback": "EXACT"
+    }
+  ],
+  "insertion": {
+    "blob": "7a6320a4ca4bdec3ab62dcf156da973cb247c78c",
+    "location": "After unchanged transferable no-audio acceptance and before unchanged standard setup lifecycle.",
+    "removal_reconstructs_preimage": true
+  },
+  "reachability": {
+    "producer_step_id": "complete_bundle",
+    "producer_order": [
+      "build_windows_bundle.py creates exact source-bound base bundle",
+      "add_native_runtime.py succeeds",
+      "CARR_CI_TRANSFER_BUNDLE=$nativeBundle is written to GITHUB_ENV",
+      "add_audio_runtime.py and the complete installed/native acceptance run",
+      "requiredNativeFailures may throw before tested release retention"
+    ],
+    "unchanged_transferable_predicate": "!cancelled() && steps.complete_bundle.conclusion == 'success'",
+    "candidate_predicate": "!cancelled() && steps.complete_bundle.outcome == 'failure' && env.CARR_CI_TRANSFER_BUNDLE != ''",
+    "scenarios": {
+      "failed_before_no_audio_path": "SKIP",
+      "later_complete_failure_with_built_no_audio_sibling": "Run independent no-audio checks",
+      "cancelled": "SKIP",
+      "complete_succeeded": "SKIP; existing release path remains authoritative",
+      "candidate_check_failed": "No candidate-input upload"
+    },
+    "proof": "The complete step sets the environment path before any later audio/native failure. The later transferable step does not create the path."
+  },
+  "reused_acceptance": {
+    "installation": "Same bundled runtime -I -B -X utf8 install_windows.py; requires fresh .venv",
+    "native": [
+      "Installed self-test",
+      "Existing probe_installed_windows.py --bundle-root",
+      "Existing source-open native controls",
+      "Existing academic native controls",
+      "Existing advanced-search native controls",
+      "Existing source-only local-audio setup plan"
+    ],
+    "strict_installed": "Unchanged windows_transferable_bundle_smoke.py; all15 whole suites, zero failures/skips/XFAIL and existing actual source/model/OCR cases",
+    "final_seal": "Original pre-install manifest digest and complete current installer.verify repeated after native/installed acceptance and before retention",
+    "firewall": "Same complete program set, active-rule/application-filter/profile verification and finally removal/restoration as current transferable step",
+    "timeout_minutes": 15
+  },
+  "source_binding": {
+    "exact_event_head": true,
+    "git_tree": true,
+    "application_source_proof": "verify_application_source against current Git; exact equality with sealed application-source.json",
+    "launcher": "verify_native_launcher validates current committed C source inventory and PE/build receipt; exact compiled bytes and actual native-process/installed-launcher report hashes",
+    "dependencies": "Same strict56 lock and51 baseline; five optional names only; every wheel/version/hash and actual installed version checked; unchanged SBOM/review bytes"
+  },
+  "artifact": {
+    "name": "owner-candidate-inputs-<exact-event-head>-<run-attempt>",
+    "upload_predicate": "!cancelled() && steps.owner_candidate_inputs.outcome == 'success'",
+    "root": "RUNNER_TEMP/carr-owner-candidate-inputs",
+    "closed_payload": [
+      "one public application wheel",
+      "public source-built ResearchLibrary.exe and original build receipt",
+      "cffi/cryptography/pycparser/securesystemslib/tuf five exact locked public wheels",
+      "source/build/dependency/no-audio bundle metadata",
+      "exact synthetic CI no-audio acceptance reports"
+    ],
+    "excluded": [
+      "private parent archive",
+      "Python runtime",
+      "OCR runtime and source archive",
+      "models",
+      "drivers",
+      "audio runtimes",
+      "Node",
+      "Setup installer",
+      "user documents",
+      "synthetic child executable"
+    ],
+    "receipt": {
+      "status": "OWNER_CANDIDATE_INPUTS_READY",
+      "complete_bundle_outcome": "failure",
+      "full_qualification": "NOT_ESTABLISHED",
+      "release_eligibility": "NOT_APPROVED",
+      "assembled_owner_bundle": false,
+      "private_parent_included": false,
+      "actual_audio_output": "NOT_QUALIFIED",
+      "private_model_inference": "NOT_RUN",
+      "production_issuer": "UNCONFIGURED",
+      "authenticode": "NOT_RUN",
+      "manual_nvda": "NOT_RUN"
+    },
+    "file_map": "Only explicitly enumerated files; source and destination size/SHA256 rechecked; generated receipt includes source/run and all copied hashes."
+  },
+  "private_assembly": {
+    "status": "NOT_RUN; local executor unavailable",
+    "existing_refresh": "carr-library/packaging/refresh_private_bundle.py@e00608d820ea6b44efce2b8182314c0c18ec0f8b",
+    "existing_delivery": "carr-library/packaging/create_delivery.py@b9041dd6a09156458d4991a7a8635954f516d21f",
+    "plan": "Reuse independently verified owner parent, exact current app wheel, candidate launcher dir and five optional wheels. Preserve trusted-client profile, source-only setup helpers, exact OCR source companion and original no-clobber install rules. Omit --audio and --citations. Run unchanged create_delivery checks only when private assembly becomes available.",
+    "checks_not_bypassed": [
+      "parent manifest SHA256 and complete file verification",
+      "current source-wheel Git proof",
+      "source-built native receipt",
+      "full dependency closure",
+      "audio/audio-runtime fail-closed transfer guard",
+      "two-archive complete inventory",
+      "fresh installation refusal for existing .venv"
+    ],
+    "no_assembled_bundle_claim": true
+  },
+  "observed_prior_artifact": {
+    "run": 46031173898,
+    "head": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "full_artifact": 15224960686,
+    "bytes": 2333724,
+    "sha256": "e117ae509082f5475ce9c6f897e478d6049711b0088910dfb9b86d79dcce776f",
+    "metadata": "READ",
+    "zip_members": "NOT_INSPECTED; executor unavailable",
+    "distinction": "Existing workflow retains a raw application wheel early; failed native aggregate withholds tested wheel/PE/five optional-wheel retention. No qualified current candidate is inferred from this older artifact."
+  },
+  "preserved": {
+    "all_original_workflow_bytes": true,
+    "all_tests_and_native_assertions": true,
+    "all_full_hardware_release_gates": true,
+    "all_original_predicates": true,
+    "all_existing_seals": true,
+    "all_failure_statuses": true,
+    "per_suite600_and_selected900": true,
+    "models_or_drivers_added": false,
+    "source_or_ref_moved": false
+  },
+  "validation": {
+    "oldHeredocsChanged": [],
+    "originalReconstructs": true,
+    "psDangling": [],
+    "syntax": "NOT_RUN",
+    "runtime": "NOT_RUN"
+  },
+  "peer_review": {
+    "locate_project": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "main": "add4ce001affacc7dd5c8fc47dfcbd67f640cef7",
+      "insertion": "7a6320a4ca4bdec3ab62dcf156da973cb247c78c",
+      "scope": "Reachable predicate; old workflow byte preservation; exact source/native/installed/dependency identities; closed public-only payload; final-seal and failed-full status; no parsing/runtime claim."
+    },
+    "canonical_regression": "REQUESTED"
+  },
+  "runtime": "NOT_RUN",
+  "no_prior_pass_transfer": true,
+  "previous_manifest": "4ccd74815e14245041ec920e729694ea1808a67a"
+}

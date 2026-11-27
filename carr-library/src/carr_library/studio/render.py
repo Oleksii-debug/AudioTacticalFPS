@@ -411,7 +411,9 @@ class ProductionService:
                 from ..operations import ResourceBroker
                 broker = self._admission_broker()
                 local_path(broker.policy_path, exists=True)
-                broker.limits
+                # The old coordinator remains revoked after a same-path restore.
+                # This explicit review admits a fresh coordinator, whose locked
+                # constructor validates the retained policy and current namespace.
                 self._broker = ResourceBroker.for_app(
                     broker.root.parent.parent, require_existing_policy=True)
             self._save(state)
@@ -426,13 +428,13 @@ class ProductionService:
 
     def request_pause(self, job_id):
         self.get(job_id)
-        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'pause'},
-                    replace=(self.jobs_root / job_id / 'control.json').exists())
+        # Mutable controls use last-write replacement from their first write.
+        # A create-only POSIX link can be visible before its staged link is gone.
+        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'pause'}, replace=True)
 
     def cancel(self, job_id):
         self.get(job_id)
-        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'},
-                    replace=(self.jobs_root / job_id / 'control.json').exists())
+        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'}, replace=True)
 
     def _runtime(self):
         if self.runtime_factory is not None:

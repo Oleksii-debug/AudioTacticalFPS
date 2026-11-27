@@ -1,0 +1,1054 @@
+{
+  "schema": "resonance-next9-ownership-source-execution/1",
+  "status": "PARTIAL_NOT_QUALIFIED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "1f78fdbd723f489f504245ac7565d194be4e8067",
+  "source_tree": "de83d2e9493a668921f3b118147f9a9685c282d1",
+  "run_id": 46057442436,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057442436",
+  "all_jobs_completed": true,
+  "workflow_parser": {
+    "job": 140703258851,
+    "status": "PASS",
+    "actual_powershell_bodies": 118,
+    "parser_failures": 0,
+    "negative_controls": 6,
+    "negative_control_failures": 0
+  },
+  "execution": [
+    {
+      "job": 140703258500,
+      "name": "Ubuntu complete rich documents, clipboard and measured regression contracts",
+      "conclusion": "failure",
+      "whole_suites": 41,
+      "passed": 1074,
+      "failed": 5,
+      "skipped": 0,
+      "rows": [
+        {
+          "verdict": "PASS",
+          "suite": "tests/extract/test_docx_rich.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_rich_docx.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_translation_rich_docx.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_rich_docx_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/extract/test_docx_ordered.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/extract/test_docx_omitted_content.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/extract/test_docx_hidden_styles.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_application_atomic_docx_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_partition.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_layout.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_translation_layout.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_layout_cli.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_backup_translation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_epub_layout.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_translation_epub_layout.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_epub_cli.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_copy.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_copy_dialog.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_operations.py",
+          "passed": 59,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_project_history.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_history_dialog.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_editing.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_dialog.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "FAIL",
+          "suite": "tests/studio/test_clip_restoration.py",
+          "passed": 19,
+          "failed": 5,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_clip_cli.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_import_replay_identity.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_book_batch.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_book_cli.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/studio/test_book_audio.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_progress_voice_actions.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_engine_settings_lifetime.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation.py",
+          "passed": 168,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_local.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/assistant/test_translation_documents.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_translation_documents.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_import_publication_point.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/speech/test_spelling.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ]
+    },
+    {
+      "job": 140703259008,
+      "name": "Ubuntu focused checked publication, indexed search and owned resource contracts",
+      "conclusion": "failure",
+      "whole_suites": 33,
+      "passed": 417,
+      "failed": 3,
+      "skipped": 0,
+      "rows": [
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_checked_catalog_commit.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_scoped_locator_capacity.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_search_query_work.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_native_recording_driver.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_broker_scope.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_application_atomic_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_pipeline.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_initial_publication_completion.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_worker_publication_boundary.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/e2e/test_import_worker_publication.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_schema_boundary.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_revisions.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_read_boundary.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_locator_integrity.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_printed_label_integrity.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/catalog/test_read_views.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/catalog/test_read_views_v2_integration.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_search_paging.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_literal_integrity.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_literal_readonly.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_literal_v2_composition.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/e2e/test_retained_source_search_integrity.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_facade.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_import_admission.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "FAIL",
+          "suite": "tests/operations/test_production_admission.py",
+          "passed": 16,
+          "failed": 2,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_resources.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_transcription_admission.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_current_union.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_worker_start_cleanup.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_operations_policy.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "FAIL",
+          "suite": "tests/e2e/test_operations_cli.py",
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_resources_posix.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ]
+    },
+    {
+      "job": 140703258859,
+      "name": "Windows focused checked publication, indexed search and owned resource contracts",
+      "conclusion": "failure",
+      "whole_suites": 32,
+      "passed": 415,
+      "failed": 4,
+      "skipped": 0,
+      "rows": [
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_checked_catalog_commit.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_scoped_locator_capacity.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_search_query_work.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_native_recording_driver.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_broker_scope.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_application_atomic_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_pipeline.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_initial_publication_completion.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_worker_publication_boundary.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/e2e/test_import_worker_publication.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_schema_boundary.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_revisions.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_read_boundary.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_locator_integrity.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/storage/test_printed_label_integrity.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/catalog/test_read_views.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/catalog/test_read_views_v2_integration.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_search_paging.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_literal_integrity.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_literal_readonly.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/search/test_literal_v2_composition.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/e2e/test_retained_source_search_integrity.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_facade.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_import_admission.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "FAIL",
+          "suite": "tests/operations/test_production_admission.py",
+          "passed": 16,
+          "failed": 2,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "verdict": "FAIL",
+          "suite": "tests/operations/test_resources.py",
+          "passed": 17,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_transcription_admission.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_current_union.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/operations/test_worker_start_cleanup.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ui/test_operations_policy.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "FAIL",
+          "suite": "tests/e2e/test_operations_cli.py",
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1
+        }
+      ]
+    },
+    {
+      "job": 140703259060,
+      "name": "Windows actual file-sharing and import cancellation contracts",
+      "conclusion": "success",
+      "whole_suites": 5,
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "rows": [
+        {
+          "verdict": "PASS",
+          "suite": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_import_replay_identity.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "verdict": "PASS",
+          "suite": "tests/ingest/test_import_publication_point.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ]
+    }
+  ],
+  "new_whole_suites": {
+    "platforms": [
+      "Linux",
+      "Windows"
+    ],
+    "status": "PASS",
+    "cases_per_platform": 61,
+    "suites": {
+      "tests/ingest/test_checked_catalog_commit.py": 10,
+      "tests/storage/test_scoped_locator_capacity.py": 4,
+      "tests/search/test_search_query_work.py": 17,
+      "tests/ui/test_native_recording_driver.py": 10,
+      "tests/operations/test_broker_scope.py": 20
+    }
+  },
+  "findings": [
+    {
+      "kind": "regression",
+      "suite": "tests/studio/test_clip_restoration.py",
+      "cases_linux": 5,
+      "observed": "Legacy restoration refusal/retirement behavior interacts with resource-directory identity changes.",
+      "resolution": "Under review; earlier path/retirement guards and owned-resource guarantees must remain."
+    },
+    {
+      "kind": "fixture_and_product",
+      "suite": "tests/operations/test_production_admission.py",
+      "cases_per_platform": 2,
+      "observed": "Fixture references nonexistent durable_state.replace_file before intended action.",
+      "followup": "Correct actual os.replace seam. Independent static review identified temporary second link during first mutable POSIX control publication; narrow atomic replacement and held-writer regression proof prepared, NOT_RUN."
+    },
+    {
+      "kind": "fixture",
+      "suite": "tests/e2e/test_operations_cli.py",
+      "cases_per_platform": 1,
+      "observed": "Actual isolated source CLI lacks explicit bootstrap package origin."
+    },
+    {
+      "kind": "fixture_clock",
+      "suite": "tests/operations/test_resources.py",
+      "cases_windows": 1,
+      "observed": "10ms active deadline expired during real Windows admission before intended timeout action.",
+      "followup": "Use only broker clock seam after actual native admission; same deadline and native exclusion."
+    },
+    {
+      "kind": "diagnostic_count",
+      "suite": "tests/ingest/test_initial_publication_completion.py",
+      "actual_passed_per_platform": 4,
+      "incorrect_expected": 2,
+      "resolution": "Correct focused exact expected count; retain every actual case."
+    }
+  ],
+  "confirmed_repairs": {
+    "linux_rich_docx_service": 17,
+    "linux_epub_layout": 31,
+    "linux_book_audio": 46,
+    "windows_intake_and_replay": 59,
+    "linux_import_replay_and_publication": 43,
+    "scope": "Whole actual tests only; no installed, native audio, human accessibility or private-engine claim."
+  },
+  "artifacts": [
+    {
+      "id": 15227392240,
+      "name": "next9-windows-intake-1f78fdbd723f489f504245ac7565d194be4e8067-1",
+      "bytes": 2827,
+      "sha256": "9ca7a2a9fd0ca9f20c83ca051687ba51587f137d986b3331e700e09146db25a5",
+      "expired": false
+    },
+    {
+      "id": 15227323015,
+      "name": "next9-focused-windows-1f78fdbd723f489f504245ac7565d194be4e8067-1",
+      "bytes": 23470,
+      "sha256": "6ecec43023f99288dd187c147b2838374c04930391e1d63216c0a7b8dbf23b2a",
+      "expired": false
+    },
+    {
+      "id": 15227267789,
+      "name": "next9-final-source-contracts-1f78fdbd723f489f504245ac7565d194be4e8067-1",
+      "bytes": 76686,
+      "sha256": "06935cb10db7fc1b6cc08c48be2cccbc3292b86b86c9e5eb8f5ecf8888b654be",
+      "expired": false
+    },
+    {
+      "id": 15226982663,
+      "name": "next9-final-workflow-parser-1f78fdbd723f489f504245ac7565d194be4e8067-1",
+      "bytes": 11871,
+      "sha256": "d70633c83719180e72c553355274d9fa3e5d44410a462feec1ec99a46769592b",
+      "expired": false
+    },
+    {
+      "id": 15226684858,
+      "name": "next9-focused-linux-1f78fdbd723f489f504245ac7565d194be4e8067-1",
+      "bytes": 22679,
+      "sha256": "a2e3f8e62a7e54437c0ab2ccd822c5ddbd96f3ad38a36792290073d38fe34c99",
+      "expired": false
+    }
+  ],
+  "provenance": "Direct GitHub final job logs, strict ci_check rows and artifact metadata; no local execution or archive-member inspection.",
+  "limitations": [
+    "No full integration/native qualification on this head.",
+    "No private model inference, physical acoustic output, real Office or manual NVDA qualification.",
+    "No large corpus capacity/throughput result from this diagnostic."
+  ]
+}

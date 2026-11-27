@@ -174,9 +174,18 @@ def test_waiting_cancellation_is_prompt_and_adds_no_reservation(broker):
         assert len(broker.snapshot()['leases']) == 1
 
 
-def test_active_timeout_is_stop_signal_never_forced_reclaim(broker):
+def test_active_timeout_is_stop_signal_never_forced_reclaim(broker, monkeypatch):
+    import carr_library.operations.broker as module
+    clock = [0.0]
+    # Native policy/lock/file admission can itself exceed 10 ms on Windows.
+    # Advance only the broker's scheduling clock after the real lease is held;
+    # the same 10 ms execution deadline and native exclusion remain in force.
+    monkeypatch.setattr(module, 'time', SimpleNamespace(
+        monotonic=lambda: clock[0], sleep=time.sleep, time=time.time))
     with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='timed', timeout=0, run_timeout=.01) as lease:
-        time.sleep(.02)
+        assert not lease.cancelled()
+        lease.checkpoint()
+        clock[0] = .02
         assert lease.cancelled()
         with pytest.raises(ResourceTimeout, match='execution time'):
             lease.checkpoint()

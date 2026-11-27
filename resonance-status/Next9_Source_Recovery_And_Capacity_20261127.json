@@ -1,0 +1,163 @@
+{
+  "schema": "resonance-next9-source-followup-checkpoint/1",
+  "status": "STATIC_REVIEWED_EXECUTION_PENDING",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent": "1f78fdbd723f489f504245ac7565d194be4e8067",
+  "parent_tree": "de83d2e9493a668921f3b118147f9a9685c282d1",
+  "transitions": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "before": "7557f03177d9188f2a3ba8ddc0eab4aebb79ae4d",
+      "sha": "ee805f665bd1722f0464860ac662af6981567666",
+      "reason": "retained capacity harness"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_capacity_measurement.py",
+      "before": null,
+      "sha": "422374a17ec1eb1eed78527cf86125ae0efa8858",
+      "reason": "retained capacity harness"
+    },
+    {
+      "path": "carr-library/docs/LIBRARY_SCALE_BENCHMARK.md",
+      "before": "8bfd5454ea54820e61f4d9b2ed36fa818a60303f",
+      "sha": "0866fc0c1eed4fc929a704e6d7cc486615ce4e52",
+      "reason": "retained capacity harness"
+    },
+    {
+      "path": "carr-library/tests/operations/test_production_admission.py",
+      "before": "ab092398189a4118c652b14a43d549a42064b172",
+      "sha": "894118912a1cb843e7654c28899a488d94f22f61",
+      "reason": "actual operations fixture and mutable control repair"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_operations_cli.py",
+      "before": "12aef567dac6bc3732afb9f6ff960b25f4d0a82d",
+      "sha": "bd7b717f7bff25b2aa297574c5b3fb8bad9c6720",
+      "reason": "actual operations fixture and mutable control repair"
+    },
+    {
+      "path": "carr-library/tests/operations/test_resources.py",
+      "before": "c8eef1bbd9785a6993138475ad9a8e82032e7608",
+      "sha": "9fe5c3f506f2d8db49ec641e6373a9ec5029b371",
+      "reason": "actual operations fixture and mutable control repair"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before": "496f0ff69c6b385672997fadeccd3f07b66daf40",
+      "sha": "49520794ad86a7e9936e489a457b220f715bbda3",
+      "reason": "actual operations fixture and mutable control repair"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "bfbac56257c0075e04b7077f5c377fb881c0e717",
+      "sha": "e9bc2d3506965124f0ba386a47c86cec622253e4",
+      "reason": "actual operations fixture and mutable control repair"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before": "49520794ad86a7e9936e489a457b220f715bbda3",
+      "sha": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "reason": "explicit restored-origin coordinator rebind"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_restoration.py",
+      "before": "dd366ddd98e6fdbe83c1720defc849aa3b0afe1d",
+      "sha": "09acc779096bd375f77ec72b406f2fa196890b37",
+      "reason": "explicit restored-origin coordinator rebind"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "e9bc2d3506965124f0ba386a47c86cec622253e4",
+      "sha": "95961c7795dd057e5b1ba4bd3c7deaa9dd9c5b02",
+      "reason": "explicit restored-origin coordinator rebind"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "bfcde86f3af2817df6469c4fec8f15f8089c79a8",
+      "sha": "add4ce001affacc7dd5c8fc47dfcbd67f640cef7",
+      "reason": "separate qualified public owner inputs"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": null,
+      "sha": "223d8103219b56f740e2b7cba4d1e965b2554b16",
+      "reason": "independent whole source and installed capacity qualification"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": null,
+      "sha": "1f155b547486ebb43090b087f7a70dc1024af56a",
+      "reason": "independent whole source and installed capacity qualification"
+    }
+  ],
+  "retained_evidence": [
+    {
+      "path": "resonance-status/next9/capacity_measurement.json",
+      "sha": "3451c23ba8d09b0b0ed110f85f738ce7c1ba3314",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next9/owner_candidate_inputs.json",
+      "sha": "7269d899675a5663e4989c0eaa6be1b33f3c361b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next9/operations_regression_followup.json",
+      "sha": "71ecb07f264668f7a4a4f2d5332de70a2a1b31a1",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next9/restored_coordinator_followup.json",
+      "sha": "3ed7c39504a50f080cdd44a2cd86d9e6af82219c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next9/actual_1f78_source_evidence.json",
+      "sha": "ed557d6731051767e8e79eb94a1a2997e8bb30fa",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next9/actual_1f78_focused_evidence.json",
+      "sha": "6ec9eb5257674afc7af23143a89269bcf497d008",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "qualification": {
+    "prior_run": "46057442436; actual evidence attached; prior failures remain failures",
+    "source_diagnostic": {
+      "linux_expected": 1499,
+      "windows_expected": 478,
+      "strict_whole_modules": true,
+      "parser": "Actual result required"
+    },
+    "capacity_contracts": {
+      "per_platform_source": 42,
+      "per_platform_installed": 42,
+      "platforms": [
+        "Linux",
+        "Windows"
+      ],
+      "execution": "NOT_RUN"
+    },
+    "measured_profiles": [
+      "1000x20",
+      "10000x20",
+      "50000x20",
+      "50000x40"
+    ],
+    "profile_source_segment_bytes": 256,
+    "profile_public_samples": 12,
+    "profiles_execution": "NOT_RUN",
+    "complete_backup": "Only1k default profile selected in this preliminary capacity workflow. Explicit large profile implementation remains separate pending work.",
+    "owner_artifact": "Public inputs only after actual no-audio acceptance. Never an assembled owner bundle or release verdict."
+  },
+  "external_automations_changed": false,
+  "canonical_branch_merged": false,
+  "release_approved": false
+}

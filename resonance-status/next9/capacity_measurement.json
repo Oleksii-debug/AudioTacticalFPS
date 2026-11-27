@@ -1,0 +1,257 @@
+{
+  "schema": "resonance-library-capacity-measurement-handoff/1",
+  "status": "DRAFT_STATIC_REVIEWED_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Optional extension of the existing measurement harness only; no production source, product limits, runtime dependencies, workflow or ref changes.",
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "before": "7557f03177d9188f2a3ba8ddc0eab4aebb79ae4d",
+      "sha": "ee805f665bd1722f0464860ac662af6981567666",
+      "readback": "EXACT",
+      "characters": 70409
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_capacity_measurement.py",
+      "before": null,
+      "sha": "422374a17ec1eb1eed78527cf86125ae0efa8858",
+      "readback": "EXACT",
+      "characters": 15667
+    },
+    {
+      "path": "carr-library/docs/LIBRARY_SCALE_BENCHMARK.md",
+      "before": "8bfd5454ea54820e61f4d9b2ed36fa818a60303f",
+      "sha": "0866fc0c1eed4fc929a704e6d7cc486615ce4e52",
+      "readback": "EXACT",
+      "characters": 19933
+    }
+  ],
+  "implementation": {
+    "default_mode": "Existing ordinary-import CLI/default fields/three-phase reports remain; additional optional fields are present only when selected.",
+    "fixture_setup": "RetainedAssets.retain, Catalog/register_batch and Storage.stage_revision under exclusive_writer and bounded SQLite transactions; <=250 books and <=16 MiB declared source per transaction; no fabricated import journal or publication receipt.",
+    "fixture_ready": "Full Storage.check and every actual retained-source digest/catalog identity must pass before corpus.json is published.",
+    "ordinary_operations": "3..20 actual public import samples and exact retries in another workspace against the same populated DB; changed original under the same immutable edition must be refused without changing its prior receipt.",
+    "recovery": "Actual plan_import_batch/run_import_batch owned worker stops after >=2 durable checkpoints; its resource leases settle; generated external source is removed; fresh LibraryApp resumes the same retained request and reconciles the batch; terminal repeat preserves exact immutable publication receipt.",
+    "backup": "Explicit optional current app.backup/verify_backup/restore_backup with unchanged actual limits and conservative measured disk admission; only owned synthetic source root is renamed; new target must preserve complete catalog and selected original/reader identity.",
+    "unsupported_backup": "NOT_ADMITTED is PARTIAL, never backup PASS. Current asset cap excludes even 10,000 selected fixture books plus the isolation original; no larger profile is invented.",
+    "phase_contract": "Existing schema remains carr-library-corpus-benchmark/1. Optional operations and backup have separate owned phase interpreters. Every selected phase must PASS, be reaped and share exact corpus/source/kernel identities.",
+    "bounds": "Original finite books/segments/source/JSON/disk/free-space/phase bounds remain. Source byte and SQLite VM checkpoints remain cancellable.",
+    "limits_of_measurement": "Fixture setup and bounded public samples do not prove sustained whole-corpus import throughput. Whole-process RSS is the phase interpreter; nested import worker RSS is NOT_MEASURED. Direct-phase emergency termination is not process-family cleanup qualification."
+  },
+  "reuse": {
+    "donor_commit": "187a10493d4015e37de2b2d2d01e9efb0bbe62cf",
+    "donor_script_blob": "435ede4d8dc37ac543cf24e7b886b2d8af543c9a",
+    "retained_recipe": "Existing <=250 transactional Catalog/Storage fixture construction; current source/cursor/API/receipt/backup contracts retained.",
+    "unchanged_old_test": {
+      "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+      "sha": "0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17",
+      "static_cases": 24
+    },
+    "unchanged_rss_kernel": {
+      "path": "carr-library/scripts/benchmark_semantic_cache.py",
+      "sha": "898b05e37b5a50c018567e35c44ef71f1393535d"
+    }
+  },
+  "required_validation": {
+    "whole_new_suite": "tests/packaging/test_library_capacity_measurement.py",
+    "static_cases": 18,
+    "test_functions": 12,
+    "count_basis": "12 literal test functions, one parametrized over seven options; NOT_COLLECTED.",
+    "required_test_names": [
+      "test_actual_fixture_uses_retained_catalog_pages_and_existing_full_cursor_reader",
+      "test_fixture_batch_failure_rolls_back_only_uncommitted_batch_and_has_no_ready_receipt",
+      "test_fixture_full_audit_refuses_actual_index_damage_before_ready_receipt",
+      "test_actual_capacity_cli_keeps_separate_setup_public_receipts_restart_and_backup",
+      "test_public_sample_rejectable_commit_failure_keeps_prior_corpus_and_no_false_receipt",
+      "test_public_samples_do_not_accept_a_forged_returned_source_receipt",
+      "test_retained_corruption_refuses_public_samples_before_new_workspace_or_input",
+      "test_invalid_capacity_options_refuse_before_any_output",
+      "test_declared_backup_disk_refusal_is_not_a_success_or_destructive_restore",
+      "test_fixture_cli_without_public_samples_keeps_three_phases_and_truthful_empty_measurement",
+      "test_two_million_profile_is_explicit_geometry_not_an_executed_capacity_claim",
+      "test_fixture_entry_cancellation_creates_no_library_or_ready_receipt"
+    ],
+    "retain_whole_old_suite": "tests/packaging/test_library_scale_benchmark.py",
+    "old_static_cases": 24,
+    "source_and_installed": true,
+    "platforms": [
+      "Linux",
+      "Windows"
+    ],
+    "runtime_requirements": "Existing normal application/test closure and SQLite FTS5; actual TXT owned-import child; no FFmpeg, OCR binary, network, model or device required.",
+    "companions": [
+      "scripts/benchmark_library_scale.py",
+      "scripts/benchmark_semantic_cache.py"
+    ],
+    "installed_requirement": "Preserve companion relative paths and exact bytes. Invoke installed Python -I -B with source injection disabled. Actual CLI fixture chooses --installed when the current application origin is installed and requires that exact path; child imports remain source/byte bound.",
+    "optional_measurement_origins": [
+      "bootstrap",
+      "carr_library.application",
+      "carr_library.search.paging",
+      "carr_library.reader.reading_desk",
+      "carr_library.catalog.read_views",
+      "carr_library.storage.revisions",
+      "carr_library.durable_state",
+      "carr_library.catalog.registration",
+      "carr_library.catalog.membership",
+      "carr_library.citations.text_attestation",
+      "carr_library.ingest.retained_assets",
+      "carr_library.ingest.pipeline",
+      "carr_library.ingest.worker",
+      "carr_library.ingest.publication",
+      "carr_library.ingest.batches",
+      "carr_library.ingest.writer_guard",
+      "carr_library.operations.broker",
+      "carr_library.library_backup",
+      "carr_library.pending_backup"
+    ],
+    "origin_count": 19,
+    "mandatory_outcome": "Every whole suite must collect/run with zero skips/XFAIL/XPASS. Existing CI600 per-suite envelope unchanged; no test-only capacity shortcuts or limit monkeypatches.",
+    "native_gui": "NOT_APPLICABLE; this is a real headless library measurement, no GUI/acoustic claim.",
+    "execution": "NOT_RUN"
+  },
+  "cli": {
+    "fixture_example": "python -B scripts/benchmark_library_scale.py --output-dir <new-local-output> --sizes 1000 10000 50000 --construction retained-fixture --segments-per-book 20 --segment-bytes 256 --public-samples 12 --result-page-size 37 --repeats 9 --phase-timeout 3600 --max-disk-bytes 25769803776 --min-free-bytes 1073741824",
+    "two_million_profile": "Same explicit retained fixture command with --sizes 50000 --segments-per-book 40; other declared parameters unchanged.",
+    "backup_option": "--complete-backup, only after explicit ordinary supported capacity/disk admission; source reporting distinguishes refusal.",
+    "source": "--source-root <checked-out carr-library/src>",
+    "installed": "--installed --expected-application-origin <exact installed application.py>",
+    "report_artifacts_only": [
+      "configuration.json",
+      "library-corpus-scale.json",
+      "*/build.json",
+      "*/measure.json",
+      "*/restart.json",
+      "*/operations.json",
+      "*/backup.json",
+      "finite per-phase stdout/stderr text logs",
+      "tested commit/tree/source identities"
+    ],
+    "do_not_upload": [
+      "generated original corpora",
+      "generated library databases",
+      "backup payloads",
+      "installed runtimes",
+      "binary executables"
+    ]
+  },
+  "declared_profiles": [
+    {
+      "name": "retained-1000x20",
+      "books": 1000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 20000,
+      "original_utf8_bytes": 5139000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    },
+    {
+      "name": "retained-10000x20",
+      "books": 10000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 200000,
+      "original_utf8_bytes": 51390000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    },
+    {
+      "name": "retained-50000x20",
+      "books": 50000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 1000000,
+      "original_utf8_bytes": 256950000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    },
+    {
+      "name": "retained-50000x40",
+      "books": 50000,
+      "segments_per_book": 40,
+      "segment_bytes": 256,
+      "source_segments": 2000000,
+      "original_utf8_bytes": 513950000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    }
+  ],
+  "previous_baseline": {
+    "status": "SEPARATE_ACTUAL_EVIDENCE; does not qualify this extension",
+    "source": "fb39ed3cb1e23ffa3be8bd768c1dd64216f110da",
+    "run": 46037427185,
+    "one_thousand": {
+      "job": 140639483912,
+      "artifact": 15223331300,
+      "sha256": "22d16b19a4a29af7d29ac589ac4cff03902e03e7f30be715cf813ef8c9bb2283",
+      "status": "PASS build/measure/restart",
+      "books": 1000,
+      "segments": 20000,
+      "import_seconds": 969.628493533,
+      "p50_import_seconds": 0.981506673,
+      "p95_import_seconds": 1.847835294,
+      "full_traversal_seconds": 172.100854771,
+      "sum_phase_wall_seconds": 1155.645278569,
+      "evidence_blob": "8d0c4bbaad3b39f411fce2fde644618509d11056"
+    },
+    "partial_phase_evidence_blob": "4bc93de5e8ba6ec9020e5d0f5fabe9feb696e43c",
+    "ten_thousand": {
+      "job": 140639483951,
+      "artifact": 15225356586,
+      "status": "PARTIAL",
+      "reported_completed_imports": 1688,
+      "build_process_wall_seconds": 3602.7491922530003,
+      "measure": "NOT_RUN",
+      "restart": "NOT_RUN"
+    },
+    "fifty_thousand": {
+      "job": 140639484013,
+      "artifact": 15226521241,
+      "status": "PARTIAL",
+      "reported_completed_imports": 1568,
+      "build_process_wall_seconds": 3601.449794654,
+      "measure": "NOT_RUN",
+      "restart": "NOT_RUN"
+    }
+  },
+  "peer_review": [
+    {
+      "reviewer": "progress_completion",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Current public API, retained cancellation/resume/batch reconciliation, phase ownership/report and backup API seam; direct hard-timeout tree limit explicitly unqualified."
+    },
+    {
+      "reviewer": "locate_project",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact retained seed/schema/transaction/full-audit/source ownership, new tests and current backup admission/retirement/restore seam."
+    }
+  ],
+  "refs_changed": false,
+  "production_files_changed": false,
+  "execution_claims": false
+}

@@ -1,0 +1,76 @@
+{
+  "schema": "resonance-explicit-studio-restore-broker-compatibility/1",
+  "status": "SOURCE_CHECKPOINT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_base": "1f78fdbd723f489f504245ac7565d194be4e8067",
+  "actual_evidence": {
+    "job": 140703258500,
+    "whole_suites": 41,
+    "passed": 1074,
+    "failed": 5,
+    "skipped": 0,
+    "failure_suite": "tests/studio/test_clip_restoration.py",
+    "failure_suite_counts": {
+      "passed": 19,
+      "failed": 5,
+      "skipped": 0
+    }
+  },
+  "cause": "Explicit restored-output approval reads old broker.limits after same-path restore. The new directory identity guard correctly rejects that revoked owner before the intended fresh require_existing_policy constructor can run. A separate missing-inventory test assumed the former unwrapped FileNotFoundError and accessible stale limits.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before": "49520794ad86a7e9936e489a457b220f715bbda3",
+      "sha": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "readback": "EXACT",
+      "change": "Remove only the stale broker.limits read after retained policy-path existence check. The fresh current constructor remains the locked policy/schema/namespace authority.",
+      "preserves": "The accepted Pause/Cancel replace=True changes and all origin/new-output/source/cleanup checks."
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_restoration.py",
+      "before": "dd366ddd98e6fdbe83c1720defc849aa3b0afe1d",
+      "sha": "09acc779096bd375f77ec72b406f2fa196890b37",
+      "readback": "EXACT",
+      "change": "Strengthen actual same-path explicit restore: old broker cannot reacquire native admission, new broker has no leases. Update missing-inventory case to typed ResourceStateError with exact FileNotFoundError cause; preserve unchanged policy/job/new-output bytes and no inventory recreation.",
+      "whole_cases": 24,
+      "functions": 12
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "e9bc2d3506965124f0ba386a47c86cec622253e4",
+      "sha": "95961c7795dd057e5b1ba4bd3c7deaa9dd9c5b02",
+      "readback": "EXACT",
+      "change": "Only two exact renderer pins495207→11925; all prior diagnostic jobs/whole suites/counts/dependencies/budgets unchanged."
+    }
+  ],
+  "authority": {
+    "broker_source": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "locks_source": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+    "broker_changed": false,
+    "automatic_reopening": false,
+    "explicit_fresh_origin_and_output_required": true,
+    "retained_policy_mandatory": true,
+    "old_broker_remains_revoked": true,
+    "existing_active_native_lease_visibility_preserved": true,
+    "invalid_runtime_refusals_preserved": true,
+    "blanket_catch": false
+  },
+  "required_validation": {
+    "whole": "tests/studio/test_clip_restoration.py",
+    "cases": 24,
+    "retain_whole": [
+      "tests/operations/test_broker_scope.py",
+      "tests/operations/test_production_admission.py",
+      "tests/operations/test_resources.py"
+    ],
+    "full_gate_count_change": false,
+    "diagnostic_original_three_jobs": "BYTE_IDENTICAL",
+    "execution": "NOT_RUN"
+  },
+  "peer_review": {
+    "root": "ACCEPTED_APPROACH; exact sources pending review",
+    "canonical_regression": "REQUESTED"
+  },
+  "refs_changed": false,
+  "local_execution": false
+}

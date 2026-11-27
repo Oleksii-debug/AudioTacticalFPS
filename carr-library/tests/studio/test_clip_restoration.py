@@ -140,6 +140,18 @@ def test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path
             assert restored.broker.limits == policy
             assert restored.broker.policy_path.read_bytes() == policy_bytes
             assert restored.broker.snapshot()['leases'] == []
+            # Explicit new-output approval does not rehabilitate the old owner.
+            # Both stale paths fail before trying to acquire any native lock.
+            import carr_library.operations.broker as broker_module
+            with monkeypatch.context() as revoked:
+                def no_old_admission(*args, **kwargs):
+                    pytest.fail('The revoked coordinator attempted native admission.')
+                revoked.setattr(broker_module.NativeLock, 'acquire', no_old_admission)
+                with pytest.raises(ResourceStateError, match='selected resource directory changed'):
+                    original_broker.snapshot(timeout=0)
+                with pytest.raises(ResourceStateError, match='selected resource directory changed'):
+                    original_broker.limits
+            assert restored.broker.snapshot()['leases'] == []
 
     with monkeypatch.context() as guarded:
         deny_old_paths(guarded, prohibited)
@@ -312,15 +324,22 @@ def test_explicit_relocation_keeps_current_policy_and_other_native_admission(tmp
 def test_unchanged_origin_never_recreates_a_missing_admission_inventory(tmp_path):
     service, job, previous, policy, fresh = _relocation_with_cached_admission(tmp_path)
     original = (service.jobs_root / job / 'job.json').read_bytes()
+    policy_bytes = previous.policy_path.read_bytes()
     previous.leases_root.rmdir()
     with pytest.raises(ValueError, match='Only a restored portable production'):
         service.relocate_restored_job(job, fresh)
     assert service.broker is previous
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ResourceStateError, match='selected resource directory changed') as snapshot_error:
         service.broker.snapshot(timeout=0)
+    assert isinstance(snapshot_error.value.__cause__, FileNotFoundError)
+    with pytest.raises(ResourceStateError, match='selected resource directory changed') as limits_error:
+        service.broker.limits
+    assert isinstance(limits_error.value.__cause__, FileNotFoundError)
     assert not previous.leases_root.exists()
     assert (service.jobs_root / job / 'job.json').read_bytes() == original
-    assert service.broker.limits == policy
+    assert previous.policy_path.read_bytes() == policy_bytes
+    assert ResourceLimits.from_dict(read_json(previous.policy_path)['limits']) == policy
+    assert list(fresh.iterdir()) == []
 
 
 @pytest.mark.parametrize('damage', ['missing', 'invalid'])
