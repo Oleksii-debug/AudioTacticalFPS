@@ -665,3 +665,93 @@ def test_canonical_committed_candidate_keeps_existing_pending_identity_checks(
     with pytest.raises(ValueError, match='candidate|foreign'):
         backup.restore_backup(data.folder, tmp_path / 'rejected', checksum)
     assert not (tmp_path / 'rejected').exists()
+
+
+def test_atomic_json_uses_actual_path_and_handle_metadata_through_roundtrip(tmp_path):
+    from carr_library.durable_state import atomic_bytes
+
+    root = tmp_path / 'live'
+    source = root / 'state/speech/session.json'
+    source.parent.mkdir(parents=True)
+    raw = b'{"source_text":"Public synthetic narration"}\n'
+    atomic_bytes(source, raw)
+    path_info = source.lstat()
+    with source.open('rb') as stream:
+        handle_info = os.fstat(stream.fileno())
+        assert preserved._file_binding(path_info) == preserved._file_binding(handle_info), (
+            preserved._identity(path_info), preserved._identity(handle_info))
+    component = preserved.snapshot(root, tmp_path / 'component', preserve_live=True)
+    assert (tmp_path / 'component/files/speech/session.json').read_bytes() == raw
+    restored = preserved.restore(tmp_path / 'component', tmp_path / 'copy', component)
+    assert restored == component
+    assert (tmp_path / 'copy/files/speech/session.json').read_bytes() == raw
+    assert source.read_bytes() == raw
+
+
+@pytest.mark.parametrize('operation', ['transfer', 'review'])
+@pytest.mark.parametrize('condition', ['api-clock-difference', 'handle-changed', 'identity-changed'])
+def test_stat_apis_bind_identity_but_compare_change_stamps_within_each_api(
+        tmp_path, monkeypatch, operation, condition):
+    root = tmp_path / 'live'
+    source = root / 'state/speech/session.json'
+    write_json(source, {'source_text': 'Public synthetic reading copy.'})
+    component = tmp_path / 'component'
+    preserved.snapshot(root, component, preserve_live=True)
+    stat = preserved.os.fstat
+    calls = []
+
+    def handle_stat(descriptor):
+        value = stat(descriptor)
+        fields = ('st_dev', 'st_ino', 'st_mode', 'st_nlink', 'st_size',
+                  'st_mtime_ns', 'st_ctime_ns', 'st_file_attributes')
+        result = SimpleNamespace(**{key: getattr(value, key, 0) for key in fields})
+        # Model a stable API-specific clock representation. This must neither
+        # hide a real within-handle change nor allow a different inode to pass.
+        result.st_mtime_ns += 1000
+        result.st_ctime_ns += 2000
+        calls.append(descriptor)
+        if condition == 'handle-changed' and len(calls) > 1:
+            result.st_mtime_ns += 1
+        elif condition == 'identity-changed':
+            result.st_ino += 1
+        return result
+
+    monkeypatch.setattr(preserved.os, 'fstat', handle_stat)
+    if operation == 'transfer':
+        def invoke():
+            return preserved._transfer(source, tmp_path / 'copied.json')
+    else:
+        def invoke():
+            return preserved._review_bytes(component)
+    if condition == 'api-clock-difference':
+        invoke()
+        assert len(calls) == 2
+        if operation == 'transfer':
+            assert (tmp_path / 'copied.json').read_bytes() == source.read_bytes()
+    else:
+        with pytest.raises(ValueError, match='changed'):
+            invoke()
+
+
+@pytest.mark.parametrize('invalid', [1, False, 'true'])
+def test_resigned_live_origin_requires_exact_boolean_generated_inclusion(
+        tmp_path, invalid):
+    app = LibraryApp(tmp_path / 'live')
+    write_json(app.root / 'state/speech/session.json', {'text': 'Public authored state.'})
+    folder = tmp_path / 'typed-backup'
+    backup.create_backup(app, folder)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    path = folder / preserved.DIRECTORY / preserved.REVIEW
+    receipt = json.loads(path.read_bytes())
+    assert receipt['origin']['kind'] == 'recognized-canonical-live-layout'
+    assert receipt['origin']['generated_audio_included'] is True
+    receipt['origin']['generated_audio_included'] = invalid
+    write_json(path, receipt)
+    raw = path.read_bytes()
+    entry = next(item for item in manifest['preserved_state']['files']
+                 if item['filename'] == preserved.REVIEW)
+    entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    checksum = resign(folder, manifest)
+    with pytest.raises(ValueError, match='live-state'):
+        backup.restore_backup(folder, tmp_path / 'rejected', checksum)
+    assert not (tmp_path / 'rejected').exists()

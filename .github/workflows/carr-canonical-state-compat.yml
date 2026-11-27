@@ -65,3 +65,44 @@ jobs:
             tests/storage/test_complete_pending_backup.py \
             tests/transcription/test_typed_backup.py \
             tests/assistant/test_backup_late_recovery.py
+
+  windows-path-proof:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Install source and public synthetic-test dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD).Trim() -ne $env:GITHUB_SHA) { throw 'Unexpected source identity.' }
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Actual Windows file identity and canonical restore contracts
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m compileall -q src tests/storage/fixtures
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/ci_check.py --jobs 2 tests/storage/test_canonical_state_compatibility.py tests/storage/test_library_backup.py tests/storage/test_backup_schema_identity.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

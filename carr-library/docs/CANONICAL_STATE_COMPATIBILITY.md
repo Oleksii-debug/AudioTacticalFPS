@@ -110,6 +110,13 @@ generations, empty and empty-nested state, retained authored bytes, corruption,
 authority tampering, aliases, aggregate limits and subsequent version-7
 roundtrips are covered. A portable test models the Windows DirEntry/Path
 link-count difference; production consistently uses checked Path metadata.
+Path-to-handle binding compares stable device/inode/size/link identity. Full
+path and handle change stamps are compared separately within each API; a
+cross-API timestamp difference is not treated as a content change. Source
+content reattestation, link/reparse refusal and within-API mutation checks
+remain required. A real atomically written JSON roundtrip plus portable API
+clock-divergence, handle-change and foreign-inode cases cover this boundary.
+The isolated workflow includes a separate Windows restore/file-identity job.
 
 Root and current canonical storage/revisions.py share exact blob
 0e326329b65b519a7743503ee2967211fd19897b. Their schema_identity.py shares

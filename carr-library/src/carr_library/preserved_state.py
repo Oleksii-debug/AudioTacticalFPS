@@ -105,8 +105,14 @@ def validate_canonical_state(entries):
 
 
 def _identity(info):
+    """Full change stamp; compare only results from the same stat API."""
     return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink, info.st_size,
             info.st_mtime_ns, info.st_ctime_ns, getattr(info, 'st_file_attributes', 0))
+
+
+def _file_binding(info):
+    """Bind a checked path to its open handle without comparing API clocks."""
+    return info.st_dev, info.st_ino, info.st_size, info.st_nlink
 
 
 def _volatile(name):
@@ -177,7 +183,8 @@ def _transfer(source, destination, *, expected=None, identity=None, cancelled=la
     with ExitStack() as stack:
         flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
         read = stack.enter_context(os.fdopen(os.open(source, flags), 'rb'))
-        if _identity(os.fstat(read.fileno())) != _identity(before):
+        opened = os.fstat(read.fileno())
+        if _file_binding(opened) != _file_binding(before):
             raise ValueError('Application state changed while opening.')
         write = None
         if destination is not None:
@@ -196,7 +203,7 @@ def _transfer(source, destination, *, expected=None, identity=None, cancelled=la
         if write is not None:
             write.flush()
             os.fsync(write.fileno())
-        if _identity(os.fstat(read.fileno())) != _identity(before):
+        if _identity(os.fstat(read.fileno())) != _identity(opened):
             raise ValueError('Application state changed during preservation.')
     if size != before.st_size or _identity(regular(source)) != _identity(before):
         raise ValueError('Application state changed during preservation.')
@@ -294,7 +301,9 @@ def _receipt(value):
                 or not isinstance(origin['manifest_sha256'], str) or not _HASH.fullmatch(origin['manifest_sha256'])
                 or type(origin['generated_audio_included']) is not bool):
             raise ValueError('Invalid canonical backup preservation origin.')
-    elif origin != {'kind': 'recognized-canonical-live-layout', 'generated_audio_included': True}:
+    elif (set(origin) != {'kind', 'generated_audio_included'}
+            or origin.get('kind') != 'recognized-canonical-live-layout'
+            or origin.get('generated_audio_included') is not True):
         raise ValueError('Invalid live-state preservation origin.')
     validate_canonical_state(value['files'])
     return value
@@ -306,11 +315,12 @@ def _review_bytes(folder):
     if not 0 < before.st_size <= MAX_METADATA:
         raise ValueError('Invalid preservation review receipt size.')
     with path.open('rb') as stream:
-        if _identity(os.fstat(stream.fileno())) != _identity(before):
+        opened = os.fstat(stream.fileno())
+        if _file_binding(opened) != _file_binding(before):
             raise ValueError('Preservation review receipt changed while opening.')
         raw = stream.read(MAX_METADATA + 1)
-        opened = os.fstat(stream.fileno())
-    if (len(raw) != before.st_size or _identity(opened) != _identity(before)
+        after = os.fstat(stream.fileno())
+    if (len(raw) != before.st_size or _identity(after) != _identity(opened)
             or _identity(regular(path)) != _identity(before)):
         raise ValueError('Preservation review receipt changed while reading.')
     return raw, _receipt(_decode(raw))
