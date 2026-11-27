@@ -36,6 +36,7 @@ license-files = [
 
 [project.optional-dependencies]
 desktop = ["wxPython==4.2.4"]
+transcription = ["faster-whisper==1.2.1"]
 semantic = [
   "fastembed==0.9.1",
   "onnxruntime==1.32.0",

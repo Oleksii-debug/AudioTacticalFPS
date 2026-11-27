@@ -42,6 +42,14 @@ RUNTIME_DISTRIBUTIONS = ('faster-whisper', 'ctranslate2', 'av', 'onnxruntime',
 FORMATS = ('txt', 'srt', 'vtt', 'json')
 
 
+def receipt_notes(receipt):
+    """Keep any retained private audio snapshot actionable in every frontend."""
+    notes = [str(value) for value in receipt.get('warnings', ())]
+    if receipt.get('cleanup_pending'):
+        notes.append('Temporary audio snapshot awaiting cleanup: ' + str(receipt['cleanup_pending']))
+    return tuple(notes)
+
+
 def _cancel(cancelled):
     if cancelled():
         raise InterruptedError('Transcription cancelled. Completed verified results remain available.')
@@ -128,6 +136,8 @@ def transcription_runtime_identity(*, cancelled=lambda: False):
             if not entries:
                 raise EngineUnavailable('The installed ASR runtime has an empty file inventory.')
             result['distributions'][name] = {'version': distribution.version, 'files_sha256': digest(entries)}
+    except InterruptedError:
+        raise
     except (metadata.PackageNotFoundError, OSError) as exc:
         raise EngineUnavailable('Install a compatible local faster-whisper runtime before transcription; no download was attempted.') from exc
     return result

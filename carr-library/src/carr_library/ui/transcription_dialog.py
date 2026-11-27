@@ -4,12 +4,24 @@ from threading import Lock
 
 from ..audio.jobs import checked_directory
 from ..audio.model_manifest import local_path
+from ..audio.transcription import receipt_notes
+
+
+def completion_message(results, output):
+    cached = sum(bool(row.get('cached')) for row in results)
+    notes = [note for row in results for note in receipt_notes(row)]
+    return (f'Transcription complete: {len(results)} file(s); {cached} verified cached result(s).\n'
+            f'TXT, SRT, VTT and JSON are saved in {output}.'
+            + ('\n' + '\n'.join(notes) if notes else ''))
 
 
 class TranscriptionBatchError(RuntimeError):
-    def __init__(self, message, completed):
+    def __init__(self, message, completed, *, notes=()):
         self.completed = tuple(completed)
-        super().__init__(f'{message}\n{len(self.completed)} completed file(s) remain saved in the selected output folder.')
+        details = [note for receipt in self.completed for note in receipt_notes(receipt)]
+        details.extend(str(note) for note in notes)
+        super().__init__(f'{message}\n{len(self.completed)} completed file(s) remain saved in the selected output folder.'
+                         + ('\n' + '\n'.join(details) if details else ''))
 
 
 class TranscriptionController:
@@ -55,7 +67,7 @@ class TranscriptionController:
                     raise ValueError('The transcription service did not confirm a complete result.')
                 completed.append(receipt)
         except (ValueError, RuntimeError, OSError, ImportError) as exc:
-            raise TranscriptionBatchError(str(exc), completed) from exc
+            raise TranscriptionBatchError(str(exc), completed, notes=getattr(exc, '__notes__', ())) from exc
         return tuple(completed)
 
 
@@ -228,11 +240,7 @@ def show_transcription_dialog(frame, controller=None):
                     return controller.transcribe(sources, output, manifest, settings=settings,
                         formats=('txt', 'srt', 'vtt', 'json'), cancelled=frame.cancel_event.is_set, on_status=self.progress)
                 def done(results):
-                    cached = sum(bool(row.get('cached')) for row in results)
-                    warnings = [str(warning) for row in results for warning in row.get('warnings', ())]
-                    self.report(f'Transcription complete: {len(results)} file(s); {cached} verified cached result(s).\n'
-                                f'TXT, SRT, VTT and JSON are saved in {output}.'
-                                + ('\n' + '\n'.join(warnings) if warnings else ''))
+                    self.report(completion_message(results, output))
                 self.submit('Transcribing local audio', operation, done)
             except Exception as exc:
                 self.report(str(exc))

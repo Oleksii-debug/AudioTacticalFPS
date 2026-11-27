@@ -349,3 +349,13 @@ def test_invalid_engine_timestamps_fail_without_publication(setup, bad):
     with pytest.raises(ValueError, match='timestamp'):
         setup.session.transcribe(setup.source, setup.root)
     assert not list(setup.root.glob('transcript-*/complete-*.json'))
+
+
+def test_runtime_inventory_cancellation_is_not_reported_as_missing_dependencies(monkeypatch):
+    cancelled = threading.Event()
+    def distribution(name):
+        cancelled.set()
+        return SimpleNamespace(files=[Path('synthetic-runtime.py')])
+    monkeypatch.setattr(module.metadata, 'distribution', distribution)
+    with pytest.raises(InterruptedError, match='Transcription cancelled'):
+        module.transcription_runtime_identity(cancelled=cancelled.is_set)

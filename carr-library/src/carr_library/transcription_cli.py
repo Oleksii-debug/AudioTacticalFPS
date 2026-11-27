@@ -37,7 +37,7 @@ def main(argv=None):
             result = register_local_model(args.directory, model_id=args.name, license_name=args.license_name,
                 license_accepted=args.accept_license, trusted_weights=args.trust_source, on_status=progress)
         else:
-            from .audio.transcription import TranscriptionSession, TranscriptionSettings
+            from .audio.transcription import TranscriptionSession, TranscriptionSettings, receipt_notes
             settings = TranscriptionSettings(language=args.language, task=args.task,
                 beam_size=args.beam_size, vad_filter=not args.no_vad,
                 word_timestamps=args.word_timestamps, device=args.device, compute_type=args.compute_type)
@@ -50,7 +50,7 @@ def main(argv=None):
                 if receipt.get('status') != 'complete':
                     raise ValueError('The service did not confirm a complete transcript.')
                 receipts.append(receipt)
-                for warning in receipt.get('warnings', ()):
+                for warning in receipt_notes(receipt):
                     progress(warning)
             result = {'status': 'complete', 'results': receipts, 'network_access': False}
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -66,6 +66,8 @@ def main(argv=None):
             print(json.dumps({'status': 'partial', 'results': receipts, 'network_access': False},
                              ensure_ascii=False, indent=2))
         print(f'Resonance transcription: {exc}', file=sys.stderr)
+        for note in getattr(exc, '__notes__', ()):
+            progress(str(note))
         return 1
 
 

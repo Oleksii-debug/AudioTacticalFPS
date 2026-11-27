@@ -12,6 +12,8 @@ Choose **Register an existing local model** and select a complete CTranslate2/fa
 
 Registration can run before the optional inference runtime is installed. Inference requires compatible installed faster-whisper, CTranslate2, PyAV, ONNX Runtime, NumPy, Hugging Face Hub and tokenizers. Missing dependencies produce an explicit error without a network fallback. The runtime used is fingerprinted; this is separate from a qualified redistributable Windows engine pack. Supplied virtual environments are not copied into the application.
 
+For a developer-managed Python installation, the optional `transcription` extra selects `faster-whisper==1.2.1`: install this extra when preparing that environment. Normal application startup and model registration never install dependencies. The extra is a dependency declaration, not a complete hash-locked Windows distribution or permission to redistribute selected weights. The runtime smoke checks installed native imports and a synthetic WAV decode; it does not perform neural inference.
+
 ## Command line
 
 ```powershell

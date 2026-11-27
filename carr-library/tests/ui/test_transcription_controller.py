@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from carr_library.ui.transcription_dialog import TranscriptionController, TranscriptionBatchError
+from carr_library.ui.transcription_dialog import (TranscriptionController, TranscriptionBatchError,
+                                                  completion_message)
 
 
 @pytest.fixture
@@ -97,3 +98,44 @@ def test_model_selection_change_creates_one_new_session(setup, tmp_path):
     new_manifest.write_text('{}')
     controller.transcribe(sources[:1], output, new_manifest, settings=None, formats=('txt',))
     assert factories == [manifest, new_manifest]
+
+
+def test_success_message_includes_actionable_private_snapshot_location(setup):
+    controller, sources, output, manifest, _, _ = setup
+    pending = output / '.transcription-locked' / 'source.wav'
+    class Session:
+        def __init__(self, path): pass
+        def transcribe(self, *args, **kwargs):
+            return {'status': 'complete', 'cached': False, 'files': {'txt': 'saved.txt'},
+                    'warnings': ['Temporary snapshot could not be removed.'],
+                    'cleanup_pending': str(pending)}
+    controller.session_factory = Session
+    results = controller.transcribe(sources[:1], output, manifest, settings=None, formats=('txt',))
+    message = completion_message(results, output)
+    assert 'Transcription complete: 1 file(s)' in message
+    assert 'Temporary snapshot could not be removed.' in message
+    assert str(pending) in message
+
+
+def test_partial_batch_message_retains_prior_cleanup_path_and_current_error_notes(setup):
+    controller, sources, output, manifest, _, _ = setup
+    previous_snapshot = output / '.transcription-previous'
+    current_snapshot = output / '.transcription-current'
+    class Session:
+        def __init__(self, path): pass
+        def transcribe(self, source, *args, **kwargs):
+            if source == sources[1]:
+                error = OSError('Synthetic failed inference')
+                error.add_note('The temporary audio snapshot also needs cleanup: ' + str(current_snapshot))
+                raise error
+            return {'status': 'complete', 'files': {'txt': 'saved.txt'},
+                    'warnings': ['Previous snapshot could not be removed.'],
+                    'cleanup_pending': str(previous_snapshot)}
+    controller.session_factory = Session
+    with pytest.raises(TranscriptionBatchError) as raised:
+        controller.transcribe(sources, output, manifest, settings=None, formats=('txt',))
+    message = str(raised.value)
+    assert len(raised.value.completed) == 1 and '1 completed file(s)' in message
+    assert 'Previous snapshot could not be removed.' in message
+    assert str(previous_snapshot) in message and str(current_snapshot) in message
+    assert 'Synthetic failed inference' in message

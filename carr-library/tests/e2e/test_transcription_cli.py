@@ -69,3 +69,30 @@ def test_cli_later_failure_preserves_prior_receipts(monkeypatch, capsys):
     result = json.loads(captured.out)
     assert result['status'] == 'partial' and len(result['results']) == 1
     assert 'disk full' in captured.err
+
+
+def test_cli_shows_cleanup_paths_on_success_and_preserves_them_on_later_failure(monkeypatch, capsys, tmp_path):
+    from carr_library.audio import transcription
+    previous_snapshot = tmp_path / '.transcription-previous'
+    current_snapshot = tmp_path / '.transcription-current'
+    class Session:
+        def __init__(self, manifest): pass
+        def transcribe(self, source, output, **kwargs):
+            if str(source) == 'two.wav':
+                error = OSError('Synthetic inference failure')
+                error.add_note('The temporary audio snapshot also needs cleanup: ' + str(current_snapshot))
+                raise error
+            return {'status': 'complete', 'files': {'txt': 'saved.txt'},
+                    'warnings': ['Previous audio snapshot could not be removed.'],
+                    'cleanup_pending': str(previous_snapshot)}
+    monkeypatch.setattr(transcription, 'TranscriptionSession', Session)
+    assert main(['transcribe', 'one.wav', '--model-manifest', 'model.json', '--output', 'results']) == 0
+    success = capsys.readouterr()
+    assert str(previous_snapshot) in success.err
+    assert json.loads(success.out)['status'] == 'complete'
+    assert main(['transcribe', 'one.wav', 'two.wav', '--model-manifest', 'model.json', '--output', 'results']) == 1
+    partial = capsys.readouterr()
+    assert str(previous_snapshot) in partial.err and str(current_snapshot) in partial.err
+    result = json.loads(partial.out)
+    assert result['status'] == 'partial' and len(result['results']) == 1
+    assert result['results'][0]['cleanup_pending'] == str(previous_snapshot)
