@@ -41,7 +41,7 @@ The following cannot be labelled DONE by passing the current core tests:
   interruption/recovery and key-rotation acceptance.
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
-- Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
+- Actual installed dordiai-voices / SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist and synchronized
   publishing/Braille workflows.
 - Independent qualification of every required capability for the canonical 135

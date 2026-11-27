@@ -129,6 +129,8 @@ def run_native_transcription(frame, directory):
         def completed():
             assert controller.record['status'] == 'complete', controller.status
             assert len(controller.outputs) == 1 and dialog.results.GetCount() == 1
+            assert set(controller.record['request']['formats']) == {'txt', 'srt', 'vtt', 'json'}
+            assert set(controller.outputs[0]['formats']) == {'txt', 'srt', 'vtt', 'json'}
             assert dialog.edit_button.IsEnabled()
             assert not dialog.language.IsEnabled()
             state['complete_output'] = controller.outputs[0]['directory']

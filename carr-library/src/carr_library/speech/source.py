@@ -61,6 +61,38 @@ def validate_source_origin(value, source_text):
     return {**value, 'positions': copied, 'derived_separators': separators}
 
 
+def _source_anchor_from_origin(value, text):
+    """Accept the earlier origin-only v2 format without inventing provenance."""
+    origin = validate_source_origin(value, text)
+    if origin is None:
+        return None
+    return {key: origin[key] for key in ('workspace', 'edition', 'revision',
+            'asset_sha256', 'quotation_authority')} | {
+        'positions': [{**{key: item for key, item in row.items() if key != 'text_verified'},
+                       'text_verified_at_capture': row['text_verified']}
+                      for row in origin['positions']]}
+
+
+def _source_origin_from_anchor(anchor):
+    """Return the stable legacy identity view of an already validated anchor.
+
+    Recovery filenames use this exact representation. Keep its historical
+    verification flags and explicit derived separators when normalizing v2.
+    """
+    if anchor is None:
+        return None
+    positions = [{**{key: item for key, item in row.items()
+                     if key != 'text_verified_at_capture'},
+                  'text_verified': row['text_verified_at_capture']}
+                 for row in anchor['positions']]
+    return {'schema': 'carr.narration-source.v1',
+            **{key: anchor[key] for key in ('workspace', 'edition', 'revision',
+               'asset_sha256', 'quotation_authority')},
+            'positions': positions,
+            'derived_separators': [{'start': first['end'], 'end': second['start']}
+                                   for first, second in zip(positions, positions[1:])]}
+
+
 @dataclass(frozen=True)
 class NarrationSource:
     text: str
@@ -68,37 +100,37 @@ class NarrationSource:
     workspace: str
     edition: str
     revision: str
-    asset_sha256: str
     positions: tuple[dict, ...]
     warnings: tuple[str, ...]
+    asset_sha256: str
+
+    @property
+    def source_anchor(self):
+        from .reading import _validated_source_anchor
+        return _validated_source_anchor({
+            'workspace': self.workspace, 'edition': self.edition, 'revision': self.revision,
+            'asset_sha256': self.asset_sha256, 'positions': list(self.positions),
+            'quotation_authority': False}, self.text)
 
     @property
     def origin(self):
-        return validate_source_origin({
-            'schema': 'carr.narration-source.v1', 'workspace': self.workspace,
-            'edition': self.edition, 'revision': self.revision,
-            'asset_sha256': self.asset_sha256,
-            'positions': [dict(row) for row in self.positions],
-            'derived_separators': [{'start': first['end'], 'end': second['start']}
-                                   for first, second in zip(self.positions, self.positions[1:])],
-            'quotation_authority': False,
-        }, self.text)
+        return _source_origin_from_anchor(self.source_anchor)
 
     def reading_document(self, recovered=None):
-        """Construct the GUI/recovery copy without guessing identity from text.
+        """Construct the existing editable copy without guessing identity from text.
 
         A mismatched or legacy unbound draft is kept intact for explicit recovery;
         it must not silently acquire the current edition or lose its user edits.
         """
         from .reading import ReadingDocument
-        origin = self.origin
+        anchor = self.source_anchor
         if recovered is not None:
             if (not isinstance(recovered, ReadingDocument) or recovered.source_text != self.text
-                    or recovered.source_origin != origin):
+                    or recovered.source_anchor != anchor):
                 raise ValueError('Saved narration draft has a different or unbound source identity. '
                                  'Its edits were preserved; it was not attached to this source.')
             return recovered
-        return ReadingDocument(self.text, title=self.title, source_origin=origin)
+        return ReadingDocument(self.text, title=self.title, source_anchor=anchor)
 
 
 def read_source_range(desk, first, last, *, guard=lambda: None,
@@ -129,11 +161,10 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
         positions.append({'ordinal': page.ordinal, 'kind': page.location.kind,
                           'index': page.location.index, 'start': start, 'end': offset,
                           'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest(),
-                          'text_verified': page.verified})
+                          'text_verified_at_capture': page.verified})
         if not page.verified:
             warnings.append(f'Reading position {ordinal}: extracted text has not been independently approved.')
     guard()
     check_cancelled(cancelled)
     return NarrationSource(''.join(pieces), desk.title, desk.workspace, desk.edition,
-                           desk.revision, desk.identity.asset_sha256,
-                           tuple(positions), tuple(warnings))
+                           desk.revision, tuple(positions), tuple(warnings), desk.identity.asset_sha256)

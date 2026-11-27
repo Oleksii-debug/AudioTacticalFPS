@@ -249,7 +249,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                    else 'Unbound reading copy; no library source identity was recorded.')
         source_status.ChangeValue(f'Original text preserved; reading revision {document.revision}; '
             f'{"unsaved changes" if document.dirty else "saved"}. '
-            + lineage + ' The reading copy is not quotation evidence.')
+            + lineage + ' The reading copy is not quotation evidence. ' + recovery_notice)
 
     def save_recovery(event=None, *, force=False):
         nonlocal last_recovery_signature
@@ -424,6 +424,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     raise ValueError('Open one text chapter at a time, up to 8 MB.')
                 loaded = ReadingDocument(source.read_text(encoding='utf-8-sig'), title=source.stem, source_path=source)
                 selected = None
+            if source_loader is not None and (not source_loaded or loaded.source_anchor is None
+                    or loaded.source_anchor != document.source_anchor):
+                raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
             playback_generation += 1
             player.stop()
             if progress is not None:

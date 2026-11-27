@@ -156,9 +156,10 @@ research-library transcribe --data-dir "D:\Research" run --runtime-manifest "D:\
 Repeat `--input` for a batch. `--queue-only` retains the selected input bytes and
 creates a durable queued job without inference. Repeat `--format` to choose
 TXT/SRT/VTT/JSON; otherwise all four are requested. The command prints the saved
-job identity and output directory. Resume uses the saved settings. GUI workflow
-integration and manual NVDA acceptance remain separate tasks; console access is
-not a claim that a new native desktop dialog has been completed.
+job identity and output directory. Resume uses the saved settings. These jobs
+are also available in the native desktop workflow described above. Native
+Windows execution and human NVDA acceptance have separate evidence; a passing
+console test does not establish either of them.
 
 ## Local installation manifest
 
@@ -210,7 +211,9 @@ minute-boundary subtitles and reusable completion passed. The preparation check
 retains PR135's baseline comparison: baseline 1 pass/2 fail, candidate 3 pass.
 Private source and synthetic model outputs are not published.
 
-Real faster-whisper inference, approved runtime/model pack closure, actual offline
-native process isolation, Windows installation, supported language quality and
-human NVDA remain NOT_RUN for this adapter. It does not complete the full ASR or
-platform release gate.
+Native Windows results are recorded by the checks for the exact head of
+[PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143). The native
+probe still uses synthetic recognition. Real faster-whisper inference, approved
+runtime/model pack closure, actual offline native process isolation, supported
+language quality and human NVDA remain separate, unqualified requirements.
+This adapter does not complete the full ASR or platform release gate.

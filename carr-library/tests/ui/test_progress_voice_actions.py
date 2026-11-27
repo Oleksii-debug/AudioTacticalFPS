@@ -281,6 +281,77 @@ def test_reader_document_replacement_invalidates_deferred_previous_audio(
     assert not any('Playback did not start' in report for report in reader.reports)
 
 
+@pytest.mark.parametrize('binding', ['same', 'legacy_same', 'unbound', 'different', 'pending'])
+def test_source_bound_reader_open_project_preserves_lineage_before_replacing_playback(
+        reader, tmp_path, binding):
+    from carr_library.application import LibraryApp
+    from carr_library.durable_state import encode
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech.source import read_source_range
+
+    app = LibraryApp(tmp_path / 'sources')
+    workspace = app.create_workspace('Current retained source')
+    imported = app.add_text(workspace, 'Same title', 'Identical retained source text.')
+    source = read_source_range(ReadingDesk(app, workspace, imported['edition']), 1, 1)
+    current = source.reading_document()
+    current.save(tmp_path / 'current.reading.json')
+    if binding == 'unbound':
+        replacement = ReadingDocument(current.source_text)
+    elif binding == 'different':
+        other_workspace = app.create_workspace('Different retained source')
+        other = app.add_text(other_workspace, 'Same title', current.source_text)
+        replacement = read_source_range(ReadingDesk(app, other_workspace, other['edition']), 1, 1).reading_document()
+    else:
+        replacement = source.reading_document()
+    assert replacement.source_text == current.source_text
+    replacement.set_text('Portable edited narration.')
+    path = tmp_path / 'portable.reading.json'
+    if binding == 'legacy_same':
+        record = replacement.to_dict()
+        record.pop('source_anchor')
+        record['source_origin'] = replacement.source_origin
+        path.write_bytes(encode(record))
+    else:
+        replacement.save(path)
+    before = path.read_bytes()
+    values = {**reader.values, 'document': current,
+              'source_loader': lambda cancelled: source, 'source_loaded': binding != 'pending'}
+    selected = values['wx']
+    selected.ID_OK, selected.FD_OPEN, selected.FD_FILE_MUST_EXIST = 2, 0, 0
+
+    class SelectedProject:
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def ShowModal(self): return selected.ID_OK
+        def GetPath(self): return str(path)
+
+    selected.FileDialog = SelectedProject
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader',
+        ['start_playback', 'open_project'], values, globals_={'ReadingDocument': ReadingDocument})
+    started = Mock()
+    handlers.start_playback(started)
+    assert reader.scheduler.pending and not reader.progress.holds[0].closed
+    handlers.open_project()
+    accepted = binding in ('same', 'legacy_same')
+    if accepted:
+        values['player'].stop.assert_called_once()
+        values['editor'].ChangeValue.assert_called_with('Portable edited narration.')
+        assert not any('standalone voice reader' in message for message in reader.reports)
+    else:
+        values['player'].stop.assert_not_called()
+        values['editor'].ChangeValue.assert_not_called()
+        assert any('standalone voice reader' in message for message in reader.reports)
+    reader.progress.ready = True
+    reader.scheduler.tick()
+    if accepted:
+        started.assert_not_called()
+    else:
+        started.assert_called_once()
+    assert not reader.scheduler.pending and all(hold.closed for hold in reader.progress.holds)
+    assert current.text == current.source_text and path.read_bytes() == before
+
+
 def test_studio_explicit_voice_selection_creates_independent_parent_selection(reader):
     events = []
     local, parent = Progress('studio', events), Progress('parent', events)
