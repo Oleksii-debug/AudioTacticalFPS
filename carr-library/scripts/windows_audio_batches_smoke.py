@@ -249,12 +249,11 @@ def run_native():
             check('installed implementation remains unchanged through native execution',
                   installed_identity() == origins)
             check('no native queue callback failed', not errors)
-            print(json.dumps({'status': 'PASS', 'checks': checks, 'installed_mode': True, 'isolated': True,
-                              'module_origins': origins, 'native_controls': 'PASS',
-                              'actual_ffmpeg': finished['runtime'], 'verified_output': finished['output'],
-                              'file_picker': 'NOT_RUN', 'physical_audio': 'NOT_RUN',
-                              'speech_quality': 'NOT_CLAIMED', 'nvda': 'NOT_RUN'}, ensure_ascii=False, sort_keys=True), flush=True)
-            return 0
+            receipt = {'status': 'PASS', 'checks': checks, 'installed_mode': True, 'isolated': True,
+                       'module_origins': origins, 'native_controls': 'PASS',
+                       'actual_ffmpeg': finished['runtime'], 'verified_output': finished['output'],
+                       'file_picker': 'NOT_RUN', 'physical_audio': 'NOT_RUN',
+                       'speech_quality': 'NOT_CLAIMED', 'nvda': 'NOT_RUN'}
         finally:
             state['active'] = False
             for timer in timers:
@@ -272,7 +271,12 @@ def run_native():
             host.close()
             host.dialog.Destroy()
             frame.Destroy()
-            native.close()
+            if native is not None:
+                native.close()
+    # Completion includes owner/window cleanup and removal of synthetic inputs.
+    # A valid source-style installed environment has no optional DLL handle.
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True), flush=True)
+    return 0
 
 
 def main():
@@ -291,6 +295,7 @@ def main():
     try:
         return run_native()
     except BaseException as error:
+        print(''.join(traceback.format_exception(type(error), error, error.__traceback__))[-16000:], flush=True)
         print(json.dumps({'status': 'FAIL', 'error': type(error).__name__ + ': ' + str(error)[:4000],
                           'nvda': 'NOT_RUN'}), flush=True)
         return 1
