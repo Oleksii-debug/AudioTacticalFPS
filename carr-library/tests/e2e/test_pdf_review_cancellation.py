@@ -98,23 +98,22 @@ def test_cancel_inside_revocation_transaction_preserves_prior_review(pdf_result,
 
 def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
     app, workspace, hit = pdf_result
-    original = subprocess.Popen
+    original = worker._spawn
     children = []
 
     def delayed_renderer(command, *args, **kwargs):
-        # subprocess.run also calls this shared Popen on Windows for taskkill.
-        # Replace only the isolated renderer, so its real process-tree cleanup
-        # remains exercised and is not replaced by a second sleeping child.
-        if not (isinstance(command, (list, tuple)) and command[0] == sys.executable
+        # Replace only the isolated renderer, retaining its selected native
+        # interpreter, environment and actual process-family cleanup.
+        if not (isinstance(command, (list, tuple))
                 and '-c' in command
                 and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
             return original(command, *args, **kwargs)
-        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
+        child = original([command[0], '-I', '-B', '-c', 'import time; time.sleep(30)'],
                          *args, **kwargs)
         children.append(child)
         return child
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', delayed_renderer)
+    monkeypatch.setattr(worker, '_spawn', delayed_renderer)
     started = monotonic()
     try:
         with pytest.raises(InterruptedError, match='cancelled'):

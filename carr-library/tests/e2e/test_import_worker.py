@@ -138,7 +138,7 @@ def _reply_test_source(tmp_path, kind):
 def _intercept_worker_reply(monkeypatch, *, fail=False, ready=None):
     """Keep actual parsing/publication; stop only the post-commit reply."""
     from carr_library.ingest import worker
-    actual_popen = subprocess.Popen
+    actual_popen = worker._spawn
     after = "raise RuntimeError('synthetic post-publication failure')" if fail else 'time.sleep(30)'
     marker = (f"Path({str(ready)!r}).write_bytes(b'publication-returned')"
               if ready is not None else 'pass')
@@ -165,7 +165,7 @@ LibraryApp._import_file = held_reply
                     'exec(' + repr(inject) + '); runpy.run_module(')
         return actual_popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', child)
+    monkeypatch.setattr(worker, '_spawn', child)
 
 
 def _expire_after_reply(monkeypatch, ready, timeout):
@@ -265,7 +265,7 @@ def test_stopped_import_owns_interpreter_and_releases_writer_before_reconciliati
     source = _reply_test_source(tmp_path, 'txt')
     workspace = app.create_workspace('Actual interpreter ownership')
     marker = tmp_path / 'committed-interpreter.json'
-    popen = subprocess.Popen
+    popen = worker._spawn
     processes = []
     injection = f'''
 import json, os, sys, time
@@ -302,7 +302,7 @@ _CatalogPublisher.publish_revision = committed_with_lock
             processes.append(process)
         return process
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(worker, '_spawn', launch)
     if os.name == 'nt' and sys.prefix != sys.base_prefix:
         # CPython's internal executable override must not replace the selected
         # venv when its redirector is bypassed. No arbitrary child environment.

@@ -58,7 +58,7 @@ def _actor(monkeypatch, root, mode):
     actual = getattr(worker, '_spawn', worker.subprocess.Popen)
 
     def launch(command, **options):
-        process = actual([sys.executable, '-I', '-B', '-c', LEADER,
+        process = actual([command[0], '-I', '-B', '-c', LEADER,
                           DESCENDANT, str(lock_path), str(ready), mode], **options)
         processes.append(process)
         return process

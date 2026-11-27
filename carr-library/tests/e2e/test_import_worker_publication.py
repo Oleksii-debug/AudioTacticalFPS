@@ -45,7 +45,7 @@ def _metadata(collections=()):
 
 def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
     """Pause the real child before/after commit, without replacing its result."""
-    popen = subprocess.Popen
+    popen = worker._spawn
     code = f'''
 import os, time
 from pathlib import Path
@@ -85,8 +85,7 @@ LibraryApp._import_file = _replay
 
     def launch(command, **options):
         command = list(command)
-        # Popen is shared with subprocess.run: Windows cancellation invokes
-        # taskkill here as well. Only instrument the real import bootstrap.
+        # Instrument only the real import bootstrap beneath its native owner.
         if '-c' not in command:
             return popen(command, **options)
         index = command.index('-c') + 1
@@ -97,15 +96,9 @@ LibraryApp._import_file = _replay
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
         return popen(command, **options)
 
-    class WorkerSubprocess:
-        Popen = staticmethod(launch)
-
-        def __getattr__(self, name):
-            return getattr(subprocess, name)
-
     # Keep the instrumentation local to the supervisor: replacing the shared
     # stdlib Popen class also changes unrelated parsers and Windows helpers.
-    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess())
+    monkeypatch.setattr(worker, '_spawn', launch)
 
 
 
@@ -164,8 +157,10 @@ def test_timeout_fixture_arms_deadline_before_expiring_at_barrier(tmp_path, monk
 ])
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
+    original_spawn = worker._spawn
     _barrier(monkeypatch, marker, boundary='after')
-    assert worker.subprocess.Popen is not subprocess.Popen
+    assert worker._spawn is not original_spawn
+    assert worker.subprocess.Popen is subprocess.Popen
     result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
@@ -245,7 +240,7 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
     source = _source(tmp_path, kind)
     planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())
     marker = tmp_path / 'before-commit'
-    real_popen, real_stop = worker.subprocess.Popen, worker._stop
+    real_popen, real_stop = worker._spawn, worker._stop
     _barrier(monkeypatch, marker, boundary='before')
     competing = []
 
@@ -256,7 +251,7 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
             # different import before its parent can reconcile the hint.
             competing.append(None)
             with monkeypatch.context() as clean_launch:
-                clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
+                clean_launch.setattr(worker, '_spawn', real_popen)
                 if competitor_kind != 'direct':
                     competing[0] = worker.run_request(app.root, workspace, source,
                         _metadata(), Config(), timeout=15.0)

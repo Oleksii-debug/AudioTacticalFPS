@@ -3,7 +3,7 @@
 This is process isolation with time/resource limits, not an OS security sandbox.
 The existing ingest journal remains the only extraction/checkpoint pipeline.
 """
-from contextlib import closing, contextmanager, redirect_stdout
+from contextlib import ExitStack, closing, contextmanager, redirect_stdout
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -16,7 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryFile
 import time
 from uuid import uuid4
 
@@ -290,17 +290,28 @@ class RuntimeBoundIngest(Ingest):
 @contextmanager
 def request_lock(root, request_id):
     from filelock import FileLock, Timeout
+    from ..audio.models import AudioCleanupPending
     lock_path = _path(root, request_id).with_suffix('.lock')
     if os.path.lexists(lock_path):
         info = lock_path.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
                 or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
             raise ValueError('Invalid import request lock.')
+    lock = FileLock(lock_path, mode=0o600, thread_local=False)
     try:
-        with FileLock(lock_path, mode=0o600).acquire(timeout=0):
-            yield
+        lock.acquire(timeout=0)
     except Timeout as exc:
         raise ValueError('This import request is already running.') from exc
+    transferred = False
+    try:
+        yield
+    except AudioCleanupPending as exc:
+        transferred = True
+        exc.cleanup_owner.add_quiescent_callback(lock.release)
+        raise
+    finally:
+        if not transferred:
+            lock.release()
 
 
 def _review_path(root, request_id):
@@ -409,32 +420,69 @@ def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected
                     checksum=current['checksum'])
 
 
-def _stop(process):
-    if process.poll() is not None:
-        return
+def _spawn(command, *, stdin, stdout, stderr, env):
+    """One native owner beneath the existing bounded import supervisor."""
     if os.name == 'nt':
+        from ..audio.windows_job import JobProcess
+        return JobProcess(command, env=env, stdio=(stdin, stdout, stderr))
+    if not all(hasattr(os, name) for name in ('waitid', 'P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT')):
+        raise RuntimeError('This platform cannot retain isolated import process-group ownership.')
+    return subprocess.Popen(command, stdin=stdin, stdout=stdout, stderr=stderr,
+                            env=env, start_new_session=True)
+
+
+def _poll(process):
+    if os.name == 'nt' or process.returncode is not None:
+        return process.poll()
+    # Keep the dead leader waitable until its owned group has been signalled.
+    # Reaping here would permit the numeric process-group identity to be reused.
+    info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    if info is None:
+        return None
+    return info.si_status if info.si_code == os.CLD_EXITED else -info.si_status
+
+
+def _stop(process):
+    """Confirm the complete owned job/group, including an exited leader's child.
+
+    POSIX ownership covers the session created here while this supervisor lives;
+    it is not an abrupt-parent-death or deliberately detached-process sandbox.
+    """
+    if os.name == 'nt':
+        return process.close()
+    if getattr(process, '_ingest_quiescent', False):
+        return True
+    from time import monotonic, sleep
+    deadline = monotonic() + 5
+    if not getattr(process, '_ingest_group_signalled', False):
+        # Prove this exact child is still waitable before signalling its group.
+        # Never signal a potentially reused numeric identity after a reap.
+        os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
         try:
-            subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=5, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except (OSError, subprocess.SubprocessError):
-            process.kill()
-    else:
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
+            os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
+        process._ingest_group_signalled = True
+    process.wait(timeout=max(0, deadline - monotonic()))
+    while True:
+        try:
+            os.killpg(process.pid, 0)
+        except ProcessLookupError:
+            process._ingest_quiescent = True
+            return True
+        if monotonic() >= deadline:
+            raise subprocess.TimeoutExpired(process.args, 5)
+        sleep(min(.02, max(0, deadline - monotonic())))
+
+
+def _close_worker(process):
     try:
-        process.wait(timeout=1)
-    except subprocess.TimeoutExpired:
-        if os.name == 'nt':
-            process.kill()
-        else:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        process.wait(timeout=2)
+        if _stop(process) is False:
+            raise RuntimeError('The import process family has not confirmed shutdown.')
+    except BaseException as exc:
+        from ..audio.cleanup import pending_cleanup
+        raise pending_cleanup(lambda: _stop(process),
+            message='Import process cleanup is pending; its request and private streams remain owned.') from exc
 
 
 def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
@@ -571,48 +619,47 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
 
 def _invoke(message, *, timeout, cancelled=lambda: False):
     """One process supervisor for import and render operations."""
+    from ..audio.models import AudioCleanupPending
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
         raise ValueError('Import request is too large.')
     result = None
-    process = None
-    try:
-        if cancelled():
-            result = {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
-        else:
-            with TemporaryFile() as input_stream, TemporaryFile() as output, TemporaryFile() as errors:
-                input_stream.write(payload)
-                input_stream.seek(0)
-                options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-                            | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
-                           if os.name == 'nt' else {'start_new_session': True})
-                # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
-                # Only paths derived from this trusted application file are added.
-                package_root = Path(__file__).resolve().parents[2]
-                roots = [str(package_root)]
-                if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
-                    roots.append(str(package_root.parent))
-                bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
-                             "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-                executable = sys.executable
-                environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
-                if (os.name == 'nt' and sys.prefix != sys.base_prefix
-                        and getattr(sys, '_base_executable', None)
-                        and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
-                    # CPython multiprocessing uses this pair on Windows: own
-                    # the interpreter, not the venv redirector, while retaining
-                    # the selected executable/prefix and its site-packages.
-                    # Waiting for a killed redirector alone can race the real
-                    # worker's release of its native writer-lock handle.
-                    environment.pop('PYTHONEXECUTABLE', None)
-                    environment['__PYVENV_LAUNCHER__'] = executable
-                    executable = sys._base_executable
-                process = subprocess.Popen([executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
-                                           stdin=input_stream, stdout=output, stderr=errors,
-                                           env=environment,
-                                           **options)
+    if cancelled():
+        return {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
+    with ExitStack() as streams:
+        try:
+            input_stream = streams.enter_context(TemporaryFile())
+            output = streams.enter_context(TemporaryFile())
+            errors = streams.enter_context(TemporaryFile())
+            input_stream.write(payload)
+            input_stream.seek(0)
+            # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
+            # Only paths derived from this trusted application file are added.
+            package_root = Path(__file__).resolve().parents[2]
+            roots = [str(package_root)]
+            if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+                roots.append(str(package_root.parent))
+            bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                         "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+            executable = sys.executable
+            environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
+            if (os.name == 'nt' and sys.prefix != sys.base_prefix
+                    and getattr(sys, '_base_executable', None)
+                    and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
+                # CPython multiprocessing uses this pair on Windows: own
+                # the interpreter, not the venv redirector, while retaining
+                # the selected executable/prefix and its site-packages.
+                # Waiting for a killed redirector alone can race the real
+                # worker's release of its native writer-lock handle.
+                environment.pop('PYTHONEXECUTABLE', None)
+                environment['__PYVENV_LAUNCHER__'] = executable
+                executable = sys._base_executable
+            process = _spawn([executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+                             stdin=input_stream, stdout=output, stderr=errors,
+                             env=environment)
+            try:
                 deadline = time.monotonic() + timeout
-                while process.poll() is None:
+                while _poll(process) is None:
                     if cancelled():
                         result = {'state': 'cancelled', 'message':
                                   'Import worker stopped. Resume checks saved checkpoints and publication.'}
@@ -625,34 +672,38 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                         result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
                         break
                     time.sleep(0.05)
-                if result is None and (
-                        os.fstat(output.fileno()).st_size > MAX_REPLY
-                        or os.fstat(errors.fileno()).st_size > MAX_LOG):
-                    result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
-                if result is not None:
-                    _stop(process)
-                else:
-                    output.seek(0)
-                    raw = output.read(MAX_REPLY + 1)
-                    if len(raw) > MAX_REPLY:
-                        raise ValueError('Import worker reply exceeded its limit.')
-                    try:
-                        reply = json.loads(raw)
-                    except (UnicodeError, ValueError):
-                        reply = None
-                    if (process.returncode != 0 or not isinstance(reply, dict)
-                            or not isinstance(reply.get('result'), dict)):
-                        message = reply.get('error') if isinstance(reply, dict) else None
-                        if isinstance(message, str) and message:
-                            result = {'state': 'failed', 'message': message}
-                        else:
-                            result = _UnreportedWorkerExit(state='failed', message=
-                                f'Import worker exited unexpectedly ({process.returncode}).')
+            finally:
+                # A leader exit is not proof that its OCR descendants are
+                # finished. Do not read final replies or permit durable
+                # publication reconciliation until the native owner closes.
+                _close_worker(process)
+            if result is None and (
+                    os.fstat(output.fileno()).st_size > MAX_REPLY
+                    or os.fstat(errors.fileno()).st_size > MAX_LOG):
+                result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
+            if result is None:
+                output.seek(0)
+                raw = output.read(MAX_REPLY + 1)
+                if len(raw) > MAX_REPLY:
+                    raise ValueError('Import worker reply exceeded its limit.')
+                try:
+                    reply = json.loads(raw)
+                except (UnicodeError, ValueError):
+                    reply = None
+                if (process.returncode != 0 or not isinstance(reply, dict)
+                        or not isinstance(reply.get('result'), dict)):
+                    message = reply.get('error') if isinstance(reply, dict) else None
+                    if isinstance(message, str) and message:
+                        result = {'state': 'failed', 'message': message}
                     else:
-                        result = reply['result']
-    finally:
-        if process is not None and process.poll() is None:
-            _stop(process)
+                        result = _UnreportedWorkerExit(state='failed', message=
+                            f'Import worker exited unexpectedly ({process.returncode}).')
+                else:
+                    result = reply['result']
+        except AudioCleanupPending as exc:
+            retained = streams.pop_all()
+            exc.cleanup_owner.add_quiescent_callback(retained.close)
+            raise
     return result
 
 
@@ -679,7 +730,8 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
         raise ValueError('Invalid PDF review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
         raise ValueError('Invalid PDF review page.')
-    with TemporaryDirectory(prefix='carr-review-') as temporary:
+    from ..audio.cleanup import retained_temporary_directory
+    with retained_temporary_directory(prefix='carr-review-') as temporary:
         source = Path(temporary) / 'page-source.pdf'
         source.write_bytes(data)
         result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
