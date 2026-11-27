@@ -45,7 +45,7 @@
       "No protected build advancement; locks then release and explicit recovery restores verified A",
       "Original reading, research, retained jobs and private bytes remain unchanged"
     ],
-    "platform_contract": "POSIX keyboard interruption uses actual SIGINT. Windows uses explicit Python KeyboardInterrupt; no native Windows console-signal claim."
+    "platform_contract": "POSIX keyboard interruption uses actual SIGINT. Windows uses explicit Python KeyboardInterrupt; no native Windows console-signal claim. The child readiness banner is bounded to 16 bytes and accepts the native CRLF line ending."
   },
   "final_runtime": {
     "status": "NOT_RUN",
@@ -57,6 +57,7 @@
     "activation_host": "NOT_IMPLEMENTED",
     "managed_installation_activation": "REFUSED",
     "installed_windows_upgrade": "NOT_RUN",
-    "abrupt_parent_loss_containment": "NOT_CLAIMED"
+    "abrupt_parent_loss_containment": "NOT_CLAIMED",
+    "python_exception_handler_atomicity": "NOT_CLAIMED"
   }
 }

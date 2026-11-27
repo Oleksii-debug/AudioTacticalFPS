@@ -274,8 +274,8 @@ class WindowsBundleAdapter:
                     if error.cleanup_owner.quiescent_event.wait():
                         break
                 except BaseException as interruption:
-                    # Ctrl+C/SystemExit cannot release the caller's update,
-                    # idle or library-writer locks while the owned child lives.
+                    # Defer a wait-boundary Ctrl+C/SystemExit so the caller
+                    # retains its update, idle and library-writer locks.
                     # Preserve the first interruption; the same cleanup owner
                     # remains the only authority for native quiescence.
                     if interrupted is None:

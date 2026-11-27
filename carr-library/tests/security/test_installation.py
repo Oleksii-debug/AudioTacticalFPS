@@ -638,7 +638,7 @@ print(json.dumps(result), flush=True)
              "import time; print('ready', flush=True); time.sleep(60)"],
             cwd=options['cwd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         held['child'] = child
-        assert child.stdout.readline() == b'ready\n'
+        assert child.stdout.readline(16).strip() == b'ready'
 
         def close_when_permitted():
             if not permit_cleanup.is_set():

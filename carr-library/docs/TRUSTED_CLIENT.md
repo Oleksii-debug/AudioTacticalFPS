@@ -225,8 +225,10 @@ wait are retained: the same cleanup owner must first confirm quiescence, then th
 first interruption is re-raised and the update remains unaccepted. Repeated
 interruptions cannot release the update, idle or library-writer locks early.
 An interrupted activation may therefore leave its version 1 journal unfinished
-until a later explicit recovery, after the child has stopped. This does not
-provide containment after an abrupt process kill or machine loss.
+until a later explicit recovery, after the child has stopped. This handling
+covers exceptions raised at the cleanup wait; it does not make the Python
+exception handler uninterruptible or provide containment after an abrupt
+process kill or machine loss.
 The wait can remain pending until the existing cleanup owner confirms quiescence.
 A concrete supervisor outside
 the program directory must prevent new work, retain ownership through shutdown,
