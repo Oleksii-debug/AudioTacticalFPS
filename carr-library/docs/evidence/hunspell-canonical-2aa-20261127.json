@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "checks": [
+    "exact selected native library hash",
+    "actual C API, UTF-8 dictionary and affix expansion",
+    "exact Unicode/CRLF reading offsets",
+    "selected-text scope with original character positions",
+    "overlong tokens are explicitly uncheckable",
+    "actual native result remains review-only",
+    "explicit correction preserves source and one undo",
+    "external dictionary bytes remain unchanged",
+    "declared legacy encoding with no replacement decoding",
+    "same-size changed dictionary is rejected before use",
+    "malformed dictionary cannot report a complete review",
+    "actual mid-staging/check cancellation reaps and removes private copies",
+    "actual worker deadline reaps and removes private copies",
+    "native engine bytes remain unchanged"
+  ],
+  "native_library_sha256": "7dc4e1d423b3e2c976359ae84a9bd8f6e2c19816322ceeddace6313244c50958",
+  "native_library_bytes": 800320,
+  "application_modules": {
+    "carr_library.speech.spelling": "68610a425ada45d4d821e5ba6f27b781389a41789f556e996e3aaeb92816aae1",
+    "carr_library.speech.spelling_worker": "25cd33e7d6ffeaffee7e6bb12a3880293064fd324ee3c4a4667e8cc8a9321b9b",
+    "carr_library.ui.spelling_dialog": "f2df60215e500aaa7767c312682a557f261d42f0f81de0c94d5d4dc314ef1795"
+  },
+  "dictionaries": "Original synthetic fixtures; no language-quality qualification",
+  "native_windows": "NOT_RUN",
+  "manual_nvda": "NOT_RUN",
+  "distribution_clearance": "NOT_GRANTED"
+}
