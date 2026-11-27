@@ -112,11 +112,22 @@ def run(work):
             raise AssertionError('The native assistant did not dispatch its own button.')
 
     def choose(control, index):
+        if (not isinstance(control, wx.Choice) or not control.IsEnabled()
+                or not control.IsShown() or type(index) is not int
+                or not 0 <= index < control.GetCount()):
+            raise AssertionError('The current native profile choice is unavailable.')
         control.SetSelection(index)
         event = wx.CommandEvent(wx.EVT_CHOICE.typeId, control.GetId())
         event.SetEventObject(control)
-        if not control.GetEventHandler().ProcessEvent(event):
-            raise AssertionError('The native profile selection handler is unavailable.')
+        event.SetInt(index)
+        event.SetString(control.GetString(index))
+        # The actual invalidate handler deliberately calls event.Skip().
+        # ProcessEvent may therefore return False after that handler ran.
+        # The observed selected index and the later reviewed-Run revocation
+        # check establish the native result, not the propagation return value.
+        control.GetEventHandler().ProcessEvent(event)
+        if control.GetSelection() != index:
+            raise AssertionError('The current native profile choice did not retain its selection.')
 
     def fill(e, controls):
         draft = e.plan().to_dict()
