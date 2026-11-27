@@ -143,6 +143,8 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.Bind(wx.EVT_CHOICE, self.on_options_changed)
         for control in (self.query, *self.filters.values()):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
+        # Recompute after the desktop adds its filters and source actions.
+        self.SetupScrolling(scroll_x=False, scroll_y=True, rate_y=12)
 
     def on_build_query(self, event=None):
         if getattr(self.frame, '_closing', False):
@@ -714,9 +716,10 @@ class DesktopFrame(WorkspaceFrame):
             except Exception as exc:
                 self.report(f'Search collections unavailable: {exc}')
 
-    def report(self, text):
+    def report(self, text, *, focus=True):
         self.status.SetValue(text)
-        self.status.SetFocus()
+        if focus:
+            self.status.SetFocus()
 
     def current_progress(self, event=None):
         self.progress_view.query()
@@ -811,7 +814,10 @@ class DesktopFrame(WorkspaceFrame):
                         if done is not None:
                             done(result)
                         outcome = classify(result)
-                        self.report(title + ': ' + ('complete' if outcome == 'completed' else outcome) + '.')
+                        # The accepted result handler owns its keyboard target.
+                        # A completion notice must not steal focus from it.
+                        self.report(title + ': ' + ('complete' if outcome == 'completed' else outcome) + '.',
+                                    focus=False)
                         finalize(outcome)
                     except Exception as exc:
                         rejected(exc)

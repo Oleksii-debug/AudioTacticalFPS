@@ -67,6 +67,20 @@ def run_native():
             pending.extend(child.GetChildren())
         return result
 
+    def select_live_choice(dialog, index, choices):
+        # wxSingleChoiceDialog caches GetStringSelection only when OK commits
+        # DoChoice(). Inspect its live native listbox while the modal is open.
+        lists = [control for control in descendants(dialog) if isinstance(control, wx.ListBox)]
+        check('one live native choice list', len(lists) == 1)
+        live = lists[0]
+        check('native choice inventory preserves Unicode and order',
+              live.GetCount() == len(choices)
+              and tuple(live.GetString(i) for i in range(live.GetCount())) == tuple(choices))
+        dialog.SetSelection(index)
+        check('live native choice selection is retained',
+              live.IsEnabled() and live.GetSelection() == index
+              and live.GetStringSelection() == choices[index])
+
     def press(dialog, identifier):
         button = dialog.FindWindow(identifier)
         check('actual enabled native dialog button',
@@ -99,13 +113,11 @@ def run_native():
                 if phase == 'role':
                     check('named role selector', isinstance(dialog, wx.SingleChoiceDialog)
                           and dialog.GetName() == 'Role for the new audio effect')
-                    dialog.SetSelection(1)
-                    check('Unicode role selection is retained', dialog.GetStringSelection() == roles[1])
+                    select_live_choice(dialog, 1, roles)
                 elif phase == 'effect':
                     check('named effect selector', isinstance(dialog, wx.SingleChoiceDialog)
                           and dialog.GetName() == 'Audio effect type')
-                    dialog.SetSelection(tuple(definitions).index(kind))
-                    check('selected typed effect kind', dialog.GetStringSelection() == kind)
+                    select_live_choice(dialog, tuple(definitions).index(kind), tuple(definitions))
                 else:
                     check('named parameter dialog', dialog.GetName() == f'Parameters for {kind} on {roles[1]}')
                     fields = [control for control in descendants(dialog) if isinstance(control, wx.TextCtrl)]
@@ -129,6 +141,9 @@ def run_native():
                 else:
                     state['complete'] = True
                 press(dialog, wx.ID_OK)
+                if phase in ('role', 'effect'):
+                    check('native OK commits the selected Unicode role or typed effect',
+                          dialog.GetStringSelection() == (roles[1] if phase == 'role' else kind))
             except Exception:
                 errors.append(traceback.format_exc())
                 state['active'] = False

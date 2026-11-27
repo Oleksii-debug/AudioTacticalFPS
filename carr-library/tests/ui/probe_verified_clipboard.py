@@ -17,7 +17,7 @@ def candidate():
     clip = Mock()
     clip.Open.return_value = clip.SetData.return_value = clip.Flush.return_value = True
     wx = NS(Panel=object, TheClipboard=clip, TextDataObject=lambda s: s)
-    env = {'wx': wx}
+    env = {'wx': wx, 'ScrolledPanel': object}
     exec(compile(ast.Module(body=[cls], type_ignores=[]), str(path), 'exec'), env)
     panel = object.__new__(env['SearchPanel'])
     identity = Identity('A', 'edition-1', 'a' * 64, 'r1')

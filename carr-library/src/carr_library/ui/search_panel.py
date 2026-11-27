@@ -1,10 +1,11 @@
 """Candidate wx panel; host binds approved scoped search and reader services."""
 import wx
+from wx.lib.scrolledpanel import ScrolledPanel
 from .search_model import SearchModel
 from ._vendor.wx_grid.grid import AccessibleGrid
 
 
-class SearchPanel(wx.Panel):
+class SearchPanel(ScrolledPanel):
     """search(workspace, query, retrieval_mode, result_mode, limit) -> Hit iterable.
     more(workspace, ref, revision) -> verified context string (or raises).
     verified_copy(workspace, ref, revision, field) -> re-resolved exact string (or raises).
@@ -12,6 +13,7 @@ class SearchPanel(wx.Panel):
     """
     def __init__(self, parent, search, more, *, verified_copy):
         super().__init__(parent)
+        self.SetMinSize((-1, 160))
         self.search_service, self.more_service = search, more
         if not callable(verified_copy):
             raise TypeError("verified_copy service required")
@@ -36,6 +38,9 @@ class SearchPanel(wx.Panel):
         self.go = wx.Button(self, label='S&earch')
         layout.Add(self.go, 0, wx.ALL, 3)
         self.grid = AccessibleGrid(self, self.model, label='Search results')
+        # Keep a usable result target when filters exceed a short display.
+        # ScrolledPanel brings the focused native child into view.
+        self.grid.control.SetMinSize((-1, 160))
         layout.Add(self.grid.control, 1, wx.EXPAND | wx.ALL, 3)
         self.details = add('Selected result details', wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY))
         buttons = wx.BoxSizer(wx.HORIZONTAL)
@@ -54,6 +59,7 @@ class SearchPanel(wx.Panel):
         self.grid.control.Bind(dv.EVT_DATAVIEW_SELECTION_CHANGED, self.on_selection)
         self.grid.control.Bind(dv.EVT_DATAVIEW_ITEM_ACTIVATED, self.on_more)
         self.set_workspace(None)
+        self.SetupScrolling(scroll_x=False, scroll_y=True, rate_y=12)
 
     def set_workspace(self, workspace):
         self.model.set_workspace(workspace)

@@ -31,7 +31,8 @@ def load_class(filename, classname, env):
 
 @pytest.fixture
 def panel():
-    base = load_class('search_panel.py', 'SearchPanel', {'wx': SimpleNamespace(Panel=object)})
+    base = load_class('search_panel.py', 'SearchPanel',
+                      {'wx': SimpleNamespace(Panel=object), 'ScrolledPanel': object})
     show = Mock()
     cls = load_class('paged_search_panel.py', 'PagedSearchPanel',
                      {'SearchPanel': base, 'show_page_context': show})

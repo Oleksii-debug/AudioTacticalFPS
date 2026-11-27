@@ -331,6 +331,7 @@ def run_probe(wx, native_active):
             assert selected.quote == good_text
             assert panel.results[selected.ref].verified
             assert 'one page or text segment' in panel.status.GetValue()
+            assert panel.grid.control.GetSize().height >= 160, tuple(panel.grid.control.GetRect())
             # Windows' generic data view may focus its own native child.
             focused = wx.Window.FindFocus()
             inside = focused is panel.grid.control or (
@@ -394,7 +395,9 @@ def run_probe(wx, native_active):
                         'query focus returned', 'actual asynchronous advanced Enter search',
                         'unordered nearby match and excluded/distant sources rejected',
                         'workspace isolation', 'exact source quotation', 'actual clipboard copy',
-                        'controls restored and readable status focus'],
+                        'controls restored and readable status focus',
+                        'noncollapsed results on a short display',
+                        'completion preserves result focus'],
                 modules_sha256={name: sha256(Path(module.__file__).read_bytes()).hexdigest()
                     for name, module in (('desktop_app', desktop_app),
                                          ('query_builder', advanced_search), ('advanced', advanced))})

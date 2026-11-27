@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m compileall -q src
-          python scripts/ci_check.py --jobs 3 tests/ingest/test_import_metadata_shape.py tests/test_delivery_contract.py tests/ui/test_language_catalog_dialog.py
+          python scripts/ci_check.py --jobs 3 tests/ingest/test_import_metadata_shape.py tests/test_delivery_contract.py tests/ui/test_language_catalog_dialog.py tests/ui/test_desktop_handlers.py tests/ui/test_search_panel_accessibility.py tests/ui/probe_paged_search_panel.py tests/ui/probe_verified_clipboard.py tests/ui/test_desktop_query_jobs.py
   native-integration:
     runs-on: windows-2022
     timeout-minutes: 40
@@ -82,7 +82,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git rev-parse HEAD 'HEAD^{tree}'
           New-Item -ItemType Directory -Force 'ci-native-integration' | Out-Null
-      - name: Verify actual search result focus after native event settling
+      - name: Verify search layout and result focus on the actual native desktop
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5
         run: |

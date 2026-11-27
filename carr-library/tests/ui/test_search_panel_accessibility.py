@@ -16,7 +16,7 @@ def panel():
     clip = Mock()
     clip.Open.return_value = clip.SetData.return_value = clip.Flush.return_value = True
     wx = SimpleNamespace(Panel=object, TheClipboard=clip, TextDataObject=lambda value: value)
-    env = {'wx': wx, 'SearchModel': SearchModel}
+    env = {'wx': wx, 'ScrolledPanel': object, 'SearchModel': SearchModel}
     exec(compile(ast.Module(body=[cls], type_ignores=[]), str(source), 'exec'), env)
     p = object.__new__(env['SearchPanel'])
     p.model = SearchModel()

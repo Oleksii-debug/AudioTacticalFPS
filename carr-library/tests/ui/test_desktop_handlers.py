@@ -982,3 +982,22 @@ def test_display_only_callback_requires_callable_outcome_before_submission(class
                       progress_outcome=outcome, done_is_observer=True)
     value.executor.submit.assert_not_called()
     assert not value.working and not value.busy
+
+
+def test_completion_updates_status_without_overriding_result_focus(classes):
+    value = frame(classes)
+    focus = []
+    value.status = SimpleNamespace(SetValue=Mock(), SetFocus=lambda: focus.append('status'))
+    value.report = classes[0]['DesktopFrame'].report.__get__(value)
+    future = Future()
+    value.executor.submit.return_value = future
+    done = Mock(side_effect=lambda result: focus.append('result'))
+    value.run_job('Search', lambda: ('accepted',), done)
+    assert focus == ['status']
+    focus.clear()
+    future.set_result(('accepted',))
+    classes[1].pop()()
+    done.assert_called_once_with(('accepted',))
+    assert focus == ['result']
+    value.status.SetValue.assert_called_with('Search: complete.')
+    assert not value.working and not value.busy
