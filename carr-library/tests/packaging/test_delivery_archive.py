@@ -115,6 +115,53 @@ def test_real_two_archive_roundtrip_preserves_exact_manifest_and_trusted_install
     no_staging(tmp_path)
 
 
+@pytest.mark.parametrize("fields,payload", [
+    ({"bundled_audio": True}, None),
+    ({"bundled_audio_runtime": True}, None),
+    ({"bundled_audio": 0}, None),
+    ({"bundled_audio_runtime": None}, None),
+    ({}, "audio/bin/ffmpeg.exe"),
+    ({}, "audio-runtime/bin/ffplay.exe"),
+    ({"bundled_audio": False}, "AuDiO/bin/ffprobe.exe"),
+    ({"bundled_audio_runtime": False, "public_distribution_clearance": True},
+     "AUDIO-RUNTIME/provenance/source-lock.json"),
+])
+def test_transfer_rejects_unreviewed_audio_before_staging(bundle, tmp_path, monkeypatch,
+                                                           fields, payload):
+    path = bundle / delivery.MANIFEST
+    manifest = json.loads(path.read_bytes())
+    manifest.update(fields)
+    if payload:
+        file = bundle / payload
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_bytes(b"synthetic local-only runtime payload")
+        manifest["files"][payload] = sha(file.read_bytes())
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    original = path.read_bytes()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Uncleared runtime must be rejected before installer verification.")
+
+    monkeypatch.setattr(delivery, "_trusted_verify", forbidden)
+    with pytest.raises(ValueError, match="Audio runtime distribution clearance"):
+        create(bundle, tmp_path)
+    assert path.read_bytes() == original
+    if payload:
+        assert (bundle / payload).read_bytes() == b"synthetic local-only runtime payload"
+    assert not (tmp_path / "delivery").exists()
+    no_staging(tmp_path)
+
+
+def test_explicit_audio_absence_preserves_transfer(bundle, tmp_path):
+    path = bundle / delivery.MANIFEST
+    manifest = json.loads(path.read_bytes())
+    # A legacy no-audio bundle may explicitly record either absence flag.
+    for flag in ("bundled_audio", "bundled_audio_runtime"):
+        delivery._require_transferable_audio_inventory(dict(manifest, **{flag: False}))
+    report = create(bundle, tmp_path)
+    assert report["manifest_sha256"] == sha(path.read_bytes())
+
+
 def test_unlisted_private_environments_and_tests_never_enter_archives(bundle, tmp_path):
     for name in (".venv/private.txt", "tests/private.txt", "research.sqlite3", "private-notes.txt"):
         path = bundle / name

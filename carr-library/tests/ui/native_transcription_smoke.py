@@ -187,8 +187,28 @@ def run_native_transcription(frame, directory):
         def late_report():
             late_reports.append(True)
             detached_controller.report('Late progress after a destruction request.', focus=True)
-        wx.CallAfter(late_report)
-        detached.Destroy()
+        # Top-level Destroy queues native deletion for idle time. The modal
+        # loop above has exited, so run a bounded real loop instead of assuming
+        # one Yield delivers EVT_WINDOW_DESTROY.
+        # https://docs.wxpython.org/wx.Window.html#wx.Window.Destroy
+        destroyed = []
+        deletion_loop = wx.GUIEventLoop()
+        def observed_destruction(event):
+            if event.GetEventObject() is detached:
+                destroyed.append(True)
+                wx.CallAfter(deletion_loop.Exit)
+            event.Skip()
+        detached.Bind(wx.EVT_WINDOW_DESTROY, observed_destruction)
+        watchdog = wx.CallLater(5000, deletion_loop.Exit)
+        try:
+            wx.CallAfter(late_report)
+            detached.Destroy()
+            # Detach immediately, before delayed callbacks/native deletion.
+            assert detached_controller.closed and detached_controller._token is None
+            deletion_loop.Run()
+        finally:
+            watchdog.Stop()
+        assert destroyed == [True], 'The native dialog destruction event was not observed.'
         assert detached_controller.closed and detached_controller._token is None
         # Pending Python callbacks must be harmless before/after the later
         # native destruction event. Do not inspect deleted wx child controls.

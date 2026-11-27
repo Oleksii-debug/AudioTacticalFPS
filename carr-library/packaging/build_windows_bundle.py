@@ -44,6 +44,33 @@ def regular(path):
     return path
 
 
+def launcher_bytes(path, expected_sha256):
+    """Capture the explicitly selected unsigned launcher without executing it."""
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise ValueError("native launcher requires its expected lowercase SHA256")
+    path = regular(Path(path))
+    with path.open("rb") as stream:
+        raw = stream.read(2 * 1024 * 1024 + 1)
+    if len(raw) > 2 * 1024 * 1024:
+        raise ValueError("native launcher exceeds its size budget")
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("native launcher checksum mismatch")
+    return raw
+
+
+def inspect_launcher(path):
+    # Parse the copied bytes with the existing trusted PE probe. Never load or
+    # execute the supplied executable during bundle assembly.
+    spec = importlib.util.spec_from_file_location(
+        "carr_bundle_launcher_pe", HERE / "native-launcher" / "probe_pe.py")
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    try:
+        return probe.inspect_pe(path)
+    except (ValueError, probe.struct.error, IndexError, UnicodeDecodeError) as exc:
+        raise ValueError("invalid unsigned native launcher PE: " + str(exc)) from exc
+
+
 def read_lock(path):
     """Accept named exact pins and SHA256 only, without executable pip options."""
     text = regular(path).read_text(encoding="utf-8")
@@ -125,12 +152,16 @@ def verify_dependency_closure(selected):
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None):
+                 ocr_source_archive=None, native_launcher=None, native_launcher_sha256=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
+    if (native_launcher is None) != (native_launcher_sha256 is None):
+        raise ValueError("supply both native launcher and its expected SHA256")
+    native_bytes = (launcher_bytes(native_launcher, native_launcher_sha256)
+                    if native_launcher is not None else None)
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
     pins = read_lock(lock)
@@ -230,6 +261,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
         staged = Path(scratch)
+        if native_bytes is not None:
+            launcher = staged / "ResearchLibrary.exe"
+            launcher.write_bytes(native_bytes)
+            if inspect_launcher(launcher)["sha256"] != native_launcher_sha256:
+                raise ValueError("native launcher changed during bundle assembly")
         staged_wheels = staged / "wheelhouse"
         staged_wheels.mkdir()
         install = []
@@ -298,6 +334,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
+        if native_bytes is not None and files["ResearchLibrary.exe"] != native_launcher_sha256:
+            raise ValueError("native launcher changed before bundle sealing")
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
@@ -331,10 +369,15 @@ def main():
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
+    parser.add_argument("--native-launcher", type=Path,
+                        help="Optional explicitly built unsigned ResearchLibrary.exe")
+    parser.add_argument("--native-launcher-sha256",
+                        help="Expected SHA256 from this launcher's build and native process evidence")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
-                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive)))
+                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
+                                  args.native_launcher, args.native_launcher_sha256)))
 
 
 if __name__ == "__main__":
