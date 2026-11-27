@@ -140,7 +140,7 @@ def test_modified_wav_rejected_after_reopen(tmp_path, change):
 
 
 @pytest.mark.parametrize('change', ['authority', 'notice', 'geometry', 'voice', 'settings',
-                                   'ordinal', 'printed-label', 'extra-field'])
+                                   'ordinal', 'printed-label', 'exact-gap', 'exact-separator', 'extra-field'])
 def test_resealed_invalid_metadata_remains_inert_and_is_rejected(tmp_path, change):
     path = tmp_path / 'audio.wav'
     pcm = plain_wave(path)
@@ -159,6 +159,16 @@ def test_resealed_invalid_metadata_remains_inert_and_is_rejected(tmp_path, chang
         record['narration']['source_anchor']['positions'][1]['ordinal'] = 1
     elif change == 'printed-label':
         record['narration']['source_anchor']['positions'][0]['printed'] = 'xvii'
+    elif change == 'exact-gap':
+        narration = record['narration']
+        narration['source_span'] = {'start': 0, 'end': narration['reading_characters'],
+                                    'exact': True}
+    elif change == 'exact-separator':
+        narration = record['narration']
+        gap = narration['source_anchor']['positions'][0]['end']
+        narration['selection'] = {'start': 0, 'end': 2,
+                                  'text_sha256': hash_bytes(Snapshot.text[:2])}
+        narration['source_span'] = {'start': gap, 'end': gap + 2, 'exact': True}
     else:
         record['extra'] = 'unexpected'
     metadata = encode({'record': record, 'sha256': hash_bytes(encode(record))})
@@ -272,3 +282,33 @@ def test_description_bounds_long_logical_snapshot_without_inventing_range(tmp_pa
     assert 'PDF pages' not in description
     assert 'Physical pages' not in description
     assert 'indices 1 to 39' not in description
+
+
+@pytest.mark.parametrize('position', [0, 1])
+def test_exact_span_inside_retained_position_remains_valid(position):
+    from carr_library.speech.reading import ReadingDocument
+    snapshot = Snapshot()
+    document = ReadingDocument(snapshot.source_text, source_anchor=snapshot.source_anchor)
+    row = snapshot.source_anchor['positions'][position]
+    record = receipt.capture_narration(document, row['start'], row['end'])
+    assert record['source_span'] == {'start': row['start'], 'end': row['end'], 'exact': True}
+    assert receipt.validate_narration(record) == record
+
+
+def test_actual_cross_position_selection_remains_approximate():
+    from carr_library.speech.reading import ReadingDocument
+    snapshot = Snapshot()
+    document = ReadingDocument(snapshot.source_text, source_anchor=snapshot.source_anchor)
+    gap = snapshot.source_anchor['positions'][0]['end']
+    record = receipt.capture_narration(document, gap - 1, gap + 3)
+    assert record['source_span'] == {'start': gap - 1, 'end': gap + 3, 'exact': False}
+    assert receipt.validate_narration(record) == record
+
+
+def test_exact_standalone_selection_remains_valid():
+    from carr_library.speech.reading import ReadingDocument
+    document = ReadingDocument('Žltý e\\u0301 🚂')
+    record = receipt.capture_narration(document, 0, len(document.text))
+    assert record['source_anchor'] is None
+    assert record['source_span']['exact'] is True
+    assert receipt.validate_narration(record) == record
