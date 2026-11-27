@@ -1,0 +1,43 @@
+{
+  "status": "PACKAGE_METADATA_VERIFIED_RUNTIME_NOT_RUN",
+  "platform": "Windows x86-64",
+  "audiocraft_revision": "896ec7c47f5e5d1e5aa1e4b260c4405328bf009d",
+  "artifacts": [
+    {
+      "name": "Miniforge3-26.9.4-2-Windows-x86_64.exe",
+      "metadata_source": "https://api.github.com/repos/conda-forge/miniforge/releases/tags/26.9.4-2",
+      "download_url": "https://github.com/conda-forge/miniforge/releases/download/26.9.4-2/Miniforge3-26.9.4-2-Windows-x86_64.exe",
+      "bytes": 158341784,
+      "sha256": "9d83983669bc5d3b5dd4c631454bf953c3caf4ac78b9c9ada9971e5b021d83c3"
+    },
+    {
+      "name": "av-11.0.0-py311ha83308b_0.conda",
+      "metadata_source": "https://api.anaconda.org/release/conda-forge/av/11.0.0",
+      "download_url": "https://conda.anaconda.org/conda-forge/win-64/av-11.0.0-py311ha83308b_0.conda",
+      "bytes": 789730,
+      "sha256": "0535da653551e31631684b1cf4d5be8a9816043852fd7f55c5b85eec9f056b5f",
+      "dependencies": [
+        "ffmpeg >=6.0.0,<7.0a0",
+        "numpy >=1.23.5,<2.0a0",
+        "pillow",
+        "python >=3.11,<3.12.0a0",
+        "python_abi 3.11.* *_cp311",
+        "ucrt >=10.0.20348.0",
+        "vc >=14.2,<15",
+        "vc14_runtime >=14.29.30139"
+      ]
+    },
+    {
+      "name": "python-3.11.14-h0159041_3_cpython.conda",
+      "metadata_source": "https://api.anaconda.org/release/conda-forge/python/3.11.14",
+      "download_url": "https://conda.anaconda.org/conda-forge/win-64/python-3.11.14-h0159041_3_cpython.conda",
+      "bytes": 18353938,
+      "sha256": "5676dadd9d4fba1bce51bd7e5cf8fcf76f85b88b7baa15bd10ca00557e67f10e"
+    }
+  ],
+  "runtime_constraints": "Literal pinned constraints from the existing scripts/musicgen_qualification.py; CPU Torch 2.1.0, Torchaudio 2.1.0, Torchvision 0.16.0, Xformers 0.0.22.post7; full Conda base SHA256 lock and installed Python package versions will be captured by the actual preflight.",
+  "qualification_scope": "Original worker guarded imports, native library origins, PyAV FFmpeg 6 ABI, tiny real Torch SDPA, complete runtime inventory and before/after OS firewall probe.",
+  "model_weights": "NOT_DOWNLOADED",
+  "actual_musicgen_inference": "NOT_RUN",
+  "asset_uploads": "NONE"
+}

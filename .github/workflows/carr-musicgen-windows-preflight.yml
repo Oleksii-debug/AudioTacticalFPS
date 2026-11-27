@@ -1,0 +1,79 @@
+# This isolated, reviewed branch installs public runtime packages only.
+# No checkpoints, private voices, generated audio, caches or artifacts upload.
+name: CARR optional MusicGen Windows runtime preflight
+on:
+  push:
+    branches: [carr/musicgen-windows-preflight-20261126-137c]
+    paths:
+      - carr-library/scripts/musicgen_windows_preflight.py
+      - .github/workflows/carr-musicgen-windows-preflight.yml
+  workflow_dispatch:
+    inputs:
+      accept_runtime_install:
+        description: Install the reviewed disposable public Windows runtime; no model weights
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: carr-musicgen-windows-preflight-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-runtime:
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/carr/musicgen-windows-preflight-20261126-137c') || inputs.accept_runtime_install == true }}
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Record exact source and compile the reviewed helper
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD) -ne $env:GITHUB_SHA) { throw 'Source identity mismatch' }
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -c "import ast,pathlib; ast.parse(pathlib.Path('carr-library/scripts/musicgen_windows_preflight.py').read_text(encoding='utf-8'))"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install exact public Conda and CPU AudioCraft runtime without models
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B carr-library/scripts/musicgen_windows_preflight.py prepare `
+            --source-root "$env:GITHUB_WORKSPACE/carr-library" --root "$env:RUNNER_TEMP/carr-musicgen-win-install"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Enforce outbound firewall and test the original guarded worker imports
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtimePython = "$env:RUNNER_TEMP/carr-musicgen-win-install/runtime/python.exe"
+          $rule = "CARR-MusicGen-Preflight-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) {
+            throw 'Every Windows firewall profile must be enabled for this qualification'
+          }
+          New-NetFirewallRule -Name $rule -DisplayName $rule -Direction Outbound -Action Block `
+            -Program $runtimePython -Profile Any -Enabled True | Out-Null
+          $active = Get-NetFirewallRule -PolicyStore ActiveStore -Name $rule
+          if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block' -or $active.Direction -ne 'Outbound') {
+            throw 'The interpreter outbound block is not active'
+          }
+          python -B carr-library/scripts/musicgen_windows_preflight.py audit `
+            --source-root "$env:GITHUB_WORKSPACE/carr-library" --root "$env:RUNNER_TEMP/carr-musicgen-win-install"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Remove only this ephemeral qualification firewall rule
+        if: always()
+        shell: pwsh
+        run: |
+          $rule = "CARR-MusicGen-Preflight-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          Remove-NetFirewallRule -Name $rule -ErrorAction SilentlyContinue
+      # No model acquisition, inference, upload-artifact or cache-save stage.
