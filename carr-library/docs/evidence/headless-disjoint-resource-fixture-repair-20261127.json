@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FIXTURE_REPAIR_NOT_RUN",
+  "source_commit": "9e27ef8649408038b5fc116e6f9bdded71d6371b",
+  "observation": {
+    "commit": "7641c0fb23497778e4887c298a5d64f5d5d75a9f",
+    "run_id": 46028019656,
+    "job_id": 140604327829,
+    "source": {
+      "passed": 258,
+      "failed": 1
+    },
+    "installed": {
+      "passed": 258,
+      "failed": 1
+    },
+    "provider_native_checks": 22,
+    "artifact": {
+      "id": 15214661834,
+      "bytes": 422732,
+      "sha256": "7e8a2ee9dfe155ca2a55205df67a4ffd6ded54a12246ea06b979f409e548cfd3"
+    },
+    "independent_zip_read": false,
+    "evidence": "Actual completed job log read. Both failure traces show ResourceTimeout before the injected renderer; production requested CPU slots 3 and memory bytes 4294967296, while the passive test owner retained memory byte 1."
+  },
+  "prior_fixture_repair": "c8982dd46ad965fbadb650af0de5c721b22cf373",
+  "correction": {
+    "test": "tests.e2e.test_audio_cli_resources.test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another",
+    "previous_request": {
+      "cpu_slots": 0,
+      "memory_bytes": 1
+    },
+    "new_request": {
+      "cpu_slots": 0,
+      "memory_bytes": 0,
+      "devices": [
+        "fixture:passive-owner"
+      ]
+    },
+    "rationale": "production_request intentionally reserves all declared CPU and RAM, independent of their configured total. A valid exclusive-device lease disjoint from this pause-only plan retains another real broker owner without competing for that whole pool. Increasing declared RAM would not repair the overlap because the renderer requests the new whole limit.",
+    "preserved": [
+      "Actual shared ResourceBroker.for_app and selected-library policy; no broker or admission monkeypatch.",
+      "The injected renderer must observe both live leases before raising its deliberate settled exception.",
+      "The renderer's failed operation releases only its own admission; passive-owner remains live until its enclosing reserve exits.",
+      "All nine CLI test cases and prior lock/source/selected runtime assertions; no product code, resource capacity, timeout, selector, or oracle changes."
+    ]
+  },
+  "reviewed_source": {
+    "fixture_before": "be59f950b28152e026f64e434bb2545bfd7c2214",
+    "resource_models": "2cbf7ebddfa4492ca2b0774a1cf9e6be42f915af",
+    "resource_broker": "7a472bcc07a8f0de289e0f278fd9f7747728a3da",
+    "admission": "873fd6cf4bb8c455a890b1723c3fb63b34049cdd"
+  },
+  "validation": {
+    "source_review": "Exact existing device request validation and admission summation read; no overlap with the pause-only production request.",
+    "local_execution": "UNAVAILABLE",
+    "post_repair_windows": "NOT_RUN"
+  }
+}

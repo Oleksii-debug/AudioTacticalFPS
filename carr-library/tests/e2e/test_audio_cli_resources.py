@@ -141,7 +141,11 @@ def test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releas
         assert not settings['cancelled']()
         raise RuntimeError('Owned synthetic renderer is fully settled.')
     monkeypatch.setattr(production, '_render_locked', failed)
-    with broker.reserve(ResourceRequest(cpu_slots=0, memory_bytes=1), operation_id='passive-owner'):
+    # Production deliberately reserves the whole declared CPU/RAM pool. Keep
+    # another meaningful lease on a disjoint exclusive device, so this case
+    # reaches the failing renderer without weakening admission or its policy.
+    other = ResourceRequest(cpu_slots=0, devices=('fixture:passive-owner',))
+    with broker.reserve(other, operation_id='passive-owner'):
         with redirect_stderr(io.StringIO()), pytest.raises(RuntimeError, match='fully settled'):
             run_audio(args)
         assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['passive-owner']
