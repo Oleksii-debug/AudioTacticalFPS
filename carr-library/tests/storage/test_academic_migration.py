@@ -371,12 +371,90 @@ def test_process_exit_during_import_receipt_migration_preserves_exact_old_data(
         assert current.db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
 
 
+@pytest.mark.parametrize('mode', ('DELETE', 'WAL'))
+@pytest.mark.parametrize(('old_version', 'phase'), (
+    (3, 'v4-ddl'), (3, 'v4-version'),
+    (3, 'v5-ddl'), (3, 'v5-version'),
+    (4, 'v5-ddl'), (4, 'v5-version'),
+))
+def test_process_exit_inside_migration_statement_restores_original_schema(
+        tmp_path, old_version, phase, mode):
+    """Kill the writer after individual statements, not only at final commit."""
+    path = v3_library(tmp_path / 'data')
+    with closing(Storage(path, schema_version=old_version)) as old:
+        assert old.db.execute('PRAGMA journal_mode=' + mode).fetchone()[0] == mode.lower()
+        before = source_rows(old.db)
+        if old_version == 4:
+            with old.transaction():
+                AcademicLibrary(old.db, 'a').create(title='Existing reading record',
+                    notes='Preserve the independent note.')
+            academic = tuple(tuple(row) for row in old.db.execute('SELECT * FROM academic_reference'))
+        else:
+            academic = ()
+    source_root = str(Path(revisions.__file__).resolve().parents[2])
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join((source_root, str(Path(source_root).parent))))
+    result = subprocess.run([sys.executable, str(Path(__file__).resolve()), str(path),
+                             '0', '5', phase],
+                            env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 74, (result.returncode, result.stdout, result.stderr)
+
+    with closing(Storage(path, schema_version=old_version)) as recovered:
+        recovered.check()
+        assert recovered.schema_version == old_version
+        assert _schema_signature(recovered.db) == _expected_signature(old_version)
+        assert source_rows(recovered.db) == before
+        assert recovered.get_page('a', 'old', 1)['raw'] == RAW
+        assert recovered.get_page('b', 'old', 1) is None
+        assert recovered.db.execute(
+            "SELECT revision FROM active_page WHERE workspace='a'").fetchone()[0] == 'current'
+        assert recovered.db.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='import_publication'").fetchone() is None
+        if old_version == 4:
+            assert tuple(tuple(row) for row in recovered.db.execute(
+                'SELECT * FROM academic_reference')) == academic
+        else:
+            assert recovered.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='academic_reference'").fetchone() is None
+
+    target = tmp_path / 'snapshot.sqlite'
+    with closing(Storage(path, schema_version=5)) as upgraded:
+        upgraded.check()
+        assert source_rows(upgraded.db) == before
+        assert tuple(tuple(row) for row in upgraded.db.execute(
+            'SELECT * FROM academic_reference')) == academic
+        assert upgraded.db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+        upgraded.backup(target)
+    assert target.read_bytes()[18:20] == b"\x01\x01"
+    assert not any(Path(str(target) + suffix).exists() for suffix in ('-wal', '-shm', '-journal'))
+    with closing(Storage(target, schema_version=5)) as restored:
+        restored.check()
+        assert _schema_signature(restored.db) == _expected_signature(5)
+        assert source_rows(restored.db) == before
+        assert tuple(tuple(row) for row in restored.db.execute(
+            'SELECT * FROM academic_reference')) == academic
+        assert restored.db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+
+
 if __name__ == "__main__":
     path, committed, *target = sys.argv[1:]
     target_version = int(target[0]) if target else 4
+    phase = target[1] if len(target) > 1 else None
     connect = sqlite3.connect
 
     class CrashConnection(sqlite3.Connection):
+        def execute(self, statement, *args, **kwargs):
+            result = super().execute(statement, *args, **kwargs)
+            sql = statement.strip().casefold()
+            hit = (
+                (phase == 'v4-ddl' and sql.startswith('create table academic_reference('))
+                or (phase == 'v4-version' and sql == 'pragma user_version=4')
+                or (phase == 'v5-ddl' and sql.startswith('create table import_publication('))
+                or (phase == 'v5-version' and sql == 'pragma user_version=5')
+            )
+            if hit and self.in_transaction:
+                os._exit(74)
+            return result
+
         def commit(self):
             if self.in_transaction and self.execute("PRAGMA user_version").fetchone()[0] == target_version:
                 # Both DDL and version must already be visible in the transaction.

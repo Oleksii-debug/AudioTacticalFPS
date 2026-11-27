@@ -144,11 +144,11 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
                 pending = None
-                if any(os.path.lexists(app.root / name) for name in
-                       ('imports.sqlite', 'import-requests', 'import-batches')):
+                roots = pending_backup.pending_roots(app.root)
+                if roots:
                     pending = pending_backup.snapshot_pending(app, stage / 'pending',
                         max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
-                        cancelled=cancelled)
+                        cancelled=cancelled, expected_roots=roots)
                     total += sum(entry['size_bytes'] for entry in pending['files'])
                 state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_studio.MAX_MEDIA_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
                     if include_generated else 0)) if max_bytes is None else max_bytes - total
@@ -160,7 +160,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
             if pending is not None:
                 manifest['pending'] = pending
-            backup_sidecars.normalize_manifest(manifest)
+            backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -190,12 +190,14 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
     return sha256(raw).hexdigest()
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    if not {DATABASE, ORIGINALS, MANIFEST} <= {path.name for path in directory.iterdir()}:
-        raise RestoreError('incomplete backup or unexpected files')
+    for name in (DATABASE, ORIGINALS, MANIFEST):
+        backup_sidecars._check_cancelled(cancelled)
+        if not backup_sidecars._optional_present(directory / name):
+            raise RestoreError('incomplete backup or unexpected files')
     size = _plain(directory / MANIFEST).st_size
     if not 0 < size <= MAX_MANIFEST:
         raise RestoreError('manifest size limit')
@@ -210,8 +212,8 @@ def _read_manifest(directory, expected_manifest_sha256):
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
             or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
-    inventory = backup_sidecars.normalize_manifest(manifest)
-    backup_sidecars.check_namespace(directory, inventory)
+    inventory = backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
+    backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)
     if (manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
@@ -230,6 +232,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         raise RestoreError('invalid database manifest')
     filenames, digests, total = set(), set(), 0
     for asset in manifest['assets']:
+        backup_sidecars._check_cancelled(cancelled)
         if (type(asset) is not dict or set(asset) != {'filename','sha256','mime','size_bytes'}
                 or not isinstance(asset['sha256'], str)
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
@@ -244,6 +247,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    backup_sidecars._check_cancelled(cancelled)
     return manifest
 
 
@@ -278,7 +282,7 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
 
 def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=None, cancelled=lambda: False):
     """Authenticate the common backup format using only a private database copy."""
-    inventory = backup_sidecars.normalize_manifest(manifest)
+    inventory = backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
     _plain(source / ORIGINALS, directory=True)
     snapshot = stage / DATABASE
     _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
@@ -317,7 +321,8 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
     with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
         _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
     return manifest
@@ -335,7 +340,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE

@@ -442,3 +442,126 @@ def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_pa
     with pytest.raises(ValueError, match='changed during backup'):
         snapshot_state(root, target, cancelled=mutate_after_copy)
     assert changed and (target / 'a.json').read_bytes() == b'old'
+
+@pytest.mark.parametrize('nested', (False, True))
+def test_namespace_rejects_first_unlisted_entry_without_materializing(tmp_path, monkeypatch, nested):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+    from carr_library.ingest.restore import RestoreError
+
+    root = tmp_path / 'backup'
+    root.mkdir()
+    (root / 'originals').mkdir()
+    (root / 'library.sqlite').touch()
+    (root / 'manifest.json').touch()
+    (root / 'state').mkdir()
+    inventory = SimpleNamespace(entries=(), empty_roots={'state'}, pending=None)
+    target = root / 'state' if nested else root
+    scandir = os.scandir
+
+    @contextmanager
+    def observed(path):
+        if Path(path) != target:
+            with scandir(path) as entries:
+                yield entries
+            return
+
+        def entries():
+            yield SimpleNamespace(name='unlisted')
+            raise AssertionError('namespace must reject before consuming another entry')
+
+        yield entries()
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(RestoreError, match='unexpected files.*unlisted'):
+        backup_sidecars.check_namespace(root, inventory)
+
+
+@pytest.mark.parametrize('restore', (False, True))
+def test_namespace_cancellation_prevents_verification_or_restore(tmp_path, monkeypatch, restore):
+    from contextlib import contextmanager
+    from carr_library.library_backup import verify_backup
+
+    app = LibraryApp(tmp_path / 'source')
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    # create_backup returns the independently retained manifest SHA256.
+    destination = tmp_path / 'restored'
+    scandir = os.scandir
+    scanning = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal scanning
+        with scandir(path) as entries:
+            if Path(path) == backup:
+                scanning = True
+            yield entries
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if restore:
+            restore_backup(backup, destination, digest, cancelled=lambda: scanning)
+        else:
+            verify_backup(backup, digest, cancelled=lambda: scanning)
+    assert scanning
+    assert not destination.exists()
+
+
+
+def test_namespace_cancel_on_final_scan_exit(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+
+    (tmp_path / 'originals').mkdir()
+    (tmp_path / 'library.sqlite').touch()
+    (tmp_path / 'manifest.json').touch()
+    inventory = SimpleNamespace(entries=(), empty_roots=set(), pending=None)
+    scandir = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with scandir(path) as entries:
+            yield entries
+        cancelled = True
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.check_namespace(tmp_path, inventory,
+                                        cancelled=lambda: cancelled)
+
+
+@pytest.mark.parametrize('restore', (False, True))
+def test_manifest_completion_cancellation_prevents_staging(tmp_path, monkeypatch, restore):
+    from carr_library import library_backup
+
+    app = LibraryApp(tmp_path / 'source')
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    destination = tmp_path / 'restored'
+    read_manifest = library_backup._read_manifest
+    cancelled = False
+
+    def observed(*args, **kwargs):
+        nonlocal cancelled
+        manifest = read_manifest(*args, **kwargs)
+        cancelled = True
+        return manifest
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('cancelled verification must not allocate a staging directory')
+
+    monkeypatch.setattr(library_backup, '_read_manifest', observed)
+    monkeypatch.setattr(library_backup, 'TemporaryDirectory', forbidden)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if restore:
+            library_backup.restore_backup(backup, destination, digest,
+                                          cancelled=lambda: cancelled)
+        else:
+            library_backup.verify_backup(backup, digest, cancelled=lambda: cancelled)
+    assert cancelled
+    assert not destination.exists()

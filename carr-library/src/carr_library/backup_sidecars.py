@@ -402,8 +402,9 @@ def _collection_budgets(entries):
             raise RestoreError('narration producer snapshot budget exceeded')
 
 
-def normalize_manifest(manifest):
+def normalize_manifest(manifest, *, cancelled=lambda: False):
     """Discriminate exact v3 shapes without changing the signed source manifest."""
+    _check_cancelled(cancelled)
     version = manifest.get('version')
     fields = {'version', 'kind', 'schema_version', 'database', 'assets'}
     if type(version) is not int or version not in (1, 2, 3, 4, 5):
@@ -431,9 +432,10 @@ def normalize_manifest(manifest):
             raise RestoreError('invalid legacy state manifest')
         entries = []
         for value in manifest['state']:
+            _check_cancelled(cancelled)
             if type(value) is not dict or not isinstance(value.get('filename'), str):
                 raise RestoreError('invalid legacy state entry')
-            portable_name(value['filename'])
+            portable_name('state/' + value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
         if version >= 4:
@@ -460,6 +462,7 @@ def normalize_manifest(manifest):
         raise RestoreError('invalid sidecar manifest')
     names, portable_paths, total, generated_total, retained_total, copied = set(), {}, 0, 0, 0, []
     for entry in entries:
+        _check_cancelled(cancelled)
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
                 or type(entry['filename']) is not str or type(entry['size_bytes']) is not int
                 or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
@@ -490,11 +493,15 @@ def normalize_manifest(manifest):
                 or retained_total > backup_studio.MAX_MEDIA_BYTES):
             raise RestoreError('sidecar manifest byte limit')
         copied.append(dict(entry))
+    _check_cancelled(cancelled)
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
+    _check_cancelled(cancelled)
     if pending is not None:
         from .pending_backup import validate_pending
-        validate_pending(pending)
-    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
+        validate_pending(pending, cancelled=cancelled)
+    result = Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
+    _check_cancelled(cancelled)
+    return result
 
 
 def _identity(info):
@@ -712,31 +719,48 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
     return entries
 
 
-def check_namespace(directory, inventory):
+def check_namespace(directory, inventory, *, cancelled=lambda: False):
+    """Check the declared namespace without allocating an untrusted listing."""
     names = {entry['filename'] for entry in inventory.entries}
     expected_dirs = set(inventory.empty_roots)
     if inventory.pending is not None:
         names.update('pending/' + entry['filename'] for entry in inventory.pending['files'])
         expected_dirs.add('pending')
     for name in names:
+        _check_cancelled(cancelled)
         expected_dirs.update(str(p) for p in PurePosixPath(name).parents if str(p) != '.')
-    roots = {name.split('/')[0] for name in names} | set(inventory.empty_roots)
-    if inventory.pending is not None:
-        roots.add('pending')
-    actual_roots = {path.name for path in directory.iterdir()}
-    expected_roots = {'library.sqlite', 'originals', 'manifest.json'} | roots
-    if actual_roots != expected_roots:
-        changed = ', '.join(sorted(actual_roots ^ expected_roots)[:10])
-        raise RestoreError('incomplete backup or unexpected files: ' + changed)
-    for name in expected_dirs:
+
+    # Index each declared child once; do not rescan the entire manifest for
+    # every directory. All stored names originate in the validated manifest.
+    children = {'.': {'library.sqlite', 'originals', 'manifest.json'}}
+    for name in names | expected_dirs:
+        _check_cancelled(cancelled)
+        path = PurePosixPath(name)
+        children.setdefault(str(path.parent), set()).add(path.name)
+
+    def scan(path, expected, message):
+        _check_cancelled(cancelled)
+        missing = set(expected)
+        with os.scandir(path) as entries:
+            for entry in entries:
+                _check_cancelled(cancelled)
+                if entry.name not in missing:
+                    raise RestoreError(message + ': ' + entry.name)
+                missing.remove(entry.name)
+        _check_cancelled(cancelled)
+        if missing:
+            raise RestoreError(message + ': ' + ', '.join(sorted(missing)[:10]))
+
+    scan(directory, children['.'], 'incomplete backup or unexpected files')
+    for name in sorted(expected_dirs):
+        _check_cancelled(cancelled)
         _plain(directory / name, directory=True)
-        actual = {path.relative_to(directory).as_posix() for path in (directory / name).iterdir()}
-        expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}
-        if actual != expected:
-            changed = ', '.join(sorted(actual ^ expected)[:10])
-            raise RestoreError('incomplete sidecar backup or unexpected files: ' + changed)
+        scan(directory / name, children.get(name, ()),
+             'incomplete sidecar backup or unexpected files')
     for name in names:
+        _check_cancelled(cancelled)
         _regular(directory / name)
+    _check_cancelled(cancelled)
 
 
 def restore(db, source, stage, inventory, *, cancelled=lambda: False):
