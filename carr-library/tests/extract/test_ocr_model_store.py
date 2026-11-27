@@ -278,14 +278,30 @@ def test_linked_paths_do_not_escape_selected_roots(synthetic, tmp_path, kind):
     assert not s.manifest.exists()
 
 
-def test_source_changed_while_streaming_is_not_activated(synthetic):
-    s = synthetic
+def _large_streaming_model(s, monkeypatch):
+    # Keep unread bytes after the first 1 MiB progress notification. The old
+    # 408-byte fixture mutated only after the complete pinned snapshot was read.
+    payload = s.payloads['eng'] * ((2 * 1024 * 1024 // len(s.payloads['eng'])) + 1)
+    s.payloads['eng'] = payload
     source = s.source / 'eng.traineddata'
+    source.write_bytes(payload)
+    original_models = store_module.models
+    expected_blob = _git_blob(payload)
+    monkeypatch.setattr(store_module, 'models', lambda profile: tuple(
+        replace(row, size=len(payload), blob_sha1=expected_blob) if row.identifier == 'eng' else row
+        for row in original_models(profile)))
+    return source
+
+
+def test_source_changed_while_streaming_is_not_activated(synthetic, monkeypatch):
+    s = synthetic
+    source = _large_streaming_model(s, monkeypatch)
     replaced = False
 
-    def progress(*args):
+    def progress(identifier, completed, total):
         nonlocal replaced
         if not replaced:
+            assert identifier == 'eng' and 0 < completed < total
             replaced = True
             if os.name == 'nt':
                 # Windows can disallow renaming an open source handle. A
@@ -297,7 +313,7 @@ def test_source_changed_while_streaming_is_not_activated(synthetic):
                 source.rename(source.with_suffix('.original'))
                 source.write_bytes(s.payloads['eng'])
 
-    with pytest.raises(store_module.ModelStoreError, match='changed'):
+    with pytest.raises(store_module.ModelStoreError, match='changed|pinned official bytes'):
         s.store.install('fast', s.source, ('eng',), progress=progress)
     assert s.store.available('fast') == ()
     assert not (s.profile / 'tessdata/eng.traineddata').exists()
@@ -342,6 +358,31 @@ def test_same_size_source_change_with_unchanged_stamps_is_not_activated(syntheti
     assert report.bytes == len(s.payloads['eng'])
     assert s.store.select('fast', 'eng').languages == ('eng',)
     assert s.store.available('fast') == (('eng', 'ukr') if prior else ('eng',))
+
+
+def test_streamed_model_hash_rejects_unread_mutation_with_unchanged_metadata(synthetic, monkeypatch):
+    s = synthetic
+    source = _large_streaming_model(s, monkeypatch)
+    # Windows metadata can be cached/coarse while another handle is open.
+    # Keep real device/inode/size checks and require the pinned hash to reject.
+    monkeypatch.setattr(store_module, '_stamp',
+                        lambda info: (info.st_dev, info.st_ino, info.st_size, 0, 0))
+    changed = False
+
+    def progress(identifier, completed, total):
+        nonlocal changed
+        if not changed:
+            assert identifier == 'eng' and 0 < completed < total
+            changed = True
+            raw = bytearray(s.payloads['eng'])
+            raw[-1] ^= 1
+            source.write_bytes(raw)
+
+    with pytest.raises(store_module.ModelStoreError, match='pinned official bytes'):
+        s.store.install('fast', s.source, ('eng',), progress=progress)
+    assert changed and source.read_bytes() != s.payloads['eng']
+    assert s.store.available('fast') == ()
+    assert not (s.profile / 'tessdata/eng.traineddata').exists()
 
 
 @pytest.mark.parametrize('kind', ['model', 'license', 'manifest'])
