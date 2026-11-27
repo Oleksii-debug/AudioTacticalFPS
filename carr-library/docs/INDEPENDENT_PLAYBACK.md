@@ -61,8 +61,10 @@ supports unsigned 8-bit and signed 16-, 24- and 32-bit PCM, without amplificatio
 above the original sample range.
 
 While playing, buffers already submitted to the driver remain untouched. The
-current queue holds at most **200 ms** of audio with its previous levels;
-device latency may add to the time before the change is heard. Paused changes
+queue holds at most four blocks of **max(1, floor(sample rate / 20)) frames**.
+At sample rates of 20 Hz or higher that is at most **200 ms** with its previous
+levels. Lower rates retain up to four sample frames. Device latency may add to
+the time before the change is heard. Paused changes
 release and rebuild the queued buffers at the observed frame while retaining
 the pause. Applying controls to a stopped player remains silent.
 

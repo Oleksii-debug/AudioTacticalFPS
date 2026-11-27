@@ -473,3 +473,24 @@ def test_two_owned_players_have_separate_pcm_levels_and_no_native_volume_state(p
     finally:
         first.close()
         second.close()
+
+
+@pytest.mark.parametrize('rate,block_frames', [(1, 1), (7, 1), (19, 1), (20, 1), (44101, 2205)])
+def test_actual_wav_queue_uses_exact_sample_grid_even_at_low_rates(pcm, driver, rate, block_frames):
+    with wave.open(str(pcm), 'wb') as stream:
+        stream.setparams((1, 2, rate, 0, 'NONE', 'uncompressed'))
+        stream.writeframes(b'\x01\x00' * (block_frames * 6))
+    original = sha256(pcm.read_bytes()).hexdigest()
+    output = native.WaveOutput()
+    try:
+        output.open(pcm, paused=True)
+        assert len(output.pending) == 4 and output.block_frames == block_frames
+        assert [token.header.length for token in output.pending] == [block_frames * 2] * 4
+        assert output.next_frame == block_frames * 4
+        if rate >= 20:
+            assert output.next_frame / rate <= .2
+        else:
+            assert output.next_frame == 4
+    finally:
+        output.close()
+    assert sha256(pcm.read_bytes()).hexdigest() == original

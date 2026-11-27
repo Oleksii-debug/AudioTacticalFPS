@@ -115,7 +115,7 @@ def _library():
 
 
 class WaveOutput:
-    """At most four 50 ms PCM buffers; exact native ownership until Close ACK."""
+    """At most four sample-grid PCM blocks; native ownership until Close ACK."""
     def __init__(self):
         self.library, self.handle = None, HANDLE()
         self.pending = deque()
@@ -241,7 +241,8 @@ class WaveOutput:
                 raise
         else:
             # Playing buffers already belong to the driver and stay immutable.
-            # New levels reach later buffers within the existing 4 x 50 ms queue.
+            # New levels reach later buffers within the existing four blocks:
+            # max(1, floor(rate / 20)) frames each, normally at most 200 ms.
             self.levels = levels
 
     def _release_done(self):

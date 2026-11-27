@@ -64,8 +64,8 @@ def create_playback_settings_dialog(parent, *, settings, levels, prepare, apply_
             layout.Add(self.muted, 0, wx.ALL, 4)
             button('levels', 'Apply player volume, mute and balance', self.levels)
             layout.Add(wx.StaticText(body, label=(
-                'Changes only this player’s PCM buffers. Up to 200 ms of already queued audio '
-                'keeps its previous levels, plus device latency. Balance requires stereo.'
+                'Changes only this player’s PCM buffers. Already queued audio briefly keeps '
+                'its previous levels. Balance requires stereo.'
                 if mix_available else 'Live volume, mute and balance are unavailable on this backend.')),
                 0, wx.EXPAND | wx.ALL, 4)
             if play is not None:
