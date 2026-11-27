@@ -152,8 +152,9 @@ notes; attached files and URLs are never opened by bibliography import.
 The existing **Format bibliography and citations** command then formats the
 selected library's references through this same CSL processor.
 
-Desktop bibliography, outline, topic, catalog, comparison, reading-state and
-import-report exports capture their selected destination before rendering or
+Desktop bibliography, outline, topic, catalog, comparison, reading-state,
+import-report, provider-profile and studio-project exports capture their
+selected destination before serialization, rendering or
 queue submission. An existing file receives an explicit replacement question
 with **No** as the default. If another operation changes that file while the
 question is open or the document is rendering, saving stops and keeps the newer
