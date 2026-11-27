@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "component": "current-save-and-edit-menu-routes",
-  "execution_status": "DECLARED_NOT_RUN",
+  "execution_status": "DECLARED_REQUIRES_NEW_EXACT_SOURCE_EXECUTION",
   "tests": {
     "tests/ui/test_productivity.py": {
       "test_shortcut_normalization": 5,
@@ -36,7 +36,19 @@
       "test_late_save_completion_never_touches_a_destroyed_window": 1,
       "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
       "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
-      "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1
+      "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1,
+      "test_late_cancel_after_final_durable_save_is_complete": 1,
+      "test_late_cancel_with_clean_tail_is_complete": 1,
+      "test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes": 1,
+      "test_cancel_with_newer_edits_still_reports_unsaved_changes": 1,
+      "test_cancel_after_failed_save_not_misreported_as_complete": 1,
+      "test_failed_old_save_does_not_hide_replacement_draft": 1,
+      "test_failed_old_save_does_not_focus_clean_replacement": 1,
+      "test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration": 1,
+      "test_focus_rechecks_registration_after_completion_notification": 1,
+      "test_live_failed_registration_retains_its_own_focus": 1,
+      "test_focus_chooses_first_usable_live_failed_draft": 3,
+      "test_focus_skips_replaced_registration_and_unavailable_target": 1
     },
     "tests/ui/test_save_all_current_drafts.py": {
       "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
@@ -61,8 +73,8 @@
       "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
     }
   },
-  "total_cases": 89,
-  "retained_cases": 55,
+  "total_cases": 103,
+  "retained_cases": 69,
   "new_cases": 34,
   "helpers": [
     "tests/__init__.py"
@@ -131,5 +143,8 @@
     }
   },
   "physical_audio": "NOT_RUN",
-  "nvda": "NOT_RUN"
+  "nvda": "NOT_RUN",
+  "retained_current_cases": 55,
+  "canonical_pr183_cases": 14,
+  "canonical_pr183_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f"
 }
