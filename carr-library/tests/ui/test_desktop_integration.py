@@ -25,7 +25,8 @@ def test_watch_is_inert_then_coalesces_exact_text_and_never_opens_or_persists_it
     assert all('Exact' not in message and 'Replacement' not in message for message in messages)
 
 
-@pytest.mark.parametrize('invalid', ['', '\0secret', '\ud800', 'a' * 2_000_001, None])
+@pytest.mark.parametrize('invalid', ['', '\0secret', '\ud800', 'a' * 2_000_001, None],
+                         ids=['empty', 'nul', 'surrogate', 'over-budget', 'none'])
 def test_invalid_watch_input_clears_previous_pending_without_changing_source(invalid):
     text, messages = ['Valid exact text'], []
     watch = ClipboardWatch(lambda: text[0], lambda: 'a', messages.append)
