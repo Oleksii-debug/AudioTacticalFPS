@@ -5,6 +5,7 @@ durable state and backup round trips. NVDA speech and listening are NOT_RUN.
 """
 import json
 import os
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic, sleep
@@ -15,11 +16,19 @@ def main():
     if os.name != 'nt':
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows is required.', 'nvda': 'NOT_RUN'}))
         return 77
+    source_override = os.environ.get('CARR_UI_SOURCE_OVERRIDE', '')
+    if source_override not in ('', '1'):
+        raise ValueError('CARR_UI_SOURCE_OVERRIDE must be absent or exactly 1.')
+    source_root = Path(__file__).resolve().parents[1] if source_override else None
+    if source_root is not None:
+        if not (source_root / 'src' / 'carr_library' / '__init__.py').is_file():
+            raise ValueError('The explicit native source probe checkout is unavailable.')
+        sys.path[:0] = [str(source_root / 'src'), str(source_root)]
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
-    from carr_library.keybindings import KeybindingStore
+    from carr_library.keyboard_preferences import KeymapStore
     from carr_library.library_backup import restore_backup
     from carr_library.reader.narration import NarrationStore, new_project
     from carr_library.reader.reading_desk import ReadingDesk
@@ -60,10 +69,19 @@ def main():
         event.SetEventObject(button)
         check('native button event: ' + button.GetLabel(), button.GetEventHandler().ProcessEvent(event))
 
-    from carr_library.ui import productivity, narration_editor
-    check('productivity and editor load from the installed wheel', all(
-        'site-packages' in [part.casefold() for part in Path(module.__file__).parts]
-        for module in (productivity, narration_editor)))
+    from carr_library.ui import productivity, narration_editor, keyboard_settings
+    modules = (productivity, narration_editor, keyboard_settings,
+               sys.modules[LibraryApp.__module__], sys.modules[KeymapStore.__module__])
+    origins = {module.__name__: str(Path(module.__file__).resolve()) for module in modules}
+    if source_root is not None:
+        check('productivity and editor load from the explicit source checkout', all(
+            Path(module.__file__).resolve() ==
+            (source_root / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')).resolve()
+            for module in modules))
+    else:
+        check('productivity and editor load from the installed wheel', all(
+            'site-packages' in [part.casefold() for part in Path(module.__file__).parts]
+            for module in modules))
     check('real Windows wx runtime', wx.Platform == '__WXMSW__')
 
     with TemporaryDirectory(prefix='research-v3-reading-native-') as temporary:
@@ -85,9 +103,10 @@ def main():
             check('File is the first Alt menu', frame.menu_bar.GetMenuLabel(0).replace('&', '') == 'File')
             check('Options and Reading remain accessible', frame.menu_bar.FindMenu('Options') >= 0
                   and frame.menu_bar.FindMenu('Reading') >= 0)
-            keyboard = frame.keyboard_actions
+            keyboard = frame.keyboard_commands
+            bindings = productivity.collect_commands(frame.menu_bar)
             inventory = {binding.command.identity: binding.command.shortcut
-                         for binding in keyboard.bindings}
+                         for binding in bindings}
             expected = {
                 'File/Save current changes': 'Ctrl+S',
                 'File/Save all changes': 'Ctrl+Shift+S',
@@ -103,8 +122,10 @@ def main():
             shortcuts = [value.casefold() for value in inventory.values() if value]
             check('complete native command inventory has unique shortcuts', len(shortcuts) == len(set(shortcuts)))
             print(json.dumps({'menu_inventory': inventory}, ensure_ascii=False, sort_keys=True), flush=True)
-            save_binding = next(binding for binding in keyboard.bindings
+            save_binding = next(binding for binding in bindings
                                 if binding.command.identity == 'File/Save current changes')
+            save_command, = [identity for identity, binding in keyboard.bindings.items()
+                             if binding.item.GetId() == save_binding.item.GetId()]
             check('main Save exposes Ctrl+S', save_binding.item.GetItemLabel().endswith('\tCtrl+S'))
             frame.evidence.note.SetValue('Saved through the native File command.')
             event = wx.CommandEvent(wx.EVT_MENU.typeId, save_binding.item.GetId())
@@ -112,19 +133,19 @@ def main():
             pump(lambda: not frame.working)
             check('File Save commits the selected evidence note',
                   library.evidence(workspace, topic)[0].note == 'Saved through the native File command.')
-            keyboard.save({save_binding.command.identity: 'Ctrl+Alt+S'})
+            keyboard.apply_overrides({**keyboard.overrides, save_command: 'Ctrl+Alt+S'})
             check('shortcut change updates native menu', save_binding.item.GetItemLabel().endswith('\tCtrl+Alt+S'))
             check('shortcut persists after reopening preferences',
-                  KeybindingStore(library.root).load()[save_binding.command.identity] == 'Ctrl+Alt+S')
-            old_labels = tuple(binding.item.GetItemLabel() for binding in keyboard.bindings)
+                  KeymapStore(keyboard.store.path).load()[save_command] == 'Ctrl+Alt+S')
+            old_labels = tuple(binding.item.GetItemLabel() for binding in bindings)
             try:
-                keyboard.save({save_binding.command.identity: 'Ctrl+I'})
+                keyboard.apply_overrides({**keyboard.overrides, save_command: 'Ctrl+I'})
             except ValueError:
                 pass
             else:
                 raise AssertionError('Conflicting shortcut was accepted.')
             check('conflicting key leaves native menu unchanged',
-                  tuple(binding.item.GetItemLabel() for binding in keyboard.bindings) == old_labels)
+                  tuple(binding.item.GetItemLabel() for binding in bindings) == old_labels)
 
             desk = ReadingDesk(library, workspace, imported['edition'])
             page = desk.page(1)
@@ -205,7 +226,8 @@ def main():
                   ReadingState(restored).resume(workspace, imported['edition']) == page.location
                   and len(ReadingState(restored).bookmarks(workspace, imported['edition'])) == 1)
             check('complete backup restores keyboard preferences',
-                  KeybindingStore(restored).load() == KeybindingStore(library.root).load())
+                  KeymapStore(restored / keyboard.store.path.name).load()
+                  == KeymapStore(keyboard.store.path).load())
         finally:
             if not frame.IsBeingDeleted():
                 frame.Close()
@@ -214,7 +236,9 @@ def main():
                 native_handle.close()
     if failures:
         raise RuntimeError('\n'.join(failures))
-    print(json.dumps({'status': 'PASS', 'checks': checks, 'count': len(checks), 'nvda': 'NOT_RUN'}, ensure_ascii=False))
+    print(json.dumps({'status': 'PASS', 'checks': checks, 'count': len(checks),
+                      'package_mode': 'source' if source_root is not None else 'installed',
+                      'origins': origins, 'nvda': 'NOT_RUN'}, ensure_ascii=False))
     return 0
 
 
