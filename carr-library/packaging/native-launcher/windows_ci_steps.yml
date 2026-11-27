@@ -1,0 +1,24 @@
+# Insert after trusted checkout and before the existing full-bundle build.
+# The bundle builder must receive --launcher-dir $env:CARR_CI_LAUNCHER.
+# No binary, compiler cache, fixture executable or artifact is uploaded.
+- name: Build and execute the native launcher privately
+  shell: pwsh
+  working-directory: carr-library
+  run: |
+    $ErrorActionPreference = 'Stop'
+    $launcherTools = Join-Path $env:RUNNER_TEMP 'carr-launcher-tools'
+    $launcherOutput = Join-Path $env:RUNNER_TEMP 'carr-launcher-private'
+    $launcherArchive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+    Invoke-WebRequest 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $launcherArchive
+    if ((Get-FileHash $launcherArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') { throw 'Zig archive checksum mismatch' }
+    if ((Get-Item $launcherArchive).Length -ne 82229343) { throw 'Zig archive size mismatch' }
+    Expand-Archive $launcherArchive -DestinationPath $launcherTools
+    $launcherCompiler = Join-Path $launcherTools 'zig-x86_64-windows-0.14.1/zig.exe'
+    python packaging/native-launcher/build_launcher.py --zig $launcherCompiler --toolchain-archive $launcherArchive --output-dir $launcherOutput --build-probe
+    if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
+    python packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcherOutput 'ResearchLibrary.exe') --child (Join-Path $launcherOutput 'windows_child_probe.exe') --report (Join-Path $launcherOutput 'windows-probe.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Native process probe failed' }
+    "CARR_CI_LAUNCHER=$launcherOutput" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+    # Keep only textual evidence in the job log; do not add upload-artifact.
+    Get-Content (Join-Path $launcherOutput 'build-evidence.json')
+    Get-Content (Join-Path $launcherOutput 'windows-probe.json')

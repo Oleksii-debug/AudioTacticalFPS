@@ -23,6 +23,10 @@ def _data_directory(selected):
     return user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
+from ..installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant: preview first; explicit --run executes')
     parser.add_argument('--data-dir', type=Path)

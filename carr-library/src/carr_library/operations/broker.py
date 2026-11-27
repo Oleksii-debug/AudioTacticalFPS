@@ -140,7 +140,7 @@ class ResourceBroker:
                         or legacy_path.parts[-3:] != ('state', 'operations', 'resources.json')
                         or self._active()):
                     raise ResourceConflict('This runtime coordinator is already bound to another policy path.')
-                atomic_json(binding, location)
+                atomic_json(binding, location, replace=True)
             if not os.path.lexists(self.policy_path):
                 atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1',
                             'limits': (limits or ResourceLimits()).to_dict()})

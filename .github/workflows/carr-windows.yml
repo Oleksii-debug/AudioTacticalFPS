@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 65
     defaults:
       run:
         shell: pwsh
@@ -98,6 +98,8 @@ jobs:
           $suites = @(
             'tests/operations/test_resources.py',
             'tests/operations/test_portable_policy_location.py',
+            'tests/packaging/test_native_launcher_bundle.py',
+            'tests/packaging/test_standard_installer.py',
             'tests/audio/test_capture_ownership.py',
             'tests/operations/test_state.py',
             'tests/operations/test_transcription_admission.py',
@@ -593,6 +595,28 @@ jobs:
           "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Build and execute the native launcher privately
+        shell: pwsh
+        working-directory: carr-library
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $launcherTools = Join-Path $env:RUNNER_TEMP 'carr-launcher-tools'
+          $launcherOutput = Join-Path $env:RUNNER_TEMP 'carr-launcher-private'
+          $launcherArchive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+          Invoke-WebRequest 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $launcherArchive
+          if ((Get-FileHash $launcherArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') { throw 'Zig archive checksum mismatch' }
+          if ((Get-Item $launcherArchive).Length -ne 82229343) { throw 'Zig archive size mismatch' }
+          Expand-Archive $launcherArchive -DestinationPath $launcherTools
+          $launcherCompiler = Join-Path $launcherTools 'zig-x86_64-windows-0.14.1/zig.exe'
+          python packaging/native-launcher/build_launcher.py --zig $launcherCompiler --toolchain-archive $launcherArchive --output-dir $launcherOutput --build-probe
+          if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
+          python packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcherOutput 'ResearchLibrary.exe') --child (Join-Path $launcherOutput 'windows_child_probe.exe') --report (Join-Path $launcherOutput 'windows-probe.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Native process probe failed' }
+          "CARR_CI_LAUNCHER=$launcherOutput" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # Keep only textual evidence in the job log; do not add upload-artifact.
+          Get-Content (Join-Path $launcherOutput 'build-evidence.json')
+          Get-Content (Join-Path $launcherOutput 'windows-probe.json')
+
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         timeout-minutes: 20
         run: |
@@ -627,7 +651,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $env:CARR_CI_AUDIO_DIR --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $env:CARR_CI_AUDIO_DIR --launcher-dir $env:CARR_CI_LAUNCHER --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -834,6 +858,35 @@ jobs:
 
       # Evidence only: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.
+      - name: Build pinned standard setup and execute actual install, repair and uninstall
+        timeout-minutes: 20
+        shell: pwsh
+        working-directory: carr-library
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = $env:CARR_CI_BUNDLE
+          if (-not $bundle -or -not (Test-Path (Join-Path $bundle 'bundle-manifest.json') -PathType Leaf)) { throw 'The previously verified full bundle is required.' }
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          if (-not (Test-Path $python -PathType Leaf)) { throw 'The verified bundle must already be installed.' }
+          $identity = [Guid]::NewGuid().ToString('N')
+          $compilerRoot = Join-Path $env:RUNNER_TEMP ('carr-inno-' + $identity)
+          $buildRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-setup-' + $identity)
+          $workRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-lifecycle-' + $identity)
+          $report = Join-Path (Resolve-Path 'ci-results').Path 'standard-installer'
+          $manifest = (Get-FileHash -LiteralPath (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory $compilerRoot
+          & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --installed-bundle --output $buildRoot --iscc (Join-Path $compilerRoot 'tools/ISCC.exe') --toolchain-receipt (Join-Path $compilerRoot 'toolchain-receipt.json') 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $buildRoot 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $buildRoot 'setup-build.json') --work $workRoot --report $report 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result = Get-Content (Join-Path $report 'result.json') -Raw | ConvertFrom-Json
+          $build = Get-Content (Join-Path $buildRoot 'setup-build.json') -Raw | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.actual_inno_install -or -not $result.actual_repair -or -not $result.actual_uninstall -or -not $result.live_job_preserved -or -not $result.populated_library_bytes_preserved -or -not $result.fresh_shortcut_collision_refused -or -not $result.uninstaller_wrapper_removed) { throw 'The complete native standard installation lifecycle did not pass.' }
+          if ($result.bundle_manifest_sha256 -ne $manifest -or $result.setup_sha256 -ne $build.setup_sha256 -or $result.source_commit -ne $build.source_commit) { throw 'Native lifecycle evidence is not bound to this exact setup and source.' }
+          if ($result.authenticode_verified -or $result.nvda_verified -or $result.native_network_trace -ne 'NOT_RUN' -or $result.unprivileged_account_qualification -ne 'NOT_RUN') { throw 'This gate cannot claim unrelated release qualifications.' }
+          Copy-Item (Join-Path $buildRoot 'setup-build.json') (Join-Path $report 'setup-build.json')
+          Copy-Item (Join-Path $compilerRoot 'toolchain-receipt.json') (Join-Path $report 'toolchain-receipt.json')
+
       - name: Preserve exact-commit runtime and test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -989,6 +1042,12 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
+      - name: Install the actual local speech runtime required by portable acceptance
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -version
       - name: Install the existing portable dependency profile and record source identity
         run: |
           set -euo pipefail
@@ -1009,6 +1068,8 @@ jobs:
             tests/storage/test_transcription_backup.py \
             tests/operations/test_resources.py \
             tests/operations/test_portable_policy_location.py \
+            tests/packaging/test_native_launcher_bundle.py \
+            tests/packaging/test_standard_installer.py \
             tests/audio/test_capture_ownership.py \
             tests/operations/test_state.py \
             tests/operations/test_transcription_admission.py \

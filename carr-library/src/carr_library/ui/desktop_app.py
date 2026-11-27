@@ -50,6 +50,7 @@ from .transcription_dialog import install_transcription_actions
 from .engine_settings import install_engine_settings_actions
 from .operations_dialog import install_operations_actions
 from .reading_import import install_reading_import_actions
+from .trust_status import install_trust_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -494,7 +495,12 @@ class DesktopSearchPanel(PagedSearchPanel):
 
 
 class DesktopFrame(WorkspaceFrame):
-    def __init__(self, library, remember_data_dir=None):
+    def __init__(self, library, remember_data_dir=None, *, trust_controller=None):
+        if trust_controller is not None:
+            from ..security.controller import TrustController
+            if not isinstance(trust_controller, TrustController):
+                raise TypeError('Use the explicit trusted-client controller for this installation.')
+        self.trust_controller = trust_controller
         self.library = library
         self.remember_data_dir = remember_data_dir
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
@@ -587,6 +593,7 @@ class DesktopFrame(WorkspaceFrame):
         install_engine_settings_actions(self)
         install_operations_actions(self)
         install_reading_import_actions(self)
+        install_trust_actions(self)
         install_portable_sync_actions(self)
 
     def build_advanced_query(self, event=None):

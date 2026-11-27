@@ -1,0 +1,120 @@
+{
+  "schema": "carr.trusted-client-dependency-review.v1",
+  "target": "Windows x86-64 CPython 3.11",
+  "verified_on": "2026-11-27",
+  "source_reuse_commit": "242043968f656eeb3407e6c9a727d8b686b91d51",
+  "verification": "Downloaded with --only-binary=:all: --require-hashes; recomputed wheel digests; read METADATA and retained license members; compared release identities with primary PyPI records.",
+  "dependencies": [
+    {
+      "name": "cryptography",
+      "version": "50.0.2",
+      "filename": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+      "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+      "source": "https://pypi.org/project/cryptography/50.0.2/",
+      "license_expression": "Apache-2.0 OR BSD-3-Clause",
+      "license_files": [
+        [
+          "cryptography-50.0.2.dist-info/licenses/LICENSE",
+          "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb",
+          197
+        ],
+        [
+          "cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE",
+          "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe",
+          11360
+        ],
+        [
+          "cryptography-50.0.2.dist-info/licenses/LICENSE.BSD",
+          "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb",
+          1532
+        ]
+      ]
+    },
+    {
+      "name": "cffi",
+      "version": "2.1.1",
+      "filename": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+      "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0",
+      "source": "https://pypi.org/project/cffi/2.1.1/",
+      "license_expression": "MIT-0",
+      "license_files": [
+        [
+          "cffi-2.1.1.dist-info/licenses/LICENSE",
+          "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+          1123
+        ]
+      ]
+    },
+    {
+      "name": "tuf",
+      "version": "7.0.1",
+      "filename": "tuf-7.0.1-py3-none-any.whl",
+      "sha256": "d30434bda6e079ab303fb30d1b3006d939a10ca34783b1573d61cd9b802fa45c",
+      "source": "https://pypi.org/project/tuf/7.0.1/",
+      "license_expression": "Apache-2.0 OR MIT",
+      "license_files": [
+        [
+          "tuf-7.0.1.dist-info/licenses/LICENSE",
+          "d3174ad63e721d4c9dccb8ad4320848992d314369bc46319720b5802c9153fe9",
+          9694
+        ],
+        [
+          "tuf-7.0.1.dist-info/licenses/LICENSE-MIT",
+          "ad52fe92b0d21a9b3733b484eb6f865e83855f4a6f9b9b8812b9012dc4587d27",
+          1086
+        ]
+      ]
+    },
+    {
+      "name": "securesystemslib",
+      "version": "1.6.0",
+      "filename": "securesystemslib-1.6.0-py3-none-any.whl",
+      "sha256": "1c1aa00f058f4851f038d409c8ca4a727db854a91f07ec3a0fa047bb93e43e0e",
+      "source": "https://pypi.org/project/securesystemslib/1.6.0/",
+      "license_expression": "MIT",
+      "vendored_license_expression": "CC0-1.0",
+      "license_files": [
+        [
+          "securesystemslib/_vendor/ed25519/LICENSE",
+          "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+          7048
+        ],
+        [
+          "securesystemslib-1.6.0.dist-info/licenses/LICENSE",
+          "6357addf59ba70a824bc678c35e0936916e1cc38182f503372147191ed227bd3",
+          1082
+        ]
+      ]
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0",
+      "filename": "urllib3-2.8.0-py3-none-any.whl",
+      "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+      "source": "https://pypi.org/project/urllib3/2.8.0/",
+      "license_expression": "MIT",
+      "license_files": [
+        [
+          "urllib3-2.8.0.dist-info/licenses/LICENSE.txt",
+          "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686",
+          1093
+        ]
+      ]
+    },
+    {
+      "name": "pycparser",
+      "version": "3.12",
+      "filename": "pycparser-3.12-py3-none-any.whl",
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+      "source": "https://pypi.org/project/pycparser/3.12/",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        [
+          "pycparser-3.12.dist-info/licenses/LICENSE",
+          "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90",
+          1543
+        ]
+      ]
+    }
+  ]
+}

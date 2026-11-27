@@ -578,7 +578,11 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     expected = request_identity(record)
     # Old launch hints never become authority for a request waiting to restart.
     # Its stable metadata remains visible in the existing import queue.
-    pending = dict(record, state='pending', attempt=uuid4().hex, publication_candidate=None)
+    pending = dict(record, state='pending', publication_candidate=None)
+    # A first queued request has not launched a native attempt. A replay must
+    # invalidate its earlier attempt even if cancellation happens in admission.
+    if 'attempt' in pending:
+        pending['attempt'] = uuid4().hex
     pending.pop('publication_watermark', None)
     _store(root, request_id, pending)
     try:

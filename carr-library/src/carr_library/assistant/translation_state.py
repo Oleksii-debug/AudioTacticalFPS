@@ -17,7 +17,7 @@ from .state import (atomic_json, now, read_bytes, read_json, regular,
 from .validation import decode_state_json
 from ..ingest.writer_guard import exclusive_writer
 from ..providers import (GoogleTranslationRequest, JobApproval, ProviderProfile,
-                         GOOGLE_TRANSLATION_ENDPOINT, decode_translation_response,
+                         GOOGLE_TRANSLATION_ENDPOINT, GOOGLE_TRANSLATION_PROVIDERS, decode_translation_response,
                          google_v3_parent, translation_request)
 
 DIRECTORY = 'state/translation'
@@ -341,8 +341,8 @@ class TranslationStore:
         return self.directory / (identity + '.json')
 
     def cache_path(self, profile):
-        if not isinstance(profile, ProviderProfile) or profile.provider != 'google-translation-v2':
-            raise ValueError('Choose a Google Basic v2 profile.')
+        if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
+            raise ValueError('Choose a Google Basic v2 or Advanced v3 translation profile.')
         return self.directory / ('languages-' + profile.id + '.json')
 
     def load(self, identity):

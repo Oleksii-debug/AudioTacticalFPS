@@ -1,0 +1,110 @@
+name: CARR signed client and maintenance boundaries
+
+on:
+  pull_request:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-trusted-client.yml
+  push:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-trusted-client.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-trusted-client-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  signed-client:
+    name: Signed client / ${{ matrix.os }} / CPython 3.11
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact optional trust profile and record source identity
+        run: |
+          set -euo pipefail
+          mkdir -p trusted-results
+          git rev-parse HEAD > trusted-results/tested-commit.txt
+          python -m pip install '.[test]'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+          python -m pip check
+          python -m compileall -q src tests/security tests/ui/native_trust_status_smoke.py
+          python -I -m carr_library.security status > trusted-results/installed-private-status.txt
+          python -I -c "import carr_library.security.anchors,carr_library.security.installation; import importlib.metadata as m; expected={'cryptography':'50.0.2','tuf':'7.0.1','securesystemslib':'1.6.0','urllib3':'2.8.0','cffi':'2.1.1','pycparser':'3.12'}; actual={k:m.version(k) for k in expected}; assert actual==expected; print(actual)" > trusted-results/installed-trust-profile.txt
+          python -m pip list --format=json > trusted-results/installed-packages.json
+      - name: Require offline signatures, replay, protected-anchor and recovery boundaries
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          python scripts/ci_check.py --jobs 3 \
+            tests/security/test_anchor_locking.py \
+            tests/security/test_canonical_boundary.py \
+            tests/security/test_controller.py \
+            tests/security/test_entitlements.py \
+            tests/security/test_idle_renewal.py \
+            tests/security/test_independent_review_boundaries.py \
+            tests/security/test_installation.py \
+            tests/security/test_publication_integrity.py \
+            tests/security/test_refresh.py \
+            tests/security/test_updates.py \
+            tests/ui/test_desktop_handlers.py \
+            2>&1 | tee trusted-results/strict-contracts.txt
+      - name: Install the native Windows desktop profile
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          python -m pip check
+      - name: Require an actual Windows Credential Manager round trip
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          python scripts/ci_check.py tests/security/test_windows_vault.py 2>&1 | tee trusted-results/windows-vault.txt
+      - name: Exercise installed native signed-status and explicit permission review controls
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          python -I -B tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'trusted-results/native-trust-status.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve exact-source evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: trusted-client-${{ matrix.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: carr-library/trusted-results/
+          if-no-files-found: error
+          retention-days: 7

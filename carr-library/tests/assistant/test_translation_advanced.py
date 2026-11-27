@@ -256,3 +256,27 @@ def test_complete_backup_restore_exports_offline_and_pending_permission_stays_ol
         if path.is_file():
             assert TOKEN.encode() not in path.read_bytes()
     assert TOKEN.encode() not in (export / 'translation-provenance.json').read_bytes()
+
+
+def test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace(tmp_path):
+    """Catch admission before the shared ready fixture can hide a setup failure."""
+    from carr_library.assistant.translation_state import TranslationStore
+    from carr_library.providers import (GOOGLE_TRANSLATION_ENDPOINT, GoogleTranslationRequest,
+                                       translation_request)
+    app = LibraryApp(tmp_path / 'library')
+    store = TranslationStore(app.root)
+    basic = ProviderProfile('shared', 'Basic', 'google-translation-v2',
+        GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',))
+    advanced = ProviderProfile('shared', 'Advanced', 'google-translation-v3',
+        ENDPOINT, 'general/nmt', ('translation',))
+    expected = app.root / 'state' / 'translation' / 'languages-shared.json'
+    assert store.cache_path(basic) == expected
+    assert store.cache_path(advanced) == expected
+    basic_request = GoogleTranslationRequest(operation='languages')
+    assert translation_request(basic, operation='languages').fingerprint(basic) == basic_request.fingerprint(basic)
+    assert translation_request(advanced, operation='languages').fingerprint(advanced) != basic_request.fingerprint(basic)
+    unrelated = ProviderProfile('local', 'Local', 'openai-compatible',
+        'http://127.0.0.1:11434/v1', 'local-model', ('llm',), local=True)
+    with pytest.raises(ValueError, match='translation profile'):
+        store.cache_path(unrelated)
+    assert not expected.exists(), 'Choosing a cache path must not create a language inventory.'

@@ -15,6 +15,10 @@ def _controller(args):
     return AcademicController(LibraryApp(args.data_dir), args.workspace)
 
 
+from .installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     from .citations.bibliography_workbench import (
         BibliographyWorkbench, EXPORT_FORMATS, LOCALES, NAME_MODES, load_style_file,
