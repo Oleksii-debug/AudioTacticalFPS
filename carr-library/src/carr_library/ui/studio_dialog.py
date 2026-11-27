@@ -100,6 +100,7 @@ class StudioController:
 def show_studio(frame):
     import wx
     controller = StudioController(frame.library)
+    library_root = frame.library.root
     service = controller.service
     class StudioDialog(wx.Dialog):
         def Destroy(self):
@@ -228,10 +229,10 @@ def show_studio(frame):
         title.Enable(not busy)
         voice_choice.Enable(not busy)
 
-    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
+    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False, on_failed=None):
         nonlocal busy
         if busy or not alive:
-            return
+            return False
         busy = True
         cancel.clear()
         controls()
@@ -312,6 +313,11 @@ def show_studio(frame):
                 observe('fail', phase + ': failed', token=token)
             observe('finalize', token=token)
             report(str(exc), True)
+            if on_failed is not None and alive:
+                try:
+                    on_failed(exc)
+                except (Exception, KeyboardInterrupt) as feedback_error:
+                    unavailable(feedback_error)
 
         task = getattr(getattr(progress, 'tracker', None), 'task', None)
 
@@ -360,7 +366,7 @@ def show_studio(frame):
             busy = False
             controls()
             failed_operation(exc)
-            return
+            return False
 
         def discard_result(done):
             nonlocal busy
@@ -433,6 +439,7 @@ def show_studio(frame):
                 observe('finalize', token=token)
             wx.CallAfter(apply)
         future.add_done_callback(finish)
+        return True
 
     def retire_progress_voice(provider):
         # Keep failed cleanup reachable independently of a delivered UI callback.
@@ -788,6 +795,19 @@ def show_studio(frame):
         except Exception as exc:
             report(f'Playback output was not changed. {exc}', True)
 
+    def prepare_playback(request, completed, failed, *, cancelled):
+        player = getattr(dialog, '_audio_player', None)
+        expected_root = library_root
+        def stopped():
+            return (cancelled() or cancel.is_set() or not alive
+                    or getattr(getattr(frame, 'library', None), 'root', None) != expected_root)
+        def work():
+            if player is None:
+                raise ValueError('Select a rendered recording before changing playback.')
+            return player.prepare_listening(request, expected_root,
+                state_root=expected_root / 'state', cancelled=stopped)
+        return run(work, completed, phase='Preparing independent playback settings', on_failed=failed)
+
     def playback_navigation(event=None):
         if not alive:
             return
@@ -850,7 +870,7 @@ def show_studio(frame):
                 navigation = PlaybackNavigationHost(dialog, player,
                     generation=lambda: dialog._playback_generation, alive=lambda: alive,
                     stop_current=stop_preview, progress=(progress, parent_progress),
-                    report=report, wx_module=wx)
+                    report=report, wx_module=wx, prepare=prepare_playback)
                 dialog._playback_navigation = navigation
             navigation.invalidate()
             progress.register_player(player)

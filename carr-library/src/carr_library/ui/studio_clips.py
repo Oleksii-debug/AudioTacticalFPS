@@ -38,6 +38,7 @@ class ClipDialog(wx.Dialog):
         self._player_closed = True
         self.playback_generation = 0
         self.previews = []
+        self._unused_listening = set()
         self.controls = []
         body = wx.ScrolledWindow(self, style=wx.VSCROLL)
         body.SetScrollRate(0, 12)
@@ -165,6 +166,20 @@ class ClipDialog(wx.Dialog):
         return super().Destroy() if self else False
 
     def _discard_preview(self, value):
+        from ..speech.listening import PreparedListening
+        if isinstance(value, PreparedListening):
+            retained = getattr(self, '_unused_listening', None)
+            if retained is None:
+                retained = self._unused_listening = set()
+            retained.add(value)
+            try:
+                if value.close() is False:
+                    raise RuntimeError('Private listening cleanup is not confirmed.')
+                retained.discard(value)
+                return True
+            except (Exception, KeyboardInterrupt) as exc:
+                self.cleanup_error = str(exc)
+                return False
         if isinstance(value, Path) and value.name.startswith('clip-preview-'):
             try:
                 value.unlink(missing_ok=True)
@@ -199,6 +214,8 @@ class ClipDialog(wx.Dialog):
             if silence:
                 self.player = None
         if not self.pending and self.player is None:
+            for value in tuple(getattr(self, '_unused_listening', ())):
+                self._discard_preview(value)
             self.previews = [path for path in self.previews if not self._discard_preview(path)]
             try:
                 self._close_editor()
@@ -219,14 +236,15 @@ class ClipDialog(wx.Dialog):
             button.Enable(name in ('close', 'stop') or (name == 'cancel' and self.pending)
                           or (name != 'cancel' and not self.pending))
 
-    def _run(self, title, operation, done):
+    def _run(self, title, operation, done, *, failed=None, stop_playback=True):
         if self.closed or self.closing or self.pending or self.frame.working:
             return False
         if not self._same_library():
             self.message('The library changed. Reopen clip editing in the selected library.')
             return False
         try:
-            self.stop()
+            if stop_playback:
+                self.stop()
         except (Exception, KeyboardInterrupt) as exc:
             self.message(f'Playback closure is not confirmed: {exc}. Try Stop before editing.')
             return False
@@ -242,6 +260,8 @@ class ClipDialog(wx.Dialog):
             self._enable()
             if error is not None:
                 self.message(error)
+                if failed is not None and not self.closed:
+                    failed(error)
             elif self.closing:
                 self._discard_preview(value)
             else:
@@ -848,7 +868,9 @@ class ClipDialog(wx.Dialog):
                     self.navigation = PlaybackNavigationHost(self, self.player,
                         generation=lambda: self.playback_generation,
                         alive=lambda: not self.closed and not self.closing and self._same_library(),
-                        stop_current=self.stop, progress=(progress,), report=self.message)
+                        stop_current=self.stop, progress=(progress,), report=self.message,
+                        prepare=self._prepare_playback,
+                        on_play=lambda: setattr(self, '_player_closed', False))
                 generation = self.playback_generation
                 def begin():
                     self._player_closed = False
@@ -886,6 +908,14 @@ class ClipDialog(wx.Dialog):
 
     def preview_loop(self, event=None):
         return self._preview_operation(ranged=True, loop=True)
+
+    def _prepare_playback(self, request, completed, failed, *, cancelled):
+        player = self.player
+        return self._run('Preparing independent clip playback',
+            lambda: player.prepare_listening(request, self.library_root,
+                state_root=self.library_root / 'state',
+                cancelled=lambda: cancelled() or self._cancelled()),
+            completed, failed=failed, stop_playback=False)
 
     def playback_controls(self, event=None):
         if self.closed:
