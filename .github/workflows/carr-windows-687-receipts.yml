@@ -1,0 +1,33 @@
+name: CARR exact Windows 687 bundle and capture receipts
+on:
+  push:
+    branches: [carr/windows-687-receipts-20261127]
+    paths: ['.github/workflows/carr-windows-687-receipts.yml', '.github/scripts/carr_windows_687_receipts.py']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: carr-windows-687-receipts-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  preserve-completed-receipts:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Preserve exact reader source bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Read only the two pinned immutable public Windows artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:GITHUB_SHA) { throw 'Unexpected reader checkout.' }
+          python -I -B -X utf8 .github/scripts/carr_windows_687_receipts.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
