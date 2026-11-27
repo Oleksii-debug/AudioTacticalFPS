@@ -75,6 +75,7 @@ def recovery(tmp_path):
     panel._recovery_owned = panel._recovery_pending = None
     panel._recovery_seen = set()
     panel._recovery_loading = panel._recovery_disposed = panel._recovery_discarded = False
+    panel._recovery_owner_id = 401
     panel._recovery_error = ''
     panel._recovery_timer = SimpleNamespace(IsRunning=lambda: False, StartOnce=Mock(), Stop=Mock())
     panel._review_recovery_copy = Mock()
@@ -253,7 +254,8 @@ def test_panel_destruction_flushes_cached_pending_text_without_reading_controls(
     panel._recovery_edited(SimpleNamespace(Skip=Mock()))
     assert panel._recovery_store.get(*first.key).text == 'First edit'
     panel.note.GetValue = Mock(side_effect=RuntimeError('Native control already destroyed'))
-    panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
+    panel._recovery_destroy(SimpleNamespace(GetId=lambda: panel._recovery_owner_id,
+        GetEventObject=Mock(side_effect=AssertionError('Destroyed native wrapper queried')), Skip=Mock()))
     assert panel._recovery_store.get(*first.key).text == 'Last edit before destruction'
     assert panel._recovery_disposed
 
@@ -262,7 +264,8 @@ def test_explicit_discard_does_not_recreate_draft_during_destruction(recovery):
     panel, _, _, _, _ = recovery
     draft = checkpoint(panel, 'Intentionally discarded')
     assert panel.discard_recovery()
-    panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
+    panel._recovery_destroy(SimpleNamespace(GetId=lambda: panel._recovery_owner_id,
+        GetEventObject=Mock(side_effect=AssertionError('Destroyed native wrapper queried')), Skip=Mock()))
     assert panel._recovery_store.get(*draft.key) is None
 
 
@@ -291,3 +294,15 @@ def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel._recovery_store.discard = Mock(side_effect=OSError('Disk unavailable'))
     assert not env['_confirm'](frame)
     assert panel.note.GetValue() == 'Keep unless explicitly discarded'
+
+
+def test_child_destroy_does_not_flush_or_dispose_live_evidence_panel(recovery):
+    panel, _, _, _, _ = recovery
+    panel._flush_recovery = Mock()
+    event = SimpleNamespace(GetId=lambda: panel._recovery_owner_id + 1, Skip=Mock(),
+        GetEventObject=Mock(side_effect=AssertionError('Native wrapper identity queried')))
+    panel._recovery_destroy(event)
+    panel._flush_recovery.assert_not_called()
+    assert not panel._recovery_disposed
+    event.Skip.assert_called_once()
+    event.GetEventObject.assert_not_called()

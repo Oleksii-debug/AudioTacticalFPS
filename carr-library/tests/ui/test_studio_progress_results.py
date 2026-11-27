@@ -17,7 +17,7 @@ from carr_library.ui import studio_dialog
 from carr_library.ui.progress_panel import NativeProgressPanel
 
 
-def harness(*, saved=None, closed=False, reject_submit=False):
+def harness(*, saved=None, closed=False, reject_submit=False, deferred=False):
     source = ast.parse(Path(studio_dialog.__file__).read_text(encoding='utf-8'))
     studio = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == 'show_studio')
     run = next(n for n in studio.body if isinstance(n, ast.FunctionDef) and n.name == 'run')
@@ -27,21 +27,29 @@ def harness(*, saved=None, closed=False, reject_submit=False):
     dialog, cancel, controls = environment.dialog, environment.cancel, environment.controls
     progress, executor, wx = environment.progress, environment.executor, environment.wx
     report, service, current_job = environment.report, environment.service, 'saved-job'
+    def detach():
+        nonlocal alive
+        alive = False
+    environment.detach = detach
 """).body[0]
     factory.body.extend([run, ast.parse('return run').body[0]])
     tree = ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[]))
     namespace = dict(ProgressError=ProgressError, ProgressState=ProgressState,
                      bind_progress=bind_progress, operation_outcome=operation_outcome,
-                     threading=SimpleNamespace(Event=Event))
+                     threading=SimpleNamespace(Event=Event), __package__='carr_library.ui')
     exec(compile(tree, str(Path(studio_dialog.__file__)), 'exec'), namespace)
     panel = object.__new__(NativeProgressPanel)
     panel.hub, panel.active_task = ProgressHub(), None
+    panel.closed = False
     panel.refresh, panel.reporting_unavailable = Mock(), Mock()
     class Executor:
         def submit(self, operation):
             if reject_submit:
                 raise RuntimeError('Synthetic submission failure')
             future = Future()
+            if deferred:
+                environment.future, environment.result = future, operation()
+                return future
             try:
                 future.set_result(operation())
             except BaseException as error:
@@ -85,13 +93,32 @@ def test_interruption_uses_saved_job_outcome_including_late_cancel(status, expec
     assert not complete.called
 
 
-def test_closed_dialog_still_finishes_shared_task_without_touching_controls():
+def test_closed_dialog_starts_no_work_and_touches_no_controls():
     run, env = harness(closed=True)
+    complete, operation = Mock(), Mock()
+    run(operation, complete)
+    operation.assert_not_called()
+    complete.assert_not_called()
+    env.controls.assert_not_called()
+    env.report.assert_not_called()
+    assert env.progress.active_task is None
+
+
+def test_pending_work_finishes_pure_shared_task_after_view_destruction():
+    run, env = harness(deferred=True)
     complete = Mock()
-    run(lambda: {'status':'complete'}, complete)
-    assert env.progress.active_task.snapshot().state == ProgressState.SUCCEEDED
-    assert not complete.called and not env.report.called
-    assert env.controls.call_count == 1  # startup only, no dead-window completion
+    run(lambda: {'status': 'complete'}, complete)
+    task = env.progress.active_task
+    assert task.snapshot().state == ProgressState.RUNNING
+    env.detach()
+    env.progress.closed = True
+    env.controls.reset_mock()
+    env.dialog = None
+    env.future.set_result(env.result)
+    assert task.snapshot().state == ProgressState.SUCCEEDED
+    complete.assert_not_called()
+    env.controls.assert_not_called()
+    env.report.assert_not_called()
 
 
 def test_executor_rejection_does_not_leave_work_running():
