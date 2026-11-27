@@ -90,7 +90,7 @@ def main():
             service = ProductionService(library.root/'state'/'studio', voices=SyntheticTones())
             verify_audio(service._runtime())
             script = '[Scene: Original]\nNarrator: Preserve <source> & exact text.\n[Pause: 0.2]\n[Scene: Second]\nReader: The second line.'
-            project = service.create(script, title='Native EPUB fixture', voice_ids=('synthetic-tone',))
+            project = service.create(script, title='Native EPUB fixture', voice_ids=('synthetic-tone',), mode='authored')
             source_id = service.submit(project, root, format='m4b', stems=False)
             completed = service.run(source_id)
             check('actual FFmpeg produced a completed Studio fixture', completed['status'] == 'complete')
@@ -101,7 +101,7 @@ def main():
                   [row['tags']['title'] for row in embedded['chapters']] == ['Original', 'Second'])
             check('LRC preserves measured line text without word alignment',
                   (rendered / 'script.lrc').read_text(encoding='utf-8').splitlines() ==
-                  ['[00:00.00]Preserve <source> & exact text.', '[00:00.40]The second line.'])
+                  ['[00:00.00]Preserve <source> & exact text.', '[00:00.70]The second line.'])
             frame = DesktopFrame(library); frame.Show(); gui.SetTopWindow(frame)
             dialog = ui.create_publishing_dialog(frame); dialog.Show()
             def destruction_case(parent):
