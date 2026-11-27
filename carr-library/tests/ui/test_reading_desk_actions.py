@@ -362,3 +362,35 @@ def test_reading_state_export_keeps_destination_changes_after_selection(
     ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
     assert target.read_bytes() == b'Externally changed reading state'
     assert 'destination changed' in frame.messages[-1]
+
+
+def test_reading_export_reports_saved_receipt_without_losing_cleanup_notice(source, tmp_path, monkeypatch):
+    from carr_library.research.export_file import ExportReceipt
+    from carr_library.ui import reading_desk as ui
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading.json'
+    frame = Frame(app, workspace)
+    writer, receipts = ui.write_export, []
+    def saved(*args, **kwargs):
+        receipt = writer(*args, **kwargs)
+        receipts.append(receipt)
+        return ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+    monkeypatch.setattr(ui, 'write_export', saved)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert len(receipts) == 1 and target.is_file()
+    assert 'Saved; temporary cleanup needs attention.' in frame.messages[-1]
+
+
+def test_reading_export_honours_cancellation_during_final_staging(source, tmp_path, monkeypatch):
+    from carr_library.research import export_file
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading.json'
+    frame = Frame(app, workspace)
+    original = export_file.os.fsync
+    def flush_then_cancel(descriptor):
+        original(descriptor)
+        frame.cancel_event.set()
+    monkeypatch.setattr(export_file.os, 'fsync', flush_then_cancel)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert not target.exists() and not list(tmp_path.glob('.research-export-*'))
+    assert 'cancelled' in frame.messages[-1]

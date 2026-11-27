@@ -14,7 +14,7 @@ from ..application import LibraryApp
 from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export, write_binary_export
+from ..research.export_file import write_export, write_binary_export, export_completion
 from .export_destination import approve_export_destination
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
@@ -1213,17 +1213,18 @@ class DesktopFrame(WorkspaceFrame):
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
-                writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set, approval=approval)
+                return writer(path,content,private_root=library.root,
+                              cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):
-                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                    message = 'Bibliography exported. Quotations and research notes are not included.'
                 elif format in ('docx', 'html'):
-                    self.report('Research document exported with navigable headings, source citations, '
-                                'and quotations kept separate from research notes.')
+                    message = ('Research document exported with navigable headings, source citations, '
+                               'and quotations kept separate from research notes.')
                 else:
-                    self.report('Topic exported with quotations and research notes kept separate.')
+                    message = 'Topic exported with quotations and research notes kept separate.'
+                self.report(export_completion(message, result))
 
             self.run_job('Exporting verified topic',export,done,
                          lambda error: self.report(f'Export not completed: {error}'))

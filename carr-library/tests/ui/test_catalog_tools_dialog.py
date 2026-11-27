@@ -73,8 +73,9 @@ def module(monkeypatch):
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
-    with patch.dict(sys.modules, {'wx': wx}):
-        spec.loader.exec_module(mod)
+    # Preserve the installed publisher's one ExportDestination class identity.
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    spec.loader.exec_module(mod)
     return mod
 
 
@@ -419,3 +420,21 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_exports_report_completed_receipt_cleanup_notice(module, setup, monkeypatch, kind):
+    from carr_library.research.export_file import ExportReceipt
+    form, frame, library = setup
+    writer = module.write_export
+    calls = []
+    def saved(*args, **kwargs):
+        receipt = writer(*args, **kwargs)
+        calls.append(receipt)
+        return ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+    monkeypatch.setattr(module, 'write_export', saved)
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert len(calls) == 1 and calls[0].path.is_file()
+    assert 'Saved; temporary cleanup needs attention.' in form.status.GetValue()
+    assert not form.pending and library.original.read_bytes() == b'unchanged original source'

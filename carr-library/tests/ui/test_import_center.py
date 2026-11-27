@@ -373,3 +373,28 @@ def test_continuation_completion_cannot_replace_a_different_library(center):
     complete(center, center.jobs[-1], batch('foreign-late'))
     assert center.batch == old
     assert 'library folder changed' in center.status.GetValue()
+
+
+def test_import_report_preserves_success_and_cleanup_notice(center, monkeypatch, tmp_path):
+    from carr_library.research import export_file
+    private = tmp_path / 'private'
+    private.mkdir()
+    center.library.root = private
+    target = tmp_path / 'import-report.txt'
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetPath.return_value = str(target)
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE, wx.FD_OVERWRITE_PROMPT = 1, 2, 4
+    wx.FileDialog = Mock(return_value=chooser)
+    writer, calls = export_file.write_export, []
+    def saved(*args, **kwargs):
+        receipt = writer(*args, **kwargs)
+        calls.append(receipt)
+        return export_file.ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+    monkeypatch.setattr(export_file, 'write_export', saved)
+    center.save_report()
+    assert len(calls) == 1 and target.is_file()
+    assert 'Import report saved.' in center.status.GetValue()
+    assert 'Saved; temporary cleanup needs attention.' in center.status.GetValue()
+    chooser.Destroy.assert_called_once()

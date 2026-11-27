@@ -2,7 +2,7 @@ name: CARR r7 export publication regression
 
 on:
   push:
-    branches: ['carr/v3-export-r7-*', 'carr/v3-acceptance-*']
+    branches: ['carr/v3-export-r7-*', 'carr/v3-export-r10-*', 'carr/v3-acceptance-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-r7-exports.yml

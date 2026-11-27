@@ -12,7 +12,7 @@ import threading
 
 from ..reader.reading_desk import ReadingDesk
 from ..reader.reading_state import MAX_BYTES, ReadingState
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
 from .export_destination import approve_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
@@ -626,9 +626,10 @@ class ReadingActions:
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
                 return self._run(scope, lambda: write_export(path, content, private_root=scope.library.root,
-                                                            approval=approval))
+                    approval=approval, cancelled=self.frame.cancel_event.is_set))
             self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
-                lambda _: self.frame.report('Reading positions and page bookmarks exported.'))
+                lambda receipt: self.frame.report(export_completion(
+                    'Reading positions and page bookmarks exported.', receipt)))
         except Exception as exc:
             self.frame.report(f'Reading state was not exported: {exc}')
 

@@ -1,0 +1,116 @@
+{
+  "schema": "carr-observed-acceptance/1",
+  "source_commit": "89f44b33ace1b68f5950a87985d451df2a8484f1",
+  "source_tree": "c8572c0072050c52d72e1c93aaaba83fca5c054e",
+  "run_id": 45998408866,
+  "job_id": 140503544271,
+  "status": "PASS",
+  "source": {
+    "passed": 60,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed": {
+    "passed": 60,
+    "failed": 0,
+    "skipped": 0
+  },
+  "native": {
+    "actual_background_roundtrip": "PASS",
+    "actual_windows": true,
+    "checks": [
+      "three named native snapshot input controls",
+      "four named native snapshot action buttons",
+      "native snapshot result is read only and named",
+      "native focus reaches snapshot repository",
+      "real Tab moves to the separately retained checksum",
+      "snapshot capture disables conflicting controls and keeps Close",
+      "actual background worker returns complete snapshot receipt",
+      "created checksum is readable and result receives native focus",
+      "actual typed full snapshot verification succeeds",
+      "actual restore returns a fresh complete library",
+      "restored quotation and original bytes equal the source",
+      "second actual snapshot reuses verified stored bytes",
+      "native history explicitly distinguishes metadata from full verification",
+      "finished controls are enabled and remain cancellable"
+    ],
+    "failures": [],
+    "full_platform": "NOT_CLAIMED",
+    "installed_package": true,
+    "isolated": true,
+    "manual_keyboard": "NOT_RUN",
+    "module_origins": {
+      "carr_library.__main__": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__main__.py",
+        "sha256": "c024cbce811633340ade36249d53429c67fcc4e427995967900057d0bd264a76"
+      },
+      "carr_library.audio.jobs": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+        "sha256": "684ddb40ca6cc885adfcf1dfc8cd3fd45809a14701a200c67ecff00f4d364b0b"
+      },
+      "carr_library.backup_files": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_files.py",
+        "sha256": "bd234637ea06b71136e24c70881edfb2e5eff982aa8502cedd297e69db1665cf"
+      },
+      "carr_library.data_paths": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\data_paths.py",
+        "sha256": "e7136a7538df7b3549c87ab1b2a260dee9677c9e4073f3d0d399dea0ced285c1"
+      },
+      "carr_library.incremental_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\incremental_backup.py",
+        "sha256": "100e3ab238a74584654f46ebf1effe4296a6e004be1dfee6f621be0138ebb2a1"
+      },
+      "carr_library.incremental_cli": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\incremental_cli.py",
+        "sha256": "e88f241bd09b8ff0050a5d620f58e753975ec4133e521e1460b5e21429636385"
+      },
+      "carr_library.ingest.writer_guard": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\writer_guard.py",
+        "sha256": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c"
+      },
+      "carr_library.library_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "e590841d06dc84244bfbe9d31ee1125c31bd2c42b9f0054360d36822c03eca73"
+      },
+      "carr_library.native_file_metadata": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\native_file_metadata.py",
+        "sha256": "cabb32f0f8b5a6eb717fba829ffe1e4ab060be59cf12ca911208cf78a79fb4c9"
+      },
+      "carr_library.progress": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\progress.py",
+        "sha256": "90a9e165489fda3936cb15c0aa678ca2c1071d4e2014ace59b552659b47de93c"
+      },
+      "carr_library.ui.desktop_app": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "sha256": "8cec90f6d962045434c62295794f5d443faef5ca5fc57cde420c298554a1029a"
+      },
+      "carr_library.ui.incremental_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\incremental_backup.py",
+        "sha256": "99b8f007d17777577095d5d76565964fec611b3d3ea5c2274fefbcfd05734be8"
+      }
+    },
+    "native_controls": "PASS",
+    "native_file_pickers": "NOT_RUN",
+    "new_bytes": 0,
+    "nvda": "NOT_RUN",
+    "probe_sha256": "c40055ea70ae97317622b85907b67d8d218c0493fc97b22db50299ac150395f1",
+    "real_keyboard_tab": "PASS",
+    "restored_snapshot_sha256": "5f297477be432d95e47f129c0d864d2ac5f53e73889cc3ace6387ba8ad37a123",
+    "reused_bytes": 283891,
+    "snapshot_sha256": "befcaa2d27030616432510f02d23daa60593d5202c97401bf9d8b61e85da20ec",
+    "source_commit": "89f44b33ace1b68f5950a87985d451df2a8484f1",
+    "source_tree": "c8572c0072050c52d72e1c93aaaba83fca5c054e",
+    "status": "PASS"
+  },
+  "artifact": {
+    "id": 15199625029,
+    "bytes": 10497,
+    "sha256": "dc5ffcbec1cf0c509cb271add2863b58450a39f359daa357ac9b3de8f3ca493f"
+  },
+  "limitations": [
+    "Native synthetic library fixture; no owner corpus acceptance",
+    "Manual NVDA and native file-picker use NOT_RUN",
+    "Full staging capture cost remains part of each incremental snapshot",
+    "Later compositions need their own source and installed tests"
+  ]
+}

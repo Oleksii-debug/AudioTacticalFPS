@@ -6,6 +6,7 @@ export, then supplies deterministic serialization bytes/text: document rendering
 has its own tests. The file writers, LibraryApp and SQLite are not replaced.
 """
 import ast
+import sys
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
@@ -103,7 +104,7 @@ def harness(research, monkeypatch):
 
         namespace = {'Path': Path, 'wx': wx, 'write_export': write_export,
                      'write_binary_export': write_binary_export,
-                     'approve_export_destination': approve}
+                     'approve_export_destination': approve, 'export_completion': export_file.export_completion}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
         h.invoke = lambda: namespace['export_topic'](h, None)
 
@@ -329,3 +330,24 @@ def test_topic_document_keeps_external_destination_changes(
     assert target.read_bytes() == b'Newer document from another application'
     assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_topic_document_reports_actual_publication_cleanup_notice(harness, tmp_path, monkeypatch,
+                                                                 index, format, suffix):
+    # The actual handler keeps its editable DOCX/HTML renderer contract and
+    # carries the publisher's receipt to the native completion callback.
+    target = tmp_path / ('selected' + suffix)
+    module = sys.modules[__name__]
+    name = 'write_binary_export' if format == 'docx' else 'write_export'
+    writer, calls = getattr(module, name), []
+    def saved(*args, **kwargs):
+        receipt = writer(*args, **kwargs)
+        calls.append(receipt)
+        return export_file.ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+    monkeypatch.setattr(module, name, saved)
+    h = harness(target, index)
+    h.invoke()
+    h.run()
+    assert target.read_bytes() == payload_bytes(format)
+    assert len(calls) == 1 and 'Saved; temporary cleanup needs attention.' in h.reports[-1]

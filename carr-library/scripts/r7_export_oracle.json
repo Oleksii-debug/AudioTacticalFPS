@@ -5,7 +5,8 @@
     "tests/reader/test_export_no_clobber.py",
     "tests/reader/test_export_publication_boundary.py",
     "tests/citations/test_bibliography_workbench.py",
-    "tests/ui/test_citation_styles_jobs.py"
+    "tests/ui/test_citation_styles_jobs.py",
+    "tests/reader/test_export_reconciliation.py"
   ],
   "functions": {
     "tests.reader.test_export_change_time": {
@@ -91,6 +92,14 @@
       "test_regeneration_refuses_existing_file_and_keeps_its_bytes": 1,
       "test_closed_regeneration_keeps_worker_cancellation_and_ignores_delivery": 1,
       "test_saved_export_with_cleanup_warning_remains_successful_and_accessible": 1
+    },
+    "tests.reader.test_export_reconciliation": {
+      "test_unapproved_file_is_not_opened": 6,
+      "test_default_creation_does_not_clobber_at_publication": 2,
+      "test_hash_cancellation_stops_after_first_real_block": 2,
+      "test_capture_cancelled_before_open": 1,
+      "test_receipt_and_native_digest_shape_are_preserved": 1,
+      "test_mismatched_existing_approval_rejected_before_open": 4
     }
   },
   "origins": [
