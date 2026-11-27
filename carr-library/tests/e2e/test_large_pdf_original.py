@@ -173,3 +173,29 @@ def test_large_pending_aggregate_budget_fails_before_copying_original(tmp_path, 
             create_backup(app, backup)
         assert not (backup / 'manifest.json').exists()
         assert source.exists() and app.browse(workspace) == ()
+
+
+def test_original_view_verification_failure_preserves_a_foreign_copy_replacement(tmp_path, monkeypatch):
+    from carr_library.reader import source_file
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('View ownership')
+    app.add_text(workspace, 'Original source', 'Original railway text.')
+    hit, = app.search(workspace, 'railway')
+    foreign = tmp_path / 'foreign.txt'
+    foreign.write_bytes(b'user-owned replacement')
+    observed = []
+
+    def replaced(directory, path, original, *args):
+        assert path.exists()
+        path.unlink()
+        foreign.rename(path)
+        observed.append((path, path.stat().st_ino))
+        raise ValueError('controlled viewing-copy verification failure')
+
+    monkeypatch.setattr(source_file, '_view_matches', replaced)
+    with pytest.raises(ValueError, match='controlled viewing-copy'):
+        prepare_source_file(app, workspace, hit.ref, hit.revision)
+    assert len(observed) == 1
+    path, inode = observed[0]
+    assert path.read_bytes() == b'user-owned replacement' and path.stat().st_ino == inode
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'railway'

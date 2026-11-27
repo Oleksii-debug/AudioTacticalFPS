@@ -177,6 +177,7 @@ class FileAsset:
             _regular(self.path)
 
     def copy_to(self, destination, *, cancelled=lambda: False):
+        """Return the owned target fd stat for identity-safe caller cleanup."""
         from ..audio.jobs import checked_directory, file_identity, verified_reader
         destination = Path(destination)
         checked_directory(destination.parent)
@@ -217,9 +218,10 @@ class FileAsset:
                     _regular(self.path)
                     target.flush()
                     os.fsync(target.fileno())
+                    owned = os.fstat(target.fileno())
             if not same_target():
                 raise IntakeError('The PDF copy path changed before verification.')
-            return destination
+            return owned
         except BaseException:
             try:
                 if same_target():

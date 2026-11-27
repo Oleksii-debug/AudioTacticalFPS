@@ -124,13 +124,15 @@ def prepare_source_file(app, workspace, ref, revision, *, authorized_topic=None,
                 path = directory / (original.digest + '-' + uuid4().hex + SUFFIXES[original.mime])
             # No hard links: an external editor must never gain the original inode.
             created = False
+            owned = None
             try:
                 if isinstance(original, FileAsset):
-                    original.copy_to(path, cancelled=cancelled)
+                    owned = original.copy_to(path, cancelled=cancelled)
                     created = True
                 else:
                     with path.open('xb') as stream:
                         created = True
+                        owned = os.fstat(stream.fileno())
                         stream.write(original.data)
                         stream.flush()
                         os.fsync(stream.fileno())
@@ -140,8 +142,15 @@ def prepare_source_file(app, workspace, ref, revision, *, authorized_topic=None,
                     raise InterruptedError('Opening the original was cancelled.')
                 return SourceFile(path, identity, locator, ref, title, original.mime)
             except BaseException:
-                if created:
-                    path.unlink(missing_ok=True)
+                if created and owned is not None and owned.st_ino:
+                    try:
+                        current = path.lstat()
+                        if (stat.S_ISREG(current.st_mode) and current.st_nlink == 1
+                                and not getattr(current, 'st_file_attributes', 0) & 0x400
+                                and (current.st_dev, current.st_ino) == (owned.st_dev, owned.st_ino)):
+                            path.unlink()
+                    except OSError:
+                        pass
                 raise
 
 

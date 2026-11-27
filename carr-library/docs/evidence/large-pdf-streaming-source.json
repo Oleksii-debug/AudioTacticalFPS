@@ -2,7 +2,7 @@
   "schema": 1,
   "parent": "2c040db358e64bdb1c6bc27b9c911de6e734d574",
   "status": "NOT_RUN",
-  "source_derived_count": 22,
+  "source_derived_count": 23,
   "selectors": [
     "tests/ingest/test_streaming_pdf.py",
     "tests/e2e/test_large_pdf_original.py"
@@ -27,7 +27,8 @@
       "test_large_pending_request_restores_exact_original_and_resumes_real_worker": 1,
       "test_large_pdf_backup_cancel_never_publishes_manifest": 1,
       "test_pending_backup_refuses_source_exceeding_its_saved_request_budget": 1,
-      "test_large_pending_aggregate_budget_fails_before_copying_original": 1
+      "test_large_pending_aggregate_budget_fails_before_copying_original": 1,
+      "test_original_view_verification_failure_preserves_a_foreign_copy_replacement": 1
     }
   },
   "installed_support_files": [

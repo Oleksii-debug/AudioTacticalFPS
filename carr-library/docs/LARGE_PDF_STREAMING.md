@@ -12,7 +12,9 @@ Every reopen uses the existing verified input handle and that expected identity.
 Copies use 1 MiB chunks, exclusive creation, complete hash checks and fsync.
 The target fd identity is captured at creation; failure cleanup and successful
 return require the same regular inode/device, a single link and no reparse point.
-An unknown replacement or newly hard-linked target is preserved.
+An unknown replacement or newly hard-linked target is preserved. The source-view
+caller uses the same fd identity if later verification fails, so it cannot delete
+a replacement after the streaming helper has safely returned.
 Retention keeps the existing hash-addressed namespace and no-replace link
 publication; recovery still requires complete accounting for owned staging links.
 Symlinks, reparse points, hard-linked originals, alternate streams and foreign
@@ -58,7 +60,7 @@ other component's byte/count limit and final verification remains in force.
 
 ## Executable evidence
 
-Two standalone strict selectors contain 22 source-derived cases:
+Two standalone strict selectors contain 23 source-derived cases:
 
 - `tests/ingest/test_streaming_pdf.py`: 17 cases, including actual fresh owned
   processes with valid 72 and 144 MiB synthetic PDF containers. Each contains a
@@ -67,7 +69,7 @@ Two standalone strict selectors contain 22 source-derived cases:
   retention and full readback. It records platform/CPU/Python, actual peak resident
   memory, baseline peak, traced Python peak and elapsed time. Resident increase
   must stay below 64 MiB; traced allocations below 32 MiB.
-- `tests/e2e/test_large_pdf_original.py`: five cases covering the existing actual
+- `tests/e2e/test_large_pdf_original.py`: six cases covering the existing actual
   import worker, original copy/launch boundary, explicit review, full backup,
   pending-source restoration/resume, cancellation after real copied bytes and
   refusal when a source exceeds its persisted request budget, and aggregate
