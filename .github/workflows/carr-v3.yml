@@ -35,6 +35,14 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
+      - name: Install and identify actual OCR required by source recovery tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-eng fonts-dejavu-core
+          mkdir -p ci-source-results
+          tesseract --version > ci-source-results/ocr-version.txt 2>&1
+          tesseract --list-langs > ci-source-results/ocr-languages.txt 2>&1
+          dpkg-query -W tesseract-ocr tesseract-ocr-eng fonts-dejavu-core > ci-source-results/native-test-packages.txt
       - name: Install declared source-test dependencies
         run: |
           mkdir -p ci-source-results
@@ -42,6 +50,7 @@ jobs:
           python -m pip install '.[test]'
           python -m pip freeze > ci-source-results/installed-dependencies.txt
           python -m pip check
+          python -c "from carr_library.extract.ocr_runtime import discover_ocr_runtime; assert discover_ocr_runtime() is not None, 'Required actual OCR runtime is unavailable'"
       - name: Verify reconstructed source and durable boundaries
         run: |
           python -B -m pytest -p no:cacheprovider -q --import-mode=importlib \

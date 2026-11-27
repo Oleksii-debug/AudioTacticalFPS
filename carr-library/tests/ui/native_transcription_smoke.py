@@ -181,8 +181,25 @@ def run_native_transcription(frame, directory):
         detached.files.Destroy()
         wx.YieldIfNeeded()
         assert not detached_controller.closed, 'A child-control destruction detached the whole dialog.'
-        detached.Destroy()
-        wx.YieldIfNeeded()
+        # Top-level Destroy queues native deletion for idle time. The modal
+        # loop above has exited, so run a bounded real loop instead of assuming
+        # one Yield delivers EVT_WINDOW_DESTROY.
+        # https://docs.wxpython.org/wx.Window.html#wx.Window.Destroy
+        destroyed = []
+        deletion_loop = wx.GUIEventLoop()
+        def observed_destruction(event):
+            if event.GetEventObject() is detached:
+                destroyed.append(True)
+                wx.CallAfter(deletion_loop.Exit)
+            event.Skip()
+        detached.Bind(wx.EVT_WINDOW_DESTROY, observed_destruction)
+        watchdog = wx.CallLater(5000, deletion_loop.Exit)
+        try:
+            wx.CallAfter(detached.Destroy)
+            deletion_loop.Run()
+        finally:
+            watchdog.Stop()
+        assert destroyed == [True], 'The native dialog destruction event was not observed.'
         assert detached_controller.closed and detached_controller._token is None
     return {'status': 'PASS', 'native_controls_and_async_completion': 'PASS',
             'synthetic_worker_all_formats': 'PASS', 'pause_cancel_resume': 'PASS',
