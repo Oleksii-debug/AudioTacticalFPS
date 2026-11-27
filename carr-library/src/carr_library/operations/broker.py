@@ -96,7 +96,8 @@ class ResourceLease:
 
 
 class ResourceBroker:
-    def __init__(self, directory, *, limits=None, policy_path=None, cancelled=lambda: False):
+    def __init__(self, directory, *, limits=None, policy_path=None, cancelled=lambda: False,
+                 _application_policy=False):
         if limits is not None and not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
         self.root = local_path(directory)
@@ -106,16 +107,40 @@ class ResourceBroker:
         self.leases_root.mkdir(mode=0o700, exist_ok=True)
         local_path(self.leases_root, exists=True)
         self.policy_path = local_path(policy_path or self.root / 'resources.json')
+        if type(_application_policy) is not bool:
+            raise TypeError('The application policy mode must be explicit.')
+        if _application_policy and self.policy_path != (
+                self.root.parent.parent / 'state' / 'operations' / 'resources.json'):
+            raise ResourceConflict('Application resources require the canonical policy location.')
         binding = self.root / '.policy-location.json'
         if self.policy_path in (binding, self.root / '.admission.lock') or self.policy_path.is_relative_to(self.leases_root):
             raise ValueError('Resource policy must not replace coordinator or live-lease files.')
         self.policy_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         with self._gate(time.monotonic() + 5, cancelled):
-            location = {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)}
-            if not os.path.lexists(binding):
+            location = ({'schema': 'carr-application-resource-policy/1',
+                         'path': 'state/operations/resources.json'} if _application_policy else
+                        {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)})
+            binding_exists = os.path.lexists(binding)
+            previous = _read(binding) if binding_exists else None
+            if not binding_exists:
                 atomic_json(binding, location)
-            elif _read(binding) != location:
-                raise ResourceConflict('This runtime coordinator is already bound to another policy path.')
+            elif previous != location:
+                # Runtime coordination is not part of typed backup. If an owner
+                # copies a complete library directory, the application policy
+                # remains relative to that library; never open the old root.
+                # Migrate only the older exact application-policy shape while
+                # no reservation in THIS coordinator holds a native lock.
+                legacy = (type(previous) is dict
+                          and set(previous) == {'schema', 'path'}
+                          and previous['schema'] == 'carr-resource-policy-location/1'
+                          and isinstance(previous['path'], str))
+                legacy_path = Path(previous['path']) if legacy else None
+                if (not _application_policy or not legacy
+                        or not legacy_path.is_absolute()
+                        or legacy_path.parts[-3:] != ('state', 'operations', 'resources.json')
+                        or self._active()):
+                    raise ResourceConflict('This runtime coordinator is already bound to another policy path.')
+                atomic_json(binding, location, replace=True)
             if not os.path.lexists(self.policy_path):
                 atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1',
                             'limits': (limits or ResourceLimits()).to_dict()})
@@ -128,7 +153,8 @@ class ResourceBroker:
         root = local_path(root, exists=True)
         regular(root, directory=True)
         return cls(root / 'runtime' / 'resources', limits=limits,
-                   policy_path=root / 'state' / 'operations' / 'resources.json', cancelled=cancelled)
+                   policy_path=root / 'state' / 'operations' / 'resources.json', cancelled=cancelled,
+                   _application_policy=True)
 
     @property
     def limits(self):

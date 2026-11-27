@@ -138,7 +138,8 @@ def run_native():
         check('native Cancel creates no project', drive(
             lambda: dialogs.preview(frame, snapshot.at(2)), phase='preview', cancel=True) is None)
         print(json.dumps(dict(status='PASS', native_controls='PASS', unicode='PASS',
-            historical_revision='PASS', checks=len(checks), nvda='NOT_RUN'), sort_keys=True), flush=True)
+            historical_revision='PASS', checks=len(checks), check_names=checks,
+            nvda='NOT_RUN'), sort_keys=True), flush=True)
         return 0
     finally:
         for dialog in owned():

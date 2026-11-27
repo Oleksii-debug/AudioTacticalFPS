@@ -1,100 +1,154 @@
 # Resonance integration checkpoint — 27 November 2026
 
-## Reconciliation through owner535 — source candidate, 05:38 UTC
+## Composed acceptance candidate r4 — source review, execution pending
 
-The current technical entry point remains `UNIVERSAL_SCOPE_V3_FINALIZATION.md`;
-its canonical bytes at `1eff701fe848a3bd9eb088c85e5372a7c0a73861` were rechecked
-and are unchanged. This development candidate composes the owner branch through
-`5355942a230b23458d96c195a8b0d85253d7b32a`. Its new components are **NOT_RUN**
-until the exact composed source and installed package pass their gates. The
-older successful results below do not certify this composition.
+The technical entry point is `UNIVERSAL_SCOPE_V3_FINALIZATION.md`, rechecked
+against canonical commit `1eff701fe848a3bd9eb088c85e5372a7c0a73861`.
+This candidate preserves the reviewed f4 composition and integrates the exact
+backend, UI, backup and standard-installer sources below. These additions are
+**SOURCE_REVIEWED / INTEGRATED / NOT_RUN** until their own current-commit gates
+finish. Earlier successful jobs are evidence only for the exact source they ran.
 
-| Component source | Included behavior | Current evidence |
+| Source | Included behavior | Evidence at composition |
 | --- | --- | --- |
-| `e02a9cba0ad9088246ababc9f997ebf107931a15` | Shared resource admission/facade, saved runtime profiles, native coherent state publication, immutable import-attempt boundary, legacy reading history and typed backup | Independently source reviewed; execution pending |
-| `9bceefb69e22e24d4b6cc651eab5930aae468c30` | Scoped pronunciation, engine settings, Tasks view with stable displayed selection, retained historical reading import and existing Save All/three-profile entry | Independently source reviewed; execution pending |
-| `7e4ce3d7f3da56fe8cc5bee7c2b0f187c1a5d047` | Reused native EXE source, paired bounded source/PE evidence capture, immutable offline bundle hook, actual installed-app flag compatibility, two semantic native fixture corrections and bounded OCR fixture | Capture/bundle source reviewed; dedicated MSVC/native run pending |
-| `9396e49209e5730150cde7f94a1b23da8daed9aa` | Retained microphone recordings/retakes, managed project sound assets, typed passive backup, bounded live PCM input on the existing player/backend | Recording foundation source reviewed; monitor review and actual execution pending |
+| `f4f48f11b4777cec89fe8d2769e644f690794689` | Shared operations facade/resource admission, settings, retained reading histories, typed backup, recording/monitor host and native launcher assembly | Reviewed earlier composition; superseded by this candidate |
+| `d16e4023fcee86855e7d70b6b6fa6757826fd61e` | Advanced v3 translation, bounded local LLM proposals and CLI, decoded receipt/ledger proof, canonical library paths, shared coherent state, portable policy migration and exact loopback test harness | Independent source reviews; execution pending |
+| `835a7d6892e256e8ef5db705e851fbd696503f9e` | Recording/retake controls, reusable playback, Advanced approval and settings, asynchronous assistant preview/run, committed results preserved through advisory progress failure | Independent source reviews; execution pending |
+| `5afb615cdb9e3efb57b81c6e02a8471a32a1eb7c` | Passive zero-byte inert recording preservation, bounded recording manifests and the existing native legacy-reading numeric/list report contract | Independent source review; execution pending |
+| `c32992318882faebf27d0b80d0dedfe8be7a4acd` | Reviewed standard per-user Inno preparation/probe, side-by-side repair and preservation of failed environments and unknown files | 37 source-derived expected cases; native acceptance pending |
+| `7e4ce3d7f3da56fe8cc5bee7c2b0f187c1a5d047` | Native launcher, bounded source/PE admission, typed bundle manifest and exact actual process probe | Its dedicated Windows run passed; current installed-package gate remains separate |
 
-The single complete-backup producer combines both existing ASR namespaces,
-the supplied V43 namespace, resource policy, compact reading histories and
-recordings. Recording integration is eleven narrow changes to the current
-producer; current aggregate budgets, supplied-job counters, hard-link rules,
-source/staged validation, final source rehash and no-replace publication remain.
-Unreceipted final microphone files are retained as inert originals; only a
-receipt-bound validated WAV is exposed as a completed recording.
+The backend uses current provider profiles, vault, budgets, immutable source and
+accepted receipts. Basic v2 remains distinct from Advanced v3. Advanced approval
+pins project/location/model/glossary and directional language coverage. A decoded
+result has independent live-ledger proof; historical wire-only evidence and
+passively restored archived-unverified results retain their explicit limits.
+Local model output can propose only the existing typed, allowlisted plan.
+Review and execution remain separate actions. No external provider credentials,
+account or actual model quality are certified by synthetic protocol fixtures.
 
-Native launcher admission checks current source identities and the exact
-bounded executable/build-report snapshots. Both captured files are sealed into
-the bundle manifest. The application native checker now accepts only the actual
-typed `bundled_audio_runtime` and `bundled_native_launcher` fields in addition
-to its prior allowlist. A new regression reads the assembler's actual manifest
-through both installer and application validators. No executable, model, private
-worker, recording or transcript is committed or uploaded as a public artifact.
-The build report remains provenance, not a signing or execution certificate.
+The existing publication/resource/process boundaries remain authoritative.
+A fresh queued import has no premature launch attempt; replay invalidates its old
+attempt. Heavy reservations span the actual owned worker and cleanup. Shared
+state replacement preserves coherent snapshots under native Windows sharing,
+without weakening immutable source or audio read guards. The translation path
+fix uses the existing safe canonical-path admission and still rejects a foreign
+library, links and arbitrary ledger/profile copies.
 
-The composed workflow currently selects 255 source suites and
-108 installed content suites plus fourteen explicit installed
-workflows. It retains all ten named ASR/UI oracles (466 expected cases, including
-47 supplied-service and42 supplied-view cases), the native13/39/44 probes, and
-adds exact native Tasks, reading-history28, state-sharing25 and launcher9
-invariant gates. The state matrix includes expected failed publication controls;
-25 is not a claim that all sharing combinations permit replacement. The
-recording/process/monitor/playback selection has98 source-derived expected
-cases; it has no runtime verdict yet. Capture UI integration and the narrow
-shared-state/translation follow-ups remain in progress.
+Microphone capture, saved originals/retakes and live monitoring use the current
+FFmpeg host, Job Object, resource broker, PCM player and managed sound assets.
+No second capture/process/cleanup family is introduced. Monitoring starts only
+after explicit device selection. A committed recording remains available if
+advisory progress fails; repeated preview uses Stop rather than permanently
+closing the player's native backend. Typed complete backup preserves all three
+ASR profiles, policy, reading history and recording namespaces, existing budgets,
+source/staged revalidation and final source hashes. An unreceipted final recording
+is an inert retained original, never a completed verified recording.
 
-### Executed Windows evidence for the earlier ecf source only
+### Exact gates prepared for this composition
 
-Exact source: `ecf3b5511a0df34642317c55b96da3f604d0c67b`,
-tree `e82b567de83d481c780d8174ff784d814b3a0efd`. Counts from different suites
-and native probes are separate evidence and must not be added as unique cases.
+The workflow selects 260 strict source suites and separately the exact
+14-case local HTTP fixture. Installed execution selects 115 content suites plus
+14 explicit workflows, retaining all prior 232 source selectors. Named installed
+oracles require 466 ASR/profile cases, 128 recording/process/monitor/playback/UI
+cases and 135 Advanced/local-planning/UI cases. These are source-derived expected
+counts within the selected suites, not executed results or additive unique totals.
 
-- Sync run45942148745:320 source cases,154 isolated installed cases,44 native
-  checks passed, including actual publish/restore TaskDialog closure.
-  Artifact15172718236, SHA256
-  `bf2442078fe19ff0d33d6f6d209398ae0c55693d961083fbe1a81204eae17ecc`.
-- Audio run45942148646:691 cases passed,7 explicit platform/device/FluidSynth
-  skips and22 subtests. Native16, effects109 and the Windows ownership tests
-  passed; actual1/3/10-hour streamed PCM completed. Physical playback was
-  unavailable on that runner and NVDA was NOT_RUN.
-  Artifact15173591906, SHA256
+The local HTTP fixture is staged without application source and uses only the
+installed Python/package. It explicitly admits numeric loopback TCP; DNS,
+external hosts, datagrams and inherited environment opt-ins remain rejected.
+It runs separately after the sealed offline/native test phase; it does not weaken
+that phase's Windows Firewall or installed-origin checks. Existing direct
+`PYTEST_CHILD` users keep their offline behavior and argument order.
+
+Native gates retain the supplied ASR/profile/progress checks and require Tasks,
+legacy-reading28, state-sharing25, native launcher9 and recording41 invariants.
+The Advanced translation probe uses actual native controls and a disposable
+Windows credential-vault entry with a synthetic provider; its field-based report
+must prove the exact reviewed pair and immutable derivative. Actual Google API,
+physical microphone/output, acoustic model quality and NVDA remain NOT_RUN.
+
+Standard installation accepts only a fresh independently sealed **audio-free**
+bundle reusing the acquired pinned Python, application wheel, model, OCR,
+corresponding sources and native runtime. The current audio-transfer rights gate
+is unchanged. Native acceptance requires an already-installed explicitly pinned
+Inno compiler, a disposable CI account, the actual installed application Python,
+both successful and failed-bootstrap installers, and exact install/repair/
+uninstall preservation checks. No compiler or private model is acquired by this
+driver. Setup and runtime binaries remain outside public artifacts.
+
+### Executed Windows evidence for ecf only
+
+Source `ecf3b5511a0df34642317c55b96da3f604d0c67b`,
+tree `e82b567de83d481c780d8174ff784d814b3a0efd`. These results are not
+transferred to the present composition, and independent case executions are
+not a count of unique platform requirements.
+
+- Main PR [run45942148665](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45942148665):
+  232 required source suites and 5983 case executions passed, with zero failures
+  or skips. Initial wheel installation/self-test and early native bibliography108
+  passed. The next native translation probe failed on short/relative versus
+  canonical library paths. The narrow product fix is included above. The later
+  full sealed bundle, offline-egress replay, installed ASR and progress gates
+  were **NOT_RUN** in that attempt. Artifact15174853726 SHA256
+  `cbbe339c1fd51db45288c6f84f435f0611c64611e61a66aeb37aad19d2f02634`.
+- Audio [run45942148646](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45942148646):
+  691 cases passed, 7 explicit platform/device/FluidSynth skips and22 subtests.
+  Native16, effects109, all15 Windows ownership cases and actual1/3/10-hour
+  streamed PCM passed. Physical playback was unavailable; NVDA was NOT_RUN.
+  Artifact15173591906 SHA256
   `bf9386c311b50070ce7962e7a733780f1498811d55782ed4031b82fcfebc5740`.
-- Bibliography run45942148640: all28 strict suites passed,1018 cases with
-  zero failures/skips; installed-wheel native108 checks passed.
-  Artifact15173701798, SHA256
+- Bibliography [run45942148640](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45942148640):
+  all28 strict suites /1018 cases passed with zero failures/skips; installed-wheel
+  native108 passed. Artifact15173701798 SHA256
   `0cea30d473cb112d6a4e3ce798d13a59a7141d11f7b25637b33a0064e09a8287`.
-- Frozen r3 keyboard job140318636358:10 strict suites,270 cases, zero
-  failures/skips; native main35, reader23, evidence-draft15 and Save All27
-  checks passed. Artifact15174351370, SHA256
+- Sync [run45942148745](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45942148745):
+  320 source,154 isolated installed cases and44 native checks passed, including
+  actual publish/restore TaskDialog closure. Artifact15172718236 SHA256
+  `bf2442078fe19ff0d33d6f6d209398ae0c55693d961083fbe1a81204eae17ecc`.
+- Frozen r3 keyboard job140318636358:10 strict suites /270 cases passed without
+  failure/skip; native main35, reader23, drafts15 and SaveAll27 passed.
+  Artifact15174351370 SHA256
   `b124fe8e2b179f4df90adc8de213ef0d859a80914f8da6a4b272bd2d5910e9fe`.
-- Frozen r3 main run45942146599 failed the forty-line orientation fixture after
-  its30-second deadline (44 passed/1 failed in that suite). This candidate
-  retains one explicit90-second fixture deadline and bounded failure-class
-  diagnostics; production remains30 seconds and the real Windows script-model
-  inventory regression is retained. Broad source/installed downstream gates did
-  not run in that failed attempt. Its separately running PR attempt is not yet
-  a final verdict here.
+- Frozen r3 main run45942146599 stopped earlier at the forty-line orientation
+  fixture's30-second deadline:44 passed/1 failed in that suite. The candidate
+  retains a90-second limit only for this multipass fixture and bounded failure
+  diagnostics; production remains30 seconds, with native script inventory checks
+  intact. Artifact15172889621 SHA256
+  `f63b1fd53d29cdc6846f267db6db9099747157c37b95b46f02643e8236e51513`.
 
-### Private supplied-worker boundary and remaining qualification
+### Executed native launcher evidence for7e4 only
 
-The unchanged supplied receipt adapter previously passed22 actual private
-contract cases against the model-bound host source; the actual hardened V43
-checkpoint passed its original38 private tests. Those use controlled decoder
-fixtures and do not claim real acoustic inference. The new current-host
-interoperability run reached verified three-input/twelve-output execution but
-passive reopening rejected an output-owner record. The exact private owner
-construction must be inspected and reconciled; no scope/owner check has been
-weakened and this gap is not marked complete. Local execution and access to the
-private extracted source are temporarily unavailable. Existing private inputs
-remain separate; a new private checkpoint could not be saved during that outage.
+[Run45946238424](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946238424),
+job140331479383, used Windows Server2022 x64 /CPython3.11 /installed MSVC.
+All18 new launcher-admission/bundle cases,18 existing Windows-bundle cases,
+the portable C core and9 actual native process checks passed. The unsigned EXE
+was13824 bytes, SHA256
+`d4d0870e8e8135a84019fc79101ef5e6a431a47a5dfd9dfdb5b79cfa4c4202ff`.
+The adjacent machine-readable evidence binds exact source/toolchain/PE identities.
+That separate job used a synthetic child; real installed application, fresh
+Python installation, physical audio, NVDA and Authenticode were not qualified
+there. The EXE was not published.
 
-Actual owner voice engines/models, authorized listening samples, physical input
-and output devices, NVDA operation, declared hardware/corpus capacity,
-Authenticode/signing authority, entitlement/update service configuration and
-per-artifact distribution clearance remain separate requirements. Neither this
-candidate nor its pending synthetic/native gates is a complete qualified or
-distributable Resonance platform.
+### Private integration and final acceptance boundaries
+
+The unchanged supplied receipt adapter previously passed22 private contract
+cases; the unchanged hardened V43 checkpoint passed its original38 cases.
+These controlled decoder fixtures are not acoustic model qualification.
+Current-host execution verified three-input/twelve-output bindings, but passive
+reopening rejected an output-owner record. The actual private owner constructor
+must be inspected and reconciled without weakening scope/owner checks.
+Local execution/private-source access is temporarily unavailable; the attempted
+new private checkpoint save failed, while the original private inputs remain
+durable and outside Git.
+
+Live Word automation, inactive entitlement/update integration and their present
+source work remain separately tracked. Actual owner engines/models and voice
+cloning, authorized listening samples, physical devices, NVDA, declared
+hardware/corpus capacity, signing authority, private service configuration,
+per-artifact rights decisions and the final135-language quality matrix remain
+distinct acceptance dependencies. Neither this candidate nor its prepared gates
+certify a complete qualified or distributable Resonance platform.
 
 ## Prior ecf composition and historical evidence
 

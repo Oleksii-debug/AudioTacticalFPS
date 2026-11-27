@@ -65,15 +65,11 @@ def _unique(pairs):
 
 
 def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
-        raise ValueError('State grew beyond its JSON budget.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
-                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    # Keep this public API and its 32 MiB budget while sharing the reviewed
+    # coherent-snapshot reader used by other live application state.
+    from .audio import jobs
+    local_path(path, exists=True)
+    return jobs.read_json(Path(path), limit=MAX_JSON_BYTES)
 
 
 def sync_directory(path):
@@ -101,7 +97,8 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            from .audio import jobs
+            jobs._replace_state_file(temporary, path)
         else:
             # The shared exclusive rename also accepts a staged regular file.
             # A crash cannot leave a second hardlink to the committed state.

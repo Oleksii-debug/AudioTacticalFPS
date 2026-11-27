@@ -1,10 +1,13 @@
 """Synthetic Google Basic v2 boundary checks. No sockets, keys or paid requests."""
 from dataclasses import asdict, replace
+from contextlib import closing
 from hashlib import sha256
 import html
 import json
 import socket
 import ssl
+import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -121,6 +124,7 @@ def test_language_query_sends_no_selected_text_and_key_is_header_only(setup, tmp
     assert SECRET not in (tmp_path / 'api-connections.json').read_text()
     assert len(vault.reads) == 1
     assert ledger.report('a' * 32)[0]['state'] == 'complete'
+    assert ledger.report('a' * 32)[0]['decoded_translation_sha256'] is None
 
 
 def test_translation_uses_exact_plaintext_pair_and_model(setup):
@@ -189,6 +193,7 @@ def test_reflected_credentials_never_become_results_or_receipts(setup, encoding,
     assert SECRET not in str(caught.value) and caught.value.__cause__ is None
     row = ledger.report('a' * 32)[0]
     assert row['state'] == 'uncertain' and row['output_sha256'] is None
+    assert row['decoded_translation_sha256'] is None
     with pytest.raises(ProviderError, match='already recorded'):
         gateway.perform(selected, request, approval=approval(selected, request),
                         operation_id='first', estimated_micros=50)
@@ -290,3 +295,50 @@ def test_direct_language_transport_keeps_tls_and_exact_get_authority(monkeypatch
 def test_direct_get_route_is_not_general_url_capability(route):
     with pytest.raises(ProviderError, match='route'):
         DirectTransport().get(profile(), route, {})
+
+
+@pytest.mark.parametrize('detected', [None, 'en'], ids=['explicit-source', 'detected-source'])
+def test_gateway_binds_decoded_translation_and_language_in_live_ledger(setup, detected):
+    selected, _, transport, ledger, gateway = setup
+    request = GoogleTranslationRequest('Synthetic source', 'en', 'uk')
+    row = {'translatedText': 'A &amp; B &#x1F642;', 'model': 'nmt'}
+    if detected is not None:
+        row['detectedSourceLanguage'] = detected
+    transport.custom = json.dumps({'data': {'translations': [row]}}).encode()
+    raw = gateway.perform(selected, request, approval=approval(selected, request),
+                          operation_id='decoded', estimated_micros=50)
+    record = ledger.report('a' * 32)[0]
+    expected = sha256(json.dumps({'text': 'A & B 🙂', 'detected_source': detected},
+                                ensure_ascii=False, sort_keys=True,
+                                separators=(',', ':')).encode('utf-8')).hexdigest()
+    assert record['state'] == 'complete'
+    assert record['output_sha256'] == sha256(raw).hexdigest()
+    assert record['decoded_translation_sha256'] == expected != record['output_sha256']
+    with closing(sqlite3.connect(ledger.path)) as database, database:
+        dump = '\n'.join(database.iterdump())
+    assert SECRET not in dump and 'A & B' not in dump and request.text not in dump
+
+
+def test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_proof(tmp_path):
+    path = tmp_path / 'old-operations.sqlite'
+    original = ('accepted', 'old-job', 'a' * 64, 7, 'complete', 'b' * 64)
+    with closing(sqlite3.connect(path)) as database, database:
+        database.executescript(
+            'CREATE TABLE approval (id TEXT PRIMARY KEY, digest TEXT NOT NULL);'
+            'CREATE TABLE operation (id TEXT PRIMARY KEY, job TEXT NOT NULL, request_hash TEXT NOT NULL,'
+            'estimate_micros INTEGER NOT NULL, state TEXT NOT NULL, output_sha256 TEXT);')
+        database.execute('INSERT INTO approval VALUES (?, ?)', ('old-job', 'c' * 64))
+        database.execute('INSERT INTO operation VALUES (?, ?, ?, ?, ?, ?)', original)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        opened = list(executor.map(BudgetLedger, [path, path]))
+    for ledger in opened + [BudgetLedger(path)]:
+        rows = ledger.report('old-job')
+        assert len(rows) == 1
+        assert tuple(rows[0][key] for key in (
+            'id', 'job', 'request_hash', 'estimate_micros', 'state', 'output_sha256')) == original
+        assert rows[0]['decoded_translation_sha256'] is None
+    with closing(sqlite3.connect(path)) as database, database:
+        columns = [row[1] for row in database.execute('PRAGMA table_info(operation)')]
+        assert columns.count('decoded_translation_sha256') == 1
+        assert database.execute('SELECT * FROM approval').fetchall() == [('old-job', 'c' * 64)]

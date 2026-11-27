@@ -485,3 +485,33 @@ def test_backup_checks_copied_recording_against_its_receipt_before_publication(c
         capture.app.backup(tmp_path / 'corrupt-copy')
     assert not (tmp_path / 'corrupt-copy').exists()
     assert Path(result['path']).read_bytes() == original_bytes
+
+
+
+@pytest.mark.parametrize('extension,size,message', [
+    ('wav', 2 * 1024**3 + 1, 'recording sidecar byte limit'),
+    ('json', 64 * 1024 + 1, 'recording sidecar byte limit'),
+    ('json', 0, 'invalid backup sidecar manifest entry'),
+])
+def test_recording_manifest_limits_fail_before_opening_payload_files(tmp_path, monkeypatch, extension, size, message):
+    from carr_library import library_backup
+    app = LibraryApp(tmp_path / 'manifest-library')
+    service = RecordingService(app.root)
+    original = service.root / ('a' * 32 + '.wav')
+    original.write_bytes(b'Unverified original remains unchanged')
+    backup = tmp_path / 'backup'
+    app.backup(backup)
+    path = backup / library_backup.MANIFEST
+    manifest = json.loads(path.read_text(encoding='utf-8'))
+    entry = next(item for item in manifest['sidecars']
+                 if item['path'].startswith('state/studio/recordings/'))
+    entry['path'] = 'state/studio/recordings/' + 'a' * 32 + '.' + extension
+    entry['size_bytes'] = size
+    raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
+                      separators=(',', ':')) + '\n').encode('utf-8')
+    path.write_bytes(raw)
+    monkeypatch.setattr(library_backup, '_verify_sidecar_tree',
+        lambda *args, **kwargs: pytest.fail('Invalid typed metadata reached payload inspection'))
+    with pytest.raises(RestoreError, match=message):
+        library_backup._read_manifest(backup, sha256(raw).hexdigest())
+    assert original.read_bytes() == b'Unverified original remains unchanged'

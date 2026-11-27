@@ -13,7 +13,8 @@ import uuid
 
 from ..providers import (BudgetLedger, JobApproval, ProfileStore, ProviderGateway,
                          ProviderProfile, ProviderRequest, ProviderError,
-                         GOOGLE_TRANSLATION_ENDPOINT)
+                         GOOGLE_TRANSLATION_ENDPOINT, GOOGLE_TRANSLATION_PROVIDERS,
+                         google_v3_parent)
 from ..research.export_file import _filename, _destination
 
 
@@ -152,15 +153,30 @@ def show_api_connections(frame):
             provider_index = self.choose('Provider adapter', [
                 'Local or remote OpenAI-compatible text model',
                 'ElevenLabs speech, music and sound effects',
-                'Google Cloud Translation Basic v2 (NMT)'])
+                'Google Cloud Translation Basic v2 (NMT)',
+                'Google Cloud Translation Advanced v3 (NMT; IAM/ADC OAuth)'])
             if provider_index is None:
                 return
-            provider = ('openai-compatible', 'elevenlabs', 'google-translation-v2')[provider_index]
+            provider = ('openai-compatible', 'elevenlabs', *GOOGLE_TRANSLATION_PROVIDERS)[provider_index]
             fields = {}
             prompts = [('name', 'Friendly account name', '')]
             if provider == 'google-translation-v2':
                 # This adapter never accepts an arbitrary host, model or API key URL.
                 fields.update(endpoint=GOOGLE_TRANSLATION_ENDPOINT, model='nmt')
+            elif provider == 'google-translation-v3':
+                parent = (google_v3_parent(previous.endpoint).split('/')
+                          if previous is not None and previous.provider == provider else None)
+                project = self.prompt('Advanced v3 project', 'Google Cloud numeric project number', parent[1] if parent else '')
+                if project is None:
+                    return
+                location = self.prompt('Advanced v3 location',
+                    'Model location: global, or the same region as your existing glossary (for example us-central1)',
+                    parent[3] if parent else 'global')
+                if location is None:
+                    return
+                fields.update(endpoint='https://translation.googleapis.com/v3/projects/' + project.strip()
+                              + '/locations/' + location.strip(), model='general/nmt')
+                google_v3_parent(fields['endpoint'])
             else:
                 prompts.extend([
                     ('endpoint', 'API base URL (loopback IP for local service)',
@@ -178,21 +194,44 @@ def show_api_connections(frame):
                 if kind is None:
                     return
                 local, capabilities = kind == 0, ('llm',)
-            elif provider_index == 2:
+            elif provider in GOOGLE_TRANSLATION_PROVIDERS:
                 local, capabilities = False, ('translation',)
             else:
                 cap = self.choose('Capability for this profile and model', ['Speech synthesis', 'Music generation', 'Sound effects'])
                 if cap is None:
                     return
                 local, capabilities = False, (('tts', 'music', 'sound_effects')[cap],)
-            key = self.prompt('API key', 'API key (masked). Leave blank for local access or to keep an unchanged profile key.', password=True)
+            advanced = provider == 'google-translation-v3'
+            key = self.prompt('OAuth access token' if advanced else 'API key',
+                ('IAM/ADC OAuth access token (masked), not an API key or JSON file. '
+                 'Leave blank only to keep an unchanged profile credential.' if advanced else
+                 'API key (masked). Leave blank for local access or to keep an unchanged profile key.'),
+                password=True)
             if key is None:
                 return
-            profile = ProviderProfile(previous.id if previous else uuid.uuid4().hex,
-                provider=provider, capabilities=capabilities, local=local,
-                credential_ref=previous.credential_ref if previous and not key else None, **fields)
-            controller.store.save(profile, secret=key or None)
-            key = ''
+            try:
+                profile = ProviderProfile(previous.id if previous else uuid.uuid4().hex,
+                    provider=provider, capabilities=capabilities, local=local,
+                    credential_ref=previous.credential_ref if previous and (not key or advanced) else None, **fields)
+                if advanced and key:
+                    expires = self.prompt('OAuth token expiry',
+                        'Actual expiry with UTC offset, for example 2026-11-27T15:30:00Z. '
+                        'This app does not discover ADC files, run gcloud or refresh tokens.')
+                    if expires is None:
+                        return
+                    renewal = False
+                    if previous is not None and previous.credential_ref and previous.fingerprint == profile.fingerprint:
+                        decision = self.choose('OAuth credential update', [
+                            'Replace credential; require fresh approval for saved jobs',
+                            'I confirm this renews the same account; preserve exact existing approvals'])
+                        if decision is None:
+                            return
+                        renewal = decision == 1
+                    controller.store.save_google_token(profile, key, expires, renew_same_account=renewal)
+                else:
+                    controller.store.save(profile, secret=key or None)
+            finally:
+                key = ''
             self.refresh()
             self.status.SetValue('Profile saved. No credential test or generation request was sent.'
                                  + (' ' + controller.store.warning if controller.store.warning else ''))
@@ -242,7 +281,7 @@ def show_api_connections(frame):
         def run(self, event):
             try:
                 profile = self.selected()
-                if profile.provider == 'google-translation-v2':
+                if profile.provider in GOOGLE_TRANSLATION_PROVIDERS:
                     from .translation_dialog import show_translation
                     self.EndModal(wx.ID_OK)
                     wx.CallAfter(show_translation, frame)

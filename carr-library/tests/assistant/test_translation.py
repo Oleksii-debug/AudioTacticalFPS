@@ -1,15 +1,19 @@
 """Real files, locks, receipts and exports with synthetic provider responses only."""
 from dataclasses import replace
+from contextlib import closing
 from decimal import Decimal
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import shutil
 import socket
+import sqlite3
 from threading import Event, Thread
+from tempfile import TemporaryDirectory
 import pytest
 
-from carr_library.assistant.models import canonical
+from carr_library.assistant.models import canonical, local_path
 from carr_library.assistant.state import atomic_json
 from carr_library.assistant.translation import (
     TranslationService, language_approval, translation_approval, split_text)
@@ -19,7 +23,7 @@ from carr_library.assistant.translation_state import (
 from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.providers import (
     BudgetLedger, ProfileStore, ProviderError, ProviderGateway, ProviderProfile,
-    GOOGLE_TRANSLATION_ENDPOINT)
+    GOOGLE_TRANSLATION_ENDPOINT, translation_receipt_sha256)
 from carr_library.reader.narration_text import NarrationDraft
 
 SECRET = 'synthetic-account-key-do-not-send'
@@ -309,7 +313,8 @@ def test_complete_restored_derivative_exports_offline_without_rebinding(ready, t
     restored = TranslationService(moved)
     output = tmp_path / 'restored-export'
     restored.export(identity, output)
-    assert (output / 'translation-provenance.json').is_file()
+    report = json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert all(row['decoded_receipt_integrity'] == 'archived-unverified' for row in report['chunks'])
     assert len(text_calls(transport)) == 1
 
 
@@ -410,3 +415,278 @@ def test_chunking_and_integer_allocations_preserve_all_unicode():
     reserved = allocations(parts, 7)
     assert sum(value for value in reserved if value is not None) == 7
     assert all(value is None or type(value) is int for value in reserved)
+
+
+@pytest.mark.parametrize('mutation', [
+    'text-rehashed', 'detected-language-rehashed', 'receipt-digest-removed',
+    'ledger-digest-removed', 'ledger-digest-changed',
+])
+def test_completed_translation_requires_independent_decoded_ledger_evidence(ready, tmp_path, mutation):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    original_source = job['source_text']
+    row = job['receipts'][0]
+    if mutation in ('text-rehashed', 'detected-language-rehashed'):
+        if mutation == 'text-rehashed':
+            row['text'] = 'Changed derivative with a recomputed local hash.'
+            row['translation_sha256'] = sha256(row['text'].encode()).hexdigest()
+        else:
+            row['detected_source'] = 'uk'
+        row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
+    elif mutation == 'receipt-digest-removed':
+        row.pop('decoded_translation_sha256')
+    else:
+        digest = None if mutation == 'ledger-digest-removed' else 'f' * 64
+        with closing(sqlite3.connect(service.gateway.ledger.path)) as database, database:
+            database.execute('UPDATE operation SET decoded_translation_sha256=? WHERE id=?',
+                             (digest, row['operation_id']))
+    # The checkpoint's own hashes and typed schema remain valid. Only the
+    # independent live evidence can detect these altered or downgraded claims.
+    validate_translation_job(job)
+    service.jobs.save(job)
+    before = service.jobs.path(identity).read_bytes()
+    calls = len(transport.calls)
+    with pytest.raises(PermissionError, match='ledger'):
+        service.resume(identity)
+    target = tmp_path / 'refused-export'
+    with pytest.raises(PermissionError, match='ledger'):
+        service.export(identity, target)
+    assert not target.exists() and len(transport.calls) == calls
+    assert service.jobs.path(identity).read_bytes() == before
+    assert service.jobs.load(identity)['source_text'] == original_source
+
+
+def test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof(ready, tmp_path):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    for row in job['receipts']:
+        row.pop('decoded_translation_sha256', None)
+    service.jobs.save(job)
+    # Reconstruct the actual six-column historical ledger, then open it through
+    # the current migration. No text was retained there to backfill a new hash.
+    with closing(sqlite3.connect(service.gateway.ledger.path)) as database, database:
+        database.execute('ALTER TABLE operation RENAME TO modern_operation')
+        database.execute('CREATE TABLE operation (id TEXT PRIMARY KEY, job TEXT NOT NULL, request_hash TEXT NOT NULL,'
+                         'estimate_micros INTEGER NOT NULL, state TEXT NOT NULL, output_sha256 TEXT)')
+        database.execute('INSERT INTO operation SELECT id,job,request_hash,estimate_micros,state,output_sha256 FROM modern_operation')
+        database.execute('DROP TABLE modern_operation')
+    service.gateway.ledger = BudgetLedger(service.gateway.ledger.path)
+    before = service.jobs.path(identity).read_bytes()
+    calls = len(transport.calls)
+    assert service.resume(identity)['status'] == 'complete'
+    target = tmp_path / 'legacy-export'
+    service.export(identity, target)
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert {row['decoded_receipt_integrity'] for row in report['chunks']} == {'legacy-wire-only'}
+    assert all('decoded_translation_sha256' not in row for row in report['chunks'])
+    assert service.jobs.path(identity).read_bytes() == before
+    assert len(transport.calls) == calls
+    assert all(row['decoded_translation_sha256'] is None for row in service.gateway.ledger.report(identity))
+    restored_root = tmp_path / 'legacy-restored'
+    shutil.copytree(service.root, restored_root)
+    restored_target = tmp_path / 'legacy-restored-export'
+    TranslationService(restored_root).export(identity, restored_target)
+    restored_report = json.loads((restored_target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert {row['decoded_receipt_integrity'] for row in restored_report['chunks']} == {'archived-unverified'}
+
+
+def test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls(ready, tmp_path):
+    service, selected, _, transport = ready
+    source = 'First translated source. ' * 400
+    identity = submit(service, selected, source)
+    stop = Event()
+    service.resume(identity, cancelled=stop.is_set, progress=lambda *args: stop.set())
+    job = service.jobs.load(identity)
+    assert len(job['receipts']) == 1
+    historical = job['receipts'][0]
+    historical.pop('decoded_translation_sha256')
+    with closing(sqlite3.connect(service.gateway.ledger.path)) as database, database:
+        database.execute('UPDATE operation SET decoded_translation_sha256=NULL WHERE id=?',
+                         (historical['operation_id'],))
+    service.jobs.save(job)
+    old_receipt = canonical(historical)
+    assert service.resume(identity)['status'] == 'complete'
+    completed = service.jobs.load(identity)
+    assert canonical(completed['receipts'][0]) == old_receipt
+    assert all('decoded_translation_sha256' in row for row in completed['receipts'][1:])
+    assert len(text_calls(transport)) == sum(bool(chunk.strip()) for chunk in split_text(source))
+    target = tmp_path / 'mixed-export'
+    service.export(identity, target)
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert report['chunks'][0]['decoded_receipt_integrity'] == 'legacy-wire-only'
+    assert all(row['decoded_receipt_integrity'] == 'decoded-ledger-bound' for row in report['chunks'][1:])
+
+
+@pytest.mark.parametrize('source', [
+    'A' * 4498 + '\r\n' + 'B' * 100,
+    'A' * 4499 + ' ' + 'B' * 100,
+    'A' * 4500 + ' ' * 4500 + 'B',
+    'A' * 4500 + 'B' * 100,
+], ids=['crlf-boundary', 'space-boundary', 'whitespace-only-chunk', 'unbroken-word'])
+def test_export_restores_source_chunk_separators_without_rewriting_receipts(ready, tmp_path, monkeypatch, source):
+    service, selected, _, transport = ready
+    post = transport.post
+
+    def trim_outer_space(profile, route, payload, headers, **kwargs):
+        raw = post(profile, route, payload, headers, **kwargs)
+        result = json.loads(raw)
+        result['data']['translations'][0]['translatedText'] = json.loads(payload)['q'].strip()
+        return json.dumps(result).encode()
+
+    monkeypatch.setattr(transport, 'post', trim_outer_space)
+    identity = submit(service, selected, source)
+    service.resume(identity)
+    before = service.jobs.path(identity).read_bytes()
+    target = tmp_path / 'joined-export'
+    service.export(identity, target)
+    assert (target / 'translated.txt').read_bytes() == source.encode()
+    assert (target / 'original.txt').read_bytes() == source.encode()
+    assert service.jobs.path(identity).read_bytes() == before
+    job = service.jobs.load(identity)
+    for chunk, row in zip(split_text(source), job['receipts']):
+        assert row['text'] == (chunk.strip() if chunk.strip() else chunk)
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert all(row['decoded_receipt_integrity'] in ('decoded-ledger-bound', 'original-whitespace')
+               for row in report['chunks'])
+
+
+def test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history(ready, tmp_path, monkeypatch):
+    service, selected, vault, transport = ready
+    post = transport.post
+    accepted = '  Прийнятий переклад\r\n'
+
+    def translated(profile, route, payload, headers, **kwargs):
+        raw = post(profile, route, payload, headers, **kwargs)
+        result = json.loads(raw)
+        result['data']['translations'][0]['translatedText'] = accepted
+        return json.dumps(result).encode()
+
+    monkeypatch.setattr(transport, 'post', translated)
+    identity = submit(service, selected, 'Original source')
+    service.resume(identity)
+    original_job = service.jobs.path(identity).read_bytes()
+    service.profiles.remove(selected.id)
+    vault.on_get = lambda: pytest.fail('Completed derivative attempted to reopen provider credentials.')
+    target = tmp_path / 'single-export'
+    service.export(identity, target)
+    assert (target / 'translated.txt').read_bytes() == accepted.encode()
+    assert service.jobs.path(identity).read_bytes() == original_job
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert report['chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert len(text_calls(transport)) == 1
+
+
+@pytest.mark.parametrize('digest', [None, 'f' * 64], ids=['missing-value', 'wrong-content'])
+def test_typed_translation_rejects_invalid_decoded_receipt_before_backup(ready, digest):
+    service, selected, _, _ = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    job['receipts'][0]['decoded_translation_sha256'] = digest
+    with pytest.raises(ValueError):
+        validate_state_document(identity + '.json', canonical(job).encode())
+
+
+@pytest.mark.parametrize('kind', ['relative', 'dot-parent'])
+def test_translation_connection_paths_use_the_same_safe_canonical_library(ready, tmp_path, monkeypatch, kind):
+    service, selected, vault, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    before = service.jobs.path(identity).read_bytes()
+    monkeypatch.chdir(service.root.parent)
+    if kind == 'relative':
+        alias = Path(service.root.name)
+    else:
+        intermediate = service.root.parent / 'existing-intermediate'
+        intermediate.mkdir()
+        alias = intermediate / '..' / service.root.name
+        assert alias.absolute() != service.root
+    profiles = ProfileStore(alias / 'api-connections.json', vault)
+    ledger = BudgetLedger(alias / 'api-operations.sqlite')
+    reopened = TranslationService(alias, profiles=profiles,
+        gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+    assert reopened.root == service.root
+    assert reopened.resume(identity)['status'] == 'complete'
+    assert reopened.charge_report(identity)['operations'] == service.charge_report(identity)['operations']
+    output = tmp_path / 'canonical-path-export'
+    reopened.export(identity, output)
+    assert json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))[
+        'chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert service.jobs.path(identity).read_bytes() == before and len(text_calls(transport)) == 1
+
+
+@pytest.mark.parametrize('component', ['profiles', 'ledger'])
+@pytest.mark.parametrize('alias_kind', ['foreign-copy', 'foreign-hardlink', 'symbolic-link', 'linked-parent'])
+def test_translation_safe_path_binding_refuses_foreign_and_linked_connections(
+        ready, tmp_path, component, alias_kind):
+    service, _, vault, transport = ready
+    foreign = tmp_path / 'outside-library'
+    foreign.mkdir()
+    filename = 'api-connections.json' if component == 'profiles' else 'api-operations.sqlite'
+    original = service.root / filename
+    selected = foreign / filename
+    if alias_kind == 'foreign-copy':
+        shutil.copyfile(original, selected)
+    elif alias_kind == 'foreign-hardlink':
+        os.link(original, selected)
+    elif alias_kind == 'symbolic-link':
+        selected.symlink_to(original)
+    else:
+        parent = foreign / 'linked-library'
+        parent.symlink_to(service.root, target_is_directory=True)
+        selected = parent / filename
+    profiles = ProfileStore(service.root / 'api-connections.json', vault)
+    ledger = service.gateway.ledger
+    # Existing object paths are mutable; recheck them at the service boundary
+    # even if the object was initially constructed from an ordinary local file.
+    if component == 'profiles':
+        profiles.path = selected
+    else:
+        ledger = BudgetLedger(service.root / 'api-operations.sqlite')
+        ledger.path = selected
+    calls = len(transport.calls)
+    before = original.read_bytes()
+    with pytest.raises(ValueError):
+        TranslationService(service.root, profiles=profiles,
+            gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+    assert original.read_bytes() == before and len(transport.calls) == calls
+
+
+def test_windows_native_short_path_connections_bind_the_same_real_library(ready):
+    service, _, vault, transport = ready
+    if os.name != 'nt':
+        # The native alias branch is Windows-only. Portable runs still prove
+        # the exact path normalizer; they do not claim a Windows API verdict.
+        assert local_path(service.root / '..' / service.root.name) == service.root
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    short_path = kernel.GetShortPathNameW
+    short_path.argtypes = (wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD)
+    short_path.restype = wintypes.DWORD
+    with TemporaryDirectory(prefix='carr-translation-path-') as directory:
+        root = (Path(directory) / 'native library identity').resolve()
+        root.mkdir()
+        needed = short_path(str(root), None, 0)
+        assert needed > 0, ctypes.get_last_error()
+        buffer = ctypes.create_unicode_buffer(needed)
+        written = short_path(str(root), buffer, needed)
+        assert 0 < written < needed, ctypes.get_last_error()
+        alias = Path(buffer.value)
+        assert local_path(alias) == root
+        profiles = ProfileStore(alias / 'api-connections.json', vault)
+        profiles.save(ProviderProfile(
+            'native-path-account', 'Synthetic path account', 'google-translation-v2',
+            GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',)), secret=SECRET)
+        ledger = BudgetLedger(alias / 'api-operations.sqlite')
+        opened = TranslationService(root, profiles=profiles,
+            gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+        assert opened.root == root
+        assert opened._ledger_identity() == [ledger.path.stat().st_dev, ledger.path.stat().st_ino]
+        assert opened.available_profiles()[0].id == 'native-path-account'
+        assert not text_calls(transport)

@@ -471,7 +471,7 @@ class LegacyReadingStore:
 
     def retain(self, raw, *, cancelled=lambda: False):
         """Publish immutable original bytes once. A failed later save keeps history."""
-        from ..audio.jobs import publish_noreplace
+        from ..audio.jobs import publish_noreplace, _sync_directory
         from .narration import _read_bytes
         snapshot = decode_snapshot(raw, cancelled=cancelled)
         with exclusive_writer(self.root):
@@ -480,6 +480,10 @@ class LegacyReadingStore:
             if relative in inventory:
                 if inventory[relative] != raw:
                     raise ValueError('A retained reading history has conflicting bytes.')
+                # A prior no-replace move may have committed before its
+                # directory flush failed. A successful retry must complete
+                # that same durability boundary before publishing a project.
+                _sync_directory(self.root / DIRECTORY)
                 return snapshot.archive_sha256
             if len(inventory) >= MAX_ARCHIVES or sum(map(len, inventory.values())) + len(raw) > MAX_SNAPSHOT_BYTES:
                 raise ValueError('Retained reading histories exceed their storage budget.')

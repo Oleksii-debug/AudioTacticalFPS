@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 from hashlib import sha256
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -293,3 +294,37 @@ def test_byte_and_file_inventory_limits_apply_before_additional_publication(tmp_
     with pytest.raises(ValueError, match='budget'):
         legacy.LegacyReadingStore(tmp_path).retain(data)
     assert not (tmp_path / legacy.DIRECTORY).exists()
+
+
+
+def test_retry_completes_directory_sync_after_archive_move_committed(tmp_path, monkeypatch):
+    from carr_library.audio import jobs
+    data = raw(payload(bound=False))
+    store = legacy.LegacyReadingStore(tmp_path)
+    directory = tmp_path / legacy.DIRECTORY
+    original = jobs._sync_directory
+    calls = []
+    failure = [True]
+
+    def sync(path):
+        if Path(path) == directory:
+            calls.append(Path(path))
+            if failure[0]:
+                raise OSError('Injected post-publication directory sync failure')
+        return original(path)
+
+    monkeypatch.setattr(jobs, '_sync_directory', sync)
+    with pytest.raises(OSError, match='post-publication'):
+        store.retain(data)
+    identity = sha256(data).hexdigest()
+    saved = directory / (identity + '.json')
+    assert saved.read_bytes() == data
+    assert len(calls) == 1
+    # Repeating the failed flush cannot become a false successful retry.
+    with pytest.raises(OSError, match='post-publication'):
+        store.retain(data)
+    assert saved.read_bytes() == data and len(calls) == 2
+    failure[0] = False
+    assert store.retain(data) == identity
+    assert len(calls) == 3 and saved.read_bytes() == data
+    assert not list(directory.glob('.reading-import-*.tmp'))

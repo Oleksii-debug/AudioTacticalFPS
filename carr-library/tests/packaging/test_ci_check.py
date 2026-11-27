@@ -16,13 +16,15 @@ WATCHDOG_SCRIPT = SCRIPT.with_name('ci_watchdog.py')
 
 
 class CIEntrypointTests(unittest.TestCase):
-    def run_fixture(self, source, *suites, extra_env=None):
+    def run_fixture(self, source, *suites, extra_env=None, fixture_path='test_sample.py'):
         with tempfile.TemporaryDirectory(prefix='Research Ž ') as temp:
             root = Path(temp) / 'Дослідження'
             (root / 'scripts').mkdir(parents=True)
             shutil.copyfile(SCRIPT, root / 'scripts' / SCRIPT.name)
             shutil.copyfile(WATCHDOG_SCRIPT, root / 'scripts' / WATCHDOG_SCRIPT.name)
-            (root / 'test_sample.py').write_text(source, encoding='utf-8')
+            fixture = root / fixture_path
+            fixture.parent.mkdir(parents=True, exist_ok=True)
+            fixture.write_text(source, encoding='utf-8')
             env = dict(os.environ)
             env.update(extra_env or {})
             return subprocess.run([sys.executable, str(root / 'scripts' / SCRIPT.name), *suites],
@@ -148,6 +150,60 @@ def test_parallel_barrier():
                 result = self.run_fixture('def test_ok(): assert True\n',
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+
+
+    def test_numeric_loopback_requires_the_explicit_fixture_path(self):
+        result = self.run_fixture('def test_ok(): assert True\n',
+                                  '--allow-loopback', 'test_sample.py')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('limited to the explicit local-planning HTTP fixture', result.stdout)
+
+    def test_numeric_loopback_rejects_directory_and_lexical_aliases(self):
+        path = 'tests/loopback/test_local_planning.py'
+        for selector in ('tests/loopback', './' + path, 'tests/loopback/../loopback/test_local_planning.py'):
+            with self.subTest(selector=selector):
+                result = self.run_fixture('def test_ok(): assert True\n',
+                    '--allow-loopback', selector, fixture_path=path)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn('limited to the explicit local-planning HTTP fixture', result.stdout)
+
+    def test_inherited_loopback_environment_does_not_change_default_offline_policy(self):
+        source = """import os,socket,pytest
+def test_offline():
+    assert 'CARR_CI_ALLOW_LOOPBACK' not in os.environ
+    with pytest.raises(OSError, match='disabled during offline verification'):
+        socket.create_connection(('127.0.0.1', 1))
+"""
+        result = self.run_fixture(source, 'test_sample.py', extra_env={'CARR_CI_ALLOW_LOOPBACK': '1'})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_explicit_numeric_loopback_uses_real_tcp_but_refuses_external_names_and_bindings(self):
+        source = """import faulthandler,socket,pytest
+def test_local_only(request):
+    assert faulthandler.is_enabled()
+    assert float(request.config.getini('faulthandler_timeout')) == 0
+    with socket.socket() as server:
+        server.bind(('127.0.0.1', 0))
+        server.listen(1)
+        with socket.create_connection(server.getsockname(), timeout=2) as client:
+            with server.accept()[0] as accepted:
+                client.sendall(b'fixture')
+                assert accepted.recv(7) == b'fixture'
+    with socket.socket() as stream, socket.socket(type=socket.SOCK_DGRAM) as datagram:
+        for denied in (
+                lambda: socket.getaddrinfo('example.invalid', 443),
+                lambda: socket.getaddrinfo('localhost', 80),
+                lambda: socket.gethostbyname('127.0.0.1'),
+                lambda: stream.bind(('0.0.0.0', 0)),
+                lambda: stream.connect(('192.0.2.1', 80)),
+                lambda: datagram.bind(('127.0.0.1', 0))):
+            with pytest.raises(OSError, match='disabled during offline verification'):
+                denied()
+"""
+        path = 'tests/loopback/test_local_planning.py'
+        result = self.run_fixture(source, '--allow-loopback', path, fixture_path=path)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('CASE_START ', result.stdout)
 
 
 class RelocatedCIChildTests(unittest.TestCase):
