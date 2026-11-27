@@ -577,6 +577,7 @@ jobs:
             'tests/sync/test_admission.py',
             'tests/sync/test_state.py',
             'tests/ui/test_portable_sync.py',
+            'tests/audio/test_recording_controls.py',
             'tests/search/test_source_pagination.py',
             'tests/search/test_federated_pagination.py',
             'tests/audio/test_protected_voice_packages.py',
@@ -1430,6 +1431,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'bundle protected voice controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/bundle-source-pagination.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle source continuation failed' }
+          $bundleRecordingFfmpeg = & $installedPython -I -B -X utf8 -c "from carr_library.audio.runtime import activate_bundled_audio_runtime; handle=activate_bundled_audio_runtime(); assert handle is not None; print(handle.directory/'bin'/'ffmpeg.exe'); handle.close()"
+          if ($LASTEXITCODE -ne 0) { throw 'bundle recording runtime verification failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --ffmpeg $bundleRecordingFfmpeg --expect-installed --report ci-results/bundle-recording-controls.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle native Pause/Resume recording controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
           & $installedPython -I -B -X utf8 scripts/windows_incremental_backup_smoke.py --installed --output ci-results/bundle-incremental-backup.json 2>&1 | Tee-Object 'ci-results/bundle-incremental-backup.txt'
@@ -1563,6 +1568,7 @@ jobs:
               'tests/sync/test_admission.py',
               'tests/sync/test_state.py',
               'tests/ui/test_portable_sync.py',
+              'tests/audio/test_recording_controls.py',
               'tests/ui/test_federated_search.py',
               'tests/search/test_source_pagination.py',
               'tests/search/test_federated_pagination.py',

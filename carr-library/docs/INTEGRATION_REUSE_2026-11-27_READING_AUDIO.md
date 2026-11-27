@@ -642,3 +642,42 @@ no new requirement catalog or qualification claim is introduced.
 Preflight now retains bounded native JSON/text diagnostics before its long source
 suite, using the same public synthetic-fixture scope. No test, failure, timeout
 or device gate is removed to obtain those diagnostics earlier.
+
+## Owned recording Pause/Resume and passive range verification (2026-11-27)
+
+The independently reviewed recording checkpoint
+`7e6f4fc0317a2cc640d64f8e8201647e95c04975` and two-path backup seam
+`edaa02ecc9466dc800403088e6399bebf767e71c` extend the existing capture service,
+worker, native process family and dialog. No alternate recorder is introduced.
+
+Pause closes and drains the actual capture child and optional monitor before
+acknowledging the paused state. Resume revalidates the same input/runtime and
+starts another bounded segment inside the same capture reservation. Stop while
+paused saves retained frames without reopening input; Cancel discards an
+unfinished take. Paused wall time is omitted explicitly. Exact PCM frames are
+joined without resampling, fades or inserted silence.
+
+One existing broker reservation for declared CPU/memory/peak disk/input identity,
+the existing capture lock, private stage and quiet hold span pause, resume,
+assembly and any causal pending native cleanup. Stop remains distinct from the
+latched cancellation policy. Proven publication survives late Cancel/cleanup.
+Controlled takes use strict carr-recording/4 receipts with contiguous measured
+frame ranges and per-range hashes. Historical receipt v1/v2/v3 shapes, retake
+lineage and monitoring semantics remain unchanged. The backup verifier checks
+range PCM after the existing whole-WAV comparison, within its existing cancel
+translation. Outer backup format5/schema6 and passive restore remain unchanged.
+
+The new real-FFmpeg controls suite plus existing recording/monitor/UI/backup
+suites are selected in source and installed gates. Existing UI assertions and
+all original native Stop/retake/Cancel/Escape checks remain, with explicit native
+Pause/Resume and unchanged watchdog bounds. The main full bundle now additionally
+runs that same native probe against its own verified bundled FFmpeg. Preflight
+runs the actual source and installed probe before its early diagnostic upload.
+The fixture uses actual FFmpeg with a synthetic lavfi input; it does not qualify
+a physical microphone, human listening or manual NVDA. The separate required
+selected-device capture gate and its observed access denial remain untouched.
+
+All new recording/backup/native work is **INTEGRATED / NOT_RUN**. Recording.md
+states the finite attempt/pause/disk bounds, cooperative admission and omitted
+pause time. Unfinished physical capture is not crash-resumable or copied into
+complete backups; committed but unreceipted originals remain inert recovery data.

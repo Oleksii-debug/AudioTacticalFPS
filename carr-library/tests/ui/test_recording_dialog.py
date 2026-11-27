@@ -12,7 +12,7 @@ import wave
 
 import pytest
 
-from carr_library.audio.recording import AudioCancelled, AudioCleanupPending, RecordingOptions
+from carr_library.audio.recording import AudioCancelled, AudioCleanupPending, RecordingOptions, RecordingState
 from carr_library.ui.operation_progress import ProgressTracker
 from carr_library.speech.progress_speech import play_when_quiet
 from carr_library.speech.output_devices import OutputDevice
@@ -131,7 +131,7 @@ def handlers(values):
     names = {'current', 'cancellation', 'controls', 'release_holds', 'release_when_stopped',
              'settled', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh', 'refresh_outputs',
              'start', 'retake', 'preview', 'use', 'close', 'stop_playback',
-             'stop_recording', 'cancel_recording', 'query_progress'}
+             'stop_recording', 'cancel_recording', 'pause_recording', 'resume_recording', 'query_progress'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names))
@@ -139,7 +139,7 @@ def handlers(values):
                         + ", 'detach': detach}\n")
     factory.body[0].body[:0] = definitions + ast.parse(
         'def detach():\n    nonlocal alive\n    alive = False\n').body
-    namespace = dict(RecordingOptions=RecordingOptions, AudioCancelled=AudioCancelled,
+    namespace = dict(RecordingOptions=RecordingOptions, RecordingState=RecordingState, AudioCancelled=AudioCancelled,
         AudioCleanupPending=AudioCleanupPending, _VerifiedRecording=_VerifiedRecording,
         play_when_quiet=play_when_quiet, time=time, threading=threading,
         __name__='carr_library.ui.recording_dialog', __package__='carr_library.ui')
@@ -176,7 +176,7 @@ def view(tmp_path):
         retain=Mock(return_value=dict(asset='a' * 64 + '.wav', sha256='a' * 64,
                                      recording_id='retained', project_id='managed')))
     buttons = {name: Control() for name in (
-        'refresh', 'refresh_outputs', 'query', 'start', 'retake', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
+        'refresh', 'refresh_outputs', 'query', 'start', 'retake', 'stop', 'pause', 'resume', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
     values = dict(busy=False, alive=True, closing=False, recording=False, generation=0,
         devices=(), outputs=(), records=(), holds=[], cleanup_owner=None,
         output_devices=Mock(return_value=(OutputDevice(2, 'Explicit headphones', 'opaque-output'),)),
@@ -184,6 +184,7 @@ def view(tmp_path):
         active_started=threading.Event(), active_finished=threading.Event(),
         frame=frame, library=frame.library, progress=progress, player=Mock(),
         selected_result=None, service=service, cancelled=threading.Event(), stopped=threading.Event(),
+        paused=threading.Event(), capture_state='idle',
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
         sample_rate=Control('24000'), channels=Control(selection=0),
         monitoring=Control(False), monitor_output=Control(selection=-1),
@@ -615,3 +616,106 @@ def test_unchecked_monitoring_never_passes_a_previously_selected_output(view):
     view.finish()
     assert view.captures[0][1]['monitor_output'] is None
     assert view.values['monitoring'].GetValue() is False
+
+
+@pytest.mark.parametrize('action', ['resume_then_stop', 'stop_paused', 'cancel_paused'])
+def test_pause_acknowledgement_keeps_the_same_host_worker_and_quiet_hold(view, action):
+    ready(view)
+    original = view.service.capture
+    entered, request_seen, allow_quiet, paused_ack, resumed = (
+        threading.Event() for _ in range(5))
+    worker = ThreadPoolExecutor(max_workers=1)
+    view.frame.executor = worker
+
+    def controlled(device, **kwargs):
+        kwargs['state_changed'](RecordingState('recording', 240, 24000, 0))
+        entered.set()
+        deadline = time.monotonic() + 5
+        while not kwargs['pause_requested']():
+            if kwargs['cancelled']() or time.monotonic() > deadline:
+                raise AudioCancelled('Fixture did not receive Pause')
+            time.sleep(.005)
+        request_seen.set()
+        assert allow_quiet.wait(5), 'The modeled native owner was never released.'
+        kwargs['state_changed'](RecordingState('paused', 240, 24000, 1))
+        paused_ack.set()
+        while kwargs['pause_requested']() and not kwargs['stop_requested']():
+            if kwargs['cancelled']() or time.monotonic() > deadline:
+                raise AudioCancelled('Paused capture was cancelled')
+            time.sleep(.005)
+        if kwargs['cancelled']():
+            raise AudioCancelled('Paused capture was cancelled')
+        if not kwargs['stop_requested']():
+            kwargs['state_changed'](RecordingState('recording', 480, 24000, 1))
+            resumed.set()
+            while not kwargs['stop_requested']():
+                if kwargs['cancelled']() or time.monotonic() > deadline:
+                    raise AudioCancelled('Resumed capture was cancelled')
+                time.sleep(.005)
+        return original(device, **kwargs)
+
+    def wait(predicate):
+        deadline = time.monotonic() + 5
+        while not predicate():
+            view.pump()
+            assert time.monotonic() < deadline, 'The existing native completion did not settle.'
+            time.sleep(.005)
+        view.pump()
+
+    view.service.capture = controlled
+    try:
+        view.handlers.start()
+        wait(entered.is_set)
+        assert view.frame.working and view.values['buttons']['pause'].enabled
+        hold = view.progress.holds[-1]
+        view.handlers.pause_recording()
+        wait(request_seen.is_set)
+        assert view.values['paused'].is_set() and not hold.closed
+        assert not view.values['buttons']['resume'].enabled
+        view.handlers.resume_recording()
+        assert view.values['paused'].is_set(), 'Resume bypassed the native Pause acknowledgement.'
+        allow_quiet.set()
+        wait(paused_ack.is_set)
+        assert view.values['buttons']['resume'].enabled
+        assert view.frame.working and not hold.closed
+        assert any('Paused.' in event.phase for event in view.progress.history)
+        if action == 'cancel_paused':
+            view.handlers.cancel_recording()
+        else:
+            if action == 'resume_then_stop':
+                view.handlers.resume_recording()
+                wait(resumed.is_set)
+                assert not view.values['paused'].is_set() and not hold.closed
+            view.handlers.stop_recording()
+        wait(lambda: not view.frame.working)
+        assert hold.closed and len(view.progress.holds) == 1
+        if action == 'cancel_paused':
+            assert not view.path.exists() and view.values['status'].value.startswith('Cancelled.')
+        else:
+            assert len(view.captures) == 1 and view.path.exists()
+            assert view.values['status'].value.startswith('Saved and verified.')
+        assert not view.values['buttons']['pause'].enabled
+        assert not view.values['buttons']['resume'].enabled
+    finally:
+        view.values['cancelled'].set()
+        allow_quiet.set()
+        worker.shutdown(wait=True)
+        view.pump()
+
+
+def test_stale_pause_notification_cannot_change_a_new_take_or_release_its_hold(view):
+    ready(view)
+    view.handlers.start()
+    view.finish()
+    old = view.captures[0][1]['state_changed']
+    view.handlers.start()
+    new_hold = view.progress.holds[-1]
+    before = view.values['status'].value
+    old(RecordingState('paused', 240, 24000, 1))
+    view.pump()
+    assert view.values['status'].value == before
+    assert not view.values['buttons']['resume'].enabled
+    assert not view.values['paused'].is_set() and not new_hold.closed
+    assert view.frame.working
+    view.finish()
+    assert new_hold.closed
