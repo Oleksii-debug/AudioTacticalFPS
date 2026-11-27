@@ -1,13 +1,19 @@
 """Offline distribution boundaries, using synthetic wheel bytes and real files."""
+import base64
+import csv
 import hashlib
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import subprocess
 import unittest
 from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
+
+from carr_library import native_checks
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -57,6 +63,59 @@ class WindowsBundleTests(unittest.TestCase):
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
+        self.assertEqual(native_checks._manifest(self.output)['bundled_model'], False)
+
+    def test_exact_source_builder_manifest_is_accepted_by_installed_consumer(self):
+        # A tiny real Git source and matching wheel keep source/tree verification
+        # active. Only the verifier's repository location is redirected.
+        repository = self.root / 'source'
+        project = repository / 'carr-library'
+        source = project / 'src/carr_library'
+        source.mkdir(parents=True)
+        (project / 'pyproject.toml').write_text('''[project]
+name = "universal-research-library"
+version = "1.0"
+license-files = ["LICENSE"]
+[tool.setuptools]
+packages = ["carr_library"]
+package-dir = {"" = "src"}
+''', encoding='utf-8')
+        (project / 'LICENSE').write_bytes(b'Synthetic test license.\n')
+        (source / '__init__.py').write_bytes(b'')
+        (source / '__main__.py').write_bytes(b"print('synthetic test wheel')\n")
+        environment = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+                           GIT_AUTHOR_NAME='Synthetic Test', GIT_AUTHOR_EMAIL='test@example.invalid',
+                           GIT_COMMITTER_NAME='Synthetic Test', GIT_COMMITTER_EMAIL='test@example.invalid')
+        def git(*arguments):
+            return subprocess.check_output(['git', '-C', str(repository), *arguments],
+                                           env=environment).decode().strip()
+        git('init', '-q')
+        git('add', '.')
+        git('commit', '-qm', 'Synthetic application source')
+        commit = git('rev-parse', 'HEAD')
+        prefix = 'universal_research_library-1.0.dist-info/'
+        with ZipFile(self.app, 'a', ZIP_DEFLATED) as archive:
+            archive.writestr('carr_library/__init__.py', b'')
+            archive.writestr(prefix + 'WHEEL', 'Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n')
+            archive.writestr(prefix + 'licenses/LICENSE', (project / 'LICENSE').read_bytes())
+            rows = []
+            for name in archive.namelist():
+                data = archive.read(name)
+                digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).decode().rstrip('=')
+                rows.append([name, 'sha256=' + digest, str(len(data))])
+            rows.append([prefix + 'RECORD', '', ''])
+            record = io.StringIO(newline='')
+            csv.writer(record, lineterminator='\n').writerows(rows)
+            archive.writestr(prefix + 'RECORD', record.getvalue().encode())
+        verifier = module('source_wheel')
+        with patch.object(builder, 'verify_application_source', side_effect=lambda wheel, sha:
+                          verifier.verify_application_wheel(wheel, repository, sha)):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, source_commit=commit)
+        installer.verify(self.output)
+        manifest = native_checks._manifest(self.output)
+        self.assertEqual(manifest['source_commit'], commit)
+        self.assertEqual(manifest['source_tree'], git('rev-parse', 'HEAD^{tree}'))
+        self.assertEqual(manifest['files']['wheelhouse/' + self.app.name], builder.sha256(self.app))
 
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
