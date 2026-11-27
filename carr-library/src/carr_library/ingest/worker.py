@@ -739,16 +739,22 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None):
+                    expected_manifest=None, request_config=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
     after a crash. An existing request must retain the entire planned identity.
+    A saved batch may supply its exact configuration wire only when it matches
+    the typed options; this keeps passive batch/request relations byte-exact.
     """
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
                                   request_id, expected_manifest)
+        if request_config is not None:
+            if not _request_config_matches(request_config, planned['config']):
+                raise ValueError('Saved import request configuration differs from the planned options.')
+            planned['config'] = json.loads(canonical(request_config))
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:

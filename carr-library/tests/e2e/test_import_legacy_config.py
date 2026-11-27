@@ -254,3 +254,100 @@ def test_legacy_default_equivalence_does_not_relax_other_prepared_identity(tmp_p
             request_id=original['request_id'], expected_manifest=original['expected_manifest'])
     assert worker._path(app.root, original['request_id']).read_bytes() == before
     assert not (app.root / 'imports.sqlite').exists()
+
+
+@pytest.mark.parametrize('restore_before_run', [False, True])
+def test_unprepared_legacy_batch_keeps_wire_through_lost_reply_and_full_backup(
+        tmp_path, monkeypatch, restore_before_run):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Unprepared historical batch')
+    source = tmp_path / 'original.txt'
+    original = b'Unprepared legacy railway source.\n'
+    source.write_bytes(original)
+    batch = app.plan_import_batch(workspace, [source])
+    batch['config'] = legacy_config()
+    store = ImportBatchStore(app)
+    store._store(batch)
+    row, = batch['rows']
+    with pytest.raises(FileNotFoundError):
+        worker.load_request(app.root, row['request_id'])
+    if restore_before_run:
+        backup = tmp_path / 'before-run'
+        checksum = create_backup(app, backup)
+        source.unlink()
+        app = LibraryApp(restore_backup(backup, tmp_path / 'restored-before-run', checksum))
+        store = ImportBatchStore(app)
+        batch = app.import_batch(workspace, batch['batch_id'])
+        row, = batch['rows']
+        with pytest.raises(FileNotFoundError):
+            worker.load_request(app.root, row['request_id'])
+    original_store, lost = ImportBatchStore._store, []
+    def lose_completed_batch_write(self, record, **options):
+        if (self.root == app.root and record['batch_id'] == batch['batch_id']
+                and record['rows'][0]['state'] == 'complete' and not lost):
+            completed = worker.load_request(app.root, row['request_id'])
+            assert completed['state'] == 'complete' and completed['config'] == legacy_config()
+            lost.append(completed['result']['id'])
+            raise OSError('Synthetic loss before completed batch publication')
+        return original_store(self, record, **options)
+    with monkeypatch.context() as interrupted:
+        children = track_workers(interrupted)
+        interrupted.setattr(ImportBatchStore, '_store', lose_completed_batch_write)
+        with pytest.raises(OSError, match='before completed batch publication'):
+            app.run_import_batch(workspace, batch['batch_id'], timeout=30)
+    assert len(children) == 1 and children[0].poll() is not None and len(lost) == 1
+    durable_batch = store._path(batch['batch_id']).read_bytes()
+    persisted = json.loads(durable_batch)
+    assert persisted['config'] == legacy_config() and persisted['rows'][0]['state'] == 'running'
+    view = app.import_batch(workspace, batch['batch_id'])
+    assert view['state'] == 'complete' and view['rows'][0]['result']['id'] == lost[0]
+    assert store._path(batch['batch_id']).read_bytes() == durable_batch
+    request = worker.load_request(app.root, row['request_id'])
+    assert request['config'] == view['config'] == legacy_config()
+    if source.exists():
+        assert source.read_bytes() == original
+        source.unlink()
+    def forbid(*args, **kwargs):
+        pytest.fail('Passive backup/reconciliation repeated an already committed import child.')
+    with monkeypatch.context() as passive:
+        passive.setattr(worker.subprocess, 'Popen', forbid)
+        backup = tmp_path / 'after-lost-reply'
+        checksum = create_backup(app, backup)
+        restored = LibraryApp(restore_backup(backup, tmp_path / 'restored-after-commit', checksum))
+        final = restored.run_import_batch(workspace, batch['batch_id'], timeout=30)
+    assert final['state'] == 'complete' and final['rows'][0]['result']['id'] == lost[0]
+    after = worker.load_request(restored.root, row['request_id'])
+    assert after['config'] == final['config'] == legacy_config()
+    assert after['source'] == final['rows'][0]['source']
+    assert restored.assets.resolve(after['asset_sha256']).read_bytes() == original
+    assert not source.exists()
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT id FROM revision').fetchall()[0][0] == lost[0]
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('damage', ['enabled', 'numeric-false', 'missing-field', 'unknown-field', 'timeout'])
+def test_initial_saved_config_wire_must_match_typed_options_before_request_creation(tmp_path, damage):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Bound initial request options')
+    source = tmp_path / 'original.txt'
+    source.write_text('Strict initial request options.', encoding='utf-8')
+    config = legacy_config()
+    if damage == 'enabled':
+        config['automatic_languages'] = True
+    elif damage == 'numeric-false':
+        config['automatic_languages'] = 0
+    elif damage == 'missing-field':
+        config.pop('orientation')
+    elif damage == 'unknown-field':
+        config['unknown_policy'] = False
+    else:
+        config['timeout'] += 1
+    metadata = dict(title='Selected source', authors=[], language=None,
+        edition=None, volume=None, collections=[], work_id='work', edition_id='edition')
+    with pytest.raises(ValueError, match='configuration differs'):
+        worker.prepare_request(app.root, workspace, source, metadata, Config(),
+            request_id='a' * 32, request_config=config,
+            expected_manifest=source_snapshot(source.parent, source.name).manifest())
+    assert not tuple((app.root / 'import-requests').glob('*.json'))
+    assert not (app.root / 'imports.sqlite').exists()
