@@ -12,11 +12,20 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46009379630,
-    "commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
-    "id": 15205168290,
-    "sha256": "d97b44b8fbd128e4e530b598a637f30b15f41817e39be0bd1c97ab8d97a0ecb7",
-    "kind": "translation-qualified"
+    "run": 46056591289,
+    "commit": "19b3354108867758710968d95d39953151cc849e",
+    "id": 15226911797,
+    "sha256": "c7c5271c02ae2d5bbf5799aa18b6e99117e8420c236300a2b6c53e4805172050",
+    "bytes": 3528937,
+    "kind": "chm-preview-exact-source-installed235-and-native4"
+  },
+  {
+    "run": 46055738652,
+    "commit": "c328abc3b96a50dd9e5977d2b6c1020a91e60bfa",
+    "id": 15226093340,
+    "sha256": "029d918332fcd2652a5ecdd872949a113d2d478ef88fbd4f8ad161137f2a4a4f",
+    "bytes": 4586816,
+    "kind": "office-xls-bounded-layout-census-source6-pass1-fail"
   }
 ]
 
@@ -57,16 +66,21 @@ wanted = {
     'native-selected-advanced.txt', 'native-selected-advanced.json',
     'native-document.txt', 'native-document.json', 'native-chapter.txt',
     'native-chapter.json', 'native-batch.txt', 'native-batch.json',
+    'local-translation-gate.json', 'native-local-selected.json', 'native-local-selected.txt',
+    'native-local-document.json', 'native-local-document.txt',
+    'native-local-chapter.json', 'native-local-chapter.txt',
+    'native-local-batch.json', 'native-local-batch.txt',
     'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
     if (metadata['id'] != pin['id'] or metadata['workflow_run']['id'] != pin['run']
             or metadata['workflow_run']['head_sha'] != pin['commit']
-            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']):
+            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']
+            or metadata['size_in_bytes'] != pin['bytes']):
         raise ValueError('Existing artifact provenance differs.')
     raw = read(base + '/zip', 8 * 1024 * 1024)
-    if hashlib.sha256(raw).hexdigest() != pin['sha256']:
+    if len(raw) != pin['bytes'] or hashlib.sha256(raw).hexdigest() != pin['sha256']:
         raise ValueError('Existing artifact archive failed its recorded digest.')
     print('ARTIFACT', json.dumps({**pin, 'bytes': len(raw), 'name': metadata['name']}), flush=True)
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -110,6 +124,9 @@ for pin in ARTIFACTS:
                         'suffix_counts': dict(Counter(PurePosixPath(key).suffix.casefold() for key in code)),
                         'canonical_sha256': hashlib.sha256(json.dumps(code, sort_keys=True,
                             separators=(',', ':')).encode()).hexdigest()}), flush=True)
-                print(name, json.dumps(brief(value), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
+                rendered = json.dumps(brief(value), sort_keys=True, ensure_ascii=False)
+                if len(rendered) > 256 * 1024:
+                    raise ValueError('Bounded diagnostic JSON exceeds its printing budget.')
+                print(name, rendered, flush=True)
             else:
                 print(name, content.decode('utf-8', errors='replace')[-48000:], flush=True)
