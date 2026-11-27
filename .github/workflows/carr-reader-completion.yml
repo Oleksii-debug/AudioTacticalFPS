@@ -1,9 +1,6 @@
 name: CARR reader completion source acceptance
 
 on:
-  push:
-    branches: [carr/canonical-completion-2aa-20261127]
-    paths: ['carr-library/**', '.github/workflows/carr-reader-completion.yml']
   pull_request:
     branches: [carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-reader-completion.yml']
@@ -13,13 +10,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: carr-reader-completion-${{ github.head_ref || github.ref_name }}
-  # Finish an active exact source run while the next candidate queues.
+  # Distinct source revisions can run while an older runner allocation waits.
+  group: carr-reader-completion-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
   reading-composition:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 18
     defaults:
       run:
