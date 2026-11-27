@@ -1,0 +1,136 @@
+name: CARR OCR copy source stability regression
+
+on:
+  push:
+    branches: [carr/validate-ocr-copy-b171-20261127]
+    paths: [.github/workflows/carr-ocr-copy-regression.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-ocr-copy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  windows-red-green:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      CARR_VALIDATION_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Check out the exact two-file producer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ef7ff4a034dec287df6e11926e210559c45be89b
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install only bounded test dependencies
+        run: |
+          python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prove the missing rejection then verify the source-copy correction
+        timeout-minutes: 5
+        run: |
+          $probe = @'
+          from hashlib import sha1, sha256
+          import json, os, pathlib, subprocess, sys
+          import xml.etree.ElementTree as ET
+          
+          BASELINE = 'ce646900cc3a606279dadb0aef870e56e3a9e628'
+          PRODUCER = 'ef7ff4a034dec287df6e11926e210559c45be89b'
+          SOURCE = pathlib.Path('src/carr_library/extract/ocr_model_store.py')
+          TEST = pathlib.Path('tests/extract/test_ocr_model_store.py')
+          REGRESSION = 'test_same_size_source_change_with_unchanged_stamps_is_not_activated'
+          EVIDENCE = pathlib.Path('ci-ocr-copy-results')
+          EVIDENCE.mkdir(exist_ok=True)
+          
+          def blob(raw):
+              return sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+          
+          def cases(path):
+              return list(ET.parse(path).iter('testcase'))
+          
+          def run(label, arguments):
+              xml = EVIDENCE / (label + '.xml')
+              command = [sys.executable, '-X', 'utf8', '-B', '-m', 'pytest', '-q',
+                  '-o', 'addopts=', '-o', 'pythonpath=src', '-o', 'xfail_strict=true',
+                  '--import-mode=importlib', '--junitxml=' + str(xml), *arguments]
+              result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8', timeout=120)
+              output = result.stdout + result.stderr
+              (EVIDENCE / (label + '.log')).write_text(output, encoding='utf-8')
+              print(output, flush=True)
+              rows = cases(xml)
+              return dict(returncode=result.returncode, cases=len(rows),
+                  unique=len({(row.get('classname'), row.get('name')) for row in rows}),
+                  failures=sum(row.find('failure') is not None for row in rows),
+                  errors=sum(row.find('error') is not None for row in rows),
+                  skipped=sum(row.find('skipped') is not None for row in rows),
+                  xml_sha256=sha256(xml.read_bytes()).hexdigest()), rows
+          
+          assert sys.platform == 'win32'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == PRODUCER
+          corrected = SOURCE.read_bytes()
+          baseline = subprocess.check_output(['git', 'show', BASELINE + ':carr-library/' + SOURCE.as_posix()])
+          assert blob(corrected) == 'cf2da602a370b0f883ebc422b8f3c2407d350942'
+          assert blob(baseline) == '971c58ea5ed36ed2c57cb7840d19e64144f85854'
+          assert blob(TEST.read_bytes()) == 'fee1134427c784bcf21fb78debeafc672c439e8b'
+          try:
+              SOURCE.write_bytes(baseline)
+              red, red_rows = run('baseline-red', [str(TEST) + '::' + REGRESSION])
+          finally:
+              SOURCE.write_bytes(corrected)
+          assert SOURCE.read_bytes() == corrected
+          green, green_rows = run('candidate-green', [str(TEST), '-k',
+              'not test_actual_official_english_install_selection_and_inference'])
+          red_ok = (red['returncode'] == 1 and red['cases'] == red['unique'] == red['failures'] == 2
+              and red['errors'] == red['skipped'] == 0
+              and all(row.get('name', '').startswith(REGRESSION + '[')
+                  and 'DID NOT RAISE' in ''.join(row.find('failure').itertext())
+                  and 'ModelStoreError' in ''.join(row.find('failure').itertext()) for row in red_rows))
+          green_ok = (green['returncode'] == 0 and green['cases'] == green['unique'] == 33
+              and green['failures'] == green['errors'] == green['skipped'] == 0)
+          assert blob(SOURCE.read_bytes()) == 'cf2da602a370b0f883ebc422b8f3c2407d350942'
+          assert blob(TEST.read_bytes()) == 'fee1134427c784bcf21fb78debeafc672c439e8b'
+          assert subprocess.run(['git', 'diff', '--exit-code', '--',
+              'src/carr_library/extract/ocr_model_store.py',
+              'tests/extract/test_ocr_model_store.py']).returncode == 0
+          receipt = dict(status='PASS' if red_ok and green_ok else 'FAIL',
+              baseline_commit=BASELINE, producer_commit=PRODUCER,
+              validation_commit=os.environ['CARR_VALIDATION_COMMIT'],
+              source_blob=blob(corrected), test_blob=blob(TEST.read_bytes()),
+              python=sys.version, platform=sys.platform, baseline=red, candidate=green,
+              baseline_expected_rejection_missing=red_ok, candidate_all_selected_cases_pass=green_ok,
+              selected_case_count=33,
+              excluded_case='test_actual_official_english_install_selection_and_inference',
+              model_downloads=False, actual_ocr_inference='NOT_RUN',
+              evidence_scope='Actual Windows filesystem; synthetic model bytes and official catalogue metadata',
+              manual_nvda='NOT_RUN')
+          (EVIDENCE / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt), flush=True)
+          assert red_ok, 'Baseline must reproduce both missing mutation rejections.'
+          assert green_ok, 'Corrected source must pass every selected case without skips.'
+          
+          '@
+          $probe | python -X utf8 -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve bounded regression evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-ocr-copy-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-ocr-copy-results/
+          retention-days: 7
