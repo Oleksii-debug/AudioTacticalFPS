@@ -1,0 +1,127 @@
+name: Exact runtime completion and native cleanup regression
+on:
+  push:
+    branches: [carr/runtime-completion-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-runtime-completion-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: runtime-completion-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    name: Exact cleanup, idle renewal and actual loopback / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        run: python -m pip install ".[test,sync]"
+      - name: Prepare exact source and installed acceptance
+        run: |
+          mkdir -p ci-runtime-completion
+          cat > ci-runtime-completion/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import json
+          from pathlib import Path
+          import sys
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          root = Path.cwd().resolve()
+          mode = sys.argv[1]
+          assert mode in ("source", "installed")
+          if mode == "source":
+              sys.path[:0] = [str(root / "src"), str(root)]
+          purelib = Path(sysconfig.get_path("purelib")).resolve()
+          suites = ["tests/audio/test_windows_job_cleanup.py","tests/security/test_idle_renewal.py","tests/security/test_refresh.py","tests/security/test_entitlements.py","tests/security/test_entitlement_publication.py","tests/security/test_update_resume.py","tests/security/test_update_resume_https.py","tests/assistant/test_providers.py"]
+          names = ["carr_library.audio.windows_job","carr_library.audio.process","carr_library.audio.cleanup","carr_library.security.refresh","carr_library.security.entitlements","carr_library.security._files","carr_library.security.https","carr_library.security._https_worker","carr_library.security.updates","carr_library.security.download_state","carr_library.assistant.providers","carr_library.assistant.profiles","carr_library.durable_state"]
+          def inventory():
+              values = {}
+              for name in names:
+                  module = importlib.import_module(name)
+                  actual = Path(module.__file__).resolve()
+                  expected = root / "src" / Path(*name.split(".")).with_suffix(".py")
+                  assert actual == expected.resolve() if mode == "source" else actual.is_relative_to(purelib) and not actual.is_relative_to(root / "src"), (name, str(actual))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  values[name] = {"path": str(actual), "sha256": digest}
+              package = Path(importlib.import_module("carr_library").__file__).resolve().parent
+              actual_files = {p.relative_to(package).as_posix(): sha256(p.read_bytes()).hexdigest() for p in package.rglob("*.py")}
+              expected_files = {p.relative_to(root / "src/carr_library").as_posix(): sha256(p.read_bytes()).hexdigest() for p in (root / "src/carr_library").rglob("*.py")}
+              assert actual_files == expected_files, "Complete installed/source Python inventory differs."
+              return values, actual_files
+          class Proof:
+              def pytest_sessionstart(self, session):
+                  self.before = inventory()
+              def pytest_collection_modifyitems(self, session, config, items):
+                  self.counts = {name: 0 for name in suites}
+                  for item in items:
+                      path = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert path in self.counts, item.nodeid
+                      self.counts[path] += 1
+                  assert all(self.counts.values()), self.counts
+          proof = Proof()
+          output = root / "ci-runtime-completion"
+          output.mkdir(exist_ok=True)
+          with tempfile.TemporaryDirectory(prefix="carr-runtime-completion-") as temporary:
+              report = output / (mode + ".xml")
+              options = ["-q", "--import-mode=importlib", "-o", "addopts=", "-o", "xfail_strict=true",
+                         "--junitxml", str(report), "--basetemp", str(Path(temporary) / "pytest")]
+              if mode == "installed":
+                  options.extend(["-o", "pythonpath="])
+              status = pytest.main([*options, *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases, (status, len(cases))
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped")) for case in cases)
+              assert inventory() == proof.before
+              origins, files = proof.before
+              result = {"status": "PASS", "mode": mode, "cases": len(cases), "suites": proof.counts,
+                        "origins": origins, "package_python_files": len(files),
+                        "package_inventory_sha256": sha256(json.dumps(files, sort_keys=True).encode()).hexdigest(),
+                        "actual_loopback": "HTTP provider and TLS signed-update server; no external service",
+                        "windows_query_failure_original_counts": "NOT_OBSERVED"}
+              (output / (mode + "-identity.json")).write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+              print(json.dumps(result, sort_keys=True), flush=True)
+          
+          PY
+      - name: Require source contracts and actual HTTP TLS process families
+        run: |
+          set -o pipefail
+          python -B -X utf8 ci-runtime-completion/check.py source 2>&1 | tee ci-runtime-completion/source.txt
+      - name: Require isolated installed contracts and actual HTTP TLS process families
+        if: always()
+        run: |
+          set -o pipefail
+          python -I -B -X utf8 ci-runtime-completion/check.py installed 2>&1 | tee ci-runtime-completion/installed.txt
+      - name: Preserve exact runtime evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: runtime-completion-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-runtime-completion/
+          if-no-files-found: error

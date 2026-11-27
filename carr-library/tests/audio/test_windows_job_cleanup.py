@@ -215,3 +215,62 @@ def test_lifetime_borrows_assigned_root_without_closing_callers_handle(kernel):
     assert 101 not in kernel.closed
     assert selected.close() is True
     assert kernel.closed == [201, 100]
+
+
+@pytest.mark.parametrize('kind', ['audio', 'lifetime'])
+def test_incomplete_job_list_is_requeried_before_exact_members_are_stopped(kernel, kind, monkeypatch):
+    selected = owner(kernel, kind)
+    original = kernel.QueryInformationJobObject
+    queries = []
+    def incomplete_once(job, info, output, size, length):
+        if info == 3 and not queries:
+            queries.append('incomplete')
+            value = ctypes.cast(output, ctypes.POINTER(module._ProcessIds)).contents
+            value.assigned, value.count = 1, 0
+            assert not kernel.opened and not kernel.stopped and not kernel.closed
+            return 1
+        queries.append('complete')
+        return original(job, info, output, size, length)
+    monkeypatch.setattr(kernel, 'QueryInformationJobObject', incomplete_once)
+    assert selected.close() is True
+    assert queries[0] == 'incomplete' and len(queries) >= 3
+    assert kernel.opened == kernel.stopped == [201]
+    assert kernel.closed.index(201) < kernel.closed.index(100)
+    assert kernel.bulk == []
+
+
+@pytest.mark.parametrize('counts', [(1, 0), (0, 1)])
+def test_permanently_incomplete_job_list_retains_exact_owner_for_explicit_retry(kernel, counts, monkeypatch):
+    import time
+    selected = owner(kernel, 'audio')
+    original = kernel.QueryInformationJobObject
+    def incomplete(job, info, output, size, length):
+        assert job == 100 and info == 3
+        value = ctypes.cast(output, ctypes.POINTER(module._ProcessIds)).contents
+        value.assigned, value.count = counts
+        return 1
+    monkeypatch.setattr(kernel, 'QueryInformationJobObject', incomplete)
+    with pytest.raises(TimeoutError, match='complete process list'):
+        module._stop_and_wait_members(kernel, selected._job, selected._member_handles,
+            process=selected._process.hProcess, deadline=time.monotonic() + .03)
+    assert selected._job == 100 and not kernel.opened and not kernel.stopped and not kernel.closed
+    monkeypatch.setattr(kernel, 'QueryInformationJobObject', original)
+    assert selected.close() is True
+    assert kernel.opened == kernel.stopped == [201] and kernel.bulk == []
+
+
+@pytest.mark.parametrize('counts', [(257, 0), (0, 257)])
+def test_job_member_capacity_is_still_refused_without_stopping_or_releasing(kernel, counts, monkeypatch):
+    selected = owner(kernel, 'audio')
+    original = kernel.QueryInformationJobObject
+    def oversized(job, info, output, size, length):
+        assert job == 100 and info == 3
+        value = ctypes.cast(output, ctypes.POINTER(module._ProcessIds)).contents
+        value.assigned, value.count = counts
+        return 1
+    monkeypatch.setattr(kernel, 'QueryInformationJobObject', oversized)
+    with pytest.raises(OSError, match='capacity=256'):
+        selected.close()
+    assert selected._job == 100 and not kernel.opened and not kernel.stopped and not kernel.closed
+    monkeypatch.setattr(kernel, 'QueryInformationJobObject', original)
+    assert selected.close() is True and kernel.bulk == []

@@ -99,3 +99,34 @@ def test_hung_adapter_does_not_block_ui_or_spawn_retries_and_late_response_is_ig
     finish.set()
     join(worker)
     assert store.current().sequence == 1
+
+
+def test_saved_automatic_backoff_does_not_reopen_vault_until_due_but_manual_rechecks(
+        tmp_path, signer, policy, clock, monkeypatch):
+    store = EntitlementStore(tmp_path / 'client', policy, MemoryAnchor(), clock=clock)
+    accept(store, envelope(signer, grant(clock)))
+    class Provider(RenewalProvider):
+        def renew(self, request, cancelled):
+            return envelope(signer, grant(clock, sequence=request.after_sequence + 1,
+                                          request_nonce=request.nonce))
+    worker = RefreshWorker(store, Provider(), REFERENCE, profile_id='trust-test', clock=clock)
+    assert worker.tick(manual=True)
+    join(worker)
+    due = worker._schedule['next_attempt']
+    assert due > clock.now and store.current().sequence == 2
+    reads = []
+    original = store.current
+    def checked():
+        reads.append(clock.now)
+        return original()
+    monkeypatch.setattr(store, 'current', checked)
+    for _ in range(20):
+        assert worker.tick() is False
+    assert reads == [] and not worker.running
+    assert worker.tick(manual=True)
+    join(worker)
+    assert len(reads) == 1 and original().sequence == 3
+    clock.now = worker._schedule['next_attempt']
+    assert worker.tick()
+    join(worker)
+    assert len(reads) == 2 and original().sequence == 4

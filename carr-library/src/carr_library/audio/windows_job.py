@@ -112,13 +112,24 @@ def _stop_and_wait_members(kernel, job, retained, *, process=None, deadline=None
         return ctypes.WinError(ctypes.get_last_error())
 
     def members():
-        value = _ProcessIds()
-        if not kernel.QueryInformationJobObject(
-                job, 3, ctypes.byref(value), ctypes.sizeof(value), None):
-            raise error()
-        if value.assigned > 256 or value.count > 256 or value.count < value.assigned:
-            raise OSError('The owned process tree exceeds its cleanup allowance.')
-        return tuple(value.identities[:value.count])
+        # Only a complete bounded list may authorize the next cleanup step.
+        # An incomplete query is not proof that the job has no other members:
+        # retain this same job and retry within its existing cleanup deadline.
+        while True:
+            value = _ProcessIds()
+            if not kernel.QueryInformationJobObject(
+                    job, 3, ctypes.byref(value), ctypes.sizeof(value), None):
+                raise error()
+            if value.assigned > 256 or value.count > 256:
+                raise OSError('The owned process tree exceeds its cleanup allowance '
+                              f'(assigned={value.assigned}, returned={value.count}, capacity=256).')
+            if value.count == value.assigned:
+                return tuple(value.identities[:value.count])
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('The owned job did not return a complete process list '
+                                   f'(assigned={value.assigned}, returned={value.count}).')
+            time.sleep(min(.01, remaining))
 
     def status(value, milliseconds=0):
         result = kernel.WaitForSingleObject(value, milliseconds)
