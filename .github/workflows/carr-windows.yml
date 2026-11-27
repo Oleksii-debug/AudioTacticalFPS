@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/v3-primary103-final-411a-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -680,7 +680,7 @@ jobs:
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
           # Test-only command discovery is scoped to this installed-package child.
           # Production calls bind the verified runtime and never mutate PATH.
-          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
+          os.environ['PATH'] = os.pathsep.join((str(root / 'ocr'), str(root / 'audio-runtime' / 'bin'), os.environ.get('PATH', '')))
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
@@ -711,6 +711,7 @@ jobs:
                             'tests/ui/test_export_destination.py',
                             'tests/ui/test_profile_project_exports.py',
                             'tests/ui/test_worker_cleanup.py',
+                            'tests/ui/test_desktop_handlers.py',
                             'tests/integrations/test_dordiai_convergence.py',
                             'tests/integrations/test_dordiai_probe_cancellation.py',
                             'tests/assistant/test_local_assistant.py',
@@ -729,6 +730,7 @@ jobs:
                             'tests/speech/test_source.py',
                             'tests/audio/test_bundled_runtime_settings.py',
                             'tests/studio/test_studio_controller.py',
+                            'tests/studio/test_production_cancellation_outcomes.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
                             'tests/acquisition/test_providers.py',
                             'tests/acquisition/test_acquisition_security.py',

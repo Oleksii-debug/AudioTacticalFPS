@@ -963,10 +963,12 @@ class DesktopFrame(WorkspaceFrame):
             return
         def done(rows):
             completed = sum(r['state'] == 'complete' for r in rows)
-            self.report(f'{completed} of {len(rows)} books imported. ' +
+            unattempted = max(0, len(paths) - len(rows))
+            self.report(f'{completed} of {len(paths)} selected books imported. ' +
                 ' '.join(f'{r["file"]}: {r["state"].replace("_", " ")}. ' +
                          (r.get('message') or r.get('error') or '')
                          for r in rows if r['state'] != 'complete') +
+                (f' {unattempted} remaining selected files were not attempted.' if unattempted else '') +
                 (' Choose Library, Review pending imported page to check quarantined OCR text.'
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:

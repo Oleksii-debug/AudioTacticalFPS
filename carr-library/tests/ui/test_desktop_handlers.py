@@ -518,6 +518,51 @@ def test_text_and_docx_import_reuse_helper_config_without_language_dialog(classe
     assert f.library.import_files.call_args.kwargs['config'] == Config()
 
 
+@pytest.mark.parametrize(('states', 'completed', 'remaining'), [
+    (['cancelled'], 0, 2),
+    (['complete', 'cancelled'], 1, 1),
+    (['complete', 'complete', 'complete'], 3, 0),
+])
+def test_import_summary_uses_selected_total_and_names_unattempted_files(
+        classes, monkeypatch, states, completed, remaining):
+    from carr_library.extract.page_ocr import Config
+    from carr_library.progress import operation_outcome
+    f = frame(classes)
+    f.library, f.run_job = Mock(), Mock()
+    f.book = None
+    f._workspace = lambda: 'selected-workspace'
+    paths = ['first.txt', 'second.txt', 'third.txt']
+    rows = tuple({'file': path, 'state': state,
+                  'message': 'Import cancelled before processing this file.' if state == 'cancelled' else ''}
+                 for path, state in zip(paths, states))
+    f.library.import_files.return_value = rows
+    wx = classes[0]['wx']
+    wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4
+    dialog = Mock()
+    dialog.ShowModal.return_value = wx.ID_OK
+    dialog.GetPaths.return_value = paths
+    wx.FileDialog = Mock(return_value=dialog)
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.ocr_options',
+                        SimpleNamespace(choose_ocr_config=lambda parent, selected: Config()))
+
+    f.import_books(None)
+    operation, done = f.run_job.call_args.args[1:3]
+    result = operation()
+    done(result)
+
+    f.library.import_files.assert_called_once()
+    assert f.library.import_files.call_args.args == ('selected-workspace', paths)
+    summary = f.report.call_args.args[0]
+    assert summary.startswith(f'{completed} of 3 ') and 'books imported.' in summary
+    if remaining:
+        assert f'{remaining} remaining selected files were not attempted.' in summary
+        assert f'{paths[len(states) - 1]}: cancelled.' in summary
+        assert operation_outcome(result) == 'cancelled'
+    else:
+        assert 'not attempted' not in summary
+        assert operation_outcome(result) == 'succeeded'
+
+
 def test_recognition_configuration_error_prevents_import_and_is_readable(classes,monkeypatch):
     from carr_library.ui import ocr_options
     f = frame(classes)

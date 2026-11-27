@@ -3,6 +3,7 @@ from copy import deepcopy
 from decimal import Decimal
 from hashlib import sha256
 import json
+import shutil
 import subprocess
 
 import pytest
@@ -82,6 +83,10 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     assert 'state/providers/usage/envelope.usage.json' in names
     assert not any(name.endswith('.lock') for name in names)
     if version == 3:
+        # Historical state-v3 did not contain the common4 pending-import
+        # component. Remove only this test fixture's newer component.
+        if manifest.pop('pending', None) is not None:
+            shutil.rmtree(folder / 'pending')
         manifest['version'] = 3
         manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
                              for entry in manifest.pop('sidecars')]

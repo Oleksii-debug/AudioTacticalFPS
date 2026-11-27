@@ -5,7 +5,7 @@ on:
     branches: [carr-library, carr/v3-integrated-studio-20261126]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   push:
-    branches: [carr/v3-primary103-recovered-composition-20261126]
+    branches: [carr/v3-primary103-recovered-composition-20261126, carr/v3-primary103-final-411a-20261127]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
@@ -93,6 +93,8 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            & $python -I -B scripts/ci_check.py tests/studio/test_production_cancellation_outcomes.py 2>&1 | Tee-Object 'ci-v3-results/production-cancellation-outcomes.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual production cancellation and failure receipts did not pass.' }
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
           } finally {

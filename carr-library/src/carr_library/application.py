@@ -757,6 +757,8 @@ class LibraryApp:
             raise ValueError('An import cancellation callback is required.')
         for path in paths:
             if cancelled():
+                results.append({'file': Path(path).name, 'state': 'cancelled',
+                                'message': 'Import cancelled before processing this file; remaining files were not attempted.'})
                 break
             try:
                 result = {'file': Path(path).name, **self.import_file(workspace, path, **metadata)}

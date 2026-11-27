@@ -1,16 +1,17 @@
 """Keyboard-first native production workspace; no waveform or drag operation required."""
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import CancelledError, ThreadPoolExecutor
 from dataclasses import replace
 import json
 from pathlib import Path
 import threading
 
 from ..durable_state import atomic_json, encode, read_json
+from ..audio.models import AudioCancelled
 from ..research.export_file import write_binary_export
 from .export_destination import confirm_export_destination
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
-from ..progress import ProgressError, ProgressState, bind_progress, operation_outcome
+from ..progress import ProgressError, ProgressState, ProgressTask, bind_progress, operation_outcome
 
 SCRIPT_HELP = '''Write ordinary prose for one narrator, or use named speaking roles:
 Narrator [center]: The team enters the archive.
@@ -161,21 +162,63 @@ def show_studio(frame):
         dialog.working = True
         cancel.clear()
         controls()
-        task = progress.begin(phase)
+        task, observer_error = None, None
+        previous_task = progress.active_task
+
+        def observation_failed(exc):
+            nonlocal observer_error
+            observer_error = str(exc)[:512]
+
+        try:
+            task = progress.begin(phase)
+            if not isinstance(task, ProgressTask):
+                raise ProgressError('The progress observer did not create a task.')
+        except Exception as exc:
+            # begin may create the shared task before a native refresh fails.
+            # Recover that task, but never bind an earlier operation's task.
+            candidate = progress.active_task
+            task = candidate if candidate is not previous_task and isinstance(candidate, ProgressTask) else None
+            observation_failed(exc)
+
+        def finish_progress(outcome, message):
+            try:
+                progress.finish(task, outcome, message)
+            except Exception as exc:
+                observation_failed(exc)
+                try:
+                    if task is not None and not task.snapshot().terminal:
+                        task.unavailable('Progress reporting failed; check the operation result.')
+                except Exception:
+                    pass
+            if observer_error is not None and task is not None:
+                try:
+                    progress.reporting_unavailable(task, outcome,
+                        'Work returned ' + outcome + '; progress display failed: ' + observer_error)
+                except Exception:
+                    # An unavailable/destroyed observer must not hide the result.
+                    pass
+
+        def show_phase(description):
+            if alive:
+                try:
+                    report(description)
+                except Exception as exc:
+                    observation_failed(exc)
 
         def measured(message):
             description = ' '.join(str(message).split())[:512] or phase
             # Phase receipts do not provide a measured overall total.
             # Updates queued before cancellation must not resurrect a task.
-            if not cancel.is_set() and task.snapshot().state == ProgressState.RUNNING:
-                try:
-                    task.update(phase=description)
-                except ProgressError:
-                    if not cancel.is_set():
-                        raise
-            wx.CallAfter(report, description)
+            try:
+                if task is not None and not cancel.is_set() and task.snapshot().state == ProgressState.RUNNING:
+                    task.update(phase=description[:200])
+                wx.CallAfter(show_phase, description)
+            except Exception as exc:
+                observation_failed(exc)
 
         def execute():
+            if task is None:
+                return operation(measured) if with_progress else operation()
             with bind_progress(task):
                 return operation(measured) if with_progress else operation()
 
@@ -188,30 +231,36 @@ def show_studio(frame):
                     controls()
                 try:
                     result = done.result()
+                    outcome = operation_outcome(result)
                 except Exception as exc:
-                    outcome = 'paused' if isinstance(exc, InterruptedError) else 'failed'
-                    if with_progress and current_job is not None:
+                    interrupted = isinstance(exc, (InterruptedError, AudioCancelled, CancelledError))
+                    outcome = ('paused' if isinstance(exc, InterruptedError)
+                               else 'cancelled' if interrupted else 'failed')
+                    # Only an actual interruption may race a durable publication.
+                    # A stale saved job must never conceal a new I/O/worker error.
+                    if interrupted and with_progress and current_job is not None:
                         try:
-                            outcome = operation_outcome(service.get(current_job))
-                        except (ValueError, OSError, RuntimeError):
+                            saved = service.get(current_job)
+                            if isinstance(saved, dict) and isinstance(saved.get('status'), str):
+                                outcome = operation_outcome(saved)
+                        except Exception:
                             pass
-                    progress.finish(task, outcome, phase + ': ' + outcome)
+                    finish_progress(outcome, phase + ': ' + outcome)
                     if alive:
                         report(str(exc), True)
                     return
-                outcome = operation_outcome(result)
                 try:
                     # A paused/partial receipt must never announce completion.
                     if alive and outcome == 'succeeded':
                         complete(result)
                     elif alive:
                         report(phase + ': ' + outcome + '. Saved work is retained.', True)
-                    progress.finish(task, outcome, phase + ': ' + outcome)
                 except Exception as exc:
-                    progress.reporting_unavailable(task, outcome,
-                        'Work returned ' + outcome + '; progress display failed: ' + str(exc))
+                    finish_progress('failed', phase + ': completion failed')
                     if alive:
                         report(str(exc), True)
+                    return
+                finish_progress(outcome, phase + ': ' + outcome)
             wx.CallAfter(apply)
 
         try:
@@ -220,7 +269,7 @@ def show_studio(frame):
             busy = False
             dialog.working = False
             controls()
-            progress.finish(task, 'failed', 'Could not start ' + phase)
+            finish_progress('failed', 'Could not start ' + phase)
             report(str(exc), True)
             return
         future.add_done_callback(finish)
