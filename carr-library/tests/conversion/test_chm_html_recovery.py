@@ -194,3 +194,95 @@ def test_existing_conversion_worker_keeps_raw_and_recovered_member_identities(tm
         assert row['printed_label_verified'] is False and row['status'] == 'review_required'
         start, end = row['output_characters']
         assert row['text_sha256'] == sha256(reading[start:end].encode('utf-8')).hexdigest()
+
+
+@pytest.mark.parametrize('orphan_anchor', [False, True])
+def test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning(orphan_anchor):
+    body = '<pre>&ltswitch>::= -&lt;switch_characters>[&lt;option>]</pre>'
+    if orphan_anchor:
+        body += '<p>FIRST</a> SECOND</p>'
+    original = document(body, 'cp1252')
+    notices = []
+    recovered = legacy._chm_html(original, notices=notices)
+    visible = text_of(recovered)
+    assert '<switch>::= -<switch_characters>[<option>]' in visible
+    assert '<switch;>' not in visible
+    assert 'legacy_html_unterminated_named_reference_normalized' in notices
+    assert 'legacy_html_recovered_with_bounded_lxml' in notices
+    assert original == document(body, 'cp1252')
+
+
+@pytest.mark.parametrize(('lexeme', 'expected'), [
+    ('&ampthing', '&thing'),
+    ('&madeup', '&madeup'),
+    ('&ltswitch;', '<switch;'),
+    ('&copy', '©'),
+    ('&amp;', '&'),
+])
+def test_legacy_named_reference_preserves_exact_source_terminator(lexeme, expected):
+    original = document('<p>FIRST ' + lexeme + ' LAST</a></p>', 'cp1252')
+    recovered = legacy._chm_html(original)
+    assert text_of(recovered).split() == ['FIRST', expected, 'LAST']
+
+
+@pytest.mark.parametrize('hidden_first', [False, True])
+def test_observed_repeated_description_start_materializes_existing_implicit_close(hidden_first):
+    hidden = ' hidden' if hidden_first else ''
+    body = ('<dl><dt>HEADING</dt><dd' + hidden + '>FIRST'
+            '<dd><p>SECOND</p></dd><dt>NEXT</dt><dd>THIRD</dd></dl>')
+    original = document(body, 'cp1252')
+    notices = []
+    recovered = legacy._chm_html(original, notices=notices)
+    words = text_of(recovered).split()
+    expected = ['HEADING', 'SECOND', 'NEXT', 'THIRD'] if hidden_first else [
+        'HEADING', 'FIRST', 'SECOND', 'NEXT', 'THIRD']
+    assert words == expected
+    assert 'legacy_html_implicit_description_end_materialized' in notices
+    assert 'legacy_html_recovered_with_bounded_lxml' in notices
+    assert original == document(body, 'cp1252')
+
+
+def test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression():
+    original = document(
+        '<p title="literal <dd><dd> &ltswitch>">FIRST</a></p>'
+        '<!-- <dd><dd> &ltswitch> COMMENT -->'
+        '<script>const text = "<dd><dd> &ltswitch>"; SECRET_SCRIPT</script>'
+        '<div hidden><p>&ltswitch> SECRET_HIDDEN</p></div>'
+        '<dl><dt>HEADING</dt><dd><dd>SECOND</dd></dl>')
+    recovered = legacy._chm_html(original)
+    assert text_of(recovered).split() == ['FIRST', 'HEADING', 'SECOND']
+    assert 'SECRET_SCRIPT' not in text_of(recovered)
+    assert 'SECRET_HIDDEN' not in text_of(recovered)
+    assert 'COMMENT' not in text_of(recovered)
+
+
+@pytest.mark.parametrize('unsafe', [
+    '<dl><dt>HEADING</dt></dd></dl>',
+    '<dl><dd><dd hidden hidden>SECOND</dd></dl>',
+])
+def test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes(unsafe, monkeypatch):
+    original = document('<p>&ltswitch> FIRST</p>' + unsafe)
+    monkeypatch.setattr(etree, 'HTMLParser',
+                        lambda **options: pytest.fail('unsafe source must fail before recovery'))
+    with pytest.raises(ValueError):
+        legacy._chm_html(original)
+
+
+def test_legacy_named_reference_keeps_full_word_digest_not_only_token_count(monkeypatch):
+    original = document('<p>&ltswitch> FIRST</a></p>')
+    serialize = etree.tostring
+    def changed(root, **options):
+        raw = serialize(root, **options)
+        assert b'&lt;switch&gt;' in raw
+        return raw.replace(b'&lt;switch&gt;', b'&lt;switch;&gt;')
+    monkeypatch.setattr(etree, 'tostring', changed)
+    with pytest.raises(ConversionError, match='ordered visible text'):
+        legacy._chm_html(original)
+
+
+def test_unterminated_named_reference_expansion_keeps_existing_output_bound(monkeypatch):
+    original = document('<p>&' + 'unknown' * 45 + ' LAST</p>')
+    assert len(original) < 1024
+    monkeypatch.setattr(legacy, 'MAX_MEMBER_BYTES', 1024)
+    with pytest.raises(ConversionError, match='output byte budget'):
+        legacy._chm_html(original)

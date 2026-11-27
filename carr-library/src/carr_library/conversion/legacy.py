@@ -420,6 +420,8 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
         def __init__(self):
             super().__init__(budget, encoding=encoding)
             self.insertions = []
+            self.description_ends = []
+            self.entity_replacements = []
             self.recovery = False
             self.line_number = 1
             self.line_start = 0
@@ -431,6 +433,39 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
                 self.line_start = text.index('\n', self.line_start) + 1
                 self.line_number += 1
             return self.line_start + column
+
+
+        def handle_starttag(self, tag, attrs):
+            if (tag == 'dd' and self.stack and self.stack[-1][0] == 'dd'
+                    and any(item[0] == 'body' for item in self.stack)):
+                # Materialize only the current reader's already-supported
+                # same-tag optional closure. libxml otherwise nests these DDs
+                # and emits an extra closing tag rejected by the strict pass.
+                self.description_ends.append(self._offset())
+                self.recovery = True
+            return super().handle_starttag(tag, attrs)
+
+        def handle_entityref(self, name):
+            from html import unescape
+            budget.node()
+            offset = self._offset()
+            end = offset + len(name) + 1
+            if len(name) > _MAX_TOKEN or text[offset:end] != '&' + name:
+                raise ValueError('Unsupported legacy named character reference.')
+            terminated = text[end:end + 1] == ';'
+            if terminated:
+                end += 1
+            # HTMLParser's callback omits whether the source had a semicolon.
+            # Preserve that exact lexeme: appending one to "&ltswitch" invents
+            # a literal semicolon after the valid HTML "&lt" prefix.
+            value = unescape(text[offset:end])
+            self.handle_data(value)
+            if not terminated:
+                # Numeric references cannot become markup when the normalized
+                # reading copy later enters libxml and the unchanged reader.
+                canonical = ''.join('&#' + str(ord(char)) + ';' for char in value)
+                self.entity_replacements.append((offset, end, canonical))
+                self.recovery = True
 
         def handle_endtag(self, tag):
             in_body = any(item[0] == 'body' for item in self.stack)
@@ -478,10 +513,15 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
     if not parser.insertions and not parser.recovery:
         return raw
     pieces, previous = [], 0
-    for offset in parser.insertions:
+    edits = ([(offset, offset, '<p>') for offset in parser.insertions]
+             + [(offset, offset, '</dd>') for offset in parser.description_ends]
+             + parser.entity_replacements)
+    for start, end, replacement in sorted(edits):
         budget.check()
-        pieces.extend((text[previous:offset], '<p>'))
-        previous = offset
+        if start < previous:
+            raise ConversionError('CHM HTML normalization has overlapping source edits.')
+        pieces.extend((text[previous:start], replacement))
+        previous = end
     pieces.append(text[previous:])
     normalized = ''.join(pieces)
     result = normalized.encode(encoding, 'strict')
@@ -491,6 +531,10 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
     warning = 'legacy_html_orphan_paragraph_end_normalized'
     if parser.insertions and notices is not None and warning not in notices:
         notices.append(warning)
+    if parser.description_ends:
+        budget.warnings.add('legacy_html_implicit_description_end_materialized')
+    if parser.entity_replacements:
+        budget.warnings.add('legacy_html_unterminated_named_reference_normalized')
     if parser.recovery:
         return _chm_recovered_html(normalized, encoding=encoding, before=budget,
             max_chars=max_chars, deadline=deadline, notices=notices)
