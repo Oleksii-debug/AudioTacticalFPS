@@ -1,0 +1,166 @@
+name: CARR focused native keyboard acceptance
+
+on:
+  push:
+    branches: [carr/validate-integrated-commands-b171-20261127]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-keyboard-focused.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-focused-keyboard-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  keyboard-native:
+    name: Windows x64 / native commands and draft recovery
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      CARR_SOURCE_COMMIT: dadcafd4be8f705d5f32bad92d2afafdecfdc136
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the pinned desktop and record the tested source
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-keyboard-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'keyboard-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'keyboard-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Bind actual installed modules and core dependencies to exact producer source
+        run: |
+          $identity = @'
+          import importlib, importlib.metadata, json, os, pathlib, platform, re, struct, subprocess, sys
+          from hashlib import sha256
+          project = pathlib.Path.cwd().resolve()
+          assert sys.platform == 'win32' and struct.calcsize('P') == 8
+          assert sys.version_info[:2] == (3, 11)
+          assert sys.flags.isolated and sys.flags.ignore_environment
+          producer = os.environ['CARR_SOURCE_COMMIT']
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          assert head == os.environ['GITHUB_SHA']
+          changed = subprocess.check_output(['git', 'diff', '--name-only', producer, head, '--', 'carr-library', '.github/workflows/carr-windows.yml'], cwd=project.parent, text=True).strip()
+          assert not changed, changed
+          pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', (project / 'packaging/windows-cp311.lock').read_text(), re.M))
+          actual = {name: importlib.metadata.version(name) for name in pins}
+          assert len(pins) == 14 and actual == pins, actual
+          modules = {}
+          for name in ('carr_library.application', 'carr_library.keyboard_preferences', 'carr_library.ui.desktop_app', 'carr_library.ui.keyboard_settings', 'carr_library.ui.command_registry'):
+              module = importlib.import_module(name)
+              installed = pathlib.Path(module.__file__).resolve()
+              expected = project / 'src' / (name.replace('.', '/') + '.py')
+              assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve())
+              assert not installed.is_relative_to(project)
+              digest = sha256(installed.read_bytes()).hexdigest()
+              assert digest == sha256(expected.read_bytes()).hexdigest(), name
+              modules[name] = {'installed': str(installed), 'sha256': digest}
+          print(json.dumps({'status': 'PASS', 'source_commit': producer, 'validation_commit': head, 'validation_tree': tree, 'platform': platform.platform(), 'python': sys.version, 'locked_dependencies': actual, 'modules': modules, 'native_nvda': 'NOT_RUN'}, sort_keys=True))
+          '@
+          $identity | & $env:CARR_PYTHON -I -B - | Tee-Object 'keyboard-results/installed-source-identity.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require contextual commands and recovery regressions
+        id: keyboard-regressions
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_desktop_handlers.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native Main keyboard settings and command dispatch
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-keyboard-settings.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual contextual Reader key remapping
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native research-note draft recovery and explicit save
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require real native completion and every integrated command
+        run: |
+          $verify = @'
+          import json, pathlib
+          root = pathlib.Path('keyboard-results')
+          reports = {}
+          for name in ('native-keyboard-settings', 'native-reader-keymap', 'native-evidence-drafts'):
+              text = (root / (name + '.txt')).read_text(encoding='utf-8-sig')
+              rows = []
+              for line in text.splitlines():
+                  try:
+                      row = json.loads(line)
+                  except (ValueError, TypeError):
+                      continue
+                  if isinstance(row, dict) and 'status' in row:
+                      rows.append(row)
+              assert rows and rows[-1]['status'] == 'PASS', (name, rows)
+              reports[name] = rows[-1]
+              if name == 'native-keyboard-settings':
+                  row = rows[-1]
+                  assert row['platform'] == 'Windows' and row['source_override'] is None
+                  assert row['native_key_backend'] == 'wx.UIActionSimulator' and row['checks'] >= 40
+                  for identity in ('library.ocr_models', 'academic.acquire_sources', 'help.document_formats'):
+                      assert 'PASS: integrated command is available by stable ID: ' + identity in text
+                      assert 'PASS: native launcher finds the integrated command: ' + identity in text
+          print(json.dumps({'status': 'PASS', 'native_reports': reports, 'manual_nvda': 'NOT_RUN'}, sort_keys=True))
+          '@
+          $verify | & $env:CARR_PYTHON -I -B - | Tee-Object 'keyboard-results/native-acceptance.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve actual keyboard and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-focused-keyboard-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/keyboard-results/
+          if-no-files-found: warn
+          retention-days: 7
