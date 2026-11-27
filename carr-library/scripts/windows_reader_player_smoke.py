@@ -3,7 +3,9 @@
 Uses a silent synthetic PCM file and the canonical WavePlayer. No alternate
 player, speech provider, physical recording input or listening-quality claim.
 """
-from hashlib import sha256
+from hashlib import file_digest, sha256
+from concurrent.futures import ThreadPoolExecutor
+import threading
 import json
 import os
 from pathlib import Path
@@ -12,7 +14,7 @@ import time
 import wave
 
 
-def native_controls(player, check, commands, selected_output):
+def native_controls(player, check, commands, selected_output, private_root, runtime_factory):
     """Exercise real wx keyboard controls over this same measured MCI player."""
     import ctypes
     from ctypes import wintypes
@@ -23,6 +25,8 @@ def native_controls(player, check, commands, selected_output):
     check('installed reader playback controls',
           'site-packages' in [part.casefold() for part in Path(reader_playback.__file__).resolve().parts])
     errors, subscriptions, repetitions = [], [None], []
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reader-listening-probe')
+    cancel, prepared_values = threading.Event(), []
     class App(wx.App):
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc())
@@ -101,6 +105,29 @@ def native_controls(player, check, commands, selected_output):
                 if isinstance(window, wx.Dialog) and window.IsModal():
                     window.EndModal(wx.ID_CANCEL)
             gui.ExitMainLoop()
+
+    def prepare(request, completed, failed, *, active):
+        cancel.clear()
+        def work():
+            value = player.prepare_listening(request, private_root, cancelled=cancel.is_set,
+                                             runtime_factory=runtime_factory)
+            prepared_values.append(value)
+            return value
+        future = executor.submit(work)
+        def finish():
+            value = None
+            try:
+                value = future.result()
+                if cancel.is_set() or not active():
+                    raise InterruptedError('Native listening preparation cancelled')
+                player.apply_listening(value)
+                completed()
+            except Exception as exc:
+                if value is not None and value._owner is None:
+                    value.close()
+                failed(exc)
+        future.add_done_callback(lambda completed_future: wx.CallAfter(finish))
+        return cancel.set
 
     frame.Bind(wx.EVT_TIMER, tick, timer)
     def drive():
@@ -181,6 +208,46 @@ def native_controls(player, check, commands, selected_output):
                 press(find(popup, 'Stop audio and use selected playback output'))
                 check('explicit automatic output clears only session routing without autoplay',
                       player.output_device is None and not player._open and play_count() == before)
+            before = play_count()
+            speed = find(popup, 'Listening speed, 0.25 to 4; synthesis rate is unchanged')
+            pitch = find(popup, 'Listening pitch, minus 12 to 12 semitones; speed is independent')
+            speed.ChangeValue('2')
+            pitch.ChangeValue('0')
+            press(find(popup, 'Stop and prepare listening speed and pitch without autoplay'))
+            pump(lambda: player.listening_settings.speed == 2,
+                 'Actual private FFmpeg listening conversion did not complete', timeout=30)
+            check('native listening Apply does not autoplay or change the original timeline',
+                  play_count() == before and player.state == 'stopped' and not player._open
+                  and player.duration_seconds == 3 and player.listening_duration_seconds == 1.5
+                  and player.listening_path != player.path)
+            press(find(popup, 'Play current recording'))
+            pump(lambda: player.position_seconds >= .2, 'Actual faster MCI playback did not advance')
+            press(find(popup, 'Pause or resume recording'))
+            check('transformed native playback pauses on the original timeline', player.state == 'paused')
+            player.seek(1.2)
+            check('transformed native seek maps original seconds to measured derivative frames',
+                  commands[-1] == f'seek {player._alias} to 600 wait'
+                  and abs(player.position_seconds - 1.2) <= .02)
+            press(find(popup, 'Pause or resume recording'))
+            pump(lambda: player.position_seconds >= 1.3, 'Transformed native resume did not advance')
+            press(find(popup, 'Stop current recording'))
+            before = play_count()
+            pitch.ChangeValue('12')
+            press(find(popup, 'Stop and prepare listening speed and pitch without autoplay'))
+            pump(lambda: player.listening_settings.pitch_semitones == 12,
+                 'Actual independent pitch conversion did not complete', timeout=30)
+            check('native pitch choice keeps speed and actual output duration independent',
+                  player.listening_settings.speed == 2 and player.listening_duration_seconds == 1.5
+                  and player.state == 'stopped' and play_count() == before)
+            speed.ChangeValue('1')
+            pitch.ChangeValue('0')
+            press(find(popup, 'Stop and prepare listening speed and pitch without autoplay'))
+            pump(lambda: player.listening_settings.speed == 1 and player.listening_settings.pitch_semitones == 0,
+                 'Exact original listening reset did not complete', timeout=30)
+            check('native listening reset preserves exact original PCM without autoplay',
+                  player.listening_path.read_bytes() == player.path.read_bytes()
+                  and player.listening_duration_seconds == player.duration_seconds == 3
+                  and play_count() == before)
             press(find(popup, 'Close playback controls'))
         except Exception:
             errors.append(traceback.format_exc())
@@ -195,7 +262,8 @@ def native_controls(player, check, commands, selected_output):
             reader_playback.show_reader_playback(frame, player,
                 execute=lambda action, **options: action(), stop=player.stop,
                 pause=lambda: player.resume() if player.state == 'paused' else player.pause(),
-                subscribe=lambda callback: subscriptions.__setitem__(0, callback))
+                subscribe=lambda callback: subscriptions.__setitem__(0, callback),
+                prepare_listening=prepare)
             check('closed controls release their status subscription', subscriptions[0] is None)
         except Exception:
             errors.append(traceback.format_exc())
@@ -211,6 +279,11 @@ def native_controls(player, check, commands, selected_output):
         if errors:
             raise RuntimeError('\n'.join(errors))
     finally:
+        cancel.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+        for value in prepared_values:
+            if value._owner is None:
+                value.close()
         timer.Stop()
         frame.Destroy()
         gui.Yield()
@@ -221,6 +294,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--require-output-device', action='store_true',
                         help='Fail if the runner has no identifiable output for actual MCI routing.')
+    parser.add_argument('--ffmpeg')
+    parser.add_argument('--ffprobe')
     options = parser.parse_args()
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows MCI is required'}))
@@ -228,7 +303,9 @@ def main():
     from carr_library.native_runtime import activate_bundled_runtime
     handle = activate_bundled_runtime()
     from carr_library.speech import player as implementation
-    from carr_library.speech import playback_devices
+    from carr_library.speech import playback_devices, listening
+    from carr_library.audio import dsp
+    from carr_library.audio_runtime import bundled_audio_tools, verify_audio_runtime
     from carr_library.ui import reader_playback
     origin = Path(implementation.__file__).resolve()
     if 'site-packages' not in [part.casefold() for part in origin.parts]:
@@ -247,7 +324,7 @@ def main():
             time.sleep(.02)
     try:
         source_identity = {}
-        for module in (implementation, playback_devices, reader_playback):
+        for module in (implementation, playback_devices, listening, dsp, reader_playback):
             loaded = Path(module.__file__).resolve()
             check('installed reader output module: ' + module.__name__,
                   'site-packages' in [part.casefold() for part in loaded.parts])
@@ -258,6 +335,22 @@ def main():
         selected = next((value for value in outputs if value.selectable), None)
         if options.require_output_device and selected is None:
             raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')
+        tools = bundled_audio_tools()
+        if tools is None and os.environ.get('CARR_V3_AUDIO'):
+            tools = verify_audio_runtime(Path(os.environ['CARR_V3_AUDIO']))['tools']
+        audio_proof = {}
+        def runtime_factory(directory, *, budget):
+            runtime = dsp.AudioRuntime(directory, ffmpeg=options.ffmpeg or (tools or {}).get('ffmpeg'),
+                                       ffprobe=options.ffprobe or (tools or {}).get('ffprobe'), budget=budget)
+            for name in ('ffmpeg', 'ffprobe'):
+                binary = Path(getattr(runtime, name)).resolve(strict=True)
+                if os.environ.get('CARR_PROGRAM_DIR'):
+                    check('exact sealed listening tool: ' + name,
+                          tools is not None and binary == Path(tools[name]).resolve(strict=True))
+                with binary.open('rb') as stream:
+                    digest = file_digest(stream, 'sha256').hexdigest()
+                audio_proof[name] = {'path': str(binary), 'sha256': digest}
+            return runtime
         with TemporaryDirectory(prefix='resonance-native-player-') as temporary:
             path = Path(temporary) / 'Silent synthetic PCM — Україна.wav'
             with wave.open(str(path), 'wb') as stream:
@@ -296,7 +389,7 @@ def main():
                 wait_for(lambda: player.position_seconds >= .78)
                 player.stop()
                 check('native Stop ends playback', player.state == 'stopped')
-                native_controls(player, check, commands, selected)
+                native_controls(player, check, commands, selected, Path(temporary), runtime_factory)
             finally:
                 player.close()
             check('native Close confirms alias closure', player._open is False and player.state == 'stopped')
@@ -307,6 +400,7 @@ def main():
             report = {'result': 'PASS', 'checks': checks, 'package_origin': str(origin),
                 'source_identity': source_identity,
                 'actual_windows_mci': 'PASS', 'synthetic_pcm_sha256': sha256(original).hexdigest(),
+                'actual_listening_conversion_and_mapping': 'PASS', 'listening_audio_runtime': audio_proof,
                 'actual_windows_output_inventory': 'PASS', 'output_count': len(outputs),
                 'selected_mci_output': 'PASS' if selected is not None else 'NOT_RUN_NO_IDENTIFIED_OUTPUT',
                 'paused_seek_no_play_command': 'PASS', 'native_ab_sleep_skip_controls': 'PASS', 'audible_listening': 'NOT_RUN', 'nvda': 'NOT_RUN'}

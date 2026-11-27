@@ -286,13 +286,15 @@ class AudioRuntime:
                 '-filter_threads', str(self.budget.threads),
                 '-filter_complex_threads', str(self.budget.threads)]
 
-    def capabilities(self):
+    def capabilities(self, *, cancelled=lambda: False):
+        if cancelled():
+            raise AudioCancelled('Audio capability inspection cancelled.')
         if self._capabilities is None:
             budget = replace(self.budget, timeout=min(20, self.budget.timeout))
-            version = run_process([self.ffmpeg, '-version'], budget=budget).stdout.decode('utf-8', 'replace')
-            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget).stdout.decode('utf-8', 'replace')
-            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget).stdout.decode('utf-8', 'replace')
-            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget).stdout.decode('utf-8', 'replace')
+            version = run_process([self.ffmpeg, '-version'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
             # FFmpeg 9 removed the command-support column (three flags -> two).
             filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{2,3}\s+([a-zA-Z0-9_]+)\s', filters, re.M)}
             encoder_names = {match.group(1) for match in re.finditer(r'^\s*[A-Z.]{6}\s+(\S+)\s', encoders, re.M)}
