@@ -101,14 +101,14 @@ def test_profile_job_keeps_real_process_owner_run_lock_and_lease_until_cleanup_c
     app, service, runtime, profile, source = selected
     job = service.create_job(profile['id'], [source])
     permitted, released = threading.Event(), threading.Event()
-    target, name = (JobProcess, 'close') if os.name == 'nt' else (process, '_terminate')
+    target, name = (JobProcess, 'close') if os.name == 'nt' else (process, '_wait_posix_group')
     close = getattr(target, name)
     attempts, owner = [], None
-    def uncertain(child):
-        attempts.append(child)
+    def uncertain(*args, **kwargs):
+        attempts.append(args[0])
         if not permitted.is_set():
             raise OSError('Authored native cleanup denial after the real protocol child.')
-        return close(child)
+        return close(*args, **kwargs)
     monkeypatch.setattr(target, name, uncertain)
     competitor = FileLock(service.jobs_root / job['id'] / '.run.lock', timeout=0)
     try:

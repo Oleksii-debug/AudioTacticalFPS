@@ -166,11 +166,14 @@ def run_native():
     installed = (Path(os.environ['CARR_PROGRAM_DIR']) if os.environ.get('CARR_PROGRAM_DIR')
                  else Path(sysconfig.get_path('purelib'))).resolve()
     assert sys.flags.isolated and sys.dont_write_bytecode and sys.flags.utf8_mode
+    source_hashes = {}
     for name, path in result['origins'].items():
         actual = Path(path).resolve()
         expected = source_root / Path(*name.split('.')).with_suffix('.py')
         assert actual.is_relative_to(installed) and not actual.is_relative_to(source_root)
-        assert sha256(actual.read_bytes()).digest() == sha256(expected.read_bytes()).digest(), name
+        digest = sha256(actual.read_bytes()).hexdigest()
+        assert digest == sha256(expected.read_bytes()).hexdigest(), name
+        source_hashes[name] = digest
 
     def check(name, value):
         if not value:
@@ -317,13 +320,16 @@ def run_native():
             raise AssertionError('; '.join(errors))
 
 
-        # Parent-driven native deletion bypasses Python Destroy. Run these
-        # deferred lifetimes through the actual main loop, holding only an
-        # authored UI-service result until its real owner is gone.
-        for destruction in ('direct', 'parent'):
+        # Parent-driven native deletion bypasses Python Destroy. Keep both
+        # cases on one real MainLoop, with distinct closure state and a native
+        # host-deletion barrier before constructing the next case.
+        lifetime_errors, lifetime_owners = [], []
+
+        def start_lifetime(destruction):
             release, worker_finished = threading.Event(), threading.Event()
-            returned, queued, seen, delivered, lifecycle_errors = [], [], [], [], []
+            returned, queued, seen, delivered, host_seen, lifecycle_errors = [], [], [], [], [], []
             original_run = frame.run_job
+
             class HeldService(SyntheticTranscriptionService):
                 def run(self, identity, *, cancel, progress):
                     self.calls.append('run')
@@ -333,16 +339,20 @@ def run_native():
                     cancel()
                     progress({'phase': 'Late real synthetic result', 'done': 1, 'total': 2})
                     return deepcopy(self.job)
+
             held = HeldService()
             held.profiles = [{'id': 'a' * 32, 'name': 'Synthetic UI owner',
                               'trusted': True, 'model_name': 'synthetic-model',
                               'qualification': 'unqualified'}]
+
             class Host(wx.Frame):
                 @property
                 def working(self):
                     return frame.working
+
             host = Host(frame, title='Owned transcription lifetime fixture')
             host.library, host.cancel_event, host._closing = library, frame.cancel_event, False
+
             def observe_job(title, operation, *, done, failed):
                 queued.append((done, failed))
                 def observed_operation():
@@ -353,7 +363,11 @@ def run_native():
                     finally:
                         worker_finished.set()
                 return original_run(title, observed_operation, done=done, failed=failed)
+
             host.run_job = observe_job
+            # A modeless dialog owns a real visible native parent, as in the desktop.
+            host.Show()
+            check('profile lifetime host is shown: ' + destruction, host.IsShown())
             owner = build_transcription_dialog(host, TranscriptionController(library.root, service=held))
             page = owner.profile_view
             page.profiles = tuple(held.profiles)
@@ -361,26 +375,79 @@ def run_native():
             page.runtime.SetSelection(0)
             page.sources = (source,)
             page.source_paths.ChangeValue(str(source))
-            identity = owner.GetId()
-            def destroyed(event, *, selected_id=identity):
-                if event.GetId() == selected_id:
+            identity, host_identity = owner.GetId(), host.GetId()
+            lifetime_owners.append((release, owner, host))
+
+            def destroyed(event):
+                if event.GetId() == identity:
                     seen.append((event.GetId(), event.GetEventObject() is owner))
                 event.Skip()
+
+            def host_destroyed(event):
+                if event.GetId() == host_identity:
+                    host_seen.append(event.GetId())
+                event.Skip()
+
             owner.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+            host.Bind(wx.EVT_WINDOW_DESTROY, host_destroyed)
             phase = ['start']
             deadline = time.monotonic() + 15
+            finishing = [False]
+
             def finish_lifetime():
-                app.ExitMainLoop()
+                if finishing[0]:
+                    return
+                finishing[0] = True
+                release.set()
+                if owner:
+                    owner.Destroy()
+                if host:
+                    host.Destroy()
+                cleanup_deadline = time.monotonic() + 5
+
+                def settle():
+                    try:
+                        if not owner and not page and not host and host_seen and worker_finished.is_set() and not frame.working:
+                            check('profile pending ' + destruction + ' destruction keeps late callbacks detached',
+                                  not lifecycle_errors and delivered == [True] and len(seen) == 1
+                                  and page.closed and not frame.cancel_event.is_set())
+                            check('profile native host deletion settles before the next case: ' + destruction,
+                                  host_seen == [host_identity])
+                            result.setdefault('profile_lifetimes', []).append({
+                                'destruction': destruction, 'native_events': len(seen),
+                                'original_wrapper': seen[0][1], 'actual_worker_finished': True,
+                                'actual_callback_replayed_after_deletion': True,
+                                'native_host_destroyed_before_next_case': True})
+                            if destruction == 'direct':
+                                wx.CallAfter(lambda: start_lifetime('parent'))
+                            else:
+                                app.ExitMainLoop()
+                            return
+                        if time.monotonic() >= cleanup_deadline:
+                            raise AssertionError('Owned ASR host deletion or actual worker cleanup remained pending.')
+                        wx.CallLater(10, settle)
+                    except BaseException as error:
+                        lifetime_errors.extend(lifecycle_errors or [repr(error)])
+                        app.ExitMainLoop()
+
+                wx.CallAfter(settle)
+
             def tick():
                 try:
+                    if finishing[0]:
+                        return
                     if time.monotonic() >= deadline:
                         raise AssertionError('Timed out awaiting actual ASR native deletion and worker completion.')
                     if phase[0] == 'start':
+                        print('CHECK: ASR native lifetime ' + destruction + ': start', flush=True)
                         owner.Show()
+                        print('CHECK: ASR native lifetime ' + destruction + ': owner shown', flush=True)
                         click(owner.start_button)
+                        print('CHECK: ASR native lifetime ' + destruction + ': start returned', flush=True)
                         phase[0] = 'running'
                     elif phase[0] == 'running' and held.running.is_set():
                         assert page.pending and not frame.cancel_event.is_set()
+                        print('CHECK: ASR native lifetime ' + destruction + ': destroy pending owner', flush=True)
                         if destruction == 'direct':
                             owner.Destroy()
                             assert owner.controller.closed and page.closed
@@ -398,8 +465,6 @@ def run_native():
                         assert queued and not owner and not page
                         def deliver():
                             try:
-                                # Replay the actual registered completion with
-                                # its actual returned value after native deletion.
                                 queued[0][0](returned[0])
                                 page.flush_progress()
                                 page.report('Late coalesced progress after native deletion.')
@@ -414,27 +479,24 @@ def run_native():
                         wx.CallLater(10, tick)
                 except BaseException as error:
                     lifecycle_errors.append(repr(error))
-                    release.set()
                     finish_lifetime()
+
             wx.CallAfter(tick)
-            try:
-                app.MainLoop()
-                check('profile pending ' + destruction + ' destruction keeps late callbacks detached',
-                      not lifecycle_errors and delivered == [True] and len(seen) == 1
-                      and not owner and not page and worker_finished.is_set()
-                      and page.closed and not frame.cancel_event.is_set())
-                result.setdefault('profile_lifetimes', []).append({
-                    'destruction': destruction, 'native_events': len(seen),
-                    'original_wrapper': seen[0][1], 'actual_worker_finished': True,
-                    'actual_callback_replayed_after_deletion': True})
-            finally:
+
+        start_lifetime('direct')
+        try:
+            app.MainLoop()
+        finally:
+            for release, owner, host in lifetime_owners:
                 release.set()
                 if owner:
                     owner.Destroy()
                 if host:
                     host.Destroy()
-            if lifecycle_errors:
-                raise AssertionError('; '.join(lifecycle_errors))
+        if lifetime_errors:
+            raise AssertionError('; '.join(lifetime_errors))
+        check('both native profile destruction cases completed on the actual MainLoop',
+              [case['destruction'] for case in result.get('profile_lifetimes', ())] == ['direct', 'parent'])
 
         # A real dashboard executor with one deterministic failed submission
         # exercises recovery without a competing fake native widget layer.
@@ -551,6 +613,9 @@ def run_native():
         result['native_sapi_progress_voice'] = {'id': selected_voice.id, 'language': selected_voice.language}
         frame.Close()
         app.Yield()
+    for name, path in result['origins'].items():
+        assert sha256(Path(path).read_bytes()).hexdigest() == source_hashes[name], name
+    result['source_sha256'] = source_hashes
     result['status'] = 'PASS'
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), flush=True)
     return 0

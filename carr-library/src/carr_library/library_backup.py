@@ -246,11 +246,13 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
     # Only the authenticated exact envelope chooses a historical adapter.
     if _historical_layout(manifest):
         from .backup_compat.state import _read_manifest as read_historical
-        return read_historical(directory, expected_manifest_sha256, cancelled=cancelled)
+        historical = read_historical(directory, expected_manifest_sha256, cancelled=cancelled)
+        _check_cancelled(cancelled)
+        return historical
     if size > MAX_MANIFEST:
         raise RestoreError('manifest size limit')
     inventory = backup_sidecars.normalize_manifest(manifest)
-    backup_sidecars.check_namespace(directory, inventory)
+    backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)
     if (manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
@@ -269,6 +271,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
         raise RestoreError('invalid database manifest')
     filenames, digests, total = set(), set(), 0
     for asset in manifest['assets']:
+        _check_cancelled(cancelled)
         if (type(asset) is not dict or set(asset) != {'filename','sha256','mime','size_bytes'}
                 or not isinstance(asset['sha256'], str)
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
@@ -283,6 +286,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    _check_cancelled(cancelled)
     return manifest
 
 
@@ -362,6 +366,7 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    _check_cancelled(cancelled)
     with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
         if _historical_layout(manifest):
             from .backup_compat.state import _restore_backup
@@ -384,6 +389,7 @@ def _restore_backup(source, destination, expected_manifest_sha256, *, cancelled=
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    _check_cancelled(cancelled)
     if _historical_layout(manifest):
         from .backup_compat.state import _restore_backup as restore_historical
         return restore_historical(source, destination, expected_manifest_sha256, cancelled=cancelled)

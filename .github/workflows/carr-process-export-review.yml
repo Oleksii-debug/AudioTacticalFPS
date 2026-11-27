@@ -1,0 +1,116 @@
+name: Owned native deadlines, ASR and canonical export integration
+on:
+  push:
+    branches: [carr/process-export-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-process-export-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: process-export-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the exact selected source
+        run: python -m pip install ".[test]"
+      - name: Prepare actual Linux test audio
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+      - name: Prepare pinned Windows test audio
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-process-review-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Require source process ownership and export regressions
+        run: |
+          mkdir -p ci-process-export
+          python scripts/ci_check.py --jobs 3 --diagnostics tests/audio/test_process_group_cleanup.py tests/audio/test_process_deadline.py tests/audio/test_windows_job_cleanup.py tests/audio/test_owned_process_tree.py tests/audio/test_audio_process.py tests/audio/test_cleanup_ownership.py tests/audio/test_process_start_cleanup.py tests/conversion/test_calibre_process_ownership.py tests/reader/test_export_reconciliation.py tests/reader/test_export_publication_boundary.py tests/reader/test_export_no_clobber.py tests/reader/test_export_change_time.py tests/reader/test_file_export.py tests/reader/test_binary_file_export.py tests/ui/test_export_confirmation.py tests/transcription/test_service.py tests/transcription/test_convergence.py tests/transcription/test_admission_boundaries.py 2>&1 | tee ci-process-export/source.txt
+      - name: Require the same installed modules and actual subprocess cases
+        if: "!cancelled()"
+        run: |
+          mkdir -p ci-process-export
+          python -I -B -X utf8 - <<'PY' 2>&1 | tee ci-process-export/installed.txt
+          from hashlib import sha256
+          import importlib
+          import json
+          from pathlib import Path
+          import socket
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          root = Path.cwd()
+          installed = Path(sysconfig.get_path('purelib')).resolve()
+          names = ('carr_library.audio.process', 'carr_library.audio.windows_job',
+                   'carr_library.conversion.calibre', 'carr_library.conversion.office',
+                   'carr_library.research.export_file', 'carr_library.transcription.service',
+                   'carr_library.transcription.runtime', 'carr_library.backup_transcription',
+                   'carr_library.backup_sidecars', 'carr_library.library_backup')
+          def inventory():
+              result = {}
+              for name in names:
+                  module = importlib.import_module(name)
+                  actual = Path(module.__file__).resolve()
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  assert actual.is_relative_to(installed) and not actual.is_relative_to(root / 'src'), name
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = {'path': str(actual), 'sha256': digest}
+              return result
+          before = inventory()
+          def offline(*args, **kwargs):
+              raise OSError('Network access is disabled in these synthetic process/export tests.')
+          socket.socket.connect = socket.socket.connect_ex = socket.create_connection = offline
+          suites = ["tests/audio/test_process_group_cleanup.py","tests/audio/test_process_deadline.py","tests/audio/test_windows_job_cleanup.py","tests/audio/test_owned_process_tree.py","tests/audio/test_audio_process.py","tests/audio/test_cleanup_ownership.py","tests/audio/test_process_start_cleanup.py","tests/conversion/test_calibre_process_ownership.py","tests/reader/test_export_reconciliation.py","tests/reader/test_export_publication_boundary.py","tests/reader/test_export_no_clobber.py","tests/reader/test_export_change_time.py","tests/reader/test_file_export.py","tests/reader/test_binary_file_export.py","tests/ui/test_export_confirmation.py","tests/transcription/test_service.py","tests/transcription/test_convergence.py","tests/transcription/test_admission_boundaries.py"]
+          with tempfile.TemporaryDirectory(prefix='carr-process-export-') as temporary:
+              report = Path(temporary) / 'junit.xml'
+              status = pytest.main(['-q', '-o', 'pythonpath=', '-o', 'addopts=',
+                  '-o', 'xfail_strict=true', '--junitxml', str(report),
+                  '--basetemp', str(Path(temporary) / 'pytest'), *suites])
+              cases = list(ET.parse(report).iter('testcase'))
+              assert status == 0 and cases, status
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                         for case in cases), 'Every selected installed case must pass without a skip.'
+              assert inventory() == before
+              print(json.dumps({'status': 'PASS', 'installed_cases': len(cases), 'origins': before}))
+          PY
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-process-export
+          git rev-parse HEAD > ci-process-export/commit.txt
+          python -m pip freeze > ci-process-export/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: process-export-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-process-export
+          if-no-files-found: error
