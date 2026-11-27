@@ -1,0 +1,140 @@
+{
+  "schema": "resonance-transcription-folder-evidence/1",
+  "date": "2026-11-27",
+  "status": "PASS",
+  "source_control": {
+    "tested_commit": "310e6e7cffc9e91949b4c76248842d151c2a30f4",
+    "source_snapshot": "immutable git archive of the committed source",
+    "module_sha256": {
+      "transcription.py": "d95200bff919d1b76f329c23b18fa32c01443e882bed99c0b0b3dd657e0cf4af",
+      "transcription_cli.py": "363a8187e56a1100824e7627362946d59d211f8ea0277be2352c0e58067172e7",
+      "transcription_inputs.py": "b57c76fa17caa4c948c29b4e6c7582b41cd0735b2af6cd678d9d5b23cb911b43",
+      "ui/transcription_dialog.py": "559b2cc7f17f11102ddcec11289827db62c7e4eb8cf3802923e0c0b80eb95e2b"
+    }
+  },
+  "raw_private_report_sha256": "8f708e6b201f2701335a5ed206d779ef64c5be339aa09dea99760a9481ec55e8",
+  "worker_sha256": "5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c",
+  "model": {
+    "repository": "Systran/faster-whisper-tiny.en",
+    "revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",
+    "files": {
+      "README.md": {
+        "size": 1323,
+        "sha256": "1b7816626bf0548e4b71a467f4112b4592924bc818e3117f19aefcc50ce4b6aa"
+      },
+      "config.json": {
+        "size": 2317,
+        "sha256": "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5"
+      },
+      "model.bin": {
+        "size": 75537502,
+        "sha256": "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a"
+      },
+      "tokenizer.json": {
+        "size": 2128466,
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df"
+      },
+      "vocabulary.txt": {
+        "size": 422309,
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf"
+      }
+    }
+  },
+  "runtime": {
+    "platform": "Linux",
+    "python": "3.12.14",
+    "dependency_freeze_sha256": "1e3a4139212df1b703ceaef6cab78688d58468dd7767599a09f17f39f717f2d3",
+    "verified_exact_distributions": 31,
+    "selected_dependency_versions": {
+      "faster-whisper": "1.2.1",
+      "ctranslate2": "4.8.0",
+      "av": "17.1.0",
+      "onnxruntime": "1.26.0",
+      "numpy": "2.4.6",
+      "huggingface-hub": "1.19.0",
+      "tokenizers": "0.23.1"
+    },
+    "device": "cpu",
+    "requested_compute_type": "int8",
+    "actual_compute_type": "int8_float32",
+    "effective_parallel_files": 1
+  },
+  "network": {
+    "boundary": "Linux user/network namespace",
+    "interfaces": [
+      "lo"
+    ],
+    "external_connect_errno": 101
+  },
+  "inputs": {
+    "count": 2,
+    "type": "two synthetic English speech WAV files with different bytes",
+    "duration_seconds": [
+      5.03,
+      5.29
+    ],
+    "selected_folder_deleted_before_recognition": true,
+    "unsupported_text_file_reported_and_excluded": true
+  },
+  "workflow": {
+    "entrypoint": "transcription CLI",
+    "commands": [
+      {
+        "label": "configure",
+        "operation": "configure",
+        "exit_code": 0,
+        "elapsed_seconds": 0.224
+      },
+      {
+        "label": "folder-submit",
+        "operation": "submit",
+        "exit_code": 0,
+        "elapsed_seconds": 0.322
+      },
+      {
+        "label": "queued-status",
+        "operation": "status",
+        "exit_code": 0,
+        "elapsed_seconds": 0.215
+      },
+      {
+        "label": "actual-run",
+        "operation": "run",
+        "exit_code": 0,
+        "elapsed_seconds": 2.724
+      },
+      {
+        "label": "completed-run-revalidation",
+        "operation": "run",
+        "exit_code": 0,
+        "elapsed_seconds": 0.23
+      }
+    ],
+    "queued_without_worker": true,
+    "same_job_retained_after_original_folder_deletion": true,
+    "worker_folders_empty": true,
+    "verified_artifacts": 8,
+    "formats": [
+      "txt",
+      "srt",
+      "vtt",
+      "json"
+    ],
+    "nonempty_timestamped_recognition_for_both_files": true,
+    "completed_job_revalidated_without_new_worker_result": true
+  },
+  "passed_assertions": 69,
+  "limits": [
+    "Functional source-package CLI and retained-input acceptance on Linux only.",
+    "One pinned English-only model and two short synthetic speech inputs; no general acoustic accuracy, multilingual, long-file, GPU or diarization qualification.",
+    "This folder run does not replace the separate interruption/destructive-restore evidence at 8bf4117.",
+    "Native Windows, real operating-system folder-picker interaction and manual NVDA acceptance remain separate.",
+    "Individual elapsed times are observations, not performance guarantees."
+  ],
+  "private_source_included": false,
+  "private_paths_included": false,
+  "model_weights_included": false,
+  "recordings_included": false,
+  "raw_transcripts_included": false,
+  "distribution_cleared": false
+}

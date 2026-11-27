@@ -22,7 +22,8 @@ from urllib.parse import urlencode
 from filelock import FileLock
 from .credentials import WindowsCredentialVault, validate_profile_id
 from .models import canonical, local_path, text
-from .profiles import CAPABILITIES, ProviderProfile, endpoint
+from .profiles import (CAPABILITIES, ProviderProfile, endpoint,
+                       google_v3_parent, google_oauth_token)
 from .state import atomic_json, read_json, regular
 
 
@@ -147,18 +148,34 @@ def _request(profile, operation, payload):
         raise ValueError('Provider request must be a typed JSON object.')
     if operation not in profile.capabilities:
         raise PermissionError('The provider profile does not support this operation.')
-    if profile.adapter == 'google-translation-v2':
+    if profile.adapter in ('google-translation-v2', 'google-translation-v3'):
         def language(value):
             if not isinstance(value, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', value):
                 raise ValueError('Choose an explicit supported translation language code.')
             return value
+        advanced = profile.adapter == 'google-translation-v3'
+        parent = google_v3_parent(profile.endpoint) if advanced else None
+        model = parent + '/models/' + profile.model if advanced else profile.model
         if operation == 'translation.languages':
             if set(payload) != {'target'}:
                 raise ValueError('Language discovery accepts only the display language.')
-            body = {'target': language(payload['target']), 'model': profile.model}
-            return '/languages?' + urlencode(body), body, 'application/json'
-        if operation != 'translation.text' or set(payload) - {'q', 'source', 'target'} or not {'q', 'target'} <= set(payload):
+            body = {('displayLanguageCode' if advanced else 'target'): language(payload['target']), 'model': model}
+            return ('/supportedLanguages?' if advanced else '/languages?') + urlencode(body), body, 'application/json'
+        allowed = {'q', 'source', 'target', 'glossary'} if advanced else {'q', 'source', 'target'}
+        if operation != 'translation.text' or set(payload) - allowed or not {'q', 'target'} <= set(payload):
             raise ValueError('Translation requires selected text and a target language.')
+        if advanced:
+            body = {'contents': [text(payload['q'], 'selected translation text', maximum=5000)],
+                    'targetLanguageCode': language(payload['target']), 'mimeType': 'text/plain', 'model': model}
+            if 'source' in payload:
+                body['sourceLanguageCode'] = language(payload['source'])
+            if 'glossary' in payload:
+                glossary = payload['glossary']
+                if ('source' not in payload or parent.endswith('/global') or not isinstance(glossary, str)
+                        or not re.fullmatch(re.escape(parent) + r'/glossaries/[A-Za-z0-9_-]{1,128}', glossary)):
+                    raise ValueError('Choose an existing glossary in the exact project and non-global region, and an explicit source language.')
+                body['glossaryConfig'] = {'glossary': glossary, 'ignoreCase': False}
+            return ':translateText', body, 'application/json'
         body = {'q': text(payload['q'], 'selected translation text', maximum=5000),
                 'target': language(payload['target']), 'format': 'text', 'model': profile.model}
         if 'source' in payload:
@@ -304,10 +321,16 @@ class Gateway:
                 secret = self.vault.get(profile.id, profile.credential_ref)
                 if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
                     raise ProviderError('The stored provider credential is invalid.')
+                if profile.adapter == 'google-translation-v3':
+                    try:
+                        secret, expires_at = google_oauth_token(secret, profile.endpoint)
+                    except ValueError as error:
+                        raise ProviderError(str(error)) from None
+                    headers['X-goog-user-project'] = google_v3_parent(profile.endpoint).split('/')[1]
                 key_header = {'openai-compatible': 'Authorization', 'elevenlabs': 'xi-api-key',
-                              'google-translation-v2': 'X-goog-api-key'}[profile.adapter]
+                              'google-translation-v2': 'X-goog-api-key', 'google-translation-v3': 'Authorization'}[profile.adapter]
                 headers[key_header] = (
-                    'Bearer ' + secret if profile.adapter == 'openai-compatible' else secret)
+                    'Bearer ' + secret if profile.adapter in ('openai-compatible', 'google-translation-v3') else secret)
                 secret_bytes = secret.encode('utf-8')
                 del secret
             elif not profile.local:
@@ -379,7 +402,49 @@ class Gateway:
                       'local': profile.local, 'actual_cost': None, 'artifacts': []}
             if expected_type == 'application/json':
                 parsed = json.loads(b''.join(chunks))
-                if profile.adapter == 'google-translation-v2':
+                if profile.adapter == 'google-translation-v3':
+                    if type(parsed) is not dict:
+                        raise ProviderError('The Advanced v3 response schema is invalid.')
+                    if operation == 'translation.languages':
+                        languages = parsed.get('languages')
+                        if (not isinstance(languages, list) or not 1 <= len(languages) <= 1000
+                                or any(type(row) is not dict or type(row.get('languageCode')) is not str
+                                       or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', row['languageCode'])
+                                       or type(row.get('displayName', '')) is not str or len(row.get('displayName', '')) > 512
+                                       or type(row.get('supportSource', False)) is not bool
+                                       or type(row.get('supportTarget', False)) is not bool for row in languages)
+                                or len({row['languageCode'] for row in languages}) != len(languages)):
+                            raise ProviderError('The Advanced v3 supported-language response is invalid.')
+                        # Omitted proto-JSON booleans mean false, never guessed support.
+                        result['languages'] = [{'language': row['languageCode'], 'name': row.get('displayName', ''),
+                            'source': row.get('supportSource', False), 'target': row.get('supportTarget', False)} for row in languages]
+                    else:
+                        glossary = body.get('glossaryConfig')
+                        translations = parsed.get('glossaryTranslations' if glossary else 'translations')
+                        if (not isinstance(translations, list) or len(translations) != 1
+                                or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
+                            raise ProviderError('The requested Advanced v3 translation or glossary result is missing.')
+                        row = translations[0]
+                        if row.get('model') != body['model']:
+                            raise ProviderError('The Advanced v3 response did not verify the requested model and location.')
+                        if glossary:
+                            observed = row.get('glossaryConfig')
+                            if (type(observed) is not dict or observed.get('glossary') != glossary['glossary']
+                                    or type(observed.get('ignoreCase', False)) is not bool
+                                    or observed.get('ignoreCase', False) != glossary['ignoreCase']):
+                                raise ProviderError('The Advanced v3 response did not verify the selected glossary; no fallback was accepted.')
+                        elif row.get('glossaryConfig'):
+                            raise ProviderError('An unrequested glossary was returned.')
+                        # text/plain output is already text. HTML-unescaping would
+                        # corrupt literal entities in Advanced v3 source derivatives.
+                        result['text'] = text(row['translatedText'], 'translation output', maximum=max_response_bytes)
+                        detected = row.get('detectedLanguageCode') or None
+                        if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
+                            raise ProviderError('The detected translation language is invalid.')
+                        result.update(detected_source=detected, reported_model=row['model'], glossary_config=glossary)
+                        usage = {'submitted_characters': len(body['contents'][0]),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest()}
+                elif profile.adapter == 'google-translation-v2':
                     data = parsed.get('data') if type(parsed) is dict else None
                     if type(data) is not dict:
                         raise ProviderError('The translation response schema is invalid.')
@@ -398,12 +463,14 @@ class Gateway:
                         if (not isinstance(translations, list) or len(translations) != 1
                                 or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
                             raise ProviderError('The text translation response is invalid.')
-                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        decoded = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        result['text'] = text(decoded, 'translation output', maximum=max_response_bytes)
                         detected = translations[0].get('detectedSourceLanguage')
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result['detected_source'] = detected
-                        usage = {'submitted_characters': len(body['q'])}
+                        usage = {'submitted_characters': len(body['q']),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest()}
                 else:
                     choices = parsed.get('choices') if type(parsed) is dict else None
                     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):

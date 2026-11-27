@@ -124,13 +124,13 @@ def reader(tmp_path, monkeypatch):
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
 
-    def registry_factory(state_root):
+    def registry_factory(state_root, *, cancelled):
         roots.append(Path(state_root))
         return registry
 
-    def activate(root, voice_id):
+    def activate(root, voice_id, *, cancelled):
         activations.append((Path(root), voice_id))
-        provider = activate_progress_voice(root, voice_id, _registry_factory=registry_factory)
+        provider = activate_progress_voice(root, voice_id, _registry_factory=registry_factory, cancelled=cancelled)
         created.append(provider)
         return provider
 
@@ -139,13 +139,13 @@ def reader(tmp_path, monkeypatch):
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
     values = dict(parent=parent, progress=progress, voice_choice=choice,
-        voices=registry.voices(), registry=registry, run=work, report=report,
+        voices=registry.voices(), registry=registry, owned_registries={registry}, run=work, report=report,
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
-        source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
+        source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
+        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock(), navigation_host=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
@@ -222,10 +222,11 @@ def test_studio_explicit_voice_selection_creates_independent_parent_selection(re
     reader.choice.selection = 1
     values = dict(voice_choice=reader.choice, voices=reader.registry.voices(),
         dialog=reader.parent, progress=local, parent_progress=parent, run=reader.work,
+        cancel=threading.Event(),
         report=lambda message, focus=False: reader.reports.append(message))
     handler = callbacks('studio_dialog.py', 'show_studio', ['select_progress_voice'],
-        values, globals_={'activate_progress_voice': lambda root, voice_id:
-            activate_progress_voice(root, voice_id, _registry_factory=lambda state: reader.registry)})
+        values, globals_={'activate_progress_voice': lambda root, voice_id, **options:
+            activate_progress_voice(root, voice_id, _registry_factory=lambda state, **options: reader.registry)})
     assert events == []
     handler.select_progress_voice()
     assert events == []
@@ -249,7 +250,7 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     dialog = Mock()
     dialog._audio_player = player
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+        get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
@@ -262,6 +263,8 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     scheduler.tick()
     player.play.assert_not_called()
     handlers.close()
+    values['executor'].submit.assert_called_once_with(values['service'].close)
+    values['service'].close.assert_not_called()
     parent.ready = True
     scheduler.tick()
     player.play.assert_not_called()

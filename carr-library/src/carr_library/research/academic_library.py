@@ -540,10 +540,17 @@ class AcademicLibrary:
             entries.append((index, _validate(dict(entry.fields))))
         existing = self._duplicate_index()
         imported, skipped, duplicates = [], [], set()
+        remaining = MAX_DUPLICATE_PREVIEW_SLOTS
         self.db.execute('SAVEPOINT academic_import')
         try:
             for index, values in entries:
-                matches = {identity for key in _duplicate_keys(values) for identity in existing[key]}
+                keys = _duplicate_keys(values)
+                cost = sum(len(existing[key]) for key in keys)
+                if cost > remaining:
+                    raise ValueError('Too many duplicate matches to import safely. '
+                                     'Refine the reference batch or library.')
+                remaining -= cost
+                matches = {identity for key in keys for identity in existing[key]}
                 duplicates.update(matches)
                 if matches and skip_duplicates:
                     skipped.append(index)
@@ -600,8 +607,14 @@ def _parse_import(data, format):
         rows = _parse_ris(text)
     elif format == 'csl-json':
         rows = _parse_csl(text)
+    elif format == 'bibtex':
+        from .bibtex_import import parse_bibtex
+        # This library stores every author as literal display text. Ask the
+        # parser to omit only its own markers instead of guessing whether
+        # decoded outer braces were structural or real source punctuation.
+        rows = parse_bibtex(text, literal_names=True)
     else:
-        raise ValueError('Supported import formats are RIS and CSL JSON.')
+        raise ValueError('Supported import formats are RIS, BibTeX and CSL JSON.')
     if not 1 <= len(rows) <= MAX_IMPORT_RECORDS:
         raise ValueError('Import between 1 and 2,000 references at a time.')
     result = []

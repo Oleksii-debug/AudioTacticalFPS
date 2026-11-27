@@ -67,6 +67,41 @@ def test_bibliography_only_is_a_real_supported_export(prepared, tmp_path):
     assert target.exists() and read_citation_docx(target)["clusters"] == []
 
 
+def test_bibtex_import_uses_existing_csl_and_docx_with_literal_authors_and_exact_sources(
+        prepared, tmp_path):
+    library, workspace, other, academic, _, source = prepared
+    original = library.assets.resolve(source['asset']).read_bytes()
+    hit, = library.search(workspace, 'spectroscopy')
+    quote = library.copy(workspace, hit.ref, hit.revision, 'quote')
+    raw = r'''@book{unselected,title={Unselected BibTeX}}
+@book{kept,title={Synthetic BibTeX methods},
+ author={{Research and Development, Inc.} and , Jr., John},
+ year=2026,publisher={Reviewed Press},pages={11--19},note={PrivateImportedNote}}'''.encode()
+    preview = academic.preview(raw, 'bibtex')
+    assert preview.entries[1].fields['authors'] == ('Research and Development, Inc.', ', Jr., John')
+    saved = academic.import_selected(preview, (1,))
+    reference = academic.get(saved.imported_ids[0])
+    assert reference.edition_id is None and reference.id != 'kept'
+    assert 'Citation key: kept' in reference.notes
+    assert not academic.list(query='Unselected BibTeX')
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    imported = next(row for row in snapshot.references if row['id'] == reference.id)
+    assert imported['author'] == [{'literal': 'Research and Development, Inc.'}, {'literal': ', Jr., John'}]
+    result = controller.render(snapshot, reference_ids=(reference.id,), style='apa')
+    assert 'Research and Development, Inc.' in result.bibliography[0].text
+    assert 'Synthetic BibTeX methods' in result.bibliography[0].text
+    destination = controller.export_docx(snapshot, result, tmp_path / 'bibtex-citations.docx')
+    recovered = read_citation_docx(destination)
+    assert recovered['references'][0]['author'] == imported['author']
+    assert 'PrivateImportedNote' not in json.dumps(recovered)
+    assert library.assets.resolve(source['asset']).read_bytes() == original
+    assert library.copy(workspace, hit.ref, hit.revision, 'quote') == quote
+    reopened = AcademicController(LibraryApp(library.root), workspace)
+    assert reopened.get(reference.id) == reference
+    assert not AcademicController(library, other).list(query='Synthetic BibTeX')
+
+
 def test_foreign_scope_and_another_controller_snapshot_cannot_be_reused(prepared):
     library, workspace, other, _, reference, _ = prepared
     controller = CitationFormattingController(library, workspace)
@@ -196,3 +231,101 @@ def test_entrypoint_guard_requires_same_active_library_object_and_scope(prepared
     frame.working = True
     with pytest.raises(ValueError, match="current operation"):
         _scope(frame)
+
+
+def saved_document(prepared, tmp_path):
+    library, workspace, _, _, _, _ = prepared
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    result = controller.render(snapshot)
+    path = controller.export_docx(snapshot, result, tmp_path / 'selected-citations.docx')
+    return controller, path
+
+
+def test_saved_docx_regenerates_from_reviewed_snapshot_in_an_empty_active_workspace(prepared, tmp_path):
+    from carr_library.ui.citation_formatting import REGENERATION_NOTICE
+    library, *_ = prepared
+    _, source = saved_document(prepared, tmp_path)
+    original = source.read_bytes()
+    before = read_citation_docx(source)
+    empty = library.create_workspace('Independent saved document review')
+    controller = CitationFormattingController(library, empty)
+    inspected = controller.inspect_docx(source)
+    assert REGENERATION_NOTICE in inspected.summary
+    assert inspected.sha256 in inspected.summary
+    assert 'Private workspace notes' not in inspected.summary
+    target = controller.regenerate_docx(inspected, tmp_path / 'new-snapshot.docx')
+    assert read_citation_docx(target) == before
+    assert source.read_bytes() == original
+    assert AcademicController(library, empty).list() == ()
+    with pytest.raises(FileExistsError):
+        controller.regenerate_docx(inspected, source)
+    with pytest.raises(FileExistsError):
+        controller.regenerate_docx(inspected, target)
+    with pytest.raises(ValueError, match='outside'):
+        controller.regenerate_docx(inspected, library.root / 'unapproved.docx')
+    assert source.read_bytes() == original and read_citation_docx(target) == before
+
+
+def test_changed_docx_after_review_is_rejected_before_processor_admission(prepared, tmp_path, monkeypatch):
+    from carr_library.academic_integration import regeneration
+    controller, source = saved_document(prepared, tmp_path)
+    inspected = controller.inspect_docx(source)
+    changed = b'Newer independently saved document'
+    source.write_bytes(changed)
+    monkeypatch.setattr(regeneration, 'render_citations',
+                        lambda *args, **kwargs: pytest.fail('A stale reviewed document reached the processor'))
+    target = tmp_path / 'stale-review.docx'
+    with pytest.raises(CitationError, match='Open and review'):
+        controller.regenerate_docx(inspected, target)
+    assert not target.exists() and source.read_bytes() == changed
+
+
+def test_regeneration_rechecks_workspace_access_after_actual_document_assembly(prepared, tmp_path, monkeypatch):
+    from docx.document import Document
+    library, workspace, *_ = prepared
+    controller, source = saved_document(prepared, tmp_path)
+    inspected = controller.inspect_docx(source)
+    original = source.read_bytes()
+    actual_save = Document.save
+    def assemble_then_archive(document, destination):
+        actual_save(document, destination)
+        library.archive_workspace(workspace)
+    monkeypatch.setattr(Document, 'save', assemble_then_archive)
+    target = tmp_path / 'archived-scope.docx'
+    with pytest.raises(ValueError, match='archived'):
+        controller.regenerate_docx(inspected, target)
+    assert not target.exists() and source.read_bytes() == original
+
+
+def test_live_export_rechecks_reference_identity_after_actual_document_assembly(prepared, tmp_path, monkeypatch):
+    from docx.document import Document
+    library, workspace, _, academic, reference, _ = prepared
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    result = controller.render(snapshot)
+    actual_save = Document.save
+    def assemble_then_edit_reference(document, destination):
+        actual_save(document, destination)
+        academic.update(reference, {'title': 'New reference saved during document assembly'})
+    monkeypatch.setattr(Document, 'save', assemble_then_edit_reference)
+    target = tmp_path / 'stale-live-export.docx'
+    with pytest.raises(ValueError, match='changed'):
+        controller.export_docx(snapshot, result, target)
+    assert not target.exists()
+    assert academic.get(reference.id).title == 'New reference saved during document assembly'
+
+
+def test_saved_docx_review_is_controller_bound_and_cancellable(prepared, tmp_path):
+    library, workspace, other, *_ = prepared
+    controller, source = saved_document(prepared, tmp_path)
+    inspected = controller.inspect_docx(source)
+    for foreign in (CitationFormattingController(library, workspace),
+                    CitationFormattingController(library, other)):
+        with pytest.raises(ValueError, match='in this dialog'):
+            foreign.regenerate_docx(inspected, tmp_path / 'foreign.docx')
+    with pytest.raises(InterruptedError):
+        controller.inspect_docx(source, cancelled=lambda: True)
+    with pytest.raises(InterruptedError):
+        controller.regenerate_docx(inspected, tmp_path / 'cancelled.docx', cancelled=lambda: True)
+    assert not (tmp_path / 'foreign.docx').exists() and not (tmp_path / 'cancelled.docx').exists()

@@ -212,6 +212,28 @@ def test_preferences_require_valid_explicit_options(changes):
         replace(ProgressPreferences(), **changes)
 
 
+@pytest.mark.parametrize('field', ['interval_seconds', 'volume'])
+@pytest.mark.parametrize('sign', [-1, 1])
+def test_huge_numeric_preferences_keep_startup_silent_and_preserve_file(native, field, sign):
+    from dataclasses import asdict
+
+    controller = native.controller
+    save_preferences(native.frame.library.root, ProgressPreferences(mode='beep'))
+    path = native.frame.library.root / 'state/ui/progress.json'
+    values = asdict(ProgressPreferences(mode='beep'))
+    values[field] = sign * 10 ** 400
+    raw = json.dumps({'schema': 1, 'preferences': values}).encode('utf-8')
+    assert len(raw) < 4096
+    path.write_bytes(raw)
+    with pytest.raises(ValueError, match='interval|volume'):
+        load_preferences(native.frame.library.root)
+    controller.reload_preferences()
+    assert controller.preferences == ProgressPreferences()
+    assert native.sound.muted and native.sound.calls == []
+    assert native.frame.notices and 'could not be read' in native.frame.notices[-1]
+    assert path.read_bytes() == raw
+
+
 class Gauge:
     def __init__(self): self.names, self.values, self.pulses, self.ranges = [], [], 0, []
     def SetName(self, name): self.names.append(name)

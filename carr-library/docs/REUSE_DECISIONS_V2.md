@@ -72,3 +72,18 @@ SHA256 code: 005b2944d8e3a61cc49a7c770a9faef0fbb4cc33399ec544a3b1b782c108acfd
 SHA256 tests: 92cd05adca41a0312eaf81a822f2e39d2a6e354577e34a2d2902a31b65ed632d
 Drive roundtrip byte hashes matched original tested files; GitHub readback matched uploaded UTF-8 code. Tests exercise persistent independent workspaces, multiple collections, topic tree and cycle rejection, Unicode, PDF and text import, physical/unknown printed page, source exact quote, note updates, export, cross-workspace rejection and reopening database.
 Limitations: prototype only. No GUI, scanned PDF OCR, full semantic ranking, verified printed page inference, source binary archival/revision migration, robust untrusted file sandbox, complete CRUD or backup/restore. FTS rank can be influenced by global corpus statistics despite result scope filtering; production isolation review needed. PDF extraction is native text only and trusted local input; not verified against scan images. No Windows/NVDA run, no real Carr corpus, no production release. Review candidates and integrate into owned module contracts instead of maintaining parallel production implementation.
+
+
+## Optional Hunspell adapter — 2026-11-27
+
+Reuse the existing local process supervisor and reversible reading-copy UI.
+The narrow C API adapter was reviewed against Hunspell v1.7.2, commit
+`2969be996acad84b91ab3875b1816636fe61a40e`, without copying implementation
+source or adding a Python package. The library and matching `.aff`/`.dic`
+remain explicit external selections; none are redistributed or acquired.
+[Upstream API](https://github.com/hunspell/hunspell/blob/2969be996acad84b91ab3875b1816636fe61a40e/src/hunspell/hunspell.h)
+and [license](https://github.com/hunspell/hunspell/blob/2969be996acad84b91ab3875b1816636fe61a40e/license.hunspell)
+were read. Actual binary dependencies and dictionary rights require their own
+review. The executed system-library identity, original synthetic dictionaries,
+14 real C API/lifetime checks and Windows/quality limits are recorded in
+[Hunspell review](HUNSPELL_REVIEW.md).

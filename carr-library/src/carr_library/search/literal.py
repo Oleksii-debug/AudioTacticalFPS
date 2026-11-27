@@ -62,8 +62,7 @@ def _ascii_mapped(text, check):
 
 
 class _CompactOffsets:
-    """Source boundaries in a compact array; -1 is not a cluster boundary."""
-
+    """Dense source boundaries; -1 marks a position inside a folded cluster."""
     def __init__(self, length):
         self.values = array('i', [-1]) * (length + 1)
 
@@ -163,14 +162,16 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
     word: one whitespace-free literal; terms: all whitespace-separated literals
     on the same page, one hit per page (first occurrence of each term).
-    No wildcard/operator syntax. Exact matches share score 1; tie-break is
+    advanced: explicit bounded Boolean/NEAR syntax, one source witness per page.
+    Other modes have no wildcard/operator syntax. Exact matches share score 1; tie-break is
     edition, segment ordinal, page id, raw offset. Results never cross pages.
     Only active_page rows from PR #21 are accepted; no persistent second index.
-    Scope/offset caps fail explicitly, not silently with incomplete results.
+    Scope caps fail explicitly, not silently with incomplete results. Offset
+    only skips matches in this bounded scope; it never sizes an allocation.
     """
     if not isinstance(workspace, str) or not workspace:
         raise ValueError('explicit workspace required')
-    if mode not in ('word', 'phrase', 'terms'):
+    if mode not in ('word', 'phrase', 'terms', 'advanced'):
         raise ValueError('invalid literal mode')
     if not isinstance(query, str) or len(query) > MAX_QUERY or any(
         ud.category(c) in ('Cc', 'Cs') and c not in '\t\n\r' for c in query
@@ -178,7 +179,7 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid query')
     if not (type(limit) is int and type(offset) is int and type(timeout) in (int, float)
             and 1 <= limit <= 100
-            and 0 <= offset <= 10000 and 0 < timeout <= 60):
+            and offset >= 0 and 0 < timeout <= 60):
         raise ValueError('invalid search budget')
     q = _fold(query).strip()
     if not q:
@@ -201,6 +202,12 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             raise TimeoutError('literal search cancelled or timed out')
 
     check()
+    advanced = None
+    if mode == 'advanced':
+        # Lazy import keeps the parser reusable with the exact normalization and
+        # span helpers above, while all scope/integrity/budget logic stays here.
+        from .advanced import compile_query
+        advanced = compile_query(query, check=check)
     params = [workspace]
     where = 'workspace=?'
     if edition_ids is not None:
@@ -244,17 +251,21 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         # Trigram cannot match strings shorter than three code points. Fall back
         # to the scoped row list, then verify all literal needles against raw.
         candidate = next((n for n in needles if len(n) >= 3), None)
-        if candidate is None:
+        expression = (advanced.candidate if advanced is not None else
+                      '"' + candidate.replace('"', '""') + '"' if candidate is not None else None)
+        if expression is None:
             hits = range(1, len(rows)+1)
         else:
-            expression = '"' + candidate.replace('"', '""') + '"'
             hits = (r[0] for r in index.execute('SELECT rowid FROM scoped WHERE scoped MATCH ? ORDER BY rowid', (expression,)))
         for rowid in hits:
             check()
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
             folded, starts, ends = _mapped(raw, check)
             check()
-            if mode == 'terms':
+            if advanced is not None:
+                match = advanced.match(raw, folded, starts, ends, check=check)
+                groups = [match.spans] if match is not None else []
+            elif mode == 'terms':
                 spans = [next(_spans(folded, starts, ends, n, check), None) for n in needles]
                 groups = [tuple(sorted(set(spans)))] if all(s is not None for s in spans) else []
             else:
@@ -272,6 +283,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                     printed_label_verified=bool(physical is not None and verified),
                     raw_text_sha256=digest, start=start, end=end, raw_quote=raw[start:end],
                     match_spans=spans, score=1.0))
+                if advanced is not None:
+                    result[-1]['reason'] = match.reason
                 if len(result) == limit:
                     check()
                     return result

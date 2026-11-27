@@ -1,0 +1,90 @@
+name: CARR academic reconciliation acceptance
+on:
+  pull_request:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-academic-reconciliation.yml
+  push:
+    branches: [carr/academic-search-20261126, carr/canonical-reconciliation-20261127, carr-library, carr/v3-release-integration-dbbb-20261126]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-academic-reconciliation.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-academic-reconciliation-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  reconciled-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the source package and required synthetic-test dependencies
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CARR_EXPECTED_SOURCE_SHA"
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng ffmpeg
+      - name: Verify every reconciled path with strict isolated suites
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          python -m compileall -q src bootstrap
+          python scripts/ci_check.py --jobs 3 \
+            tests/research/test_academic_library.py \
+            tests/e2e/test_search_operation_budget.py \
+            tests/e2e/test_catalog_insights_workflow.py \
+            tests/storage/test_academic_migration.py \
+            tests/e2e/test_search_deadline.py \
+            tests/citations/test_pdf_mapping_contradiction.py \
+            tests/extract/test_ocr_model_cli.py \
+            tests/extract/test_ocr_model_store.py \
+            tests/extract/test_managed_ocr.py \
+            tests/extract/test_ocr_languages.py \
+            tests/e2e/test_managed_ocr_import.py \
+            tests/search/test_advanced_search.py \
+            tests/search/test_federated_advanced.py \
+            tests/search/test_federated.py \
+            tests/search/test_federated_independent.py \
+            tests/search/test_literal_long_source.py \
+            tests/search/test_literal_unicode_memory.py \
+            tests/ui/test_federated_search.py \
+            tests/ui/test_federated_labels.py \
+            tests/ui/test_desktop_handlers.py \
+            tests/ui/test_desktop_query_jobs.py \
+            tests/ui/test_desktop_result_modes.py \
+            tests/ui/probe_advanced_query_builder.py \
+            tests/ui/test_progress_job_review.py \
+            tests/audio/test_posix_process.py tests/storage/test_state_backup_portability_posix.py tests/operations/test_resources_posix.py tests/audio/test_playback_navigation_posix.py \
+            tests/e2e/test_advanced_research_search.py \
+            tests/e2e/test_research_search_cli.py \
+            tests/storage/test_library_backup_reading_state.py \
+            tests/storage/test_v3_state_backup.py \
+            tests/storage/test_pending_backup.py \
+            tests/storage/test_complete_pending_backup.py \
+            tests/storage/test_backup_v4_review.py \
+            tests/packaging/test_ci_check.py
+      # This source-only job supplements the complete native Windows/bundle gate.

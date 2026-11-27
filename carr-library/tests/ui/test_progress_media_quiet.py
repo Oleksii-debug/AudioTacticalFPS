@@ -376,6 +376,94 @@ def test_provider_origin_cannot_be_reauthorized_by_passing_a_different_root_argu
     assert not media.sound.speech_available
 
 
+@pytest.mark.parametrize(('transition', 'notice'), [
+    ('succeed', 'Completed.'), ('fail', 'Failed.'), ('cancel', 'Cancelled.'), ('pause', 'Paused.'),
+])
+def test_final_state_replaces_inflight_speech_and_is_announced_once(media, transition, notice):
+    voice = media.use_voice()
+    media.controller.configure(ProgressPreferences(mode='speech', interval_seconds=120))
+    token = media.controller.start('Checking actual results', total=2)
+    assert voice.entered.wait(1)
+    getattr(media.controller, transition)('Verified final state', token=token)
+    voice.release.set()
+    eventually(lambda: not media.sound._thread.is_alive(), 'Old notification did not finish')
+    media.controller._tick()
+    eventually(lambda: len(voice.calls) == 2, 'Final state was lost behind the previous notification')
+    eventually(lambda: not media.sound._thread.is_alive(), 'Final notification did not finish')
+    media.controller._tick()
+    assert len(voice.calls) == 2
+    assert voice.heard == [voice.calls[-1][0]]
+    assert voice.heard[0].startswith(notice)
+    assert ('100 percent' in voice.heard[0]) is (transition == 'succeed')
+    assert not media.controller.timer.IsRunning()
+
+
+def test_muting_discards_a_deferred_completion_without_replaying_it_later(media):
+    voice = media.use_voice()
+    media.controller.configure(ProgressPreferences(mode='speech'))
+    token = media.controller.start('Checking files')
+    assert voice.entered.wait(1)
+    media.controller.succeed('Saved', token=token)
+    media.controller.configure(ProgressPreferences(mode='off'))
+    voice.release.set()
+    eventually(lambda: not media.sound.active, 'Cancelled notification did not stop')
+    media.controller._tick()
+    media.controller.configure(ProgressPreferences(mode='speech'))
+    media.controller._tick()
+    assert len(voice.calls) == 1 and not voice.heard
+    assert not media.controller.timer.IsRunning()
+
+
+def test_new_operation_supersedes_pending_completion_from_old_token(media):
+    voice = media.use_voice()
+    media.controller.configure(ProgressPreferences(mode='speech', interval_seconds=120))
+    old = media.controller.start('Old operation')
+    assert voice.entered.wait(1)
+    media.controller.succeed('Old saved result', token=old)
+    current = media.controller.start('New operation')
+    voice.release.set()
+    eventually(lambda: not media.sound.active, 'Old notification did not stop')
+    media.controller._tick()
+    eventually(lambda: not media.sound.active, 'New notification did not finish')
+    assert current != old and len(voice.calls) == 2
+    assert voice.heard == [voice.calls[-1][0]]
+    assert 'New operation' in voice.heard[0] and 'Completed' not in voice.heard[0]
+
+
+def test_deferred_notice_has_a_deadline_when_old_device_remains_busy(media):
+    voice = media.use_voice()
+    clock = [0.0]
+    media.controller.clock = lambda: clock[0]
+    media.controller.configure(ProgressPreferences(mode='speech'))
+    token = media.controller.start('Checking files')
+    assert voice.entered.wait(1)
+    media.controller.succeed('Saved', token=token)
+    clock[0] = 4.0
+    media.controller._tick()
+    assert 'could not start' in media.sound.last_error
+    voice.release.set()
+    eventually(lambda: not media.sound.active, 'Cancelled device did not settle')
+    media.controller._tick()
+    assert len(voice.calls) == 1 and not voice.heard
+    assert not media.controller.timer.IsRunning()
+
+
+def test_terminal_speech_still_observes_background_mute_until_playback_finishes(media):
+    voice = media.use_voice()
+    media.controller.configure(ProgressPreferences(mode='off'))
+    token = media.controller.start('Checking files')
+    media.controller.configure(ProgressPreferences(mode='speech'))
+    media.controller.succeed('Saved', token=token)
+    assert voice.entered.wait(1)
+    assert media.controller.timer.IsRunning()
+    media.frame.IsActive = lambda: False
+    media.controller._tick()
+    voice.release.set()
+    eventually(lambda: not media.sound.active, 'Background speech did not stop')
+    media.controller._tick()
+    assert not voice.heard and not media.controller.timer.IsRunning()
+
+
 @pytest.mark.parametrize('method, label', [
     ('succeed', 'Completed.'), ('fail', 'Failed.'),
     ('cancel', 'Cancelled.'), ('pause', 'Paused.'),
@@ -398,6 +486,7 @@ def test_terminal_notice_replaces_in_flight_running_speech_without_losing_final_
     media.sound._thread.join(2)
     assert not media.sound._thread.is_alive()
     assert len(voice.heard) == 1 and voice.heard[0].startswith(label)
+    controller._tick()  # Observe the completed terminal playback on the GUI timer.
     assert not controller.timer.IsRunning()
     controller._tick()
     assert len(voice.heard) == 1, 'A final cue must not repeat'

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "publication_sha256": "5f9b5f85c7c0958fbc89e055c463d6c18e1896fb84a31652aeabbf4956b7edce",
+  "publisher_module_sha256": "fc22669092e06c86b54af79ef9af5853a152b71870870fd433038c17548c542d",
+  "daisy_module_sha256": "be63e38587fb160d354efef2f743994e7a82fd82bc3ac5bd1fb249a077f24cf7",
+  "lxml_version": [
+    6,
+    1,
+    1,
+    0
+  ],
+  "libxml_version": [
+    2,
+    14,
+    6
+  ],
+  "schema_sha256": {
+    "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+    "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+    "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+    "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+    "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+  },
+  "documents": [
+    {
+      "file": "ncc.html",
+      "dtd_valid": true
+    },
+    {
+      "file": "content.html",
+      "dtd_valid": true
+    },
+    {
+      "file": "source.html",
+      "dtd_valid": true
+    },
+    {
+      "file": "book.smil",
+      "dtd_valid": true
+    }
+  ],
+  "invalid_xhtml_rejected": true,
+  "original_script_sha256": "1ea3e828165c5753e1cc46e1084b8bb6e9ce9c208f409ede22dd883f8d94ad7d",
+  "full_daisy_rule_conformance": "NOT_RUN",
+  "reader_interoperability": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "audio_fixture": "Synthetic PCM tones through actual FFmpeg; no voice quality claim",
+  "network": "Executed in a network namespace with only loopback; validator no_network=True and hash-pinned local resolver"
+}

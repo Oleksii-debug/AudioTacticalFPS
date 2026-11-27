@@ -13,7 +13,7 @@ import shutil
 from tempfile import TemporaryDirectory
 
 from build_windows_bundle import (read_lock, wheel_metadata, verify_application_source,
-                                  verify_dependency_closure, sha256)
+                                  verify_dependency_closure, verify_native_launcher, sha256)
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
 from create_delivery import _read_manifest, _manifest
@@ -22,7 +22,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
-            audio=None, citations=None, extra_wheelhouse=None):
+            audio=None, citations=None, extra_wheelhouse=None, launcher_dir=None):
     source, wheel, output = local(source, exists=True), local(wheel, exists=True), local(output)
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
         raise ValueError('Choose a new bundle directory outside the previous one.')
@@ -34,6 +34,13 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         raise ValueError('The parent bundle manifest differs from its recorded SHA256.')
     previous = _manifest(raw, json.loads(raw).get('source_commit'))
     verify(source, manifest_bytes=raw)
+    launcher_payload = None
+    if launcher_dir is not None or previous.get("bundled_launcher"):
+        if not previous.get("bundled_python"):
+            raise ValueError("native launcher requires the complete bundled Python runtime")
+        launcher_payload = verify_native_launcher(
+            launcher_dir if launcher_dir is not None else source, source_commit,
+            receipt_name="build-evidence.json" if launcher_dir is not None else "native-launcher-build.json")
     identity = verify_application_source(wheel, source_commit)
     lock = read_lock(HERE / ('windows-semantic-cp311.lock' if previous.get('bundled_model') else 'windows-cp311.lock'))
     dependencies = {}
@@ -99,6 +106,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
     with TemporaryDirectory(prefix='.private-bundle-', dir=output.parent) as temporary:
         stage = Path(temporary)
         for name, expected in previous['files'].items():
+            if name in {"ResearchLibrary.exe", "native-launcher-build.json"}:
+                continue
             if name.startswith(('audio/', 'citation-runtime/')):
                 continue
             if name.startswith('wheelhouse/'):
@@ -146,9 +155,13 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             if files:
                 lock_name = 'windows-audio.lock.json' if directory == 'audio' else 'windows-citations.lock.json'
                 shutil.copyfile(HERE / lock_name, stage / directory / 'provenance.json')
+        if launcher_payload is not None:
+            (stage / "ResearchLibrary.exe").write_bytes(launcher_payload[0])
+            (stage / "native-launcher-build.json").write_bytes(launcher_payload[1])
         (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
         manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
-        manifest.update(source_commit=source_commit, bundled_audio=bool(audio_files),
+        manifest.update(source_commit=source_commit, bundled_launcher=launcher_payload is not None,
+                        bundled_audio=bool(audio_files),
                         bundled_citation_runtime=bool(node_files), use_scope='private-personal-installation',
                         parent_source_commit=previous['source_commit'],
                         parent_manifest_sha256=parent_manifest_sha256,
@@ -169,11 +182,12 @@ def main():
     parser.add_argument('--audio')
     parser.add_argument('--citations')
     parser.add_argument('--extra-wheelhouse')
+    parser.add_argument('--launcher-dir', help='Optional new exact-source native launcher build')
     args = parser.parse_args()
     print(json.dumps(refresh(args.source, args.wheel, args.output, args.source_commit,
                              parent_manifest_sha256=args.parent_manifest_sha256,
                              audio=args.audio, citations=args.citations,
-                             extra_wheelhouse=args.extra_wheelhouse)))
+                             extra_wheelhouse=args.extra_wheelhouse, launcher_dir=args.launcher_dir)))
 
 
 if __name__ == '__main__':

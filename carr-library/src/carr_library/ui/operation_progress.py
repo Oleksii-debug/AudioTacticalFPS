@@ -245,9 +245,11 @@ class ProgressPreferences:
     def __post_init__(self):
         if self.mode not in ('off', 'beep', 'speech', 'both'):
             raise ValueError('Choose Off, Beep, Speech or Beep + Speech for progress sound.')
-        if type(self.interval_seconds) not in (int, float) or not 1 <= self.interval_seconds <= 120 or not math.isfinite(self.interval_seconds):
+        if (type(self.interval_seconds) not in (int, float)
+                or not 1 <= self.interval_seconds <= 120 or not math.isfinite(self.interval_seconds)):
             raise ValueError('Progress sound interval must be between 1 and 120 seconds.')
-        if type(self.volume) not in (int, float) or not 0 <= self.volume <= 1 or not math.isfinite(self.volume):
+        if (type(self.volume) not in (int, float)
+                or not 0 <= self.volume <= 1 or not math.isfinite(self.volume)):
             raise ValueError('Progress sound volume must be between zero and one.')
         if any(type(getattr(self, key)) is not bool for key in ('quiet', 'background', 'mute_during_audio')):
             raise ValueError('Progress sound options must be boolean.')
@@ -355,6 +357,10 @@ class WindowsProgressSound:
     @property
     def speech_available(self):
         return self._speech_provider is not None
+
+    @property
+    def active(self):
+        return self._thread is not None and self._thread.is_alive()
 
     @property
     def speech_label(self):
@@ -547,8 +553,10 @@ class OperationProgress:
         cancel = getattr(self.sound, 'cancel', None)
         if callable(cancel):
             cancel()
+        self._pending_sound = None
         self.preferences = preferences
         self._mute()
+        self._timer_state()
 
     def _mute(self):
         playing, recording = False, False
@@ -579,8 +587,8 @@ class OperationProgress:
                             or recording or uncertain or self.preferences.mute_during_audio
                             and (self.audio_active or playing or playback_wait))
         if self.sound.muted:
-            # A mute boundary discards deferred audio immediately, even if the
-            # policy is lifted before the next GUI timer event.
+            # Policy changes can happen between timer ticks. Discard the old
+            # cue immediately so unmuting cannot revive another operation.
             self._pending_sound = None
             self._timer_state()
 
@@ -669,8 +677,9 @@ class OperationProgress:
             self._timer_state()
 
     def _timer_state(self):
-        if (self.event.state == 'running' or self._pending_sound is not None
-                or self._players or self._uncertain_players or self._audio_holds):
+        if (self.event.state == 'running' or self._players or self._uncertain_players or self._audio_holds
+                or self._pending_sound is not None
+                or getattr(self.sound, 'active', False) and not self.sound.muted):
             if not self.timer.IsRunning():
                 self.timer.Start(250)
         else:
@@ -770,40 +779,39 @@ class OperationProgress:
         self.label.SetLabel(text)
         self.label.SetName('Operation progress details: ' + text)
         self._displayed_sequence, self._last_display = event.sequence, now
-        self._timer_state()
         self._mute()
         self._sound(event, state_changed=state_changed)
         self._last_state, self._last_token = event.state, event.token
+        self._timer_state()
 
     def _sound(self, event, *, state_changed=False):
         preference = self.preferences
-        if self._pending_sound is not None and self._pending_sound[:2] != (event.token, event.state):
-            self._pending_sound = None
         available = (getattr(self.sound, 'speech_available', False)
                      if preference.mode in ('speech', 'both') else self.sound.available)
         if (self.sound.muted or not available or preference.volume == 0 or event.state == 'idle'
                 or not preference.background and not self.frame.IsActive()):
-            # Quiet/background/capture policy also discards a deferred cue; it
-            # must not be replayed later after its operation is no longer current.
             self._pending_sound = None
-            self._timer_state()
             return
         now = self.clock()
-        state = ('resumed' if state_changed and event.token == self._last_token
-                 and event.state == 'running' and self._last_state == 'paused' else event.state)
+        pending = self._pending_sound
+        if pending is not None and pending[:2] != (event.token, event.state):
+            pending = self._pending_sound = None
+        if pending is not None and now >= pending[3]:
+            self._pending_sound = None
+            self.sound.last_error = 'The latest progress notice could not start while the previous audio device was busy.'
+            return
+        if (not state_changed and pending is None
+                and (event.state != 'running' or now - self._last_sound < preference.interval_seconds)):
+            return
+        state = (pending[2] if pending is not None else
+                 'resumed' if state_changed and event.state == 'running' and self._last_state == 'paused' else event.state)
         if state_changed:
-            # Keep only the latest state cue. The existing bounded worker may
-            # still be speaking the running state, so cancel that stale speech
-            # and retry this cue on the GUI timer after its owned output drains.
-            self._pending_sound = (event.token, event.state, state)
+            # Replace obsolete speech with the newest state, especially a
+            # durable completion or failure. Keep one coalesced retry, never a
+            # queue of stale percentages or a second notification worker.
             cancel = getattr(self.sound, 'cancel', None)
             if callable(cancel):
                 cancel()
-        if (self._pending_sound is None and not state_changed
-                and (event.state != 'running' or now - self._last_sound < preference.interval_seconds)):
-            return
-        if self._pending_sound is not None:
-            state = self._pending_sound[2]
         if preference.mode in ('speech', 'both'):
             measured = (f'{event.percent} percent. ' if event.percent is not None else
                         'Total work is not yet known. ' if event.state == 'running' else '')
@@ -818,7 +826,8 @@ class OperationProgress:
         if played:
             self._last_sound = now
             self._pending_sound = None
-        self._timer_state()
+        elif state_changed and pending is None:
+            self._pending_sound = (event.token, event.state, state, now + 3.0)
 
     def _tick(self, event=None):
         if self.closed:
@@ -831,6 +840,7 @@ class OperationProgress:
         elif current.state == 'running' and current.percent is None:
             self.gauge.Pulse()
         self._sound(current)
+        self._timer_state()
 
     def query(self, event=None):
         text = describe_progress(self.event)

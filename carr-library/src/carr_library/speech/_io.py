@@ -167,6 +167,16 @@ def stop_process(process):
         process.wait(timeout=5)
 
 
+def worker_environment():
+    """Shared local speech environment; no inherited report or Python hooks."""
+    env_names = ('PATH', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL',
+                 'LOCALAPPDATA', 'APPDATA', 'USERPROFILE', 'HOME', 'PATHEXT')
+    environment = {key: os.environ[key] for key in env_names if key in os.environ}
+    environment.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_OFFLINE='1',
+                       HF_HUB_DISABLE_TELEMETRY='1', TRANSFORMERS_OFFLINE='1', DO_NOT_TRACK='1')
+    return environment
+
+
 def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
                 timeout=120, output_file=None, max_output=256 * 1024 * 1024,
                 allow_failure=False):
@@ -178,11 +188,6 @@ def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
         raise ValueError('A positive output-byte budget is required.')
     if input_bytes is not None and (not isinstance(input_bytes, bytes) or len(input_bytes) > 8_000_000):
         raise ValueError('The speech worker input is too large.')
-    env_names = ('PATH', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL',
-                 'LOCALAPPDATA', 'APPDATA', 'USERPROFILE', 'HOME', 'PATHEXT')
-    environment = {key: os.environ[key] for key in env_names if key in os.environ}
-    environment.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_OFFLINE='1',
-                       HF_HUB_DISABLE_TELEMETRY='1', TRANSFORMERS_OFFLINE='1', DO_NOT_TRACK='1')
     options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
                 | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)} if os.name == 'nt'
                else {'start_new_session': True})
@@ -190,7 +195,7 @@ def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
         if input_bytes:
             incoming.write(input_bytes)
             incoming.seek(0)
-        process = subprocess.Popen([os.fspath(arg) for arg in args], cwd=cwd, env=environment,
+        process = subprocess.Popen([os.fspath(arg) for arg in args], cwd=cwd, env=worker_environment(),
                                    stdin=incoming, stdout=outgoing, stderr=errors, shell=False, **options)
         started = time.monotonic()
         try:

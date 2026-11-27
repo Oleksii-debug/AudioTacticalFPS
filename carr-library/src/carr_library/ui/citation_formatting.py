@@ -14,8 +14,9 @@ from uuid import uuid4
 
 from ..academic_integration import (
     CitationCancelled, CitationCluster, CitationRequest, DoiMetadataClient,
-    available_styles, export_citation_docx, render_citations,
+    available_styles, export_citation_docx, regenerate_citation_docx, render_citations,
 )
+from ..academic_integration.documents import _MAX_DOCUMENT, _read_citation_docx_bytes
 from ..durable_state import atomic_bytes, local_path, regular
 from ..research.export_file import _filename
 from ..research.academic_library import AcademicLibrary
@@ -25,6 +26,12 @@ from .academic_library_dialog import AcademicController
 LOCALES = (("en-US", "English (United States)"), ("uk-UA", "Українська"), ("sk-SK", "Slovenčina"))
 LOCATORS = (("page", "Page"), ("chapter", "Chapter"), ("section", "Section"),
             ("paragraph", "Paragraph"), ("line", "Line"), ("volume", "Volume"))
+REGENERATION_NOTICE = (
+    "Regeneration uses the document's embedded citation snapshot. Visible edits made in Word are not imported. "
+    "Saved locator checks are earlier assertions, not fresh verification of source pages. "
+    "The saved text, references, citation order, style and language are retained. "
+    "The result is saved as a new DOCX; the selected document and library records remain unchanged."
+)
 
 
 def _cancel(cancelled):
@@ -42,6 +49,14 @@ class CitationSnapshot:
     @property
     def references(self):
         return tuple(json.loads(self._json))
+
+
+@dataclass(frozen=True)
+class SavedCitationDocument:
+    path: Path
+    sha256: str
+    summary: str
+    _binding: str = field(repr=False)
 
 
 class CitationFormattingController:
@@ -123,7 +138,49 @@ class CitationFormattingController:
             raise ValueError("Format this library's bibliography before exporting the document.")
         self._check(snapshot, cancelled)
         target = _new_destination(destination, ".docx", self.library.root)
-        return export_citation_docx(result, target, title=title, cancelled=cancelled)
+        return export_citation_docx(result, target, title=title, cancelled=cancelled,
+                                    before_publish=lambda: self._check(snapshot, cancelled))
+
+    def inspect_docx(self, source, *, cancelled=lambda: False):
+        self.require_access()
+        _cancel(cancelled)
+        path = local_path(source, exists=True)
+        if path.suffix.lower() != '.docx' or regular(path).st_size > _MAX_DOCUMENT:
+            raise ValueError('Choose a citation DOCX within the document byte limit.')
+        with path.open('rb') as stream:
+            raw = stream.read(_MAX_DOCUMENT + 1)
+        saved = _read_citation_docx_bytes(raw)
+        document, style = saved.get('document'), saved.get('style')
+        references, clusters = saved.get('references'), saved.get('clusters')
+        if (type(document) is not dict or type(document.get('title')) is not str
+                or len(document['title']) > 255 or type(style) is not dict
+                or type(style.get('id')) is not str or len(style['id']) > 1000
+                or type(saved.get('locale')) is not str or len(saved['locale']) > 100
+                or type(references) is not list or len(references) > 1000
+                or type(clusters) is not list or len(clusters) > 5000):
+            raise ValueError('The embedded citation snapshot has invalid or oversized review metadata.')
+        _cancel(cancelled)
+        self.require_access()
+        digest = sha256(raw).hexdigest()
+        summary = (f"Saved document: {document['title']}\nStyle: {style['id']}\nLanguage: {saved['locale']}\n"
+                   f"References: {len(references)}; citation clusters: {len(clusters)}\n"
+                   f"Selected document SHA-256: {digest}\n\n{REGENERATION_NOTICE}")
+        return SavedCitationDocument(path, digest, summary, self._binding)
+
+    def regenerate_docx(self, document, destination, *, style_path=None, node_path=None,
+                        cancelled=lambda: False):
+        if (not isinstance(document, SavedCitationDocument)
+                or document._binding != self._binding):
+            raise ValueError('Open the saved citation document in this dialog first.')
+        self.require_access()
+        _cancel(cancelled)
+        target = _new_destination(destination, '.docx', self.library.root)
+        def authorized():
+            _cancel(cancelled)
+            self.require_access()
+        return regenerate_citation_docx(document.path, target, style_path=style_path,
+            node_path=node_path, expected_source_sha256=document.sha256,
+            cancelled=cancelled, before_publish=authorized)
 
     def lookup_doi(self, client, doi, *, cancelled=lambda: False, refresh=False):
         self.require_access()
@@ -476,11 +533,14 @@ def _native_types():
             self.format_button.Bind(wx.EVT_BUTTON, self.format)
             self.export_button = wx.Button(self, label="Save &DOCX")
             self.export_button.Bind(wx.EVT_BUTTON, self.export)
-            self.add_footer(layout, (self.format_button, self.export_button))
+            self.regenerate_button = wx.Button(self, label="Re&generate saved DOCX...")
+            self.regenerate_button.SetName("Regenerate a saved citation DOCX")
+            self.regenerate_button.Bind(wx.EVT_BUTTON, self.open_regeneration)
+            self.add_footer(layout, (self.format_button, self.export_button, self.regenerate_button))
             self.controls.extend((self.references_box, self.all_button, self.none_button, self.reload_button, self.style,
                 self.locale, self.node, self.browse_node, self.citation_reference, self.locator_kind, self.locator,
                 self.verified, self.add_citation, self.citation_list, self.remove_citation, self.move_up, self.move_down,
-                self.document_title, self.format_button, self.export_button))
+                self.document_title, self.format_button, self.export_button, self.regenerate_button))
             command = int(wx.NewIdRef())
             self.Bind(wx.EVT_MENU, self.format, id=command)
             self.SetAcceleratorTable(wx.AcceleratorTable([(wx.ACCEL_NORMAL, wx.WXK_F6, command)]))
@@ -648,6 +708,114 @@ def _native_types():
             result, snapshot = self.result, self.snapshot
             self.run("Saving the citation document", lambda: self.controller.export_docx(snapshot, result, destination,
                 title=title, cancelled=self.cancel_event.is_set), lambda path: self.report(f"Saved the editable citation document: {path}"))
+
+        def open_regeneration(self, event=None):
+            if self.pending:
+                return
+            dialog = None
+            try:
+                parent = self.GetParent()
+                _guard(parent, self.controller.library, self.controller.workspace)
+                dialog = RegenerationDialog(parent, self.controller, node=self.node.GetValue().strip())
+                dialog.ShowModal()
+            except Exception as error:
+                self.report("Document regeneration could not open. " + str(error))
+            finally:
+                if dialog is not None:
+                    dialog.shutdown()
+                    dialog.Destroy()
+                if self._alive:
+                    self.regenerate_button.SetFocus()
+
+    class RegenerationDialog(TaskDialog):
+        def __init__(self, parent, controller, *, node=''):
+            super().__init__(parent, title="Regenerate saved citation document", size=(880, 740),
+                             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self.SetName("Regenerate saved citation document")
+            self.initialize_tasks(controller)
+            self.document = None
+            layout = wx.BoxSizer(wx.VERTICAL)
+            notice = wx.StaticText(self, label=REGENERATION_NOTICE)
+            notice.Wrap(800)
+            layout.Add(notice, 0, wx.ALL, 8)
+            self.source = labelled(self, layout, "Selected citation DOCX", wx.TextCtrl(self, style=wx.TE_READONLY))
+            self.open_button = wx.Button(self, label="&Open saved DOCX...")
+            self.open_button.SetName("Open a saved citation DOCX")
+            self.open_button.Bind(wx.EVT_BUTTON, self.choose_source)
+            layout.Add(self.open_button, 0, wx.ALL, 7)
+            self.preview = labelled(self, layout, "Embedded snapshot and source identity", wx.TextCtrl(self,
+                style=wx.TE_READONLY | wx.TE_MULTILINE), proportion=1)
+            self.style_path = labelled(self, layout,
+                "Exact local CSL file; required only for a custom saved style", wx.TextCtrl(self))
+            self.style_button = wx.Button(self, label="Choose custom &style file...")
+            self.style_button.SetName("Choose the exact custom CSL style file")
+            self.style_button.Bind(wx.EVT_BUTTON, self.choose_style)
+            layout.Add(self.style_button, 0, wx.ALL, 7)
+            self.node = labelled(self, layout, "Local Node.js executable; blank uses installed runtime",
+                                 wx.TextCtrl(self, value=node))
+            self.save_button = wx.Button(self, label="Regenerate as &new DOCX...")
+            self.save_button.SetName("Regenerate the reviewed snapshot as a new DOCX")
+            self.save_button.Bind(wx.EVT_BUTTON, self.regenerate)
+            self.add_footer(layout, (self.save_button,))
+            self.controls.extend((self.open_button, self.style_path, self.style_button, self.node, self.save_button))
+            self.SetSizer(layout)
+            self.SetMinSize((680, 580))
+            self.update_controls()
+            self.report("Open a citation document to review its embedded snapshot. No document is selected.", focus=False)
+            self.open_button.SetFocus()
+
+        def update_controls(self):
+            super().update_controls()
+            self.save_button.Enable(self.document is not None and not self.pending)
+
+        def choose_source(self, event=None):
+            if self.pending:
+                return
+            with wx.FileDialog(self, "Open a saved citation document", wildcard="Word document (*.docx)|*.docx",
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                source = chooser.GetPath()
+            self.document = None
+            self.source.ChangeValue("")
+            self.preview.ChangeValue("")
+            def reviewed(document):
+                self.document = document
+                self.source.ChangeValue(str(document.path))
+                self.preview.ChangeValue(document.summary)
+                self.preview.SetInsertionPoint(0)
+                self.report("Embedded snapshot loaded. Review it, select the exact CSL file if its saved style is custom, "
+                            "then regenerate as a new DOCX.", focus=False)
+                self.preview.SetFocus()
+            self.run("Reading the saved citation snapshot",
+                lambda: self.controller.inspect_docx(source, cancelled=self.cancel_event.is_set), reviewed)
+
+        def choose_style(self, event=None):
+            if self.pending:
+                return
+            with wx.FileDialog(self, "Choose the exact saved CSL style", wildcard="Citation Style Language (*.csl)|*.csl",
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
+                if chooser.ShowModal() == wx.ID_OK:
+                    self.style_path.ChangeValue(chooser.GetPath())
+            self.style_path.SetFocus()
+
+        def regenerate(self, event=None):
+            if self.pending or self.document is None:
+                return
+            with wx.FileDialog(self, "Save a new regenerated citation document",
+                               defaultFile=self.document.path.stem + '-regenerated.docx',
+                               wildcard="Word document (*.docx)|*.docx", style=wx.FD_SAVE) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                destination = chooser.GetPath()
+            document = self.document
+            style = self.style_path.GetValue().strip() or None
+            node = self.node.GetValue().strip() or None
+            self.run("Regenerating the reviewed citation snapshot",
+                lambda: self.controller.regenerate_docx(document, destination, style_path=style,
+                    node_path=node, cancelled=self.cancel_event.is_set),
+                lambda path: self.report(f"Saved a new citation document: {path}\nThe selected document was not changed. "
+                                        "Saved locator assertions were retained; source pages were not rechecked."))
 
     class DoiDialog(TaskDialog):
         def __init__(self, parent, controller):

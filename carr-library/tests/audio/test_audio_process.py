@@ -1,9 +1,13 @@
 """Real subprocess lifecycle and no-clobber publication regression tests."""
 from pathlib import Path
 import os
+import json
+import shutil
 import stat
+import subprocess
 import sys
 import time
+import wave
 
 import pytest
 
@@ -12,7 +16,7 @@ from carr_library.audio.process import publish_file, run_process
 
 
 def execute(code, **kwargs):
-    return run_process([str(Path(sys.executable).resolve()), '-I', '-c', code], **kwargs)
+    return run_process([str(Path(sys.executable).resolve()), '-I', '-B', '-c', code], **kwargs)
 
 
 def test_fast_stdout_overflow_is_detected_after_child_exit():
@@ -69,6 +73,72 @@ def test_nonzero_exit_is_not_success():
         execute('raise SystemExit(7)')
 
 
+def test_explicit_diagnostic_exit_is_returned_without_changing_default_failure_behavior():
+    result = execute('import sys; print("device inventory",file=sys.stderr); raise SystemExit(1)',
+                     allow_failure=True)
+    assert result.returncode == 1 and b'device inventory' in result.stderr
+    assert not result.stopped
+
+
+def test_graceful_stop_sends_only_fixed_quit_and_returns_finalized_child_output():
+    result = execute('import sys; value=sys.stdin.buffer.read(2); assert value == b"q\\n"; print("closed")',
+                     stop_requested=lambda: True)
+    assert result.stopped and result.returncode == 0 and result.stdout.splitlines() == [b'closed']
+
+
+def test_capture_lifetime_admission_failure_terminates_spawned_worker(monkeypatch):
+    from carr_library.audio import process as module
+    children = []
+    def reject(child):
+        children.append(child)
+        raise AudioError('Capture lifetime admission refused')
+    monkeypatch.setattr(module, '_capture_lifetime', reject)
+    with pytest.raises(AudioError, match='admission refused'):
+        execute('import time; time.sleep(30)', stop_requested=lambda: False)
+    assert len(children) == 1 and children[0].poll() is not None
+    assert children[0].stdin.closed and children[0].stdout.closed and children[0].stderr.closed
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Actual Windows capture Job Object lifetime requires Windows.')
+def test_windows_capture_is_killed_after_abrupt_owner_exit(tmp_path):
+    import ctypes
+    from ctypes import wintypes
+    from carr_library.audio import process as module
+
+    marker = tmp_path / 'capture.pid'
+    child_code = ('import os,time; from pathlib import Path; '
+                  f'Path({str(marker)!r}).write_text(str(os.getpid())); time.sleep(30)')
+    owner_code = ('import os,sys; from pathlib import Path; '
+        f'sys.path.insert(0,{str(Path(module.__file__).resolve().parents[2])!r}); '
+        'from carr_library.audio.process import run_process\n'
+        'def check():\n'
+        f'    if Path({str(marker)!r}).exists(): os._exit(23)\n'
+        '    return False\n'
+        f'run_process([{str(Path(sys.executable).resolve())!r},"-I","-B","-c",{child_code!r}],'
+        'stop_requested=lambda: False,cancelled=check)\n')
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', owner_code],
+                            capture_output=True, timeout=10, check=False)
+    assert result.returncode == 23, result.stderr.decode('utf-8', errors='replace')
+    identity = int(marker.read_text())
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    for name, arguments, returned in (
+            ('OpenProcess', [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+            ('WaitForSingleObject', [wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD),
+            ('TerminateProcess', [wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
+            ('CloseHandle', [wintypes.HANDLE], wintypes.BOOL)):
+        function = getattr(kernel, name)
+        function.argtypes, function.restype = arguments, returned
+    handle = kernel.OpenProcess(0x00100000 | 0x0001, False, identity)
+    if not handle:
+        assert ctypes.get_last_error() == 87  # The terminated process no longer exists.
+    else:
+        try:
+            assert kernel.WaitForSingleObject(handle, 5000) == 0
+        finally:
+            kernel.TerminateProcess(handle, 99)  # Cleanup even if the regression fails.
+            kernel.CloseHandle(handle)
+
+
 def test_progress_is_streamed_to_caller_without_waiting_for_full_buffer():
     seen = []
     execute('import time; print("out_time_us=500000",flush=True); time.sleep(.15)', progress=seen.append)
@@ -114,3 +184,36 @@ def test_audio_publication_flushes_a_writable_handle(tmp_path, monkeypatch):
     monkeypatch.setattr(os, 'fsync', require_write_access)
     publish_file(staged, target)
     assert flushed and target.read_bytes() == staged.read_bytes() == b'Exact unchanged audio bytes'
+
+
+@pytest.mark.parametrize('explicit', [False, True])
+def test_real_ffmpeg_cannot_overwrite_an_inherited_report_destination(tmp_path, monkeypatch, explicit):
+    executable = shutil.which('ffmpeg')
+    if executable is None:
+        pytest.skip('Actual native report-file regression requires installed FFmpeg.')
+    source, sentinel = tmp_path / 'input.wav', tmp_path / 'unrelated-private.txt'
+    sentinel.write_bytes(b'Unchanged unrelated private file')
+    with wave.open(str(source), 'wb') as audio:
+        audio.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
+        audio.writeframes(b'\0\0' * 2400)
+    report = 'file=unrelated-private.txt:level=48'
+    monkeypatch.setenv('FFREPORT', report)
+    environment = dict(os.environ) if explicit else None
+    before = dict(environment) if explicit else None
+    run_process([str(Path(executable).resolve()), '-v', 'error', '-nostdin',
+                 '-i', str(source), '-f', 'null', '-'], cwd=tmp_path, env=environment)
+    assert sentinel.read_bytes() == b'Unchanged unrelated private file'
+    assert os.environ['FFREPORT'] == report
+    assert environment == before
+
+
+def test_process_preserves_device_locale_and_explicit_environment_without_report_keys():
+    environment = dict(os.environ, FFREPORT='file=not-allowed', ffreport='also-not-allowed',
+                       SDL_AUDIODRIVER='dummy', LANG='C', CARR_HOST_SENTINEL='kept')
+    before = dict(environment)
+    result = execute('import json,os; print(json.dumps(dict(os.environ)))', env=environment)
+    received = json.loads(result.stdout)
+    assert not any(key.casefold() == 'ffreport' for key in received)
+    assert received['SDL_AUDIODRIVER'] == 'dummy'
+    assert received['LANG'] == 'C' and received['CARR_HOST_SENTINEL'] == 'kept'
+    assert environment == before

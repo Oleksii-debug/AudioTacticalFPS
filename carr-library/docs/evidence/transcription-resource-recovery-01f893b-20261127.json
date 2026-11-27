@@ -1,0 +1,236 @@
+{
+  "schema": "resonance-transcription-resource-recovery-evidence/1",
+  "date": "2026-11-27",
+  "status": "PASS",
+  "source_control": {
+    "tested_commit": "01f893b8d63cba86153f3f90658f313b2f813ec3",
+    "source_snapshot": "immutable git archive of the committed source",
+    "module_sha256": {
+      "transcription.py": "1aed4803f049deaec51af97524d3947d6df04893fa499f81a55497db9cb6f6cf",
+      "transcription_cli.py": "363a8187e56a1100824e7627362946d59d211f8ea0277be2352c0e58067172e7",
+      "transcription_inputs.py": "b57c76fa17caa4c948c29b4e6c7582b41cd0735b2af6cd678d9d5b23cb911b43",
+      "ui/transcription_dialog.py": "559b2cc7f17f11102ddcec11289827db62c7e4eb8cf3802923e0c0b80eb95e2b",
+      "state_backup.py": "9e528348025be8c9bb2246e1b81d2e2242591b7ff8c3cbb18ca8b8faa01cc96d",
+      "library_backup.py": "ccaebc8fc54469444084ebd06355c47b09f4e0efbd68789335ac393eeb436ada",
+      "durable_state.py": "addbe9ff1322fd1e7f8eb688087d4786e7295425ca8ce418703c03396146fb9f",
+      "operations/__init__.py": "aa3b1df6d0fe691e59637442c54eaec7541c90a8171b2bb1c5b3bd5bdb5d5497",
+      "operations/_locks.py": "898e68a755d717739f506aff93b8d3db3835629e8ae3bd1e400831c2e14ad9bd",
+      "operations/models.py": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545",
+      "operations/broker.py": "a293386e12fdffcc2a0b2de398c02eb96ef4098cd518c509a5b34485592c1fab",
+      "storage/revisions.py": "348340397f8a0cfd44759feaa2513950b29e42e7da44c7759dbeb1879c458ea9"
+    }
+  },
+  "raw_private_report_sha256": "73fe8889afa9bbe9236dd592b71a3a9e4c49ed173112a652426ee5fb1c847668",
+  "worker_sha256": "5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c",
+  "model": {
+    "repository": "Systran/faster-whisper-tiny.en",
+    "revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",
+    "files": {
+      "README.md": {
+        "size": 1323,
+        "sha256": "1b7816626bf0548e4b71a467f4112b4592924bc818e3117f19aefcc50ce4b6aa"
+      },
+      "config.json": {
+        "size": 2317,
+        "sha256": "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5"
+      },
+      "model.bin": {
+        "size": 75537502,
+        "sha256": "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a"
+      },
+      "tokenizer.json": {
+        "size": 2128466,
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df"
+      },
+      "vocabulary.txt": {
+        "size": 422309,
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf"
+      }
+    }
+  },
+  "runtime": {
+    "platform": "Linux",
+    "python": "3.12.14",
+    "dependency_freeze_sha256": "1e3a4139212df1b703ceaef6cab78688d58468dd7767599a09f17f39f717f2d3",
+    "verified_exact_distributions": 31,
+    "pip_check": "PASS",
+    "selected_dependency_versions": {
+      "faster-whisper": "1.2.1",
+      "ctranslate2": "4.8.0",
+      "av": "17.1.0",
+      "onnxruntime": "1.26.0",
+      "numpy": "2.4.6",
+      "huggingface-hub": "1.19.0",
+      "tokenizers": "0.23.1"
+    },
+    "device": "cpu",
+    "requested_compute_type": "int8",
+    "actual_compute_type": "int8_float32",
+    "effective_parallel_files": 1
+  },
+  "network": {
+    "boundary": "Linux user/network namespace",
+    "interfaces": [
+      "lo"
+    ],
+    "external_connect_errno": 101
+  },
+  "inputs": {
+    "count": 2,
+    "type": "two synthetic English speech WAV files with different bytes",
+    "duration_seconds": [
+      5.03,
+      5.29
+    ],
+    "selected_folder_deleted_before_recognition": true,
+    "unsupported_text_file_reported_and_excluded": true
+  },
+  "workflow": {
+    "entrypoint": "transcription CLI",
+    "commands": [
+      {
+        "label": "configure",
+        "operation": "configure",
+        "exit_code": 0,
+        "elapsed_seconds": 0.206
+      },
+      {
+        "label": "folder-submit",
+        "operation": "submit",
+        "exit_code": 0,
+        "elapsed_seconds": 0.227
+      },
+      {
+        "label": "queued-status",
+        "operation": "status",
+        "exit_code": 0,
+        "elapsed_seconds": 0.213
+      },
+      {
+        "label": "actual-run",
+        "operation": "run",
+        "exit_code": 0,
+        "elapsed_seconds": 3.242
+      },
+      {
+        "label": "completed-run-revalidation",
+        "operation": "run",
+        "exit_code": 0,
+        "elapsed_seconds": 0.243
+      },
+      {
+        "label": "restore-requires-rebind",
+        "operation": "run",
+        "exit_code": 1,
+        "elapsed_seconds": 0.219
+      },
+      {
+        "label": "restored-configure",
+        "operation": "configure",
+        "exit_code": 0,
+        "elapsed_seconds": 0.224
+      },
+      {
+        "label": "restored-completed-run",
+        "operation": "run",
+        "exit_code": 0,
+        "elapsed_seconds": 0.391
+      },
+      {
+        "label": "nonpolling-folder-submit",
+        "operation": "submit",
+        "exit_code": 0,
+        "elapsed_seconds": 0.248
+      },
+      {
+        "label": "nonpolling-actual-run",
+        "operation": "run",
+        "exit_code": 0,
+        "elapsed_seconds": 3.077
+      }
+    ],
+    "queued_without_worker": true,
+    "same_job_retained_after_original_folder_deletion": true,
+    "worker_folders_empty": true,
+    "formats": [
+      "txt",
+      "srt",
+      "vtt",
+      "json"
+    ],
+    "verified_artifacts_per_actual_run": 8,
+    "actual_worker_runs": 2,
+    "nonempty_timestamped_recognition_for_both_files": true,
+    "completed_job_revalidated_without_new_worker_result": true
+  },
+  "completed_recovery": {
+    "manifest_sha256": "fd0c48717c3cfe5dc045a7305163ba593e932b41d64b3c157e74fd2caab76fb8",
+    "version": 4,
+    "state_files": 20,
+    "state_bytes": 360350,
+    "original_library_and_source_folder_deleted": true,
+    "restore_to_new_private_root": true,
+    "engine_rebind_required_before_run": true,
+    "same_worker_explicitly_rebound": true,
+    "same_completed_job_receipt_preserved": true,
+    "original_worker_config_and_result_hashes_preserved": true,
+    "retained_input_and_all_output_hashes_verified": true,
+    "catalog_originals_preserved": true,
+    "external_worker_and_model_payloads_excluded": true,
+    "schema_version": 5,
+    "resource_policy_preserved": true
+  },
+  "nonpolling_policy_case": {
+    "host": "Linux",
+    "test_override": "_READ_LIVE_PROGRESS=False",
+    "actual_worker_runs": 1,
+    "input_files": 2,
+    "verified_artifacts": 8,
+    "indeterminate_progress_observed": true,
+    "strict_terminal_receipt_accepted": true,
+    "production_module_bytes_unchanged": true,
+    "native_windows_qualification": false
+  },
+  "passed_assertions": 117,
+  "limits": [
+    "Functional source-package CLI and full-backup acceptance on Linux only.",
+    "Resource observations verify cooperative admission and cleanup; declared CPU/RAM/disk allowances are not measured hardware consumption or operating-system memory enforcement.",
+    "One pinned English-only model and two short synthetic inputs; no general acoustic accuracy, multilingual, long-file, GPU, diarization or word-alignment qualification.",
+    "The no-live-progress policy was forced in the Linux test host; this does not establish native Windows file-sharing behavior.",
+    "Completed-job recovery is distinct from the separately recorded interruption and destructive-resume evidence at 8bf4117.",
+    "Native Windows, real operating-system picker interaction and manual NVDA acceptance remain separate.",
+    "Individual elapsed times are observations, not performance guarantees."
+  ],
+  "private_source_included": false,
+  "private_paths_included": false,
+  "model_weights_included": false,
+  "recordings_included": false,
+  "raw_transcripts_included": false,
+  "distribution_cleared": false,
+  "resource_admission": {
+    "live_lease_count": 1,
+    "cpu_slots": 4,
+    "declared_memory_bytes": 4294967296,
+    "declared_disk_bytes": 603979776,
+    "additional_disk_count": 1,
+    "gpu_device": null,
+    "measurement": "declared cooperative allowances, not measured physical RAM or VRAM",
+    "live_reservation_observed_during_actual_worker": true,
+    "reservation_released_after_native_cleanup": true,
+    "completed_receipt_revalidated_while_cpu_and_memory_pool_occupied": true,
+    "restored_completed_receipt_revalidated_while_cpu_and_memory_pool_occupied": true,
+    "no_additional_lease_or_worker_result_for_completed_replay": true,
+    "no_live_reservations_after_both_actual_runs_and_restore": true,
+    "active_attempt_token_cleared_after_completion": true
+  },
+  "replay_history": {
+    "prior_646_evidence_preserved_sha256": "37b5d3cc520c1ad8f66accae2bca10862e48d90a7a3069eff4e60e24d1dfff7d",
+    "original_functional_assertions_retained": 107,
+    "preceding_harness_meta_check_attempt": {
+      "status": "FAIL",
+      "passed_assertions_before_meta_check": 115,
+      "raw_private_report_sha256": "9ae663f4cc21fe64cf19277221cfafdb4d6411417dbfc20b31e86ff0adc4f023",
+      "cause": "The added coverage summary compared generated artifact digest basenames literally. The fresh replay preserves every functional assertion and normalizes only digest tokens in coverage labels, retaining assertion multiplicity."
+    }
+  }
+}

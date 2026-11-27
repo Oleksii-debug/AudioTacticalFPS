@@ -7,6 +7,7 @@ import io
 import os
 from pathlib import Path
 import subprocess
+import tomllib
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import pytest
@@ -16,6 +17,18 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('source_wheel_probe', ROOT / 'packaging/source_wheel.py')
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
+
+
+def test_runtime_package_recipe_covers_every_application_package():
+    # The wheel verifier binds payloads to the explicit recipe. It cannot
+    # discover a missing package when both recipe and wheel omit that package.
+    # Guard that boundary against an undeclared new runtime subsystem.
+    recipe = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
+    declared = set(recipe['tool']['setuptools']['packages'])
+    source_root = ROOT / 'src'
+    actual = {'.'.join(path.parent.relative_to(source_root).parts)
+              for path in (source_root / 'carr_library').rglob('__init__.py')}
+    assert actual and actual <= declared, sorted(actual - declared)
 
 
 def git(repo, *args):
@@ -78,7 +91,14 @@ def wheel(tmp_path, payload, *, record_mutation=None, extra=None):
     csv.writer(output, lineterminator='\n').writerows(rows)
     with ZipFile(path, 'w', ZIP_DEFLATED) as archive:
         for name, data in payload.items():
-            archive.writestr(name, data)
+            # ZipInfo's constructor replaces OS separators on Windows. Keep
+            # deliberately unsafe fixture names in the actual archive bytes,
+            # so path tests exercise the verifier rather than a RECORD mismatch
+            # caused by the fixture writer silently sanitizing the member name.
+            info = ZipInfo('fixture-placeholder')
+            info.filename = info.orig_filename = name
+            info.compress_type = ZIP_DEFLATED
+            archive.writestr(info, data)
         archive.writestr(record, output.getvalue().encode())
         if extra:
             archive.writestr(*extra)
@@ -147,8 +167,12 @@ def test_undeclared_payload_rejected_despite_complete_record(source, tmp_path, e
 def test_path_alias_and_bytecode_rejected(source, tmp_path, extra):
     repo, first, _, payload = source
     payload[extra] = b'not safe payload\n'
+    candidate = wheel(tmp_path, payload)
+    with ZipFile(candidate) as archive:
+        assert extra in {info.orig_filename for info in archive.infolist()}, (
+            'The malicious raw ZIP name must survive fixture construction.')
     with pytest.raises(ValueError, match='path|bytecode'):
-        verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+        verifier.verify_application_wheel(candidate, repo, first)
 
 
 def test_duplicate_zip_member_rejected(source, tmp_path):

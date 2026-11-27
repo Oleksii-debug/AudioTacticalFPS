@@ -37,14 +37,17 @@ def collect_installed_voices(library, *, cancelled=lambda: False):
     if cancelled():
         raise InterruptedError("Installed voice inventory cancelled.")
     from ..runtime_settings import voice_registry
-    registry = voice_registry(Path(library.root) / "state")
-    if cancelled():
-        raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
-    voices = tuple(registry.voices())
-    notices = tuple(registry.notices)
-    if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
-        raise ValueError("The local voice inventory exceeds its metadata limits.")
-    return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    registry = voice_registry(Path(library.root) / "state", cancelled=cancelled)
+    try:
+        if cancelled():
+            raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
+        voices = tuple(registry.voices())
+        notices = tuple(registry.notices)
+        if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
+            raise ValueError("The local voice inventory exceeds its metadata limits.")
+        return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    finally:
+        registry.close()
 
 
 class LanguageMatrixController:

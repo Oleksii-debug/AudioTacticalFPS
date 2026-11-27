@@ -70,6 +70,15 @@ def main(argv=None):
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
+    if arguments[:1] == ['translation']:
+        from .assistant.translation_cli import main as translation_main
+        return translation_main(arguments[1:])
+    if arguments[:1] == ['transcription']:
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
+    if arguments[:1] == ['operations']:
+        from .operations.cli import main as operations_main
+        return operations_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
@@ -105,9 +114,11 @@ def main(argv=None):
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
+    from .acquisition.cli import add_arguments, validate_arguments
+    add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
-                        help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+                        help='Library ID for search or identifier lookup; only search accepts multiple libraries')
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -117,12 +128,18 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    parser.add_argument('--offset-per-library', type=int, default=0,
+                        help='Nonnegative result offset for All words or Advanced searches')
     args = parser.parse_args(argv)
+    validate_arguments(parser, args)
+    identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
+    if (args.list_libraries or args.search is not None or identifier_lookup) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, search, DOI lookup, or ISBN lookup.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     if ocr_operation and any((args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore)):
-        parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
+                              args.backup, args.restore, identifier_lookup)):
+        parser.error('Choose one OCR model, library, search, DOI/ISBN lookup, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -134,12 +151,12 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None:
-        parser.error('--workspace is only used with --search.')
+    if args.workspaces and args.search is None and not identifier_lookup:
+        parser.error('--workspace is used with --search, --lookup-doi or --lookup-isbn.')
+    if args.offset_per_library and args.search is None:
+        parser.error('--offset-per-library is only used with --search.')
     native_handle = None
     try:
         from .native_runtime import activate_bundled_runtime
@@ -203,6 +220,9 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
+        if identifier_lookup:
+            from .acquisition.cli import run
+            return run(app, args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0
@@ -212,9 +232,12 @@ def main(argv=None):
             session = FederatedSearch(app).search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, offset_per_library=args.offset_per_library,
+                on_status=notices.append)
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
+                'offset_per_library': session.offset_per_library,
+                'has_more': session.has_more,
                 'ordering': 'Selected libraries in selection order; relevance is local to each library.',
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,

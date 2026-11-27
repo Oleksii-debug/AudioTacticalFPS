@@ -15,6 +15,7 @@ from uuid import uuid4
 import wave
 
 from ._io import local_file, stop_process
+from ..audio.process import native_audio_environment
 
 
 class WavePlayer:
@@ -99,7 +100,7 @@ class WavePlayer:
                 '-nodisp', '-autoexit', '-nostats', '-ss', str(float(start_seconds)),
                 '-protocol_whitelist', 'file,pipe', '-i', str(target)],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                start_new_session=True, shell=False)
+                start_new_session=True, shell=False, env=native_audio_environment())
         self._started = time.monotonic()
         self._state = 'playing'
 

@@ -52,7 +52,11 @@ def panel(handlers):
     panel.grid, panel.details, panel.status = Mock(), Mock(), Mock()
     panel._refresh_details = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
-        library=SimpleNamespace(search=Mock(), semantic_ranker=object()), report=Mock())
+        library=SimpleNamespace(search=Mock(), semantic_ranker=object(),
+            root=Path('/synthetic-library'), database=Path('/synthetic-library/library.sqlite'),
+            assets_dir=Path('/synthetic-library/assets'),
+            assets=SimpleNamespace(root=Path('/synthetic-library/assets'))), report=Mock())
+    panel.bound_library = panel.frame.library
     return panel
 
 
