@@ -298,11 +298,14 @@ def test_safe_local_paths_and_regular_files(tmp_path, kind):
         output = tmp_path / 'NUL.txt'
     else:
         output = real / '..' / 'escaped'
+    # Windows resolves NUL.txt as an existing device without a directory entry.
+    output_existed = output.exists()
+    entries_before = set(tmp_path.rglob('*'))
     with pytest.raises(crypto.CryptoError):
         crypto.encrypt_file(source, output, PASSWORD)
     assert (real / 'source').read_bytes() == before
-    if kind != 'destination_link':
-        assert not output.exists()
+    assert output.exists() == output_existed
+    assert set(tmp_path.rglob('*')) == entries_before
     no_stage(tmp_path)
 
 
