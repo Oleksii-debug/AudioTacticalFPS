@@ -71,10 +71,42 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     class ExportAnswer(FolderAnswer):
         directory = export_parent
 
-    frame = DesktopFrame(library)
+    close_observations = []
+
+    def record_close(stage, window, *, inspect_dirty=True, **details):
+        # Read-only, bounded diagnostics: never alter veto, busy state or lifetime.
+        row = {'stage': stage, 'working': getattr(window, 'working', None),
+               'busy': getattr(window, 'busy', None),
+               '_closing': getattr(window, '_closing', None)}
+        try:
+            row['wrapper_live'] = bool(window)
+            if inspect_dirty and row['wrapper_live']:
+                row['dirty'] = window._dirty()
+        except Exception as exc:
+            row['inspection_error'] = type(exc).__name__ + ': ' + str(exc)
+        row.update(details)
+        close_observations.append(row)
+        del close_observations[:-32]
+
+    class ObservedDesktopFrame(DesktopFrame):
+        def on_close(self, event):
+            record_close('handler-enter', self, event_id=event.GetId(),
+                event_object_is_frame=event.GetEventObject() is self,
+                can_veto=event.CanVeto(), vetoed=event.GetVeto())
+            try:
+                return super().on_close(event)
+            finally:
+                record_close('handler-exit', self, can_veto=event.CanVeto(),
+                    vetoed=event.GetVeto(), skipped=event.GetSkipped())
+
+    frame = ObservedDesktopFrame(library)
     frame.Show()
+    captured_frame_id = frame.GetId()
     destroyed = []
     def observe_destroy(event):
+        record_close('destroy-event', frame, inspect_dirty=False,
+            captured_frame_id=captured_frame_id, event_id=event.GetId(),
+            event_object_is_frame=event.GetEventObject() is frame)
         if event.GetEventObject() is frame:
             destroyed.append(True)
             wx.CallAfter(desktop.ExitMainLoop)
@@ -276,12 +308,15 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
             failures.append(traceback.format_exc())
         finally:
             try:
+                record_close('cleanup-enter', frame)
                 frame.cancel_event.set()
                 frame.executor.shutdown(wait=True, cancel_futures=True)
                 # Use the actual close hook: tray, trust polling, progress and shared
                 # cleanup owners must stop before temporary library removal.
                 frame.working = False
-                frame.Close()
+                record_close('before-Close', frame)
+                close_result = frame.Close()
+                record_close('after-Close', frame, returned=close_result)
             except BaseException:
                 failures.append(traceback.format_exc())
             finally:
@@ -299,6 +334,10 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     finally:
         for watchdog in closing_watchdogs:
             watchdog.Stop()
+        record_close('loop-exit', frame, inspect_dirty=False)
+        print('ASR_CLOSE_DIAGNOSTICS ' + json.dumps({
+            'captured_frame_id': captured_frame_id, 'destroyed': bool(destroyed),
+            'observations': close_observations}, ensure_ascii=False), flush=True)
         assert destroyed, 'The real desktop window did not complete destruction.'
 print(json.dumps({'status': 'PASS', 'checks': [
     'actual named wx controls', 'shared background operation',
