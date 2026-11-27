@@ -56,7 +56,10 @@ def _inventory(root, cancelled, deadline=None):
                 if count > MAX_RUNTIME_FILES or depth > 16:
                     raise ConversionUnavailable('Selected runtime exceeds its entry/depth budget.')
                 path = Path(entry.path)
-                info = entry.stat(follow_symlinks=False)
+                # Windows DirEntry.stat caches st_ino/st_dev/st_nlink as zero.
+                # Use a fresh non-following filesystem result for the actual
+                # independent-file identity and retain every reparse/link guard.
+                info = path.lstat()
                 if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
                     raise ConversionUnavailable('Selected runtime contains a linked or redirected component.')
                 name = _relative(path.relative_to(root).as_posix())

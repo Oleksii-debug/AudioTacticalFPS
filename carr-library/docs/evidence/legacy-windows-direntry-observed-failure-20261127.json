@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_CORRECTION_NOT_RUN",
+  "source_commit": "fff9a7fc0d22251b63d0cb872ac45f2e880e5dcd",
+  "run": 46003139004,
+  "job": 140519596137,
+  "calibre_preparation": {
+    "status": "PASS",
+    "exit_code": 0,
+    "elapsed_seconds": 20.953,
+    "destination_utf16_units": 56,
+    "sha256": "785d9255ea7841c0ee1fcd13cb975a7ec04eadee8b2f1a5cbf97da77605aeded",
+    "bytes": 259843848
+  },
+  "portable_source": {
+    "status": "FAIL",
+    "passed": 125,
+    "failed": 10,
+    "seconds": 10.96,
+    "error": "ConversionUnavailable: Selected runtime contains an unsupported component.",
+    "site": "conversion/legacy_runtime.py _inventory: DirEntry.stat().st_nlink == 1"
+  },
+  "portable_installed": "NOT_RUN",
+  "native_fixtures": "NOT_RUN",
+  "artifact": {
+    "id": 15199043433,
+    "bytes": 813016,
+    "sha256": "184c8d7270e286061f396a001d3ed91a02fa802297d1a106f828eb12fd12b8ce"
+  },
+  "primary_source": "https://docs.python.org/3.11/library/os.html#os.DirEntry.stat",
+  "correction": "Fresh path.lstat identity retains strict reparse/symlink/hardlink checks; adds cached-zero and real hardlink regressions.",
+  "required_portable_cases_per_mode": 137,
+  "required_native_cases_per_mode": {
+    "calibre": 9,
+    "djvu": 4,
+    "chm": 4
+  },
+  "formats_advertised": []
+}

@@ -284,3 +284,45 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 def test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder(raw):
     with pytest.raises(ConversionError, match='dictionary|budget'):
         legacy._calibre_header(raw, '.tcr', 1024)
+
+
+def test_windows_cached_directory_metadata_does_not_invalidate_regular_components(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.audio.jobs import file_identity
+    executable = runtime(tmp_path)
+    scandir = legacy_runtime.os.scandir
+    class Entry:
+        def __init__(self, original):
+            self.path, self.name = original.path, original.name
+            self.original = original
+        def stat(self, *, follow_symlinks=True):
+            value = self.original.stat(follow_symlinks=follow_symlinks)
+            return SimpleNamespace(st_mode=value.st_mode, st_size=value.st_size,
+                st_mtime_ns=value.st_mtime_ns, st_ctime_ns=value.st_ctime_ns,
+                st_file_attributes=getattr(value, 'st_file_attributes', 0),
+                st_nlink=0, st_ino=0, st_dev=0)
+    class Scan:
+        def __init__(self, path):
+            self.stream = scandir(path)
+        def __enter__(self):
+            return iter(Entry(entry) for entry in self.stream)
+        def __exit__(self, *args):
+            self.stream.close()
+    monkeypatch.setattr(legacy_runtime.os, 'scandir', Scan)
+    selected = legacy_runtime.ToolSelection.capture(executable, 'chm')
+    assert dict(selected.files) == {
+        path.name: file_identity(path.lstat()) for path in (executable, executable.with_name('7z.dll'))}
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    descriptor = selected.snapshot(stage)
+    value = legacy_runtime._load(descriptor, stage, 'chm', time.monotonic() + 30)
+    assert {row['name'] for row in value['files']} == {'7z.exe', '7z.dll'}
+
+
+def test_real_hardlink_alias_remains_refused_after_fresh_windows_stat(tmp_path):
+    executable = runtime(tmp_path)
+    alias = tmp_path / 'foreign-hardlink.dll'
+    legacy_runtime.os.link(executable.with_name('7z.dll'), alias)
+    assert alias.stat().st_nlink == 2
+    with pytest.raises(ConversionUnavailable, match='unsupported'):
+        legacy_runtime.ToolSelection.capture(executable, 'chm')
