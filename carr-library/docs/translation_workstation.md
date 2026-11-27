@@ -36,6 +36,10 @@ provider SDK is installed automatically.
    stops further calls; a new approval requires a new explicit preview and review.
    Saved jobs display their original text and settings without permitting edits
    to the approved request. New translation starts a separate reviewed job.
+   Resume also requires the exact unchanged account snapshot to be visible and
+   currently enabled in AI/API connections. Account removal, disabling or
+   replacement after opening the window blocks further requests. Explicit
+   errors and saved-job selection move focus to the named status field.
 8. Export writes a fresh directory outside the private library with original,
    translated and bilingual text, a reversible reading-copy project, and
    provenance/file hashes. Existing outputs are never overwritten.
@@ -45,6 +49,9 @@ explicitly approved operation. Unknown cost, wrong scope/request hash, expired
 approval and exhausted reservations fail before credential use or transmission.
 The API key travels in X-goog-api-key, never the URL. TLS authority is fixed;
 redirects are rejected. Provider responses are text, never executable commands.
+Completed saved work remains exportable offline when its account is unavailable;
+the selected text, languages and numeric budget must still match the saved job,
+and library-source exports still require current source authorization.
 
 The local reservation and optional estimate are **not provider-enforced billing
 limits** or a live price quotation. Actual cost/quota remains the provider
@@ -142,6 +149,10 @@ plain-text join assembly from PR152 at
 `112935aa15952682a885b10c322b3b4016c6cc80`.
 It does not import that candidate's separate transport rewrite or the alternative
 PR136 provider architecture.
+The saved-selection matcher and validated job accessor reuse PR162 at
+`57cbd5d6c825f42b5769de9fa7ec6faf779622cc`. The native callback additionally
+rereads the existing profile catalog in its worker before creating the gateway
+and at the existing remote-operation authorization checks.
 
 The existing `tests/assistant/test_translation.py` suite now exercises actual
 LibraryApp, ReadingDesk, retained originals, provider ledger, JobStore,

@@ -409,6 +409,10 @@ class TranslationService:
                 return 'unrecorded-legacy'
         return 'usage-ledger-sha256'
 
+    def get(self, identity):
+        """Read one validated saved translation for explicit UI selection."""
+        return self._load(identity)
+
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None,
                guard=lambda: None):
         with self.jobs.lock(identity):
