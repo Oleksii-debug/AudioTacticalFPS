@@ -16,6 +16,7 @@ import platform
 import sys
 from tempfile import TemporaryDirectory
 import traceback
+import time
 
 
 def _unwind_failed_probe(wx, gui):
@@ -83,6 +84,7 @@ def run_probe(wx, native_active):
         original_factory = advanced_search.QueryBuilderDialog
         scenarios = []
         snapshot = {}
+        focus_wait = {'started': None, 'observations': []}
         expected_query = ('"railway" AND "Україна" AND ("transport" OR "trade") '
                           'AND ("Kyiv" NEAR/1 "Lviv") AND NOT "fiction"')
         simulator = wx.UIActionSimulator()
@@ -331,8 +333,29 @@ def run_probe(wx, native_active):
             assert 'one page or text segment' in panel.status.GetValue()
             # Windows' generic data view may focus its own native child.
             focused = wx.Window.FindFocus()
-            assert focused is panel.grid.control or (
+            inside = focused is panel.grid.control or (
                 focused is not None and panel.grid.control.IsDescendant(focused))
+            if not inside:
+                # Native focus notifications can arrive after the completed
+                # worker callback. Observe bounded settling without directing
+                # focus or accepting another control as the result target.
+                if focus_wait['started'] is None:
+                    focus_wait['started'] = time.monotonic()
+                focus_wait['observations'].append({
+                    'name': focused.GetName() if focused else None,
+                    'type': type(focused).__name__ if focused else None,
+                })
+                if time.monotonic() - focus_wait['started'] < 1.0:
+                    later(advanced_done, 30)
+                    return
+            assert inside, {
+                'focus': focus_wait['observations'],
+                'grid_shown': panel.grid.control.IsShownOnScreen(),
+                'grid_enabled': panel.grid.control.IsEnabled(),
+                'grid_rect': tuple(panel.grid.control.GetRect()),
+                'panel_size': tuple(panel.GetClientSize()),
+                'frame_size': tuple(frame.GetClientSize()),
+            }
             buttons = [child for child in panel.GetChildren() if isinstance(child, wx.Button)
                        and child.GetLabel().replace('&', '') == 'Copy quote']
             assert len(buttons) == 1

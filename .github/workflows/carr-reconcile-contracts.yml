@@ -43,3 +43,60 @@ jobs:
           set -euo pipefail
           python -m compileall -q src
           python scripts/ci_check.py --jobs 3 tests/ingest/test_import_metadata_shape.py tests/test_delivery_contract.py tests/ui/test_language_catalog_dialog.py
+  native-integration:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact application wheel with its pinned dependencies
+        id: install
+        timeout-minutes: 10
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-native-integration-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD 'HEAD^{tree}'
+          New-Item -ItemType Directory -Force 'ci-native-integration' | Out-Null
+      - name: Verify actual search result focus after native event settling
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/probe_advanced_search_native.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify the complete Import Center at a smaller native window size
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_import_center_smoke.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify actual native transcription controls with a synthetic protocol worker
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 20
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_asr_smoke.py --fixture-python (Join-Path $env:pythonLocation 'python.exe') --output ci-native-integration/native-asr.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
