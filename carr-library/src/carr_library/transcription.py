@@ -312,9 +312,39 @@ def _word_subtitles(words, *, vtt):
 # Python-visible network, child commands and writes; they are not an OS sandbox
 # for arbitrary native libraries. The worker must also require offline assets.
 _WORKER_BOOTSTRAP = r'''
-import os, pathlib, runpy, sys
+import os, pathlib, runpy, sys, time
 job = pathlib.Path(sys.argv[2]).resolve(strict=True)
 worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
+def _install_status_replace(directory):
+    # MoveFileEx cannot replace an open destination, including a delete-shared
+    # reader. Give only this worker's live status publication a short bounded
+    # opportunity to finish after the host closes its JSON snapshot.
+    if os.name != 'nt':
+        return
+    native = os.replace
+    clock, sleep = time.monotonic, time.sleep
+    folder = os.path.normcase(os.path.abspath(os.fsdecode(directory)))
+    status = os.path.join(folder, 'job_status.json')
+    def replace(source, destination, *args, **kwargs):
+        if args or kwargs:
+            return native(source, destination, *args, **kwargs)
+        try:
+            source_name = os.path.normcase(os.path.abspath(os.fsdecode(source)))
+            target_name = os.path.normcase(os.path.abspath(os.fsdecode(destination)))
+        except (TypeError, ValueError, OSError):
+            return native(source, destination)
+        if target_name != status or os.path.dirname(source_name) != folder:
+            return native(source, destination)
+        deadline = clock() + .5
+        while True:
+            try:
+                return native(source, destination)
+            except PermissionError as error:
+                remaining = deadline - clock()
+                if getattr(error, 'winerror', None) not in (5, 32, 33) or remaining <= 0:
+                    raise
+                sleep(min(.01, remaining))
+    os.replace = replace
 def writable(value):
     if isinstance(value, int):
         return
@@ -339,6 +369,7 @@ def audit(event, args):
         writable(args[1])
 sys.dont_write_bytecode = True
 sys.addaudithook(audit)
+_install_status_replace(job)
 if len(sys.argv) > 3 and sys.argv[3] == 'whisper-v5-manifest-v1':
     sys.path.insert(0, str(worker.parent))
 sys.argv = [str(worker), '--job-dir', str(job)]

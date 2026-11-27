@@ -71,3 +71,26 @@ The public regression worker is deliberately synthetic. Its actual subprocess te
 The unchanged supplied repaired V5 worker and both helpers were also executed through this service with a controlled backend and dummy model files, outside public Git. That check covers protocol interoperability, actual wrapper exports, same-language retry and cache-preserving Stop/resume. It does not exercise Whisper acoustic inference. Runtime configuration and these protocol tests do not mean that model quality, mixed-language alignment, diarization, owner cloning or Windows11/NVDA acceptance has passed. Recognition requires a compatible offline faster-whisper/CTranslate2 installation and complete local models. No automatic replacement recognizer or remote fallback is selected.
 
 The launch uses isolated Python startup, the existing site-path bootstrap, a minimal environment, offline library settings, blocked Python network/child-command events and Python writes confined to the job. This is not an operating-system sandbox for arbitrary native libraries. Only a reviewed explicitly selected local runtime should be configured.
+
+## Windows live status publication
+
+The host can briefly hold a JSON snapshot open while the selected worker publishes
+the next generation. Windows can refuse that replacement even when the reader
+allows delete sharing. The bridge therefore installs a narrowly scoped publisher
+shim in its existing audited bootstrap: on Windows only, an `os.replace` call
+with its default signature is eligible only when its destination is exactly this
+job's `job_status.json` and its source is in the same job directory.
+
+Only native sharing/access refusals with Windows error 5, 32 or 33 are retried.
+The monotonic deadline is half a second, with waits of at most 10 milliseconds.
+Every attempt still passes through the existing write audit and native replace
+operation. A persistent refusal raises the original error; unrelated paths,
+additional arguments, other errors and non-Windows platforms keep their ordinary
+behavior. The host's existing `atomic_bytes(..., replace=True)` publisher uses
+the same bounded Windows refusal policy. Create-only publication remains unchanged.
+
+This changes the public bridge and state publisher, not the selected private
+worker's source or identity. It does not qualify a speech model or acoustic
+quality. Native acceptance must distinguish a transient reader that closes from
+a reader that remains open through the entire deadline; indefinite-open
+replacement is not promised.
