@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "NOT_RUN",
-  "portable_cases": 235,
+  "portable_cases": 236,
   "portable": {
     "tests.conversion.test_conversion": {
       "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
@@ -96,7 +96,8 @@
       "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
       "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
       "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
-      "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified": 6
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm": 6,
+      "test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families": 1
     },
     "tests.conversion.test_chm_html_recovery": {
       "test_complete_observed_publisher_shape_population_preserves_order": 11,
@@ -147,6 +148,7 @@
   "qualifications_advertised": [
     ".azw",
     ".azw3",
+    ".chm",
     ".djvu",
     ".lit",
     ".mobi",

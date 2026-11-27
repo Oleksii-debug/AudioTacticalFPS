@@ -23,10 +23,11 @@ CHM_SUFFIXES = frozenset(('.chm',))
 LEGACY_SUFFIXES = CALIBRE_SUFFIXES | DJVU_SUFFIXES | CHM_SUFFIXES
 # Qualified only by the recorded source-bound Windows fixture population.
 # DjVu ordinary path: run 46024229261 at 684cc8ddac569fdcf5d685b33302f570481ea6f8.
-# Calibre 9.19.0: six unprotected synthetic formats and three refusal/budget/cancel
-# cases passed both populations in run 46026674640 at 779967. This candidate
-# additionally requires the same native fixtures through ordinary admission.
-QUALIFIED_SUFFIXES = DJVU_SUFFIXES | CALIBRE_SUFFIXES
+# Calibre ordinary path: run 46039340019 at 08fb93a, six formats plus 3 boundaries.
+# CHM preview: run 46056591289 at 19b3354, 235 portable plus 4 native cases per mode,
+# independently read from the exact artifact. This candidate additionally
+# requires the same 4 native cases through ordinary admission and a 70-member census.
+QUALIFIED_SUFFIXES = DJVU_SUFFIXES | CALIBRE_SUFFIXES | CHM_SUFFIXES
 MAX_MEMBERS = 2048
 MAX_MEMBER_BYTES = 8 * 1024**2
 

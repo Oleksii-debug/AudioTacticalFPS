@@ -49,10 +49,11 @@ text is qualified with the pinned DjVuLibre 3.5.30-2 MSYS2 UCRT64 build. A missi
 DjVu text layer is an explicit error, not inferred OCR. These qualifications do
 not cover arbitrary books, other Palm subtypes, encrypted inputs or every build.
 
-The bounded CHM adapter is implemented through explicitly selected 7-Zip and
-the current inert HTML reader, but remains unavailable to ordinary admission
-while its separate native qualification is incomplete. Its explicit fixture
-preview does not grant format qualification. See
+The bounded CHM adapter uses explicitly selected 7-Zip and the current inert
+HTML reader. Its exact frozen fixture-preview gate has passed; this successor
+adds an ordinary-admission qualification candidate whose fresh source/installed
+native result remains pending. The scope is synthetic ITSF3 plus the pinned
+7-Zip 26.06 compressed public help, not arbitrary active help content. See
 [Selected legacy document reading](LEGACY_DOCUMENT_CONVERSION.md) for exact
 runtime, container and execution evidence. No converter, model, remote service,
 decryption or DRM bypass is downloaded or supplied by the conversion action.
@@ -273,7 +274,7 @@ the final composed application as tested.
 | Ordinary DjVu embedded-text admission | `684cc8ddac569fdcf5d685b33302f570481ea6f8`, run `46024229261`: 163 portable and four native cases passed in each mode; exact raw artifact independently read | [DjVu qualification](evidence/djvu-native-qualification-20261127.json) |
 | Ordinary calibre admission for six tested suffixes | `08fb93a68ebbdb0c564a1e09b9960d2d718d020e`, run `46039340019`: 187 portable and nine native cases passed in each mode; exact raw artifact independently read | [Calibre ordinary-admission evidence](evidence/calibre-ordinary-admission-independent-read-20261127.json) |
 | LibreOffice, including XLS | The full seven-case source/installed gate remains required. The recorded `65ae1e9` Windows source run passed six and refused XLS at hidden ODF print-region review; installed cases did not run | Fresh repaired native execution is required; no all-five-format qualification is claimed |
-| CHM | The exact two previously failing public HTML members passed the repaired source diagnostic on Linux. Windows `65ae1e9` then passed 234 portable cases and refused one terminated-reference case before installed/native work | [Observed named-reference repair and bounded evidence](evidence/chm-terminated-reference-windows-repair-20261127.json); the fresh 235/235 plus four/four native gate remains required |
+| CHM fixture preview | `19b3354108867758710968d95d39953151cc849e`, run `46056591289`: 235 portable and four native cases passed per mode; exact raw artifact independently read | [Preview proof](evidence/chm-native-preview-independent-read-20261127.json). The ordinary-admission successor still requires its fresh 236/236, four/four native and complete 70-member census |
 
 These finite cases do not qualify arbitrary user documents, every OCR language,
 faithful page layout, printed pagination, quotation accuracy or manual

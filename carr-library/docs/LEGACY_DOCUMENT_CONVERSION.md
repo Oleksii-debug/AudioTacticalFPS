@@ -27,8 +27,22 @@ installed module origins. The fixed wrapper still requires an explicitly
 selected installation and rejects every calibre version except 9.19.0.
 This evidence applies to those six tested unprotected format/container
 combinations; it does not qualify every book or Palm subtype. Later CHM recovery
-changes require their own current 235-case portable gate. CHM remains
-unqualified while that separate gate is pending.
+changes require their own current 236-case portable gate.
+
+CHM fixture-preview execution at `19b3354108867758710968d95d39953151cc849e`
+passed all 235 portable cases and four actual native cases from both source
+and the isolated installed wheel in run `46056591289`. The independent inert
+artifact reader verified the archive digest, all four exact raw JUnit Counters,
+source helper hashes, unchanged selected runtime inventory, installed module
+origins and source-bound wheel. See
+[evidence/chm-native-preview-independent-read-20261127.json](evidence/chm-native-preview-independent-read-20261127.json).
+
+This successor enables an ordinary-admission qualification candidate for the
+same explicitly selected 7-Zip scope. Its fresh 236/236 portable and four/four
+native results remain **NOT_RUN** at authoring. The public-help case now also
+requires a complete 70-member native extraction and inert-reading census with
+zero failures. Neither the earlier preview result nor an initial capability
+entry is a completed ordinary-admission result.
 
 Selection never follows PATH or enables a runtime silently. Missing DjVu text
 layers, indirect/shared references, OCR, arbitrary real books, other Palm
@@ -107,12 +121,13 @@ https://djvu.sourceforge.net/doc/man/djvutxt.html
 
 .github/workflows/carr-legacy-converters.yml has independent Windows jobs for
 calibre, DjVuLibre and CHM. Each builds an exact source-bound wheel, verifies all
-installed Python bytes and runs under -I. The current oracle requires 235
+installed Python bytes and runs under -I. The current oracle requires 236
 portable boundary cases from both source and installed wheel: all 179 exercised
 by the recorded calibre run, six explicit-selection regressions, two
-strict-version rejection cases and 48 bounded CHM recovery cases. Both DjVu and calibre native fixtures use the
-ordinary service admission path with legacy_preview=False. CHM fixtures retain
-explicit preview admission until their separate qualification succeeds.
+strict-version rejection cases, 48 bounded CHM recovery cases and one explicit
+CHM selection regression. All three families now run their native fixtures
+through ordinary service admission with `legacy_preview=False`. Their previous
+frozen results remain separate from this successor's required execution.
 
 The separate real-tool populations also run from source and installed wheel:
 
@@ -236,15 +251,16 @@ native recovery. Direct repeated DD starts materialize only the implicit
 same-tag closure already supported by the existing strict reader; orphan DD
 ends remain refused.
 
-The focused Linux source-only lane requires all 48 recovery cases plus all 100
-legacy adapter cases. At `65ae1e9` it passed all 148; the separate exact
-two-member public-file diagnostic also returned both members successfully.
-The same candidate's Windows gate refused one terminated-reference case after
-234 passes, before installed/native work. The narrow successor preserves all
-235 portable cases per mode and all four actual CHM native cases per mode.
-These earlier Linux results do not qualify a Windows converter. CHM remains
-unqualified until its exact fresh candidate succeeds, including the complete
-publisher fixture. [The observed failure and correction](evidence/chm-terminated-reference-windows-repair-20261127.json)
+The focused Linux source-only lane requires all 48 recovery cases plus 101
+legacy adapter cases, including the new explicit CHM selection case. At the
+earlier `65ae1e9` head the previous 148-case population passed, while Windows
+refused a terminated-reference case after 234 passes. The narrow `19b3354`
+repair then passed all 235 portable and four native cases per mode, with an
+independent exact artifact read. The current ordinary-admission successor
+requires 236 portable cases, the unchanged four native cases and all 70
+publisher HTML members in each Windows mode. Historical Linux and preview
+passes do not replace that fresh execution.
+[The observed reference failure and correction](evidence/chm-terminated-reference-windows-repair-20261127.json)
 retain the separate source, job and artifact identities.
 
 Primary parser API and its explicit recovery/data-loss caveat:

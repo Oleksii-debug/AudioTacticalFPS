@@ -60,9 +60,7 @@ def test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_fa
     assert selected['.djvu']['qualification'] == 'selected_runtime_requires_check'
     for suffix in legacy.LEGACY_SUFFIXES - {'.djvu'}:
         assert selected[suffix]['available'] is False
-        assert selected[suffix]['qualification'] == (
-            'explicit_selection_required' if suffix in legacy.CALIBRE_SUFFIXES
-            else 'native_fixture_not_qualified')
+        assert selected[suffix]['qualification'] == 'explicit_selection_required'
 
 
 @pytest.mark.parametrize('kind,path', [('calibre', 'ebook-convert.exe'), ('djvu', 'djvutxt.exe'), ('chm', '7z.exe')])
@@ -561,14 +559,27 @@ def test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets
 
 
 @pytest.mark.parametrize('suffix', ['.azw', '.azw3', '.lit', '.mobi', '.prc', '.tcr'])
-def test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified(suffix):
+def test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm(suffix):
     absent = {row['extension']: row for row in capabilities()}
     assert absent[suffix]['available'] is False
     assert absent[suffix]['qualification'] == 'explicit_selection_required'
-    selected = {row['extension']: row for row in capabilities(calibre_selected=True, chm_selected=True)}
+    selected = {row['extension']: row for row in capabilities(calibre_selected=True)}
     assert selected[suffix]['available'] is True
     assert selected[suffix]['qualification'] == 'selected_runtime_requires_check'
     assert '9.19.0' in selected[suffix]['limitation']
     assert selected['.djvu']['available'] is False
     assert selected['.chm']['available'] is False
-    assert selected['.chm']['qualification'] == 'native_fixture_not_qualified'
+    assert selected['.chm']['qualification'] == 'explicit_selection_required'
+
+
+def test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families():
+    absent = {row['extension']: row for row in capabilities()}
+    assert absent['.chm']['available'] is False
+    assert absent['.chm']['qualification'] == 'explicit_selection_required'
+    selected = {row['extension']: row for row in capabilities(chm_selected=True)}
+    assert selected['.chm']['available'] is True
+    assert selected['.chm']['qualification'] == 'selected_runtime_requires_check'
+    assert '26.06' in selected['.chm']['limitation']
+    for suffix in legacy.LEGACY_SUFFIXES - {'.chm'}:
+        assert selected[suffix]['available'] is False
+        assert selected[suffix]['qualification'] == 'explicit_selection_required'
