@@ -128,7 +128,9 @@ def test_real_epub_chapters_keep_spine_order_and_unverified_anchor(book, tmp_pat
     assert 'Archive context.' in candidate.project(2).original_script
     assert candidate.source['source_anchor']['quotation_authority'] is False
     assert all(not row['text_verified_at_capture'] for row in candidate.source['source_anchor']['positions'])
-    assert e.app.assets.resolve(imported['asset']).read_bytes() == source.read_bytes()
+    expected_asset = sha256(source.read_bytes()).hexdigest()
+    assert candidate.source['source_anchor']['asset_sha256'] == expected_asset
+    assert e.app.assets.resolve(expected_asset).read_bytes() == source.read_bytes()
 
 
 def test_physical_page_split_uses_actual_pdf_pages_and_refuses_txt_segments(book, tmp_path):
@@ -198,8 +200,9 @@ def test_review_prepare_and_saved_plan_never_start_speech_and_names_are_exact(bo
     assert len(e.production.jobs()) == 2
     assert [e.production.get(candidate.job_id(i))['destination'] for i in (1, 2)] == list(ready.destinations)
     assert all(Path(name).parent == e.output for name in ready.destinations)
-    assert all(Path(name).name.startswith(f'{index:04d}-Original-source-title')
-               for index, name in enumerate(ready.destinations, 1))
+    assert [Path(name).name for name in ready.destinations] == [
+        f'{index:04d}---Original-source-title---Part-{index}-{candidate.job_id(index)[:12]}'
+        for index in (1, 2)]
     assert not list(e.output.iterdir()) and e.voices.received == []
     again = e.service.prepare(candidate, e.output, approval=ready.fingerprint)
     assert again == ready and len(e.production.jobs()) == 2
@@ -268,7 +271,7 @@ def test_actual_source_revocation_after_synthesis_never_publishes_and_explicit_r
         e.voices.after_write = None
         e.app.archive_workspace(e.workspace)
     e.voices.after_write = revoke_once
-    with pytest.raises(PermissionError):
+    with pytest.raises(ValueError, match='The selected library is missing or archived'):
         e.service.run(candidate.id, e.output, approval=ready.fingerprint)
     assert len(e.voices.received) == 1 and not list(e.output.iterdir())
     first = e.production.get(candidate.job_id(1))
@@ -285,14 +288,14 @@ def test_source_revocation_after_copy_prevents_final_link_and_removes_pending_fi
     e = book
     candidate, ready = prepared(e)
     original, revoked = render.digest_file, []
-    def digest(path):
-        value = original(path)
+    def digest(path, **options):
+        value = original(path, **options)
         if Path(path).name.startswith('.pending-') and not revoked:
             revoked.append(True)
             e.app.archive_workspace(e.workspace)
         return value
     monkeypatch.setattr(render, 'digest_file', digest)
-    with pytest.raises(PermissionError):
+    with pytest.raises(ValueError, match='The selected library is missing or archived'):
         e.service.run(candidate.id, e.output, approval=ready.fingerprint)
     assert revoked and not Path(ready.destinations[0], 'master.wav').exists()
     assert not list(e.output.rglob('.pending-*'))
@@ -306,7 +309,7 @@ def test_complete_item_still_rechecks_source_and_artifact_bytes(book):
     e.service.run(candidate.id, e.output, approval=ready.fingerprint)
     calls = list(e.voices.received)
     e.app.archive_workspace(e.workspace)
-    with pytest.raises(PermissionError):
+    with pytest.raises(ValueError, match='The selected library is missing or archived'):
         e.service.run(candidate.id, e.output, approval=ready.fingerprint)
     e.app.restore_workspace(e.workspace)
     Path(ready.destinations[0], 'master.wav').write_bytes(b'Externally changed artifact')

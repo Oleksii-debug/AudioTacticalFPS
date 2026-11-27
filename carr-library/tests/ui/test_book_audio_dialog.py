@@ -145,12 +145,14 @@ def test_preview_and_prepare_validate_source_on_worker_and_never_start_speech(ha
     assert calls and not e.production.jobs()
     status = e.find('Book split preview and saved job status')
     assert 'UI source' in status.value and 'Revision:' in status.value and status.focused
-    assert '0001-UI-source' in status.value and '0002-UI-source' in status.value
+    assert '0001---UI-source---Part-1-' in status.value and '0002---UI-source---Part-2-' in status.value
+    previewed_paths = status.value
     e.press('Prepare saved items')
     assert len(e.state['approvals']) == 1 and not e.production.jobs()
     assert e.state['queue'] and not e.find('Split mode').enabled
     e.complete()
     assert len(e.production.jobs()) == 2 and not list(e.output.iterdir())
+    assert all(job['destination'] in previewed_paths for job in e.production.jobs())
     assert e.find('Run or resume saved items').enabled
     assert 'PREPARED' in status.value
     assert all(thread != e.ui_thread for thread in calls)
