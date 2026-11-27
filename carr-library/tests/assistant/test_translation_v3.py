@@ -422,6 +422,7 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def GetSelection(self): return self.selection
         def GetValue(self): return self.value
         def ChangeValue(self, value): self.value = value
+        def SetEditable(self, value): self.editable = value
         def Enable(self, value=True): self.enabled = value
         def Disable(self): self.enabled = False
         def SetFocus(self): self.focused = True

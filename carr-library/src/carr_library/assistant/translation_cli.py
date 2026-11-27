@@ -78,7 +78,11 @@ def main(argv=None):
         if not (root / 'library.sqlite').is_file():
             raise ValueError('Choose an existing Resonance library with library.sqlite.')
         store = ProfileStore(root / 'state' / 'providers')
-        service = TranslationService(root / 'state' / 'translation')
+        library = None
+        if args.command in ('resume', 'export'):
+            from ..application import LibraryApp
+            library = LibraryApp(root)
+        service = TranslationService(root / 'state' / 'translation', library=library)
         if args.command == 'profiles':
             result = [{key: p.to_dict()[key] for key in ('id', 'name', 'adapter', 'endpoint', 'model', 'enabled')}
                       for p in store.list() if p.adapter in ('google-translation-v2', 'google-translation-v3')]
@@ -108,10 +112,22 @@ def main(argv=None):
             result = [{key: job.get(key) for key in ('id', 'title', 'status', 'source_language', 'target_language', 'glossary')}
                       | {'completed': len(job['receipts']), 'total': len(job['chunks'])} for job in service.list()]
         elif args.command == 'resume':
-            service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            saved = service.get(args.job)
+            def current_account():
+                try:
+                    current = store.get(saved['profile']['id'])
+                except (ValueError, OSError):
+                    current = None
+                if current is None or not current.enabled or current.to_dict() != saved['profile']:
+                    raise ValueError('The saved translation account is unavailable, disabled or changed. '
+                                     'Review AI and API connections before resuming its remote requests.')
+            if len(saved['receipts']) < len(saved['chunks']):
+                current_account()
+                service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
             previous = signal.signal(signal.SIGINT, lambda *unused: stop.set())
             result = service.resume(args.job, cancelled=stop.is_set,
-                progress=lambda done, total, phase: print(f'{done}/{total}: {phase}', file=sys.stderr, flush=True))
+                progress=lambda done, total, phase: print(f'{done}/{total}: {phase}', file=sys.stderr, flush=True),
+                guard=current_account)
         else:
             result = service.export(args.job, args.output)
         print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -185,6 +185,14 @@ def main():
                     check('verified glossary provenance', report['chunks'][0]['glossary_config']['glossary'] == glossary)
                     check('original selected text unchanged', selected.GetValue() == original)
                     before = len(calls)
+                    # A saved job keeps its exact reviewed source/settings.
+                    # Start a separate explicit review before testing edits.
+                    press(find('New translation'))
+                    find('Source language code; auto detects').ChangeValue('en')
+                    find('Target language code').ChangeValue('uk')
+                    glossary_input.ChangeValue(glossary)
+                    selected.ChangeValue(original)
+                    find('Maximum approved budget in USD; no default price').ChangeValue('1')
                     press(find('Preview'))
                     glossary_input.ChangeValue(glossary + '-changed-after-review')
                     press(find('Translate / resume'))

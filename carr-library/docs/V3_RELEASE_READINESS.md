@@ -355,3 +355,60 @@ cases, all 142 required named cases, the three additional exact OCR cases and
 exactly 58 metadata cases. The previous 220/127 selection above remains a
 historical collection record. All native probes and strict source/origin/skip
 checks are retained.
+
+
+## Optional spelling review through the existing reader
+
+The new [Hunspell review](HUNSPELL_REVIEW.md) has 244 strict source cases
+across 12 existing/new reader suites with zero failures or skips, including
+61 new spelling cases. This overlaps earlier reader suites and is not added
+to their totals. A separately selected native system library executed all
+14 checks with original synthetic UTF-8/legacy dictionaries, actual
+cancellation/deadline cleanup and source-preserving undo; the exact module
+and binary hashes are in the [native report](evidence/hunspell-native-20261127.json).
+No binary or dictionary was acquired or bundled. Windows control/unavailable
+behavior is wired into the installed pronunciation probe, explicitly marking
+actual Hunspell Windows-engine execution and human NVDA as NOT_RUN.
+
+
+## Exact 40c58b4 Windows V3 evidence and next source corrections
+
+Public source `40c58b4f631e48b863ef2867d61100ee8445092a` completed the
+[V3 run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45949214244)
+successfully. The strict installed recovery/import suite passed **351 cases
+with zero failures/skips**. Actual SAPI/Studio/restart and all ten strict
+progress suites passed (**233 cases**, zero failures/skips). The separate broad
+service suite passed **1,442 cases with 24 disclosed skips**. These suites overlap
+other historical evidence and are not summed into a larger acceptance count.
+
+Both new native state gates executed on this exact installed source: the
+25-case JSON reader/replacement matrix and the three lifecycle checks using
+actual Close/Destroy timer events. The
+[academic run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45949214332)
+also passed. Human NVDA remains NOT_RUN.
+
+The corresponding
+[desktop run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45949214249)
+passed measured audio conversion, recording, EPUB/DAISY publishing, synthetic
+playback controls, reader/Studio pronunciation, command palette/keymap and
+Advanced translation. Recorded EPUB reading hit its five-minute timeout; Tasks
+failed after 18 seconds. This is not a complete desktop PASS. The native palette
+correction is now exercised. The shorter Tasks failure shows that its previous
+abort hang ended; the primary remaining error still requires diagnosis.
+
+A subsequent reviewed probe correction waits for the real inner recorded-audio
+ShowModal to return before closing its parent reader. It uses the existing
+ReadingDialog ownership field, a bounded owned timer and caught wx assertions.
+All 23 original Unicode/MCI/publication assertions remain identical; 25 strict
+probe-driver cases pass. It corrects demonstrated native modal-unwind ordering,
+not an inferred Unicode or playback defect. Actual replay remains required.
+
+The source-bound translation composition separately passed **235 cases with
+zero failures/skips** on local `a5207e4`, covering Basic v2, Advanced v3, the new
+16-case composition suite and Tasks metadata. Saved source jobs retain exact
+source positions, account/model/glossary approval and decoded receipt hashes.
+Actual backup/delete/restore tests prove completed replay and new exports
+without fresh provider requests; remote continuation after restore requires
+new review. Synthetic provider responses and local loopback protocol evidence
+do not establish live Google billing, IAM or translation quality. See
+[translation workstation](translation_workstation.md).

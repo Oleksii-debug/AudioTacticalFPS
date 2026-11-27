@@ -3,7 +3,7 @@ import ast
 import importlib.util
 from pathlib import Path
 from threading import Event
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 
 import pytest
 
@@ -28,6 +28,30 @@ class Dialog:
         self.loop.ScheduleExit(code)
 
 
+class Scheduled:
+    def __init__(self, callback):
+        self.callback, self.stopped = callback, False
+
+    def Stop(self): self.stopped = True
+
+
+class NativeQueue:
+    ID_CANCEL = 2
+
+    def __init__(self): self.pending = []
+
+    def CallLater(self, delay, callback):
+        assert delay == 25
+        timer = Scheduled(callback)
+        self.pending.append(timer)
+        return timer
+
+    def dispatch(self):
+        timer = self.pending.pop(0)
+        if not timer.stopped:
+            timer.callback()
+
+
 def owner(loop, calls, name, *, fail=''):
     def action(label):
         def run():
@@ -36,6 +60,7 @@ def owner(loop, calls, name, *, fail=''):
                 raise RuntimeError('Synthetic failure: ' + label)
         return run
     return SimpleNamespace(cancelled=Event(), dialog=Dialog(loop),
+        _audio_dialog=None,
         timer=SimpleNamespace(Stop=action(name + ' timer')),
         close=action(name + ' close'))
 
@@ -46,6 +71,8 @@ def test_abort_retains_outer_loop_and_original_error_before_owned_modal_unwind(c
     errors, calls = [], []
     frame = SimpleNamespace(cancel_event=Event())
     overlay, reader = owner(nested, calls, 'overlay'), owner(nested, calls, 'reader')
+    reader._audio_dialog = overlay
+    wx = NativeQueue()
     foreign = owner(foreign_loop, calls, 'foreign')
     application = SimpleNamespace(GetMainLoop=lambda: main,
                                   ExitMainLoop=lambda: nested.ScheduleExit(0))
@@ -56,33 +83,133 @@ def test_abort_retains_outer_loop_and_original_error_before_owned_modal_unwind(c
         assert errors == ['original Unicode assertion']
         assert 'FAIL: original Unicode assertion' in capsys.readouterr().out
         calls.append('release')
-    probe._abort_native_probe(SimpleNamespace(ID_CANCEL=2), application,
+    stop = probe._abort_native_probe(wx, application,
         main if captured else None, frame, (overlay, reader), release, errors,
         'original Unicode assertion')
     assert errors == ['original Unicode assertion']
     assert frame.cancel_event.is_set() and overlay.cancelled.is_set() and reader.cancelled.is_set()
-    assert calls == ['release', 'overlay timer', 'overlay close', 'reader timer', 'reader close']
+    assert calls == ['release', 'overlay timer', 'reader timer', 'overlay close']
+    assert overlay.dialog.closed == [2] and reader.dialog.closed == []
+    assert len(wx.pending) == 1
+    wx.dispatch()  # wx can dispatch pending work before the inner loop exits.
+    assert reader.dialog.closed == [] and len(wx.pending) == 1
+    reader._audio_dialog = None  # Set only after the real overlay.show returns.
+    wx.dispatch()
+    assert calls == ['release', 'overlay timer', 'reader timer', 'overlay close', 'reader close']
     assert overlay.dialog.closed == reader.dialog.closed == [2]
     assert nested.exits == [0, 2, 2] and main.exits == [1]
     assert foreign.dialog.closed == [] and not foreign.cancelled.is_set()
+    stop()
 
 
 @pytest.mark.parametrize('failure', ['release', 'overlay timer', 'overlay close', 'reader close', 'modal'])
 def test_abort_cleanup_failure_does_not_lose_original_error_or_outer_exit(failure):
     main, nested, errors, calls = Loop(), Loop(), [], []
     overlay, reader = owner(nested, calls, 'overlay', fail=failure), owner(nested, calls, 'reader', fail=failure)
+    reader._audio_dialog = overlay
+    wx = NativeQueue()
     def release():
         calls.append('release')
         if failure == 'release': raise RuntimeError('Synthetic key release failure')
     if failure == 'modal':
         def fail_modal(code): raise RuntimeError('Synthetic modal teardown failure')
         overlay.dialog.EndModal = fail_modal
-    probe._abort_native_probe(SimpleNamespace(ID_CANCEL=2), None, main, None,
+    probe._abort_native_probe(wx, None, main, None,
                               (overlay, reader), release, errors, 'original failure')
+    assert reader.dialog.closed == []
+    reader._audio_dialog = None
+    wx.dispatch()
     assert errors[0] == 'original failure' and len(errors) == 2
     assert 'Synthetic' in errors[1]
     assert 'overlay close' in calls and 'reader close' in calls
     assert reader.dialog.closed == [2] and main.exits == [1]
+
+
+def modal_scene():
+    """Model wxMSW's active-loop requirement with the actual Reader.close."""
+    active, calls = ['overlay'], []
+
+    class NativeDialog:
+        def __init__(self, name): self.name, self.requested = name, False
+        def IsModal(self): return True
+        def EndModal(self, code):
+            if active[0] != self.name:
+                raise AssertionError('EndModal cannot exit an inactive outer loop.')
+            calls.append(self.name + ' EndModal')
+            self.requested = True  # Return/clearing ownership happens later.
+
+    overlay = SimpleNamespace(cancelled=Event(), closed=False, dialog=NativeDialog('overlay'))
+    def close_overlay():
+        if not overlay.closed:
+            overlay.closed = True
+            overlay.dialog.EndModal(2)
+    overlay.close = close_overlay
+    reader = SimpleNamespace(cancelled=Event(), closed=False, dialog=NativeDialog('reader'),
+        _audio_dialog=overlay, wx=SimpleNamespace(ID_CANCEL=2),
+        executor=SimpleNamespace(shutdown=lambda **kwargs: calls.append('reader executor')))
+    source = SOURCE.parents[1] / 'src/carr_library/ui/reading_desk.py'
+    node = next(node for node in ast.parse(source.read_text(encoding='utf-8')).body
+                if isinstance(node, ast.ClassDef) and node.name == 'ReadingDialog')
+    close = next(node for node in node.body if isinstance(node, ast.FunctionDef) and node.name == 'close')
+    namespace = {}
+    exec(compile(ast.Module(body=[close], type_ignores=[]), str(source), 'exec'), namespace)
+    reader.close = MethodType(namespace['close'], reader)
+    return active, calls, overlay, reader
+
+
+def test_real_reader_close_reproduces_inactive_outer_exit_after_child_close_request():
+    active, calls, overlay, reader = modal_scene()
+    overlay.close()
+    assert overlay.closed and overlay.dialog.requested and reader._audio_dialog is overlay
+    with pytest.raises(AssertionError, match='inactive outer loop'):
+        reader.close()
+    # A premature Reader.close has set this flag before native EndModal fails.
+    assert reader.closed and 'reader EndModal' not in calls and active == ['overlay']
+
+
+@pytest.mark.parametrize('observed_overlay', [True, False])
+def test_abort_waits_for_actual_show_return_not_closed_flag_or_a_deferred_callback(observed_overlay):
+    active, calls, overlay, reader = modal_scene()
+    main, wx, errors = Loop(), NativeQueue(), []
+    probe._abort_native_probe(wx, None, main, None,
+        (overlay if observed_overlay else None, reader), lambda: None, errors, 'original Unicode failure')
+    assert overlay.closed and overlay.dialog.requested and not reader.closed
+    assert errors == ['original Unicode failure'] and main.exits == [1]
+    for _ in range(3):
+        wx.dispatch()
+        assert not reader.closed and 'reader EndModal' not in calls
+        assert len(wx.pending) == 1
+    # ReadingDialog.open_audio clears the field only in its show-return finally.
+    reader._audio_dialog = None
+    active[0] = 'reader'
+    wx.dispatch()
+    assert reader.closed and reader.dialog.requested and wx.pending == []
+    assert errors == ['original Unicode failure']
+
+
+def test_abort_wait_is_bounded_and_never_forces_an_inactive_parent(monkeypatch):
+    active, calls, overlay, reader = modal_scene()
+    main, wx, errors, now = Loop(), NativeQueue(), [], [0]
+    monkeypatch.setattr(probe, 'monotonic', lambda: now[0])
+    probe._abort_native_probe(wx, None, main, None, (overlay, reader),
+                              lambda: None, errors, 'original failure')
+    now[0] = 10
+    wx.dispatch()
+    assert len(errors) == 2 and 'modal loop did not return' in errors[1]
+    assert not reader.closed and 'reader EndModal' not in calls
+    assert active == ['overlay'] and wx.pending == [] and main.exits == [1]
+
+
+def test_final_cleanup_stops_the_owned_unwind_callback_before_ui_destruction():
+    active, calls, overlay, reader = modal_scene()
+    main, wx, errors = Loop(), NativeQueue(), []
+    stop = probe._abort_native_probe(wx, None, main, None, (overlay, reader),
+                                     lambda: None, errors, 'original failure')
+    stop()
+    reader._audio_dialog = None
+    wx.dispatch()
+    assert not reader.closed and 'reader EndModal' not in calls
+    assert errors == ['original failure'] and wx.pending == []
 
 
 @pytest.mark.parametrize('failure', ['raise', 'false'])
@@ -153,7 +280,7 @@ def test_actual_callback_failure_resets_guard_and_cancels_queued_progress():
     assert errors and scheduled == [] and state() == (False, main)
 
 
-@pytest.mark.parametrize('failure', ['key', 'overlay close', 'overlay worker', 'service',
+@pytest.mark.parametrize('failure', ['abort timer', 'key', 'overlay close', 'overlay worker', 'service',
                                     'frame worker', 'progress', 'yield', 'native'])
 def test_actual_final_cleanup_reaches_all_owned_resources_after_a_failure(failure):
     calls, errors, pressed = [], [], {32}
@@ -168,6 +295,7 @@ def test_actual_final_cleanup_reaches_all_owned_resources_after_a_failure(failur
                                executor=SimpleNamespace(shutdown=action(name + ' worker')))
     simulator = SimpleNamespace(KeyUp=action('key'))
     namespace = dict(probe.__dict__, errors=errors,
+        abort_cleanup=action('abort timer'),
         release_all=lambda: probe._release_native_keys(simulator, pressed, errors),
         overlay=resource('overlay'), reader=resource('reader'),
         service=SimpleNamespace(close=action('service')),
@@ -179,7 +307,7 @@ def test_actual_final_cleanup_reaches_all_owned_resources_after_a_failure(failur
     final, = [node.finalbody for node in ast.walk(tree) if isinstance(node, ast.Try)
               and node.finalbody and 'PHASE: recorded-reading cleanup returned' in ast.unparse(node.finalbody)]
     exec(compile(ast.Module(body=final, type_ignores=[]), str(SOURCE), 'exec'), namespace)
-    assert calls == ['key', 'overlay close', 'overlay worker', 'reader close', 'reader worker',
+    assert calls == ['abort timer', 'key', 'overlay close', 'overlay worker', 'reader close', 'reader worker',
                      'service', 'frame worker', 'progress', 'destroy', 'yield', 'native']
     assert pressed == set() and namespace['frame'].cancel_event.is_set()
     assert len(errors) == 1 and 'Synthetic cleanup failure: ' + failure in errors[0]

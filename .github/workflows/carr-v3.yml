@@ -103,6 +103,10 @@ jobs:
           import carr_library.speech.session
           import carr_library.extract.ocr_runtime
           import carr_library.durable_state, carr_library.ui.save_actions
+          import carr_library.assistant.translation, carr_library.assistant.translation_cli
+          import carr_library.speech.spelling, carr_library.speech.spelling_worker
+          import carr_library.ui.spelling_dialog
+          import carr_library.audio.process
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -113,6 +117,10 @@ jobs:
                    'carr_library.speech.session',
                    'carr_library.extract.ocr_runtime',
                    'carr_library.durable_state', 'carr_library.ui.save_actions',
+                   'carr_library.assistant.translation', 'carr_library.assistant.translation_cli',
+                   'carr_library.speech.spelling', 'carr_library.speech.spelling_worker',
+                   'carr_library.ui.spelling_dialog',
+                   'carr_library.audio.process',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -130,6 +138,12 @@ jobs:
                     'tests/storage/test_state_json_reader.py',
                     'tests/storage/test_durable_state_publication.py',
                     'tests/ui/test_save_actions.py',
+                    'tests/assistant/test_source_translation_composition.py',
+                    'tests/assistant/test_translation.py',
+                    'tests/speech/test_spelling.py',
+                    'tests/speech/test_spelling_handlers.py',
+                    'tests/speech/test_spelling_reader_hook.py',
+                    'tests/audio/test_publication_fsync.py',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
@@ -168,12 +182,33 @@ jobs:
                                  'test_child_destruction_keeps_the_live_frame_autosave_running',
                                  'test_direct_destroy_also_blocks_a_previously_queued_autosave'}
           json_timer_complete = required_json_timer <= {c.get('name') for c in cases}
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact and json_timer_complete
+          required_source_tools = {
+              'test_bound_document_resume_export_preserves_exact_original_and_canonical_lineage[whole-document]',
+              'test_bound_document_resume_export_preserves_exact_original_and_canonical_lineage[source-range]',
+              'test_advanced_source_pause_resume_and_export_keep_lineage_and_decoded_receipts[exact-glossary]',
+              'test_tasks_reads_source_job_metadata_without_provider_or_resume_authority[complete]',
+              'test_completed_source_cli_replay_and_export_after_real_backup_delete_restore_are_offline[basic]',
+              'test_completed_source_cli_replay_and_export_after_real_backup_delete_restore_are_offline[advanced]',
+              'test_cli_source_resume_uses_explicit_library_and_fresh_exact_account[after-gateway]',
+              'test_advanced_source_self_hash_cannot_replace_the_accepted_decoded_output',
+              'test_actual_child_refuses_changed_dictionary_before_loading_dummy_library',
+              'test_correction_is_explicit_one_undoable_edit_with_original_source_retained',
+              'test_cancel_and_late_close_do_not_access_dead_widgets_or_apply_text',
+              'test_real_reader_spelling_closure_select_apply_undo_and_recovery',
+              'test_spelling_closure_rechecks_authority_before_apply[selection]',
+              'test_stale_apply_does_not_mutate_reading_copy[dictionary]',
+              'test_cancellation_during_flush_does_not_publish',
+              'test_cancellation_after_link_does_not_reclassify_committed_output'}
+          source_tools_complete = required_source_tools <= {c.get('name') for c in cases}
+          ok = (status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen
+                and ocr_exact and json_timer_complete and source_tools_complete)
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, json_timer_required=sorted(required_json_timer),
-                        json_timer_complete=json_timer_complete, manual_nvda='NOT_RUN')
+                        json_timer_complete=json_timer_complete,
+                        source_tools_required=sorted(required_source_tools), source_tools_complete=source_tools_complete,
+                        actual_hunspell_engine='NOT_RUN', live_google_api='NOT_RUN', manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)

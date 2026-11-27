@@ -40,25 +40,72 @@ def _release_native_keys(simulator, pressed, errors):
 
 
 def _abort_native_probe(wx, application, owner_loop, frame, owners, release, errors, detail):
-    """Unwind only our dialogs, then terminate their retained outer loop."""
+    """Close the active child and wait for its ShowModal to return first."""
     errors.append(detail)
     print('FAIL:', detail, flush=True)
+    overlay, reader = (*owners, None, None)[:2]
+    pending = None
+    stopped = False
+    deadline = monotonic() + 10
+
+    def stop():
+        nonlocal stopped
+        stopped = True
+        if pending is not None:
+            _cleanup_call(errors, 'Stopping the owned modal-unwind timer', pending.Stop)
+
+    def cancel(owner):
+        if owner is None:
+            return
+        _cleanup_call(errors, 'Cancelling reader work', owner.cancelled.set)
+        timer = getattr(owner, 'timer', None)
+        if timer is not None:
+            _cleanup_call(errors, 'Stopping recorded-audio timer', timer.Stop)
+
+    def close(owner):
+        if owner is None:
+            return
+        _cleanup_call(errors, 'Closing ' + type(owner).__name__, owner.close)
+        def end_modal():
+            if owner.dialog and owner.dialog.IsModal():
+                owner.dialog.EndModal(wx.ID_CANCEL)
+        _cleanup_call(errors, 'Unwinding owned reader dialog', end_modal)
+
+    def close_reader():
+        nonlocal pending
+        if stopped:
+            return
+        try:
+            # EndModal only requests exit. wx can dispatch queued callbacks
+            # before the inner loop returns, and closing an inactive outer
+            # dialog then asserts in wxMSW. This field is cleared by the real
+            # ReadingDialog.open_audio finally, after overlay.show() returns.
+            if reader is not None and reader._audio_dialog is not None:
+                if monotonic() >= deadline:
+                    raise TimeoutError('The owned recorded-audio modal loop did not return during abort.')
+                pending = wx.CallLater(25, close_reader)
+                return
+            close(reader)
+            stop()
+        except Exception:
+            errors.append('Unwinding the owned recorded reader:\n' + traceback.format_exc())
+            print('FAIL:', errors[-1], flush=True)
+            stop()
+
     try:
         if frame is not None:
             _cleanup_call(errors, 'Cancelling desktop work', frame.cancel_event.set)
         _cleanup_call(errors, 'Releasing held native keys', release)
-        for owner in owners:
-            if owner is None:
-                continue
-            _cleanup_call(errors, 'Cancelling reader work', owner.cancelled.set)
-            timer = getattr(owner, 'timer', None)
-            if timer is not None:
-                _cleanup_call(errors, 'Stopping recorded-audio timer', timer.Stop)
-            _cleanup_call(errors, 'Closing ' + type(owner).__name__, owner.close)
-            def end_modal(owner=owner):
-                if owner.dialog and owner.dialog.IsModal():
-                    owner.dialog.EndModal(wx.ID_CANCEL)
-            _cleanup_call(errors, 'Unwinding owned reader dialog', end_modal)
+        # The probe may fail before its next drive callback observes the new
+        # overlay. Use the reader's actual owned child, never an unrelated
+        # top-level window or the child's early `closed` flag.
+        inner = reader._audio_dialog if reader is not None else None
+        if inner is None:
+            inner = overlay
+        cancel(inner)
+        cancel(reader)
+        close(inner)
+        close_reader()
     finally:
         # App.ExitMainLoop exits the currently active ShowModal loop. The
         # retained owner must also exit after those nested loops unwind.
@@ -66,6 +113,7 @@ def _abort_native_probe(wx, application, owner_loop, frame, owners, release, err
         if loop is None:
             raise RuntimeError('The recorded-reading main event loop is unavailable during abort.')
         loop.ScheduleExit(1)
+    return stop
 
 
 def _run_native():
@@ -92,6 +140,7 @@ def _run_native():
     deadline = monotonic() + 120
     stage, key_pending, finished = 0, False, False
     in_drive, aborting, owner_loop = False, False, None
+    abort_cleanup = None
     frame = reader = overlay = service = None
 
     def check(name, condition):
@@ -106,6 +155,7 @@ def _run_native():
             return True
 
     gui = ProbeApp(False)
+    gui.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
     simulator = wx.UIActionSimulator()
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     user32.SetForegroundWindow.argtypes = [wintypes.HWND]
@@ -121,14 +171,14 @@ def _run_native():
             key_pending = False
 
     def abort(detail):
-        nonlocal aborting
+        nonlocal aborting, abort_cleanup
         if aborting:
             errors.append(detail)
             print('FAIL:', detail, flush=True)
             return
         aborting = True
-        _abort_native_probe(wx, gui, owner_loop, frame, (overlay, reader), release_all,
-                            errors, 'Stage ' + str(stage) + ': ' + detail)
+        abort_cleanup = _abort_native_probe(wx, gui, owner_loop, frame, (overlay, reader), release_all,
+                                           errors, 'Stage ' + str(stage) + ': ' + detail)
 
     def guarded(callback):
         def invoke():
@@ -348,6 +398,8 @@ def _run_native():
             gui.MainLoop()
             print('PHASE: native recorded-reading event loop returned', flush=True)
         finally:
+            if abort_cleanup is not None:
+                _cleanup_call(errors, 'Stopping the owned modal-unwind timer', abort_cleanup)
             print('PHASE: releasing held native keys', flush=True)
             _cleanup_call(errors, 'Releasing held native keys', release_all)
             for owner in (overlay, reader):

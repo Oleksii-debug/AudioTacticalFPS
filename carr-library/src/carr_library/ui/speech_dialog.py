@@ -172,8 +172,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     pronunciation.SetName('Pronunciation rules')
     find_button = wx.Button(dialog, label='&Find and replace')
     find_button.SetName('Find and replace')
+    spelling_button = wx.Button(dialog, label='Spelling review...')
+    spelling_button.SetName('Spelling review with Hunspell')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, navigation_button, cleanup, pronunciation, find_button, close):
+    for control in (seek, navigation_button, cleanup):
+        row.Add(control, 0, wx.ALL, 4)
+    layout.Add(row, 0, wx.ALIGN_RIGHT)
+    row = wx.BoxSizer(wx.HORIZONTAL)
+    for control in (pronunciation, find_button, spelling_button, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -199,6 +205,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
+        spelling_button.Enable(source_loaded and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
@@ -439,20 +446,24 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
-    def find_replace(event=None):
+    def find_replace(event=None, *, spelling=False):
         try:
             if busy or not source_loaded:
                 raise ValueError('Wait for the reader operation to finish before finding or replacing text.')
             from ..durable_state import local_path
             from .ebook_model import native_position
             from .find_replace_dialog import ReadingSnapshot, apply_replacement, create_find_replace_dialog
+            if spelling:
+                from .spelling_dialog import apply_correction as apply_replacement
+                from .spelling_dialog import create_spelling_dialog as create_find_replace_dialog
+            command_name = 'Spelling review' if spelling else 'Find and replace'
             selected_library = parent.library
             selected_root = local_path(selected_library.root, exists=True)
 
             def guard():
                 if (not alive or getattr(parent, '_closing', False) or parent.library is not selected_library
                         or local_path(parent.library.root, exists=True) != selected_root):
-                    raise ValueError('The library changed or the reader closed. Reopen Find and replace.')
+                    raise ValueError(f'The library changed or the reader closed. Reopen {command_name}.')
                 source_guard()
 
             def capture():
@@ -505,7 +516,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 if progress is not None:
                     progress.refresh_audio_state()
                 if not document.undo():
-                    raise ValueError('The find/replace edit is no longer available to undo.')
+                    raise ValueError(f'The {command_name} edit is no longer available to undo.')
                 return synchronize()
 
             review = create_find_replace_dialog(dialog, capture=capture, select=select, apply=apply,
@@ -752,7 +763,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (navigation_button, playback_navigation),
         (cleanup, clean), (pronunciation, pronunciations),
-        (find_button, find_replace), (close, closing)):
+        (find_button, find_replace), (spelling_button, lambda event: find_replace(event, spelling=True)), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)

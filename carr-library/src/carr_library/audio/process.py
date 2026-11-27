@@ -303,5 +303,9 @@ def publish_file(staged, destination, *, cancelled=lambda: False):
     # Windows requires a writable descriptor to flush the completed staging file.
     with staged.open('r+b') as source:
         os.fsync(source.fileno())
+    # Flush may block long enough for the user to cancel. Check again at the
+    # last pre-commit boundary; after link succeeds, publication is committed.
+    if cancelled():
+        raise AudioCancelled('Audio operation cancelled before publication.')
     os.link(staged, destination, follow_symlinks=False)
     fsync_directory(destination.parent)
