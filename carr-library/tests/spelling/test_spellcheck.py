@@ -178,7 +178,14 @@ def test_denied_shared_memory_admission_does_not_launch_or_copy_dictionary(tmp_p
 def test_actual_pathological_affix_is_bounded_and_owned_child_reaped(tmp_path, monkeypatch, cancel):
     from carr_library.audio import capture_process as runner
     selected = dictionary(tmp_path, aff='SET UTF-8\nSFX X Y 1\nSFX X 0 s (a+)+\n', words=['a/X'])
-    actual, children, stopped = runner.start_owned_process, [], Event()
+    # run_process owns the real platform launcher directly. Observing the
+    # separate start_owned_process API would never see this worker or arm stop.
+    if os.name == 'nt':
+        from carr_library.audio import windows_job as owner
+        launch_name = 'JobProcess'
+    else:
+        owner, launch_name = runner.subprocess, 'Popen'
+    actual, children, stopped = getattr(owner, launch_name), [], Event()
     timer = Timer(.25, stopped.set)
 
     def started(*arguments, **options):
@@ -191,11 +198,12 @@ def test_actual_pathological_affix_is_bounded_and_owned_child_reaped(tmp_path, m
             timer.start()
         return process
 
-    monkeypatch.setattr(runner, 'start_owned_process', started)
+    monkeypatch.setattr(owner, launch_name, started)
     try:
         # Cancellation gets a finite cold-start allowance; the independent
         # actual timeout case retains its original 0.6-second worker budget.
-        with pytest.raises(InterruptedError if cancel else ValueError):
+        with pytest.raises(InterruptedError if cancel else ValueError,
+                match='Spelling review cancelled' if cancel else 'time allowance'):
             module.review_spelling('a' * 40 + 'bs', selected, library_root=tmp_path,
                 cancelled=stopped.is_set,
                 budget=module.SpellBudget(timeout=5 if cancel else .6))

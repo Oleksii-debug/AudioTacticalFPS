@@ -4,6 +4,7 @@ The executables here are Python fixtures. This does not qualify any Calibre
 installation or document format; that is the separate acceptance script.
 """
 import ctypes
+import errno
 import os
 from pathlib import Path
 import sys
@@ -45,7 +46,8 @@ def _alive(pid):
     if status.is_file():
         try:
             text = status.read_text()
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
+            # procfs may report ESRCH after open when the process just exited.
             return False
         return text.rsplit(')', 1)[1].split()[0] not in ('Z', 'X')
     return True
@@ -95,3 +97,52 @@ def test_inner_converter_keeps_descendant_in_existing_outer_owner(tmp_path, mode
     assert 'adapter settled' in result.stdout.decode('utf-8')
     pid = int(ready.read_text())
     assert not _alive(pid), 'An inner Calibre-style child escaped the existing native family.'
+
+
+@pytest.mark.parametrize('error_type, code, absent', [
+    (FileNotFoundError, errno.ENOENT, True),
+    (ProcessLookupError, errno.ESRCH, True),
+    (PermissionError, errno.EACCES, False),
+    (OSError, errno.EIO, False),
+], ids=['gone-before-open', 'gone-during-read', 'permission-denied', 'io-failure'])
+def test_process_observation_race_does_not_hide_other_read_errors(
+        tmp_path, monkeypatch, error_type, code, absent):
+    from types import SimpleNamespace
+
+    pid = 12345
+    status = tmp_path / str(pid) / 'stat'
+    status.parent.mkdir()
+    status.write_text(f'{pid} (observed process) S 0\n', encoding='utf-8')
+    signals = []
+
+    def observe(process, signal):
+        assert (process, signal) == (pid, 0)
+        signals.append((process, signal))
+
+    # Exercise the POSIX observation branch on both CI platforms without
+    # changing the process-wide os.name or sending a signal to an unrelated PID.
+    monkeypatch.setitem(_alive.__globals__, 'os',
+                        SimpleNamespace(name='posix', kill=observe))
+    monkeypatch.setitem(_alive.__globals__, 'Path',
+                        lambda name: tmp_path if name == '/proc' else pytest.fail(name))
+    real_read = type(status).read_text
+    failure = error_type(code, 'injected procfs observation boundary')
+
+    def read_after_exit(path, *args, **kwargs):
+        if path != status:
+            return real_read(path, *args, **kwargs)
+        assert signals == [(pid, 0)] and path.is_file()
+        if absent:
+            path.unlink()
+        raise failure
+
+    monkeypatch.setattr(type(status), 'read_text', read_after_exit)
+    if absent:
+        assert _alive(pid) is False
+        assert not status.exists()
+    else:
+        with pytest.raises(error_type) as observed:
+            _alive(pid)
+        assert observed.value is failure
+        assert status.is_file()
+    assert signals == [(pid, 0)]
