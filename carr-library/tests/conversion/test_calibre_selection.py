@@ -327,6 +327,7 @@ def test_native_invocation_inherits_existing_owner_and_uses_fixed_binary_streams
     assert result == (b'bounded diagnostic', False)
     assert captured['options']['start_new_session'] is False
     assert captured['options']['shell'] is False
+    assert captured['options']['executable'] == captured['args'][0]
     assert directories == [tmp_path, tmp_path, tmp_path]
     assert captured['options']['env'] is environment and captured['waited']
     assert all(captured['options'][name].closed for name in ('stdin', 'stdout', 'stderr'))
@@ -372,9 +373,13 @@ def test_existing_complete_staging_bounds_are_retained(tmp_path, monkeypatch, ki
         calibre._stage_usage(stage, maximum, time.monotonic() + 10)
 
 
-@pytest.mark.parametrize('version', [b'ebook-convert (calibre 9.19)\n',
-                                     b'ebook-convert.exe (calibre 9.19.0)\r\n'],
-                         ids=['linux-entrypoint', 'windows-entrypoint'])
+@pytest.mark.parametrize('version', [
+    b'ebook-convert (calibre 9.19)\n',
+    b'ebook-convert.exe (calibre 9.19.0)\r\n',
+    b'ebook-convert (calibre 9.19.0)\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>\n',
+    b'ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>\r\n',
+], ids=['linux-entrypoint', 'windows-entrypoint', 'official-linux-two-lines',
+        'official-windows-two-lines'])
 def test_actual_upstream_entrypoint_version_names_are_accepted(tmp_path, monkeypatch, version):
     path = installed(tmp_path)
     selection = calibre.CalibreSelection.capture(path).snapshot()
@@ -388,7 +393,7 @@ def test_actual_upstream_entrypoint_version_names_are_accepted(tmp_path, monkeyp
     monkeypatch.setattr(calibre, '_run', run)
     result = calibre.calibre_records(source, source.read_bytes(), '.tcr', ConversionBudget(),
                                     time.monotonic() + 10, selection)
-    assert result[2][0]['logical_locator']['converter'] == version.decode().strip()
+    assert result[2][0]['logical_locator']['converter'] == version.decode().splitlines()[0]
 
 
 def test_prc_palmdoc_family_is_admitted_without_enabling_arbitrary_pdb():
@@ -477,3 +482,17 @@ def test_late_native_return_cancel_does_not_publish_a_derivative(tmp_path, monke
         ConversionService(output, input_roots=(source,), calibre=path).extract(
             source, 'copy.txt', cancelled=lambda: stopped[0])
     assert list(output.iterdir()) == [] and source.read_bytes() == header('.tcr')
+
+
+@pytest.mark.parametrize('raw', [
+    b'ebook-convert (calibre 9.19.0)\nCreated by: Unreviewed identity\n',
+    b'ebook-convert (calibre 9.19.0)\nebook-convert (calibre 9.18.0)\n',
+    b'Unexpected diagnostic\nebook-convert (calibre 9.19.0)\n',
+    b'ebook-convert (calibre 9.19.0)\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>\nMore output\n',
+    b'\x1b[32mebook-convert (calibre 9.19.0)\x1b[0m\n',
+    b'ebook-convert (calibre 9.19.0)\n' + b' ' * 1024,
+    b'ebook-convert (calibre 9.19.0)\n\xff',
+])
+def test_version_identity_never_strips_unknown_or_oversized_output(raw):
+    with pytest.raises(ConversionUnavailable, match='bounded Calibre CLI'):
+        calibre._version_text(raw)

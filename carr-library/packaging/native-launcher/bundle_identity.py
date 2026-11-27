@@ -1,7 +1,7 @@
 """Admit only the exact private launcher already executed by native Windows CI.
 
 This is a packaging check, not a signature check. It never executes the supplied
-file. The approved unsigned bytes and their five native source files are fixed
+file. The approved unsigned bytes and their seven native build/probe source files are fixed
 here; a supplied manifest cannot authorize another executable.
 """
 from __future__ import annotations

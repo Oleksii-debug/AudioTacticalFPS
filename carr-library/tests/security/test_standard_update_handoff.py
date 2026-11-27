@@ -265,7 +265,9 @@ def test_mutable_standard_journal_cannot_retarget_original_or_signed_candidate(r
         with pytest.raises(InterruptedOwner):
             helper.apply(package)
     value = json.loads(helper.journal.read_bytes())
-    value[field] = 'foreign'
+    # Keep the setup digest well formed so this tests operation binding,
+    # rather than stopping at the independent digest syntax guard.
+    value[field] = '0' * 64 if field == 'setup_before' else 'foreign'
     helper.journal.write_bytes(json_bytes(value))
     with pytest.raises(TrustError, match='journal'):
         helper.recover(package)

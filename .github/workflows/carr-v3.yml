@@ -399,6 +399,8 @@ jobs:
             tests/storage/test_json_snapshot_posix.py \
             tests/conversion/test_document_batches_posix.py \
             tests/transcription/test_runtime_inventory_posix.py \
+            tests/conversion/test_office_registry_posix.py \
+            tests/speech/test_dictionary_import_boundary_posix.py \
             tests/assistant/test_workflow_templates.py \
             tests/assistant/test_workflow_templates_cli.py \
             tests/ui/test_workflow_templates.py \
@@ -414,6 +416,11 @@ jobs:
             tests/audio/test_recording_controls.py \
             tests/audio/test_recording_monitor.py \
             tests/conversion/test_office_selection.py \
+            tests/ui/test_ebook_dialog.py \
+            tests/conversion/test_calibre_selection.py \
+            tests/conversion/test_calibre_process_ownership.py \
+            tests/conversion/test_calibre_acceptance.py \
+            tests/speech/test_dictionary_import_boundary.py \
             tests/conversion/test_archive_reading.py \
             tests/packaging/test_portable_entry.py \
             tests/security/test_portable_handoff.py \
@@ -421,6 +428,8 @@ jobs:
             tests/security/test_https_source_policy.py \
             tests/security/test_standard_update_handoff.py \
             tests/security/test_update_maintenance.py \
+            tests/ui/test_update_maintenance.py \
+            tests/packaging/test_standard_update_envelope.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -547,6 +556,7 @@ jobs:
           installed_source_digests = {}
           names = tuple(dict.fromkeys((*names, 'carr_library.transcription', 'carr_library.transcription.models', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.backup_transcription', 'carr_library.backup_document_batches', 'carr_library.backup_compat.state', 'carr_library.conversion.service', 'carr_library.conversion.models', 'carr_library.conversion.formats', 'carr_library.conversion.planning', 'carr_library.conversion.batches', 'carr_library.conversion.cli', 'carr_library.ui.document_batch', 'carr_library.ui.document_conversion', 'carr_library.audio.effect_presets', 'carr_library.ui.effects_dialog', 'carr_library.ui.reader_background', 'carr_library.academic_integration.runtime_adapter', 'carr_library.transcription.reading', 'carr_library.ui.transcription_workstation')))
           names = tuple(dict.fromkeys((*names, 'carr_library.audio.recording', 'carr_library.audio.recording_monitor', 'carr_library.ui.recording_dialog', 'carr_library.backup_recordings', 'carr_library.backup_current', 'carr_library.conversion.office', 'carr_library.conversion.service', 'carr_library.conversion.worker', 'carr_library.ui.document_conversion', 'carr_library.conversion.formats', 'carr_library.audio.metadata', 'carr_library.assistant.templates', 'carr_library.assistant.service', 'carr_library.assistant.templates_cli', 'carr_library.ui.workflow_templates', 'carr_library.ui.assistant_dialog', 'carr_library.ui.document_batch', 'carr_library.assistant.translation', 'carr_library.assistant.translation_source', 'carr_library.assistant.translation_batch', 'carr_library.ui.translation_batch_dialog', 'carr_library.assistant.translation_batch_cli', 'carr_library.backup_translation_batches', 'carr_library.ui.translation_dialog', 'carr_library.transcription_cli', 'carr_library.transcription.service', 'carr_library.audio.windows_job', 'carr_library.portable_entry', 'carr_library.installation_lease', 'carr_library.portable_bootstrap', 'carr_library.local_audio_setup', 'carr_library.__main__', 'carr_library.native_checks', 'carr_library.bibliography_cli', 'carr_library.operations_cli', 'carr_library.studio.cli', 'carr_library.extract.ocr_model_catalog', 'carr_library.assistant.translation_cli', 'carr_library.security.__main__', 'carr_library.security.installation', 'carr_library.security.handoff', 'carr_library.conversion.cli', 'carr_library.sync.cli', 'carr_library.ui.desktop_app', 'carr_library.security._https_worker', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.standard_handoff', 'carr_library.ui.trust_status', 'carr_library.ui.update_maintenance')))
+          names = tuple(dict.fromkeys((*names, 'carr_library.conversion.calibre', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.transcription_dialog', 'carr_library.ui.transcription_workstation', 'carr_library.operations.facade', 'carr_library.ui.ebook_model', 'carr_library.studio.render')))
           for name in names:
               importlib.import_module(name)
           def installed_origins():
@@ -848,6 +858,11 @@ jobs:
               'tests/audio/test_recording_controls.py',
               'tests/audio/test_recording_monitor.py',
               'tests/conversion/test_office_selection.py',
+              'tests/ui/test_ebook_dialog.py',
+              'tests/conversion/test_calibre_selection.py',
+              'tests/conversion/test_calibre_process_ownership.py',
+              'tests/conversion/test_calibre_acceptance.py',
+              'tests/speech/test_dictionary_import_boundary.py',
               'tests/conversion/test_archive_reading.py',
               'tests/packaging/test_portable_entry.py',
               'tests/security/test_portable_handoff.py',
@@ -855,6 +870,8 @@ jobs:
               'tests/security/test_https_source_policy.py',
               'tests/security/test_standard_update_handoff.py',
               'tests/security/test_update_maintenance.py',
+              'tests/ui/test_update_maintenance.py',
+              'tests/packaging/test_standard_update_envelope.py',
           ]
           status = pytest.main(['-v', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',

@@ -263,7 +263,8 @@ def _run(args, stage, deadline, *, environment, output=None, output_limit=0, sta
     with TemporaryFile(dir=stage) as incoming, TemporaryFile(dir=stage) as stdout, TemporaryFile(dir=stage) as stderr:
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)
-        process = subprocess.Popen([str(arg) for arg in args], cwd=stage, env=environment,
+        process = subprocess.Popen([str(arg) for arg in args], executable=str(args[0]),
+            cwd=stage, env=environment,
             stdin=incoming, stdout=stdout, stderr=stderr, shell=False,
             start_new_session=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
@@ -286,6 +287,22 @@ def _run(args, stage, deadline, *, environment, output=None, output_limit=0, sta
             if process.poll() is None:
                 process.kill()
             process.wait()
+
+
+def _version_text(raw):
+    """Read only the bounded CLI identity and its official attribution line."""
+    message = 'The selected executable did not identify a compatible bounded Calibre CLI.'
+    if type(raw) is not bytes or not 0 < len(raw) <= 1024:
+        raise ConversionUnavailable(message)
+    try:
+        lines = raw.decode('utf-8', 'strict').strip().splitlines()
+    except UnicodeError as error:
+        raise ConversionUnavailable(message) from error
+    if (len(lines) not in (1, 2)
+            or not re.fullmatch(r'ebook-convert(?:\.exe)? \(calibre [0-9]{1,3}\.[0-9]{1,3}(?:\.[0-9]{1,3})?\)', lines[0])
+            or (len(lines) == 2 and lines[1] != 'Created by: Kovid Goyal <kovid@kovidgoyal.net>')):
+        raise ConversionUnavailable(message)
+    return lines[0]
 
 
 def calibre_records(source, data, suffix, budget, deadline, selection):
@@ -315,9 +332,7 @@ def calibre_records(source, data, suffix, budget, deadline, selection):
     stage_limit = 2 * budget.max_source_bytes + budget.max_text_bytes + PRIVATE_BYTES
     version, _ = _run([executable, '--version'], source.parent, deadline,
                      environment=environment, stage_limit=stage_limit)
-    version = version.decode('utf-8', 'strict').strip()
-    if not re.fullmatch(r'ebook-convert(?:\.exe)? \(calibre [0-9]{1,3}\.[0-9]{1,3}(?:\.[0-9]{1,3})?\)', version):
-        raise ConversionUnavailable('The selected executable did not identify a compatible bounded Calibre CLI.')
+    version = _version_text(version)
     _admit(selection, deadline)
     output = source.parent / 'calibre-reading.txt'
     if os.path.lexists(output):

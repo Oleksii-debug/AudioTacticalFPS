@@ -38,7 +38,7 @@ def test_selected_inventory_checks_fixed_installed_filter_without_executing(tmp_
     monkeypatch.setattr(office.subprocess, 'Popen', lambda *a, **k: pytest.fail('Admission executed code.'))
     for suffix in office.OFFICE_SUFFIXES:
         assert office._admit(selection, suffix, time.monotonic() + 5) == path
-    assert set(selection) == {'root', 'root_identity', 'executable', 'files'}
+    assert set(selection) == {'root', 'root_identity', 'registry_identity', 'executable', 'files'}
     for row in selection['files']:
         raw = (path.parent.parent / row['name']).read_bytes()
         assert row['bytes'] == len(raw) and row['sha256'] == sha256(raw).hexdigest()

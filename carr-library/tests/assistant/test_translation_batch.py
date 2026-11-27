@@ -562,15 +562,35 @@ def test_actual_child_death_during_preparation_preserves_exact_templates_without
     import sys
     from carr_library.assistant import translation_batch as selected_module
     e = batch_env
+    selected_root = Path(selected_module.__file__).resolve().parents[1]
+    selected_proof = tmp_path / 'selected-package-proof.json'
+    selected_proof.write_text(json.dumps({
+        'source_selection': selected_root == (Path(__file__).parents[2] / 'src' / 'carr_library').resolve(),
+        'files': {path.relative_to(selected_root).as_posix(): sha256(path.read_bytes()).hexdigest()
+                  for path in selected_root.rglob('*.py')},
+    }, sort_keys=True), encoding='utf-8')
     spec = tmp_path / 'explicit-child-input.json'
     spec.write_text(json.dumps(e.items, ensure_ascii=False), encoding='utf-8')
     script = r'''
-import json, os, sys
+import json, os, sys, sysconfig
+from hashlib import sha256
 from pathlib import Path
+import carr_library
 from carr_library.application import LibraryApp
 from carr_library.assistant import translation_batch
 from carr_library.assistant.translation import TranslationService
-assert Path(translation_batch.__file__).resolve() == Path(sys.argv[3]).resolve()
+expected_module = Path(sys.argv[3]).resolve()
+expected_root = expected_module.parents[1]
+actual_root = Path(carr_library.__file__).resolve().parent
+proof = json.loads(Path(sys.argv[4]).read_text(encoding='utf-8'))
+allowed_roots = {expected_root}
+if proof['source_selection'] is True:
+    allowed_roots.add((Path(sysconfig.get_path('purelib')) / 'carr_library').resolve())
+assert actual_root in allowed_roots, (actual_root, expected_root)
+assert Path(translation_batch.__file__).resolve() == actual_root / 'assistant' / expected_module.name
+actual_files = {path.relative_to(actual_root).as_posix(): sha256(path.read_bytes()).hexdigest()
+                for path in actual_root.rglob('*.py')}
+assert actual_files == proof['files'], 'Selected child package differs from the parent file/hash inventory.'
 app = LibraryApp(Path(sys.argv[1]))
 service = TranslationService(app.root / 'state' / 'translation', library=app)
 batches = translation_batch.TranslationBatchService(service)
@@ -585,7 +605,7 @@ batches.submit(items, review_sha256=review['review_sha256'], approve_remote=True
 raise AssertionError('The owned child must exit at the real saved-job boundary.')
 '''
     result = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-c', script, str(e.app.root),
-                             str(spec), str(selected_module.__file__)],
+                             str(spec), str(selected_module.__file__), str(selected_proof)],
         capture_output=True, timeout=45, env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
     assert result.returncode == 73, result.stderr.decode('utf-8', 'replace')
     saved, = e.batches.list()

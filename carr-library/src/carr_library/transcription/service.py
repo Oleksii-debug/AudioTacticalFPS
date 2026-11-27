@@ -420,7 +420,9 @@ class TranscriptionService:
 
     def _control(self, identity):
         path = self._job_root(identity) / 'control.json'
-        value = read_json(path) if path.exists() else {'action': 'run'}
+        # Every cancellation checkpoint reopens this tiny action record. Keep
+        # its read allocation bounded without caching or skipping any poll.
+        value = read_json(path, maximum=4096) if path.exists() else {'action': 'run'}
         if value.get('action') not in ('run', 'pause', 'cancel'):
             raise ValueError('Invalid transcription control state.')
         return value['action']

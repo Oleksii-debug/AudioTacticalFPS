@@ -10,7 +10,7 @@ from carr_library.security import maintenance as module
 from carr_library.security.__main__ import main
 from carr_library.security._files import TrustError, json_bytes
 from carr_library.security.standard_handoff import StandardUpdateHandoff
-from .test_standard_update_handoff import ready
+from .test_standard_update_handoff import ready, setup_update
 from .test_installation import assert_preserved
 from .conftest import installer_verify
 

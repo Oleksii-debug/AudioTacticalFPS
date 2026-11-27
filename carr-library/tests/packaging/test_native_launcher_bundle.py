@@ -61,7 +61,10 @@ def test_snapshot_returns_immutable_bytes_and_explicit_unsigned_scope(identity, 
     assert evidence["actual_installed_application_verified"] is False
     assert evidence["windows_process_acceptance"]["synthetic_child"] is True
     evidence["source_sha256"].clear()
-    assert len(identity.SOURCE_SHA256) == 5
+    assert set(identity.SOURCE_SHA256) == {
+        'launcher.c', 'launcher_core.h', 'launcher.rc', 'launcher.manifest',
+        'build_msvc.ps1', 'probe_pe.py', 'windows_child_probe.c',
+    }
 
 
 @pytest.mark.parametrize("damage", ["empty", "short", "large", "changed"])
@@ -285,3 +288,101 @@ def test_job_handles_are_closed_on_success_timeout_and_creation_failure(tmp_path
             job.run_in_job(tmp_path / "program.exe", [], cwd=tmp_path, timeout=1)
     assert fake.deleted == 1
     assert fake.closed == ([100, 101, 102] if scenario in ("success", "timeout") else [100])
+
+
+# Frozen independently from the published historical contract, not reconstructed
+# from the new current producer. It qualifies only its original exact tuple.
+HISTORICAL_ZIG_RECORD = json.loads(r'''{
+  "schema": 1,
+  "file": "ResearchLibrary.exe",
+  "bytes": 13824,
+  "sha256": "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec",
+  "source_commit": "687506ddca74c33fa3ee62c7925ae98b3b1afa3b",
+  "source_sha256": {
+    "launcher.c": "e990a1db29d3ee7d352759ab44ea92c670cadb43a50020b96d0207fef248a6b2",
+    "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+    "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+    "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+    "toolchain.lock.json": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+  },
+  "toolchain": "Zig 0.14.1 / x86_64-windows-gnu",
+  "use_scope": "private-local-installation",
+  "release_status": "unsigned-private-candidate",
+  "windows_process_acceptance": {
+    "run_id": 45912346606,
+    "job_id": 140223449645,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45912346606",
+    "checks": 9,
+    "synthetic_child": true
+  },
+  "authenticode_signed": false,
+  "actual_installed_application_verified": false,
+  "gui_verified": false,
+  "nvda_verified": false
+}''')
+
+
+def _record_manifest(record):
+    return {
+        'bundled_python': True,
+        'source_commit': record['source_commit'],
+        'files': {'ResearchLibrary.exe': record['sha256']},
+        'native_launcher': json.loads(json.dumps(record)),
+    }
+
+
+def test_current_msvc_record_binds_the_actual_measured_source_binary_and_compiler(identity):
+    record = identity._contract.identity_record()
+    assert record['source_commit'] == 'c8baf30c2cf85a6d0683ff485795509244bf76d5'
+    assert record['bytes'] == 15872
+    assert record['sha256'] == 'd8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a'
+    assert record['source_sha256']['launcher.c'] == '052c2d285d6be44013e0da3b9ca1a155e5d6bcf991ba1e9fa30ebde03d1752bd'
+    assert record['toolchain'] == 'MSVC 19.44.35230.0 / Windows x64'
+    assert record['compiler_evidence']['cl.exe']['sha256'] == 'e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226'
+    assert record['windows_process_acceptance']['run_id'] == 46008469436
+    assert record['windows_process_acceptance']['job_id'] == 140537540906
+    assert record['windows_process_acceptance']['checks'] == 9
+    assert identity._contract.validate_manifest_entry(_record_manifest(record)) is True
+
+
+def test_historical_zig_record_is_preserved_without_transferring_new_source_acceptance(identity):
+    assert identity._contract._historical_identity_record() == HISTORICAL_ZIG_RECORD
+    assert identity._contract.validate_manifest_entry(_record_manifest(HISTORICAL_ZIG_RECORD)) is True
+    copy = identity._contract._historical_identity_record()
+    copy['source_sha256'].clear()
+    assert identity._contract._historical_identity_record() == HISTORICAL_ZIG_RECORD
+
+
+@pytest.mark.parametrize('damage', ['binary', 'source', 'toolchain', 'compiler', 'checks'])
+def test_native_evidence_cannot_mix_historical_and_current_qualification(identity, damage):
+    current = identity._contract.identity_record()
+    manifest = _record_manifest(HISTORICAL_ZIG_RECORD)
+    if damage == 'binary':
+        manifest['files']['ResearchLibrary.exe'] = current['sha256']
+    elif damage == 'source':
+        manifest['native_launcher']['source_sha256'] = current['source_sha256']
+    elif damage == 'toolchain':
+        manifest['native_launcher']['toolchain'] = current['toolchain']
+    elif damage == 'compiler':
+        manifest['native_launcher']['compiler_evidence'] = current['compiler_evidence']
+    else:
+        manifest['native_launcher']['windows_process_acceptance']['checks'] += 1
+    with pytest.raises(ValueError, match='not approved'):
+        identity._contract.validate_manifest_entry(manifest)
+
+
+def test_payload_verification_uses_the_matched_record_size_and_real_digest(identity, tmp_path, monkeypatch):
+    # An explicit inert admission fixture, like synthetic_launcher above.
+    # This exercises real descriptor reads and hashes; no executable is run.
+    raw = b'Inert old-record payload fixture; not an executable.'
+    record = json.loads(json.dumps(HISTORICAL_ZIG_RECORD))
+    record['bytes'] = len(raw)
+    record['sha256'] = hashlib.sha256(raw).hexdigest()
+    monkeypatch.setattr(identity._contract, '_historical_identity_record', lambda: record)
+    (tmp_path / 'ResearchLibrary.exe').write_bytes(raw)
+    manifest = _record_manifest(record)
+    result = identity._contract.verify_payload(tmp_path, manifest)
+    assert result['sha256'] == record['sha256'] and result['execution'] == 'NOT_RUN'
+    (tmp_path / 'ResearchLibrary.exe').write_bytes(b'X' + raw[1:])
+    with pytest.raises(ValueError, match='checksum'):
+        identity._contract.verify_payload(tmp_path, manifest)

@@ -120,3 +120,20 @@ def test_fixture_generator_rejects_preexisting_directory_without_running_tool(tm
     with pytest.raises(FileExistsError):
         generator.generate(tmp_path / 'unselected.exe', existing)
     assert retained.read_bytes() == b'Never removed by fixture generation.'
+
+
+@pytest.mark.parametrize('executable', ['ebook-convert', 'ebook-convert.exe'])
+def test_fixture_gate_reads_the_official_two_line_identity(executable):
+    generator = script('create_calibre_fixtures')
+    first = executable + ' (calibre 9.19.0)'
+    raw = (first + '\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>\r\n').encode('utf-8')
+    assert generator._fixture_version(raw) == first
+
+
+@pytest.mark.parametrize('version', ['9.19', '9.19.1', '9.18.0'])
+def test_fixture_gate_still_requires_the_exact_pinned_release(version):
+    generator = script('create_calibre_fixtures')
+    raw = ('ebook-convert.exe (calibre ' + version + ')\r\n'
+           'Created by: Kovid Goyal <kovid@kovidgoyal.net>\r\n').encode('utf-8')
+    with pytest.raises(ValueError, match='Calibre 9.19.0'):
+        generator._fixture_version(raw)

@@ -131,8 +131,9 @@ class _SetupFirewall:
 
     def _admit(self, adapter, executable):
         from carr_library.security._files import directory, file_info, read_bytes
-        directory(self.work)
+        self.work = directory(self.work).resolve(strict=True)
         file_info(executable)
+        executable = executable.resolve(strict=True)
         relative = executable.relative_to(self.work)
         parts = tuple(value.casefold() for value in relative.parts)
         allowed = (parts == ('initial-setup', 'resonancesetup.exe')

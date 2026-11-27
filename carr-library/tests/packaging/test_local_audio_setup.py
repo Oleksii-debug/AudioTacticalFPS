@@ -275,6 +275,7 @@ def test_launcher_requires_completed_installation_and_isolated_no_bytecode_pytho
     assert 'if not exist "%~dp0.venv\\Scripts\\python.exe" goto not_installed' in text
     assert 'if not exist "%~dp0.venv\\.installation-complete" goto not_installed' in text
     assert ('"%~dp0.venv\\Scripts\\python.exe" -I -B -X utf8 '
-            '"%~dp0tools\\audio-setup\\setup_local_audio.py" --interactive') in text
+            '-m carr_library.local_audio_setup --interactive') in text
+    assert '"%~dp0tools\\audio-setup\\setup_local_audio.py"' not in text
     assert 'exit /b %audio_setup_status%' in text
 

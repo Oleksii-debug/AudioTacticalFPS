@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 180
     defaults:
       run:
         shell: pwsh
@@ -374,7 +374,8 @@ jobs:
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.epubcheck_runtime.conclusion == 'success' }}
-        timeout-minutes: 40
+        # Four additional real setup/repair calls retain their existing 900s process bounds.
+        timeout-minutes: 100
         run: |
           if (-not $env:CARR_NATIVE_LAUNCHER -or -not $env:CARR_NATIVE_LAUNCHER_SHA256) { throw 'The native launcher must pass its exact process acceptance before bundle assembly.' }
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -622,7 +623,7 @@ jobs:
           $manifestHash = $manifestBefore.ToLowerInvariant()
           $standardBuild = Join-Path $bundleWork 'standard-installer-build'
           $negativeBuild = Join-Path $bundleWork 'standard-installer-negative-fixture'
-          & $env:CARR_PYTHON -I -B packaging/build_standard_installer.py --bundle $bundle --source-commit $sourceCommit --manifest-sha256 $manifestHash --output $standardBuild --compiler $inno --compiler-sha256 $innoHash 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+          & $env:CARR_PYTHON -I -B packaging/build_standard_installer.py --bundle $bundle --source-commit $sourceCommit --manifest-sha256 $manifestHash --output $standardBuild --compiler $inno --compiler-sha256 $innoHash --update-envelope 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Native standard installer compilation failed.' }
           & $env:CARR_PYTHON -I -B tests/packaging/build_standard_failure_fixture.py --bundle $bundle --source-commit $sourceCommit --manifest-sha256 $manifestHash --output $negativeBuild --compiler $inno --compiler-sha256 $innoHash 2>&1 | Tee-Object 'ci-results/standard-installer-negative-build.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Native failed-bootstrap fixture compilation failed.' }
@@ -632,10 +633,41 @@ jobs:
           Copy-Item -LiteralPath (Join-Path $standardBuild 'installer-build.json') -Destination 'ci-results/standard-installer-build.json'
           Copy-Item -LiteralPath (Join-Path $negativeBuild 'installer-build.json') -Destination 'ci-results/standard-installer-negative-build.json'
           $standardSetup = Join-Path $standardBuild $standardProof.installer.path
+          $standardEnvelope = Join-Path $standardBuild ('Resonance-Update-' + $sourceCommit.Substring(0,12) + '.zip')
+          if (!(Test-Path -LiteralPath $standardEnvelope -PathType Leaf)) { throw 'The compiled signed-update envelope is missing.' }
+          $standardEnvelopeHash = (Get-FileHash -LiteralPath $standardEnvelope -Algorithm SHA256).Hash.ToLowerInvariant()
+          $applicationVersionScript = @'
+          import pathlib, runpy, sys
+          builder = runpy.run_path('packaging/build_windows_bundle.py')
+          name, version, _metadata = builder['wheel_metadata'](pathlib.Path(sys.argv[1]))
+          assert name == 'universal-research-library', name
+          print(version)
+          '@
+          $applicationVersion = ($applicationVersionScript | & $env:CARR_PYTHON -I -B - $applicationWheel).Trim()
+          if ($LASTEXITCODE -ne 0 -or !$applicationVersion) { throw 'The exact built application wheel has no validated version.' }
+          @{ status='PREPARED'; source_commit=$sourceCommit; manifest_sha256=$manifestHash;
+             application_version=$applicationVersion; sha256=$standardEnvelopeHash;
+             bytes=(Get-Item -LiteralPath $standardEnvelope).Length; authority='synthetic CI repository only'
+           } | ConvertTo-Json | Set-Content 'ci-results/standard-update-envelope.json'
           $negativeSetup = Join-Path $negativeBuild $negativeProof.installer.path
           $standardWork = Join-Path $bundleWork 'standard-install-acceptance'
           if (Test-Path -LiteralPath $standardWork) { throw 'Standard installer acceptance requires a fresh disposable directory.' }
           $standardRoot = Join-Path $standardWork 'program'
+          $standardUpdateWork = Join-Path $bundleWork 'standard-update-acceptance'
+          if (Test-Path -LiteralPath $standardUpdateWork) { throw 'Signed standard-update acceptance requires a new separate disposable directory.' }
+          $standardUpdateRoot = Join-Path $standardUpdateWork 'program'
+          $standardUpdatePrograms = @((Join-Path $standardUpdateRoot 'unins000.exe'),
+                                     (Join-Path $standardUpdateWork 'initial-setup/ResonanceSetup.exe'))
+          # Initial A, accepted B, rejected next candidate and repaired B all
+          # execute at fresh generation paths. Preinstall rules bind each path.
+          foreach ($generation in 1..4) {
+            $payload = Join-Path $standardUpdateRoot ('versions/' + $sourceCommit.Substring(0,12) + '-' + $generation)
+            foreach ($relative in @('runtime/python.exe', 'runtime/pythonw.exe', '.venv/Scripts/python.exe', '.venv/Scripts/pythonw.exe', 'ResearchLibrary.exe', 'ocr/tesseract.exe', 'maintenance-setup.exe')) {
+              $standardUpdatePrograms += Join-Path $payload $relative
+            }
+          }
+          # The probe separately admits each UUID-named selected setup copy
+          # through its own exact-path ActiveStore-verified deny before execution.
           $standardPrograms = @($standardSetup, $negativeSetup, (Join-Path $standardRoot 'unins000.exe'))
           # Paths are known before installation: success, failed preparation,
           # and repair each consume one new generation. A rule on the original
@@ -646,7 +678,7 @@ jobs:
               $standardPrograms += Join-Path $payload $relative
             }
           }
-          $programs = (@($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $sealedLauncher, $env:CARR_PYTHON, $seedBasePython, $testFfmpeg, $testFfprobe, $env:CARR_EPUBCHECK_JAVA) + $standardPrograms + $localAudioPrograms) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $programs = (@($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $sealedLauncher, $env:CARR_PYTHON, $seedBasePython, $testFfmpeg, $testFfprobe, $env:CARR_EPUBCHECK_JAVA) + $standardPrograms + $standardUpdatePrograms + $localAudioPrograms) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -679,6 +711,30 @@ jobs:
               $installerLogs = Join-Path 'ci-results' 'standard-installer-logs'
               New-Item -ItemType Directory -Force $installerLogs | Out-Null
               Get-ChildItem -LiteralPath $standardWork -File -Filter '*.log' | Copy-Item -Destination $installerLogs
+            }
+          }
+          # The preceding real installer probe must have completed its uninstall;
+          # the new probe independently refuses any remaining registration/shortcut.
+          try {
+            & $env:CARR_PYTHON -I -B -X utf8 packaging/probe_standard_update_windows.py --envelope $standardEnvelope --envelope-sha256 $standardEnvelopeHash --source-commit $sourceCommit --manifest-sha256 $manifestHash --application-version $applicationVersion --work $standardUpdateWork --report 'ci-results/standard-update-native.json' --disposable-ci 2>&1 | Tee-Object 'ci-results/standard-update-native.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual signed standard update, recovery, rollback or uninstall failed.' }
+            $standardUpdate = Get-Content -LiteralPath 'ci-results/standard-update-native.json' -Raw | ConvertFrom-Json
+            if ($standardUpdate.status -ne 'PASS' -or $standardUpdate.source_commit -ne $sourceCommit -or $standardUpdate.manifest_sha256 -ne $manifestHash -or $standardUpdate.envelope_sha256 -ne $standardEnvelopeHash -or $standardUpdate.setup_sha256 -ne $standardProof.installer.sha256 -or $standardUpdate.application_version -ne $applicationVersion) { throw 'Signed standard-update native evidence differs from its exact reviewed setup and wheel.' }
+            if (-not $standardUpdate.actual_native_setup -or -not $standardUpdate.actual_windows_vault -or -not $standardUpdate.actual_installed_health -or -not $standardUpdate.actual_rollback_repair -or -not $standardUpdate.actual_uninstall -or -not $standardUpdate.same_workspace_history -or $standardUpdate.authority -ne 'synthetic fixture only') { throw 'Signed standard-update evidence lacks the required actual lifecycle checks.' }
+            $setupCoverage = @($standardUpdate.setup_firewall.executions)
+            if ($standardUpdate.setup_firewall.status -ne 'PASS' -or $setupCoverage.Count -ne 5 -or @($setupCoverage | Where-Object { $_.active_store_verified -ne $true -or $_.native_exit_code -ne 0 -or $_.sha256 -notmatch '^[0-9a-f]{64}$' }).Count -ne 0) { throw 'Every selected setup and uninstaller must have exact verified runtime coverage.' }
+          } finally {
+            # Text evidence only. Do not transfer setup EXEs, repository keys,
+            # program generations, local audio/model payloads or research data.
+            $updateLogs = Join-Path 'ci-results' 'standard-update-logs'
+            New-Item -ItemType Directory -Force $updateLogs | Out-Null
+            foreach ($logRoot in @($standardUpdateWork, (Join-Path $standardUpdateWork 'maintenance'))) {
+              if (Test-Path -LiteralPath $logRoot -PathType Container) {
+                Get-ChildItem -LiteralPath $logRoot -File -Filter '*.log' | Copy-Item -Destination $updateLogs
+              }
+            }
+            if (Test-Path -LiteralPath $standardUpdateWork -PathType Container) {
+              Get-ChildItem -LiteralPath $standardUpdateWork -File -Filter 'setup-firewall-*.json' | Copy-Item -Destination $updateLogs
             }
           }
           & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_fresh_windows.py --bundle-root $bundle --source-proof 'ci-results/source-wheel-before-native.json' --source-commit $sourceCommit --report 'ci-results/fresh-native-launcher.json' --timeout 600 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
@@ -794,6 +850,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installed native translation batch failed.' }
           & $installedPython -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-trust-status.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_update_maintenance_smoke.py --report 'ci-results/native-update-maintenance.json' 2>&1 | Tee-Object 'ci-results/native-update-maintenance.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-update review, download or lifetime checks failed.' }
           & $installedPython -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-results/native-portable-sync.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native encrypted snapshot workflow failed.' }
           & $installedPython -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-results/external-test-audio-binding.json' --require-installed --report 'ci-results/installed-epub-conformance.json' 2>&1 | Tee-Object 'ci-results/installed-epub-conformance.txt'
@@ -859,6 +917,7 @@ jobs:
           additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.progress', 'carr_library.progress_feedback', 'carr_library.progress_preferences', 'carr_library.keyboard_preferences', 'carr_library.evidence_drafts', 'carr_library.backup_current', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.integrations.supplied_transcription', 'carr_library.integrations.dordiai_speech', 'carr_library.citations.csl', 'carr_library.citations.bibliography_workbench', 'carr_library.ui.progress_panel', 'carr_library.ui.progress_media', 'carr_library.ui.operation_progress', 'carr_library.ui.command_registry', 'carr_library.ui.builtin_keyboard_commands', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.save_all', 'carr_library.ui.citation_styles_dialog', 'carr_library.ui.academic_tools', 'carr_library.speech.voice_preferences', 'carr_library.ui.voice_preferences', 'carr_library.audio.output_devices', 'carr_library.ui.output_devices')))
           additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.transcription', 'carr_library.transcription.models', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.backup_transcription', 'carr_library.backup_document_batches', 'carr_library.backup_compat.state', 'carr_library.conversion.service', 'carr_library.conversion.models', 'carr_library.conversion.formats', 'carr_library.conversion.planning', 'carr_library.conversion.batches', 'carr_library.conversion.cli', 'carr_library.ui.document_batch', 'carr_library.ui.document_conversion', 'carr_library.audio.effect_presets', 'carr_library.ui.effects_dialog', 'carr_library.ui.reader_background', 'carr_library.academic_integration.runtime_adapter', 'carr_library.transcription.reading', 'carr_library.ui.transcription_workstation')))
           additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.audio.recording', 'carr_library.audio.recording_monitor', 'carr_library.ui.recording_dialog', 'carr_library.backup_recordings', 'carr_library.backup_current', 'carr_library.conversion.office', 'carr_library.conversion.service', 'carr_library.conversion.worker', 'carr_library.ui.document_conversion', 'carr_library.conversion.formats', 'carr_library.audio.metadata', 'carr_library.assistant.templates', 'carr_library.assistant.service', 'carr_library.assistant.templates_cli', 'carr_library.ui.workflow_templates', 'carr_library.ui.assistant_dialog', 'carr_library.ui.document_batch', 'carr_library.assistant.translation', 'carr_library.assistant.translation_source', 'carr_library.assistant.translation_batch', 'carr_library.ui.translation_batch_dialog', 'carr_library.assistant.translation_batch_cli', 'carr_library.backup_translation_batches', 'carr_library.ui.translation_dialog', 'carr_library.transcription_cli', 'carr_library.transcription.service', 'carr_library.audio.windows_job', 'carr_library.portable_entry', 'carr_library.installation_lease', 'carr_library.portable_bootstrap', 'carr_library.local_audio_setup', 'carr_library.__main__', 'carr_library.native_checks', 'carr_library.bibliography_cli', 'carr_library.operations_cli', 'carr_library.studio.cli', 'carr_library.extract.ocr_model_catalog', 'carr_library.assistant.translation_cli', 'carr_library.security.__main__', 'carr_library.security.installation', 'carr_library.security.handoff', 'carr_library.conversion.cli', 'carr_library.sync.cli', 'carr_library.ui.desktop_app', 'carr_library.security._https_worker', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.standard_handoff', 'carr_library.ui.trust_status', 'carr_library.ui.update_maintenance')))
+          additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.conversion.calibre', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.transcription_dialog', 'carr_library.ui.transcription_workstation', 'carr_library.operations.facade', 'carr_library.ui.ebook_model', 'carr_library.studio.render')))
           for name in additional_names:
               module = importlib.import_module(name)
               installed_origins[name] = str(pathlib.Path(module.__file__).resolve())
@@ -1196,12 +1255,19 @@ jobs:
               'tests/audio/test_recording_controls.py',
               'tests/audio/test_recording_monitor.py',
               'tests/conversion/test_office_selection.py',
+              'tests/ui/test_ebook_dialog.py',
+              'tests/conversion/test_calibre_selection.py',
+              'tests/conversion/test_calibre_process_ownership.py',
+              'tests/conversion/test_calibre_acceptance.py',
+              'tests/speech/test_dictionary_import_boundary.py',
               'tests/conversion/test_archive_reading.py',
               'tests/packaging/test_portable_entry.py',
               'tests/security/test_portable_handoff.py',
               'tests/security/test_https_source_policy.py',
               'tests/security/test_standard_update_handoff.py',
               'tests/security/test_update_maintenance.py',
+              'tests/ui/test_update_maintenance.py',
+              'tests/packaging/test_standard_update_envelope.py',
               'tests/packaging/test_portable_entry_windows.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
@@ -1684,6 +1750,10 @@ jobs:
             'tests/audio/test_recording_controls.py',
             'tests/audio/test_recording_monitor.py',
             'tests/conversion/test_office_selection.py',
+            'tests/conversion/test_calibre_selection.py',
+            'tests/conversion/test_calibre_process_ownership.py',
+            'tests/conversion/test_calibre_acceptance.py',
+            'tests/speech/test_dictionary_import_boundary.py',
             'tests/conversion/test_archive_reading.py',
             'tests/packaging/test_portable_entry.py',
             'tests/security/test_portable_handoff.py',
@@ -1691,6 +1761,8 @@ jobs:
             'tests/security/test_https_source_policy.py',
             'tests/security/test_standard_update_handoff.py',
             'tests/security/test_update_maintenance.py',
+            'tests/ui/test_update_maintenance.py',
+            'tests/packaging/test_standard_update_envelope.py',
             'tests/packaging/test_portable_entry_windows.py'
           )
           $previousPath = $env:PATH

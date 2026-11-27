@@ -485,8 +485,22 @@ def _run():
                            if window and isinstance(window, wx.MultiChoiceDialog)
                            and window.GetTitle() == 'Translation source books')
             check('source multi-selection is an actual owned modal', chooser.IsModal())
-            choices = chooser.FindWindow(wx.ID_LISTBOX)
-            check('actual two-row native source picker', choices is not None and choices.GetCount() == 2)
+            # wxPython does not export wxWidgets' private ID_LISTBOX. Find the
+            # single actual list within this owned chooser, never another window.
+            pending = list(chooser.GetChildren())
+            lists, inspected = [], 0
+            while pending:
+                child = pending.pop()
+                inspected += 1
+                check('owned source-picker child inventory stays bounded', inspected <= 256)
+                check('owned source-picker child remains native', bool(child))
+                if isinstance(child, (wx.CheckListBox, wx.ListBox)):
+                    lists.append(child)
+                else:
+                    pending.extend(child.GetChildren())
+            check('owned source picker has exactly one real list', len(lists) == 1)
+            choices = lists[0]
+            check('actual two-row native source picker', choices.GetCount() == 2)
             chooser.SetSelections([])
             def confirm():
                 # MultiChoiceDialog.GetSelections() is the accepted result:

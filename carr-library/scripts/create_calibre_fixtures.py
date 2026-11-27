@@ -21,7 +21,7 @@ from uuid import UUID
 from carr_library.audio.cleanup import retained_temporary_directory
 from carr_library.audio.models import AudioBudget, AudioCleanupPending
 from carr_library.audio.process import run_process
-from carr_library.conversion.calibre import CalibreSelection, _environment
+from carr_library.conversion.calibre import CalibreSelection, _environment, _version_text
 from carr_library.conversion.office import checked_directory, regular_file, verified_reader
 
 TEXTS = (
@@ -131,6 +131,13 @@ def captured_bytes(path, maximum=MAX_FILE):
     return data
 
 
+def _fixture_version(raw):
+    version = _version_text(raw)
+    if version not in ('ebook-convert (calibre 9.19.0)', 'ebook-convert.exe (calibre 9.19.0)'):
+        raise ValueError('This fixed native fixture gate requires the reviewed Calibre 9.19.0.')
+    return version
+
+
 def generate(executable, output):
     output = Path(output).absolute()
     checked_directory(output.parent)
@@ -158,9 +165,7 @@ def generate(executable, output):
                     readers = held.pop_all()
                     error.cleanup_owner.add_quiescent_callback(readers.close)
                     raise
-        version = native(['--version']).decode('utf-8', 'strict').strip()
-        if version not in ('ebook-convert (calibre 9.19.0)', 'ebook-convert.exe (calibre 9.19.0)'):
-            raise ValueError('This fixed native fixture gate requires the reviewed Calibre 9.19.0.')
+        version = _fixture_version(native(['--version']))
         source = stage / 'authored.html'
         source_bytes = html_document()
         source.write_bytes(source_bytes)

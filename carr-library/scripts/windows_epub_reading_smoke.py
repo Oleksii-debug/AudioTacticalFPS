@@ -210,7 +210,7 @@ def _run_native(options):
     from carr_library.reader.reading_state import ReadingState
     from carr_library.studio.render import ProductionService
     from carr_library.studio.publishing import PublicationService
-    from carr_library.ui import ebook_audio_dialog, ebook_model, reading_desk
+    from carr_library.ui import ebook_audio_dialog, ebook_model, reading_desk, progress_panel, progress_media
     from carr_library.ui.desktop_app import DesktopFrame
 
     errors, checks, pressed, audio_proof = [], [], set(), {}
@@ -341,7 +341,8 @@ def _run_native(options):
     with TemporaryDirectory(prefix='resonance-native-epub-reading-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
         try:
-            source_identity = binding.verify_installed_sources(ebook_audio, ebook_audio_dialog, ebook_model, reading_desk, live_reading)
+            source_identity = binding.verify_installed_sources(ebook_audio, ebook_audio_dialog, ebook_model,
+                reading_desk, live_reading, progress_panel, progress_media)
             check('exact installed source and native reader modules', bool(source_identity))
             check('real native Windows controls', wx.Platform == '__WXMSW__')
             library = LibraryApp(root / 'library')
@@ -398,7 +399,9 @@ def _run_native(options):
                         check('native source highlight is an exact Unicode fragment',
                               actual_highlight == expected_highlight)
                         check('existing progress observes the owned transport', overlay.transport.observed
-                              in frame.operation_progress._players)
+                              in frame.progress_panel.media.players
+                              and overlay.progress is frame.operation_progress
+                              and frame.operation_progress.panel is frame.progress_panel)
                         stage = 2
                         press(named(overlay.dialog, 'Play from selected segment'))
                     elif stage == 2 and overlay.player.state == 'playing':
@@ -433,7 +436,7 @@ def _run_native(options):
                         press(wx.Window.FindWindowById(wx.ID_CANCEL, overlay.dialog), wx.WXK_ESCAPE)
                     elif stage == 10 and reader._audio_dialog is None:
                         check('closing recorded audio confirms owned cleanup', overlay.closed and overlay.player.state == 'stopped'
-                              and overlay.transport.observed not in frame.operation_progress._players)
+                              and overlay.transport.observed not in frame.progress_panel.media.players)
                         stage = 11
                         press(wx.Window.FindWindowById(wx.ID_CANCEL, reader.dialog), wx.WXK_ESCAPE)
                 finally:
@@ -468,7 +471,7 @@ def _run_native(options):
                     verify_audio(service._runtime())
                     check('installed source mapping remains unchanged',
                           binding.verify_installed_sources(ebook_audio, ebook_audio_dialog,
-                              ebook_model, reading_desk, live_reading) == source_identity)
+                              ebook_model, reading_desk, live_reading, progress_panel, progress_media) == source_identity)
                 gui.ExitMainLoop()
 
             wx.CallAfter(guarded(open_reader))

@@ -103,7 +103,7 @@ def reader(tmp_path):
     dialog.dialog = SimpleNamespace(IsModal=lambda: False)
     dialog.closed = dialog.busy = dialog._destroy_requested = False
     dialog.parent = SimpleNamespace()
-    dialog._audio_dialog = dialog._appearance = dialog.keyboard = None
+    dialog._audio_dialog = dialog._appearance = None
     dialog.cancelled, dialog.controller = cancelled, controller
     dialog.executor = _Executor()
     dialog.text, dialog.location, dialog.status = _Control(), _Control(), _Control()

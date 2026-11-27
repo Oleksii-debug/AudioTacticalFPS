@@ -131,6 +131,10 @@ jobs:
             tests/ui/test_transcription_workstation.py \
             tests/ui/test_ebook_dialog.py \
             tests/conversion/test_document_batches_ownership.py \
+            tests/audio/test_windows_job_cleanup.py \
+            tests/packaging/test_native_launcher_bundle.py \
+            tests/packaging/test_local_audio_setup.py \
+            tests/ui/test_reader_command_dispatch.py \
             tests/security/test_updates.py 2>&1 | tee ci-feature-review/boundaries.txt
       - name: Require Windows acquisition and actual native lookup
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success'"
@@ -187,8 +191,10 @@ jobs:
             foreach ($probe in $probes) {
               $scriptPath = $probe.script
               $probeArgs = @($probe.arguments)
-              & $python -I -B -X utf8 $scriptPath @probeArgs 2>&1 | Tee-Object ('ci-feature-review/' + $probe.name + '.txt')
-              if ($LASTEXITCODE -ne 0) { $failures += $probe.name }
+              & $python -I -B -X utf8 -X faulthandler $scriptPath @probeArgs 2>&1 | Tee-Object ('ci-feature-review/' + $probe.name + '.txt')
+              $probeExit = $LASTEXITCODE
+              Write-Output ('Native probe exit: ' + $probe.name + ' = ' + $probeExit)
+              if ($probeExit -ne 0) { $failures += $probe.name }
             }
             if ($failures.Count -ne 0) { throw ('Required native workflows failed: ' + ($failures -join ', ')) }
           } finally {

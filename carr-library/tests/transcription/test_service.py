@@ -420,3 +420,125 @@ def test_profile_cuda_reserves_same_generic_pool_and_exclusive_token_as_legacy(s
     assert not broker.snapshot()['leases']
     # The actual synthetic peer proves admission/protocol only, not GPU inference.
     assert starts(runtime) == 1
+
+
+@pytest.mark.parametrize('action', ['pause', 'cancel'])
+def test_control_budget_keeps_immediate_persisted_stop_during_actual_hash(setup, monkeypatch, action):
+    from carr_library import durable_state
+    from carr_library.transcription import runtime as selected_runtime
+
+    service, runtime, profile, audio = setup
+    audio.write_bytes(b'Synthetic retained input; no acoustic claim.\n' * 80000)
+    original_bytes = audio.read_bytes()
+    created = job(setup)
+    root = service._job_root(created['id'])
+    control = root / 'control.json'
+    retained = root / created['sources'][0]['retained_path']
+    real_read_json = module.read_json
+    real_json_open = durable_state._open_json_file
+    real_selected_open = selected_runtime._open_selected_file
+    configured_budgets, read_requests, observed_actions, consumed = [], [], [], []
+
+    def observed_json(path, **options):
+        if Path(path) == control:
+            configured_budgets.append(options.get('maximum'))
+        return real_read_json(path, **options)
+
+    @contextmanager
+    def observed_open(path):
+        with real_json_open(path) as stream:
+            if Path(path) != control:
+                yield stream
+                return
+
+            class ActualControlReader:
+                def fileno(self):
+                    return stream.fileno()
+
+                def read(self, size=-1):
+                    read_requests.append(size)
+                    return stream.read(size)
+
+            yield ActualControlReader()
+
+    @contextmanager
+    def stop_after_retained_chunk(path):
+        with real_selected_open(path) as stream:
+            if Path(path) != retained:
+                yield stream
+                return
+
+            class ActualRetainedReader:
+                def fileno(self):
+                    return stream.fileno()
+
+                def read(self, size=-1):
+                    value = stream.read(size)
+                    consumed.append(len(value))
+                    if len(consumed) == 1:
+                        getattr(service, action)(created['id'])
+                    return value
+
+            yield ActualRetainedReader()
+
+    def cancelled():
+        selected = service._control(created['id'])
+        observed_actions.append(selected)
+        return selected != 'run'
+
+    monkeypatch.setattr(module, 'read_json', observed_json)
+    monkeypatch.setattr(durable_state, '_open_json_file', observed_open)
+    monkeypatch.setattr(selected_runtime, '_open_selected_file', stop_after_retained_chunk)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        selected_runtime.file_identity(retained, cancel=cancelled)
+
+    assert consumed == [1024 * 1024]
+    assert observed_actions[0] == 'run' and observed_actions[-1] == action
+    assert service._control(created['id']) == action
+    assert configured_budgets and set(configured_budgets) == {4096}
+    assert read_requests and set(read_requests) == {4097}
+    assert len(read_requests) == len(configured_budgets)
+    assert audio.read_bytes() == original_bytes == retained.read_bytes()
+    assert starts(runtime) == 0
+
+
+def test_oversized_control_fails_before_any_worker_or_control_payload_read(setup, monkeypatch):
+    from carr_library import durable_state
+
+    service, runtime, profile, audio = setup
+    created = job(setup)
+    root = service._job_root(created['id'])
+    control = root / 'control.json'
+    atomic_json(control, {'action': 'run', 'unexpected_padding': 'x' * 4096}, replace=True)
+    saved_control = control.read_bytes()
+    saved_job = (root / 'job.json').read_bytes()
+    saved_audio = audio.read_bytes()
+    real_open = durable_state._open_json_file
+    real_read_json = module.read_json
+    configured_budgets = []
+
+    @contextmanager
+    def no_control_payload(path):
+        assert Path(path) != control, 'Oversized control bytes must fail before opening.'
+        with real_open(path) as stream:
+            yield stream
+
+    def observed_json(path, **options):
+        if Path(path) == control:
+            configured_budgets.append(options.get('maximum'))
+        return real_read_json(path, **options)
+
+    def no_worker(*args, **options):
+        raise AssertionError('An oversized control record cannot launch a worker.')
+
+    monkeypatch.setattr(durable_state, '_open_json_file', no_control_payload)
+    monkeypatch.setattr(module, 'read_json', observed_json)
+    monkeypatch.setattr(execution, 'run_process', no_worker)
+    with pytest.raises(ValueError, match='JSON budget'):
+        service.run(created['id'])
+
+    assert configured_budgets and set(configured_budgets) == {4096}
+    assert control.read_bytes() == saved_control
+    assert (root / 'job.json').read_bytes() == saved_job
+    assert audio.read_bytes() == saved_audio
+    assert starts(runtime) == 0
