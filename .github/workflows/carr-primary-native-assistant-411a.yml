@@ -33,7 +33,7 @@ jobs:
       - name: Check out the exact primary application source under review
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 8cdcccdf6530d5f9532d9ad6b1f1c4530d9abc51
+          ref: 45ed0ae2550dcbfd961503781a386797ad4bb20a
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
@@ -98,8 +98,8 @@ jobs:
           assert not installed.is_relative_to(source.resolve())
           commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
-          assert commit == '8cdcccdf6530d5f9532d9ad6b1f1c4530d9abc51'
-          assert tree == 'b5fa787c849fcae1b757f412996a85b29680de2e'
+          assert commit == '45ed0ae2550dcbfd961503781a386797ad4bb20a'
+          assert tree == '7f42cbd734308acbc5f34bf728a6941c32c0be00'
           spec = importlib.util.spec_from_file_location('native_assistant_acceptance', pathlib.Path('scripts/windows_assistant_smoke.py'))
           module = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(module)
@@ -122,12 +122,23 @@ jobs:
                           seen_phases.add(key)
                           print('DIAGNOSTIC: poll phase', key, flush=True)
               return trace_native
+          def trace_assertions(frame, event, arg):
+              if not frame.f_code.co_filename.endswith('windows_assistant_smoke.py'):
+                  return None
+              if event == 'exception' and isinstance(arg[1], (AssertionError, RuntimeError, KeyError)):
+                  review = frame.f_locals.get('review')
+                  shown = review.GetValue()[:180] if review is not None else None
+                  print('DIAGNOSTIC: exception', frame.f_code.co_name, frame.f_lineno,
+                        type(arg[1]).__name__, str(arg[1]), 'review=', repr(shown), flush=True)
+              return trace_assertions
+          sys.settrace(trace_assertions)
           sys.setprofile(trace_native)
           app = wx.App(False)
           print('DIAGNOSTIC: wx.App initialized', flush=True)
           with tempfile.TemporaryDirectory(prefix='carr-native-assistant-Архів-') as temporary:
               result = module.exercise_controls(pathlib.Path(temporary), wx)
           sys.setprofile(None)
+          sys.settrace(None)
           faulthandler.cancel_dump_traceback_later()
           print('DIAGNOSTIC: controls completed', flush=True)
           assert tuple(result['checks']) == module.EXPECTED_CHECKS
