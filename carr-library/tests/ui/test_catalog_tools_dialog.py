@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import threading
 from types import ModuleType, SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
