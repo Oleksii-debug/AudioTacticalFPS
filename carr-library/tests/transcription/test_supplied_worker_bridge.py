@@ -547,8 +547,7 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
         raise AssertionError('Stop must defer verification until explicit resume.')
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return any((path / 'receipts').glob('*.result.json'))
     stopped = service.run(identity, timeout=30, cancelled=cancelled)
     assert stopped['status'] == 'stopped'
     assert stopped['artifacts'] == [] and stopped['done'] == 0
@@ -607,8 +606,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
     notices = []
 
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return any((path / 'receipts').glob('*.result.json'))
 
     def broken(done, total, phase):
         if phase == 'stopped':
@@ -661,9 +659,9 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
             raise
 
     def cancelled():
-        status = path / 'job_status.json'
-        return (any(done == 1 for done, _, _ in calls) and status.exists()
-                and read_json(status).get('done') == 1)
+        progress_seen = (any(done is None and total is None for done, total, _ in calls)
+                         if os.name == 'nt' else any(done == 1 for done, _, _ in calls))
+        return progress_seen and any((path / 'receipts').glob('*.result.json'))
 
     result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
     durable, worker = service.get(identity), read_json(path / 'job_status.json')
@@ -674,13 +672,19 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     assert len(saved) == 1 and read_json(saved[0])['run_id'] == worker['run_id']
     assert len(list((path / 'results').rglob('*.*'))) == 6
     assert len(list((path / 'input').iterdir())) == 2
-    measured = [done for done, total, _ in calls]
-    assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+    measured = [done for done, total, _ in calls if total is not None]
+    assert measured and max(measured) == 1
+    assert all(total == 2 for _, total, _ in calls if total is not None)
+    if os.name == 'nt':
+        assert calls[0] == (None, None, 'running')
+        assert all(done is None and total is None for done, total, _ in calls[:-1])
+    else:
+        assert all(total == 2 for _, total, _ in calls)
     assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
     assert calls[-1] == (1, 2, 'stopped')
     assert observer_errors == []
     assert operation_outcome(result) == 'cancelled'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition('cancelled', 'Stopped; saved files await verification').percent < 100
 
 
@@ -699,7 +703,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     partial = service.run(identity, timeout=30, progress=progress)
     assert partial['status'] == 'partial' and partial['done'] == 1, partial
     assert operation_outcome(partial) == 'paused'
-    assert events and all(event.percent < 100 for event in events)
+    assert events and all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
 
     configure('complete')
@@ -707,6 +711,6 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     completed = service.run(identity, timeout=30, progress=progress)
     assert completed['status'] == 'completed' and completed['done'] == 2
     assert operation_outcome(completed) == 'succeeded'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100

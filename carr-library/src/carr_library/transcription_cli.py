@@ -75,7 +75,9 @@ def main(argv=None):
                       {'id': service.submit(args.files, title=args.title, options=options, protocol=args.protocol)})
         elif args.operation == 'run':
             result = service.run(args.job, timeout=args.timeout,
-                progress=lambda done, total, state: print(f'{done}/{total}: {state}', file=sys.stderr, flush=True))
+                progress=lambda done, total, state: print(
+                    f'{state}: progress is indeterminate' if total is None else f'{done}/{total}: {state}',
+                    file=sys.stderr, flush=True))
         elif args.operation == 'show':
             result = service.get(args.job)
         elif args.operation == 'verify':

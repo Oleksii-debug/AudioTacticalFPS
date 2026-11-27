@@ -44,6 +44,13 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist and synchronized
   publishing/Braille workflows.
+- Professional microphone capture, real-time monitoring and complete accessible
+  multitrack/clip editing. The existing offline scene renderer, microphone track
+  role and recording-quiet policy do not implement these device workflows.
+- Actual local-model planning through the existing validated plan adapter, and
+  the qualified local/Google Advanced translation paths. Guided commands,
+  synthetic transports and a configured local server are separate evidence from
+  executed model inference and language quality.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native

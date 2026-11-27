@@ -62,52 +62,11 @@ def _unique(pairs):
     return value
 
 
-def _shared_replace_reader(path, flags):
-    """Open a live read snapshot without blocking the producer's atomic replace."""
-    if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND):
-        raise ValueError('A live state reader must be read-only.')
-    if os.name != 'nt':
-        return os.open(path, flags | getattr(os, 'O_NOFOLLOW', 0))
-    import ctypes
-    from ctypes import wintypes
-    import msvcrt
-
-    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-    create = kernel.CreateFileW
-    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
-                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
-    create.restype = wintypes.HANDLE
-    close = kernel.CloseHandle
-    close.argtypes = (wintypes.HANDLE,)
-    close.restype = wintypes.BOOL
-    # GENERIC_READ, SHARE_READ|WRITE|DELETE, OPEN_EXISTING, and open the final
-    # reparse point itself so the descriptor guard can reject a replaced link.
-    handle = create(os.fsdecode(path), 0x80000000, 0x7, None, 3, 0x00200080, None)
-    if handle == ctypes.c_void_p(-1).value:
-        raise ctypes.WinError(ctypes.get_last_error())
-    try:
-        # Ownership transfers to the descriptor, then to open()'s file object.
-        # Without O_TEXT the CRT descriptor reads the original binary bytes.
-        return msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_NOINHERIT)
-    except BaseException:
-        close(handle)
-        raise
-
-
-def read_json(path, *, shared_replace=False):
+def read_json(path):
     path = local_path(path, exists=True)
     if regular(path).st_size > MAX_JSON_BYTES:
         raise ValueError('State exceeds its configured JSON budget.')
-    stream = (open(path, 'rb', opener=_shared_replace_reader)
-              if shared_replace else path.open('rb'))
-    with stream:
-        if shared_replace:
-            info = os.fstat(stream.fileno())
-            if (not stat.S_ISREG(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400
-                    or info.st_nlink != 1):
-                raise ValueError('Live state must use a regular local file, without links.')
-            if info.st_size > MAX_JSON_BYTES:
-                raise ValueError('State exceeds its configured JSON budget.')
+    with path.open('rb') as stream:
         raw = stream.read(MAX_JSON_BYTES + 1)
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')

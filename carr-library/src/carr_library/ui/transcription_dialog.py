@@ -248,8 +248,15 @@ def show_transcription(frame):
             def advanced(done, total, phase):
                 if progress is not None:
                     progress.update(done, total, phase, token=token)
-                wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
-                            'підтверджені результати показані у стані завдання.')
+                if total is None:
+                    message = ('Зупинено; проміжну кількість не визначено. Збережені результати '
+                               'буде перевірено після явного продовження.' if phase == 'stopped' else
+                               'Триває локальна транскрипція; прогрес поки невизначений. '
+                               'Результати буде перевірено після завершення рушія.')
+                    wx.CallAfter(report, message)
+                else:
+                    wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
+                                'підтверджені результати показані у стані завдання.')
             return service.run(identity, cancelled=cancelled, progress=advanced)
         begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity))
     def save(event):

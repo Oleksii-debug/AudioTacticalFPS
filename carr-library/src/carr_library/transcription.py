@@ -33,6 +33,9 @@ V5_RECOGNITION_KEYS = ('task', 'language', 'multilingual', 'model', 'model_path'
                        'model_cache_dir', 'device', 'compute_type', 'beam_size',
                        'vad_filter', 'condition_on_previous_text')
 V5_PROVENANCE = 'package_versions_only_not_a_qualified_runtime_pack'
+# The supplied Windows producer uses legacy atomic replacement, which cannot
+# replace an open destination even when its reader shares DELETE access.
+_LIVE_STATUS_SNAPSHOTS = os.name != 'nt'
 MEDIA_SUFFIXES = frozenset(('.wav', '.flac', '.mp3', '.m4a', '.mp4', '.mkv',
                            '.webm', '.ogg', '.opus', '.aac', '.wma', '.aiff',
                            '.aif', '.m4b', '.mov', '.avi'))
@@ -929,7 +932,7 @@ class TranscriptionService:
                     reported_done = max(reported_done, done)
                 if observer_available:
                     try:
-                        progress(reported_done, total, phase)
+                        progress(reported_done if total is not None else None, total, phase)
                     except Exception:
                         # A detached UI must not kill the worker or reverse a
                         # durable result. Disable only this optional observer.
@@ -940,14 +943,19 @@ class TranscriptionService:
                 if cancelled() and stop_at is None:
                     atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
                     stop_at = now
-                if observer_available and now - notice_at >= .5 and prior.exists():
+                if observer_available and now - notice_at >= .5:
                     notice_at = now
-                    try:
-                        current = read_json(prior, shared_replace=True)
-                        notify(current.get('done', 0), len(job['sources']),
-                               str(current.get('state', 'running'))[:200])
-                    except (ValueError, OSError):
-                        pass
+                    if not _LIVE_STATUS_SNAPSHOTS:
+                        # Never hold the producer's mutable status open while it
+                        # runs on Windows. Unknown progress stays indeterminate.
+                        notify(None, None, 'running')
+                    elif prior.exists():
+                        try:
+                            current = read_json(prior)
+                            notify(current.get('done', 0), len(job['sources']),
+                                   str(current.get('state', 'running'))[:200])
+                        except (ValueError, OSError):
+                            pass
                 return stop_at is not None and now - stop_at >= 3
             failure = None
             from .audio.music import _SITE_BOOTSTRAP
@@ -969,7 +977,21 @@ class TranscriptionService:
                 job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
                            last_error='Stopped. Saved worker results will be verified on the next resume.')
                 self._save(path, job)
-                notify(0, len(job['sources']), 'stopped')
+                if not _LIVE_STATUS_SNAPSHOTS:
+                    # run_process has reaped the child. A bounded status read
+                    # may now retain its provisional count without hashing any
+                    # input or accepting receipts before explicit resume.
+                    done = None
+                    try:
+                        terminal = read_json(prior) if prior.exists() else {}
+                        count = terminal.get('done') if isinstance(terminal, dict) else None
+                        if type(count) is int and 0 <= count <= len(job['sources']):
+                            done = count
+                    except (ValueError, OSError):
+                        pass
+                    notify(done, len(job['sources']) if done is not None else None, 'stopped')
+                else:
+                    notify(0, len(job['sources']), 'stopped')
                 return job
             try:
                 status = read_json(prior) if prior.exists() else {}
