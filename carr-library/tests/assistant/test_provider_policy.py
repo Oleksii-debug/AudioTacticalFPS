@@ -305,14 +305,48 @@ def test_real_redirect_is_not_followed(store,server):
     assert len(server.received) == 1
 
 
-def test_real_cancellation_interrupts_waiting_response_without_retry(store,server):
+def test_real_cancellation_interrupts_waiting_response_without_retry(store,server,monkeypatch):
+    from carr_library.assistant import providers
     server.mode = 'delay'
     gateway = local_gateway(store,server)
+    timeline = []
     started = time.monotonic()
+    def trace(event):
+        timeline.append((event, round(time.monotonic()-started, 4), threading.current_thread().name))
+    original_write = providers.atomic_json
+    def traced_write(*args, **kwargs):
+        trace('journal-start')
+        try:
+            return original_write(*args, **kwargs)
+        finally:
+            trace('journal-end')
+    original_request = providers.HTTPTransport.request
+    def traced_request(*args, **kwargs):
+        trace('transport-start')
+        try:
+            return original_request(*args, **kwargs)
+        finally:
+            trace('transport-end')
+    original_shutdown = socket.socket.shutdown
+    def traced_shutdown(*args, **kwargs):
+        trace('shutdown-start')
+        try:
+            return original_shutdown(*args, **kwargs)
+        finally:
+            trace('shutdown-end')
+    monkeypatch.setattr(providers, 'atomic_json', traced_write)
+    monkeypatch.setattr(providers.HTTPTransport, 'request', traced_request)
+    monkeypatch.setattr(socket.socket, 'shutdown', traced_shutdown)
+    def cancelled():
+        result = time.monotonic()-started > 0.12
+        if result:
+            trace('cancellation-observed')
+        return result
     with pytest.raises(InterruptedError):
-        call(gateway,'local',cost=0,cancelled=lambda:time.monotonic()-started>0.12)
-    assert time.monotonic()-started < 0.6
-    assert len(server.received) == 1
+        call(gateway,'local',cost=0,cancelled=cancelled)
+    elapsed = time.monotonic()-started
+    assert elapsed < 0.6, {'elapsed': elapsed, 'timeline': timeline}
+    assert len(server.received) == 1, timeline
 
 
 def test_remote_dns_private_address_is_rejected_before_connect(monkeypatch):
