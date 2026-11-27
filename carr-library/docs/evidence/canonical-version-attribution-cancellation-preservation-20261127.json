@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RECONCILED_RUNTIME_NOT_RUN",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "composition_parent": "078dde33e65767e14b3bd50de74974144236e820",
+  "changes": [
+    {
+      "path": "src/carr_library/__init__.py",
+      "decision": "Preserve canonical 0.2.0.dev2 instead of downgrading the combined source to dev1."
+    },
+    {
+      "path": "pyproject.toml",
+      "decision": "Keep wheel metadata equal to the canonical application version; dependencies, packages and notices unchanged.",
+      "source_review": "Existing source-wheel/build code derives version and dist-info from pyproject; no fixed dev1 dependency found in the inspected build/setup/main paths."
+    },
+    {
+      "path": "src/carr_library/ui/workspace_shell.py",
+      "canonical_blob": "c4ce2664d585bf36f2911695f8f6632499218381",
+      "decision": "Restore the exact canonical visible/native accessible citation-processor attribution in this retained shell. No substitute copyright or distribution-clearance claim."
+    },
+    {
+      "path": "src/carr_library/durable_state.py",
+      "decision": "Restore the exact canonical optional cancellation callback in digest_file. Keep the current coherent state reader, no-replace publisher and shared bounded Windows replace retry."
+    }
+  ],
+  "runtime": "NOT_RUN for this composition",
+  "rights": "Notice preservation is not redistribution clearance.",
+  "new_test_count": 0
+}
