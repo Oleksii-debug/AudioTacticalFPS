@@ -1,0 +1,59 @@
+{
+  "schema": "carr-observed-capacity/1",
+  "status": "PASS",
+  "benchmark_step_outcome": "success",
+  "required_sizes": [
+    1000,
+    10000,
+    50000
+  ],
+  "claims": {
+    "scope": "Installed synthetic catalogue/search/context/copy/cancel/restart services on Windows",
+    "real_book_corpus": "NOT_RUN",
+    "large_book_import_throughput": "NOT_MEASURED",
+    "native_gui_or_nvda": "NOT_RUN",
+    "neural_models_or_vram": "NOT_RUN"
+  },
+  "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+  "source_tree": "b6416525dd57ddbcc931f119811e4e73faed68f6",
+  "source_manifest_sha256": "da0864ece84d7a909655aaa94489b148e8abf494b083a756d452f03a0e7f0ccd",
+  "wheel_sha256": "d8bef5de2a17fc62d91d3ba954c562d6715b582ef11f6d8a2ae448d57cf55550",
+  "installed_mode": true,
+  "isolated": true,
+  "cases": [
+    {
+      "synthetic_editions": 1000,
+      "pages": 10,
+      "elapsed_seconds": 89.94842890000007,
+      "search_page_p50_seconds": 2.173042799999962,
+      "search_page_p95_seconds": 2.2051060999999663,
+      "process_peak_rss_bytes": 117702656,
+      "fixture_sampled_peak_bytes": 3093538
+    },
+    {
+      "synthetic_editions": 10000,
+      "pages": 100,
+      "elapsed_seconds": 360.3702592000001,
+      "search_page_p50_seconds": 2.5143686999999773,
+      "search_page_p95_seconds": 2.548651700000164,
+      "process_peak_rss_bytes": 119443456,
+      "fixture_sampled_peak_bytes": 28414150
+    },
+    {
+      "synthetic_editions": 50000,
+      "pages": 500,
+      "elapsed_seconds": 3143.2864539,
+      "search_page_p50_seconds": 4.364153900000019,
+      "search_page_p95_seconds": 4.444328099999439,
+      "process_peak_rss_bytes": 115441664,
+      "fixture_sampled_peak_bytes": 137655806
+    }
+  ],
+  "run_id": 45993629484,
+  "job_id": 140487431391,
+  "artifact": {
+    "id": 15200500436,
+    "bytes": 89534,
+    "sha256": "7d5cb7c5803e86812b5e40d11a50d218635aa6dc250c05f4ee8c7e9e379473b1"
+  }
+}

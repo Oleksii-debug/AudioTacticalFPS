@@ -294,6 +294,9 @@ def test_guard_revocation_disposes_new_result_without_replacing_existing_documen
     old = value.session.document
     value._work(lambda: (new, None, ()), lambda result: pytest.fail('Revoked result was adopted.'),
                 dispose=value._dispose_loaded)
+    # The real worker has produced an owned result; its UI callback is still queued.
+    # Revoke precisely that boundary, not before worker admission.
+    assert value.future.result(timeout=8)[0] is new
     value.frame.library = SimpleNamespace(root=value.root)
     drain(value, queue)
     assert not new.audio.exists() and old.audio.is_file() and value.session.document is old

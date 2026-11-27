@@ -105,3 +105,9 @@ bounded at 75 minutes. Timeout, incomplete collection, changed counters,
 skips/XFAIL/XPASS, failed cleanup or altered source evidence is FAIL. Raw textual
 reports and bounded failure log tails remain available on every outcome.
 No private books, PCM payloads, models or executables are uploaded.
+
+## Observed Windows qualification and regression-test correction
+
+The frozen candidate `51a366368f4901d881f2b3bbeb789a25130a6f34` ran in GitHub Actions run `46006067939` (job `140529415570`). Both source and installed phases executed all 100 cases: 97 passed and three failed. The installed native phase completed, but the aggregate qualification remained **FAIL**. These failed results are retained; they are not transferred to the corrected candidate.
+
+Two tests expected an underlying filesystem exception even though the retained shared `backup_files.optional_present` contract raises `RestoreError` with the original exception as its cause. They now require that public exception and its exact cause, while still requiring unchanged persisted bytes. The late-result test now waits for the real worker to produce its owned document before revoking the active library and processing the queued UI callback. This proves disposal at the intended boundary without depending on scheduler timing. No production behavior, test population, timeout, or native oracle was relaxed. The corrected candidate requires a fresh full 100 source / 100 installed / 45 native run.

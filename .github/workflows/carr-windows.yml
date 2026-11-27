@@ -548,12 +548,48 @@ jobs:
             'tests/ui/test_audio_publication.py',
             'tests/ui/test_legacy_studio_import.py',
             'tests/ui/test_audio_native_probe_policy.py',
-            'tests/audio/test_cleanup_wait.py'
+            'tests/audio/test_cleanup_wait.py',
+            'tests/storage/test_incremental_backup.py',
+            'tests/ui/test_incremental_snapshots.py',
+            'tests/test_incremental_cli.py',
+            'tests/reader/test_live_playback.py',
+            'tests/ui/test_live_playback_controls.py',
+            'tests/reader/test_live_playback_ffmpeg.py',
+            'tests/reader/test_reading_preparation.py',
+            'tests/ui/test_narration_preparation.py',
+            'tests/storage/test_preparation_backup.py',
+            'tests/audio/test_batch_models.py',
+            'tests/audio/test_audio_batches.py',
+            'tests/storage/test_audio_batch_backup.py',
+            'tests/security/test_audio_batch_admission.py',
+            'tests/e2e/test_audio_batch_cli.py',
+            'tests/ui/test_audio_batches.py',
+            'tests/operations/test_audio_batch_facade.py',
+            'tests/ui/test_assistant_interactive.py',
+            'tests/ui/test_translation_scopes.py',
+            'tests/audio/test_playback_processing.py',
+            'tests/reader/test_media_overlay.py',
+            'tests/reader/test_publication_state.py',
+            'tests/reader/test_recorded_playback_controls.py',
+            'tests/ui/test_media_overlay.py',
+            'tests/reader/test_appearance.py',
+            'tests/reader/test_pacing.py',
+            'tests/ui/test_reader_appearance.py',
+            'tests/ui/test_paced_reading.py',
+            'tests/ui/test_paced_reader_hooks.py',
+            'tests/reader/test_export_reconciliation.py',
+            'tests/ingest/test_request_cleanup.py',
+            'tests/assistant/test_interactive_tools.py',
+            'tests/assistant/test_derived_tools.py',
+            'tests/assistant/test_interactive_service.py',
+            'tests/assistant/test_translation.py',
+            'tests/assistant/test_translation_advanced.py',
+            'tests/assistant/test_translation_scopes.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Require exact Word trust admission lease notices pause and pagination source cases
+      - name: Require exact protected source regression inventory
         run: |
           @'
           import json,pathlib,re
@@ -1134,6 +1170,17 @@ jobs:
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          # Every new native flow uses the actual installed event candidate.
+          $env:CARR_FFMPEG = Join-Path $bundle 'audio-runtime/ffmpeg.exe'
+          & $installedPython -I -B -X utf8 scripts/incremental_native_gate.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath 'incremental-results/native-proof.json' -Destination 'ci-results/full-bundle-incremental-native.json' -ErrorAction Stop
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py audio-batches --report ci-results/full-bundle-audio-batches-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py media-overlay --report ci-results/full-bundle-media-overlay-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/reader_interactive_native_gate.py --results ci-results/full-bundle-reader-interactive-native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $runInstalledTests = @'
           import ctypes, hashlib, json, os, pathlib, sys
           from ctypes import wintypes
@@ -1443,7 +1490,47 @@ jobs:
               'tests/audio/test_cleanup_wait.py',
               'tests/e2e/test_import_batches.py',
               'tests/e2e/test_retained_source_search_integrity.py',
-              'tests/reader/test_reading_desk.py'
+              'tests/reader/test_reading_desk.py',
+              'tests/storage/test_incremental_backup.py',
+              'tests/ui/test_incremental_snapshots.py',
+              'tests/test_incremental_cli.py',
+              'tests/reader/test_live_playback.py',
+              'tests/ui/test_live_playback_controls.py',
+              'tests/reader/test_live_playback_ffmpeg.py',
+              'tests/reader/test_reading_preparation.py',
+              'tests/ui/test_narration_preparation.py',
+              'tests/storage/test_preparation_backup.py',
+              'tests/audio/test_batch_models.py',
+              'tests/audio/test_audio_batches.py',
+              'tests/storage/test_audio_batch_backup.py',
+              'tests/security/test_audio_batch_admission.py',
+              'tests/e2e/test_audio_batch_cli.py',
+              'tests/ui/test_audio_batches.py',
+              'tests/operations/test_audio_batch_facade.py',
+              'tests/assistant/test_interactive_tools.py',
+              'tests/ui/test_assistant_interactive.py',
+              'tests/assistant/test_derived_tools.py',
+              'tests/assistant/test_interactive_service.py',
+              'tests/assistant/test_translation_scopes.py',
+              'tests/ui/test_translation_scopes.py',
+              'tests/audio/test_playback_processing.py',
+              'tests/reader/test_media_overlay.py',
+              'tests/reader/test_publication_state.py',
+              'tests/reader/test_recorded_playback_controls.py',
+              'tests/ui/test_media_overlay.py',
+              'tests/reader/test_appearance.py',
+              'tests/reader/test_pacing.py',
+              'tests/ui/test_reader_appearance.py',
+              'tests/ui/test_paced_reading.py',
+              'tests/ui/test_paced_reader_hooks.py',
+              'tests/reader/test_export_reconciliation.py',
+              'tests/ingest/test_request_cleanup.py',
+              'tests/assistant/test_canonical_backup.py',
+              'tests/assistant/test_checkpoint_publication.py',
+              'tests/assistant/test_dialog_lifecycle.py',
+              'tests/assistant/test_local_assistant.py',
+              'tests/assistant/test_production_bridge.py',
+              'tests/assistant/test_state_validation.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

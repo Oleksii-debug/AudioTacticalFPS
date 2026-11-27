@@ -23,7 +23,8 @@
   ],
   "helpers": [
     "tests/__init__.py",
-    "tests/assistant/interactive_fixture.py"
+    "tests/assistant/interactive_fixture.py",
+    "tests/reader/test_ebook_reader.py"
   ],
   "modules": {
     "carr_library.assistant.interactive_tools": "src/carr_library/assistant/interactive_tools.py",
