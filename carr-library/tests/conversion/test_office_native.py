@@ -135,7 +135,26 @@ def _xls_visibility_diagnostic(message, result):
                     if hidden:
                         if len(offenders) >= 64:
                             raise ValueError('Synthetic XML exceeds diagnostic hidden-node bound.')
-                        offenders.append(dict(current, ancestors=ancestors[-6:]))
+                        descendants = list(element.iter())
+                        if len(descendants) > 33:
+                            raise ValueError('Synthetic hidden layout subtree exceeds diagnostic bound.')
+                        shaped = []
+                        for descendant in descendants[1:]:
+                            if len(descendant.attrib) > 64:
+                                raise ValueError('Synthetic layout attributes exceed diagnostic bound.')
+                            shaped.append({'tag': descendant.tag,
+                                'attributes': {key: value[:256] for key, value in descendant.attrib.items()},
+                                'child_count': len(descendant),
+                                'non_whitespace_text': bool((descendant.text or '').strip()),
+                                'non_whitespace_tail': bool((descendant.tail or '').strip())})
+                        offenders.append(dict(current, ancestors=ancestors[-6:],
+                            child_count=len(element), child_tags=[child.tag for child in element],
+                            descendant_count=len(descendants) - 1,
+                            own_non_whitespace_text=bool((element.text or '').strip()),
+                            subtree_non_whitespace_text=any((child.text or '').strip() for child in descendants),
+                            descendant_non_whitespace_tail=any(
+                                (child.tail or '').strip() for child in descendants[1:]),
+                            descendants=shaped))
                     pending.extend((child, [*ancestors, current]) for child in reversed(element))
                 report['members'].append({'name': name, 'bytes': len(content),
                     'sha256': sha256(content).hexdigest(), 'nodes': count,

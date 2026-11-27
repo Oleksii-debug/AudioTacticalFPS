@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "base_commit": "5e61453b1099462f80261e201781da307cf0f49c",
+  "observed": {
+    "source_commit": "65ae1e9cac0352ae950b92f0f58ad6449728a0a9",
+    "run": 46054956286,
+    "job": 140695074052,
+    "source_pass": 6,
+    "source_fail": 1,
+    "body_visibility_nodes": 0,
+    "layout_visibility_nodes": 12
+  },
+  "change": "Extend only the existing fixed synthetic XLS test's inert failed-child census with complete bounded child/descendant tag/attribute shape and boolean non-whitespace text/tail presence. Never print full XML or body text. No product parser or accepted input policy changes.",
+  "bounds": {
+    "fixed_archive_bytes": 8388608,
+    "fixed_xml_member_bytes": 1048576,
+    "full_member_nodes": 10000,
+    "depth": 64,
+    "hidden_nodes": 64,
+    "subtree_nodes": 33,
+    "attributes_per_node": 64,
+    "attribute_value_characters": 256,
+    "output_characters": 65536
+  },
+  "qualification": "The existing seven-case source/installed gate remains unchanged; this diagnostic cannot supply or waive native PASS."
+}
