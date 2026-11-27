@@ -265,8 +265,8 @@ class ProductionService:
                 raise FileExistsError('Production output already exists without a matching job receipt.')
             # Voice availability is admission for a new job, not a condition
             # for acknowledging an already committed submission receipt.
-            available = {voice.id for voice in self.voices.voices()}
-            if any(role.voice_id not in available for role in project.roles if role.voice_id):
+            selected = {role.voice_id for role in project.roles if role.voice_id}
+            if selected and not selected.issubset({voice.id for voice in self.voices.voices()}):
                 raise ValueError('A selected local voice is no longer available. Reassign the role.')
             self.projects.save(project)
             state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
@@ -344,9 +344,16 @@ class ProductionService:
                     operation_id='studio:' + job_id, cancelled=admission_cancelled, timeout=60))
             except Exception as exc:
                 from ..operations import ResourceCancelled
-                action = read_json(control).get('action') if control.exists() else None
-                state['status'] = ('cancelled' if action == 'cancel' else 'paused'
-                                   if admission_cancelled() or isinstance(exc, ResourceCancelled) else 'attention')
+                # Only the broker's typed interruption acknowledges a stop.
+                # A simultaneous request must not hide an admission failure,
+                # and unreadable control data must not prevent saving it.
+                state['status'] = 'attention'
+                if isinstance(exc, ResourceCancelled):
+                    try:
+                        action = read_json(control).get('action') if control.exists() else None
+                    except (ValueError, OSError, AttributeError):
+                        action = None
+                    state['status'] = 'cancelled' if action == 'cancel' else 'paused'
                 state['error'] = str(exc)[:2000]
                 self._save(state)
                 if isinstance(exc, ResourceCancelled):
@@ -460,10 +467,17 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))
 
             roles = {role.id: role for role in project.roles}
-            voices = {voice.id: voice for voice in self.voices.voices()}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
             offset = 0.0
             try:
+                # Runtime voice discovery can fail after resource admission.
+                # Keep it inside the persisted failure boundary; music/silence
+                # without spoken text does not depend on a speech provider.
+                required = {roles[line.role].voice_id for scene in project.scenes
+                            for line in scene.lines if line.text}
+                voices = {voice.id: voice for voice in self.voices.voices()} if required else {}
+                if not required.issubset(voices):
+                    raise ValueError('A selected local voice is no longer available. Reassign the role.')
                 for scene_index, scene in enumerate(project.scenes, 1):
                     report(f'Scene {scene_index} of {len(project.scenes)}: {scene.title}')
                     clips, clip_roles, scene_lines, cursor = [], [], [], 0.0

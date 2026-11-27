@@ -424,3 +424,92 @@ def test_new_submission_still_requires_available_voice(submission, monkeypatch):
         service.submit(project, output, operation_id='new-no-voice')
     assert not (service.jobs_root / 'new-no-voice' / 'job.json').exists()
     assert not service.jobs()
+
+
+def test_voice_free_submission_does_not_enumerate_speech_provider(submission, monkeypatch):
+    from carr_library.studio.project import parse_script
+    service, _, output = submission
+    project = parse_script('[Duration: 1]', title='Silence')
+
+    def unavailable():
+        pytest.fail('A voice-free submission does not need the speech provider.')
+
+    monkeypatch.setattr(service.voices, 'voices', unavailable)
+    job = service.submit(project, output, stems=False, operation_id='voice-free')
+    assert service.get(job)['status'] == 'pending'
+
+
+@pytest.mark.parametrize('unavailable', ['empty', 'raises'])
+def test_run_voice_discovery_failure_is_persisted_and_can_resume(tmp_path, voices, monkeypatch, unavailable):
+    service, job = production(tmp_path, voices)
+    original = service.voices.voices
+    output = Path(service.get(job)['destination'])
+
+    def broken():
+        raise RuntimeError('Synthetic voice enumeration failure')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(service.voices, 'voices', (lambda: ()) if unavailable == 'empty' else broken)
+        with pytest.raises((ValueError, RuntimeError), match='no longer available|enumeration failure'):
+            service.run(job)
+    assert service.get(job)['status'] == 'failed'
+    assert service.get(job)['error']
+    assert not output.exists()
+    assert not service.get(job)['artifacts']
+    assert service.voices.voices == original
+    completed = service.run(job)
+    assert completed['status'] == 'complete'
+    service._verify_artifacts(completed)
+
+
+def test_voice_free_render_does_not_enumerate_speech_provider(tmp_path, voices, monkeypatch):
+    from carr_library.studio.project import parse_script
+    registry, _ = voices
+    service = ProductionService(tmp_path / 'state', voices=registry)
+    project = parse_script('[Duration: 1]', title='Silence')
+    output = tmp_path / 'output'
+    output.mkdir()
+
+    def unavailable():
+        pytest.fail('Voice-free rendering does not require speech provider discovery.')
+
+    monkeypatch.setattr(service.voices, 'voices', unavailable)
+    job = service.submit(project, output, stems=False)
+    completed = service.run(job)
+    assert completed['status'] == 'complete'
+    service._verify_artifacts(completed)
+
+
+@pytest.mark.parametrize('action', ['pause', 'cancel', 'malformed'])
+@pytest.mark.parametrize('interrupted', [False, True])
+def test_admission_outcome_preserves_typed_failure_and_control(submission, monkeypatch, action, interrupted):
+    from types import SimpleNamespace
+    from carr_library.operations import ResourceCancelled, ResourceUnavailable
+
+    service, project, output = submission
+    job = service.submit(project, output, stems=False, operation_id='admission-outcome')
+    control = service.jobs_root / job / 'control.json'
+    monkeypatch.setattr(service, '_runtime', lambda: object())
+    monkeypatch.setattr(service, '_resource_plan', lambda *args: (object(), {}))
+
+    def refuse(*args, **kwargs):
+        if action == 'malformed':
+            control.write_text('{', encoding='utf-8')
+        elif action == 'cancel':
+            service.cancel(job)
+        else:
+            service.request_pause(job)
+        if interrupted:
+            raise ResourceCancelled('Synthetic typed admission interruption')
+        raise ResourceUnavailable('Synthetic admission failure')
+
+    monkeypatch.setattr(service, '_broker', SimpleNamespace(reserve=refuse))
+    expected_error = InterruptedError if interrupted else ResourceUnavailable
+    with pytest.raises(expected_error):
+        service.run(job)
+    state = service.get(job)
+    expected = ('cancelled' if action == 'cancel' else 'paused') if interrupted else 'attention'
+    assert state['status'] == expected
+    assert state['error'] == ('Synthetic typed admission interruption' if interrupted else 'Synthetic admission failure')
+    assert not state['artifacts']
+    assert not Path(state['destination']).exists()
