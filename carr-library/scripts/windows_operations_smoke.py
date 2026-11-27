@@ -279,8 +279,11 @@ def _run_native():
                 check('native child destruction does not dispose its parent controller',
                       not detached.controller.closed)
                 detached_state['before'] = detached.controller.status
+                # Native destruction can expose a different Python wrapper;
+                # capture the live owner's ID before Destroy invalidates it.
+                detached_id = detached.GetId()
                 def destroyed(event):
-                    if event.GetEventObject() is detached:
+                    if event.GetId() == detached_id:
                         detached_state['destroyed'] = True
                     event.Skip()
                 def late():

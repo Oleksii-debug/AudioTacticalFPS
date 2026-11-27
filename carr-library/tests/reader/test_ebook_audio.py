@@ -1,10 +1,13 @@
 """Real retained EPUB/SMIL and FFmpeg preparation; no native acceptance claim."""
 from hashlib import sha256
 from io import BytesIO
+import ast
+import inspect
 import math
 from pathlib import Path
 import shutil
 import struct
+import textwrap
 from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -19,6 +22,81 @@ from carr_library.audio.models import AudioCancelled
 from carr_library.reader.ebook_audio import EbookAudioSession, _clock, parse_overlay
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.ui.ebook_audio_dialog import EbookAudioDialog, OverlayPlayback
+
+
+class WindowsSourceText:
+    """UTF-16/CRLF and visual-row XY mapping, as in wxMSW's EDIT control.
+
+    Pinned wx3.2.8 src/msw/textctrl.cpp uses EM_LINEINDEX/EM_LINELENGTH.
+    This control double reproduces that contract; it is not native execution.
+    """
+    def __init__(self, *, wrap, columns):
+        self.wrap, self.columns = wrap, columns
+        self.value, self.selection = '', (0, 0)
+
+    def ChangeValue(self, value): self.value, self.selection = value, (0, 0)
+    def GetValue(self): return self.value
+    def SetSelection(self, first, last): self.selection = first, last
+    def ShowPosition(self, position): pass
+    def GetStringSelection(self): return self.GetRange(*self.selection)
+
+    def GetRange(self, first, last):
+        native = self.value.replace('\n', '\r\n').encode('utf-16-le')
+        return native[2 * first:2 * last].decode('utf-16-le').replace('\r\n', '\n')
+
+    def XYToPosition(self, column, row):
+        lines, start = [], 0
+        for line in self.value.split('\n'):
+            units = len(line.encode('utf-16-le')) // 2
+            if self.wrap:
+                for offset in range(0, max(1, units), self.columns):
+                    lines.append((start + offset, min(self.columns, units - offset)))
+            else:
+                lines.append((start, units))
+            start += units + 2
+        if not 0 <= row < len(lines) or not 0 <= column <= lines[row][1]:
+            return -1
+        return lines[row][0] + column
+
+
+def source_view(*, columns, old_wrapped_style=False):
+    view = EbookAudioDialog.__new__(EbookAudioDialog)
+    view.dialog = object()
+    view.player_factory = lambda: SimpleNamespace(state='stopped', play=Mock(), close=Mock())
+    view.progress = None
+    view.segments, view.timer, view.report = Mock(), Mock(), Mock()
+    # Execute the actual constructor's field declaration. A future style
+    # regression must fail the real highlight/load behavior below.
+    source = ast.parse(textwrap.dedent(inspect.getsource(EbookAudioDialog.__init__)))
+    declaration, = [node for node in ast.walk(source) if isinstance(node, ast.Assign)
+                    and any(isinstance(target, ast.Attribute) and target.attr == 'text' for target in node.targets)]
+    wx = SimpleNamespace(TE_READONLY=1, TE_MULTILINE=2, TE_DONTWRAP=4,
+        TextCtrl=lambda parent, style: WindowsSourceText(wrap=old_wrapped_style or not bool(style & 4), columns=columns))
+    exec(compile(ast.Module(body=[declaration], type_ignores=[]), '<actual EPUB text declaration>', 'exec'),
+         {'self': view, 'wx': wx})
+    return view
+
+
+@pytest.mark.parametrize('columns', [24, 64, 120])
+def test_recorded_highlight_preserves_exact_source_after_long_wrapped_prefix(columns):
+    from carr_library.studio.publishing import NOTICE
+    prefix = 'Recorded EPUB native fixture\n' + NOTICE + '\nNative source\nNarrator: '
+    fragment = 'Exact α 😀 source & words.'
+    raw = prefix + fragment + '\nSecond source line.'
+    cue = SimpleNamespace(index=0, start=len(prefix), end=len(prefix) + len(fragment))
+    session = SimpleNamespace(page=SimpleNamespace(raw_text=raw), chapter=SimpleNamespace(cues=(cue,)))
+    old = source_view(columns=columns, old_wrapped_style=True)
+    with pytest.raises(ValueError, match='exact extracted-text position'):
+        old._loaded(session)
+    # This is the exact partial initialization seen in the failed Windows gate.
+    assert old.transport is not None and old.player.state == 'stopped'
+    assert old.text.GetStringSelection() == ''
+    view = source_view(columns=columns)
+    view._loaded(session)
+    assert view.text.GetValue() == raw and view.text.GetStringSelection() == fragment
+    assert view.player.state == 'stopped' and not view.transport.active
+    view.player.play.assert_not_called()
+    view.timer.Start.assert_called_once_with(100)
 
 
 def make_epub(audio, *, body=None, overlay=None, package_edit=lambda text: text, extras=()):
@@ -415,7 +493,7 @@ def test_actual_studio_publication_import_and_recorded_overlay_roundtrip(tmp_pat
                                            for n in range(4800)))
     app = LibraryApp(tmp_path / 'library'); workspace = app.create_workspace('Publication roundtrip')
     service = ProductionService(app.root / 'state' / 'studio', voices=SyntheticTones())
-    script = '[Scene: Exact original]\nNarrator: Source <words> & repeated phrase.\n[Pause: 0.2]\nReader: Source <words> & repeated phrase.'
+    script = '[Scene: Exact original]\nNarrator: Source <words> & repeated α 😀 phrase.\n[Pause: 0.2]\nReader: Source <words> & repeated α 😀 phrase.'
     project = service.create(script, title='Recorded roundtrip', voice_ids=('synthetic-tone',))
     original_lines = {line.id: line.text for scene in project.scenes for line in scene.lines}
     identity = service.submit(project, tmp_path, stems=False)
@@ -433,8 +511,14 @@ def test_actual_studio_publication_import_and_recorded_overlay_roundtrip(tmp_pat
     session = EbookAudioSession(desk, 1)
     try:
         assert len(session.chapter.cues) == len(proof['intervals'])
+        view = source_view(columns=64)
+        view._loaded(session)
         for cue, interval in zip(session.chapter.cues, proof['intervals']):
             text = page.raw_text[cue.start:cue.end]
+            view.transport.index = cue.index
+            view._highlight()
+            assert view.text.GetStringSelection() == text
+            assert view.text.GetValue() == page.raw_text
             assert sha256(text.encode()).hexdigest() == interval['text_sha256']
             if interval['kind'] == 'line':
                 assert text == original_lines[interval['line']]

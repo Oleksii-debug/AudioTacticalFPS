@@ -86,6 +86,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Locate the installed native Windows compiler
+        id: native_toolchain
         timeout-minutes: 2
         run: |
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
@@ -111,6 +112,81 @@ jobs:
           Copy-Item "$private/build-evidence.json" 'ci-results/native-launcher-build.json'
           Copy-Item "$private/windows-probe.json" 'ci-results/native-launcher-process.json'
           "CARR_NATIVE_LAUNCHER=$private" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare the exact official Hunspell source for ephemeral qualification
+        id: hunspell_source
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.native_toolchain.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $hunspellSource = Join-Path $env:RUNNER_TEMP 'hunspell-official-source'
+          if (Test-Path -LiteralPath $hunspellSource) { throw 'Choose a fresh Hunspell source directory.' }
+          git -c core.autocrlf=false init $hunspellSource
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $hunspellSource -c core.autocrlf=false fetch --no-tags --depth 1 https://github.com/hunspell/hunspell.git 2969be996acad84b91ab3875b1816636fe61a40e
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $hunspellSource -c core.autocrlf=false checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $hunspellCommit = (git -C $hunspellSource rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $hunspellCommit -ne '2969be996acad84b91ab3875b1816636fe61a40e') { throw 'Hunspell checkout differs from the reviewed official source.' }
+
+      - name: Build only the pinned Hunspell source with the selected native toolchain
+        id: hunspell_build
+        if: ${{ !cancelled() && steps.hunspell_source.outcome == 'success' }}
+        timeout-minutes: 7
+        shell: cmd
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          "%CARR_PYTHON%" -I -B -X utf8 scripts\build_hunspell_msvc.py --source "%RUNNER_TEMP%\hunspell-official-source" --output "%RUNNER_TEMP%\hunspell-native-build" --msbuild "%VSINSTALLDIR%MSBuild\Current\Bin\MSBuild.exe" --vc-tools-dir "%VCToolsInstallDir%." --sdk-dir "%WindowsSdkDir%." --sdk-version "%WindowsSDKVersion:\=%" --timeout 300
+          set "CARR_HUNSPELL_BUILD_EXIT=%errorlevel%"
+          if exist "%RUNNER_TEMP%\hunspell-native-build\build.log" copy /Y "%RUNNER_TEMP%\hunspell-native-build\build.log" "ci-results\hunspell-build.log" >nul
+          if exist "%RUNNER_TEMP%\hunspell-native-build\build-report.json" copy /Y "%RUNNER_TEMP%\hunspell-native-build\build-report.json" "ci-results\hunspell-build.json" >nul
+          exit /b %CARR_HUNSPELL_BUILD_EXIT%
+
+      - name: Require the actual Windows Hunspell C API through the installed application
+        if: ${{ !cancelled() && steps.hunspell_build.outcome == 'success' && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $hunspellBuild = Join-Path $env:RUNNER_TEMP 'hunspell-native-build'
+          $hunspellDll = Join-Path $hunspellBuild 'bin/libhunspell.dll'
+          $buildProof = Get-Content -LiteralPath (Join-Path $hunspellBuild 'build-report.json') -Raw | ConvertFrom-Json
+          if ($buildProof.status -ne 'BUILT' -or $buildProof.source_commit -ne '2969be996acad84b91ab3875b1816636fe61a40e' -or $buildProof.source_manifest_sha256 -ne 'f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc' -or @($buildProof.source_files).Count -ne 38 -or $buildProof.source_bytes_modified -isnot [bool] -or $buildProof.source_bytes_modified -ne $false -or $buildProof.bundled -isnot [bool] -or $buildProof.bundled -ne $false -or $buildProof.build.platform -ne 'x64' -or $buildProof.build.platform_toolset -ne 'v143' -or $buildProof.build.exit_code -ne 0 -or $buildProof.native_api -ne 'NOT_RUN' -or $buildProof.dll.machine -ne 'AMD64') { throw 'The pinned native Hunspell build proof is incomplete or changed.' }
+          if ((Get-FileHash -LiteralPath $hunspellDll -Algorithm SHA256).Hash.ToLowerInvariant() -ne $buildProof.dll.sha256) { throw 'The compiled Hunspell DLL changed before its actual C API qualification.' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/hunspell_acceptance.py --library $hunspellDll --output 'ci-results/hunspell-native-acceptance.json' 2>&1 | Tee-Object 'ci-results/hunspell-native-acceptance.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyHunspell = @'
+          from hashlib import sha256
+          import importlib, json, pathlib, sys, sysconfig
+          checkout = pathlib.Path.cwd().resolve()
+          installed = pathlib.Path(sysconfig.get_path('purelib')).resolve()
+          build = json.loads((pathlib.Path(sys.argv[1]) / 'build-report.json').read_text(encoding='utf-8'))
+          report = json.loads(pathlib.Path('ci-results/hunspell-native-acceptance.json').read_text(encoding='utf-8'))
+          assert report['status'] == 'PASS' and len(report['checks']) == 14 and len(set(report['checks'])) == 14
+          assert report['native_windows'] == 'EXECUTED' and report['manual_nvda'] == 'NOT_RUN'
+          assert report['native_library_sha256'] == build['dll']['sha256']
+          assert report['native_library_bytes'] == build['dll']['bytes']
+          assert sha256(pathlib.Path(build['dll']['path']).read_bytes()).hexdigest() == build['dll']['sha256']
+          origins, identities = {}, {}
+          for name in ('carr_library.speech.spelling', 'carr_library.speech.spelling_worker', 'carr_library.ui.spelling_dialog'):
+              module = importlib.import_module(name)
+              actual = pathlib.Path(module.__file__).resolve()
+              expected = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              identities[name] = sha256(actual.read_bytes()).hexdigest()
+              assert identities[name] == sha256(expected.read_bytes()).hexdigest(), name
+              origins[name] = str(actual)
+          assert report['application_modules'] == identities
+          proof = dict(status='PASS', actual_windows_c_api_checks=14, native_windows='EXECUTED',
+                       source_commit=build['source_commit'], native_library_sha256=build['dll']['sha256'],
+                       origins=origins, application_modules=identities, bundled=False,
+                       dictionary_quality='NOT_RUN', distribution_clearance='NOT_GRANTED', manual_nvda='NOT_RUN')
+          pathlib.Path('ci-results/hunspell-installed-proof.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
+          print(json.dumps(proof), flush=True)
+          '@
+          $verifyHunspell | & $env:CARR_PYTHON -I -B -X utf8 - $hunspellBuild
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Only JSON/log evidence is retained. The ephemeral upstream checkout,
+          # DLL, import libraries and generated dictionaries never enter a bundle.
 
       - name: Prepare pinned local audio and citation runtimes
         timeout-minutes: 10
@@ -241,6 +317,15 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_audio_conversion_smoke.py 2>&1 | Tee-Object 'ci-results/windows_audio_conversion_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Native acceptance - reviewed audio metadata and original covers
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/windows_audio_metadata_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioMetadata = Get-Content 'ci-results/windows_audio_metadata_smoke.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($audioMetadata.result -ne 'PASS' -or $audioMetadata.native_keyboard -ne 'PASS' -or $audioMetadata.actual_ffmpeg_metadata -ne 'PASS' -or $audioMetadata.actual_ffprobe -ne 'PASS' -or $audioMetadata.output.chapters -ne 2 -or $audioMetadata.output.title -ne '2027' -or @($audioMetadata.source_identity.PSObject.Properties).Count -ne 5) { throw 'The actual installed audio metadata workflow is incomplete or failed.' }
+
       - name: Native acceptance - recording
         if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
         timeout-minutes: 5
@@ -284,6 +369,15 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/windows_studio_pronunciation_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Native acceptance - durable voice preferences with explicit fixture voices
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_voice_preferences_smoke.py 2>&1 | Tee-Object 'ci-results/windows_voice_preferences_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $voicePreferences = Get-Content 'ci-results/windows_voice_preferences_smoke.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($voicePreferences.result -ne 'PASS' -or $voicePreferences.native_keyboard -ne 'PASS' -or $voicePreferences.durable_preferences -ne 'PASS' -or $voicePreferences.synthetic_voice_enumeration -ne 'EXPLICIT_FIXTURE_ONLY' -or $voicePreferences.speech_synthesis -ne 'NOT_RUN' -or $voicePreferences.evidence.returned_voice_id -ne 'fixture-uk-b' -or $voicePreferences.evidence.unavailable_default -ne 'NO_FALLBACK' -or @($voicePreferences.source_identity.PSObject.Properties).Count -ne 3) { throw 'The actual installed voice-preference dialog workflow is incomplete or failed.' }
+
       - name: Native acceptance - Tasks and resource allowances
         if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 5
@@ -304,6 +398,15 @@ jobs:
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-results/windows_translation_v3_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Native acceptance - reviewed document batches and exact output receipts
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_document_batch_smoke.py 2>&1 | Tee-Object 'ci-results/windows_document_batch_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $documentBatch = Get-Content 'ci-results/windows_document_batch_smoke.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($documentBatch.result -ne 'PASS' -or $documentBatch.native_keyboard -ne 'PASS' -or $documentBatch.native_registered_menu_dispatch -ne 'PASS' -or $documentBatch.actual_isolated_conversion -ne 'PASS' -or $documentBatch.verified_same_job_rerun -ne 'PASS' -or @($documentBatch.evidence.outputs).Count -ne 4 -or @($documentBatch.source_identity.PSObject.Properties).Count -ne 6) { throw 'The actual installed document-batch workflow is incomplete or failed.' }
 
       - name: Exercise explicit local provider and planning HTTP boundaries
         if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
@@ -614,6 +717,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_audio_conversion_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_audio_conversion_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_audio_metadata_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioMetadata = Get-Content 'ci-results/full-bundle-windows_audio_metadata_smoke.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($audioMetadata.result -ne 'PASS' -or $audioMetadata.native_keyboard -ne 'PASS' -or $audioMetadata.actual_ffmpeg_metadata -ne 'PASS' -or $audioMetadata.actual_ffprobe -ne 'PASS' -or $audioMetadata.output.chapters -ne 2 -or $audioMetadata.output.title -ne '2027' -or @($audioMetadata.source_identity.PSObject.Properties).Count -ne 5) { throw 'The actual full-bundle audio metadata workflow is incomplete or failed.' }
           & $installedPython -I -B scripts/windows_recording_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_recording_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_publishing_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_publishing_smoke.txt'
@@ -628,6 +735,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_studio_pronunciation_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_voice_preferences_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_voice_preferences_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $voicePreferences = Get-Content 'ci-results/full-bundle-windows_voice_preferences_smoke.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($voicePreferences.result -ne 'PASS' -or $voicePreferences.native_keyboard -ne 'PASS' -or $voicePreferences.durable_preferences -ne 'PASS' -or $voicePreferences.synthetic_voice_enumeration -ne 'EXPLICIT_FIXTURE_ONLY' -or $voicePreferences.speech_synthesis -ne 'NOT_RUN' -or $voicePreferences.evidence.returned_voice_id -ne 'fixture-uk-b' -or $voicePreferences.evidence.unavailable_default -ne 'NO_FALLBACK' -or @($voicePreferences.source_identity.PSObject.Properties).Count -ne 3) { throw 'The actual full-bundle voice-preference dialog workflow is incomplete or failed.' }
           & $installedPython -I -B scripts/windows_operations_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_operations_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_command_palette_smoke.txt'
@@ -636,6 +747,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_translation_v3_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_document_batch_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_document_batch_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $documentBatch = Get-Content 'ci-results/full-bundle-windows_document_batch_smoke.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($documentBatch.result -ne 'PASS' -or $documentBatch.native_keyboard -ne 'PASS' -or $documentBatch.native_registered_menu_dispatch -ne 'PASS' -or $documentBatch.actual_isolated_conversion -ne 'PASS' -or $documentBatch.verified_same_job_rerun -ne 'PASS' -or @($documentBatch.evidence.outputs).Count -ne 4 -or @($documentBatch.source_identity.PSObject.Properties).Count -ne 6) { throw 'The actual full-bundle document-batch workflow is incomplete or failed.' }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -680,6 +795,16 @@ jobs:
                        'carr_library.studio.daisy',
                        'carr_library.audio.audiobook',
                        'carr_library.audio.process',
+                       'carr_library.audio.metadata',
+                       'carr_library.ui.audio_metadata_dialog',
+                       'carr_library.conversion.planning',
+                       'carr_library.conversion.batches',
+                       'carr_library.conversion.cli',
+                       'carr_library.__main__',
+                       'carr_library.conversion.formats',
+                       'carr_library.conversion.service',
+                       'carr_library.ui.document_batch',
+                       'carr_library.ui.document_conversion',
                        'carr_library.operations.broker',
                        'carr_library.operations.models',
                        'carr_library.operations._locks',
@@ -703,6 +828,8 @@ jobs:
                        'carr_library.speech.spelling',
                        'carr_library.speech.spelling_worker',
                        'carr_library.ui.spelling_dialog',
+                       'carr_library.speech.voice_preferences',
+                       'carr_library.ui.voice_preferences',
                        'carr_library.speech.regex_worker',
                        'carr_library.ui.speech_dialog',
                        'carr_library.speech.reading',
@@ -718,7 +845,16 @@ jobs:
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
-          contents_suites = ['tests/operations/test_resources.py',
+          contents_suites = ['tests/conversion/test_split_planning.py',
+                            'tests/conversion/test_document_batches.py',
+                            'tests/conversion/test_document_batch_cli.py',
+                            'tests/conversion/test_document_batch_handlers.py',
+                            'tests/conversion/test_native_document_batch_driver.py',
+                            'tests/audio/test_metadata.py',
+                            'tests/ui/test_audio_metadata_dialog.py',
+                            'tests/speech/test_voice_preferences.py',
+                            'tests/speech/test_voice_preference_handlers.py',
+                            'tests/operations/test_resources.py',
                             'tests/operations/test_production_admission.py',
                             'tests/operations/test_lock_preflight.py',
                             'tests/operations/test_facade.py',
@@ -857,7 +993,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_federated_advanced.py tests/storage/test_library_backup_reading_state.py tests/e2e/test_research_search_cli.py tests/citations/test_pdf_mapping_contradiction.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_cancellation_during_flush_does_not_publish','test_cancellation_after_link_does_not_reclassify_committed_output','test_actual_child_refuses_changed_dictionary_before_loading_dummy_library','test_advanced_source_pause_resume_and_export_keep_lineage_and_decoded_receipts[exact-glossary]','test_advanced_source_self_hash_cannot_replace_the_accepted_decoded_output','test_bound_document_resume_export_preserves_exact_original_and_canonical_lineage[source-range]','test_bound_document_resume_export_preserves_exact_original_and_canonical_lineage[whole-document]','test_cancel_and_late_close_do_not_access_dead_widgets_or_apply_text','test_cli_source_resume_uses_explicit_library_and_fresh_exact_account[after-gateway]','test_completed_source_cli_replay_and_export_after_real_backup_delete_restore_are_offline[advanced]','test_completed_source_cli_replay_and_export_after_real_backup_delete_restore_are_offline[basic]','test_correction_is_explicit_one_undoable_edit_with_original_source_retained','test_real_reader_spelling_closure_select_apply_undo_and_recovery','test_spelling_closure_rechecks_authority_before_apply[selection]','test_stale_apply_does_not_mutate_reading_copy[dictionary]','test_tasks_reads_source_job_metadata_without_provider_or_resume_authority[complete]','test_atomic_replacement_between_stat_and_open_is_retried','test_legacy_replace_still_reproduces_shared_open_target_limit','test_replace_can_publish_first_unicode_state_with_actual_production_child','test_native_denied_save_keeps_its_primary_error_if_descriptor_close_raises','test_native_destroy_wrapper_needs_only_the_previously_captured_owner_id','test_child_destruction_keeps_the_live_frame_autosave_running','test_direct_destroy_also_blocks_a_previously_queued_autosave','test_abort_retains_outer_loop_and_original_error_before_owned_modal_unwind[True]','test_actual_callback_failure_resets_guard_and_cancels_queued_progress','test_actual_filter_typing_call_satisfies_pinned_wx_bytes_contract','test_abort_schedules_the_outer_owner_while_modal_loop_is_still_active[True]','test_native_probe_policy_review_is_not_repeated_while_save_waits_for_focus[refreshed_policy-saved_policy]','test_native_probe_abort_exits_owned_outer_loop_and_keeps_cleanup_after_errors[timer_stop]','test_actual_native_handler_options_reach_measured_conversion[.wav-48000-1-24-pcm_s24le]','test_actual_native_handler_options_reach_measured_conversion[.aiff-44100-2-32-pcm_s32be]','test_actual_native_handler_options_reach_measured_conversion[.flac-32000-1-24-flac]','test_actual_native_handler_options_reach_measured_conversion[.opus-48000-1-16-opus]','test_measurement_failure_after_real_publication_preserves_success','test_configured_skip_percent_and_paused_seek_preserve_transport_intent','test_natural_end_can_repeat_but_external_stop_cannot','test_sleep_uses_real_reader_stop_to_cancel_its_queued_resume_and_seek','test_review_merge_and_complete_undo_keep_unmentioned_saved_choices','test_keymap_roundtrips_actual_manifest_bound_library_backup','test_native_closures_preview_apply_full_map_undo_and_cancel','test_actual_literal_unicode_crlf_selection_undo_and_saved_recovery','test_replace_all_is_explicit_and_one_undoable_edit','test_real_hook_selects_utf16_crlf_match_then_applies_and_undoes_one_edit','test_menu_installation_does_not_read_watch_or_speak_and_explicit_action_uses_separate_slot','test_normal_owner_release_during_preflight_allows_new_native_acquisition[constructor-local-path]','test_normal_owner_release_during_preflight_allows_new_native_acquisition[acquire-regular]','test_real_recovery_stores_character_offset_and_restores_without_a_voice[utf16-crlf]','test_native_cursor_roundtrip_preserves_authenticated_source_anchor','test_actual_facade_controls_only_selected_asr_attempt_and_never_resumes_it','test_cli_existing_assistant_job_list_get_pause_and_cancel_never_resubmit','test_canonical_transcription_view_uses_32hex_job_store_without_opening_live_status','test_policy_changed_after_review_is_not_overwritten','test_disposal_after_worker_before_callback_closes_owned_service_once','test_real_batch_holds_lease_through_cleanup_and_completed_replay_bypasses_it','test_actual_capture_holds_microphone_and_budgets_through_cleanup_and_publication','test_saved_pronunciation_is_rendered_in_new_job_and_old_verified_outputs_stay_unchanged','test_real_nested_review_then_save_and_saved_undo_use_existing_history','test_actual_m4b_contains_exact_titles_measured_chapters_and_audio','test_actual_studio_m4b_embeds_measured_chapters_and_lrc','test_actual_studio_admits_threads_releases_and_completed_job_needs_no_capacity','test_actual_spawned_process_crash_releases_without_pid_reaping','test_preview_real_regex_and_scopes_then_one_undo_preserves_source_evidence','test_reader_hook_converts_unicode_native_range_and_keeps_one_undoable_source_copy','test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added','test_current_menu_identity_is_verified_again_before_existing_handler_runs[duplicate_id]','test_actual_daisy_ncc_smil_audio_source_and_same_receipt','test_actual_daisy_reuses_verified_mp3_without_reencoding','test_actual_cli_daisy_export_verify_and_required_publisher','test_actual_studio_publication_import_and_recorded_overlay_roundtrip','test_actual_ffmpeg_completed_job_to_verified_epub','test_existing_verified_job_mp3_is_reused_byte_for_byte','test_actual_cli_export_list_verify_and_no_clobber','test_actual_service_writes_source_preserving_glossary_derivative','test_expiry_reentry_resumes_same_job_without_rebilling','test_actual_registry_frames_and_publishes_24k_mono_pcm','test_actual_trim_position_pan_fades_and_complete_clip_stems','test_edited_clip_backup_survives_deletion_and_same_job_resume','test_windows_capture_is_killed_after_abrupt_owner_exit','test_actual_capture_backup_delete_original_root_restore_and_verify','test_service_proposal_is_validated_scoped_and_never_submitted','test_actual_cli_proposal_then_separate_reviewed_json_run','test_regeneration_parses_the_bytes_it_hashed_when_a_path_is_reopened','test_same_metadata_source_change_during_docx_assembly_stops_publication','test_real_render_backup_delete_original_state_restore_and_render_again','test_published_pdf_mutation_cannot_change_receipted_import_or_resumed_identity','test_cli_real_worker_protocol_edit_export_and_persistence','test_reading_studio_transcription_and_pending_html_survive_two_restores[False]','test_reading_studio_transcription_and_pending_html_survive_two_restores[True]','test_cancel_source_revalidation_after_studio_input_snapshot_never_publishes','test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]','test_regex_pronunciation_child_preserves_runtime','test_doi_metadata_child_preserves_runtime_without_network','test_native_sapi_child_preserves_runtime','test_boolean_results_can_be_copied_saved_and_exported_without_changing_source','test_final_result_page_after_ten_thousand_matches_is_not_rejected','test_full_backup_keeps_bookmarks_resume_and_archived_library','test_cancellation_cannot_publish_partial_advanced_selections','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_source_save_as_reauthorizes_after_picker['+voice+'-'+recovery+'-'+authorization+']' for voice in ('voice','no-voice') for recovery in ('none','exact','legacy','foreign','revision','pre-release') for authorization in ('authorized','late-topic-archive')} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')} | {'test_pending_extended_original_survives_complete_backup_and_resume['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')} | {'test_extended_source_import_reader_search_and_quote_boundary['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')}; metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape']; assert len(metadata_cases)==58 and len({c.get('name') for c in metadata_cases})==58; ocr_required={'test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries'}; ocr_cases=[c.get('name') for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_ocr_runtime']; assert len(ocr_cases)==len(ocr_required) and set(ocr_cases)==ocr_required; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',document_formats='PASS',advanced_search='PASS',reading_backups='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',ocr_inventory_exact='PASS',ocr_inventory_cases=sorted(ocr_cases),nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_language_defaults_are_exact_and_never_guess_base_or_dialect','test_real_save_reopen_optimistic_conflict_and_separate_libraries','test_actual_backup_delete_restore_keeps_choices_without_engine_activation','test_default_favorite_reload_and_use_are_separate_explicit_actions','test_missing_default_is_visible_without_selecting_available_substitute','test_other_window_write_requires_explicit_reload','test_actual_studio_output_keeps_project_receipts_and_completed_replay','test_actual_named_native_handlers_inspect_review_then_save_without_ui_thread_io','test_native_close_cancels_owned_work_and_late_callback_never_touches_destroyed_widgets','test_existing_output_or_receipt_is_not_overwritten','test_replaced_approved_directory_does_not_regain_publication_authority','test_actual_portable_tags_cover_and_audio_roundtrip[png-.mp3]','test_actual_portable_tags_cover_and_audio_roundtrip[png-.flac]','test_actual_portable_tags_cover_and_audio_roundtrip[png-.m4a]','test_actual_portable_tags_cover_and_audio_roundtrip[png-.m4b]','test_actual_portable_tags_cover_and_audio_roundtrip[jpeg-.mp3]','test_actual_portable_tags_cover_and_audio_roundtrip[jpeg-.flac]','test_actual_portable_tags_cover_and_audio_roundtrip[jpeg-.m4a]','test_actual_portable_tags_cover_and_audio_roundtrip[jpeg-.m4b]','test_real_ctrl_c_after_first_publication_preserves_receipt_and_resumes','test_real_backup_restore_requires_new_review_then_exports_without_original','test_installed_entry_dispatch_and_utf8_protocol_under_legacy_console_encoding','test_actual_conversion_retains_originals_and_exact_unicode_split_outputs','test_real_process_crash_after_output_pair_before_checkpoint_recovers_same_job','test_actual_backup_delete_restore_requires_explicit_output_rebinding','test_actual_studio_uses_literal_scenes_measured_audio_and_same_job_receipts','test_publication_uses_reviewed_parent_approval_not_a_fresh_capture','test_queued_library_object_change_prevents_converter_entry','test_silent_control_change_cannot_approve_preview_or_reuse_saved_approval','test_close_waits_for_owned_operation_and_suppresses_late_result','test_studio_adapter_treats_all_source_directives_as_exact_literal_spoken_lines','test_regex_is_the_existing_actual_isolated_worker_and_cancel_retains_source','test_cancellation_during_flush_does_not_publish','test_cancellation_after_link_does_not_reclassify_committed_output','test_actual_child_refuses_changed_dictionary_before_loading_dummy_library','test_advanced_source_pause_resume_and_export_keep_lineage_and_decoded_receipts[exact-glossary]','test_advanced_source_self_hash_cannot_replace_the_accepted_decoded_output','test_bound_document_resume_export_preserves_exact_original_and_canonical_lineage[source-range]','test_bound_document_resume_export_preserves_exact_original_and_canonical_lineage[whole-document]','test_cancel_and_late_close_do_not_access_dead_widgets_or_apply_text','test_cli_source_resume_uses_explicit_library_and_fresh_exact_account[after-gateway]','test_completed_source_cli_replay_and_export_after_real_backup_delete_restore_are_offline[advanced]','test_completed_source_cli_replay_and_export_after_real_backup_delete_restore_are_offline[basic]','test_correction_is_explicit_one_undoable_edit_with_original_source_retained','test_real_reader_spelling_closure_select_apply_undo_and_recovery','test_spelling_closure_rechecks_authority_before_apply[selection]','test_stale_apply_does_not_mutate_reading_copy[dictionary]','test_tasks_reads_source_job_metadata_without_provider_or_resume_authority[complete]','test_atomic_replacement_between_stat_and_open_is_retried','test_legacy_replace_still_reproduces_shared_open_target_limit','test_replace_can_publish_first_unicode_state_with_actual_production_child','test_native_denied_save_keeps_its_primary_error_if_descriptor_close_raises','test_native_destroy_wrapper_needs_only_the_previously_captured_owner_id','test_child_destruction_keeps_the_live_frame_autosave_running','test_direct_destroy_also_blocks_a_previously_queued_autosave','test_abort_retains_outer_loop_and_original_error_before_owned_modal_unwind[True]','test_actual_callback_failure_resets_guard_and_cancels_queued_progress','test_actual_filter_typing_call_satisfies_pinned_wx_bytes_contract','test_abort_schedules_the_outer_owner_while_modal_loop_is_still_active[True]','test_native_probe_policy_review_is_not_repeated_while_save_waits_for_focus[refreshed_policy-saved_policy]','test_native_probe_abort_exits_owned_outer_loop_and_keeps_cleanup_after_errors[timer_stop]','test_actual_native_handler_options_reach_measured_conversion[.wav-48000-1-24-pcm_s24le]','test_actual_native_handler_options_reach_measured_conversion[.aiff-44100-2-32-pcm_s32be]','test_actual_native_handler_options_reach_measured_conversion[.flac-32000-1-24-flac]','test_actual_native_handler_options_reach_measured_conversion[.opus-48000-1-16-opus]','test_measurement_failure_after_real_publication_preserves_success','test_configured_skip_percent_and_paused_seek_preserve_transport_intent','test_natural_end_can_repeat_but_external_stop_cannot','test_sleep_uses_real_reader_stop_to_cancel_its_queued_resume_and_seek','test_review_merge_and_complete_undo_keep_unmentioned_saved_choices','test_keymap_roundtrips_actual_manifest_bound_library_backup','test_native_closures_preview_apply_full_map_undo_and_cancel','test_actual_literal_unicode_crlf_selection_undo_and_saved_recovery','test_replace_all_is_explicit_and_one_undoable_edit','test_real_hook_selects_utf16_crlf_match_then_applies_and_undoes_one_edit','test_menu_installation_does_not_read_watch_or_speak_and_explicit_action_uses_separate_slot','test_normal_owner_release_during_preflight_allows_new_native_acquisition[constructor-local-path]','test_normal_owner_release_during_preflight_allows_new_native_acquisition[acquire-regular]','test_real_recovery_stores_character_offset_and_restores_without_a_voice[utf16-crlf]','test_native_cursor_roundtrip_preserves_authenticated_source_anchor','test_actual_facade_controls_only_selected_asr_attempt_and_never_resumes_it','test_cli_existing_assistant_job_list_get_pause_and_cancel_never_resubmit','test_canonical_transcription_view_uses_32hex_job_store_without_opening_live_status','test_policy_changed_after_review_is_not_overwritten','test_disposal_after_worker_before_callback_closes_owned_service_once','test_real_batch_holds_lease_through_cleanup_and_completed_replay_bypasses_it','test_actual_capture_holds_microphone_and_budgets_through_cleanup_and_publication','test_saved_pronunciation_is_rendered_in_new_job_and_old_verified_outputs_stay_unchanged','test_real_nested_review_then_save_and_saved_undo_use_existing_history','test_actual_m4b_contains_exact_titles_measured_chapters_and_audio','test_actual_studio_m4b_embeds_measured_chapters_and_lrc','test_actual_studio_admits_threads_releases_and_completed_job_needs_no_capacity','test_actual_spawned_process_crash_releases_without_pid_reaping','test_preview_real_regex_and_scopes_then_one_undo_preserves_source_evidence','test_reader_hook_converts_unicode_native_range_and_keeps_one_undoable_source_copy','test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added','test_current_menu_identity_is_verified_again_before_existing_handler_runs[duplicate_id]','test_actual_daisy_ncc_smil_audio_source_and_same_receipt','test_actual_daisy_reuses_verified_mp3_without_reencoding','test_actual_cli_daisy_export_verify_and_required_publisher','test_actual_studio_publication_import_and_recorded_overlay_roundtrip','test_actual_ffmpeg_completed_job_to_verified_epub','test_existing_verified_job_mp3_is_reused_byte_for_byte','test_actual_cli_export_list_verify_and_no_clobber','test_actual_service_writes_source_preserving_glossary_derivative','test_expiry_reentry_resumes_same_job_without_rebilling','test_actual_registry_frames_and_publishes_24k_mono_pcm','test_actual_trim_position_pan_fades_and_complete_clip_stems','test_edited_clip_backup_survives_deletion_and_same_job_resume','test_windows_capture_is_killed_after_abrupt_owner_exit','test_actual_capture_backup_delete_original_root_restore_and_verify','test_service_proposal_is_validated_scoped_and_never_submitted','test_actual_cli_proposal_then_separate_reviewed_json_run','test_regeneration_parses_the_bytes_it_hashed_when_a_path_is_reopened','test_same_metadata_source_change_during_docx_assembly_stops_publication','test_real_render_backup_delete_original_state_restore_and_render_again','test_published_pdf_mutation_cannot_change_receipted_import_or_resumed_identity','test_cli_real_worker_protocol_edit_export_and_persistence','test_reading_studio_transcription_and_pending_html_survive_two_restores[False]','test_reading_studio_transcription_and_pending_html_survive_two_restores[True]','test_cancel_source_revalidation_after_studio_input_snapshot_never_publishes','test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]','test_regex_pronunciation_child_preserves_runtime','test_doi_metadata_child_preserves_runtime_without_network','test_native_sapi_child_preserves_runtime','test_boolean_results_can_be_copied_saved_and_exported_without_changing_source','test_final_result_page_after_ten_thousand_matches_is_not_rejected','test_full_backup_keeps_bookmarks_resume_and_archived_library','test_cancellation_cannot_publish_partial_advanced_selections','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_source_save_as_reauthorizes_after_picker['+voice+'-'+recovery+'-'+authorization+']' for voice in ('voice','no-voice') for recovery in ('none','exact','legacy','foreign','revision','pre-release') for authorization in ('authorized','late-topic-archive')} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')} | {'test_pending_extended_original_survives_complete_backup_and_resume['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')} | {'test_extended_source_import_reader_search_and_quote_boundary['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')}; metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape']; assert len(metadata_cases)==58 and len({c.get('name') for c in metadata_cases})==58; ocr_required={'test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries'}; ocr_cases=[c.get('name') for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_ocr_runtime']; assert len(ocr_cases)==len(ocr_required) and set(ocr_cases)==ocr_required; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',document_formats='PASS',advanced_search='PASS',reading_backups='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',ocr_inventory_exact='PASS',ocr_inventory_cases=sorted(ocr_cases),nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -910,6 +1046,16 @@ jobs:
           $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
           $env:PATH = $env:CARR_CI_OCR_DIR + [System.IO.Path]::PathSeparator + $env:PATH
           $suites = @(
+            'tests/conversion/test_split_planning.py',
+            'tests/conversion/test_document_batches.py',
+            'tests/conversion/test_document_batch_cli.py',
+            'tests/conversion/test_document_batch_handlers.py',
+            'tests/conversion/test_native_document_batch_driver.py',
+            'tests/audio/test_metadata.py',
+            'tests/ui/test_audio_metadata_dialog.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/speech/test_voice_preference_handlers.py',
+            'tests/packaging/test_hunspell_build.py',
             'tests/operations/test_resources.py',
             'tests/operations/test_production_admission.py',
             'tests/operations/test_lock_preflight.py',
@@ -1140,7 +1286,7 @@ jobs:
             'tests/packaging/test_delivery_archive.py',
             'tests/ui/probe_advanced_query_builder.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 

@@ -412,3 +412,100 @@ without fresh provider requests; remote continuation after restore requires
 new review. Synthetic provider responses and local loopback protocol evidence
 do not establish live Google billing, IAM or translation quality. See
 [translation workstation](translation_workstation.md).
+
+
+## Exact 1c9fc07 evidence and the next composed source candidate
+
+Public source `1c9fc075d9cc764238fde3bf13d2f381d95a1392`, tree
+`14710c3e35783d7e3c215eaf9350acb9dc98c3ae`, completed
+[V3 run 45953114775](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45953114775)
+successfully. The strict installed recovery/import/source-tools gate passed
+**573 cases, zero failures or skips**; all sixteen new required source-tool
+guards were present. Actual native SAPI/Studio/restart passed. The ten strict
+progress suites passed **233 cases, zero failures or skips**. The separate broad
+service suite passed **1,647 cases with 24 disclosed skips and no failures**.
+The actual 25-case Windows JSON reader/replacement matrix and native draft
+Close/Destroy timer probes passed. These overlapping totals are not summed.
+The normalized final V3 log SHA256 is
+`78e2d539afcbbdd4025af8f9793f5857bc4993c315f764699e80c56b877e04f2`.
+
+The corresponding
+[Windows desktop run 45953114783](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45953114783)
+passed the native pronunciation/Find/Replace/spelling-controls probe, explicitly
+using an unavailable Hunspell binary, and passed native Advanced translation.
+Recorded EPUB selection and the Tasks destruction observation still failed;
+full-bundle acceptance failed. The modal-unwind correction allowed this run to
+reach its required integrated source gate. That serial gate then reached its
+30-minute step deadline: **220 of 229 suite reports completed**, with 219 passing
+suites and one failing ASR suite (**5,297 passed cases, one failure, zero skips**
+in completed reports). Nine suites did not finish. The ASR failure was
+`test_cooperative_cancellation_is_terminal_and_keeps_inputs`, where its
+pre-launch wall-clock cancellation fired before a terminal worker receipt
+existed. The normalized desktop log SHA256 is
+`02d160a713d7b5a1d666461f5955b1c83db587585fed54fdc4e7609351d178db`.
+This is not a complete desktop PASS and does not qualify an actual Windows
+Hunspell engine.
+
+The next local composition through `f92095f` includes two reviewed corrections:
+recorded EPUB text uses the existing non-wrapping reader style so exact logical
+rows map to native selection positions; the Tasks probe observes its captured
+native window ID instead of Python wrapper identity. All original native
+business assertions remain required. It also composes the new
+[document batch and CLI workflow](DOCUMENT_BATCHES.md),
+[audio tag/cover export](AUDIO_METADATA_COVER.md), and
+[reader voice preferences](VOICE_PREFERENCES.md). Their source tests and native
+probes remain distinct from the completed 1c9fc07 evidence.
+
+The document/CLI/EPUB/Tasks composed source gate passed **214 cases with no
+failures or skips** at local `b75ecbc`. Narrow Studio pre-publication cancellation
+and pending-backup inventory changes passed **47 cases** at `6822b74`. Audio
+metadata/cover and its real-handler suite passed **55 cases** at `4b9861f`; the
+subsequent real APNG refusal increases the core suite to 39 cases and needs its
+composed replay. Reader voice preferences and existing reader hook/cursor suites
+passed **77 cases** at `4f3aecb`, including 35 new preference cases. These are
+source results with their stated identities, not installed Windows acceptance.
+
+[Windows Hunspell preparation](HUNSPELL_WINDOWS_BUILD.md) now builds only the
+reviewed official v1.7.2 source revision into an ephemeral CI directory. Its
+29-case helper suite passes, but the build report remains separate from the
+required 14 actual installed C API checks. No resulting native binary, upstream
+source checkout, dictionary or compiler artifact is part of the application
+bundle or public release payload. Human NVDA/listening, real language/dictionary
+quality, private cloning/model qualification and distribution rights remain
+separate gates.
+
+## Composed source checkpoint after the completed Windows failures
+
+Local source `693c93a` passed **499 cases, zero failures or skips** in the
+17-suite composed gate. The [machine-readable source record](evidence/composed-source-693c93a-20261127.json)
+identifies that commit, tree, selectors and JUnit digest. The gate covers the
+document batch/CLI workflow, EPUB selection/driver, Tasks controls, actual audio
+metadata/cover/APNG checks, voice preferences, Studio publication cancellation,
+pending backups, the Hunspell build helper and the full ASR protocol core.
+These counts overlap earlier focused evidence and must not be summed with it.
+
+The ASR correction is test-only. Cooperative cancellation now waits for the
+synthetic worker's immutable start acknowledgement; the unresponsive-child
+fixture waits for its immutable child acknowledgement. Both run with normal
+and deliberately delayed real admission, preserve their original shutdown
+grace and terminal/input/child assertions, and have bounded overall deadlines.
+The production service and private worker are unchanged. No Windows live-status
+read is reintroduced. The reproduced admission race explains the failed test
+premise; it does not identify which exact Windows I/O operation was slow.
+
+The next desktop workflow retains every prior native gate, adds installed-wheel
+and full-bundle document/metadata/voice preference probes, and separately builds
+the exact official Hunspell source for its required 14 actual C API checks.
+The source gate executes its complete 239-selector list with two isolated
+processes; its 600-second per-suite and 30-minute step limits and zero-skip
+policy are unchanged. This repairs the measured serial scheduling bottleneck;
+completion within the limit still requires the next actual Windows result.
+
+Canonical `carr-library` advanced to `966e5ccf892243ead6942c635af5fbab47e72551`
+while this finite candidate was being verified. It integrates a separately
+qualified preview with substantial citation, progress, keyboard, backup and
+assistant differences. This candidate retains its reviewed ancestry through
+`1a0cd09`; it does not claim that the new canonical implementation has already
+been reconciled. That comparison remains explicit work, with preservation of
+existing behavior and original-data guards required before integration. No
+test or delivery PASS is transferred between these trees.

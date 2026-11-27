@@ -379,3 +379,76 @@ def test_native_probe_abort_exits_owned_outer_loop_and_keeps_cleanup_after_error
     env['abort']('Late callback after abort')
     env['tick']()
     assert calls == before and errors[0] == 'Original failed native assertion'
+
+
+@pytest.mark.parametrize('late_first', [False, True], ids=['destroy-before-callback', 'callback-before-destroy'])
+def test_native_probe_observes_destroyed_owner_through_its_captured_native_id(tmp_path, late_first):
+    """wx destruction may expose another Python wrapper for the same window."""
+    callbacks, queued = {}, []
+    changed = Mock()
+    frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path), cancel_event=threading.Event())
+    controller = OperationsController(frame, changed=changed)
+
+    class Detached:
+        deleted = False
+
+        def GetId(self):
+            if self.deleted:
+                raise AssertionError('The native owner must not be queried during destruction.')
+            return 2041
+
+        def Bind(self, event, callback):
+            assert event == 'native-destroy'
+            callbacks['destroy'] = callback
+
+        def Destroy(self):
+            self.controller.dispose()
+            self.deleted = True
+
+    detached = Detached()
+    detached.controller = controller
+    state, errors, checks = {}, [], []
+    loop = SimpleNamespace(ScheduleExit=Mock())
+    timer = SimpleNamespace(Stop=Mock())
+    env = {'phase': ['child_destroyed', 0], 'deadline': 100, 'monotonic': lambda: 0,
+           'held': [None], 'aborted': False, 'in_tick': False, 'main_loop': loop,
+           'application': SimpleNamespace(GetMainLoop=lambda: loop),
+           'wx': SimpleNamespace(EVT_WINDOW_DESTROY='native-destroy', CallAfter=queued.append),
+           'checks': checks, 'errors': errors, 'traceback': traceback,
+           'detached': detached, 'detached_state': state, 'timer': timer,
+           'window': lambda title: None, 'identity': 'existing-job',
+           'assistant': SimpleNamespace(get=lambda identity: SimpleNamespace(status='queued'),
+                                        jobs=lambda: ('existing-job',))}
+    _probe_callbacks(env)
+    env['abort'] = lambda detail: pytest.fail(detail)
+    env['tick']()
+    assert controller.closed and env['phase'][0] == 'destroyed' and len(queued) == 1
+    before = controller.status
+
+    def event(identity):
+        # The event's Python proxy is intentionally different. This models
+        # the native destruction boundary without claiming a Windows run.
+        return SimpleNamespace(GetId=lambda: identity, GetEventObject=lambda: object(), Skip=Mock())
+
+    child = event(2042)
+    callbacks['destroy'](child)
+    child.Skip.assert_called_once_with()
+    assert not state.get('destroyed')
+    if late_first:
+        queued.pop()()
+        env['tick']()
+        loop.ScheduleExit.assert_not_called()
+    owner = event(2041)
+    callbacks['destroy'](owner)
+    owner.Skip.assert_called_once_with()
+    assert state.get('destroyed') is True
+    if not late_first:
+        env['tick']()
+        loop.ScheduleExit.assert_not_called()
+        queued.pop()()
+    env['tick']()
+    assert env['phase'][0] == 'complete' and not errors
+    assert controller.status == before
+    changed.assert_not_called()
+    timer.Stop.assert_called_once_with()
+    loop.ScheduleExit.assert_called_once_with(0)

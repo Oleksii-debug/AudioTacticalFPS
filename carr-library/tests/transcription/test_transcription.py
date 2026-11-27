@@ -437,22 +437,62 @@ def test_diagnostic_flood_terminates_worker(service, source, engine):
     assert service.get(identity)['state'] == 'failed'
 
 
-def test_cooperative_cancellation_is_terminal_and_keeps_inputs(service, source, engine):
+def cancel_after_fixture_marker(directory, marker, *, timeout=10):
+    """Cancel only after this synthetic worker published its one-time proof.
+
+    These immutable test acknowledgements are separate from live worker status,
+    which must never be read while the Windows worker atomically replaces it.
+    The deadline fails the test if the intended worker boundary is never reached.
+    """
+    deadline = time.monotonic() + timeout
+    def cancelled():
+        if time.monotonic() >= deadline:
+            raise TimeoutError('The synthetic worker did not reach its required ' + marker + ' readiness boundary.')
+        return (directory / marker).is_file()
+    return cancelled
+
+
+def delay_fixture_admission(service, monkeypatch, enabled):
+    if enabled:
+        original = service._admission_broker
+        def delayed(cancelled):
+            broker = original(cancelled)
+            # Exceeds both old pre-launch cancellation timers, using the real
+            # broker and real worker unchanged after this controlled delay.
+            time.sleep(.25)
+            return broker
+        monkeypatch.setattr(service, '_admission_broker', delayed)
+
+
+@pytest.mark.parametrize('slow_admission', [False, True])
+def test_cooperative_cancellation_is_terminal_and_keeps_inputs(service, source, engine, monkeypatch, slow_admission):
     identity = service.submit([source])
-    started = time.monotonic()
-    result = service.run(identity, engine=engine('cooperative'),
-        cancelled=lambda: time.monotonic() - started > .12, stop_grace=.5)
+    spec = engine('cooperative')
+    directory = service.jobs / identity
+    original = source.read_bytes()
+    delay_fixture_admission(service, monkeypatch, slow_admission)
+    result = service.run(identity, engine=spec,
+        cancelled=cancel_after_fixture_marker(directory, 'test_started.json'), stop_grace=.5, timeout=10)
     assert result['state'] == 'cancelled'
     assert result['receipt'] is None  # cancelled source verification never admits a partial receipt
     assert read_json(service.jobs / identity / 'job_result.json')['state'] == 'cancelled'
     assert (service.jobs / identity / result['inputs'][0]['path']).is_file()
+    started = read_json(directory / 'test_started.json')
+    terminal = read_json(directory / 'job_result.json')
+    assert started['job_id'] == terminal['job_id'] == identity
+    assert started['run_id'] == terminal['run_id']
+    assert (directory / result['inputs'][0]['path']).read_bytes() == original == source.read_bytes()
 
 
-def test_unresponsive_worker_and_owned_child_are_stopped(service, source, engine):
+@pytest.mark.parametrize('slow_admission', [False, True])
+def test_unresponsive_worker_and_owned_child_are_stopped(service, source, engine, monkeypatch, slow_admission):
     identity = service.submit([source])
+    spec = engine('unresponsive')
+    directory = service.jobs / identity
+    delay_fixture_admission(service, monkeypatch, slow_admission)
     started = time.monotonic()
-    result = service.run(identity, engine=engine('unresponsive'),
-        cancelled=lambda: time.monotonic() - started > .2, stop_grace=.15)
+    result = service.run(identity, engine=spec,
+        cancelled=cancel_after_fixture_marker(directory, 'test_child.json'), stop_grace=.15, timeout=10)
     assert result['state'] == 'cancelled'
     assert time.monotonic() - started < 5
     child = read_json(service.jobs / identity / 'test_child.json')['pid']

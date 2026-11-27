@@ -167,6 +167,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     seek = wx.Button(dialog, label='Seek to &time')
     navigation_button = wx.Button(dialog, label='Playback navigation...')
     navigation_button.SetName('Playback navigation: skip, percentage, repeat and sleep')
+    voice_preferences_button = wx.Button(dialog, label='Voice preferences...')
+    voice_preferences_button.SetName('Voice preferences by language and favorites')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
     pronunciation = wx.Button(dialog, label='Pronunciatio&n rules')
     pronunciation.SetName('Pronunciation rules')
@@ -175,7 +177,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     spelling_button = wx.Button(dialog, label='Spelling review...')
     spelling_button.SetName('Spelling review with Hunspell')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, navigation_button, cleanup):
+    for control in (seek, navigation_button, voice_preferences_button, cleanup):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -206,9 +208,38 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
         spelling_button.Enable(source_loaded and not busy)
+        voice_preferences_button.Enable(registry is not None and not busy
+            and getattr(getattr(parent, 'library', None), 'root', None) is not None)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
+
+    def choose_voice_preferences(event=None):
+        from .voice_preferences import show_voice_preferences
+        library = getattr(parent, 'library', None)
+        root = getattr(library, 'root', None)
+        def guard():
+            if (not alive or busy or getattr(parent, '_closing', False) or root is None
+                    or getattr(parent, 'library', None) is not library or library.root != root):
+                raise ValueError('The reader or library changed. Reopen voice preferences.')
+        try:
+            guard()
+            current = voice_choice.GetSelection()
+            selected = voices[current].id if 0 <= current < len(voices) else ''
+            identity = show_voice_preferences(dialog, library_root=root, voices=voices,
+                selected_id=selected, guard=guard)
+            if identity is None:
+                return
+            guard()
+            index = next((i for i, voice in enumerate(voices) if voice.id == identity), None)
+            if index is None:
+                raise ValueError('The selected voice is no longer installed. Reload voices and choose explicitly.')
+            voice_choice.SetSelection(index)
+            capabilities()
+            save_recovery(force=True)
+            report(f'Selected {voices[index].name}; {voices[index].language}. Press F6 when ready to read.')
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def run(work, on_done, *, on_failed=None):
         nonlocal busy
@@ -756,7 +787,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(f'The reading copy is still open. {exc}', focus=True)
 
-    for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice), (read, speak),
+    for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice),
+        (voice_preferences_button, choose_voice_preferences), (read, speak),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),

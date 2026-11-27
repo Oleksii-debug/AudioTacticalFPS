@@ -39,6 +39,7 @@ class TextOutput:
         self.budget = budget
         self.parts, self.sections, self.warnings = [], [], []
         self.size = 0
+        self.characters = 0
 
     def add(self, value, label, *, physical_index=None):
         if not isinstance(value, str) or '\x00' in value:
@@ -47,9 +48,12 @@ class TextOutput:
         self.size += len(raw) + (2 if self.parts else 0)
         if self.size > self.budget.max_text_bytes or len(self.sections) >= self.budget.max_sections:
             raise ConversionError('Extracted text exceeds its selected output budget.')
+        start = self.characters + (2 if self.parts else 0)
+        self.characters = start + len(value)
         self.parts.append(value)
         self.sections.append({'label': str(label)[:512], 'physical_index': physical_index,
-                              'printed_label': None, 'text_sha256': sha256(raw).hexdigest()})
+                              'printed_label': None, 'text_sha256': sha256(raw).hexdigest(),
+                              'start': start, 'end': self.characters})
 
     def result(self, engine, metadata=None):
         value = '\n\n'.join(self.parts)

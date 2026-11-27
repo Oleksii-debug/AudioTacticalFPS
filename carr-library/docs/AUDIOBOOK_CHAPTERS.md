@@ -50,9 +50,11 @@ still require separate testing.
 
 The current native Studio format selector and `studio render --format m4b` use
 the same ProductionService path. The lower-level `AudioRuntime.audiobook()` API
-accepts explicit title and measured chapters. Artist/genre/year editing and
-cover-art selection/embedding are still open parts of the finite workflow
-inventory; this change does not claim them.
+accepts explicit title and measured chapters. The separate reviewed
+[metadata and cover workflow](AUDIO_METADATA_COVER.md) now edits eleven portable
+tags and a selected local PNG/JPEG on a new MP3/FLAC/M4A/M4B copy. It verifies
+the original encoded audio and chapters without changing the completed Studio
+job, project fingerprint or original artifact receipts.
 
 ## Evidence
 

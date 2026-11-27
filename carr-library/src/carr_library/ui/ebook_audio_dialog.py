@@ -122,7 +122,10 @@ class EbookAudioDialog:
         self.segments.SetName('Recorded EPUB segments in source order')
         self.segments.Bind(wx.EVT_LISTBOX, self.select)
         layout.Add(self.segments, 0, wx.EXPAND | wx.ALL, 6)
-        self.text = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
+        # native_position maps stored newline rows. wxMSW's XYToPosition uses
+        # display rows, so wrapping a preceding paragraph invalidates that map.
+        # Match the existing exact-source and speech-reader text controls.
+        self.text = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_DONTWRAP)
         self.text.SetName('Exact imported section with synchronized source fragment selected')
         layout.Add(self.text, 1, wx.EXPAND | wx.ALL, 6)
         controls = wx.WrapSizer(wx.HORIZONTAL)

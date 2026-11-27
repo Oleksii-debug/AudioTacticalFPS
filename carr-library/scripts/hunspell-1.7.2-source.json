@@ -1,0 +1,206 @@
+{
+  "schema": "resonance-hunspell-source/1",
+  "repository": "https://github.com/hunspell/hunspell",
+  "commit": "2969be996acad84b91ab3875b1816636fe61a40e",
+  "tag": "v1.7.2",
+  "purpose": "Ephemeral CI-only Windows C API qualification; no binary redistribution approval",
+  "license_files": [
+    "COPYING",
+    "COPYING.LESSER",
+    "COPYING.MPL",
+    "license.hunspell",
+    "license.myspell"
+  ],
+  "files": [
+    {
+      "path": "COPYING",
+      "bytes": 18093,
+      "git_blob": "1f963da0d1ca40ea60730c03befcbbc6771740c3"
+    },
+    {
+      "path": "COPYING.LESSER",
+      "bytes": 26531,
+      "git_blob": "67cd97bbc24235b687a0786be6a095dd0d715279"
+    },
+    {
+      "path": "COPYING.MPL",
+      "bytes": 25755,
+      "git_blob": "7714141d154290f53e9e60c615a8edc9b51a8df7"
+    },
+    {
+      "path": "license.hunspell",
+      "bytes": 1973,
+      "git_blob": "fad5a162300e7d1719ff6b7ba3713aaaa501a4bc"
+    },
+    {
+      "path": "license.myspell",
+      "bytes": 2912,
+      "git_blob": "2da533075026777f93882fdeb11ff02a711d4b81"
+    },
+    {
+      "path": "msvc/Hunspell.rc",
+      "bytes": 855,
+      "git_blob": "8a29a41ff641d6edf8a2c93df9f37629a30ad776"
+    },
+    {
+      "path": "msvc/config.h",
+      "bytes": 5674,
+      "git_blob": "d8f8724fe2b89b99f8eb9d6dc13c33fa5cfe8c63"
+    },
+    {
+      "path": "msvc/libhunspell.vcxproj",
+      "bytes": 21320,
+      "git_blob": "a0772da2ddc856b5028853e0065c71358e3d02ad"
+    },
+    {
+      "path": "src/hunspell/Makefile.am",
+      "bytes": 895,
+      "git_blob": "7b57ffb99b504a56704ee07585bd3bb59840cb21"
+    },
+    {
+      "path": "src/hunspell/affentry.cxx",
+      "bytes": 34904,
+      "git_blob": "46e8b5826ada484d2df3b95e2402e1ceea78d161"
+    },
+    {
+      "path": "src/hunspell/affentry.hxx",
+      "bytes": 8774,
+      "git_blob": "01002f870b3f1dcdcb3cf44f941cd71bda07d872"
+    },
+    {
+      "path": "src/hunspell/affixmgr.cxx",
+      "bytes": 151920,
+      "git_blob": "4d1ad2f12eee274cb0eb2d346bfd89646cf5370f"
+    },
+    {
+      "path": "src/hunspell/affixmgr.hxx",
+      "bytes": 15285,
+      "git_blob": "2fbc337c74028f170f6e3fafcb24e3e46bd4370f"
+    },
+    {
+      "path": "src/hunspell/atypes.hxx",
+      "bytes": 4107,
+      "git_blob": "7e5a5c0d38e944044c8ba87eef2c3163fdba85b5"
+    },
+    {
+      "path": "src/hunspell/baseaffix.hxx",
+      "bytes": 2566,
+      "git_blob": "b1f24046c442cad8aa3d045ddc2b04f12afbe8e7"
+    },
+    {
+      "path": "src/hunspell/csutil.cxx",
+      "bytes": 129689,
+      "git_blob": "4589e77e04223ff29b3c0b1b506406c14f16b765"
+    },
+    {
+      "path": "src/hunspell/csutil.hxx",
+      "bytes": 12256,
+      "git_blob": "808087d1f1cef66b947c3ca0c05153aac717fd1b"
+    },
+    {
+      "path": "src/hunspell/filemgr.cxx",
+      "bytes": 4568,
+      "git_blob": "10729ea2bbe3daf7c1acafe0f4ebda5d65dbdda1"
+    },
+    {
+      "path": "src/hunspell/filemgr.hxx",
+      "bytes": 4194,
+      "git_blob": "b933f95e5d270e24108646759f14ac3f91426573"
+    },
+    {
+      "path": "src/hunspell/hashmgr.cxx",
+      "bytes": 42693,
+      "git_blob": "20c4696e10840d136b6db953b54c6333a49b9c40"
+    },
+    {
+      "path": "src/hunspell/hashmgr.hxx",
+      "bytes": 6920,
+      "git_blob": "3c82e4c62767b5dcf04d9b650b2c4b9f4b3e78fa"
+    },
+    {
+      "path": "src/hunspell/htypes.hxx",
+      "bytes": 3167,
+      "git_blob": "44366b1d685ec6522b9170f16fc8d63b825bc730"
+    },
+    {
+      "path": "src/hunspell/hunspell.cxx",
+      "bytes": 70035,
+      "git_blob": "2be37d2c2e366fe37e7153e61d838b573e620da1"
+    },
+    {
+      "path": "src/hunspell/hunspell.h",
+      "bytes": 7287,
+      "git_blob": "26185fe08651addefc14297a7d0fde749335caf0"
+    },
+    {
+      "path": "src/hunspell/hunspell.hxx",
+      "bytes": 9148,
+      "git_blob": "13d42d33ca1e49bc5ad8d17c3b27b13a003ee4d3"
+    },
+    {
+      "path": "src/hunspell/hunvisapi.h",
+      "bytes": 495,
+      "git_blob": "ed0a502ba215fccd4813b68253c8f8b4d3a70d78"
+    },
+    {
+      "path": "src/hunspell/hunvisapi.h.in",
+      "bytes": 511,
+      "git_blob": "d8bacc6765b9b6bc587abcedd1c80a65ed57fd4f"
+    },
+    {
+      "path": "src/hunspell/hunzip.cxx",
+      "bytes": 6829,
+      "git_blob": "41c8b981149e74012510d28f38ae036f0bb53021"
+    },
+    {
+      "path": "src/hunspell/hunzip.hxx",
+      "bytes": 3156,
+      "git_blob": "5cd74b33c25a850bb466a63aee755f6c7de87270"
+    },
+    {
+      "path": "src/hunspell/langnum.hxx",
+      "bytes": 2606,
+      "git_blob": "39e63efdaac55b3104b0a6ffbc65da81d10fe17a"
+    },
+    {
+      "path": "src/hunspell/phonet.cxx",
+      "bytes": 8448,
+      "git_blob": "4f71e9141f6dec9533709b5a8edba61692624cb6"
+    },
+    {
+      "path": "src/hunspell/phonet.hxx",
+      "bytes": 1611,
+      "git_blob": "2d58b3ba1b166e74991fe34e54f9169a6fbb1105"
+    },
+    {
+      "path": "src/hunspell/replist.cxx",
+      "bytes": 6675,
+      "git_blob": "f3cde4d87991784167f82c33fedfc3e632976673"
+    },
+    {
+      "path": "src/hunspell/replist.hxx",
+      "bytes": 4245,
+      "git_blob": "e3462b9f68d48e1ecc991a2051089df82a3099a5"
+    },
+    {
+      "path": "src/hunspell/suggestmgr.cxx",
+      "bytes": 71273,
+      "git_blob": "444f1ccec6611acbcbd63928d70f28750befd81e"
+    },
+    {
+      "path": "src/hunspell/suggestmgr.hxx",
+      "bytes": 8378,
+      "git_blob": "7fa1a6b96b902f1e389797b8a934a5105355e18a"
+    },
+    {
+      "path": "src/hunspell/utf_info.hxx",
+      "bytes": 2603911,
+      "git_blob": "b21f115a30ed9eed7e3b9cc4f848c9e1f64f433c"
+    },
+    {
+      "path": "src/hunspell/w_char.hxx",
+      "bytes": 2999,
+      "git_blob": "bff16510ce24497daaf966304d6d66f4d703b05b"
+    }
+  ]
+}

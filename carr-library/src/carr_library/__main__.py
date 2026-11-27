@@ -79,6 +79,9 @@ def main(argv=None):
     if arguments[:1] == ['operations']:
         from .operations.cli import main as operations_main
         return operations_main(arguments[1:])
+    if arguments[:1] == ['documents']:
+        from .conversion.cli import main as documents_main
+        return documents_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
