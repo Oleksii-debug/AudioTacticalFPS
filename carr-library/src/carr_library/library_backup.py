@@ -7,14 +7,15 @@ The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 preserves the reader foundation's filename/root sidecar schema.
 Version 4 adds managed audio/assistant state using path/sidecars and streamed
-file checksums. Live audio jobs must release their project locks; assistant
-checkpoint publications use the shared library writer lock.
+file checksums. Live audio jobs must release their project locks. Assistant
+publications share the application writer and state guards; a backup may borrow
+only its own live same-process/thread execution guard.
 Legacy version 1 backups and newer backups are accepted only for an exact
 supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
 """
-from contextlib import closing, contextmanager, ExitStack
+from contextlib import closing, contextmanager, ExitStack, nullcontext
 from hashlib import sha256
 import json
 import os
@@ -311,12 +312,41 @@ def _audio_document(path):
     return value
 
 
+def _assistant_documents(root, max_files=MAX_SIDECAR_FILES):
+    """Reuse the canonical strict namespace and caller's tighter file budget."""
+    documents = _assistant_files(root)
+    if len(documents) > max_files:
+        raise RestoreError('assistant checkpoints exceed the backup file budget')
+    return documents
+
+
 @contextmanager
-def _locked_sidecars(root):
+def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
     from filelock import FileLock, Timeout
     from .audio.jobs import project_lock
+    from .assistant.state import snapshot_job_guard, state_write_guard
     projects = _projects(root)
+    assistant = _assistant_documents(root, max_files)
     with ExitStack() as stack:
+        directory = root / 'state' / 'assistant'
+        if os.path.lexists(directory):
+            _plain(directory, directory=True)
+            try:
+                # The outer application writer is already held. Publication and
+                # snapshot use that same order; never reacquire it reentrantly.
+                stack.enter_context(state_write_guard(directory))
+                for identity in sorted({path.name[:32] for path in assistant}):
+                    stack.enter_context(snapshot_job_guard(directory, identity))
+            except RuntimeError as exc:
+                raise RestoreError('An assistant job or control is being updated. Retry the backup after it stops.') from exc
+            if _assistant_documents(root, max_files) != assistant:
+                raise RestoreError('Assistant checkpoints changed before backup. Retry when they are idle.')
+        keymap_lock = root / 'keyboard-shortcuts.json.lock'
+        _regular_if_present(keymap_lock, empty=True)
+        try:
+            stack.enter_context(FileLock(str(keymap_lock), timeout=0))
+        except Timeout as exc:
+            raise RestoreError('Keyboard shortcuts are being saved. Retry the backup after it stops.') from exc
         for project in projects:
             lock_path = project / '.draft.lock'
             _regular_if_present(lock_path, empty=True)
@@ -326,14 +356,14 @@ def _locked_sidecars(root):
                 raise RestoreError('An audio project is being edited. Retry the backup after it stops.') from exc
             if os.path.lexists(project / 'studio' / 'project.json'):
                 try:
-                    # A saved draft can have no render files yet. Establish
-                    # its lock now, before any renderer can create those files.
+                    # A saved draft may have no render files yet. Establish its
+                    # canonical lock before a renderer can publish those files.
                     stack.enter_context(project_lock(project / 'audio'))
                 except RuntimeError as exc:
                     raise RestoreError('An audio project is rendering. Retry the backup after it stops.') from exc
         def verify():
-            if _projects(root) != projects:
-                raise RestoreError('Audio projects changed during backup. Retry with the projects idle.')
+            if _projects(root) != projects or _assistant_documents(root, max_files) != assistant:
+                raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
 
@@ -472,10 +502,11 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
     before = _sidecar_info(root, relative)
     if _identity(before) != identity:
         raise RestoreError('Reading/audio state changed during backup or restore. Retry with the project idle.')
-    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if target is not None:
+        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
     digest, count = sha256(), 0
-    with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, target.open('xb') as output:
+    with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, (target.open('xb') if target is not None else nullcontext()) as output:
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed before copying')
         if relative.lower().endswith('.wav'):
@@ -489,10 +520,12 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
             count += len(block)
             if count > before.st_size:
                 raise RestoreError('sidecar grew while copying')
-            output.write(block)
+            if output is not None:
+                output.write(block)
             digest.update(block)
-        output.flush()
-        os.fsync(output.fileno())
+        if output is not None:
+            output.flush()
+            os.fsync(output.fileno())
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed while copying')
     if count != before.st_size or _identity(_sidecar_info(root, relative)) != identity:
@@ -598,13 +631,13 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
     Reader-only sidecars retain version 3; managed audio/assistant uses version 4.
-    Active audio jobs are refused. Assistant atomic checkpoints share the root
-    writer guard and can be captured without taking their execution locks.
+    Active audio jobs and other assistant executions are refused. The assistant
+    can snapshot its own durable checkpoint using its actual native job guard.
     File and total-byte budgets are caller-controlled; audio is copied in chunks.
     """
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root), _locked_sidecars(app.root) as check_projects:
+    with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files) as check_projects:
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
@@ -626,6 +659,9 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
+            # Refuse a newly introduced project before interpreting its files.
+            # The final check also covers inventory changes during the rescan.
+            check_projects()
             if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
                 raise RestoreError('Reading/audio state changed during backup. Retry with the projects idle.')
             check_projects()
@@ -833,6 +869,63 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
+def _verify_contents(source, stage, manifest, *, copy_files=False, cancelled=lambda: False):
+    """One byte/schema/source verifier for restoration and read-only inspection."""
+    _plain(source / ORIGINALS, directory=True)
+    sidecars = _manifest_sidecars(manifest)
+    _, subdirectory = _sidecar_layout(manifest)
+    sidecar_source = source / subdirectory
+    identities = {}
+    for entry in sidecars:
+        identity = _identity(_sidecar_info(sidecar_source, entry['path']))
+        identities[entry['path']] = identity
+        target = stage / SIDECARS / entry['path'] if copy_files else None
+        actual = _copy_sidecar(sidecar_source, entry['path'], target, identity, cancelled)
+        if actual != entry:
+            raise RestoreError('sidecar size or digest mismatch')
+    snapshot = stage / DATABASE
+    _copy_database(source / DATABASE, snapshot, manifest)
+    with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
+        storage.check()
+        if sidecars:
+            checked_root = stage / SIDECARS if copy_files else sidecar_source
+            _validate_readers(storage.db, _snapshot_readers(checked_root))
+            _validate_studios(storage.db, checked_root, strict_assets=True)
+            _validate_assistants(storage.db, checked_root, cancelled=cancelled)
+        original_store = RetainedAssets(source / ORIGINALS)
+        entries = verify_catalog_assets(storage.db, original_store,
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        if _asset_manifest(entries) != manifest['assets']:
+            raise RestoreError('asset manifest disagrees with the database')
+        if copy_files:
+            copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+    if any(_identity(_sidecar_info(sidecar_source, name)) != identity
+           for name, identity in identities.items()):
+        raise RestoreError('sidecar changed during verification')
+    if cancelled():
+        raise InterruptedError('Library backup or restore cancelled.')
+    return entries, sidecars, _managed_output_directories(sidecars)
+
+
+def verify_backup(source, expected_manifest_sha256, *, max_sidecar_files=MAX_SIDECAR_FILES,
+                  max_sidecar_bytes=MAX_SIDECAR_BYTES, cancelled=lambda: False):
+    """Validate v1-v4 snapshots read-only without publishing a restored library.
+
+    SQLite validation uses a private database copy. Audio and other sidecars
+    are streamed without allocating another full production copy.
+    """
+    _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
+    source = Path(source).absolute()
+    _plain(source, directory=True)
+    source = source.resolve(strict=True)
+    manifest = _read_manifest(source, expected_manifest_sha256,
+        max_sidecar_files=max_sidecar_files, max_sidecar_bytes=max_sidecar_bytes)
+    with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
+        _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
+    return manifest
+
+
 def restore_backup(source, destination, expected_manifest_sha256, *,
                    max_sidecar_files=MAX_SIDECAR_FILES, max_sidecar_bytes=MAX_SIDECAR_BYTES,
                    cancelled=lambda: False):
@@ -849,34 +942,11 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256,
         max_sidecar_files=max_sidecar_files, max_sidecar_bytes=max_sidecar_bytes)
-    _plain(source / ORIGINALS, directory=True)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
-        sidecars = _manifest_sidecars(manifest)
-        _, subdirectory = _sidecar_layout(manifest)
-        sidecar_source = source / subdirectory
-        for entry in sidecars:
-            identity = _identity(_sidecar_info(sidecar_source, entry['path']))
-            actual = _copy_sidecar(sidecar_source, entry['path'],
-                                   stage / SIDECARS / entry['path'], identity, cancelled)
-            if actual != entry:
-                raise RestoreError('sidecar size or digest mismatch')
-        output_directories = _managed_output_directories(sidecars)
+        entries, sidecars, output_directories = _verify_contents(source, stage, manifest,
+            copy_files=True, cancelled=cancelled)
         snapshot = stage / DATABASE
-        _copy_database(source / DATABASE, snapshot, manifest)
-        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
-            storage.check()
-            if sidecars:
-                _validate_readers(storage.db, _snapshot_readers(stage / SIDECARS))
-                _validate_studios(storage.db, stage / SIDECARS, strict_assets=True)
-                _validate_assistants(storage.db, stage / SIDECARS, cancelled=cancelled)
-            original_store = RetainedAssets(source / ORIGINALS)
-            entries = verify_catalog_assets(storage.db, original_store,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
-            if _asset_manifest(entries) != manifest['assets']:
-                raise RestoreError('asset manifest disagrees with the database')
-            copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
         _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')

@@ -76,9 +76,12 @@ scope, statuses and artifact records without opening saved paths. Locks and
 recognized atomic temporary files are excluded. Unknown files inside the managed
 assistant namespace, orphan controls, malformed records and forged committed
 workspace/edition/revision bindings reject the complete snapshot. Each job and
-control publication uses the same library writer guard as the database snapshot;
-the snapshot never takes the assistant's execution lock. It can therefore include
-the running checkpoint of the assistant's own complete-backup operation.
+control publication takes the application writer guard and then the assistant
+state guard. The snapshot follows that order before taking sorted job guards. It
+may borrow only its own live native execution lock in the same process and
+thread; nested execution and other owners cannot borrow that exception. This
+preserves the assistant's own running backup checkpoint without self-deadlock.
+Another active job or a concurrent publication receives a nonblocking retry error.
 
 Restoration preserves the exact bytes, original data directory, paths and approved
 plan hash. The existing optional `requires_reapproval` marker is supported; a
@@ -104,28 +107,41 @@ Later resumes recheck the complete tree, including unexpected additions and
 empty directories. This does not replace the existing backup format or restore
 implementation.
 
-The existing library snapshot routine has its own disk limits and does not
-offer cooperative cancellation within every copy operation. An assistant
-cancel/deadline during that snapshot takes effect at the next verification or
-publication boundary. Oversized or cancelled staged results are removed without
-publishing the requested final backup. This limitation is separate from the
-audio worker's per-chunk cancellation.
+The assistant forwards its pause, close and deadline signal into the complete
+backup service. Registered reader, audio and assistant sidecars check that
+signal at each 1 MiB copy block. Closing the dialog signals the worker without
+writing a competing control checkpoint while the snapshot is locked; the
+worker records the paused state after releasing those locks. Completed steps
+remain available for resume, and cancelled staging is removed before the
+requested final backup is published.
+
+The snapshot routine still has its own disk limits. SQLite snapshotting and
+copying registered original assets do not check cancellation inside every copy
+operation. A pause during those operations takes effect at the next cooperative
+checkpoint or verification boundary. This limit is separate from sidecar and
+audio rendering chunk cancellation.
 
 ## Playback
 
-The existing Audio Studio Production page now has **Pause / resume playback**,
-**Seek to seconds**, **Seek playback**, **Read playback position**, and a named
-read-only time/state control. Automatic position updates do not steal focus;
-the explicit Read action focuses the readable status.
+The Audio Studio Production page provides **Pause / resume playback**,
+**Playback output device**, **Go to playback position**, **Back 10 seconds**,
+**Forward 10 seconds**, and **Read playback status**. Automatic position updates
+change the named read-only field only when its value changes and do not steal
+focus; the explicit Read action focuses the readable status.
 
-The shared `audio.player.WavePlayer` uses Windows MCI or an explicitly installed
-`ffplay`. RIFF and RF64 PCM16 preflight uses the production reader and never
-loads a whole multi-hour waveform. Windows position comes from MCI; ffplay's
-elapsed position is explicitly approximate. Device or decoder errors remain
-visible. RF64 structural validation is not proof that every Windows MCI driver
-can play that container; actual device compatibility and listening are separate
-acceptance. No device recording or background playback starts on application
-launch, import or project open.
+Every caller shares `audio.player.WavePlayer`, backed on Windows by the bounded
+`audio.playback.PCMPlayer` WinMM worker. PCM16 RIFF and RF64 files are streamed
+through a fixed buffer queue; native sample/byte/time positions are unwrapped
+for multi-hour output. The application preflights complete framing and seek
+bounds before interrupting an existing recording. Device cleanup failures stay
+visible, and a new stream cannot replace a worker that still owns native buffers.
+
+The optional non-Windows `ffplay` preview reports observed process state and
+file duration, without inventing a playback position. Timeline controls and
+output selection use the native Windows player. No recording or background
+playback starts on application launch, import or project open. See
+[AUDIO_PLAYBACK.md](AUDIO_PLAYBACK.md) for buffer ownership, the unavailable
+hardware probe, and the separate manual Windows/NVDA/listening acceptance.
 
 ## Reuse and verification
 
@@ -137,7 +153,7 @@ must be added again. Natural completion advances to the next item. Stop and
 Close cancel advancement and the sleep timer. Play rendered master starts a
 single-file queue; Add WAV recordings appends to it. Queues are session-local.
 
-**Repeat A–B range** applies explicit start/end times to Windows MCI or ffplay.
+**Repeat A–B range** applies explicit start/end times to the bounded WinMM worker or ffplay.
 The backend stops at B and the Studio's next 500 ms timer tick restarts at A.
 This avoids playing beyond B but is not gapless looping. **Clear A–B repeat**
 restores ordinary playback and preserves a paused state. The sleep timer uses
@@ -152,14 +168,16 @@ strictly ordered, in-range segment markers. Standalone recordings have no
 invented chapter metadata. Automatic status updates do not move keyboard focus;
 Read playback controls makes the current position, loop and timer state readable.
 
-The focused player/controller regression passed **35 tests** on Linux. It
-includes real RIFF/RF64 validation, invalid queue rollback, modified-file
-rejection, deterministic timer/loop/segment tests with explicitly mocked MCI,
-and actual two-file ffplay decoding through SDL's dummy audio device. The dummy
-device establishes process/decoding/queue completion, not audible playback or
-physical-device quality. The Windows smoke adds actual native control names,
-queue setup without playback, timer setup/cancellation and queue clearing;
-execution of that expanded native smoke remains a separate CI gate.
+The focused portable player, worker and Studio regressions exercise real
+RIFF/RF64 validation, invalid queue rollback, modified-file rejection, bounded
+PCM reads through the exact B endpoint, selected-output continuity, cleanup
+failures, deterministic timer/loop/segment controls and unchanged keyboard focus.
+Native boundaries in those portable tests are explicit synthetic devices.
+A separate POSIX probe decodes two real files through ffplay and SDL dummy audio;
+that establishes process/decoding/queue completion, not audible playback quality.
+The Windows smoke checks native control names, queue setup without playback,
+timer setup/cancellation and queue clearing. Actual physical-device listening
+and NVDA acceptance remain separate from automated control tests.
 
 The local assistant models, guided parser, job store and executor, the native
 assistant dialog and WAV player were adapted from repository PR103 commit

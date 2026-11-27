@@ -61,6 +61,70 @@ def test_approved_plan_is_not_mutable_after_submit(environment):
         service.run(identity)
 
 
+@pytest.mark.parametrize('damage', ['missing-input', 'missing-output', 'output-file'])
+@pytest.mark.parametrize('completed', [False, True], ids=['queued', 'completed'])
+def test_unavailable_saved_scope_stays_visible_without_authorizing_execution(
+        environment, monkeypatch, damage, completed):
+    app, inputs, outputs = environment
+    workspace = app.create_workspace('Scoped')
+    service = AssistantService(app)
+    identity = service.submit(service.preview('List books', Scope(workspace, (inputs,), outputs)))
+    healthy = service.submit(service.preview('List libraries', Scope()))
+    if completed:
+        assert service.run(identity).status == 'complete'
+    saved_report = service.get(identity)
+    healthy_report = service.get(healthy)
+    affected = inputs if damage == 'missing-input' else outputs
+    affected.rmdir()
+    if damage == 'output-file':
+        affected.write_text('This is no longer the approved output directory.', encoding='utf-8')
+    before = {p.name: p.read_bytes() for p in service.store.directory.iterdir()}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Unavailable scope must not execute tools, save a journal or write a control.')
+    monkeypatch.setattr(service, '_execute', forbidden)
+    monkeypatch.setattr(service.store, 'save', forbidden)
+    monkeypatch.setattr(service.store, 'control', forbidden)
+
+    report = service.get(identity)
+    assert report.status == 'attention' and 'original folders' in report.message
+    assert (report.completed, report.total, report.results) == (
+        saved_report.completed, saved_report.total, saved_report.results)
+    assert {job.id: job for job in service.jobs()} == {identity: report, healthy: healthy_report}
+    assert {p.name: p.read_bytes() for p in service.store.directory.iterdir()} == before
+    for action in (service.run, service.resume):
+        with pytest.raises((OSError, ValueError)):
+            action(identity)
+    # A run attempt can create its native lock, but never alter a checkpoint or
+    # grant a run control when the original approved scope cannot be loaded.
+    assert {p.name: p.read_bytes() for p in service.store.directory.glob('*.json')} == {
+        name: raw for name, raw in before.items() if name.endswith('.json')}
+    if damage == 'output-file':
+        affected.unlink()
+    affected.mkdir()
+    assert service.get(identity) == saved_report
+
+
+def test_job_listing_still_rejects_structural_corruption(environment):
+    app, _, _ = environment
+    service = AssistantService(app)
+    identity = service.submit(service.preview('List libraries', Scope()))
+    path = service.store.path(identity)
+    value = read_json(path)
+    value['plan_sha256'] = '0' * 64
+    atomic_json(path, value)
+    before = path.read_bytes()
+    for read in (lambda: service.get(identity), lambda: service.run(identity)):
+        with pytest.raises(ValueError, match='approved assistant plan'):
+            read()
+    # The job list reports the damaged record without hiding unrelated jobs.
+    # Inspection never makes the corrupted plan executable or rewrites it.
+    report, = service.jobs()
+    assert report.id == identity and report.status == 'attention'
+    assert report.total == report.completed == 0 and 'damaged' in report.message
+    assert path.read_bytes() == before
+
+
 @pytest.mark.parametrize('tool', ['shell', 'exec', 'network.fetch', 'library.delete', 'credential.get', 'python'])
 def test_unlisted_tools_are_rejected(tool):
     with pytest.raises(ValueError):

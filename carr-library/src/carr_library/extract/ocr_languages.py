@@ -109,6 +109,7 @@ class LanguageCatalog:
     engine_version: str = ''
     integrity: str = 'unavailable'
     manifest_sha256: str | None = None
+    model_profile: str = 'installed'
 
     @property
     def selectable(self):
@@ -229,7 +230,7 @@ def discover_languages(*, timeout=10, cancelled=lambda: False,
         codes = store.available(model_profile)
         if not codes:
             runtime.assert_unchanged(remaining)
-            return LanguageCatalog((), integrity='verified_managed_profile')
+            return LanguageCatalog((), integrity='verified_managed_profile', model_profile=model_profile)
         selection = store.select(model_profile, '+'.join(codes), remaining=remaining)
         runtime = ManagedOcrRuntime(runtime, selection)
     try:
@@ -251,7 +252,7 @@ def discover_languages(*, timeout=10, cancelled=lambda: False,
                            'verified_model_pack' if model_pack_path else
                            'verified_managed_profile' if model_profile != 'installed' else
                            ('portable_sha256' if runtime.portable else 'system_installation'),
-                           model_pack_sha256 if model_pack_path else runtime.manifest_sha256)
+                           model_pack_sha256 if model_pack_path else runtime.manifest_sha256, model_profile)
 
 
 def _name(value):

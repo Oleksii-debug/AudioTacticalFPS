@@ -128,6 +128,11 @@ def main():
             assert studio.voice.GetCount() >= 1
             assert studio.script.GetName() == 'Editable narration or dialogue script'
             assert studio.status.GetName() == 'Audio Studio status and render progress'
+            assert studio.seek_seconds.GetName() == 'Playback position in seconds'
+            assert studio.playback_device.GetName().startswith('Playback output device')
+            assert studio.playback_status.GetName() == 'Playback state, current time, duration and output device'
+            studio.refresh_playback()
+            assert 'Stopped' in studio.playback_status.GetValue()
             studio.notebook.SetSelection(0)
             studio.script.SetFocus()
             def script_has_focus():
@@ -140,8 +145,8 @@ def main():
             application.Yield()
             assert studio.plan_text.GetValue() == controller.preview()
             assert controller.script == script, 'Native preview changed the original script.'
-            assert studio.playback_position.GetName() == 'Playback position and state'
-            assert studio.seek_seconds.GetName() == 'Seek to seconds'
+            assert studio.playback_status.GetName() == 'Playback state, current time, duration and output device'
+            assert studio.seek_seconds.GetName() == 'Playback position in seconds'
             assert 'Playback' in [studio.notebook.GetPageText(i) for i in range(studio.notebook.GetPageCount())]
             assert studio.playlist_choice.GetName() == 'Local playback playlist'
             assert studio.segment_choice.GetName() == 'Playback chapters and segments'
@@ -159,10 +164,10 @@ def main():
             assert studio.playback.sleep_remaining_seconds is None
             studio.clear_playlist()
             assert not studio.playback.playlist and studio.playlist_choice.GetCount() == 0
-            studio.read_playback_position()
+            studio.read_playback_status()
             assert 'Stopped' in studio.status.GetValue()
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
-                           'native plan preview', 'project save and readback', 'native playback time and seek controls',
+                           'native plan preview', 'project save and readback', 'native playback device, position and status controls',
                            'native playlist, A–B, segment and sleep controls; setup without device playback'])
             studio.dialog.Hide()
 

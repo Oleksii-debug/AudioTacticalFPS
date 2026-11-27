@@ -1,8 +1,8 @@
 """Allowlisted assistant checkpoints for the existing complete-library backup.
 
-Call while holding the application writer guard. Execution locks are deliberately
-not acquired: a running assistant can itself request a complete-library backup.
-Only durable publications are captured, with their original permissions/paths.
+Call while holding the application writer and assistant state guards. The complete
+backup also locks jobs, borrowing only its own live same-process/thread execution
+guard. Only durable publications are captured, with original permissions/paths.
 """
 import os
 from pathlib import Path
@@ -19,7 +19,7 @@ MAX_JOB_BYTES = 64 * 1024 * 1024
 MAX_CONTROL_BYTES = 1024
 MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
 _DOCUMENT = re.compile(r'([0-9a-f]{32})(\.control)?\.json')
-_TRANSIENT = re.compile(r'(?:[0-9a-f]{32}\.lock|\.[0-9a-f]{32}(?:\.control)?\.json\.[0-9a-f]{32}\.tmp)')
+_TRANSIENT = re.compile(r'(?:\.state\.lock|[0-9a-f]{32}\.lock|\.[0-9a-f]{32}(?:\.control)?\.json\.[0-9a-f]{32}\.tmp)')
 
 
 def is_state_path(relative):

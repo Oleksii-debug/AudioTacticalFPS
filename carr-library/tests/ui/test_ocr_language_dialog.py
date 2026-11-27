@@ -1,5 +1,6 @@
 """Ordered language intent and async UI handlers; native/NVDA tested separately."""
 from concurrent.futures import Future
+from dataclasses import replace
 from types import SimpleNamespace
 from threading import Event
 from unittest.mock import Mock
@@ -71,10 +72,10 @@ def test_filter_does_not_drop_hidden_selected_models_and_order_reaches_real_conf
     dialog.EndModal.assert_called_once_with(1)
 
 
-@pytest.mark.parametrize('index,profile', [(2, 'fast'), (3, 'best')])
-def test_managed_profile_reuses_ordered_choice_and_resource_budgets(dialog, index, profile):
-    dialog.profile.SetSelection(index)
-    dialog.active_profile = profile
+@pytest.mark.parametrize('profile', ['fast', 'best'])
+def test_managed_profile_reuses_ordered_choice_and_resource_budgets(dialog, profile):
+    dialog._set_model_profile(profile)
+    dialog.catalog = replace(dialog.catalog, model_profile=profile, integrity='verified_managed_profile')
     dialog.selected_codes = ['script/Latin', 'ukr']
     config = dialog.current_config()
     assert config.model_profile == profile
@@ -84,18 +85,19 @@ def test_managed_profile_reuses_ordered_choice_and_resource_budgets(dialog, inde
 
 
 def test_managed_fast_pinned_policy_survives_reopening(dialog):
-    from carr_library.ui.ocr_language_dialog import profile_index
     from carr_library.extract.pinned_tessdata import POLICY
     dialog.initial = Config(languages='eng', model_profile='fast', model_policy=POLICY)
-    dialog.profile.SetSelection(profile_index('fast', POLICY))
+    dialog._set_model_profile('fast')
+    dialog.catalog = replace(dialog.catalog, model_profile='fast', integrity='verified_managed_profile')
+    dialog.profile.SetSelection(1)
     assert dialog.current_config() == dialog.initial
 
 
 def test_changing_to_managed_profile_rechecks_models_off_ui_thread(dialog, monkeypatch):
     probe = Mock(return_value=dialog.catalog)
     monkeypatch.setattr('carr_library.ui.ocr_language_dialog.discover_languages', probe)
-    dialog.profile.SetSelection(2)
-    dialog.change_profile()
+    dialog.model_source = Control(selection=1)
+    dialog.change_model_profile()
     probe.assert_not_called()
     operation, = dialog.executor.submit.call_args.args
     assert operation is probe
@@ -327,3 +329,61 @@ def test_saved_pack_preset_revalidates_before_replacing_current_selection(pack_d
     view.pending.pop(0)()
     assert view.selected_codes == ['ukr']
     assert view.current_config().model_pack_sha256 == 'a' * 64
+
+
+@pytest.mark.parametrize('profile,index', [('fast', 1), ('best', 2)])
+def test_profile_switch_discards_old_inventory_before_accepting_new_settings(dialog, profile, index):
+    dialog.model_source = Control(selection=index)
+    dialog.active_pack = ('/previous-pack', 'a' * 64)
+    dialog.change_model_profile()
+    assert dialog.busy and dialog.catalog is None and dialog.active_pack is None
+    assert not dialog.model_source.enabled
+    assert dialog.executor.submit.call_args.kwargs['model_profile'] == profile
+    dialog.accept()
+    assert dialog.result is None
+    dialog.future.set_result(LanguageCatalog(('eng',), 'tesseract 5.5.0', 'verified_managed_profile',
+                                            model_profile=profile))
+    dialog.pending.pop(0)()
+    assert dialog.model_source.enabled
+    assert 'model profile and license checks passed' in dialog.status.value
+    dialog.accept()
+    assert dialog.result == Config(languages='eng', dpi=200, timeout=45, model_profile=profile)
+
+
+def test_old_profile_result_cannot_enable_a_new_profile_selection(dialog):
+    old = dialog.catalog
+    dialog.model_source = Control(selection=1)
+    dialog.change_model_profile()
+    dialog.future.set_result(old)
+    dialog.pending.pop(0)()
+    assert dialog.catalog is None and not dialog.ok.enabled
+    assert 'different profile' in dialog.status.value
+    dialog.accept()
+    assert dialog.result is None
+
+
+@pytest.mark.parametrize('cancelled', [False, True])
+def test_saved_managed_preset_requires_fresh_profile_inventory_before_activation(dialog, cancelled):
+    store_preset(dialog.preset_root, 'Best Ukrainian first', Config(languages='ukr+eng', model_profile='best'))
+    dialog._presets()
+    dialog.presets.selection = next(i for i, row in enumerate(dialog.preset_items) if row[2] == 'Best Ukrainian first')
+    previous = dialog.catalog
+    dialog.apply_preset()
+    assert dialog.busy and dialog.selected_codes == ['eng']
+    dialog.future.set_result(LanguageCatalog(('ukr', 'eng'), integrity='verified_managed_profile', model_profile='best'))
+    if cancelled:
+        dialog.cancel_event.set()
+    dialog.pending.pop(0)()
+    if cancelled:
+        assert dialog.catalog is previous and dialog.selected_codes == ['eng']
+        assert dialog.current_config().model_profile == 'installed'
+    else:
+        assert dialog.current_config() == Config(languages='ukr+eng', dpi=200, timeout=45, model_profile='best')
+
+
+def test_manager_entrypoint_uses_the_shared_official_model_manager(dialog, monkeypatch):
+    manager = Mock()
+    monkeypatch.setattr('carr_library.ui.ocr_model_manager.show_ocr_model_manager', manager)
+    dialog.manage_models()
+    manager.assert_called_once_with(dialog)
+    assert dialog.busy and dialog.executor.submit.call_count == 1

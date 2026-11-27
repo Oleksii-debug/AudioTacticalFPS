@@ -1,18 +1,91 @@
 """Atomic JSON checkpoints; OS locks release on crash and are not backup data."""
 from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
 from pathlib import Path
 import re
 import stat
+from threading import get_ident
 from uuid import uuid4
 
 from filelock import FileLock, Timeout
 from .models import canonical, local_path
 from .validation import decode_state_json, validate_job, validate_control
-from ..ingest.writer_guard import exclusive_writer
+from ..ingest.writer_guard import WriterBusy, exclusive_writer
 
 MAX_JOBS = 1000
+MAX_JOB_BYTES = 64 * 1024 * 1024
+MAX_CONTROL_BYTES = 1024
+
+
+@dataclass
+class _HeldGuard:
+    path: Path
+    process: int
+    thread: int
+    active: bool = True
+
+
+_held_guards = ContextVar('carr_assistant_native_guards', default=())
+
+
+@contextmanager
+def _native_guard(path, *, snapshot=False):
+    """A snapshot may borrow only this process/thread's actual live lock."""
+    path = local_path(path, must_exist=False)
+    regular(path, missing=True)
+    current = _held_guards.get()
+    if snapshot and any(held.active and held.path == path
+                        and held.process == os.getpid()
+                        and held.thread == get_ident() for held in current):
+        yield
+        return
+    try:
+        acquired = FileLock(path, mode=0o600).acquire(timeout=0)
+    except Timeout as exc:
+        raise RuntimeError('This assistant job is already running or its state is being saved. Retry after the active operation stops.') from exc
+    with acquired:
+        held = _HeldGuard(path, os.getpid(), get_ident())
+        token = _held_guards.set((*current, held))
+        try:
+            yield
+        finally:
+            held.active = False
+            _held_guards.reset(token)
+
+
+def _job_guard(directory, identity, *, snapshot=False):
+    if not isinstance(identity, str) or not re.fullmatch('[0-9a-f]{32}', identity):
+        raise ValueError('Invalid assistant job identity.')
+    return _native_guard(local_path(directory) / (identity + '.lock'), snapshot=snapshot)
+
+
+def snapshot_job_guard(directory, identity):
+    """Snapshot one job, borrowing a live same-thread execution lock if held."""
+    return _job_guard(directory, identity, snapshot=True)
+
+
+def state_write_guard(directory):
+    """Short publication guard shared by job saves, controls and backups."""
+    return _native_guard(local_path(directory) / '.state.lock')
+
+
+class PublicationBusy(WriterBusy, RuntimeError):
+    """A checkpoint publication is blocked by the shared native writer guard."""
+
+
+@contextmanager
+def _publication_guard(directory, writer_root):
+    """One publication protocol: application writer, then assistant state lock."""
+    try:
+        with exclusive_writer(writer_root), state_write_guard(directory):
+            yield
+    except WriterBusy as exc:
+        raise PublicationBusy(
+            "This assistant state is being saved or another library writer is active. "
+            "Retry after the active operation stops.") from exc
 
 
 def now():
@@ -36,7 +109,7 @@ def atomic_json(path, value):
     local_path(path.parent)
     regular(path, missing=True)
     payload = (canonical(value) + '\n').encode('utf-8')
-    if len(payload) > 64 * 1024 * 1024:
+    if len(payload) > MAX_JOB_BYTES:
         raise ValueError('Assistant checkpoint exceeds the storage budget.')
     temporary = path.with_name('.' + path.name + '.' + uuid4().hex + '.tmp')
     try:
@@ -62,7 +135,7 @@ def _identity(info):
             info.st_mode, info.st_nlink, getattr(info, 'st_file_attributes', 0))
 
 
-def read_bytes(path, *, maximum=64 * 1024 * 1024):
+def read_bytes(path, *, maximum=MAX_JOB_BYTES):
     """Read one bounded private checkpoint, rejecting replacement during the read."""
     path = Path(path)
     local_path(path.parent)
@@ -81,7 +154,7 @@ def read_bytes(path, *, maximum=64 * 1024 * 1024):
     return raw
 
 
-def read_json(path, *, maximum=64 * 1024 * 1024):
+def read_json(path, *, maximum=MAX_JOB_BYTES):
     return decode_state_json(read_bytes(path, maximum=maximum))
 
 
@@ -112,32 +185,28 @@ class JobStore:
         # Only publication uses the application guard. Holding it while running
         # tools would deadlock the assistant's own complete-library backup step.
         validate_job(value)
-        with exclusive_writer(self.writer_root):
+        with _publication_guard(self.directory, self.writer_root):
             value['updated'] = now()
             atomic_json(self.path(value['id']), value)
 
     @contextmanager
     def lock(self, identity):
-        path = self.path(identity).with_suffix('.lock')
-        regular(path, missing=True)
-        try:
-            with FileLock(path, mode=0o600).acquire(timeout=0):
-                yield
-        except Timeout as exc:
-            raise RuntimeError('This assistant job is already running.') from exc
+        # Execution stays non-reentrant; only its same-owner snapshot may borrow.
+        with _job_guard(self.directory, identity):
+            yield
 
     def control(self, identity, command=None):
         path = self.path(identity).with_suffix('.control.json')
         if command is not None:
             if command not in ('run', 'pause', 'cancel'):
                 raise ValueError('Invalid assistant control.')
-            with exclusive_writer(self.writer_root):
+            with _publication_guard(self.directory, self.writer_root):
                 # A control is never allowed to outlive a missing/invalid job.
                 self.load(identity)
                 atomic_json(path, {'command': command})
         if not path.exists():
             return 'run'
-        value = read_json(path, maximum=1024)
+        value = read_json(path, maximum=MAX_CONTROL_BYTES)
         return validate_control(value)['command']
 
     def identities(self):

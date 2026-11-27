@@ -12,8 +12,9 @@ alone does not establish trust. Inspect the snapshot with its independently kept
 code before restoring it into a **new, nonexistent data directory**. The current
 library remains open; use Open existing library folder to open the recovered copy.
 
-Password encryption uses the optional `sync` dependency group, pinned to
-PyCA cryptography 50.0.2. Passphrases are entered for each operation and are never
+The Windows offline installers include password encryption. Source installations
+can enable the optional `sync` dependency group, pinned to PyCA cryptography
+50.0.2. Passphrases are entered for each operation and are never
 saved in the library, snapshot history, command line, environment, or logs.
 Choose at least 12 characters. Lost passphrases cannot be recovered. Encryption
 failure never falls back to an unencrypted file. Plain snapshots require an

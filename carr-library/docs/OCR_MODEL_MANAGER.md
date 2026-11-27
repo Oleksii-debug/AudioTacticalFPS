@@ -20,7 +20,10 @@ Importing PDF documents opens an OCR selection dialog. Choose the models
 installed with the OCR runtime, Managed Fast, or Managed Best. Select only the
 languages or scripts the document needs. English is the initial selection when
 available; the application does not load every installed model by default.
-Several checked text models enable an explicit mixed-language Tesseract pass.
+Add text models to the ordered selection and use Move up or Move down to set
+recognition priority. Up to eight text models enable an explicit mixed-language
+Tesseract pass. Switching model sources reloads their inventory before accepting
+the settings; an inventory from a different profile is refused.
 An installed `osd` model enables the separate optional orientation control.
 
 `script/Latin` and `script/Cyrillic` are distinct from language models such as
@@ -30,6 +33,23 @@ are **not automatic language identification**. Automatic region-level language
 identification and a per-language accuracy benchmark are not provided by this
 change. OCR remains an unverified candidate until the existing independent
 source-review workflow is completed.
+
+### Existing selections and presets
+
+The ordered language chooser, built-in choices and named library presets remain
+available. Existing version-1 presets keep the bundled/system model binding.
+Version-2 presets retain their exact reviewed-pack path and independently recorded
+manifest checksum. These files are read without a migration write. Saving a
+Managed Fast or Managed Best choice writes version 3 and retains earlier preset
+rows in that same file. Resource limits belong to the import configuration and
+are preserved when a language preset is applied.
+
+The Offline packs page opens the same Fast/Best manager as the Library menu.
+It also accepts an existing reviewed pack with its original manifest checksum;
+activation verifies that pack before replacing the current choice. A reviewed
+pack cannot be combined with a managed profile. Missing or changed bindings fail
+explicitly. A restored preset retains its original binding and never guesses a
+replacement folder or silently activates another model family.
 
 ## Prepare a local model folder
 
@@ -131,7 +151,7 @@ Import Center. `ocr_selection.choose_model_config` is a compatibility entry
 point to `ocr_language_dialog`; it does not open a second profile/language
 wizard. The selector offers installed models, the retained pinned Fast policy,
 managed Fast or Best profiles, and the existing independently verified external
-pack workflow. Its **Manage local Fast / Best models** action opens the shared
+pack workflow. Its **Manage official Fast and Best models...** action opens the shared
 offline installer. The Library menu opens that same installer.
 
 Installed inventory comes from `ocr_languages.discover_languages`. The older
@@ -157,9 +177,9 @@ This integration is covered by source tests and real local OCR fixtures. It
 does not establish a new native Windows, NVDA, or language-quality acceptance
 result; those require the corresponding actual acceptance runs.
 
-## Executed integration checks, 2026-11-26
+## Earlier owner integration checks, 2026-11-26
 
-The Linux source run completed **893 tests in 54.42 seconds**, covering the
+The owner recorded **893 tests in 54.42 seconds** on the `7e01554` composition before this reconciliation, covering the
 entire extraction suite, both retained OCR configurations, the shared native-UI
 controller tests, Import Center, desktop handlers, managed OCR import, backup
 reading state, and acquisition CLI integration. Real Tesseract fixtures exercised

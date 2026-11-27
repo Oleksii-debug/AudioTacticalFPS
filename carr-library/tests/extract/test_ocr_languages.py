@@ -97,11 +97,74 @@ def test_script_selection_does_not_bypass_pinned_profile_or_installed_inventory(
         catalog.validate('eng', orientation=True)
 
 
+def test_runtime_auxiliary_data_does_not_consume_the_eight_text_model_limit():
+    languages = 'eng+ukr+slk+fra+deu+spa+ita+pol'
+    assert Config(languages=languages, orientation=True).languages == languages
+    assert models.model_ids(languages + '+osd') == tuple(languages.split('+')) + ('osd',)
+    assert models.model_ids(languages + '+ces') == tuple(languages.split('+')) + ('ces',)
+    with pytest.raises(ValueError):
+        Config(languages=languages + '+ces')
+    with pytest.raises(ValueError):
+        models.model_ids('+'.join(f'model{i}' for i in range(models.MAX_MODELS + 1)))
+    with pytest.raises(ValueError):
+        Config(languages=languages + '+osd')
+
+
+@pytest.mark.parametrize('profile', ['fast', 'best'])
+def test_managed_discovery_verifies_selected_profile_before_publishing_inventory(monkeypatch, profile):
+    codes = ('eng', 'ukr', 'osd')
+    native = runtime(monkeypatch, codes=codes)
+    selection = SimpleNamespace(directory=Path('installed models'), languages=codes,
+                                assert_unchanged=Mock())
+    store = SimpleNamespace(available=Mock(return_value=codes), select=Mock(return_value=selection))
+    monkeypatch.setattr('carr_library.extract.ocr_model_store.OcrModelStore', lambda: store)
+    catalog = models.discover_languages(model_profile=profile)
+    assert catalog.model_profile == profile
+    assert catalog.integrity == 'verified_managed_profile'
+    assert catalog.selectable == ('eng', 'ukr')
+    store.available.assert_called_once_with(profile)
+    assert store.select.call_args.args == (profile, 'eng+ukr+osd')
+    assert models._capture.call_count == 2
+    native.assert_unchanged.assert_called_once()
+    selection.assert_unchanged.assert_called_once()
+
+
+def test_empty_managed_inventory_keeps_its_selected_profile_and_never_falls_back(monkeypatch):
+    native = runtime(monkeypatch)
+    store = SimpleNamespace(available=Mock(return_value=()), select=Mock())
+    monkeypatch.setattr('carr_library.extract.ocr_model_store.OcrModelStore', lambda: store)
+    catalog = models.discover_languages(model_profile='best')
+    assert catalog.model_profile == 'best' and catalog.codes == ()
+    with pytest.raises(ValueError, match='not installed'):
+        catalog.validate('eng')
+    store.select.assert_not_called()
+    native.assert_unchanged.assert_called_once()
+
+
+def test_missing_engine_cannot_silently_use_a_managed_profile(monkeypatch):
+    monkeypatch.setattr(ocr_runtime, 'discover_ocr_runtime', lambda **kwargs: None)
+    with pytest.raises(ValueError, match='local OCR engine'):
+        models.discover_languages(model_profile='fast')
+
+
+@pytest.mark.parametrize('language', [' eng', 'eng ', 'eng\t'])
+def test_runtime_inventory_does_not_normalize_an_invalid_model_identifier(language):
+    with pytest.raises(ValueError):
+        models.parse_language_report(report(language))
+
+
+def test_runtime_inventory_is_bound_to_the_requested_model_directory(tmp_path):
+    listing = f'List of available languages in "{tmp_path / "other"}" (1):\neng\n'
+    with pytest.raises(ValueError, match='different model directory'):
+        models.parse_language_report(listing, expected_directory=tmp_path / 'selected')
+
+
 @pytest.mark.parametrize('text', ['eng\nfra', 'List of available languages in "x" (2):\neng\n',
     'List of available languages in "x" (2):\neng\neng',
     'List of available languages in "x" (1):\n../eng',
     'List of available languages in "x" (1):\neng --psm 1',
-    'x' * (models.MAX_REPORT_BYTES + 1)])
+    'x' * (models.MAX_REPORT_BYTES + 1)],
+    ids=('missing-header', 'wrong-count', 'duplicate', 'traversal', 'arguments', 'over-budget'))
 def test_invalid_native_inventory_is_not_silently_filtered_into_a_valid_choice(text):
     with pytest.raises(ValueError):
         models.parse_language_report(text)
@@ -240,7 +303,60 @@ def test_linked_preset_file_is_not_read_or_overwritten(tmp_path):
 
 @pytest.mark.parametrize('raw', [b'{}', b'{"version":true,"presets":[]}',
     b'{"version":1,"version":1,"presets":[]}', b'{"version":1,"presets":[],"path":"outside"}',
-    b'\xff', b'x' * (models.MAX_PRESET_BYTES + 1)])
+    b'\xff', b'x' * (models.MAX_PRESET_BYTES + 1)],
+    ids=('empty-object', 'boolean-version', 'duplicate', 'extra-field', 'invalid-utf8', 'over-budget'))
 def test_invalid_or_unbounded_saved_preferences_fail_closed(raw):
     with pytest.raises(ValueError):
         models.validate_presets_bytes(raw)
+
+
+def test_managed_presets_preserve_legacy_records_and_survive_actual_backup_restore(tmp_path):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import restore_backup
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('OCR profile preservation')
+    source = app.add_text(workspace, 'Retained original', 'Unmodified original source.')
+    original = app.assets.resolve(source['asset']).read_bytes()
+    models.store_preset(app.root, 'Legacy installed', Config(languages='ukr+eng'))
+    first = models.load_presets(app.root)[0]
+    assert json.loads((app.root / models.FILENAME).read_bytes())['version'] == 1
+    pack = Config(languages='slk+eng', model_pack_path=str(tmp_path / 'reviewed-models'),
+                  model_pack_sha256='a' * 64)
+    models.store_preset(app.root, 'Existing reviewed pack', pack)
+    second = models.load_presets(app.root)[1]
+    assert json.loads((app.root / models.FILENAME).read_bytes())['version'] == 2
+    models.store_preset(app.root, 'Managed Best', Config(languages='script/Latin+ukr', model_profile='best'))
+    raw = (app.root / models.FILENAME).read_bytes()
+    saved = models.validate_presets_bytes(raw)
+    assert saved['version'] == 3 and saved['presets'][:2] == [first, second]
+    assert saved['presets'][2]['model_profile'] == 'best'
+    assert saved['presets'][2]['languages'] == 'script/Latin+ukr'
+    receipt = app.backup(tmp_path / 'archive')
+    restored = tmp_path / 'restored'
+    restore_backup(tmp_path / 'archive', restored, expected_manifest_sha256=receipt)
+    assert (restored / models.FILENAME).read_bytes() == raw
+    assert models.load_presets(restored) == models.load_presets(app.root)
+    assert app.assets.resolve(source['asset']).read_bytes() == original
+
+
+@pytest.mark.parametrize('damage', ['unknown-profile', 'installed-marker', 'pinned-best', 'mixed-pack', 'old-version'])
+def test_invalid_profile_bindings_do_not_change_a_valid_preset_file(tmp_path, damage):
+    models.store_preset(tmp_path, 'Managed', Config(model_profile='best'))
+    path = tmp_path / models.FILENAME
+    original = path.read_bytes()
+    data = json.loads(original)
+    row = data['presets'][0]
+    if damage == 'unknown-profile': row['model_profile'] = 'remote'
+    elif damage == 'installed-marker': row['model_profile'] = 'installed'
+    elif damage == 'pinned-best': row['model_policy'] = POLICY
+    elif damage == 'mixed-pack':
+        row.update(model_pack_path=str(tmp_path / 'models'), model_pack_sha256='a' * 64)
+    elif damage == 'old-version': data['version'] = 2
+    with pytest.raises(ValueError):
+        models.validate_presets_bytes(json.dumps(data).encode())
+    assert path.read_bytes() == original
+
+
+def test_config_cannot_mix_a_managed_profile_and_an_existing_reviewed_pack(tmp_path):
+    with pytest.raises(ValueError, match='cannot be combined'):
+        Config(model_profile='fast', model_pack_path=str(tmp_path / 'pack'), model_pack_sha256='a' * 64)

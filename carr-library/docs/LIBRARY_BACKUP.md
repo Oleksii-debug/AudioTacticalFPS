@@ -7,6 +7,11 @@ preferences, evidence-note recovery, OCR presets and assistant checkpoints.
 External projects remain supported by Audio Studio's
 separate verified ZIP64 backup. The library backup never scans external folders.
 
+Version 4 also preserves canonical assistant jobs and controls in
+`state/assistant/`, command-registry keyboard overrides and evidence-note recovery
+drafts. Their current shared validators remain authoritative; no separate
+assistant implementation or legacy workflow namespace is introduced.
+
 ## Preserved audio state
 
 Managed projects use `audio-projects/<32-hex-project-id>/`:
@@ -34,6 +39,15 @@ library or executes text from a project.
 
 ## Integrity and concurrent work
 
+After the library writer lock, backup holds the command-keymap lock, sorted
+assistant job locks and the assistant's short publication guard, then managed
+draft/render locks. Acquisitions are nonblocking. Assistant saves and pause/cancel
+commands use the same publication guard, so they cannot alter a captured job or
+control halfway through the copy. A snapshot can borrow only an exact active job
+lock held by its own process and thread; a copied context in another process or
+thread, or a released context, must acquire the actual native lock. Execution
+itself remains non-reentrant.
+
 Backup acquires the library writer lock, then each sorted project's draft lock
 and production `audio/.render.lock`. These acquisitions are nonblocking; an active
 writer or renderer receives a clear retry message. Let the job complete or cancel
@@ -58,6 +72,18 @@ source text and its page separators. Editing a reading copy cannot authorize a
 forged original or silently select a newer source revision.
 
 ## Versions, budgets and interruption
+
+`verify_backup` validates every supported manifest version through the same
+schema, immutable-source and byte checks as restoration. It writes only a private
+temporary database copy, streams the sidecars without copying audio, and never
+creates lock files inside the source backup.
+
+Canonical assistant jobs are limited to 64 MiB each and controls to 1 KiB, also
+counting against the shared sidecar budgets. Checkpoint identities, approved plan
+digests, typed results and workspace bindings are checked without opening saved
+external paths. Restore preserves the original `data_dir`; a different live root
+therefore requires a newly reviewed plan. These archived bytes remain valid for
+another backup without being granted new authority.
 
 Database schema versions and backup-manifest versions are distinct. Existing
 version-1/2 backups remain supported. Reader-only backups retain the existing

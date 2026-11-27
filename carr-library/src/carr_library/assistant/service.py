@@ -137,10 +137,13 @@ class AssistantService:
                 'Restored plan requires review and a new approval; its original paths were preserved.')
         try:
             record, _ = self._load(identity)
-        except (ValueError, OSError) as exc:
-            return JobReport(identity, 'attention', 0, len(record['steps']), (),
-                'Saved plan needs review before execution; its original input/output scope is unavailable. '
-                + str(exc)[:1000])
+        except (OSError, ValueError) as exc:
+            # Listing does not grant execution authority. Keep a structurally
+            # validated checkpoint visible when its saved paths disappear or
+            # become unsafe; run/resume still require the unchanged _load.
+            return self._report({**record, 'status': 'attention', 'message': (
+                'Saved paths are unavailable or no longer permitted. Restore the original '
+                'folders or review and submit a new plan. ' + str(exc))[:2000]})
         return self._report(record)
 
     def jobs(self):
@@ -428,7 +431,7 @@ class AssistantService:
                 staged = Path(temporary) / 'backup'
                 if cancelled():
                     raise InterruptedError('Backup cancelled before creation.')
-                checksum = self.app.backup(staged)
+                checksum = self.app.backup(staged, cancelled=cancelled)
                 receipt = capture_backup_receipt(staged, checksum, max_bytes=scope.max_bytes,
                     max_files=scope.max_files, cancelled=cancelled)
                 if cancelled():

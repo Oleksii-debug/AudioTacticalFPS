@@ -9,11 +9,13 @@ from carr_library.ui import ocr_language_dialog
 from carr_library.extract.page_ocr import Config
 
 
-@pytest.mark.parametrize('expected', ['eng', 'ukr', 'slk', 'eng+ukr+slk', 'script/Latin+fra'])
-def test_dialog_adapter_preserves_complete_model_selection(monkeypatch, expected):
+@pytest.mark.parametrize('expected,profile', [('eng', 'installed'), ('ukr', 'installed'),
+    ('slk', 'installed'), ('eng+ukr+slk', 'installed'), ('script/Latin+fra', 'installed'),
+    ('eng+script/Latin', 'fast'), ('script/Cyrillic', 'best')])
+def test_dialog_adapter_preserves_complete_model_selection(monkeypatch, expected, profile):
     observed = {}
     class Dialog:
-        result = Config(languages=expected, dpi=200, timeout=45, orientation=True)
+        result = Config(languages=expected, dpi=200, timeout=45, orientation=True, model_profile=profile)
         def ShowModal(self):
             return 1
         def Destroy(self):

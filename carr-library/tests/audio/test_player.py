@@ -1,14 +1,16 @@
 """Real RIFF/RF64 preflight; native device calls are explicit unit-test doubles."""
+from dataclasses import replace
 from types import SimpleNamespace
 import math
 import struct
-import shutil
-import time
 import wave
 
 import pytest
 
 import carr_library.audio.player as player_module
+import carr_library.audio.playback as native_module
+from carr_library.audio.playback import PCMPlayer, PlaybackStatus
+from carr_library.audio.ffmpeg import wav_info
 from carr_library.audio.player import WavePlayer
 
 
@@ -30,24 +32,24 @@ def recording(path, *, rf64=False):
 def test_pcm_preflight_pause_resume_seek_stop_and_close(tmp_path, monkeypatch, rf64):
     path = recording(tmp_path / 'recording.wav', rf64=rf64)
     monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
-    state = {'mode': 'stopped', 'position': 0}
-    commands = []
-    def mci(self, command):
-        commands.append(command)
-        if command.startswith('status'):
-            return state['mode'] if command.endswith('mode') else str(state['position'])
-        if command.startswith('play'):
-            state.update(mode='playing', position=int(command.rsplit(' ', 1)[1]))
-        elif command.startswith('pause'):
-            state['mode'] = 'paused'
-        elif command.startswith('resume'):
-            state['mode'] = 'playing'
-        elif command.startswith('stop'):
-            state.update(mode='stopped', position=0)
-        return ''
-    monkeypatch.setattr(WavePlayer, '_mci', mci)
+    class NativeDouble(PCMPlayer):
+        # Facade routing only; the real worker and native ABI have separate tests.
+        def play(self, selected, *, start_seconds=0, end_seconds=None, device_id=None):
+            info = wav_info(selected)
+            self._update(state='playing', path=str(selected), total_frames=info.frames,
+                         position_frames=self._frame(start_seconds, info.rate, info.frames),
+                         sample_rate=info.rate, channels=info.channels, device_id=device_id)
+        def pause(self):
+            self._update(state='paused')
+        def resume(self):
+            self._update(state='playing')
+        def seek(self, seconds):
+            self._update(position_frames=self._frame(seconds, 8000, 8000))
+    monkeypatch.setattr(native_module, 'PCMPlayer', NativeDouble)
     player = WavePlayer()
-    player.play(path)
+    player.play(path, device_id=2)
+    assert player.path == path and player.status().device_id == 2
+    assert player.backend == 'Windows WinMM waveOut' and not player.position_is_approximate
     assert player.duration_seconds == 1 and player.state == 'playing'
     assert player.pause() and player.state == 'paused'
     player.seek(.5)
@@ -56,14 +58,14 @@ def test_pcm_preflight_pause_resume_seek_stop_and_close(tmp_path, monkeypatch, r
     player.stop()
     assert player.state == 'stopped' and player.position_seconds == 0
     player.close()
-    assert not player._open
-    assert any(command.startswith('close ') for command in commands)
+    assert player.state == 'closed'
 
 
 @pytest.mark.parametrize('position', [-1, math.nan, math.inf, 2, True])
 def test_invalid_seek_rejected_before_device_call(tmp_path, monkeypatch, position):
     path = recording(tmp_path / 'recording.wav')
-    monkeypatch.setattr(WavePlayer, '_mci', lambda *args: pytest.fail('No native call before validation.'))
+    monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(PCMPlayer, 'play', lambda *args, **kwargs: pytest.fail('No native call before validation.'))
     with pytest.raises(ValueError):
         WavePlayer().play(path, start_seconds=position)
 
@@ -71,42 +73,62 @@ def test_invalid_seek_rejected_before_device_call(tmp_path, monkeypatch, positio
 def test_truncated_wav_fails_before_playback(tmp_path, monkeypatch):
     path = recording(tmp_path / 'recording.wav')
     path.write_bytes(path.read_bytes()[:-1])
-    monkeypatch.setattr(WavePlayer, '_mci', lambda *args: pytest.fail('No device call for damaged PCM.'))
+    monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(PCMPlayer, 'play', lambda *args, **kwargs: pytest.fail('No device call for damaged PCM.'))
     with pytest.raises(ValueError):
         WavePlayer().play(path)
 
 
-def test_removed_windows_device_cannot_block_studio_cleanup(monkeypatch):
+def test_native_cleanup_failure_remains_visible_without_losing_handle_owner(monkeypatch):
     monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
     player = WavePlayer()
-    player._open = True
+    owner = player.native
     def disconnected(*args):
         raise RuntimeError('Device disconnected')
-    monkeypatch.setattr(player, '_mci', disconnected)
-    player.close()
-    assert not player._open and player.state == 'stopped'
+    monkeypatch.setattr(owner, 'close', disconnected)
+    with pytest.raises(RuntimeError, match='Device disconnected'):
+        player.close()
+    assert player.native is owner
+
+
+def test_invalid_new_source_keeps_existing_controller_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
+    player = WavePlayer()
+    player.native._update(state='playing', position_frames=4000, total_frames=8000, sample_rate=8000)
+    damaged = recording(tmp_path / 'damaged.wav')
+    damaged.write_bytes(damaged.read_bytes()[:-1])
+    with pytest.raises(ValueError):
+        player.play(damaged)
+    assert player.state == 'playing' and player.position_seconds == .5
 
 
 @pytest.fixture
 def native_player(monkeypatch):
-    """Controlled MCI protocol double; no physical audio-device claim."""
+    """Controlled facade boundary; actual worker/endpoints are tested separately."""
     monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
-    state = {'mode': 'stopped', 'position': 0, 'clock': 0.0, 'commands': []}
-    def mci(self, command):
-        state['commands'].append(command)
-        parts = command.split()
-        if command.startswith('status'):
-            return state['mode'] if command.endswith('mode') else str(state['position'])
-        if command.startswith('play'):
-            state.update(mode='playing', position=int(parts[parts.index('from')+1]))
-        elif command.startswith('pause'):
+    state = {'mode': 'stopped', 'position': 0, 'clock': 0.0, 'plays': []}
+    class NativeDouble(PCMPlayer):
+        def play(self, selected, *, start_seconds=0, end_seconds=None, device_id=None):
+            info = wav_info(selected)
+            state['plays'].append({'path': selected, 'start': start_seconds, 'end': end_seconds, 'device_id': device_id})
+            state.update(mode='playing', position=round(start_seconds * 1000))
+            self._update(state='playing', path=str(selected), total_frames=info.frames,
+                         position_frames=round(start_seconds * info.rate), sample_rate=info.rate,
+                         channels=info.channels, device_id=device_id)
+        def status(self):
+            value = super().status()
+            return replace(value, state=state['mode'], position_frames=round(state['position'] * value.sample_rate / 1000))
+        def pause(self):
             state['mode'] = 'paused'
-        elif command.startswith('resume'):
+        def resume(self):
             state['mode'] = 'playing'
-        elif command.startswith('stop'):
+        def stop(self, **kwargs):
             state.update(mode='stopped', position=0)
-        return ''
-    monkeypatch.setattr(WavePlayer, '_mci', mci)
+            super().stop(**kwargs)
+        def close(self):
+            super().close()
+            state['mode'] = 'closed'
+    monkeypatch.setattr(native_module, 'PCMPlayer', NativeDouble)
     return WavePlayer(clock=lambda: state['clock']), state
 
 
@@ -114,9 +136,9 @@ def test_bounded_playlist_does_not_autoplay_and_advances_only_after_natural_end(
     player, state = native_player
     first, second = recording(tmp_path/'first.wav'), recording(tmp_path/'second.wav', rf64=True)
     player.set_playlist([first, second])
-    assert player.state == 'stopped' and not any(c.startswith('open ') for c in state['commands'])
+    assert player.state == 'stopped' and not state['plays']
     player.play_index(0)
-    state.update(mode='stopped', position=1000)
+    state.update(mode='completed', position=1000)
     assert player.poll() == 'next' and player.path == second and player.playlist_index == 1
     player.stop()
     assert player.poll() is None and player.state == 'stopped'
@@ -137,22 +159,22 @@ def test_playlist_replacement_is_atomic_and_detects_changed_recording(tmp_path, 
     with pytest.raises(ValueError):
         player.play_index(0)
     assert player.state == 'stopped'
-    assert not any(c.startswith('open ') for c in state['commands'])
+    assert not state['plays']
 
 
 def test_ab_repeat_uses_native_endpoints_and_preserves_pause(tmp_path, native_player):
     player, state = native_player
     player.play(recording(tmp_path/'range.wav'))
     player.set_ab_loop(.2, .7)
-    assert state['commands'][-1].endswith('from 200 to 700')
+    assert state['plays'][-1]['start'] == .2 and state['plays'][-1]['end'] == .7
     assert player.pause()
     player.seek(.4)
     assert player.state == 'paused' and player.ab_loop == (.2, .7)
     player.resume()
-    state.update(mode='stopped', position=700)
+    state.update(mode='completed', position=700)
     assert player.poll() == 'repeat' and state['position'] == 200
     player.clear_ab_loop()
-    assert player.ab_loop is None and state['commands'][-1].endswith('from 200')
+    assert player.ab_loop is None and state['plays'][-1]['start'] == .2 and state['plays'][-1]['end'] is None
     player.stop()
     assert player.poll() is None
 
@@ -162,10 +184,10 @@ def test_invalid_repeat_cannot_change_current_range(tmp_path, native_player, bou
     player, state = native_player
     player.play(recording(tmp_path/'range.wav'))
     player.set_ab_loop(.2, .7)
-    before = len(state['commands'])
+    before = len(state['plays'])
     with pytest.raises(ValueError):
         player.set_ab_loop(*bounds)
-    assert player.ab_loop == (.2,.7) and len(state['commands']) == before
+    assert player.ab_loop == (.2,.7) and len(state['plays']) == before
 
 
 def test_sleep_timer_has_priority_over_repeat_and_queue_and_runs_while_paused(tmp_path, native_player):
@@ -199,28 +221,28 @@ def test_segments_preserve_pause_and_invalid_replacement_keeps_current_map(tmp_p
         assert player.segments == before
 
 
-def test_actual_ffplay_headless_decode_and_queue_completion(tmp_path, monkeypatch):
-    if player_module.os.name == 'nt' or not shutil.which('ffplay'):
-        pytest.skip('Actual ffplay dummy-device probe requires an installed POSIX ffplay.')
-    monkeypatch.setenv('SDL_AUDIODRIVER', 'dummy')
-    paths = []
-    for name in ('first.wav','second.wav'):
-        path = tmp_path/name
-        with wave.open(str(path), 'wb') as output:
-            output.setparams((1,2,8000,0,'NONE','not compressed'))
-            output.writeframes(b'\x10\x00' * 1600)
-        paths.append(path)
-    player = WavePlayer()
-    try:
-        player.set_playlist(paths); player.play_index(0)
-        deadline = time.monotonic() + 8
-        while time.monotonic() < deadline:
-            player.poll()
-            assert player.state != 'error', 'The installed ffplay could not decode through SDL dummy audio.'
-            if player.playlist_index == 1 and player.state == 'stopped':
-                break
-            time.sleep(.02)
-        else:
-            pytest.fail('Headless actual playback did not complete the two-item queue within its budget.')
-    finally:
-        player.close()
+def test_output_selection_survives_playlist_repeat_and_segment_navigation(tmp_path, native_player):
+    player, state = native_player
+    first, second = recording(tmp_path/'selected.wav'), recording(tmp_path/'next.wav')
+    player.play(first, device_id=7)
+    player.enqueue([second])
+    player.set_ab_loop(.2, .7)
+    player.set_segments([(0, 'Opening'), (.4, 'Middle')])
+    player.seek_segment(1)
+    assert all(row['device_id'] == 7 for row in state['plays'])
+    player.play_index(1, device_id=3)
+    assert state['plays'][-1]['device_id'] == 3
+    assert player.ab_loop is None and player.segments == ()
+    player.previous_track()
+    assert state['plays'][-1]['device_id'] == 3
+
+
+def test_empty_playlist_replacement_releases_device_without_closing_controller(tmp_path, native_player):
+    player, state = native_player
+    path = recording(tmp_path/'reopen.wav')
+    player.play(path)
+    player.set_playlist([])
+    assert player.path is None and player.status().path is None and player.duration_seconds == 0
+    player.play(path)
+    assert player.state == 'playing'
+    player.close()
