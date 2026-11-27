@@ -13,10 +13,7 @@ a keyboard-only user can complete the workflow.
 
 Create two libraries containing small synthetic TXT books, each with a topic.
 Use identical library names in one pass to check that stable IDs distinguish
-them. Repeat with NFC-equivalent names (Café and Café) and an empty identically
-named third library. Give two books identical titles and authors but distinct
-edition labels (First and Second); add two matches on one page in another book.
-Include this sentence in both:
+them. Give the books different titles and authors. Include this sentence in both:
 
 > Railway libraries support academic research.
 
@@ -34,11 +31,8 @@ an unverified state. Keep a separate unsaved note in the main notebook.
 3. Select both libraries, enter Railway, and use the query field's Enter action.
    During work, verify that Cancel operation remains usable and disabled source
    actions cannot be activated.
-4. Verify each result's ordinal, originating library, source title, edition and
-   verification state without relying on color. Same-page matches must remain
-   distinguishable; missing edition must be announced as unknown. Check the
-   empty library's zero-result count and original group order. Test author and
-   language filters separately.
+4. Verify each result's originating library, source title and verification state
+   without relying on color. Test author and language filters separately.
 5. Open verified context. Confirm that the original source text and location are
    readable with normal text-caret commands. Close it; focus must return to the
    selected result.

@@ -16,7 +16,6 @@ from ..citations.anchors import Identity, Locator
 from ..ingest.retained_assets import RetainedAssets, SUFFIXES
 from ..ingest.writer_guard import exclusive_writer
 from ..research.topic_tree import TopicTree
-from ..extract.document_formats import EXTENDED_MIMES
 
 
 VIEW_DIRECTORY = 'source-views'
@@ -150,9 +149,6 @@ def launch_source_file(app, source, opener, *, authorized_topic=None,
     """
     if not isinstance(source, SourceFile) or not callable(opener):
         raise ValueError('Select an original source file to open.')
-    if source.mime in EXTENDED_MIMES:
-        raise ValueError('Read this document with Reading Desk (Ctrl+R). Its exact original is retained, '
-                         'but external viewers may execute active content or load remote resources.')
     if cancelled():
         raise InterruptedError('Opening the original was cancelled.')
     with app.read(source.identity.workspace) as db:

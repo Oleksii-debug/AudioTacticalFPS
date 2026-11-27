@@ -23,7 +23,6 @@ from filelock import FileLock, Timeout
 from ..catalog.intake import MAX_BYTES
 from ..catalog.membership import Catalog
 from ..extract.page_ocr import Config
-from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
 
@@ -33,7 +32,8 @@ MAX_ROWS = 10_000
 MAX_BATCHES = 1_000
 STATES = ('queued', 'running', 'complete', 'duplicate', 'rejected', 'failed', 'quarantined', 'excluded')
 _ID = re.compile('[0-9a-f]{32}')
-_MIMES = frozenset(MIME_SUFFIXES)
+_MIMES = {'text/plain', 'application/pdf', 'application/epub+zip',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
 _BATCH_KEYS = {'version', 'batch_id', 'data_dir', 'workspace', 'created', 'updated',
                'state', 'collections', 'recursive', 'config', 'rows', 'counts', 'total'}
 _ROW_KEYS = {'row_id', 'work_id', 'edition_id', 'request_id', 'source', 'file', 'title',

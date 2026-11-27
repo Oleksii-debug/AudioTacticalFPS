@@ -19,16 +19,6 @@ FORMATS = {
               {'[Content_Types].xml', '_rels/.rels', 'word/document.xml'}),
     '.xlsx': ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
               {'[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml'}),
-    '.pptx': ('application/vnd.openxmlformats-officedocument.presentationml.presentation',
-              {'[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml'}),
-    '.odt': ('application/vnd.oasis.opendocument.text',
-             {'mimetype', 'content.xml', 'META-INF/manifest.xml'}),
-    '.ods': ('application/vnd.oasis.opendocument.spreadsheet',
-             {'mimetype', 'content.xml', 'META-INF/manifest.xml'}),
-    '.odp': ('application/vnd.oasis.opendocument.presentation',
-             {'mimetype', 'content.xml', 'META-INF/manifest.xml'}),
-    '.fb3': ('application/x-fictionbook3',
-             {'[Content_Types].xml', '_rels/.rels', 'fb3/body.xml'}),
     '.epub': ('application/epub+zip', {'mimetype', 'META-INF/container.xml'}),
 }
 
@@ -91,19 +81,13 @@ def validate_office(data: bytes, suffix: str, *, max_expanded=MAX_EXPANDED,
                     raise ValueError('archive path conflicts with file')
             if not required <= files:
                 raise ValueError('missing document container markers')
-            office_roots = {'word/document.xml', 'xl/workbook.xml', 'ppt/presentation.xml', 'fb3/body.xml'}
-            if suffix in ('.docx', '.xlsx', '.pptx', '.fb3') and len(office_roots & files) != 1:
+            if ((suffix == '.docx' and 'xl/workbook.xml' in files)
+                    or (suffix == '.xlsx' and 'word/document.xml' in files)):
                 raise ValueError('ambiguous document container')
             if suffix == '.epub':
                 marker = archive.getinfo('mimetype')
                 if marker.file_size != len(b'application/epub+zip') or marker.compress_type != zipfile.ZIP_STORED or archive.read(marker) != b'application/epub+zip':
                     raise ValueError('invalid EPUB mimetype')
-            if suffix in ('.odt', '.ods', '.odp'):
-                marker = archive.getinfo('mimetype')
-                expected = mime.encode('ascii')
-                if (marker.file_size != len(expected) or marker.compress_type != zipfile.ZIP_STORED
-                        or archive.read(marker) != expected):
-                    raise ValueError('invalid OpenDocument mimetype')
             consumed = 0
             for info in members:
                 actual = 0

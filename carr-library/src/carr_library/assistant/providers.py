@@ -1,651 +1,442 @@
-"""Opt-in provider profiles and a bounded, destination-bound API gateway.
+"""Explicit, bounded provider calls. LOCAL_ONLY is the immutable default mode.
 
-All authorization is a host-created PlanApproval. Imported documents, scripts
-and model responses cannot create it. LOCAL_ONLY is the default and denies
-every remote connection. Only explicitly selected literal loopback services
-are allowed locally. Remote requests require reviewed profiles, data scope,
-finite per-request cost reservation and a plan-wide budget. No automatic retry.
+The gateway never downloads a model, retries a billable call, follows redirects,
+logs secret values, or turns provider text into executable actions.
 """
-from __future__ import annotations
-
-from contextlib import contextmanager
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass
+from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import http.client
-import ipaddress
+import html
 import json
 import math
 import os
 from pathlib import Path
-import queue
 import re
-import socket
 import ssl
-import threading
-import time
-from urllib.parse import urlsplit
+from tempfile import NamedTemporaryFile
+from time import monotonic, time
 from uuid import uuid4
-import wave
+from urllib.parse import urlencode
 
 from filelock import FileLock
+from .credentials import WindowsCredentialVault, validate_profile_id
+from .models import canonical, local_path, text
+from .profiles import CAPABILITIES, ProviderProfile, endpoint
+from .state import atomic_json, read_json, regular
 
-from ..audio.projects import atomic_json, canonical, directory, plain, read_json
-from ..audio.voices import _destination
-from ..data_paths import guard_data_directory
-from .credentials import WindowsCredentialVault, validate_reference, validate_secret
 
-
-_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}\Z')
-_TOKEN = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.:/-]{0,199}\Z')
-_VOICE = re.compile(r'[A-Za-z0-9_-]{1,128}\Z')
-MAX_PROFILES = 128
-MAX_REQUEST_BYTES = 512 * 1024
-MAX_CHAT_BYTES = 4 * 1024 * 1024
-MAX_AUDIO_BYTES = 64 * 1024 * 1024
+MODES = ('LOCAL_ONLY', 'APPROVED_REMOTE', 'HYBRID')
 
 
 class ProviderError(RuntimeError):
-    """Public safe error: response bodies and secrets never enter diagnostics."""
+    """User-safe provider failure, without remote response bodies or credentials."""
 
 
-def _id(value, label='identity'):
-    if not isinstance(value, str) or not _ID.fullmatch(value):
-        raise ValueError(f'Invalid {label}.')
-    return value
-
-
-def _label(value, label, maximum=200):
-    if (not isinstance(value, str) or not value.strip() or len(value) > maximum
-            or any(ord(char) < 32 or 0xD800 <= ord(char) <= 0xDFFF for char in value)):
-        raise ValueError(f'Invalid {label}.')
-    return value
-
-
-def endpoint(value, *, local):
-    """Canonical endpoint, with no embedded credentials, query or redirect."""
-    if not isinstance(value, str) or not 1 <= len(value) <= 512 or any(ord(ch) < 33 for ch in value):
-        raise ValueError('Invalid provider endpoint.')
+def money(value):
     try:
-        parts = urlsplit(value)
-        host, port = parts.hostname, parts.port
-    except ValueError:
-        raise ValueError('Invalid provider endpoint.') from None
-    if (not host or parts.username is not None or parts.password is not None
-            or parts.query or parts.fragment or '\\' in value or '%' in value
-            or parts.path not in ('', '/', '/v1', '/v1/')):
-        raise ValueError('Use a provider base URL with an optional /v1 path and no credentials or query.')
-    host = host.lower()
-    if port is not None and not 1 <= port <= 65535:
-        raise ValueError('Invalid provider port.')
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        address = None
-    if local:
-        if parts.scheme not in ('http', 'https') or address is None or not address.is_loopback:
-            raise ValueError('A local provider must use an explicit 127.x.x.x or ::1 loopback address.')
-    else:
-        if parts.scheme != 'https':
-            raise ValueError('Remote providers require HTTPS.')
-        if address is not None and not address.is_global:
-            raise ValueError('Remote provider addresses must be public; configure loopback services explicitly.')
-        if address is None:
-            if not re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?', host) or '.' not in host:
-                raise ValueError('Use a public DNS hostname for a remote provider.')
-            if any(not part or part.startswith('-') or part.endswith('-') for part in host.split('.')):
-                raise ValueError('Invalid provider hostname.')
-    visible_host = '[' + host + ']' if ':' in host else host
-    authority = visible_host + (f':{port}' if port is not None else '')
-    return f'{parts.scheme}://{authority}{parts.path.rstrip("/") or "/v1"}'
-
-
-@dataclass(frozen=True)
-class ProviderProfile:
-    id: str
-    name: str
-    provider: str
-    endpoint: str
-    model: str
-    capability: str
-    credential_ref: str | None = None
-    local: bool = False
-    voice_id: str | None = None
-
-    def __post_init__(self):
-        _id(self.id, 'profile identity')
-        _label(self.name, 'profile name')
-        if type(self.local) is not bool:
-            raise ValueError('Provider locality must be explicitly true or false.')
-        normalized = endpoint(self.endpoint, local=self.local)
-        if self.endpoint != normalized:
-            raise ValueError('Use the normalized provider base URL: ' + normalized)
-        if not isinstance(self.model, str) or not _TOKEN.fullmatch(self.model):
-            raise ValueError('Invalid provider model identity.')
-        if self.provider == 'openai-compatible':
-            if self.capability != 'chat' or self.voice_id is not None:
-                raise ValueError('This compatible adapter supports text chat only.')
-        elif self.provider == 'elevenlabs':
-            if self.local or self.endpoint != 'https://api.elevenlabs.io/v1':
-                raise ValueError('ElevenLabs credentials can only go to its official HTTPS API origin.')
-            if self.capability != 'tts' or not isinstance(self.voice_id, str) or not _VOICE.fullmatch(self.voice_id):
-                raise ValueError('ElevenLabs speech requires an explicit valid voice identity.')
-        else:
-            raise ValueError('This provider adapter is not implemented.')
-        if self.credential_ref is not None:
-            validate_reference(self.credential_ref)
-
-    @property
-    def fingerprint(self):
-        return sha256(canonical(asdict(self)).encode()).hexdigest()
-
-
-def validate_profiles_document(value):
-    if (type(value) is not dict or set(value) != {'version', 'kind', 'profiles'}
-            or type(value['version']) is not int or value['version'] != 1
-            or value['kind'] != 'provider-connections' or type(value['profiles']) is not list
-            or len(value['profiles']) > MAX_PROFILES):
-        raise ValueError('Invalid non-secret provider profile document.')
-    fields = set(ProviderProfile.__dataclass_fields__)
-    if any(type(row) is not dict or set(row) != fields for row in value['profiles']):
-        raise ValueError('Provider configuration contains unknown or secret fields.')
-    profiles = tuple(ProviderProfile(**row) for row in value['profiles'])
-    if len({profile.id for profile in profiles}) != len(profiles):
-        raise ValueError('Duplicate provider account identity.')
-    return profiles
-
-
-class ConnectionStore:
-    def __init__(self, root):
-        self.root = guard_data_directory(root)
-        directory(self.root)
-        self.path = self.root / 'connections.json'
-
-    @contextmanager
-    def _lock(self):
-        lock = self.root / '.connections.lock'
-        plain(lock, missing=True)
-        with FileLock(lock, mode=0o600).acquire(timeout=5):
-            yield
-
-    def list_profiles(self):
-        if not self.path.exists():
-            return ()
-        return validate_profiles_document(read_json(self.path, 256 * 1024))
-
-    def get(self, profile_id):
-        _id(profile_id, 'profile identity')
-        for profile in self.list_profiles():
-            if profile.id == profile_id:
-                return profile
-        raise ValueError('Provider profile not found.')
-
-    def save_profile(self, profile, *, secret=None, vault=None, expected_fingerprint=None):
-        if type(profile) is not ProviderProfile:
-            raise ValueError('Save a validated provider profile.')
-        if secret is not None:
-            validate_secret(secret)
-            if secret in canonical(asdict(profile)):
-                raise ValueError('An API key must not appear in non-secret profile fields.')
-        created_reference = None
-        with self._lock():
-            profiles = list(self.list_profiles())
-            previous = next((row for row in profiles if row.id == profile.id), None)
-            if previous is not None and expected_fingerprint != previous.fingerprint:
-                raise ValueError('The provider profile changed; reopen it before saving.')
-            if previous is None and len(profiles) >= MAX_PROFILES:
-                raise ValueError('Provider profile storage limit reached.')
-            if previous and previous.endpoint != profile.endpoint and profile.credential_ref == previous.credential_ref:
-                profile = replace(profile, credential_ref=None)
-            if secret is not None:
-                vault = vault or WindowsCredentialVault()
-                created_reference = vault.store(profile.id, profile.endpoint, secret)
-                profile = replace(profile, credential_ref=created_reference)
-            try:
-                profiles = [row for row in profiles if row.id != profile.id] + [profile]
-                document = {'version': 1, 'kind': 'provider-connections',
-                            'profiles': [asdict(row) for row in profiles]}
-                validate_profiles_document(document)
-                atomic_json(self.path, document)
-            except BaseException:
-                if created_reference is not None:
-                    vault.delete(created_reference)
-                raise
-        return profile
-
-    def remove_profile(self, profile_id, *, vault=None, delete_credential=True, expected_fingerprint=None):
-        _id(profile_id, 'profile identity')
-        with self._lock():
-            profiles = list(self.list_profiles())
-            old = next((profile for profile in profiles if profile.id == profile_id), None)
-            if old is None:
-                raise ValueError('Provider profile not found.')
-            if expected_fingerprint is not None and old.fingerprint != expected_fingerprint:
-                raise ValueError('The provider profile changed; reopen it before deleting.')
-            if delete_credential and old.credential_ref:
-                (vault or WindowsCredentialVault()).delete(old.credential_ref)
-            atomic_json(self.path, {'version': 1, 'kind': 'provider-connections',
-                                   'profiles': [asdict(row) for row in profiles if row.id != profile_id]})
-
-
-@dataclass(frozen=True)
-class PlanApproval:
-    plan_id: str = field(default_factory=lambda: uuid4().hex)
-    mode: str = 'LOCAL_ONLY'
-    profiles: tuple[tuple[str, str], ...] = ()
-    data_classes: tuple[str, ...] = ('user_text',)
-    max_budget_microunits: int = 0
-    max_calls: int = 100
-    currency: str = 'USD'
-
-    def __post_init__(self):
-        _id(self.plan_id, 'provider plan identity')
-        if self.mode not in ('LOCAL_ONLY', 'APPROVED_REMOTE', 'HYBRID'):
-            raise ValueError('Unsupported provider mode.')
-        if not isinstance(self.profiles, tuple) or len(self.profiles) > MAX_PROFILES:
-            raise ValueError('Invalid approved provider set.')
-        seen = set()
-        for row in self.profiles:
-            if not isinstance(row, tuple) or len(row) != 2:
-                raise ValueError('Invalid approved provider binding.')
-            _id(row[0], 'approved profile identity')
-            if not isinstance(row[1], str) or not re.fullmatch('[0-9a-f]{64}', row[1]) or row[0] in seen:
-                raise ValueError('Invalid or duplicate approved provider binding.')
-            seen.add(row[0])
-        if not isinstance(self.data_classes, tuple) or not self.data_classes or len(self.data_classes) > 32:
-            raise ValueError('Invalid approved data scope.')
-        for value in self.data_classes:
-            _id(value, 'data class')
-        if (type(self.max_budget_microunits) is not int or not 0 <= self.max_budget_microunits <= 10**12
-                or type(self.max_calls) is not int or not 1 <= self.max_calls <= 10000
-                or self.currency not in ('USD', 'EUR', 'GBP')):
-            raise ValueError('Invalid provider budget, currency or call limit.')
-
-    @classmethod
-    def for_profiles(cls, profiles, **kwargs):
-        """Called by trusted host UI after the user approves a concrete plan."""
-        profiles = tuple(profiles)
-        if any(type(profile) is not ProviderProfile for profile in profiles):
-            raise ValueError('Approve validated provider profiles only.')
-        return cls(profiles=tuple((profile.id, profile.fingerprint) for profile in profiles), **kwargs)
-
-    @property
-    def fingerprint(self):
-        return sha256(canonical(asdict(self)).encode()).hexdigest()
-
-
-def validate_ledger_document(value, *, plan_id):
-    """Strict secret-free backup decoder; restored history cannot resume calls.
-
-    Restore must set ``restored`` to True. A backup can predate a later charge,
-    so its counters cannot safely authorize more requests against the old plan.
-    """
-    _id(plan_id, 'provider plan identity')
-    fields = {'version', 'kind', 'plan_id', 'restored', 'approval_sha256', 'currency', 'operations'}
-    if (type(value) is not dict or set(value) != fields
-            or type(value['version']) is not int or value['version'] != 1
-            or value['kind'] != 'provider-usage' or value['plan_id'] != plan_id
-            or type(value['restored']) is not bool or value['currency'] not in ('USD', 'EUR', 'GBP')
-            or not isinstance(value['approval_sha256'], str)
-            or not re.fullmatch('[0-9a-f]{64}', value['approval_sha256'])
-            or type(value['operations']) is not dict or len(value['operations']) > 10000):
-        raise ValueError('Invalid provider usage journal.')
-    for key, row in value['operations'].items():
-        _id(key, 'provider operation identity')
-        if (type(row) is not dict or set(row) != {'profile_id', 'request_sha256', 'state',
-                'reserved_microunits', 'billed_microunits', 'data_class'}
-                or row['state'] not in ('reserved', 'received', 'complete', 'uncertain',
-                    'not_sent', 'invalid_response', 'result_not_saved')
-                or type(row['reserved_microunits']) is not int
-                or not 0 <= row['reserved_microunits'] <= 10**12
-                or row['billed_microunits'] is not None
-                or not isinstance(row['request_sha256'], str)
-                or not re.fullmatch('[0-9a-f]{64}', row['request_sha256'])):
-            raise ValueError('Invalid provider usage operation.')
-        _id(row['profile_id'], 'provider profile identity')
-        _id(row['data_class'], 'provider data class')
-        if row['state'] == 'not_sent' and row['reserved_microunits'] != 0:
-            raise ValueError('An unsent provider operation cannot consume a reservation.')
-    return value
-
-
-def _cancel(cancelled):
-    if cancelled is not None:
-        callback = cancelled.is_set if hasattr(cancelled, 'is_set') else cancelled
-        if not callable(callback):
-            raise ValueError('Invalid provider cancellation callback.')
-        if callback():
-            raise InterruptedError('Provider operation cancelled; reconcile any uncertain charge before retrying.')
-
-
-def _addresses(host, port, *, local, timeout, cancelled):
-    # DNS timeout is independent of libc's resolver timeout; a stuck resolver
-    # cannot hold the caller. A late daemon result has no authority to connect.
-    answers = queue.Queue(maxsize=1)
-    def resolve():
-        try:
-            answers.put(socket.getaddrinfo(host, port, type=socket.SOCK_STREAM))
-        except OSError:
-            answers.put(None)
-    threading.Thread(target=resolve, daemon=True).start()
-    started = time.monotonic()
-    while True:
-        _cancel(cancelled)
-        remaining = timeout - (time.monotonic() - started)
-        if remaining <= 0:
-            raise ProviderError('Provider address lookup exceeded the request time budget.')
-        try:
-            records = answers.get(timeout=min(0.05, remaining))
-            break
-        except queue.Empty:
-            pass
-    if not records or len(records) > 64:
-        raise ProviderError('The provider address could not be resolved.')
-    result = []
-    for family, kind, protocol, _, address in records:
-        ip = ipaddress.ip_address(address[0])
-        permitted = ip.is_loopback if local else ip.is_global
-        if not permitted or ip.is_multicast or ip.is_unspecified:
-            raise ProviderError('The provider resolved to a disallowed network destination.')
-        if address not in [entry[3] for entry in result]:
-            result.append((family, kind, protocol, address))
+        result = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        raise ValueError('Enter an explicit nonnegative cost bound.') from None
+    if not result.is_finite() or result < 0 or result > Decimal('1000000'):
+        raise ValueError('Invalid provider cost bound.')
     return result
 
 
 @dataclass(frozen=True)
-class HTTPResult:
-    content_type: str
-    body: bytes
+class Authorization:
+    """A user-approved envelope; provider endpoints and profile IDs are exact."""
+    id: str
+    task_id: str
+    profiles: tuple  # (profile ID, exact endpoint) pairs
+    operations: tuple
+    data_classes: tuple
+    budget: str
+    max_calls: int
+    expires_at: float
+    request_hashes: tuple = ()
+    currency: str = 'USD'
+
+    def __post_init__(self):
+        validate_profile_id(self.id)
+        text(self.task_id, 'authorized task', maximum=128)
+        if type(self.max_calls) is not int or not 1 <= self.max_calls <= 100000:
+            raise ValueError('Invalid provider call budget.')
+        if type(self.expires_at) not in (int, float) or not math.isfinite(self.expires_at):
+            raise ValueError('Invalid provider authorization expiry.')
+        if not re.fullmatch('[A-Z]{3}', self.currency):
+            raise ValueError('Use a three-letter budget currency.')
+        money(self.budget)
+        if not self.profiles or any(len(p) != 2 for p in self.profiles):
+            raise ValueError('Approve exact provider profiles and endpoints.')
+        for identity, address in self.profiles:
+            validate_profile_id(identity)
+            endpoint(address, local=False)
+        if not self.operations or any(o not in CAPABILITIES for o in self.operations):
+            raise ValueError('Invalid authorized operation.')
+        if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'synthetic-test') for x in self.data_classes):
+            raise ValueError('Approve a bounded selected data class; whole-library uploads are unavailable.')
+        if any(not re.fullmatch('[0-9a-f]{64}', h) for h in self.request_hashes):
+            raise ValueError('Invalid authorized request checksum.')
 
 
-class HTTPTransport:
-    """Direct HTTP(S), pinned resolved IP, normal TLS verification, no proxies.
+class UsageLedger:
+    """Crash-safe reservations; uncertain charge state is never blindly retried."""
+    def __init__(self, directory):
+        self.directory = local_path(directory, must_exist=False)
+        self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
 
-    Redirects are returned as errors. The connection uses the reviewed hostname
-    for TLS and Host while connecting once to a validated IP; it never performs
-    a second hostname lookup that could change the credential destination.
-    """
-    def request(self, profile, path, payload, headers, *, maximum_bytes, timeout_seconds, cancelled=None):
-        _cancel(cancelled)
-        parts = urlsplit(profile.endpoint)
-        host, port = parts.hostname, parts.port or (443 if parts.scheme == 'https' else 80)
-        started = time.monotonic()
-        addresses = _addresses(host, port, local=profile.local,
-                               timeout=timeout_seconds, cancelled=cancelled)
-        _cancel(cancelled)
-        family, kind, protocol, address = addresses[0]
-        connection = http.client.HTTPConnection(host, port, timeout=timeout_seconds)
-        raw_socket = socket.socket(family, kind, protocol)
-        raw_socket.settimeout(max(0.1, timeout_seconds - (time.monotonic() - started)))
-        done = threading.Event()
-        interrupted = []
-        def interrupt():
-            while not done.wait(0.05):
-                try:
-                    _cancel(cancelled)
-                    if time.monotonic() - started >= timeout_seconds:
-                        raise TimeoutError('Provider request exceeded its time budget.')
-                except BaseException as exc:
-                    interrupted.append(exc)
-                    try:
-                        (connection.sock or raw_socket).shutdown(socket.SHUT_RDWR)
-                    except OSError:
-                        pass
-                    return
-        watcher = threading.Thread(target=interrupt, daemon=True)
-        watcher.start()
-        try:
-            raw_socket.connect(address)
-            _cancel(cancelled)
-            if parts.scheme == 'https':
-                connection.sock = ssl.create_default_context().wrap_socket(raw_socket, server_hostname=host)
-            else:
-                connection.sock = raw_socket
-            connection.auto_open = 0
-            connection.request('POST', path, payload, headers)
-            response = connection.getresponse()
-            if 300 <= response.status <= 399:
-                raise ProviderError('Provider redirect refused; credentials were not forwarded.')
-            if not 200 <= response.status <= 299:
-                raise ProviderError(f'The provider refused the request (HTTP {response.status}); review account and usage.')
-            declared = response.getheader('Content-Length')
-            if declared is not None and (not declared.isdecimal() or int(declared) > maximum_bytes):
-                raise ProviderError('Provider response exceeds its allowed size.')
-            if response.getheader('Content-Encoding', 'identity').lower() != 'identity':
-                raise ProviderError('Unexpected encoded provider response.')
-            body = bytearray()
-            while True:
-                _cancel(cancelled)
-                chunk = response.read(min(65536, maximum_bytes + 1 - len(body)))
-                if not chunk:
-                    break
-                body.extend(chunk)
-                if len(body) > maximum_bytes:
-                    raise ProviderError('Provider response exceeds its allowed size.')
-            if declared is not None and len(body) != int(declared):
-                raise ProviderError('Provider response was truncated.')
-            return HTTPResult(response.getheader('Content-Type', '')[:256].lower(), bytes(body))
-        except (OSError, http.client.HTTPException, ssl.SSLError):
-            if interrupted:
-                raise interrupted[0] from None
-            raise ProviderError('The provider connection failed; charge state may be uncertain. No automatic retry was made.') from None
-        finally:
-            done.set()
-            connection.close()
-            raw_socket.close()
+    def _path(self, authorization_id):
+        return self.directory / (validate_profile_id(authorization_id) + '.usage.json')
+
+    def reserve(self, authorization, operation_id, request_hash, bound, profile, operation):
+        path = self._path(authorization.id)
+        lock = path.with_suffix('.lock')
+        regular(lock, missing=True)
+        with FileLock(lock, mode=0o600):
+            fingerprint = sha256(canonical(asdict(authorization)).encode('utf-8')).hexdigest()
+            value = read_json(path) if path.exists() else {'schema': 'carr-provider-usage/1',
+                'authorization': fingerprint, 'currency': authorization.currency, 'operations': {}}
+            if value.get('authorization') != fingerprint or value.get('schema') != 'carr-provider-usage/1':
+                raise PermissionError('Provider authorization changed; approve a new envelope.')
+            operations = value['operations']
+            profile_hash = sha256(canonical(profile.to_dict()).encode('utf-8')).hexdigest()
+            retry_not_sent = False
+            if operation_id in operations:
+                prior = operations[operation_id]
+                if prior['request_sha256'] != request_hash:
+                    raise PermissionError('Operation identity was reused for different data.')
+                if prior.get('status') != 'not_sent':
+                    raise ProviderError('This operation has already been attempted. Reconcile its recorded output or charge state before another call.')
+                if (prior.get('profile') != profile.id or prior.get('model') != profile.model
+                        or prior.get('operation') != operation or prior.get('profile_sha256') != profile_hash
+                        or money(prior['reserved_cost']) != bound):
+                    raise PermissionError('A not-sent operation cannot change its approved profile, operation or cost bound.')
+                # The prior attempt never reached connection.request. The same
+                # immutable envelope may reserve this identity again, under the
+                # lock; reserved/uncertain/complete attempts remain blocked.
+                retry_not_sent = True
+            spent = sum((money(v['reserved_cost']) for v in operations.values() if v['status'] != 'not_sent'), Decimal(0))
+            calls = len(operations) - int(retry_not_sent)
+            if calls >= authorization.max_calls or spent + bound > money(authorization.budget):
+                raise PermissionError('The approved provider call or cost budget would be exceeded.')
+            operations[operation_id] = {'profile': profile.id, 'model': profile.model, 'operation': operation,
+                'profile_sha256': profile_hash,
+                'request_sha256': request_hash, 'reserved_cost': str(bound), 'cost_kind': 'user-approved upper bound',
+                'actual_cost': None, 'status': 'reserved', 'output_sha256': None, 'usage': None}
+            atomic_json(path, value)
+
+    def finish(self, authorization_id, operation_id, *, status, output_hash=None, usage=None):
+        if status not in ('complete', 'uncertain', 'not_sent'):
+            raise ValueError('Invalid usage reconciliation status.')
+        path = self._path(authorization_id)
+        lock = path.with_suffix('.lock')
+        regular(lock, missing=True)
+        with FileLock(lock, mode=0o600):
+            value = read_json(path)
+            row = value['operations'][operation_id]
+            row.update(status=status, output_sha256=output_hash, usage=usage)
+            atomic_json(path, value)
+
+    def get(self, authorization_id):
+        return read_json(self._path(authorization_id))
 
 
-class ProviderGateway:
-    def __init__(self, store, *, vault=None, approval=None, _transport=None):
-        if type(store) is not ConnectionStore:
-            raise ValueError('A validated provider profile store is required.')
-        self.store = store
-        self.vault = vault or WindowsCredentialVault()
-        self.approval = approval or PlanApproval()
-        if type(self.approval) is not PlanApproval:
-            raise ValueError('The host must provide a validated provider plan approval.')
-        self.transport = _transport or HTTPTransport()
-        self.ledger_root = directory(store.root / 'provider-jobs')
-        self.ledger_path = self.ledger_root / (self.approval.plan_id + '.json')
-
-    @contextmanager
-    def _lock(self):
-        path = self.ledger_root / (self.approval.plan_id + '.lock')
-        plain(path, missing=True)
-        with FileLock(path, mode=0o600).acquire(timeout=5):
-            yield
-
-    def _ledger(self):
-        if not self.ledger_path.exists():
-            return {'version': 1, 'kind': 'provider-usage', 'approval_sha256': self.approval.fingerprint,
-                    'plan_id': self.approval.plan_id, 'restored': False,
-                    'currency': self.approval.currency, 'operations': {}}
-        try:
-            value = validate_ledger_document(read_json(self.ledger_path, 4 * 1024 * 1024),
-                                            plan_id=self.approval.plan_id)
-        except ValueError:
-            raise ProviderError('Provider usage journal contains invalid operation state.') from None
-        if value['restored']:
-            raise ProviderError('Restored provider history is read-only. Review a new plan before making another request.')
-        if (value['approval_sha256'] != self.approval.fingerprint
-                or value['currency'] != self.approval.currency
-                or len(value['operations']) > self.approval.max_calls
-                or sum(row['reserved_microunits'] for row in value['operations'].values()) > self.approval.max_budget_microunits):
-            raise ProviderError('Provider usage journal does not match this approval.')
-        approved = dict(self.approval.profiles)
-        for row in value['operations'].values():
-            if row['profile_id'] not in approved or row['data_class'] not in self.approval.data_classes:
-                raise ProviderError('Provider usage journal exceeds the reviewed profile or data scope.')
-        return value
-
-    def _state(self, operation_id, state):
-        with self._lock():
-            ledger = self._ledger()
-            ledger['operations'][operation_id]['state'] = state
-            atomic_json(self.ledger_path, ledger)
-
-    def usage(self):
-        with self._lock():
-            ledger = self._ledger()
-        return {'currency': ledger['currency'],
-                'reserved_or_consumed_microunits': sum(row['reserved_microunits'] for row in ledger['operations'].values()),
-                'billed_cost': 'unknown; reservations are estimates, not provider invoices',
-                'operations': ledger['operations']}
-
-    def _authorize(self, profile, data_class, estimated_cost_microunits):
-        approved = dict(self.approval.profiles)
-        if approved.get(profile.id) != profile.fingerprint:
-            raise ProviderError('This exact provider profile is not approved for the plan.')
-        if data_class not in self.approval.data_classes:
-            raise ProviderError('This data class is outside the approved provider scope.')
-        if not profile.local and self.approval.mode == 'LOCAL_ONLY':
-            raise ProviderError('LOCAL_ONLY blocks remote provider connections.')
-        if type(estimated_cost_microunits) is not int or estimated_cost_microunits < 0:
-            raise ProviderError('A finite reviewed per-request cost reservation is required before a provider call.')
-        if profile.local and estimated_cost_microunits != 0:
-            raise ProviderError('Local provider calls must not declare remote billing.')
-        return estimated_cost_microunits
-
-    def _call(self, profile_id, capability, suffix, body, *, data_class, operation_id,
-              estimated_cost_microunits, maximum_bytes, timeout_seconds=60, cancelled=None):
-        _cancel(cancelled)
-        _id(operation_id, 'provider operation identity')
-        _id(data_class, 'provider data class')
-        if type(timeout_seconds) not in (int, float) or not math.isfinite(timeout_seconds) or not 0.1 <= timeout_seconds <= 600:
-            raise ValueError('Provider timeout must be between 0.1 and 600 seconds.')
-        profile = self.store.get(profile_id)
-        if profile.capability != capability:
-            raise ValueError('The selected profile does not support this operation.')
-        reservation = self._authorize(profile, data_class, estimated_cost_microunits)
-        payload = canonical(body).encode('utf-8')
-        if len(payload) > MAX_REQUEST_BYTES:
-            raise ValueError('Provider input exceeds this explicitly selected request budget.')
-        request_hash = sha256(canonical({'profile':profile.fingerprint,'suffix':suffix,'body':body}).encode()).hexdigest()
-        with self._lock():
-            ledger = self._ledger()
-            if operation_id in ledger['operations']:
-                raise ProviderError('This operation was already attempted. Review its result or uncertain charge before authorizing another call.')
-            if len(ledger['operations']) >= self.approval.max_calls:
-                raise ProviderError('The approved plan call limit is exhausted.')
-            used = sum(row['reserved_microunits'] for row in ledger['operations'].values())
-            if used + reservation > self.approval.max_budget_microunits:
-                raise ProviderError('This request would exceed the approved plan budget.')
-            ledger['operations'][operation_id] = {'profile_id':profile.id,'request_sha256':request_hash,
-                'state':'reserved','reserved_microunits':reservation,'billed_microunits':None,'data_class':data_class}
-            atomic_json(self.ledger_path, ledger)
-        sent = False
-        secret = None
-        try:
-            headers = {'Content-Type':'application/json','Accept-Encoding':'identity',
-                       'Accept':'application/json' if capability == 'chat' else 'audio/pcm',
-                       'User-Agent':'UniversalResearchLibrary/0.2'}
-            if profile.credential_ref is not None:
-                secret = self.vault.resolve(profile.credential_ref, profile.id, profile.endpoint)
-                validate_secret(secret)
-                if secret.encode() in payload:
-                    raise ProviderError('The request body contains the configured API secret; transmission was refused.')
-                if profile.provider == 'elevenlabs':
-                    headers['xi-api-key'] = secret
-                else:
-                    headers['Authorization'] = 'Bearer ' + secret
-            elif not profile.local:
-                raise ProviderError('Reconnect this remote profile with a native-vault API credential.')
-            _cancel(cancelled)
-            sent = True  # A connection failure after here has uncertain charge state.
-            result = self.transport.request(profile, urlsplit(profile.endpoint).path + suffix,
-                payload, headers, maximum_bytes=maximum_bytes, timeout_seconds=timeout_seconds, cancelled=cancelled)
-            if type(result) is not HTTPResult or type(result.body) is not bytes or len(result.body) > maximum_bytes:
-                raise ProviderError('Provider returned an invalid or oversized result.')
-            if secret is not None and secret.encode() in result.body:
-                raise ProviderError('Provider response contained credential material; it was discarded.')
-            self._state(operation_id, 'received')
-            return profile, result, request_hash
-        except BaseException:
-            with self._lock():
-                ledger = self._ledger()
-                row = ledger['operations'][operation_id]
-                row['state'] = 'uncertain' if sent else 'not_sent'
-                if not sent:
-                    row['reserved_microunits'] = 0
-                atomic_json(self.ledger_path, ledger)
-            raise
-        finally:
-            secret = None
-
-    def chat(self, profile_id, messages, *, data_class='user_text', operation_id,
-             estimated_cost_microunits=None, max_output_tokens=1024, timeout_seconds=60, cancelled=None):
-        if type(messages) not in (list, tuple) or not 1 <= len(messages) <= 128:
-            raise ValueError('A chat request needs between 1 and 128 selected messages.')
-        if type(max_output_tokens) is not int or not 1 <= max_output_tokens <= 32768:
-            raise ValueError('Invalid chat output token budget.')
+def _request(profile, operation, payload):
+    if type(payload) is not dict:
+        raise ValueError('Provider request must be a typed JSON object.')
+    if operation not in profile.capabilities:
+        raise PermissionError('The provider profile does not support this operation.')
+    if profile.adapter == 'google-translation-v2':
+        def language(value):
+            if not isinstance(value, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', value):
+                raise ValueError('Choose an explicit supported translation language code.')
+            return value
+        if operation == 'translation.languages':
+            if set(payload) != {'target'}:
+                raise ValueError('Language discovery accepts only the display language.')
+            body = {'target': language(payload['target']), 'model': profile.model}
+            return '/languages?' + urlencode(body), body, 'application/json'
+        if operation != 'translation.text' or set(payload) - {'q', 'source', 'target'} or not {'q', 'target'} <= set(payload):
+            raise ValueError('Translation requires selected text and a target language.')
+        body = {'q': text(payload['q'], 'selected translation text', maximum=5000),
+                'target': language(payload['target']), 'format': 'text', 'model': profile.model}
+        if 'source' in payload:
+            body['source'] = language(payload['source'])
+        return '', body, 'application/json'
+    if profile.adapter == 'openai-compatible':
+        if set(payload) - {'messages', 'max_tokens', 'temperature', 'response_format'} or 'messages' not in payload:
+            raise ValueError('Unsupported compatible-chat request fields.')
+        messages = payload['messages']
+        if not isinstance(messages, list) or not 1 <= len(messages) <= 128:
+            raise ValueError('Chat messages exceed the selected request limit.')
         for message in messages:
-            if (type(message) is not dict or set(message) != {'role','content'}
-                    or message['role'] not in ('system','user','assistant')
-                    or not isinstance(message['content'], str) or len(message['content']) > MAX_REQUEST_BYTES
-                    or '\x00' in message['content']):
-                raise ValueError('Chat messages must contain selected plain text and explicit roles only.')
-        profile = self.store.get(profile_id)
-        profile, result, request_hash = self._call(profile_id, 'chat', '/chat/completions',
-            {'model':profile.model,'messages':list(messages),'max_tokens':max_output_tokens,'stream':False},
-            data_class=data_class, operation_id=operation_id, estimated_cost_microunits=estimated_cost_microunits,
-            maximum_bytes=MAX_CHAT_BYTES, timeout_seconds=timeout_seconds, cancelled=cancelled)
-        if not result.content_type.startswith('application/json'):
-            self._state(operation_id, 'invalid_response')
-            raise ProviderError('Provider chat result is not JSON.')
-        try:
-            value = json.loads(result.body.decode('utf-8'))
-            content = value['choices'][0]['message']['content']
-            usage = value.get('usage', {})
-            if not isinstance(content, str) or len(content) > MAX_CHAT_BYTES or '\x00' in content:
-                raise ValueError
-            # Retain numeric token counters only; never trust arbitrary provider
-            # fields as ledger entries, costs, tool calls or executable plans.
-            usage = {key: usage[key] for key in ('prompt_tokens','completion_tokens','total_tokens')
-                     if type(usage) is dict and type(usage.get(key)) is int and usage[key] >= 0}
-        except (ValueError, UnicodeError, KeyError, IndexError, TypeError):
-            self._state(operation_id, 'invalid_response')
-            raise ProviderError('Provider chat response has an unsupported schema.') from None
-        self._state(operation_id, 'complete')
-        return {'text':content,'profile_id':profile.id,'model':profile.model,'request_sha256':request_hash,
-                'operation_id':operation_id,'usage':usage,'billed_microunits':None,
-                'trust':'untrusted model text; validate every proposed tool operation separately'}
+            if type(message) is not dict or set(message) != {'role', 'content'} or message['role'] not in ('system', 'user', 'assistant'):
+                raise ValueError('Only text chat messages are accepted; provider tool execution is unavailable.')
+            text(message['content'], 'chat text', maximum=512 * 1024)
+        tokens = payload.get('max_tokens', 2048)
+        if type(tokens) is not int or not 1 <= tokens <= 32768:
+            raise ValueError('Invalid output token budget.')
+        temperature = payload.get('temperature', 0)
+        if type(temperature) not in (int, float) or not math.isfinite(temperature) or not 0 <= temperature <= 2:
+            raise ValueError('Invalid sampling temperature.')
+        if 'response_format' in payload and payload['response_format'] != {'type': 'json_object'}:
+            raise ValueError('Only plain JSON-object response mode is supported.')
+        body = {**payload, 'model': profile.model, 'max_tokens': tokens, 'temperature': temperature, 'stream': False}
+        return '/chat/completions', body, 'application/json'
+    if profile.adapter != 'elevenlabs':
+        raise ValueError('Unsupported provider adapter.')
+    if operation == 'speech.synthesize':
+        if set(payload) != {'text'} or not profile.voice:
+            raise ValueError('Speech synthesis requires text and a configured voice ID.')
+        text(payload['text'], 'selected speech text', maximum=100000)
+        return '/text-to-speech/' + profile.voice + '?output_format=mp3_44100_128', {
+            'text': payload['text'], 'model_id': profile.model}, 'audio/mpeg'
+    if operation == 'music.compose':
+        if set(payload) != {'prompt', 'duration_ms'}:
+            raise ValueError('Music generation requires a prompt and explicit duration.')
+        text(payload['prompt'], 'music prompt', maximum=4100)
+        if type(payload['duration_ms']) is not int or not 3000 <= payload['duration_ms'] <= 600000:
+            raise ValueError('This provider call supports 3 to 600 seconds; longer projects need multiple approved cues.')
+        return '/music?output_format=mp3_44100_128', {'prompt': payload['prompt'],
+            'music_length_ms': payload['duration_ms'], 'model_id': profile.model,
+            'force_instrumental': True}, 'audio/mpeg'
+    if operation == 'sfx.generate':
+        if set(payload) - {'text', 'duration_seconds', 'loop'} or not {'text', 'duration_seconds'} <= set(payload):
+            raise ValueError('Sound-effect generation requires text and explicit duration.')
+        text(payload['text'], 'sound-effect prompt', maximum=4100)
+        duration = payload['duration_seconds']
+        if type(duration) not in (float, int) or not math.isfinite(duration) or not 0.5 <= duration <= 30:
+            raise ValueError('This provider supports a sound-effect cue of 0.5 to 30 seconds.')
+        if type(payload.get('loop', False)) is not bool:
+            raise ValueError('Invalid sound-effect loop option.')
+        return '/sound-generation?output_format=mp3_44100_128', {
+            **payload, 'model_id': profile.model}, 'audio/mpeg'
+    raise ValueError('Unsupported provider operation.')
 
-    def tts(self, profile_id, text, output, *, data_class='selected_narration', operation_id,
-            estimated_cost_microunits=None, timeout_seconds=120, cancelled=None):
-        if not isinstance(text, str) or not text.strip() or len(text) > 32000 or '\x00' in text:
-            raise ValueError('Provide a selected speech segment of at most 32000 characters.')
-        destination = _destination(output)
-        profile = self.store.get(profile_id)
-        if profile.provider != 'elevenlabs':
-            raise ValueError('This speech adapter requires an ElevenLabs profile.')
-        profile, result, request_hash = self._call(profile_id, 'tts',
-            '/text-to-speech/' + profile.voice_id + '?output_format=pcm_24000',
-            {'text':text,'model_id':profile.model}, data_class=data_class, operation_id=operation_id,
-            estimated_cost_microunits=estimated_cost_microunits, maximum_bytes=MAX_AUDIO_BYTES,
-            timeout_seconds=timeout_seconds, cancelled=cancelled)
-        if (not result.content_type.startswith(('audio/pcm','audio/x-pcm','application/octet-stream'))
-                or not result.body or len(result.body) % 2):
-            self._state(operation_id, 'invalid_response')
-            raise ProviderError('Provider did not return the requested 16-bit raw PCM waveform.')
-        temporary = destination.with_name('.' + uuid4().hex + '.wav')
+
+def _reject_decoded_credential(value, secret_bytes):
+    """Check structured results after JSON decoding and text normalization.
+
+    Raw scanning cannot recognize JSON Unicode escapes or HTML character
+    references. Inspect the actual returned values and their display-text form
+    before any receipt, language cache or completed-usage record is published.
+    """
+    if not secret_bytes:
+        return
+    secret = secret_bytes.decode('utf-8')
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            if secret in current or secret in html.unescape(current):
+                raise ProviderError('The provider response contained credential material and was discarded.')
+        elif isinstance(current, dict):
+            pending.extend(current.values())
+        elif isinstance(current, (list, tuple)):
+            pending.extend(current)
+
+
+class Gateway:
+    def __init__(self, directory, *, vault=None, mode='LOCAL_ONLY'):
+        if mode not in MODES:
+            raise ValueError('Unknown provider connection mode.')
+        self.mode = mode
+        self.vault = vault or WindowsCredentialVault()
+        self.ledger = UsageLedger(Path(directory) / 'usage')
+
+    def request(self, profile, operation, payload, *, task_id, data_class,
+                authorization=None, max_cost=None, operation_id=None, output=None,
+                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024):
+        if not isinstance(profile, ProviderProfile) or not profile.enabled:
+            raise PermissionError('Enable and explicitly select this provider profile first.')
+        if self.mode not in MODES:
+            raise PermissionError('Provider mode is invalid.')
+        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 3600:
+            raise ValueError('Invalid provider time budget.')
+        if type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 1024 * 1024 * 1024:
+            raise ValueError('Invalid response byte budget.')
+        route, body, expected_type = _request(profile, operation, payload)
+        raw = canonical(body).encode('utf-8')
+        if len(raw) > 2 * 1024 * 1024:
+            raise ValueError('Provider request exceeds the selected-data limit.')
+        request_hash = sha256(raw).hexdigest()
+        operation_id = validate_profile_id(operation_id or uuid4().hex)
+        target = endpoint(profile.endpoint, local=profile.local)
+        reserved = False
+        sent = False
+        if not profile.local:
+            if self.mode == 'LOCAL_ONLY':
+                raise PermissionError('LOCAL ONLY blocks external providers before credentials or connections are opened.')
+            if not isinstance(authorization, Authorization) or authorization.expires_at <= time():
+                raise PermissionError('An active, explicit remote production authorization is required.')
+            if (authorization.task_id != task_id or (profile.id, profile.endpoint) not in tuple(tuple(x) for x in authorization.profiles)
+                    or operation not in authorization.operations or data_class not in authorization.data_classes
+                    or (authorization.request_hashes and request_hash not in authorization.request_hashes)):
+                raise PermissionError('This task, destination, operation or selected data is outside the approved envelope.')
+            if max_cost is None:
+                raise PermissionError('The cost is unknown; approve an explicit maximum before calling this provider.')
+            bound = money(max_cost)
+            self.ledger.reserve(authorization, operation_id, request_hash, bound, profile, operation)
+            reserved = True
+        elif max_cost not in (None, 0, '0'):
+            raise ValueError('Local inference is not recorded as an external billed request.')
+        destination = None
+        temporary = None
+        connection = None
+        headers = {'Content-Type': 'application/json', 'Accept': expected_type,
+                   'User-Agent': 'UniversalResearchLibrary/0.2'}
+        secret_bytes = None
+        started = monotonic()
         try:
-            with temporary.open('xb') as stream:
-                with wave.open(stream, 'wb') as writer:
-                    writer.setparams((1,2,24000,0,'NONE','not compressed'))
-                    for start in range(0, len(result.body), 65536):
-                        _cancel(cancelled)
-                        writer.writeframesraw(result.body[start:start + 65536])
-                stream.flush()
-                os.fsync(stream.fileno())
-            _cancel(cancelled)
-            checksum = sha256(temporary.read_bytes()).hexdigest()
-            os.link(temporary, destination)
-        except BaseException:
-            self._state(operation_id, 'result_not_saved')
-            raise
+            if output is not None:
+                if expected_type == 'application/json':
+                    raise ProviderError('Chat responses are returned as text; audio output paths are not used for chat.')
+                destination = local_path(output, must_exist=False)
+                local_path(destination.parent)
+                if destination.exists():
+                    raise FileExistsError('Provider output already exists; choose another name.')
+            if expected_type != 'application/json' and destination is None:
+                raise ValueError('Choose a new output file for generated audio.')
+            if cancelled():
+                raise InterruptedError('Provider operation cancelled before transmission.')
+            if profile.credential_ref:
+                secret = self.vault.get(profile.id, profile.credential_ref)
+                if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
+                    raise ProviderError('The stored provider credential is invalid.')
+                key_header = {'openai-compatible': 'Authorization', 'elevenlabs': 'xi-api-key',
+                              'google-translation-v2': 'X-goog-api-key'}[profile.adapter]
+                headers[key_header] = (
+                    'Bearer ' + secret if profile.adapter == 'openai-compatible' else secret)
+                secret_bytes = secret.encode('utf-8')
+                del secret
+            elif not profile.local:
+                raise ProviderError('Reconnect this remote provider account before generation.')
+            if cancelled():
+                raise InterruptedError('Provider operation cancelled before transmission.')
+            cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
+            options = {'timeout': min(timeout, 30.0)}
+            if target.scheme == 'https':
+                options['context'] = ssl.create_default_context()
+            connection = cls(target.hostname, target.port, **options)
+            # No proxy environment or redirects are consulted. Host/TLS authority stays fixed.
+            prefix = target.path.rstrip('/')
+            if profile.adapter == 'elevenlabs' and not prefix:
+                prefix = '/v1'
+            sent = True
+            method = 'GET' if operation == 'translation.languages' else 'POST'
+            connection.request(method, prefix + route, body=None if method == 'GET' else raw, headers=headers)
+            response = connection.getresponse()
+            if response.status != 200:
+                if 300 <= response.status < 400:
+                    raise ProviderError('The provider attempted a redirect; credentials were not forwarded.')
+                raise ProviderError('Provider request failed with HTTP %d. Charge state requires reconciliation; no automatic retry.' % response.status)
+            content_type = response.getheader('Content-Type', '').split(';', 1)[0].lower()
+            if content_type != expected_type and not (expected_type == 'audio/mpeg' and content_type == 'audio/mp3'):
+                raise ProviderError('Provider returned an unexpected content type.')
+            length = response.getheader('Content-Length')
+            if length is not None and (not length.isdecimal() or int(length) > max_response_bytes):
+                raise ProviderError('Provider response exceeds the approved byte budget.')
+            count = 0
+            digest = sha256()
+            chunks = []
+            tail = b''
+            stream = None
+            if destination:
+                stream = NamedTemporaryFile(dir=destination.parent, prefix='.carr-provider-', suffix='.tmp', delete=False)
+                temporary = Path(stream.name)
+            try:
+                while True:
+                    if cancelled() or monotonic() - started > timeout:
+                        raise InterruptedError('Provider operation cancelled or timed out; charge state may be uncertain.')
+                    block = response.read(65536)
+                    if not block:
+                        break
+                    count += len(block)
+                    if count > max_response_bytes:
+                        raise ProviderError('Provider response exceeded the approved byte budget.')
+                    if secret_bytes:
+                        inspected = tail + block
+                        if secret_bytes in inspected:
+                            raise ProviderError('The provider response contained credential material and was discarded.')
+                        tail = inspected[-len(secret_bytes):]
+                    digest.update(block)
+                    if stream:
+                        stream.write(block)
+                    else:
+                        chunks.append(block)
+                if count == 0 or (length is not None and int(length) != count):
+                    raise ProviderError('Provider returned empty or truncated output.')
+                if stream:
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            finally:
+                if stream:
+                    stream.close()
+            usage = None
+            result = {'operation_id': operation_id, 'provider': profile.id, 'model': profile.model,
+                      'request_sha256': request_hash, 'output_sha256': digest.hexdigest(), 'size': count,
+                      'local': profile.local, 'actual_cost': None, 'artifacts': []}
+            if expected_type == 'application/json':
+                parsed = json.loads(b''.join(chunks))
+                if profile.adapter == 'google-translation-v2':
+                    data = parsed.get('data') if type(parsed) is dict else None
+                    if type(data) is not dict:
+                        raise ProviderError('The translation response schema is invalid.')
+                    if operation == 'translation.languages':
+                        languages = data.get('languages')
+                        if (not isinstance(languages, list) or not 1 <= len(languages) <= 1000
+                                or any(type(row) is not dict or type(row.get('language')) is not str
+                                       or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', row['language'])
+                                       or type(row.get('name', '')) is not str or len(row.get('name', '')) > 512
+                                       for row in languages)
+                                or len({row['language'] for row in languages}) != len(languages)):
+                            raise ProviderError('The supported-language response is invalid.')
+                        result['languages'] = [{'language': row['language'], 'name': row.get('name', '')} for row in languages]
+                    else:
+                        translations = data.get('translations')
+                        if (not isinstance(translations, list) or len(translations) != 1
+                                or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
+                            raise ProviderError('The text translation response is invalid.')
+                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        detected = translations[0].get('detectedSourceLanguage')
+                        if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
+                            raise ProviderError('The detected translation language is invalid.')
+                        result['detected_source'] = detected
+                        usage = {'submitted_characters': len(body['q'])}
+                else:
+                    choices = parsed.get('choices') if type(parsed) is dict else None
+                    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                        raise ProviderError('The chat response schema is invalid.')
+                    message = choices[0].get('message')
+                    if type(message) is not dict or type(message.get('content')) is not str or message.get('tool_calls'):
+                        raise ProviderError('The adapter accepts text responses only; unsolicited tool calls were rejected.')
+                    result['text'] = text(message['content'], 'provider response text', maximum=max_response_bytes)
+                    observed_usage = parsed.get('usage')
+                    if isinstance(observed_usage, dict):
+                        usage = {k: v for k, v in observed_usage.items()
+                                 if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int and v >= 0}
+                result['usage'] = usage
+                _reject_decoded_credential(result, secret_bytes)
+            if destination:
+                local_path(destination.parent)
+                os.link(temporary, destination)
+                result['artifacts'] = [{'path': str(destination), 'sha256': digest.hexdigest(), 'size': count}]
+            if reserved:
+                self.ledger.finish(authorization.id, operation_id, status='complete', output_hash=digest.hexdigest(), usage=usage)
+            return result
+        except BaseException as exc:
+            if reserved:
+                self.ledger.finish(authorization.id, operation_id, status='uncertain' if sent else 'not_sent')
+            if isinstance(exc, (PermissionError, FileExistsError, ProviderError, InterruptedError)):
+                raise
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise ProviderError('Provider communication failed (%s). No credential or response details were logged.' % type(exc).__name__) from None
         finally:
-            temporary.unlink(missing_ok=True)
-        self._state(operation_id, 'complete')
-        return {'path':str(destination),'sha256':checksum,'sample_rate':24000,'channels':1,
-                'frames':len(result.body)//2,'duration_seconds':len(result.body)/48000,
-                'profile_id':profile.id,'voice_id':profile.voice_id,'model':profile.model,
-                'operation_id':operation_id,'request_sha256':request_hash,'billed_microunits':None}
+            headers.clear()
+            secret_bytes = None
+            if connection:
+                connection.close()
+            if temporary:
+                temporary.unlink(missing_ok=True)

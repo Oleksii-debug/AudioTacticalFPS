@@ -35,7 +35,6 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
-from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -78,8 +77,6 @@ def format_topic_results(rows):
 
 
 class DesktopSearchPanel(PagedSearchPanel):
-    MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced')
-
     def __init__(self, parent, frame, services):
         self.frame = frame
         self.bound_library = frame.library
@@ -88,8 +85,7 @@ class DesktopSearchPanel(PagedSearchPanel):
         super().__init__(parent, services.search, services.load_context,
                          verified_copy=services.verified_copy)
         self.retrieval.SetItems(['Exact phrase', 'Whole word', 'All words on one page',
-                                 'Thematic (local keywords)', 'Semantic (local model)',
-                                 'Advanced (AND, OR, NOT, NEAR)'])
+                                 'Thematic (local keywords)', 'Semantic (local model)'])
         self.retrieval.SetSelection(0)
         # Source presentation is independent from retrieval. These offsets also
         # identify the quotation used by copying, saved evidence and More.
@@ -119,11 +115,6 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.MoveAfterInTabOrder(previous)
             previous = control
         self.query.MoveAfterInTabOrder(previous)
-        self.advanced_builder = wx.Button(self, label='Build &advanced query')
-        self.advanced_builder.Bind(wx.EVT_BUTTON, self.on_build_query)
-        self.GetSizer().Insert(3, self.advanced_builder, 0, wx.ALL, 4)
-        self.advanced_builder.MoveAfterInTabOrder(self.query)
-        self.retrieval.MoveAfterInTabOrder(self.advanced_builder)
         save = wx.Button(self, label='Save selected quotation to &topic')
         save.Bind(wx.EVT_BUTTON, self.save_selected)
         self.GetSizer().Add(save, 0, wx.ALL, 4)
@@ -137,29 +128,6 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.Bind(wx.EVT_CHOICE, self.on_options_changed)
         for control in (self.query, *self.filters.values()):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
-
-    def on_build_query(self, event=None):
-        if self.frame.working:
-            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
-            return
-        workspace = self.model.workspace
-        if not workspace or workspace != self.bound_workspace:
-            self.status.ChangeValue('Open a library before building a search query.')
-            self.query.SetFocus()
-            return
-        from carr_library.ui.advanced_search import show_query_builder
-        query = show_query_builder(self, current_query=self.query.GetValue())
-        if query is None:
-            self.query.SetFocus()
-            return
-        if self.model.workspace != workspace or self.frame.library is not self.bound_library:
-            self.frame.report('The library changed. Open its Search section again.')
-            return
-        self.retrieval.SetSelection(self.MODES.index('advanced'))
-        self.query.ChangeValue(query)
-        self.on_options_changed()
-        self.status.ChangeValue('Advanced query ready. Press Enter in the query field to search the selected library.')
-        self.query.SetFocus()
 
     def on_options_changed(self, event=None):
         """Discard old results when query, filters or presentation change."""
@@ -199,20 +167,11 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.query.SetFocus()
             return
         retrieval = self.retrieval.GetSelection()
-        if not 0 <= retrieval < len(self.MODES):
+        if not 0 <= retrieval < 5:
             self.status.ChangeValue('Choose a search mode first.')
             self.retrieval.SetFocus()
             return
-        mode = self.MODES[retrieval]
-        if mode == 'advanced':
-            from carr_library.search.advanced import compile_query
-            try:
-                compile_query(query)
-            except ValueError as exc:
-                self.status.ChangeValue(f'Invalid advanced query: {exc}')
-                self.status.SetInsertionPoint(0)
-                self.status.SetFocus()
-                return
+        mode = ('phrase', 'word', 'terms', 'thematic', 'semantic')[retrieval]
         presentation = self.result_mode.GetSelection()
         if not 0 <= presentation < 2:
             self.status.ChangeValue('Choose Short quotations or Thematic excerpts first.')
@@ -248,9 +207,6 @@ class DesktopSearchPanel(PagedSearchPanel):
                 info += ' Showing excerpts from up to 100 matches. Use source filters to focus the search.'
             if notes:
                 info += ' ' + ' '.join(dict.fromkeys(notes))
-            if mode == 'advanced':
-                info += (' Conditions are checked on one page or text segment at a time. '
-                         'A short excerpt may show only part of the matching text; More opens that source page.')
             if any(not r.verified for r in rows):
                 info += ' Some extracted texts need independent review before quotation or export.'
             self.status.ChangeValue(info)
@@ -520,19 +476,15 @@ class DesktopFrame(WorkspaceFrame):
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
             ('Library tools\tCtrl+Shift+L', lambda e: show_catalog_tools(self)),
-            ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
-            ('Exit\tAlt+F4', lambda e: self.Close())]),
+            ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup)]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
                 ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
-                ('Build advanced query\tCtrl+Alt+Q', self.build_advanced_query),
                 ('Edit selected evidence tags',self.edit_tags),
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
-            ('&Help', [('Keyboard guide\tF1', self.help),
-                ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
-                ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -548,8 +500,6 @@ class DesktopFrame(WorkspaceFrame):
         install_research_actions(self)
         install_source_review_actions(self)
         install_academic_actions(self)
-        from .academic_tools import install_source_comparison_actions
-        install_source_comparison_actions(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
@@ -557,30 +507,26 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
-        from .audio_studio import install_audio_studio
-        install_audio_studio(self)
-        from .audio_effects import install_audio_effects
-        install_audio_effects(self)
-        from .local_assistant import install_local_assistant
-        install_local_assistant(self)
-        from .provider_settings import install_provider_settings
-        install_provider_settings(self)
+        from .speech_dialog import install_speech_actions
+        from .studio_dialog import install_studio_actions
+        from .assistant_dialog import install_assistant_actions
+        from .save_actions import install_save_actions
+        from .document_conversion import install_conversion_actions
         from .keyboard_settings import install_keyboard_settings
+        from .citation_formatting import install_citation_actions
+        from .operation_progress import install_operation_progress
+        from .language_matrix import install_language_actions
+        from .translation_dialog import install_translation_actions
+        install_speech_actions(self)
+        install_language_actions(self)
+        install_studio_actions(self)
+        install_assistant_actions(self)
+        install_translation_actions(self)
+        install_conversion_actions(self)
+        install_save_actions(self)
+        install_citation_actions(self)
+        install_operation_progress(self)
         install_keyboard_settings(self)
-
-    def build_advanced_query(self, event=None):
-        if self.working:
-            self.report('An operation is already running. Wait or choose Cancel current operation.')
-            return
-        if self.book is not None and self.active is not None:
-            for index in range(self.book.GetPageCount()):
-                panel = self.book.GetPage(index)
-                if isinstance(panel, DesktopSearchPanel):
-                    # Showing Search keeps any unsaved research note intact.
-                    self.book.ChangeSelection(index)
-                    panel.on_build_query(event)
-                    return
-        self.report('Open a library or research topic before building a query.')
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -685,11 +631,19 @@ class DesktopFrame(WorkspaceFrame):
         if self.book is not None:
             self.book.Disable()
         for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+            # Progress query, quiet-mode settings and keyboard help remain
+            # reachable while a long operation owns the editable controls.
+            label = self.menu_bar.GetMenuLabel(i)
+            self.menu_bar.EnableTop(i, label.replace('&', '').casefold() == 'help')
         self.report(title + '…')
+        progress = getattr(self, 'operation_progress', None)
+        progress_token = progress.start(title) if progress is not None else None
         try:
             future = self.executor.submit(operation)
         except Exception as exc:
+            if progress is not None:
+                progress.fail('Could not start: ' + title, token=progress_token)
+                progress.finalize(token=progress_token)
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
@@ -704,11 +658,40 @@ class DesktopFrame(WorkspaceFrame):
                     return
                 self._finish_job_controls()
                 try:
+                    from .operation_progress import operation_outcome
                     result = future.result()
-                    self.report(title + ': complete.')
+                    outcome = operation_outcome(result)
+                    status = getattr(self, 'status', None)
+                    before = status.GetValue() if status is not None else None
+                    # Some callbacks validate or publish the final artifact.
+                    # Do not emit success until those steps have completed.
                     if done is not None:
                         done(result)
+                    if self._closing:
+                        return
+                    if progress is not None:
+                        if outcome == 'cancelled':
+                            progress.cancel(title + ': cancelled', token=progress_token)
+                        elif outcome == 'paused':
+                            progress.pause(title + ': needs attention', token=progress_token)
+                        elif outcome == 'failed':
+                            progress.fail(title + ': failed', token=progress_token)
+                        else:
+                            progress.succeed(title + ': complete', token=progress_token)
+                        progress.finalize(token=progress_token)
+                    # Preserve a callback's detailed report or a new job's
+                    # status instead of replacing it with a generic message.
+                    if not self.working and (status is None or status.GetValue() == before):
+                        label = {'succeeded': 'complete', 'paused': 'needs attention',
+                                 'failed': 'failed', 'cancelled': 'cancelled'}[outcome]
+                        self.report(title + ': ' + label + '.')
                 except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(title + ': cancelled', token=progress_token)
+                        else:
+                            progress.fail(title + ': failed', token=progress_token)
+                        progress.finalize(token=progress_token)
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
@@ -741,8 +724,8 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
-        if getattr(self, 'keyboard_commands', None) is not None:
-            self.keyboard_commands.change_root(candidate.root)
+        if getattr(self, 'keyboard_settings', None) is not None:
+            self.keyboard_settings.reload()
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:
@@ -833,7 +816,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard=file_dialog_wildcard(),
+            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -1150,22 +1133,15 @@ class DesktopFrame(WorkspaceFrame):
         add_selected_book_reference(self)
 
     def help(self, event):
-        if getattr(self, 'keyboard_commands', None) is not None:
-            show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
-            return
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
-            'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
-            'Ctrl+Alt+Q opens the advanced query builder with All, Any, Exclude and Nearby conditions.\n'
-            'Ctrl+Alt+P opens Audio Studio. Write a script, assign local voices, save with Ctrl+S and generate with Ctrl+Enter.\n'
-            'Audio Studio keeps accepted speech chunks; Resume continues after a pause or application restart.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'
             'Ctrl+Shift+B opens the academic bibliography and reading list for the current library.\n'
             'Inside the Reading Desk dialog, Ctrl+Shift+B manages page bookmarks instead.\n'
@@ -1192,17 +1168,14 @@ class DesktopFrame(WorkspaceFrame):
             'Choose a library or topic, then Open selected scope. The Search tab stays inside that library.\n'
             'Research Search Center searches only the libraries explicitly checked in its dialog.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
-            'Advanced mode supports uppercase AND, OR, NOT, parentheses, quoted phrases and NEAR/5.\n'
-            'NEAR/5 means at most five intervening words, in either order, within one page or text segment.\n'
-            'Use the builder for operator words or phrases containing quotation marks. Other search modes keep their own meaning.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'
             'TXT quotations are checked against original bytes. PDF pages may require independent review.\n'
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Complete backups include reading positions, bookmarks, keyboard shortcuts, recoverable note drafts, and accepted import, Studio and assistant state.\n'
-            'Recovery drafts still require freshly authorized matching evidence before they can be offered in the editor.\n'
+            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
+            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

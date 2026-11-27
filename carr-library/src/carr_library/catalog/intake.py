@@ -34,12 +34,6 @@ def classify(data, suffix):
     head = data[:262]
     if Exe().match(head) or head.startswith(b"\x7fELF"):
         raise IntakeError("executable not accepted by this adapter")
-    from ..extract.document_formats import FORMAT_BY_SUFFIX, classify_extended
-    if suffix.lower() in FORMAT_BY_SUFFIX:
-        try:
-            return classify_extended(data, suffix.lower())
-        except ValueError as exc:
-            raise IntakeError(str(exc)) from exc
     if Zip().match(head):
         try:
             return validate_office(data, suffix.lower())

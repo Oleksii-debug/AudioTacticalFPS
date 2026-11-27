@@ -86,28 +86,6 @@ def verify(root, *, manifest_bytes=None):
                 or "ocr/tessdata/eng.traineddata" not in actual
                 or actual != {p for p in files if p.startswith("ocr/")}):
             raise ValueError("unexpected or missing OCR runtime file")
-    audio=root/'audio-runtime'
-    has_audio=manifest.get('bundled_audio',False)
-    if (any(name.casefold().startswith('audio-runtime/') and not name.startswith('audio-runtime/') for name in files)
-            or any(path.name.casefold()=='audio-runtime' and path.name!='audio-runtime' for path in root.iterdir())):
-        raise ValueError('ambiguous audio runtime paths')
-    expected_audio={name for name in files if name.startswith('audio-runtime/')}
-    if type(has_audio) is not bool:
-        raise ValueError('invalid audio runtime installation flag')
-    if has_audio:
-        for directory,dirs,_names in os.walk(audio,followlinks=False):
-            for name in dirs:
-                info=(Path(directory)/name).lstat()
-                if not stat.S_ISDIR(info.st_mode) or getattr(info,'st_file_attributes',0)&0x400:
-                    raise ValueError('linked audio runtime directories are not supported')
-        actual={path.relative_to(root).as_posix() for path in audio.rglob('*') if path.is_file()}
-        required={'audio-runtime/audio-runtime-manifest.json','audio-runtime/bin/ffmpeg.exe','audio-runtime/bin/ffprobe.exe',
-                  'audio-runtime/bin/ffplay.exe','audio-runtime/LICENSE',
-                  'audio-runtime/carr-provenance/source-lock.json','audio-runtime/carr-provenance/README.txt'}
-        if not required.issubset(actual) or actual!=expected_audio:
-            raise ValueError('unexpected or missing audio runtime file')
-    elif os.path.lexists(audio) or expected_audio:
-        raise ValueError('unannounced audio runtime files')
     native = root / "native-runtime"
     included = manifest.get("bundled_native_runtime", False)
     expected_native = {p for p in files if p.startswith("native-runtime/")}
@@ -129,6 +107,19 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    for component, flag, required in (
+            ('audio', 'bundled_audio', {'audio/bin/ffmpeg.exe', 'audio/bin/ffprobe.exe', 'audio/LICENSE'}),
+            ('citation-runtime', 'bundled_citation_runtime', {'citation-runtime/node.exe', 'citation-runtime/LICENSE'})):
+        included = manifest.get(flag, False)
+        if type(included) is not bool:
+            raise ValueError('invalid optional runtime flag')
+        actual = {p.relative_to(root).as_posix() for p in (root / component).rglob('*') if p.is_file()}
+        expected_component = {p for p in files if p.startswith(component + '/')}
+        if included:
+            if not required <= actual or actual != expected_component:
+                raise ValueError('unexpected or missing ' + component + ' runtime file')
+        elif actual or expected_component:
+            raise ValueError('unannounced ' + component + ' runtime')
 
 
 def main():
@@ -177,8 +168,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    launch_entry = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
-    print(f"Installation complete. Open {launch_entry}. Research data has not been changed.")
+    entry = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
+    print("Installation complete. Open " + entry + ". Research data has not been changed.")
     return 0
 
 

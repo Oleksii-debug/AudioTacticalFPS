@@ -35,7 +35,6 @@ from .research.topic_tree import TopicTree
 from .search import literal, thematic
 from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
 from .data_paths import guard_data_directory
-from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
 
 
 @dataclass(frozen=True)
@@ -185,10 +184,10 @@ class LibraryApp:
         with closing(sqlite3.connect(self.database.as_uri() + '?mode=ro', uri=True,
                                      isolation_level=None, timeout=0 if budget is not None else 5)) as db:
             db.row_factory = sqlite3.Row
-            # Schema and authorization reads are part of the search, too. A
-            # SQLite busy handler cannot poll cancellation, so budgeted readers
-            # return an actionable retry instead of waiting its fixed 5 seconds.
             if budget is not None:
+                # Schema validation and authorization belong to the same
+                # cancellable operation as retrieval. A SQLite busy handler
+                # would otherwise sleep for five seconds without checking it.
                 db.set_progress_handler(lambda: int(budget.stopped()), 1000)
             try:
                 db.execute('PRAGMA foreign_keys=ON')
@@ -204,6 +203,7 @@ class LibraryApp:
                 yield db
             finally:
                 if budget is not None:
+                    # Cleanup must work even when cancellation remains latched.
                     db.set_progress_handler(None, 0)
                 db.rollback()
 
@@ -231,9 +231,9 @@ class LibraryApp:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             raise
         except sqlite3.OperationalError as exc:
-            code = getattr(exc, 'sqlite_errorcode', None)
-            # Extended SQLite codes retain the primary code in the low byte.
-            code = code & 0xff if isinstance(code, int) else code
+            # Include SQLite's extended BUSY/LOCKED codes in the same retry
+            # policy while preserving unrelated database errors.
+            code = (getattr(exc, 'sqlite_errorcode', 0) or 0) & 0xff
             if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             if code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
@@ -463,13 +463,13 @@ class LibraryApp:
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
+        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
         from .extract.page_ocr import Config
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
@@ -580,27 +580,21 @@ class LibraryApp:
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
                 publisher = _CatalogPublisher(storage, record)
-                if asset.mime in EXTENDED_MIMES or asset.mime in (
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/epub+zip'):
+                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                  'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
                         from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
                         settings = extraction_settings(extracted)
-                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    else:
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
                         source_format = 'DOCX'
                         # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
-                    else:
-                        from .extract.document_formats import extract_document, extraction_settings
-                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
-                        source_format = FORMAT_BY_MIME[asset.mime].name
-                        settings = canonical(extraction_settings(extracted, asset.mime))
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
@@ -627,10 +621,8 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
-                            'format': source_format, 'warnings': extracted['warnings'],
                             'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown. ' + (
-                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
+                                       'printed pages are unknown.'}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -660,6 +652,7 @@ class LibraryApp:
                         # source was actually published. Never reactivate an old
                         # revision when current metadata has superseded it.
                         with storage.transaction():
+                            self._authorize(storage.db, workspace)
                             published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
@@ -673,6 +666,8 @@ class LibraryApp:
                                 raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
@@ -816,7 +811,7 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
-        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
+        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')

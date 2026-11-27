@@ -63,6 +63,16 @@ def self_test():
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
+        from .academic_integration.doi import _worker_main
+        return _worker_main(arguments[1:])
+    if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
+        from .speech.sapi_native_worker import main as native_main
+        return native_main(arguments[1:])
+    if arguments and arguments[0] in ('studio', 'assistant'):
+        from .studio.cli import main as studio_main, assistant_main
+        return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Offline Universal Research Library')
     parser.add_argument('--version', action='version', version=__version__)
@@ -97,7 +107,7 @@ def main(argv=None):
                           help='Search explicitly selected libraries and print source excerpts as JSON')
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'advanced', 'thematic', 'semantic'),
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -107,13 +117,11 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
-    from .audio.cli import add_arguments as add_audio_arguments, requested as audio_requested
-    add_audio_arguments(parser)
     args = parser.parse_args(argv)
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     if ocr_operation and any((args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore, audio_requested(args))):
+                              args.backup, args.restore)):
         parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
@@ -126,15 +134,13 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if audio_requested(args) and any((args.self_test, args.backup, args.restore, args.list_libraries, args.search is not None, ocr_operation)):
-        parser.error('Choose one operation: audio, library search, self-test, backup, or restore.')
     if (args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
         parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None:
         parser.error('--workspace is only used with --search.')
-    native_handle = audio_handle = None
+    native_handle = None
     try:
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
@@ -160,8 +166,6 @@ def main(argv=None):
                 result = store.select(args.ocr_profile, args.verify_ocr_models).fingerprint()
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
-        from .audio.runtime import activate_bundled_audio_runtime
-        audio_handle = activate_bundled_audio_runtime()
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
@@ -186,9 +190,6 @@ def main(argv=None):
             except (OSError, ValueError) as exc:
                 location_notice = f'Could not read the last library location: {exc}. Use Library, Open existing library folder.'
                 args.data_dir = default
-        if audio_requested(args):
-            from .audio.cli import execute as execute_audio
-            return execute_audio(args, args.data_dir)
         from .application import LibraryApp
         ranker = None
         model_notice = ''
@@ -239,8 +240,6 @@ def main(argv=None):
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
     finally:
-        if audio_handle is not None:
-            audio_handle.close()
         if native_handle is not None:
             native_handle.close()
 

@@ -540,17 +540,10 @@ class AcademicLibrary:
             entries.append((index, _validate(dict(entry.fields))))
         existing = self._duplicate_index()
         imported, skipped, duplicates = [], [], set()
-        remaining = MAX_DUPLICATE_PREVIEW_SLOTS
         self.db.execute('SAVEPOINT academic_import')
         try:
             for index, values in entries:
-                keys = _duplicate_keys(values)
-                cost = sum(len(existing[key]) for key in keys)
-                if cost > remaining:
-                    raise ValueError('Too many duplicate matches to import safely. '
-                                     'Refine the reference batch or library.')
-                remaining -= cost
-                matches = {identity for key in keys for identity in existing[key]}
+                matches = {identity for key in _duplicate_keys(values) for identity in existing[key]}
                 duplicates.update(matches)
                 if matches and skip_duplicates:
                     skipped.append(index)
@@ -607,11 +600,8 @@ def _parse_import(data, format):
         rows = _parse_ris(text)
     elif format == 'csl-json':
         rows = _parse_csl(text)
-    elif format == 'bibtex':
-        from .bibtex_import import parse_bibtex
-        rows = parse_bibtex(text)
     else:
-        raise ValueError('Supported import formats are RIS, BibTeX and CSL JSON.')
+        raise ValueError('Supported import formats are RIS and CSL JSON.')
     if not 1 <= len(rows) <= MAX_IMPORT_RECORDS:
         raise ValueError('Import between 1 and 2,000 references at a time.')
     result = []
@@ -795,17 +785,9 @@ def _csl_authors(value, warnings):
             particle = _text(author.get('non-dropping-particle', ''), 'author particle')
             dropping = _text(author.get('dropping-particle', ''), 'author particle')
             suffix = _text(author.get('suffix', ''), 'author suffix')
-            incomplete = not family.strip() or not given.strip()
-            embedded_comma = any(',' in part for part in (family, given, particle, dropping, suffix))
             family = ' '.join(part for part in (particle, family) if part)
             given = ' '.join(part for part in (given, dropping) if part)
             display = ', '.join(part for part in (family, given, suffix) if part)
-            if embedded_comma or (incomplete and ',' in display):
-                # Preserve the display without turning a particle or suffix
-                # into a missing family/given name in later explicit formatting.
-                display = '{' + display + '}'
-                warnings.append('A structured CSL name with incomplete components or embedded commas '
-                                'is retained literally; family, given name and suffix were not reassigned.')
             result.append(_text(display, 'author', required=True))
         unsupported = set(author) - {'literal', 'family', 'given', 'suffix',
             'dropping-particle', 'non-dropping-particle'}

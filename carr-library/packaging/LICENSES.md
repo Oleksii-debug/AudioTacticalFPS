@@ -10,3 +10,7 @@ The current application pins pypdf 7.1.1 (publisher wheel SHA256 `04c5680d4b4cfa
 - PR #17 also vendors MIT cairnsearch at eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93 and has additional dependencies; this preflight does not package them. Its actual vendored paths are `bootstrap/vendor/cairn_extractors/`. Preserve its LICENSE and UPSTREAM.json when adopted; full runtime SBOM remains open.
 
 No third-party source bytes or executable binaries are redistributed by this change.
+
+## Offline native SAPI5 bridge — 2026-11-26
+
+Windows now pins comtypes 1.5.0 (MIT), upstream commit `7732dc3de25797e658d26f375e78310bd7febbda`. The exact PyPI wheel hash is in both Windows locks; its complete LICENSE.txt is retained in `wheel-notices/comtypes-LICENSE.txt` and in the wheel. It has no mandatory third-party dependencies. The application invokes the native Windows COM SAPI5 classes in a bounded local worker and does not download voices.

@@ -152,7 +152,7 @@ def test_unavailable_model_reports_fallback_even_without_results(research):
     assert messages == ['Local model unavailable; keyword search used.']
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
 def test_busy_search_fails_promptly_and_preserves_previous_selection(research, mode):
     app, workspace = research
     previous, = app.search(workspace, 'history')
