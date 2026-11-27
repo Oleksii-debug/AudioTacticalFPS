@@ -1313,6 +1313,22 @@ class DesktopFrame(WorkspaceFrame):
             'Reading-menu export and import can also transfer bookmarks separately. Keep the backup manifest checksum.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
+    def _stop_background_work(self):
+        # Stop the retained timer while this Python/native owner is still alive.
+        # A top-level wx destruction event is too late to own this cleanup.
+        self._closing = True
+        timer = getattr(self, '_draft_save_timer', None)
+        if timer is not None:
+            timer.Stop()
+        self.cancel_event.set()
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def Destroy(self):
+        if not self:
+            return False
+        self._stop_background_work()
+        return super().Destroy()
+
     def on_close(self, event):
         if self.working:
             if event.CanVeto():
@@ -1321,7 +1337,5 @@ class DesktopFrame(WorkspaceFrame):
                 return
         super().on_close(event)
         if not event.GetVeto():
-            self._closing = True
-            self.cancel_event.set()
-            self.executor.shutdown(wait=False, cancel_futures=True)
+            self._stop_background_work()
 
