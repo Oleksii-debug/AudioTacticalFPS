@@ -252,7 +252,7 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     dialog = Mock()
     dialog._audio_player = player
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+        get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
@@ -265,6 +265,9 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     scheduler.tick()
     player.play.assert_not_called()
     handlers.close()
+    values['executor'].submit.assert_called_once_with(values['service'].close)
+    values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+    values['service'].close.assert_not_called()  # Cleanup belongs to the worker queue.
     parent.ready = True
     scheduler.tick()
     player.play.assert_not_called()
