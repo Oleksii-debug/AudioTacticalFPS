@@ -6,6 +6,8 @@ from pathlib import Path
 import sqlite3
 import sys
 
+from .research.export_file import capture_export_destination
+
 
 def _controller(args):
     from .application import LibraryApp
@@ -92,17 +94,22 @@ def main(argv=None):
             raise ValueError('HTML and Word export require an explicit --output file.')
         if args.output is not None and (args.output.exists() or args.output.is_symlink()) and not args.overwrite:
             raise ValueError('The output exists. Choose another path or explicitly use --overwrite.')
+        approval = (capture_export_destination(args.output, private_root=controller.library.root)
+                    if args.output is not None else None)
         workbench = BibliographyWorkbench(controller)
         style = load_style_file(args.style_file) if args.style_file is not None else args.style
         preview = workbench.preview(identity=args.reference, style=style,
                                      locale=args.locale, name_mode=args.names)
         if args.output is not None:
-            workbench.export(preview, args.output, format=args.format, require_absent=not args.overwrite)
+            receipt = workbench.export(preview, args.output, format=args.format,
+                                       require_absent=not args.overwrite, approval=approval,
+                                       return_receipt=True)
+            warnings = (*preview.warnings, *((receipt.cleanup_warning,) if receipt.cleanup_warning else ()))
             print(json.dumps({'result': 'SAVED', 'output': str(args.output),
                               'style': preview.result.style.id,
                               'style_sha256': preview.result.style_sha256,
                               'custom_style': preview.result.custom_style,
-                              'references': len(preview.result.entries), 'warnings': preview.warnings},
+                              'references': len(preview.result.entries), 'warnings': warnings},
                              ensure_ascii=False, indent=2))
         else:
             print(workbench.copy_text(preview), end='')

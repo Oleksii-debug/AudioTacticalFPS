@@ -356,9 +356,11 @@ class JobProcess:
             if outcome == 0x102:
                 if not self._api.TerminateProcess(handle, 1):
                     error = ctypes.get_last_error()
-                    # A genuine exit racing this exact retained handle is safe;
-                    # an unrelated access failure must retain ownership.
-                    if error != 5 or self._api.WaitForSingleObject(handle, 0) != 0:
+                    # Windows also reports ERROR_ACCESS_DENIED when an exit
+                    # is already underway. It is not completion evidence:
+                    # the bounded, identity-bound wait below is still required.
+                    # Other failures retain ownership immediately.
+                    if error != 5:
                         raise ctypes.WinError(error)
             elif outcome != 0:
                 raise ctypes.WinError(ctypes.get_last_error())

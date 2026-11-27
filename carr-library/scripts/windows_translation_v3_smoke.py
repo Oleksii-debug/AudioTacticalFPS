@@ -128,7 +128,8 @@ def main():
             wx.MessageBox, wx.DirDialog = approve, ExportSelection
             deadline = monotonic() + 45
             phase, final = [0], {}
-            timer = wx.Timer(frame)
+            timer = None
+            active, reported_phase = [True], [None]
 
             def child(dialog, name):
                 found = wx.FindWindowByName(name, dialog)
@@ -147,9 +148,14 @@ def main():
                 event.SetEventObject(found)
                 found.GetEventHandler().ProcessEvent(event)
 
-            def drive(event):
+            def drive(event=None):
+                nonlocal timer
+                if not active[0]:
+                    return
                 dialogs = [window for window in wx.GetTopLevelWindows()
-                           if isinstance(window, wx.Dialog) and window.GetTitle() == 'Translation — selected text derivatives']
+                           if isinstance(window, wx.Dialog) and window.GetParent() is frame
+                           and window.GetName() == 'Translation workspace'
+                           and window.IsModal() and window.IsShown()]
                 dialog = dialogs[0] if dialogs else None
                 try:
                     if failures:
@@ -158,12 +164,18 @@ def main():
                         raise TimeoutError('Native translation probe exceeded its bounded wait.')
                     if dialog is None:
                         return
+                    if phase[0] != reported_phase[0]:
+                        print('Native translation phase:', phase[0], flush=True)
+                        reported_phase[0] = phase[0]
                     if phase[0] == 0:
                         assert not requests
                         assert child(dialog, 'Selected text; originals remain unchanged').GetValue() == original
                         glossary_control = child(dialog, 'Advanced v3 glossary resource; blank for none')
                         assert glossary_control.IsEnabled()
                         glossary_control.SetFocus()
+                        phase[0] = .5
+                    elif phase[0] == .5:
+                        glossary_control = child(dialog, 'Advanced v3 glossary resource; blank for none')
                         assert wx.Window.FindFocus() is glossary_control
                         glossary_control.ChangeValue(glossary)
                         button(dialog, 'Fetch languages')
@@ -219,11 +231,14 @@ def main():
                             actual_google_api='NOT_RUN', actual_credential_vault='PASS',
                             explicit_advanced_model=True, glossary_verified=True, directional_languages=True, nvda='NOT_RUN')
                         phase[0] = 5
+                        active[0] = False
                         timer.Stop()
                         button(dialog, 'Close')
                         wx.CallAfter(app.ExitMainLoop)
                 except BaseException as exc:
                     failures.append(type(exc).__name__ + ': ' + str(exc))
+                    print('FAIL: native translation phase ' + str(phase[0]) + ': ' + failures[-1], flush=True)
+                    active[0] = False
                     timer.Stop()
                     frame.cancel_event.set()
                     if dialog is not None:
@@ -231,12 +246,21 @@ def main():
                         dialog.GetEventHandler().ProcessEvent(close)
                     wx.CallAfter(app.ExitMainLoop)
 
-            frame.Bind(wx.EVT_TIMER, drive, timer)
-            timer.Start(50)
+                finally:
+                    if active[0]:
+                        timer = wx.CallLater(50, drive)
+
+            # A modal disables its parent frame. Use a parent-independent timer
+            # so the driver and its deadline continue inside the modal loop.
+            timer = wx.CallLater(50, drive)
             wx.CallAfter(show_translation, frame, initial_text=original, title='Synthetic public source', service=service)
+            import faulthandler
+            faulthandler.dump_traceback_later(60)
             try:
                 app.MainLoop()
             finally:
+                faulthandler.cancel_dump_traceback_later()
+                active[0] = False
                 timer.Stop()
                 frame._closing = True
                 frame.cancel_event.set()

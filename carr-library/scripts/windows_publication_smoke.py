@@ -21,7 +21,7 @@ def drive_metadata(wx, show_options, frame, book_format, record, *, cancel=False
             timer[0] = wx.CallLater(25, poll)
 
     def press(dialog, identifier):
-        button = dialog.FindWindowById(identifier)
+        button = dialog.FindWindowById(identifier, dialog)
         assert isinstance(button, wx.Button) and button.IsEnabled(), 'Expected an enabled native button.'
         event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
         event.SetEventObject(button)

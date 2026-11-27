@@ -361,3 +361,84 @@ def test_malformed_publication_candidate_cannot_enter_backup(app, tmp_path, fiel
     _store(app.root, result['request_id'], request)
     with pytest.raises(ValueError, match='publication candidate|foreign source'):
         _snapshot(app, tmp_path)
+
+
+@pytest.mark.parametrize('change', ['source', 'result', 'missing-source'])
+def test_completed_docx_request_cannot_rebind_its_published_source(app, tmp_path, change):
+    """A complete receipt must refer to the same original as its saved request."""
+    from docx import Document
+    from carr_library.ingest import worker
+    from carr_library.library_backup import create_backup, restore_backup
+
+    workspace = app.create_workspace('Complete request source binding')
+    original = tmp_path / 'published.docx'
+    document = Document()
+    document.add_paragraph('Original authorized publication.')
+    document.save(original)
+    completed = app.import_file(workspace, original)
+    assert completed['state'] == 'complete'
+    request = load_request(app.root, completed['request_id'])
+    assert 'job' not in request and 'expected_manifest' not in request
+    original_digest = request['asset_sha256']
+    retained = app.assets.resolve(original_digest)
+    original_bytes = retained.read_bytes()
+    # Old completed DOCX requests legitimately have neither a planned manifest
+    # nor a journal job. Preserve their exact source and cached receipt.
+    valid_backup = tmp_path / 'valid-backup'
+    checksum = create_backup(app, valid_backup)
+    restored = LibraryApp(restore_backup(valid_backup, tmp_path / 'valid-restore', checksum))
+    restored_request = load_request(restored.root, request['request_id'])
+    assert Path(restored_request['source']).read_bytes() == original_bytes
+    assert restored.resume_import(workspace, request['request_id']) == completed
+
+    replacement = tmp_path / 'different.docx'
+    document = Document()
+    document.add_paragraph('Different source must not back the completed publication.')
+    document.save(replacement)
+    changed_bytes = replacement.read_bytes()
+    other_digest = sha256(changed_bytes).hexdigest()
+    assert other_digest != original_digest
+    app.assets.retain(changed_bytes,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', other_digest)
+    if change == 'source':
+        request['asset_sha256'] = other_digest
+    elif change == 'result':
+        request['result']['asset'] = other_digest
+    else:
+        del request['asset_sha256']
+    worker._store(app.root, request['request_id'], request)
+
+    destination = tmp_path / 'invalid-backup'
+    with pytest.raises(ValueError, match='source|publication'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert retained.read_bytes() == original_bytes
+    with app.read(workspace) as db:
+        assert db.execute('SELECT asset FROM revision WHERE id=?',
+                          (completed['id'],)).fetchone()[0] == original_digest
+
+
+def test_pending_sidecar_rewrite_with_unchanged_timestamps_invalidates_snapshot(app, tmp_path, monkeypatch):
+    from carr_library import pending_backup
+    from carr_library.library_backup import create_backup
+    _, _, request, _ = _partial(app, tmp_path)
+    original = app.root / 'import-requests' / (request['request_id'] + '.json')
+    before = original.read_bytes()
+    assert b'Pending quotation' in before
+    monkeypatch.setattr(pending_backup, '_stamp',
+                        lambda info: (info.st_dev, info.st_ino, info.st_mode, info.st_nlink, info.st_size, 0, 0))
+    write = pending_backup._write
+    changed = False
+    def mutate_after_copied_sidecar(path, raw):
+        nonlocal changed
+        result = write(path, raw)
+        if not changed and path.parent.name == 'originals':
+            original.write_bytes(before.replace(b'Pending quotation', b'Changed quotation'))
+            changed = True
+        return result
+    monkeypatch.setattr(pending_backup, '_write', mutate_after_copied_sidecar)
+    destination = tmp_path / 'racing-backup'
+    with pytest.raises(ValueError, match='changed'):
+        create_backup(app, destination)
+    assert changed and len(original.read_bytes()) == len(before)
+    assert original.read_bytes() != before and not destination.exists()

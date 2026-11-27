@@ -74,7 +74,7 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
             else:
                 raise AssertionError('Unexpected clip probe phase.')
             state['phase'] = 'submit-' + action
-            button = dialog.FindWindowById(wx.ID_CANCEL) if action == 'cancel' else buttons[action]
+            button = dialog.FindWindowById(wx.ID_CANCEL, dialog) if action == 'cancel' else buttons[action]
             press(button)
             # On MSW EndModal hides synchronously, while IsModal remains true
             # until ShowModal unwinds. Observe visibility and the returned result.

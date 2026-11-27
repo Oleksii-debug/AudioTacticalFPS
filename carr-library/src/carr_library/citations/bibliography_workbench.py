@@ -212,12 +212,15 @@ class BibliographyWorkbench:
             private_root=self.controller.library.root, custom_style=custom_style, cancelled=permitted, approval=approval)
 
     def export(self, preview, destination, *, format='text', cancelled=lambda: False,
-               require_absent=False, approval=None):
+               require_absent=False, approval=None, return_receipt=False):
+        """Export exact content, optionally returning its publication receipt."""
+        if type(return_receipt) is not bool:
+            raise ValueError('The export receipt option must be boolean.')
+        if approval is None:
+            approval = capture_export_destination(destination, private_root=self.controller.library.root)
         snapshot = self.check(preview)
         if cancelled():
             raise TimeoutError('Bibliography export cancelled; no output was changed.')
-        if approval is None:
-            approval = capture_export_destination(destination, private_root=self.controller.library.root)
         if format == 'text':
             content = preview.bibliography
             writer = write_export
@@ -248,9 +251,9 @@ class BibliographyWorkbench:
             self.check(preview)
             return False
 
-        writer(destination, content, private_root=self.controller.library.root,
-               cancelled=cancelled_or_changed, require_absent=require_absent, approval=approval)
-        return content
+        receipt = writer(destination, content, private_root=self.controller.library.root,
+                         cancelled=cancelled_or_changed, require_absent=require_absent, approval=approval)
+        return receipt if return_receipt else content
 
 
 class _InlineMarkup(HTMLParser):

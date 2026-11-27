@@ -279,6 +279,44 @@ def test_job_cleanup_never_terminates_a_recycled_pid_outside_its_private_job():
     assert not any(event[0] == 'terminate' for event in kernel.events)
 
 
+@pytest.mark.parametrize('wait_result', ('signaled', 'timeout', 'failed'))
+def test_exit_racing_termination_still_requires_a_bounded_signaled_handle(monkeypatch, wait_result):
+    monkeypatch.setattr(ctypes, 'WinError', lambda code: OSError('native exit race'), raising=False)
+    monkeypatch.setattr(ctypes, 'get_last_error', lambda: 5, raising=False)
+
+    class ExitRace(DrainKernel):
+        result = wait_result
+
+        def TerminateProcess(self, handle, code):
+            if handle not in self.requested:
+                super().TerminateProcess(handle, code)
+            # The observed Windows race: final I/O is still settling, so the
+            # process is not signaled yet and a second termination returns5.
+            return 0
+
+        def WaitForSingleObject(self, handle, timeout):
+            if handle in self.requested and timeout:
+                assert 0 < timeout <= 5000
+                if self.result == 'timeout':
+                    return 0x102
+                if self.result == 'failed':
+                    return 0xffffffff
+            return super().WaitForSingleObject(handle, timeout)
+
+    kernel = ExitRace()
+    child = _drain_subject(kernel)
+    if wait_result != 'signaled':
+        with pytest.raises(subprocess.TimeoutExpired if wait_result == 'timeout' else OSError):
+            child.close()
+        assert child._members == {11: 303} and child._verified_members == {11}
+        assert child._job == 202 and ('close', 303) not in kernel.events
+        kernel.result = 'signaled'
+    assert child.close() is True
+    assert kernel.signaled == {303, 404} and child._members == {}
+    assert kernel.events.index(('signaled', 303)) < kernel.events.index(('close', 303))
+    assert kernel.events.index(('signaled', 404)) < kernel.events.index(('close', 202))
+
+
 def test_owned_handle_survives_accounting_removal_and_a_timed_out_wait(monkeypatch):
     monkeypatch.setattr(ctypes, 'WinError', lambda code: OSError('injected native failure'), raising=False)
     monkeypatch.setattr(ctypes, 'get_last_error', lambda: 5, raising=False)

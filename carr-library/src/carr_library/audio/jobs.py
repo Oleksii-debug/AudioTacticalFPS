@@ -72,14 +72,18 @@ def file_identity(info):
 
 @contextmanager
 def verified_reader(path, *, expected_identity=None):
+    from ..native_file_metadata import stream_change_time
     before = file_identity(regular_file(path))
     if expected_identity is not None and before != expected_identity:
         raise RuntimeError('An audio input changed after it was validated. Restart the production.')
     with Path(path).open('rb') as stream:
         if file_identity(os.fstat(stream.fileno())) != before:
             raise RuntimeError('An audio input changed while it was being opened.')
+        native_before = stream_change_time(stream)
         yield stream
-        if file_identity(os.fstat(stream.fileno())) != before or file_identity(regular_file(path)) != before:
+        if (stream_change_time(stream) != native_before
+                or file_identity(os.fstat(stream.fileno())) != before
+                or file_identity(regular_file(path)) != before):
             raise RuntimeError('An audio input changed while it was being read. Restart the production.')
 
 
@@ -227,8 +231,8 @@ def _replace_json_windows(source, destination, source_identity, directory_identi
     rename = kernel.SetFileInformationByHandle
     rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
     rename.restype = wintypes.BOOL
-    # Traverse/read attributes; do not share directory deletion. The handle pins
-    # the publication directory, and RootDirectory binds the native destination.
+    # Traverse/read attributes; do not share directory deletion. Keep this pin
+    # and its identity checks even though the Win32 request uses an absolute path.
     directory_fd = _windows_descriptor(destination.parent, 0xA0, directory=True, share=0x3)
     try:
         directory_info = os.fstat(directory_fd)
@@ -245,7 +249,7 @@ def _replace_json_windows(source, destination, source_identity, directory_identi
                     or _replacement_identity(info) != source_identity):
                 raise ValueError('JSON staging file changed while opening.')
             unchanged()
-            encoded = destination.name.encode('utf-16-le')
+            encoded = str(destination).encode('utf-16-le')
 
             class RenameInfo(ctypes.Structure):
                 _fields_ = [('Flags', ctypes.c_uint32), ('RootDirectory', ctypes.c_void_p),
@@ -254,7 +258,10 @@ def _replace_json_windows(source, destination, source_identity, directory_identi
 
             request = RenameInfo()
             request.Flags = 0x3  # REPLACE_IF_EXISTS | POSIX_SEMANTICS
-            request.RootDirectory = msvcrt.get_osfhandle(directory_fd)
+            # SetFileInformationByHandle's Win32 wrapper needs the absolute-name
+            # form. A non-null relative RootDirectory is accepted by the native
+            # NT API, but can be rejected here with ERROR_INVALID_PARAMETER.
+            request.RootDirectory = None
             request.FileNameLength = len(encoded)
             ctypes.memmove(ctypes.addressof(request) + RenameInfo.FileName.offset,
                            encoded, len(encoded))
@@ -271,7 +278,12 @@ def _replace_json_windows(source, destination, source_identity, directory_identi
                 # Retry only the ordinary atomic primitive after proving that
                 # neither file nor its directory changed; never unlink first.
                 unchanged()
-                os.replace(source, destination)
+                try:
+                    os.replace(source, destination)
+                except OSError as exc:
+                    exc.add_note(f'Native JSON rename was unavailable (WinError {error}); '
+                                 'the unchanged atomic fallback also failed.')
+                    raise
         finally:
             os.close(source_fd)
     finally:

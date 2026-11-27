@@ -137,7 +137,10 @@ class ModalHarness:
     def GetParent(self):
         return self.frame
 
-    def FindWindowById(self, identifier):
+    def FindWindowById(self, identifier, parent=None):
+        # wx exposes this as a static lookup: omitting parent may select a
+        # preceding modal whose deferred destruction has not run yet.
+        assert parent is self, 'Standard button lookup escaped the owning modal.'
         return self.standard[identifier]
 
     def EndModal(self, code):

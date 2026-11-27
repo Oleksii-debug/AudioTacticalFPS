@@ -14,8 +14,8 @@ bytes while subsequent opens use the newly published file. There is one atomic
 rename and no destination deletion or missing-name interval.
 
 Publication is restricted to one checked local directory. The publisher retains
-the source handle and a non-delete-shared directory handle, uses that directory
-handle as the native rename root, and rechecks source/destination identities and
+the source handle and a non-delete-shared directory handle, uses the Win32
+absolute-name/NULL-root request form, and rechecks source/destination identities and
 reparse/link guards before publication. The destination still cannot be a linked
 or read-only file. The existing caller writer lock, staged-file fsync and
 directory-sync policy remain in force.
@@ -51,3 +51,4 @@ Primary API contracts:
 - [Microsoft SetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle)
 - [Microsoft FILE_INFO_BY_HANDLE_CLASS](https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ne-minwinbase-file_info_by_handle_class)
 - [CPython issue 46003: MoveFileExW and open destination restrictions](https://bugs.python.org/issue46003)
+- [Git's Windows rename implementation using an absolute name and NULL root](https://github.com/git/git/blob/master/compat/mingw.c)

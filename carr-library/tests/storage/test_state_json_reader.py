@@ -368,7 +368,7 @@ def test_native_json_request_pins_directory_and_uses_utf16_posix_rename(tmp_path
     assert len(calls) == 1 and not fallback
     assert descriptors[0][2:5] == (0xA0, True, 0x3)
     assert descriptors[1][2:5] == (0x80010000, False, 0x7)
-    assert calls[0][:5] == (descriptors[1][5], 22, 0x3, descriptors[0][5], target.name)
+    assert calls[0][:5] == (descriptors[1][5], 22, 0x3, None, str(target))
 
 
 @pytest.mark.parametrize('error', [5, 32, 33, 112])
@@ -403,7 +403,28 @@ def test_unsupported_native_json_does_not_overwrite_changed_paths(tmp_path, monk
     target.write_bytes(b'{"old":1}')
     selected = source if changed == 'source' else target
     def action(rename):
-        selected.write_bytes(b'{"concurrent":1}')
+        if os.name != 'nt':
+            selected.write_bytes(b'{"concurrent":1}')
+        else:
+            # An ordinary CRT writer does not share DELETE and is correctly
+            # refused while the publisher retains DELETE access to its stage.
+            # Use a cooperating shared native writer to exercise the actual
+            # content-revalidation boundary, rather than a sharing failure.
+            import ctypes
+            from ctypes import wintypes
+            import msvcrt
+            fd = state._windows_descriptor(selected, 0x40000000)
+            try:
+                write = ctypes.WinDLL('kernel32', use_last_error=True).WriteFile
+                write.argtypes = (wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD,
+                                  ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p)
+                write.restype = wintypes.BOOL
+                payload = b'{"concurrent":1}'
+                buffer, written = ctypes.create_string_buffer(payload), wintypes.DWORD()
+                assert write(msvcrt.get_osfhandle(fd), buffer, len(payload), ctypes.byref(written), None)
+                assert written.value == len(payload)
+            finally:
+                os.close(fd)
         return False
     publish, _, calls, fallback = _native_publisher(monkeypatch, source, target, action, error=50)
     with pytest.raises(ValueError, match='changed'):

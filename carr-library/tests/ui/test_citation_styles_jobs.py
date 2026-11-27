@@ -10,7 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from carr_library.research.export_file import write_export
+from carr_library.research.export_file import ExportReceipt, write_export
 from carr_library.ui import citation_styles_dialog as style_dialog
 from carr_library.ui.citation_styles_dialog import create_citation_styles_dialog
 
@@ -97,7 +97,8 @@ def form(tmp_path, monkeypatch):
     dialog = create_citation_styles_dialog(None,
         N(workspace='selected-library', library=N(root=tmp_path / 'private')),
         selected_identity='selected-reference', executor=executor)
-    dialog.workbench = N(preview=Mock(), check=Mock(), export=Mock(), copy_text=Mock())
+    dialog.workbench = N(preview=Mock(), check=Mock(),
+                         export=Mock(return_value=ExportReceipt(destination)), copy_text=Mock())
 
     def drain():
         while queued:
@@ -142,6 +143,7 @@ def test_export_is_queued_and_does_not_render_in_native_event_handler(form):
     form.executor.finish(0)
     form.drain()
     assert dialog.workbench.export.call_args.args == (selected, str(form.destination))
+    assert dialog.workbench.export.call_args.kwargs['return_receipt'] is True
     assert 'saved to' in dialog.status.value and dialog.pending is None
     assert dialog.generate.enabled and dialog.copy_bibliography.enabled
 
@@ -151,8 +153,8 @@ def test_new_job_does_not_clear_old_export_cancellation_or_publish_its_file(form
     form.private.mkdir()
     dialog.preview = preview('Previous preview')
 
-    def export_file(selected, destination, *, format, cancelled, require_absent, approval):
-        write_export(destination, 'Obsolete export', private_root=form.private,
+    def export_file(selected, destination, *, format, cancelled, require_absent, approval, return_receipt):
+        return write_export(destination, 'Obsolete export', private_root=form.private,
                      cancelled=cancelled, require_absent=require_absent, approval=approval)
 
     dialog.workbench.export.side_effect = export_file
@@ -214,8 +216,8 @@ def test_copy_authorization_failure_never_opens_clipboard(form):
 
 
 def use_real_writer(form):
-    def publish(selected, destination, *, format, cancelled, require_absent, approval):
-        write_export(destination, selected.explanation, private_root=form.private,
+    def publish(selected, destination, *, format, cancelled, require_absent, approval, return_receipt):
+        return write_export(destination, selected.explanation, private_root=form.private,
                      cancelled=cancelled, require_absent=require_absent, approval=approval)
     form.dialog.workbench.export.side_effect = publish
     form.dialog.preview = preview('New approved bibliography')
@@ -480,3 +482,17 @@ def test_closed_regeneration_keeps_worker_cancellation_and_ignores_delivery(form
     form.executor.finish(0)
     form.drain()
     assert form.dialog.status.value == before
+
+
+def test_saved_export_with_cleanup_warning_remains_successful_and_accessible(form):
+    dialog = form.dialog
+    dialog.preview = preview('Approved preview')
+    warning = 'The file is saved. Temporary-file cleanup is still pending.'
+    dialog.workbench.export.return_value = ExportReceipt(form.destination, warning)
+    dialog.on_export()
+    form.executor.finish(0)
+    form.drain()
+    assert 'saved to' in dialog.status.value
+    assert warning in dialog.status.value and 'not exported' not in dialog.status.value
+    assert dialog.status.focused and dialog.pending is None
+    assert dialog.generate.enabled and dialog.export_button.enabled
