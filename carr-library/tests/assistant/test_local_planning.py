@@ -119,3 +119,165 @@ def test_invalid_profile_identity_cannot_silently_fall_back_to_guided_mode(tmp_p
     instruction = tmp_path / 'goal.txt'; instruction.write_text('List libraries.')
     result = cli(root, '--instructions', instruction, '--local-profile', identity)
     assert result.returncode == 1 and not result.stdout and not root.exists()
+
+
+# Pure JSON boundary checks; these do not execute plans or contact a model.
+from carr_library.assistant.models import Plan
+from carr_library.assistant.llm import LocalPlanClarification, _parse_local_proposal
+from carr_library.assistant.state import JobStore, read_json, atomic_json
+
+
+SCHEMA = 'carr-assistant-plan/1'
+
+
+def wire(steps=None, summary='', **extra):
+    return json.dumps({'schema':SCHEMA,'steps':[{'tool':'library.list'}] if steps is None else steps,'summary':summary,**extra}, ensure_ascii=True)
+
+
+@pytest.mark.parametrize('raw', [
+    '{"steps":[{"tool":"shell","tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.search","arguments":{"query":"one","query":"two"}}]}',
+    '{"schema":"bad","schema":"carr-assistant-plan/1","steps":[{"tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list","arguments":{},"arguments":{}}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"nested":{"x":1,"x":2}}}]}',
+    '{"steps":[{"tool":"library.list"}],"st\\u0065ps":[{"tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list"}],"summary":"a","summary":"a"}',
+    '{"steps":[{"tool":"library.list","arguments":{"nested":[{"x":1,"x":2}]}}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"\\u0430":1,"а":2}}]}',
+    '{"scope":{},"scope":null,"steps":[{"tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list"}],"schema":"carr-assistant-plan/1","schema":"carr-assistant-plan/1"}',
+    '{"schema":"carr-assistant-plan/1","steps":[],"summary":"a","summary":"b"}',
+])
+def test_duplicate_rejected(raw):
+    with pytest.raises(ValueError,match='Duplicate JSON keys'):
+        _parse_local_proposal(raw,Scope())
+
+
+@pytest.mark.parametrize('message', ['Which book?', 'Яку книгу імпортувати?', 'Ktorú knihu?', 'أي كتاب؟', '哪本书？', 'Quelle édition ?', 'Which source?\nWhich edition?', 'x'*2048])
+def test_clarification_preserves_exact_message(message):
+    with pytest.raises(LocalPlanClarification) as exc:
+        _parse_local_proposal(wire([],message),Scope())
+    assert message in str(exc.value) and 'No plan was submitted' in str(exc.value)
+
+
+@pytest.mark.parametrize('summary', ['', '   ', 'x'*2049, '\x1b[31m', '\x00', '\r', '\t', '\u202efoo', '\u200bfoo', '\ud800', None, [], {}, 2])
+def test_invalid_clarification_is_not_a_question(summary):
+    with pytest.raises((ValueError,UnicodeError)) as exc:
+        _parse_local_proposal(wire([],summary),Scope())
+    assert not isinstance(exc.value,LocalPlanClarification)
+
+
+@pytest.mark.parametrize('raw', [
+    '', '[]', 'null', 'true', '{', '{"steps":42}', '{"steps":[null]}',
+    '{"steps":[{"tool":"shell"}]}', '{"steps":[{"tool":"delete"}]}',
+    '{"steps":[{"tool":"library.list","arguments":[]}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"x":NaN}}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"x":Infinity}}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"x":-Infinity}}]}',
+    '{"steps":[{"tool":"library.list"}],"scope":{"allow_create":true}}',
+    '{"schema":"wrong","steps":[{"tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list","extra":true}]}',
+    '{"steps":[{"arguments":{}}]}',
+    '{"steps":[{"tool":"library.create","arguments":{"name":"new"}}]}',
+    '{"schema":"carr-assistant-plan/1","steps":[],"summary":"Clarify","extra":0}',
+    '{"schema":"carr-assistant-plan/1","steps":[],"summary":"Clarify","scope":null}',
+])
+def test_invalid_proposal_fails_closed(raw):
+    with pytest.raises((ValueError,PermissionError,TypeError)) as exc:
+        _parse_local_proposal(raw,Scope())
+    assert not isinstance(exc.value,LocalPlanClarification)
+
+
+def test_step_budget_preserved():
+    with pytest.raises(ValueError,match='budget'):
+        _parse_local_proposal(wire([{'tool':'library.list'}]*2),Scope(max_steps=1))
+
+
+def test_scope_is_original_not_model_owned():
+    scope=Scope('selected', max_steps=2)
+    plan=_parse_local_proposal(wire([{'tool':'library.search','arguments':{'query':'джерело'}}]),scope)
+    assert plan.scope is scope and plan.steps[0].arguments=={'query':'джерело'}
+    assert Plan.from_json(plan.to_json()).digest==plan.digest
+
+
+def test_authorized_creation_is_typed_only():
+    scope=Scope(allow_create=True)
+    plan=_parse_local_proposal(wire([{'tool':'library.create','arguments':{'name':'History'}}]),scope)
+    assert plan.scope is scope and plan.steps[0].tool=='library.create'
+
+
+def test_json_size_bound():
+    with pytest.raises(ValueError,match='plan JSON'):
+        _parse_local_proposal(' '* (8*1024*1024+1),Scope())
+
+
+@pytest.mark.parametrize('raw', [
+    '{"steps":[{"tool":"shell","tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"a":1,"a":2}}]}',
+    '{"steps":[{"tool":"library.list"}],"st\\u0065ps":[{"tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list"}],"summary":"one","summary":"two"}',
+])
+def test_direct_plan_rejects_duplicate_keys(raw):
+    with pytest.raises(ValueError, match='Duplicate JSON keys'):
+        Plan.from_json(raw, scope=Scope())
+
+
+@pytest.mark.parametrize('raw', [
+    b'{"command":"cancel","command":"run"}',
+    b'{"plan":{"steps":[{"tool":"shell","tool":"library.list"}]}}',
+    b'{"model":"reviewed","m\\u006fdel":"changed"}',
+    b'{"local":false,"local":true}',
+    b'{"meta":NaN}', b'{"meta":Infinity}', b'{"meta":-Infinity}',
+    b'{"meta":1e999}', b'{"meta":-1e999}',
+])
+def test_saved_state_rejects_ambiguous_or_nonfinite_json(tmp_path, raw):
+    path = tmp_path / 'state.json'
+    path.write_bytes(raw)
+    with pytest.raises(ValueError, match='Duplicate JSON keys|Non-finite'):
+        read_json(path)
+    assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize('value', ['NaN', 'Infinity', '-Infinity', '1e999', '-1e999'])
+def test_nonfinite_values_rejected_before_local_plan_validation(value):
+    raw = '{"steps":[{"tool":"library.list"}],"summary":' + value + '}'
+    with pytest.raises(ValueError, match='Non-finite'):
+        _parse_local_proposal(raw, Scope())
+
+
+def test_control_cancel_cannot_silently_become_run(tmp_path):
+    store = JobStore(tmp_path / 'jobs')
+    identity = '1' * 32
+    path = store.path(identity).with_suffix('.control.json')
+    raw = b'{"command":"cancel","command":"run"}'
+    path.write_bytes(raw)
+    with pytest.raises(ValueError, match='Duplicate JSON keys'):
+        store.control(identity)
+    assert path.read_bytes() == raw
+    assert store.control(identity, 'cancel') == 'cancel'
+
+
+def test_job_duplicate_status_cannot_become_queued(tmp_path):
+    store = JobStore(tmp_path / 'jobs')
+    identity = '2' * 32
+    raw = ('{"schema":"carr-assistant-job/1","id":"'+identity+'",'
+           '"status":"cancelled","status":"queued"}').encode()
+    store.path(identity).write_bytes(raw)
+    with pytest.raises(ValueError, match='Duplicate JSON keys'):
+        store.load(identity)
+    assert store.path(identity).read_bytes() == raw
+
+
+def test_finite_unicode_state_roundtrip(tmp_path):
+    path = tmp_path / 'checkpoint.json'
+    original = {'name': 'Дослідження — výskum', 'seconds': 1.25, 'count': 5,
+                'nested': [{'status': 'paused'}, {'result': None}]}
+    atomic_json(path, original)
+    assert read_json(path) == original
+
+
+def test_finite_plan_roundtrip():
+    scope = Scope('workspace')
+    value = {'steps': [{'tool':'library.search','arguments':{'query':'Книга','threshold':0.5}}]}
+    plan = _parse_local_proposal(json.dumps(value), scope)
+    assert Plan.from_json(plan.to_json()).digest == plan.digest
