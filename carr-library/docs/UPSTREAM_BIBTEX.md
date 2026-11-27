@@ -146,7 +146,7 @@ Linux CPython 3.12 with the actual pinned distributions:
 
 ```text
 python scripts/ci_check.py tests/research/test_bibtex_import.py
-76 passed, 0 failed, 0 skipped
+95 passed, 0 failed, 0 skipped
 ```
 
 The cases exercise actual parser/decoder calls, accents and Unicode, name
@@ -154,7 +154,9 @@ grouping, strings/concatenation, conservative crossrefs, original-key retention,
 raw provenance, no file/network/process access, malformed/duplicate rejection,
 private-log suppression, memory/expansion limits, and disk-backed SQLite
 metadata persistence and workspace isolation across reopening. They include
-source invariance and explicit note-export behavior.
+source invariance and explicit note-export behavior. Dependency-depth limits
+apply equally to parent-first, child-first and interleaved string/cross-reference
+orders; cached resolutions retain their full longest dependency depth.
 
 The canonical formatter integration also exercises actual selected BibTeX
 import, closing and reopening the SQLite library, citeproc-js rendering and
