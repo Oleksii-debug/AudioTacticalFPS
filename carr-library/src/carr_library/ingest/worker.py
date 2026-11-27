@@ -578,9 +578,8 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     expected = request_identity(record)
     # Old launch hints never become authority for a request waiting to restart.
     # Its stable metadata remains visible in the existing import queue.
-    pending = dict(record, state='pending')
-    for name in ('attempt', 'publication_candidate', 'publication_watermark'):
-        pending.pop(name, None)
+    pending = dict(record, state='pending', attempt=uuid4().hex, publication_candidate=None)
+    pending.pop('publication_watermark', None)
     _store(root, request_id, pending)
     try:
         selected = broker or ResourceBroker.for_app(library, cancelled=cancelled)
@@ -596,7 +595,8 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             if request_identity(current) != expected:
                 raise ValueError('The import request changed while waiting for shared resources.')
             return _execute_request(root, workspace, current, request_id,
-                                    cancelled=lease.cancelled, timeout=timeout)
+                                    cancelled=lease.cancelled, timeout=timeout,
+                                    native_finished=lease.release)
     except ResourceCancelled:
         result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
                       request_id=request_id, isolated=True)
@@ -604,7 +604,8 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         return result
 
 
-def _execute_request(root, workspace, record, request_id, *, cancelled, timeout):
+def _execute_request(root, workspace, record, request_id, *, cancelled, timeout,
+                     native_finished=lambda: None):
     from ..application import LibraryApp
     from .publication_identity import request_identity
     app = LibraryApp(root)
@@ -630,6 +631,10 @@ def _execute_request(root, workspace, record, request_id, *, cancelled, timeout)
                       'source': record['source'], 'timeout': timeout},
                      timeout=timeout, cancelled=cancelled,
                      on_started=worker_started)
+    # _invoke returns only after its native child cleanup. Receipt reconciliation
+    # is a short database operation; it must not retain scarce parser resources
+    # or prevent a competing request from committing its own distinct receipt.
+    native_finished()
     if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
         try:
             committed = _reconcile_publication(root, request_id, attempt_id, initial=record)

@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import shutil
 
-from ..audio.engines import default_registry
+from ..audio.engines import _invoke
 from ..audio.jobs import regular_file, sha256_file
 from ..audio.models import ProductionPlan
 from ..audio.production import parse_script, plan_narration, render_project
@@ -12,21 +12,25 @@ from .models import local_path
 
 
 class LocalProduction:
-    def __init__(self, private_root, *, registry=None, ffmpeg=None, renderer=render_project):
+    def __init__(self, private_root, *, registry=None, ffmpeg=None, renderer=None,
+                 cancelled=lambda: False):
         self.private_root = local_path(private_root)
         self.registry = registry
         self.ffmpeg = Path(ffmpeg) if ffmpeg else None
-        self.renderer = renderer
+        self.renderer = render_project if renderer is None else renderer
+        self._default_renderer = renderer is None or renderer is render_project
+        self.cancelled = cancelled
 
     def _registry(self):
         if self.registry is None:
-            self.registry = default_registry(ffmpeg=self.ffmpeg)
+            from ..runtime_settings import configured_voice_registry
+            self.registry = configured_voice_registry(self.private_root, ffmpeg=self.ffmpeg)
         return self.registry
 
-    def voices(self):
-        return self._registry().voices()
+    def voices(self, *, cancelled=None):
+        return _invoke(self._registry().voices, cancelled=self.cancelled if cancelled is None else cancelled)
 
-    def plan(self, arguments, *, max_bytes):
+    def plan(self, arguments, *, max_bytes, cancelled=None):
         if type(max_bytes) is not int or max_bytes < 1024 ** 2:
             raise ValueError('Audio production needs an explicit disk budget of at least one MiB.')
         if 'script' in arguments:
@@ -40,7 +44,7 @@ class LocalProduction:
             voice = voices[0]
             language = arguments.get('language')
             if language is None:
-                selected = next((item for item in self.voices() if item.id == voice), None)
+                selected = next((item for item in self.voices(cancelled=cancelled) if item.id == voice), None)
                 language = selected.languages[0] if selected and selected.languages else 'en'
             kind = arguments.get('input_kind', 'narration')
             if kind not in ('narration', 'script'):
@@ -63,7 +67,7 @@ class LocalProduction:
         if not isinstance(identity, str) or re.fullmatch('[0-9a-f]{32}', identity) is None:
             raise ValueError('Audio production requires the executor-assigned operation identity.')
         budget = arguments.get('_artifact_budget_bytes')
-        plan = self.plan(arguments, max_bytes=budget)
+        plan = self.plan(arguments, max_bytes=budget, cancelled=cancelled)
         root = local_path(output_directory)
         project = local_path(root / ('audio-' + identity), must_exist=False)
         if project.is_relative_to(self.private_root) or self.private_root.is_relative_to(project):
@@ -71,8 +75,18 @@ class LocalProduction:
         binary = self.ffmpeg or (Path(shutil.which('ffmpeg')) if shutil.which('ffmpeg') else None)
         if binary is None:
             raise ValueError('Install or configure the reviewed local FFmpeg runtime before production.')
+        options = {}
+        if self._default_renderer:
+            from ..operations import ResourceBroker
+            from ..runtime_settings import EngineProfileStore
+            def music_profile(reference, engine, *, cancelled):
+                return EngineProfileStore(self.private_root).music_manifest(
+                    reference, engine, cancelled=cancelled)
+            options['music_manifest_resolver'] = music_profile
+            options['broker'] = ResourceBroker.for_app(self.private_root, cancelled=cancelled)
+            options['operation_id'] = 'assistant:' + identity
         result = self.renderer(plan, project, engine=self._registry(), ffmpeg=binary,
-                               cancelled=cancelled, on_status=progress)
+                               cancelled=cancelled, on_status=progress, **options)
         if not isinstance(result, dict) or result.get('status') != 'complete':
             raise RuntimeError('The audio renderer did not complete its verified output.')
         output = local_path(result['output'])

@@ -70,6 +70,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'operations':
         from .operations_cli import main as operations_main
         return operations_main(arguments[1:])
+    if arguments and arguments[0] == 'assistant':
+        from .assistant.cli import main as assistant_main
+        return assistant_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance — offline libraries, reading and audio')
     parser.add_argument('--version', action='version', version=__version__)

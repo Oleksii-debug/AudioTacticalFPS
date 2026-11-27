@@ -97,6 +97,8 @@ jobs:
         run: |
           $suites = @(
             'tests/operations/test_resources.py',
+            'tests/operations/test_portable_policy_location.py',
+            'tests/audio/test_capture_ownership.py',
             'tests/operations/test_state.py',
             'tests/operations/test_transcription_admission.py',
             'tests/operations/test_heavy_admission.py',
@@ -118,9 +120,21 @@ jobs:
             'tests/reader/test_legacy_reading_import.py',
             'tests/storage/test_legacy_reading_backup.py',
             'tests/ui/test_reading_import.py',
+            'tests/e2e/test_google_translation_v3.py',
+            'tests/assistant/test_translation_advanced.py',
+            'tests/ui/test_translation_advanced.py',
+            'tests/assistant/test_local_llm.py',
+            'tests/assistant/test_planning_handlers.py',
+            'tests/assistant/test_planning_runtime.py',
             'tests/ui/test_desktop_handlers.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/v3-shared-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the actual local HTTP planning fixture within numeric loopback
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | Tee-Object 'ci-results/local-planning-loopback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the installed offline OCR catalogue and console entrypoint
@@ -934,6 +948,12 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_transcription_smoke.py --native --output keyboard-results/native-transcription.json 2>&1 | Tee-Object 'keyboard-results/native-transcription.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native Advanced translation and temporary OS vault credentials
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_translation_v3_smoke.py --output keyboard-results/native-translation-v3.json 2>&1 | Tee-Object 'keyboard-results/native-translation-v3.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Preserve actual keyboard and recovery evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -988,6 +1008,8 @@ jobs:
             tests/test_transcription_service.py \
             tests/storage/test_transcription_backup.py \
             tests/operations/test_resources.py \
+            tests/operations/test_portable_policy_location.py \
+            tests/audio/test_capture_ownership.py \
             tests/operations/test_state.py \
             tests/operations/test_transcription_admission.py \
             tests/operations/test_heavy_admission.py \
@@ -1009,8 +1031,27 @@ jobs:
             tests/reader/test_legacy_reading_import.py \
             tests/storage/test_legacy_reading_backup.py \
             tests/ui/test_reading_import.py \
+            tests/e2e/test_google_translation_v3.py \
+            tests/assistant/test_translation_advanced.py \
+            tests/ui/test_translation_advanced.py \
+            tests/assistant/test_local_llm.py \
+            tests/assistant/test_planning_handlers.py \
+            tests/assistant/test_planning_runtime.py \
+            tests/assistant/test_dialog_lifecycle.py \
+            tests/assistant/test_local_assistant.py \
+            tests/assistant/test_production_bridge.py \
+            tests/e2e/test_provider_gateway.py \
+            tests/e2e/test_google_translation_gateway.py \
+            tests/assistant/test_translation.py \
+            tests/ui/test_translation_dialog.py \
+            tests/packaging/test_ci_check.py \
             tests/ui/test_desktop_handlers.py \
             2>&1 | tee portable-shared-results/strict-contracts.txt
+      - name: Require actual local HTTP and separate reviewed CLI execution
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          python scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | tee portable-shared-results/local-planning-loopback.txt
       - name: Preserve portable source evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

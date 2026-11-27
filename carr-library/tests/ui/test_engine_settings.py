@@ -114,6 +114,7 @@ def test_profile_settings_menu_is_semantic_idempotent_and_does_not_open_on_insta
 def test_studio_default_pipeline_resolves_music_only_through_local_profiles(tmp_path, monkeypatch):
     from carr_library.audio import production
     from carr_library import runtime_settings
+    from carr_library.operations import ResourceBroker
     from carr_library.ui.audio_studio import StudioController
     library = tmp_path / 'library'
     library.mkdir()
@@ -130,7 +131,12 @@ def test_studio_default_pipeline_resolves_music_only_through_local_profiles(tmp_
     controller.new('Retained source text.')
     controller.configure(output_dir=output)
     cancelled = lambda: False
-    def render(plan, folder, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver):
+    admitted = object()
+    admission = Mock(return_value=admitted)
+    monkeypatch.setattr(ResourceBroker, 'for_app', admission)
+    def render(plan, folder, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver,
+               broker, operation_id):
+        assert broker is admitted and operation_id == 'studio:' + controller.project_id
         assert music_manifest_resolver('profiles/' + 'a' * 32 + '.json', 'fluidsynth',
                                        cancelled=cancelled) is expected
         target = folder / 'complete.wav'
@@ -138,4 +144,5 @@ def test_studio_default_pipeline_resolves_music_only_through_local_profiles(tmp_
         return {'status': 'complete', 'output': str(target)}
     monkeypatch.setattr(production, 'render_project', render)
     controller.render(cancelled=cancelled)
+    admission.assert_called_once_with(library, cancelled=cancelled)
     resolver.assert_called_once_with('profiles/' + 'a' * 32 + '.json', 'fluidsynth', cancelled=cancelled)

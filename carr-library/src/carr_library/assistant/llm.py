@@ -7,7 +7,7 @@ import json
 
 from .models import Plan, Scope, text
 from .service import AssistantService
-from ..providers import JobApproval, ProviderGateway, ProviderProfile, ProviderRequest
+from ..providers import JobApproval, ProfileStore, ProviderGateway, ProviderProfile, ProviderRequest
 
 
 SYSTEM = """Propose a plan for a local research library. Return one JSON object
@@ -67,7 +67,7 @@ def parse_local_proposal(value, scope):
 
 
 def propose_local_plan(service, gateway, profile, instruction, scope, *,
-                       approval, operation_id, cancelled=lambda: False):
+                       approval, operation_id, cancelled=lambda: False, profile_store=None):
     """Send only this instruction, validate its proposal, and leave it unapproved.
 
     The caller supplies the exact one-call approval after selecting the local
@@ -82,9 +82,43 @@ def propose_local_plan(service, gateway, profile, instruction, scope, *,
     if (not isinstance(approval, JobApproval) or approval.mode != 'LOCAL_ONLY'
             or not approval.allow_loopback or approval.budget_micros != 0 or approval.max_calls != 1):
         raise PermissionError('Authorize one exact local proposal with no remote spending.')
+    # UI/CLI callers bind the existing saved provider record as well as the
+    # exact one-call approval. Low-level explicit-profile callers remain valid.
+    if profile_store is not None:
+        from ..audio.jobs import checked_directory, regular_file
+        root = checked_directory(service.app.root)
+        root_stat = root.stat()
+        root_identity = root_stat.st_dev, root_stat.st_ino
+        if (not isinstance(profile_store, ProfileStore)
+                or profile_store.path != root / 'api-connections.json'
+                or gateway.ledger.path != root / 'api-operations.sqlite'):
+            raise PermissionError('Local planning must use this library\'s existing profiles and request ledger.')
+        ledger_stat = regular_file(gateway.ledger.path)
+        if ledger_stat.st_nlink != 1:
+            raise PermissionError('The local request ledger cannot have a hard-link alias.')
+        ledger_identity = ledger_stat.st_dev, ledger_stat.st_ino
+
+        def current_profile():
+            if (checked_directory(service.app.root) != root
+                    or profile_store.path != root / 'api-connections.json'
+                    or gateway.ledger.path != root / 'api-operations.sqlite'):
+                raise PermissionError('The library or local request authorities changed during the proposal.')
+            current_root = checked_directory(root).stat()
+            current_ledger = regular_file(gateway.ledger.path)
+            if ((current_root.st_dev, current_root.st_ino) != root_identity
+                    or (current_ledger.st_dev, current_ledger.st_ino) != ledger_identity
+                    or current_ledger.st_nlink != 1):
+                raise PermissionError('The library or local request ledger changed during the proposal.')
+            found = next((row for row in profile_store.profiles() if row.id == profile.id), None)
+            if found != profile:
+                raise PermissionError('The selected local model profile changed or was removed. Select it again.')
+    else:
+        current_profile = lambda: None
+    current_profile()
     request = local_plan_request(instruction)
     output = gateway.perform(profile, request, approval=approval,
         operation_id=operation_id, estimated_micros=0, cancelled=cancelled)
+    current_profile()
     if cancelled():
         raise InterruptedError('Local proposal cancelled; no assistant plan was approved.')
     try:
@@ -97,6 +131,7 @@ def propose_local_plan(service, gateway, profile, instruction, scope, *,
         raise ValueError('The local service did not return a supported text proposal.') from None
     plan = parse_local_proposal(value, scope)
     service.validate(plan)
+    current_profile()
     if cancelled():
         raise InterruptedError('Local proposal cancelled; no assistant plan was approved.')
     return plan

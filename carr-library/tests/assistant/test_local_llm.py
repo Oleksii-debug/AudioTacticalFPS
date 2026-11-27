@@ -130,3 +130,82 @@ def test_cancellation_and_repeated_operation_do_not_resend(setup):
         propose_local_plan(setup.service, setup.gateway, setup.profile,
             'List my libraries', setup.scope, approval=approval, operation_id=operation)
     assert len(setup.calls) == 1
+
+
+@pytest.mark.parametrize('when', ['before', 'during'])
+@pytest.mark.parametrize('change', ['removed', 'model'])
+def test_saved_profile_changes_discard_proposal_without_submitting(setup, when, change):
+    from dataclasses import replace
+    from carr_library.providers import ProfileStore
+    store = ProfileStore(setup.app.root / 'api-connections.json')
+    store.save(setup.profile)
+    def changed():
+        if change == 'removed':
+            store.remove(setup.profile.id)
+        else:
+            store.save(replace(setup.profile, model='changed-model'))
+    if when == 'before':
+        changed()
+    else:
+        original = setup.gateway.transport.post
+        def response(*args, **kwargs):
+            raw = original(*args, **kwargs)
+            changed()
+            return raw
+        setup.gateway.transport.post = response
+    with pytest.raises(PermissionError, match='profile changed or was removed'):
+        propose_local_plan(setup.service, setup.gateway, setup.profile,
+            'List my libraries', setup.scope, approval=approve(setup), operation_id=uuid4().hex,
+            profile_store=store)
+    assert len(setup.calls) == int(when == 'during')
+    assert setup.service.jobs() == ()
+
+
+def test_live_profile_cannot_borrow_another_library_ledger(setup, tmp_path):
+    from carr_library.providers import ProfileStore
+    store = ProfileStore(setup.app.root / 'api-connections.json')
+    store.save(setup.profile)
+    other = tmp_path / 'other'
+    other.mkdir()
+    setup.gateway.ledger = BudgetLedger(other / 'api-operations.sqlite')
+    with pytest.raises(PermissionError, match='this library'):
+        propose_local_plan(setup.service, setup.gateway, setup.profile,
+            'List my libraries', setup.scope, approval=approve(setup), operation_id=uuid4().hex,
+            profile_store=store)
+    assert not setup.calls and setup.service.jobs() == ()
+
+
+def test_replaced_ledger_during_response_cannot_expose_a_proposal(setup, monkeypatch):
+    from carr_library.providers import ProfileStore
+    store = ProfileStore(setup.app.root / 'api-connections.json')
+    store.save(setup.profile)
+    original = setup.gateway.perform
+    def replaced(*args, **kwargs):
+        result = original(*args, **kwargs)
+        path = setup.gateway.ledger.path
+        path.rename(path.with_name('retained-original-ledger.sqlite'))
+        BudgetLedger(path)
+        return result
+    monkeypatch.setattr(setup.gateway, 'perform', replaced)
+    with pytest.raises(PermissionError, match='request ledger changed'):
+        propose_local_plan(setup.service, setup.gateway, setup.profile,
+            'List my libraries', setup.scope, approval=approve(setup), operation_id=uuid4().hex,
+            profile_store=store)
+    assert len(setup.calls) == 1 and setup.service.jobs() == ()
+
+
+def test_profile_changed_by_validation_cannot_escape_as_a_reviewable_plan(setup, monkeypatch):
+    from carr_library.providers import ProfileStore
+    store = ProfileStore(setup.app.root / 'api-connections.json')
+    store.save(setup.profile)
+    original = setup.service.validate
+    def changed(plan):
+        result = original(plan)
+        store.remove(setup.profile.id)
+        return result
+    monkeypatch.setattr(setup.service, 'validate', changed)
+    with pytest.raises(PermissionError, match='profile changed or was removed'):
+        propose_local_plan(setup.service, setup.gateway, setup.profile,
+            'List my libraries', setup.scope, approval=approve(setup), operation_id=uuid4().hex,
+            profile_store=store)
+    assert len(setup.calls) == 1 and setup.service.jobs() == ()
