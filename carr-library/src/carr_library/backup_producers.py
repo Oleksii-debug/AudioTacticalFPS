@@ -189,7 +189,8 @@ def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'recovery', 'resource_plan', 'resource_cleanup_notice'})
+                   'updated', 'error', 'runtime'}, {'result', 'recovery', 'resource_plan',
+                                                    'resource_cleanup_notice', 'total_disk_bytes'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
@@ -212,6 +213,8 @@ def _studio_job(value, identity):
         text(value['resource_cleanup_notice'], 8192)
     if 'recovery' in value:
         _studio_recovery(value['recovery'])
+    if 'total_disk_bytes' in value:
+        number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
     for name in ('created', 'updated'):
         number(value[name])
     for name in ('progress', 'error'):
@@ -550,7 +553,8 @@ def _transcription_engine(value):
 
 
 def _transcription_job(db, value, match):
-    from .transcription import _protocol, settings, MEDIA_SUFFIXES, MAX_FILES, MAX_SOURCE_BYTES
+    from .transcription import (_protocol, _v5_attempts, settings, MEDIA_SUFFIXES,
+                                MAX_FILES, MAX_SOURCE_BYTES, V5_PROTOCOL)
     fields(value, {'version', 'id', 'workspace', 'title', 'created', 'updated',
                    'status', 'sources', 'settings', 'done', 'failed', 'receipts',
                    'artifacts', 'run_context', 'last_error'},
@@ -614,7 +618,9 @@ def _transcription_job(db, value, match):
             fields(row, {'source', 'attempt', 'settings'})
             if row['source'] not in names or type(row['settings']) is not dict:
                 raise ValueError('Invalid retained transcription attempt.')
-            number(row['attempt'], 1, 3, integer=True)
+            if (protocol != V5_PROTOCOL or type(row['attempt']) is not str
+                    or row['attempt'] not in _v5_attempts(value['settings'])):
+                raise ValueError('Invalid retained transcription attempt label.')
     if 'resource_plan' in value:
         _resource_plan(value['resource_plan'])
     if 'resource_cleanup_notice' in value:
