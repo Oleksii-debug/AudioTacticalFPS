@@ -272,3 +272,54 @@ def test_facade_rejects_traversal_and_unknown_workspace(tmp_path):
     with pytest.raises((ValueError, PermissionError)):
         facade.list(workspace='not-an-existing-library')
     assert not (app.root / 'runtime').exists()  # read-only views create no broker or job store
+
+
+@pytest.mark.parametrize('kind', ['translation', 'studio', 'asr'])
+def test_invalid_or_empty_entries_count_toward_existing_discovery_budget(tmp_path, monkeypatch, kind):
+    import carr_library.operations.facade as module
+    app = LibraryApp(tmp_path / 'data')
+    workspace = app.create_workspace('Bounded inventory')
+    base = (app.root / 'state' / 'translation' / 'jobs' if kind == 'translation' else
+            app.root / 'state' / 'studio' / 'jobs' if kind == 'studio' else
+            app.transcription(workspace).jobs_root)
+    base.mkdir(parents=True)
+    for index in range(5):
+        if kind == 'translation':
+            (base / ('not-a-job-' + str(index) + '.json')).write_text('{}', encoding='utf-8')
+        else:
+            (base / format(index, '032x')).mkdir()  # No job.json to yield.
+    monkeypatch.setattr(module, '_MAX_DISCOVERY', 3)
+    with pytest.raises(RuntimeError, match='bounded discovery'):
+        OperationFacade(app).list(workspace=workspace, limit=3)
+
+
+@pytest.mark.parametrize('kind', ['translation', 'studio', 'asr'])
+def test_cancel_is_observed_between_unrecognized_directory_entries(tmp_path, monkeypatch, kind):
+    import carr_library.operations.facade as module
+    app = LibraryApp(tmp_path / 'data')
+    workspace = app.create_workspace('Cancellable inventory')
+    base = (app.root / 'state' / 'translation' / 'jobs' if kind == 'translation' else
+            app.root / 'state' / 'studio' / 'jobs' if kind == 'studio' else
+            app.transcription(workspace).jobs_root)
+    base.mkdir(parents=True)
+    for index in range(5):
+        if kind == 'translation':
+            (base / ('invalid-' + str(index) + '.json')).write_text('{}', encoding='utf-8')
+        else:
+            (base / format(index, '032x')).mkdir()
+    native_scandir, seen = module.os.scandir, []
+    class ObservedDirectory:
+        def __init__(self, path):
+            self.inner = native_scandir(path)
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            self.inner.close()
+        def __iter__(self):
+            for entry in self.inner:
+                seen.append(entry.name)
+                yield entry
+    monkeypatch.setattr(module.os, 'scandir', ObservedDirectory)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        OperationFacade(app).list(workspace=workspace, cancelled=lambda: len(seen) >= 2)
+    assert len(seen) == 2

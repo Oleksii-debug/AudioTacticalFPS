@@ -246,17 +246,41 @@ class OperationFacade:
             except (ValueError, OSError):
                 raise PermissionError('The selected operation library is unavailable or archived.') from None
 
-    def _discovery(self, workspace):
+    def _discovery(self, workspace, cancelled):
+        inspected = 0
+
+        def entries(base):
+            nonlocal inspected
+            with os.scandir(base) as directory:
+                for entry in directory:
+                    if cancelled():
+                        raise InterruptedError('Loading saved operations was cancelled.')
+                    inspected += 1
+                    if inspected > _MAX_DISCOVERY:
+                        raise ResourceStateError('Operation inventory exceeds its bounded discovery limit.')
+                    yield entry
+
         for kind, (directory, pattern) in _LOCATIONS.items():
+            if cancelled():
+                raise InterruptedError('Loading saved operations was cancelled.')
             base = self.root / directory
             if not os.path.lexists(base):
                 continue
             local_path(base, root=self.root, exists=True)
             regular(base, directory=True)
-            for path in base.glob(pattern):
-                identity = path.stem if pattern == '*.json' else path.parent.name
-                if pattern == '*.json' and not re.fullmatch(r'[0-9a-f]{32}', identity):
-                    continue
+            for entry in entries(base):
+                path = Path(entry.path)
+                if pattern == '*.json':
+                    identity = path.stem
+                    if path.suffix != '.json' or not re.fullmatch(r'[0-9a-f]{32}', identity):
+                        continue
+                else:
+                    identity = path.name
+                    if not _JOB_ID.fullmatch(identity) or not entry.is_dir(follow_symlinks=False):
+                        continue
+                    path = path / 'job.json'
+                    if not os.path.lexists(path):
+                        continue
                 yield kind, identity, path, workspace
         # Active workspace identities come from the existing catalogue; a
         # directory name or an injected journal cannot create library authority.
@@ -264,15 +288,20 @@ class OperationFacade:
         if len(workspaces) > _MAX_DISCOVERY:
             raise ResourceStateError('Operation workspace discovery exceeds its bounded limit.')
         for selected in workspaces:
+            if cancelled():
+                raise InterruptedError('Loading saved operations was cancelled.')
             self._authorize(selected)
             base = self.root / 'state' / 'transcription' / sha256(selected.encode('utf-8')).hexdigest() / 'jobs'
             if not os.path.lexists(base):
                 continue
             local_path(base, root=self.root, exists=True)
             regular(base, directory=True)
-            for path in base.glob('*/job.json'):
-                identity = path.parent.name
-                if re.fullmatch(r'[0-9a-f]{32}', identity):
+            for entry in entries(base):
+                identity = entry.name
+                if not re.fullmatch(r'[0-9a-f]{32}', identity) or not entry.is_dir(follow_symlinks=False):
+                    continue
+                path = Path(entry.path) / 'job.json'
+                if os.path.lexists(path):
                     yield 'asr', identity, path, selected
 
     def list(self, *, workspace=None, limit=1000, cancelled=lambda: False):
@@ -282,14 +311,11 @@ class OperationFacade:
         self._authorize(workspace)
         if type(limit) is not int or not 1 <= limit <= _MAX_DISCOVERY:
             raise ValueError('Choose an operation-view limit between 1 and 10000.')
-        values, inspected = [], 0
-        for kind, identity, path, selected in self._discovery(workspace):
+        values = []
+        for kind, identity, path, selected in self._discovery(workspace, cancelled):
             if cancelled():
                 raise InterruptedError('Loading saved operations was cancelled.')
             self._authorize(selected)
-            inspected += 1
-            if inspected > _MAX_DISCOVERY:
-                raise ResourceStateError('Operation inventory exceeds its bounded discovery limit.')
             try:
                 value = self._read_view(kind, identity, workspace=selected)
             except InterruptedError:
