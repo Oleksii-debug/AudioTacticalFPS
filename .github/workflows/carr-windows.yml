@@ -51,7 +51,7 @@ jobs:
           from pathlib import Path
           import subprocess
           import tomllib
-          roots = ('src', 'scripts', 'packaging')
+          roots = ('src', 'scripts', 'packaging', 'bootstrap')
           paths = {path for root in roots for path in Path(root).rglob('*.py')}
           paths.update(Path('tests').rglob('test_*.py'))
           assert paths
@@ -63,8 +63,14 @@ jobs:
           project = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
           packages = project['tool']['setuptools']['packages']
           assert len(packages) == len(set(packages)), 'Duplicate explicit package'
+          package_dirs = project['tool']['setuptools']['package-dir']
           for name in packages:
-              assert (Path('src') / Path(*name.split('.')) / '__init__.py').is_file(), name
+              prefixes = [key for key in package_dirs if not key or name == key or name.startswith(key + '.')]
+              assert prefixes, name
+              prefix = max(prefixes, key=len)
+              suffix = name[len(prefix):].lstrip('.')
+              location = Path(package_dirs[prefix]).joinpath(*suffix.split('.')) if suffix else Path(package_dirs[prefix])
+              assert location.is_dir(), name
           print(json.dumps(dict(status='PASS', source_commit=subprocess.check_output(
               ['git', 'rev-parse', 'HEAD'], text=True).strip(), python_files=len(paths),
               inventory_sha256=sha256(json.dumps(inventory, separators=(',', ':')).encode()).hexdigest(),
