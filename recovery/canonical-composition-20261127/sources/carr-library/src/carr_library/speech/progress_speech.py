@@ -65,7 +65,7 @@ class SnapshotProgressSpeech:
         return SnapshotProgressSpeech(self.provider.copy_selection())
 
     def close(self):
-        self.provider.close()
+        return self.provider.close()
 
 
 def snapshot_speech_provider(provider):
@@ -73,11 +73,13 @@ def snapshot_speech_provider(provider):
 
 
 class _RegistryOwnership:
-    """Share one explicitly activated registry without borrowing another view's."""
+    """Share one registry and retain its exact cleanup before thread admission."""
     def __init__(self, registry):
         self.registry, self.references = registry, 0
         self._lock = threading.Lock()
         self._closing = False
+        self._cleanup_owner = None
+        self._retry_thread = None
         self.finished = threading.Event()
         self.error = None
 
@@ -87,23 +89,64 @@ class _RegistryOwnership:
                 raise ValueError('This progress voice selection is closed. Select it again.')
             self.references += 1
 
-    def release(self):
-        with self._lock:
-            self.references -= 1
-            if self.references or self._closing:
-                return
-            self._closing = True
-        def close():
+    def _close_registry(self):
+        try:
+            if self.registry.close() is False:
+                self.error = 'Local voice worker cleanup needs attention; its owner is retained for retry.'
+                return False
+        except Exception as exc:
+            self.error = str(exc)
+            raise
+        self.error = None
+        return True
+
+    def _cleanup_status_locked(self, *, retry):
+        if not self._closing:
+            # Another independently selected view still owns the registry.
+            return True
+        if self._cleanup_owner is None:
+            from ..audio.cleanup import pending_cleanup
             try:
-                if self.registry.close() is False:
-                    self.error = 'Local voice worker cleanup needs attention; its owner is retained for shutdown retry.'
+                pending = pending_cleanup(self._close_registry,
+                    message='The selected progress voice is still closing.',
+                    callbacks=(self.finished.set,))
+                self._cleanup_owner = pending.cleanup_owner
+            except Exception as exc:
+                # Do not acknowledge a failed cleanup admission. A subsequent
+                # close retries admission without decrementing references again.
+                self.error = str(exc)
+                return False
+            return self._cleanup_owner.quiescent
+        if self._cleanup_owner.quiescent:
+            return True
+        if (retry and self._cleanup_owner.last_error is not None
+                and (self._retry_thread is None or not self._retry_thread.is_alive())):
+            # pending_cleanup retained this exact owner before trying to start
+            # its worker. If that start failed, another Close may admit one
+            # retry worker; the GUI only starts it and reads its plain status.
+            try:
+                worker = threading.Thread(target=self._cleanup_owner._retry,
+                                          name='progress-voice-cleanup-retry', daemon=True)
+                worker.start()
             except Exception as exc:
                 self.error = str(exc)
-            finally:
-                self.finished.set()
-        # Closing a warm native worker may wait for bounded process cleanup.
-        # Notification preferences and window Close never wait for that here.
-        threading.Thread(target=close, name='progress-voice-cleanup', daemon=False).start()
+            else:
+                self._retry_thread = worker
+        return self._cleanup_owner.quiescent
+
+    def release(self):
+        with self._lock:
+            if self.references <= 0:
+                raise RuntimeError('This progress voice selection was already released.')
+            self.references -= 1
+            if self.references:
+                return True
+            self._closing = True
+            return self._cleanup_status_locked(retry=False)
+
+    def cleanup_status(self):
+        with self._lock:
+            return self._cleanup_status_locked(retry=True)
 
 
 class LocalProgressSpeech:
@@ -139,19 +182,23 @@ class LocalProgressSpeech:
         return not self._possibly_audible
 
     def close(self):
-        """Cancel this selection without touching any other audio device/session."""
+        """Cancel this selection without waiting on native cleanup in the GUI."""
         with self._selection_lock:
             self._closed.set()
-            if self._run_lock.acquire(blocking=False):
-                try:
-                    self._release_ownership()
-                finally:
-                    self._run_lock.release()
+            if not self._run_lock.acquire(blocking=False):
+                return False
+            try:
+                return self._release_ownership() and self.quiescent
+            finally:
+                self._run_lock.release()
 
     def _release_ownership(self):
-        if self._ownership is not None and not self._ownership_released:
+        if self._ownership is None:
+            return True
+        if not self._ownership_released:
             self._ownership_released = True
-            self._ownership.release()
+            return self._ownership.release()
+        return self._ownership.cleanup_status()
 
     def copy_selection(self):
         """An independent notification player for another native progress view."""

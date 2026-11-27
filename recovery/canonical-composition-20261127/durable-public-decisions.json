@@ -1,0 +1,271 @@
+{
+  "schema": "carr.recovery.public-composition-decisions.v1",
+  "status": "SOURCE_ONLY_EXACT_BLOB_REPLAY_NOT_EXECUTED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "public_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+  "canonical_parent": "3beebd5aca900b8bf2e86498ae79db4015c96705",
+  "scope": "Only public baseline merge resolution; inaccessible local c04/791 role effects/CAS are not reproduced or overwritten.",
+  "application_render": [
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "action": "RESOLVE_FROM_PUBLIC_BASE_WITH_EXACT_REPLAY",
+      "expected_public_blob": "d4ae7deeb3b713215a53172310c47f100a1ccccb",
+      "expected_canonical_blob": "b9dc0ffe1c1c8e3b6d465282c3eb45f8e0f41aa0",
+      "result_blob": "00741c27d663a797a8f463c862200f854732f4fe",
+      "public_candidate_equivalence": true,
+      "local_c04_791_full_replacement_permitted": false,
+      "patches": [
+        {
+          "before": "historical quotations and mutable research notes remain separate. No network is\nused by this module; model installation is an explicit build-time operation.",
+          "after": "historical quotations and mutable research notes remain separate. Optional\nmetadata acquisition uses separate, explicit per-operation consent; all other\ncore services remain local. Model installation is an explicit build-time operation."
+        },
+        {
+          "before": "        \"\"\"Preview exact DOI metadata without transmitting sources or private notes.\"\"\"",
+          "after": "        \"\"\"Preview exact DOI metadata; never transmit source text or research notes.\"\"\""
+        },
+        {
+          "before": "        cancelled = metadata.get('cancelled', lambda: False)\n        report(0)\n",
+          "after": "        cancelled = metadata.get('cancelled', lambda: False)\n        if not callable(cancelled):\n            raise ValueError('An import cancellation callback is required.')\n        report(0)\n"
+        },
+        {
+          "before": "    def backup(self, destination, *, include_generated=False, cancelled=lambda: False):\n        from .library_backup import create_backup\n        return create_backup(self, destination, include_generated=include_generated, cancelled=cancelled)\n",
+          "after": "    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):\n        from .library_backup import create_backup\n        return create_backup(self, destination, max_bytes=max_bytes,\n                             include_generated=include_generated, cancelled=cancelled)\n"
+        }
+      ],
+      "replay_counts": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "notes": "PATCH_ONLY for inaccessible stronger local application.py. Four exact canonical hunks on publicbca retain current schema alias, lookup_isbn, frozen PublicationAttempt, request configuration and search pagination. Equivalent local edits were reported before outage; do not overwrite stronger local whole file or duplicate hunks. Not executed."
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "action": "RESOLVE_FROM_PUBLIC_BASE_WITH_EXACT_REPLAY",
+      "expected_public_blob": "99efeeb2534488c2facf5761090665ecefa9e3c9",
+      "expected_canonical_blob": "6eb5323830af244cabe781c70a5169dfcfa55056",
+      "result_blob": "bf7fd44fdb222fdf1ba3946939fc34ed5419ad97",
+      "public_candidate_equivalence": true,
+      "local_c04_791_full_replacement_permitted": false,
+      "patches": [
+        {
+          "before": "import shutil\nimport threading\n",
+          "after": "import shutil\nimport stat\nimport threading\n"
+        },
+        {
+          "before": "    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(), broker=None):\n        self.root = local_path(directory)\n",
+          "after": "    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),\n                 broker=None, total_disk_bytes=32 * 1024**3):\n        \"\"\"Bound retained private/output bytes independently of broker estimates.\"\"\"\n        if type(total_disk_bytes) is not int or not 1024**2 <= total_disk_bytes <= 2**63 - 1:\n            raise ValueError('Total production disk budget must be an integer of at least one MiB.')\n        self.total_disk_bytes = total_disk_bytes\n        self.root = local_path(directory)\n"
+        },
+        {
+          "before": "        from ..audio import AudioCancelled, AudioCleanupPending, Track, MusicSpec\n",
+          "after": "        from ..audio import AudioError, AudioCancelled, AudioCleanupPending, Track, MusicSpec\n"
+        },
+        {
+          "before": "            if state['status'] == 'complete':\n                self._verify_artifacts(state)\n                return state\n",
+          "after": "            if state['status'] == 'complete':\n                self._verify_artifacts(state, cancelled=cancelled)\n                return state\n"
+        },
+        {
+          "before": "            state['status'], state['error'] = 'running', ''\n            self._save(state)\n\n            def stopping():\n                return self._closed.is_set() or lease.cancelled()\n",
+          "after": "            state['status'], state['error'] = 'running', ''\n            state['total_disk_bytes'] = self.total_disk_bytes\n            self._save(state)\n\n            def requested_stop():\n                return self._closed.is_set() or lease.cancelled()\n\n            last_disk_check, retained = 0.0, 0\n\n            def capacity(additional=0, *, force=False, honor_cancel=True):\n                nonlocal last_disk_check, retained\n                now = time.monotonic()\n                if force or now - last_disk_check >= .2:\n                    retained = _retained_bytes((self.root, Path(state['destination'])),\n                                               requested_stop if honor_cancel else lambda: False)\n                    last_disk_check = now\n                if retained + additional > self.total_disk_bytes:\n                    raise AudioError('The total production disk budget would be exceeded. '\n                                     'Increase total_disk_bytes to resume; completed files are retained.')\n                return self.total_disk_bytes - retained - additional\n\n            def stopping():\n                if requested_stop():\n                    return True\n                capacity()\n                return False\n"
+        },
+        {
+          "before": "            def node(kind, identity, operation, *, cached_check=None):\n",
+          "after": "            def generate(path, operation):\n                remaining = capacity(65536, force=True)\n                if remaining < 4096:\n                    raise AudioError('The total production disk budget has no room for another audio step.')\n                previous_budget = runtime.budget\n                runtime.budget = replace(previous_budget,\n                    max_output_bytes=min(previous_budget.max_output_bytes, remaining))\n                try:\n                    operation(path)\n                    capacity(force=True, honor_cancel=False)\n                except AudioCleanupPending:\n                    # The existing cleanup owner still holds child handles,\n                    # staging and reservations. Leave its output path intact.\n                    raise\n                except AudioError:\n                    # Only this unaccepted fresh attempt belongs to cleanup.\n                    path.unlink(missing_ok=True)\n                    raise\n                finally:\n                    runtime.budget = previous_budget\n\n            def node(kind, identity, operation, *, cached_check=None):\n"
+        },
+        {
+          "before": "                path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')\n                operation(path)\n",
+          "after": "                path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')\n                generate(path, operation)\n"
+        },
+        {
+          "before": "                    else:\n                        temporary = target.parent / ('.pending-' + uuid4().hex)\n                        try:\n                            with Path(source).open('rb') as read, temporary.open('xb') as write:\n                                while block := read.read(1024 * 1024):\n                                    check()\n                                    write.write(block)\n",
+          "after": "                    else:\n                        def reserve_copy(size):\n                            # Output may live on another volume than the cache.\n                            required = size + runtime.budget.reserve_disk_bytes + 65536\n                            if shutil.disk_usage(target.parent).free < required:\n                                raise AudioError('Not enough output disk space to publish while preserving the configured reserve.')\n                            capacity(size + 65536, force=True)\n\n                        reserve_copy(artifact['size'])\n                        temporary = target.parent / ('.pending-' + uuid4().hex)\n                        try:\n                            with Path(source).open('rb') as read, temporary.open('xb') as write:\n                                while block := read.read(1024 * 1024):\n                                    check()\n                                    reserve_copy(len(block))\n                                    write.write(block)\n"
+        },
+        {
+          "before": "                            runtime.audiobook(master, encoded, chapters=chapter_data, title=project.title,\n                                              sample_rate=project.sample_rate, cancelled=stopping,\n                                              warning=audiobook_warning)\n                        else:\n                            runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)\n",
+          "after": "                            generate(encoded, lambda target: runtime.audiobook(master, target,\n                                chapters=chapter_data, title=project.title,\n                                sample_rate=project.sample_rate, cancelled=stopping,\n                                warning=audiobook_warning))\n                        else:\n                            generate(encoded, lambda target: runtime.convert(master, target,\n                                sample_rate=project.sample_rate, cancelled=stopping))\n"
+        },
+        {
+          "before": "    def _verify_artifacts(self, state):\n        root = local_path(state['destination'], exists=True)\n        for artifact in state['artifacts']:\n            path = local_path(artifact['path'], root=root, exists=True)\n            if path.stat().st_size != artifact['size'] or digest_file(path) != artifact['sha256']:\n                raise ValueError('A rendered output is missing or its checksum changed.')\n\n",
+          "after": "    def _verify_artifacts(self, state, *, cancelled=lambda: False):\n        if cancelled():\n            raise InterruptedError('Production output verification cancelled.')\n        root = local_path(state['destination'], exists=True)\n        for artifact in state['artifacts']:\n            path = local_path(artifact['path'], root=root, exists=True)\n            if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:\n                raise ValueError('A rendered output is missing or its checksum changed.')\n\n"
+        },
+        {
+          "before": "def json_safe(value):\n",
+          "after": "def _retained_bytes(roots, cancelled):\n    \"\"\"Count disjoint private/output trees without reading waveforms or links.\"\"\"\n    pending, total = list(roots), 0\n    while pending:\n        if cancelled():\n            raise InterruptedError('Production disk accounting cancelled.')\n        path = pending.pop()\n        try:\n            info = path.lstat()\n        except FileNotFoundError:\n            continue\n        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:\n            raise ValueError('Production disk accounting cannot follow links or reparse points.')\n        if stat.S_ISDIR(info.st_mode):\n            with os.scandir(path) as entries:\n                pending.extend(Path(entry.path) for entry in entries)\n        elif stat.S_ISREG(info.st_mode):\n            total += info.st_size\n        else:\n            raise ValueError('Production state contains an unsupported special file.')\n    return total\n\n\ndef json_safe(value):\n"
+        },
+        {
+          "before": "    @property\n    def voices(self):\n        return self.discover_voices()\n",
+          "after": "    def _check_open(self):\n        if self._closed.is_set():\n            raise RuntimeError('Production service is closed.')\n\n    @property\n    def voices(self):\n        self._check_open()\n        return self.discover_voices()\n"
+        },
+        {
+          "before": "    def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):\n        project = parse_script",
+          "after": "    def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):\n        self._check_open()\n        project = parse_script"
+        },
+        {
+          "before": "    def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):\n",
+          "after": "    def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):\n        self._check_open()\n"
+        },
+        {
+          "before": "    def run(self, job_id, *, cancelled=lambda: False, progress=None):\n        from ..audio import",
+          "after": "    def run(self, job_id, *, cancelled=lambda: False, progress=None):\n        self._check_open()\n        from ..audio import"
+        }
+      ],
+      "replay_counts": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "notes": "Exact bca-based budget proposal only. Local c04 render includes additional role-effects/CAS union; apply the hunks there, never overwrite the whole local file. Preserves cleanup ownership/resource admission/source fingerprint/M4B/5f guards in bca. Not compiled/tested."
+    }
+  ],
+  "keep_current": [
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "0df23b007dac6200c448166efae435edc930f4fd",
+      "expected_canonical_blob": "7e582dbfbbdc1bd6e670503785fcc798989fb70f",
+      "result_blob": "0df23b007dac6200c448166efae435edc930f4fd",
+      "reason": "Keep current explicit _DEFAULT_CACHE sentinel and explicit None disablement; invalid disposable cache fails soft without using another library cache. Canonical has no additional behavior to port."
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic_cache.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "3ba6e9498797d02d952b75afe33eb7911fe66696",
+      "expected_canonical_blob": "7fb913f53ae378d6b6527193e5d5fddba0a3a7a1",
+      "result_blob": "3ba6e9498797d02d952b75afe33eb7911fe66696",
+      "reason": "Only trailing whitespace differs; keep current exact file."
+    },
+    {
+      "path": "carr-library/tests/search/test_semantic_cache.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "caa8a19a54073353868b22779d3b1777c861d286",
+      "expected_canonical_blob": "b06a86e2cf62dfd4c30f121811be5530a3e07aaf",
+      "result_blob": "caa8a19a54073353868b22779d3b1777c861d286",
+      "reason": "Current has every canonical assertion plus unavailable-library-cache isolation regression."
+    },
+    {
+      "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "1fa4bf33b17eed0e31ec80bb2abac410f8a49ee2",
+      "expected_canonical_blob": "dc7d6a9d955e4a5116a3916966bd1ab5bae45359",
+      "result_blob": "1fa4bf33b17eed0e31ec80bb2abac410f8a49ee2",
+      "reason": "Current has every canonical assertion plus missing/permission-denied pending-root regressions."
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_replay_identity.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "ce3cf47a5cb562c71a67d4833e52ef9a97ab6649",
+      "expected_canonical_blob": "fe84d8a406aa85e5fdb12452df8ac8ed2815be3c",
+      "result_blob": "ce3cf47a5cb562c71a67d4833e52ef9a97ab6649",
+      "reason": "Current intentionally pins schema_version=5 and otherwise matches canonical tests."
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_publication_boundary.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "8b0d55c9f8ca6618560331ea15a1545e0263f326",
+      "expected_canonical_blob": "864d84430106b6de460e3eab14b83fe28ea33063",
+      "result_blob": "8b0d55c9f8ca6618560331ea15a1545e0263f326",
+      "reason": "Current includes all canonical child-publication assertions and additionally proves sealed existing bytecode cache is unchanged."
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_cancellation_outcomes.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "a81b79dc6160657891367d4db1a2aa5eeafc6f7a",
+      "expected_canonical_blob": "1ce1d7a0852158c3a59f8fa071867930369cbbd1",
+      "result_blob": "a81b79dc6160657891367d4db1a2aa5eeafc6f7a",
+      "reason": "Canonical 3be added stop-during-final-staged-hash/resume function is byte-identical in selected current source; all three canonical test names remain. Keep current separate durable-completion _save failure injection after real artifact verification and exact completion_attempts assertion rather than the earlier canonical verifier injection."
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "2ac0e07afbf587ec1224fb50034cde70e6c29f25",
+      "expected_canonical_blob": "2af8a72cba5ced234664d8cd38549a47f518aeef",
+      "result_blob": "2ac0e07afbf587ec1224fb50034cde70e6c29f25",
+      "reason": "Current canonical inventory/asset identity checks plus bounded cancellable original-byte copy and verify_catalog_assets(cancelled=...). These are required by the composed backup producer and prevent a canonical downgrade to an unsupported cancelled keyword or uncancellable one-shot read."
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_backup_portability.py",
+      "action": "KEEP_CURRENT_PUBLIC",
+      "expected_public_blob": "5b82c97c7f314c4f4fd2ffafed53d7949b8d573a",
+      "expected_canonical_blob": "24500f9a9939048d5672ec1d77c3b84eb9de5a86",
+      "result_blob": "5b82c97c7f314c4f4fd2ffafed53d7949b8d573a",
+      "reason": "Keep current 15-function zero-skip inventory/portability suite. Canonical pure invalid-name/Unicode tests remain; actual case-alias filesystem behavior is exercised by test_snapshot_obeys_the_actual_filesystem_names_without_skips, preserving both rejecting and normalized filesystem results. Do not restore the two platform-skipping canonical variants. Current suite also covers same-size/timestamp byte mutation, cancellable second pass, selected-only reads and strict unreadable/missing/unlisted roots."
+    }
+  ],
+  "adjacent_candidate_base_audit": [
+    {
+      "key": "replay_library_primary_union",
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "public_blob": "6ed518d0d4ced9ed6261fa5b2ac0b5a18094c618",
+      "recorded_base_blob": "6ed518d0d4ced9ed6261fa5b2ac0b5a18094c618",
+      "exact_base": true
+    },
+    {
+      "key": "replay_extensions_primary_union",
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "public_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "recorded_base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "exact_base": true
+    },
+    {
+      "key": "replay_pending_union",
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "public_blob": "6de32c5932af83201f4824dc61390eb4fbd66a9f",
+      "recorded_base_blob": "6de32c5932af83201f4824dc61390eb4fbd66a9f",
+      "exact_base": true
+    },
+    {
+      "key": "replay_state_union",
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "public_blob": "e5c5fe3a4ccffda2dcf8436e5ecb6e58986a909b",
+      "recorded_base_blob": "e5c5fe3a4ccffda2dcf8436e5ecb6e58986a909b",
+      "exact_base": true
+    },
+    {
+      "key": "replay_worker_union",
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "public_blob": "65a90957d98fce756bc501fa669fed59278d9f25",
+      "recorded_base_blob": "65a90957d98fce756bc501fa669fed59278d9f25",
+      "exact_base": true
+    },
+    {
+      "key": "replay_export_union",
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "public_blob": "7322153d8b2fe44548c76c610207659fd79f7ac6",
+      "recorded_base_blob": "7322153d8b2fe44548c76c610207659fd79f7ac6",
+      "exact_base": true
+    },
+    {
+      "key": "replay_extract_text_union",
+      "path": "carr-library/src/carr_library/extract/document_formats_text.py",
+      "public_blob": "c760e7d1aabf5acbf71c2e76acc2eba9a714783d",
+      "recorded_base_blob": "c760e7d1aabf5acbf71c2e76acc2eba9a714783d",
+      "exact_base": true
+    }
+  ],
+  "canonical_final_hash_stop": {
+    "source_barrier_identical": true,
+    "test_name": "test_stop_during_staged_master_validation_prevents_publication_and_resumes",
+    "test_body_byte_identical": true,
+    "selected_test_blob": "a81b79dc6160657891367d4db1a2aa5eeafc6f7a"
+  },
+  "rules": [
+    "Check immutable public and canonical input blobs before replacement.",
+    "Stop or re-review if any pinned blob changes.",
+    "Use root records for canonical-only dependencies.",
+    "These decisions do not report Python compilation, pytest, native UI, or complete composition acceptance.",
+    "Do not update any repository or PR reference from this decision record."
+  ]
+}

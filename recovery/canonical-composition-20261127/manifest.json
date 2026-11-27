@@ -4,7 +4,7 @@
   "canonical_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
   "canonical_tree": "682b267cb237804c7a15e6ac0285b9b6861b847c",
   "status": "DRAFT_RECOVERY_ONLY_NOT_AN_INTEGRATED_RELEASE",
-  "source_execution": "Partial isolated CI only: checkpoint2 candidate compilation passed; bounded citation composition has 271 passes, 1 failure and 7 setup errors. Later candidates are not yet compiled; full composition/native execution remains pending.",
+  "source_execution": "Partial isolated CI only: checkpoint2 candidate compilation passed; bounded citation composition has 271 passes, 1 failure and 7 setup errors. Newer candidates remain unexecuted. Local executor has recovered; exact composition and native qualification are pending.",
   "files": [
     {
       "path": ".github/workflows/carr-bibliography.yml",
@@ -34,10 +34,12 @@
       "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
       "base_blob": "76ad6e8730bd852cccb44547733c5ccb29c4f6cc",
       "owner": "root",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
-      "new_blob": "2ade3d52496ea847f20d2318bee4b971807ecfad",
+      "status": "SOURCE_REVIEW_CORRECTED_POWERSHELL_PENDING",
+      "new_blob": "625404170db0b40d46ff3b14c873d15085732d89",
       "readback": true,
-      "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-v3.yml"
+      "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-v3.yml",
+      "supersedes_blob": "2ade3d52496ea847f20d2318bee4b971807ecfad",
+      "review_note": "Use the verified no-audio standard installer bundle and its own manifest hash; bind ui.command_registry; retain both source-selector sets and include the six newly restored regression suites."
     },
     {
       "path": ".github/workflows/carr-windows.yml",
@@ -45,10 +47,16 @@
       "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
       "base_blob": "13ee8929dc4610c146c713063b750c1a1fce44a6",
       "owner": "root",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
-      "new_blob": "d067b6e2b885a2196159274a9b903dacd489c995",
+      "status": "SOURCE_REVIEW_CORRECTED_POWERSHELL_PENDING",
+      "new_blob": "73b602b5365b4882b2d049f681be82ff968d493a",
       "readback": true,
-      "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-windows.yml"
+      "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-windows.yml",
+      "supersedes_blob": "a2edd88641b251c5db8867fd7b268bb7bad6350c",
+      "remaining_findings": [
+        "Standard installer must use verified no-audio nativeBundle with its own manifest identity.",
+        "Installed command registry origin must be carr_library.ui.command_registry."
+      ],
+      "review_note": "Use the verified no-audio standard installer bundle and its own manifest hash; bind ui.command_registry; retain both source-selector sets and include the six newly restored regression suites."
     },
     {
       "path": "carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
@@ -76,14 +84,38 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/docs/translation_workstation.md"
     },
     {
-      "path": "carr-library/packaging/build_windows_bundle.py",
-      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
-      "base_blob": "72aeb98d73e90b5af3051b9a04e843c1d32e02c1",
-      "new_blob": "f6230a7b4bdd84115e86e1e4699601b18ece3d53",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "path": "carr-library/packaging/add_native_runtime.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "c85b8dd9916df0dadbc458c09786859995ea2252",
+      "new_blob": "45ab51a4b8042dd233e399244f20b166d2562be6",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
       "readback": true,
-      "owner": "root",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/build_windows_bundle.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/add_native_runtime.py"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "20d3da68cb0a9543be98844227e08ac7cd463add",
+      "new_blob": "ff150863100e1806f1e53fa41f602bcc36dd493e",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/build_windows_bundle.py",
+      "supersedes_blob": "f6230a7b4bdd84115e86e1e4699601b18ece3d53"
+    },
+    {
+      "path": "carr-library/packaging/install_windows.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "3892f6be60135a8018fa5ea7444ae25d0a791742",
+      "new_blob": "a7cd0507d2fc0bd8885a609671bd1ce9950a1e96",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/install_windows.py"
     },
     {
       "path": "carr-library/packaging/native-launcher/probe_installed_windows.py",
@@ -94,6 +126,17 @@
       "owner": "root",
       "readback": true,
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/native-launcher/probe_installed_windows.py"
+    },
+    {
+      "path": "carr-library/packaging/refresh_private_bundle.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+      "new_blob": "bdd72420e168dfa8ad5c397b3e8b64459620c97e",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/refresh_private_bundle.py"
     },
     {
       "path": "carr-library/packaging/wheel-notices/SOURCES.json",
@@ -232,11 +275,13 @@
       "path": "carr-library/src/carr_library/academic_integration/formatting.py",
       "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
       "base_blob": "ec4e18eadadb16e42abbf88b6ef0f09941ce3681",
-      "new_blob": "fc37b24ed692c3ea24e14ba003fe18e7e0034299",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "new_blob": "bf56aebd7636c33ecf13a4f919eab2d7a190a3ff",
+      "status": "PORTABLE_SOURCE_279_PASS_NATIVE_PENDING",
       "readback": true,
       "owner": "root",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/academic_integration/formatting.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/academic_integration/formatting.py",
+      "supersedes_blob": "fc37b24ed692c3ea24e14ba003fe18e7e0034299",
+      "review_note": "Actual Chicago profile exceeded the prior256MiB ceiling; use the canonical bounded512MiB executor default. Five exact citation/regeneration suites passed locally."
     },
     {
       "path": "carr-library/src/carr_library/academic_integration/UPSTREAM.json",
@@ -260,7 +305,14 @@
       "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/application.py",
-      "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED"
+      "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED",
+      "local_application": "PATCH_ONLY_PRESERVE_LOCAL_C04_791",
+      "public_application": {
+        "parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+        "expected_blob": "d4ae7deeb3b713215a53172310c47f100a1ccccb",
+        "result_blob": "00741c27d663a797a8f463c862200f854732f4fe",
+        "exact_ordered_replay": true
+      }
     },
     {
       "path": "carr-library/src/carr_library/audio_runtime.py",
@@ -388,7 +440,8 @@
       "scope": "replay_worker_union",
       "readback": true,
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ingest/worker.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ingest/worker.py",
+      "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2"
     },
     {
       "path": "carr-library/src/carr_library/integrations/__init__.py",
@@ -491,7 +544,8 @@
       "scope": "replay_pending_union",
       "readback": true,
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/pending_backup.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/pending_backup.py",
+      "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2"
     },
     {
       "path": "carr-library/src/carr_library/research/export_file.py",
@@ -503,7 +557,8 @@
       "scope": "replay_export_union",
       "readback": true,
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/research/export_file.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/research/export_file.py",
+      "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2"
     },
     {
       "path": "carr-library/src/carr_library/runtime_settings.py",
@@ -555,12 +610,13 @@
       "path": "carr-library/src/carr_library/speech/progress_speech.py",
       "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
       "base_blob": "ac453123656de606dc4110b8ea35bfb3579be82f",
-      "new_blob": "816e81926a0289fea00aabea81cde7e5870d2a8a",
-      "sha256": "55d5473204be826658c21a1dd3bec6af8f51c753d92c7e497b81790a5b0250e1",
-      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
-      "readback": "EXACT",
+      "new_blob": "e2e44dbf5c4c90b8231cfb6748b0c3ece9973adb",
       "owner": "asr",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/speech/progress_speech.py"
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "28141192efd6de64b4c101a8f76c68784fbf0cbf",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/speech/progress_speech.py",
+      "supersedes_blob": "816e81926a0289fea00aabea81cde7e5870d2a8a"
     },
     {
       "path": "carr-library/src/carr_library/speech/runtime.py",
@@ -583,7 +639,8 @@
       "scope": "replay_state_union",
       "readback": true,
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/state_backup.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/state_backup.py",
+      "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2"
     },
     {
       "path": "carr-library/src/carr_library/studio/render.py",
@@ -596,7 +653,14 @@
       "scope": "replay_render_disk_union",
       "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/studio/render.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/studio/render.py",
+      "local_application": "PATCH_ONLY_PRESERVE_LOCAL_C04_791",
+      "public_application": {
+        "parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+        "expected_blob": "99efeeb2534488c2facf5761090665ecefa9e3c9",
+        "result_blob": "bf7fd44fdb222fdf1ba3946939fc34ed5419ad97",
+        "exact_ordered_replay": true
+      }
     },
     {
       "path": "carr-library/src/carr_library/ui/academic_actions.py",
@@ -692,6 +756,17 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/command_palette.py"
     },
     {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "88132e14b07b220a3ee0c734ec1defbd5fd338db",
+      "new_blob": "840a9ff6ba30858b539ed931e180b3401cc10f5b",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/desktop_app.py"
+    },
+    {
       "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": "5140395fbc211900a8dd9289877c6de4b3a96d44",
@@ -700,6 +775,17 @@
       "readback": true,
       "owner": "ui",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/desktop_evidence_panel.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "c090be77f44f4d95aaea44139a0e10deaf6ebd7a",
+      "new_blob": "3e6a2feb8ac385ff4cb7ec0ecbbb4e86a71b52ed",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/document_conversion.py"
     },
     {
       "path": "carr-library/src/carr_library/ui/dordiai_settings.py",
@@ -750,6 +836,28 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/language_matrix.py"
     },
     {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "cab84ae07a1fdd72b1ffa96b8c4d039b265fbb7f",
+      "new_blob": "e3aee7e03c3100dc9351007f2db04fb2edf801fc",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/operations_dialog.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/portable_sync.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "e065c973a31872279232c0f6921dd913889d5b69",
+      "new_blob": "75ff111cdd108a2131b0193a84edfb747fd83429",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/portable_sync.py"
+    },
+    {
       "path": "carr-library/src/carr_library/ui/progress_media.py",
       "new_blob": "a9d23a34fe56000c8d7be91fcbe1cfa7d60d5358",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
@@ -764,11 +872,13 @@
       "path": "carr-library/src/carr_library/ui/progress_panel.py",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": "0bb2dec7a8b5a490565a196e281ec30e3ca00e9b",
-      "new_blob": "bd56c306905c318ebcfbcbabe68805aa063039fc",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "new_blob": "153757e0096d0057550fb975de1016a22be937ec",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
       "readback": true,
-      "owner": "ui",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/progress_panel.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/progress_panel.py",
+      "supersedes_blob": "bd56c306905c318ebcfbcbabe68805aa063039fc"
     },
     {
       "path": "carr-library/src/carr_library/ui/reading_desk.py",
@@ -812,6 +922,17 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/speech_dialog.py"
     },
     {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "c1ee879fa54d356d0a16719241fc7c166a9f9aeb",
+      "new_blob": "9c85ea25f7e1f4febd45c4507ea7593efa30da72",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/studio_dialog.py"
+    },
+    {
       "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
       "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
       "base_blob": "6221a4fab616693e277b2ff5340f314c7efc0303",
@@ -835,6 +956,17 @@
       "choice": null,
       "owner": "asr",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/translation_dialog.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/trust_status.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "7a923fd6a87bbbe89c29a13132b0ebeb42dfb5ff",
+      "new_blob": "e01c8e202b44ba6354f57445c5135cfb9db85502",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/trust_status.py"
     },
     {
       "path": "carr-library/tests/academic_integration/test_citation_ui.py",
@@ -1078,6 +1210,17 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/integrations/test_dordiai_voices.py"
     },
     {
+      "path": "carr-library/tests/packaging/test_audio_bundle_convergence.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": null,
+      "new_blob": "ec5dcf9dc8fd69ca2b9a3e080ede1d79fdd9b269",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_audio_bundle_convergence.py"
+    },
+    {
       "path": "carr-library/tests/packaging/test_ci_check.py",
       "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
       "base_blob": "6d5adb9063d36647d4b7678809c73cbc88d402d0",
@@ -1118,6 +1261,17 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_native_launcher_bundle.py"
     },
     {
+      "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+      "new_blob": "c17c3935f4e940b511668ea7ece560fa66e4cdb5",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_refresh_private_bundle_review.py"
+    },
+    {
       "path": "carr-library/tests/packaging/test_windows_bundle.py",
       "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
       "base_blob": "54c69f8e2d08b604aba273fda996dbc960fb67b1",
@@ -1148,7 +1302,8 @@
       "scope": "replay_export_change_time_tests",
       "readback": true,
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/reader/test_export_change_time.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/reader/test_export_change_time.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551"
     },
     {
       "path": "carr-library/tests/reader/test_export_no_clobber.py",
@@ -1213,6 +1368,17 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/speech/test_clipboard_reader.py"
     },
     {
+      "path": "carr-library/tests/speech/test_snapshot_progress_speech.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": null,
+      "new_blob": "dbb2aeabde33bc9c11b1a66044994abd202b2415",
+      "owner": "asr",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "28141192efd6de64b4c101a8f76c68784fbf0cbf",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/speech/test_snapshot_progress_speech.py"
+    },
+    {
       "path": "carr-library/tests/storage/test_backup_canonical_union.py",
       "base_commit": null,
       "base_blob": null,
@@ -1249,6 +1415,30 @@
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_generated_audio.py",
       "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_keyboard_drafts.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "76a095db93f7e20f4f9180b154ca53ba655ad254",
+      "new_blob": "c1d154cc89aedb711d69befb8649c205adf21b51",
+      "owner": "durable",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "eb8c00743d2dcf22359ef2a46857d556103b51c0",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_keyboard_drafts.py",
+      "note": "Keeps real canonical keyboard/EvidenceDraft producers and every authorization/recovery/unchanged-source/corruption assertion. Only typed manifest row and stored backup paths change; actual canonical sidecar write fault seam remains. Not executed."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "2d0bd02e29dbc533a9ef4de298f6eaaa508e1675",
+      "new_blob": "772a0d7bc5b21f2e0c9f6ae42e01d2db3766941b",
+      "owner": "durable",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "eb8c00743d2dcf22359ef2a46857d556103b51c0",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_pending_common4.py",
+      "note": "Retains actual partial import, native resumed same job, original-byte/metadata/source bindings, corruption, budgets and incomplete publication assertions. Current typed reading sidecar lookup and explicit historical V4/V5 construction only. Not executed."
     },
     {
       "path": "carr-library/tests/storage/test_backup_primary_producers.py",
@@ -1348,6 +1538,30 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_complete_pending_backup.py"
     },
     {
+      "path": "carr-library/tests/storage/test_engine_settings_backup.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "b7ecfa366738b0428912803266249dd343f96776",
+      "new_blob": "cac1324539a03ffa2dddabfd32f1e2bb23e02a00",
+      "owner": "durable",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "eb8c00743d2dcf22359ef2a46857d556103b51c0",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_engine_settings_backup.py",
+      "note": "Actual producer/settings bytes, enabled flags, no-import/no-execute, source secrecy and rejection assertions preserved. Current typed writer is asserted; explicit helper constructs only exact historical V3/V4 test envelopes. Not executed."
+    },
+    {
+      "path": "carr-library/tests/storage/test_engine_settings_dordiai_backup.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "de85053124d9cbaad264629d80f365cdda4cf31c",
+      "new_blob": "3102549d007c5b6286845164b659f5b9c973af43",
+      "owner": "durable",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "eb8c00743d2dcf22359ef2a46857d556103b51c0",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_engine_settings_dordiai_backup.py",
+      "note": "Preserves both exact historical V3/V4 shapes and every pure-validator/import/activation assertion; enabled declarations remain byte-preserving. Requires paired adapted test_engine_settings_backup helper. Not executed."
+    },
+    {
       "path": "carr-library/tests/storage/test_legacy_research_note.py",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": null,
@@ -1376,6 +1590,30 @@
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_library_backup_reading_state.py",
       "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED"
+    },
+    {
+      "path": "carr-library/tests/storage/test_pending_backup.py",
+      "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "889e2805e2fa444af13933c3d03417f2ce33ab7c",
+      "new_blob": "4a9db4cb68be84eac47a5cd2e7eacfab21bf0a45",
+      "owner": "durable",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "eb8c00743d2dcf22359ef2a46857d556103b51c0",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_pending_backup.py",
+      "note": "Retains all current strict pending-root/enumeration/restore tests and explicit actual OCR availability contract including CARR_OCR_DIR. Appends canonical completed DOCX source/result/missing-source rejection with valid actual backup/restore/resume control. Not executed."
+    },
+    {
+      "path": "carr-library/tests/storage/test_progress_preferences_backup.py",
+      "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "17cb4e8080a20152e764e929e0b4eec5e58cdb2e",
+      "new_blob": "8b49c282e8812fde1f163efe151de6941f60d1dc",
+      "owner": "durable",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "eb8c00743d2dcf22359ef2a46857d556103b51c0",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_progress_preferences_backup.py",
+      "note": "Uses actual canonical ProgressPreferenceStore for current root-sidecar roundtrip; retains every former state/ui/progress.json byte/load assertion in an explicitly named legacy compatibility case. No legacy panel/service is started. Requires current legacy pure decoder module to remain available. Not executed."
     },
     {
       "path": "carr-library/tests/storage/test_v3_state_backup.py",
@@ -1500,6 +1738,39 @@
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_live_reading_controls.py"
     },
     {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "dfed6a16a54eeef18542a628360ec085dc2571b1",
+      "new_blob": "631dfded701782626bf382e289ae9155c7a419f1",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_progress_job_review.py"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_panel_state.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "13a1fd87ed8ed86b836b887b3bb964469ff02fe3",
+      "new_blob": "efa5771fbd79508af1af9d444a0abd421457548b",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_progress_panel_state.py"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "base_blob": "0e7bb47ad0faf869fb95868aafeab3d3832556e8",
+      "new_blob": "982ab6106827f4fb10f2cc1f83888393d06ae613",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_progress_voice_actions.py"
+    },
+    {
       "path": "carr-library/tests/ui/test_save_all.py",
       "new_blob": "3b06b9a075cf19a77a16c3c2d84f71eb1950b84c",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
@@ -1508,6 +1779,17 @@
       "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED",
       "owner": "ui",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_save_all.py"
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "aa28e07dad812e94e4c5d2f53fb029fd308f3747",
+      "new_blob": "dcd822d776b76ce34c9ae1273c1afcbdd6e44a7a",
+      "owner": "locator",
+      "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+      "source_manifest_blob": "aca1490e2f9f14404424f827c5d88bc60ce89a5f",
+      "readback": true,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_studio_progress_isolation.py"
     },
     {
       "path": "carr-library/tests/ui/test_transcription_dialog.py",
@@ -1549,7 +1831,12 @@
     "Checkpoint3 includes passive reader-appearance backup validation, source-preserving clipboard reader with no durable clipboard slot, captured native command/dialog lifetime, and Assistant/translation command/progress ports.",
     "Current shared96294 appearance/spelling controls are preserved in reader proposals; retain its new modules, exact derived spelling component and native gates.",
     "Application and Studio render proposals marked PATCH_ONLY must be applied as recorded hunks to stronger local c04; source-only whole-file candidates do not supersede unobserved local behavior.",
-    "Studio/desktop/progress test call-site closure and packaging install/refresh audio-layout verification are still being completed. These source proposals are not a runnable merged release."
+    "Studio/desktop/progress test call-site closure and packaging install/refresh audio-layout verification are still being completed. These source proposals are not a runnable merged release.",
+    "Checkpoint4 adds six typed backup fixtures, eleven desktop/Studio/progress sources and fixtures, retained registry cleanup acknowledgement, and canonical packaging verification/refresh sources. New sources remain unexecuted.",
+    "Local executor recovered; preserved c04+966 merge index and all working sources were snapshotted before further work. Public candidates still require exact reconciliation with stronger local playback/effects/CAS.",
+    "Five earlier base_commit fields are normalized into base_ref without changing their recorded base identity.",
+    "The current Windows workflow candidate still has two explicit review findings (no-audio standard-installer input and command-registry import path). It must not be activated unchanged.",
+    "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build."
   ],
   "root_notes": {
     "builder": {
@@ -1591,6 +1878,17 @@
         "Packaging validators/refresh compatibility is being reconciled separately; do not activate these workflows without the full canonical application composition.",
         "Four YAML files and embedded Python here-strings need parsing in isolated CI before runtime qualification."
       ]
+    },
+    "progress_ownership": {
+      "source_review": "ACCEPT by independent review, latest panel adds missing-task guard",
+      "adapter_blob": "e2e44dbf5c4c90b8231cfb6748b0c3ece9973adb",
+      "runtime": "NOT_RUN"
+    },
+    "packaging": {
+      "manifest_blob": "68748514a8c39b869e071321388a45ba248db593",
+      "status": "SOURCE_ONLY_NOT_EXECUTED",
+      "inventory_absence": "Only FileNotFoundError means missing optional root; other lstat errors fail closed.",
+      "transfer_gate": "Unchanged: neither bundled audio layout may enter transferable installers."
     }
   },
   "executions": [
@@ -1613,6 +1911,18 @@
         "Missing shutil import in retained tamper test: fixed in this checkpoint, fresh execution required.",
         "One module-scoped seven-style fixture raises QuickJS JSException null; failed style/resource cause is under diagnosis. No release PASS."
       ]
+    },
+    {
+      "evidence": "recovery/canonical-composition-20261127/quickjs-bounded-profile-local.json",
+      "status": "PASS",
+      "scope": "Five citation/regeneration source suites on actual CPython3.12.14/QuickJS-NG0.18.0.2",
+      "passed": 279,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 269.46,
+      "native_windows": "NOT_RUN",
+      "installed": "NOT_RUN"
     }
   ],
   "deletions": [
@@ -1622,5 +1932,17 @@
       "base_blob": "5796d5da9db986250fef76f81b600410c40e493a",
       "reason": "Replaced by the single bounded QuickJS executor; retain exact historical processor/style resources for regeneration."
     }
-  ]
+  ],
+  "latest_reviewed_canonical": {
+    "commit": "924ae83316a3cf9482aaf2ec51a6e6a5adb614c3",
+    "shared": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+    "note": "Latest public deltas are being reconciled in an isolated local composition; this archive still changes only recovery records and does not activate the application."
+  },
+  "checkpoint": 5,
+  "public_composition_decisions": {
+    "manifest_blob": "e4060c83eca99e44a58cd7b4ea682110a9aad29c",
+    "shared_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+    "canonical_parent": "3beebd5aca900b8bf2e86498ae79db4015c96705",
+    "status": "SOURCE_REVIEWED_NOT_EXECUTED"
+  }
 }

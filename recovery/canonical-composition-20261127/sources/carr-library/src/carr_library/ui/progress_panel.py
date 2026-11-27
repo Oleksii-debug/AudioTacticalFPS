@@ -6,6 +6,7 @@ invent work units, durations or percentages and never sends audio to a renderer.
 from dataclasses import replace
 from pathlib import Path
 import sys
+import threading
 
 from ..progress import ProgressHub
 from ..progress_preferences import ProgressPreferences, ProgressPreferenceStore
@@ -15,6 +16,7 @@ from .keyboard_settings import register_menu_command
 
 
 _TERMINAL = {'succeeded', 'failed', 'cancelled', 'unavailable'}
+_PROVIDER_CLEANUP_LOCK = threading.RLock()
 
 
 def _state(snapshot):
@@ -141,9 +143,48 @@ class NativeProgressPanel:
                 modes.append(('Beep and speech', 'beep_speech'))
         return tuple(modes)
 
+    def _release_speech_provider(self, provider):
+        """Retain the exact native owner until its existing close acknowledges."""
+        from ..audio.cleanup import pending_cleanup
+        from ..audio.models import AudioCleanupPending
+        close = getattr(provider, 'close', None)
+        if not callable(close):
+            return ''
+        pending = None
+        try:
+            if close() is not False:
+                return ''
+            message = 'The previous progress voice has not confirmed closure.'
+        except AudioCleanupPending as exc:
+            pending, message = exc, str(exc)
+        except Exception as exc:
+            message = 'Progress voice cleanup needs attention: ' + str(exc)
+        if pending is None:
+            pending = pending_cleanup(close, message=message)
+        owner = pending.cleanup_owner
+        with _PROVIDER_CLEANUP_LOCK:
+            owners = getattr(self, '_speech_cleanup_owners', None)
+            if owners is None:
+                owners = self._speech_cleanup_owners = []
+            if not any(value is owner for value in owners):
+                owners.append(owner)
+        def confirmed():
+            with _PROVIDER_CLEANUP_LOCK:
+                self._speech_cleanup_owners[:] = [
+                    value for value in self._speech_cleanup_owners if value is not owner]
+        owner.add_quiescent_callback(confirmed)
+        return message
+
     def set_speech_provider(self, provider, *, root=None):
-        """Authorize this session's local voice without enabling its sound."""
+        """Take one validated selection; post-adoption notices never reject it.
+
+        A raised admission error leaves ownership with the caller. Once the
+        feedback engine accepts the selection, cleanup or repaint failures are
+        reported as notices while this panel keeps the accepted provider alive.
+        """
         from ..durable_state import local_path
+        if self.closed:
+            raise ValueError('The progress window is closed. Select a voice in an open window.')
         from ..speech.progress_speech import snapshot_speech_provider
         if provider is not None:
             current = local_path(self.frame.library.root, exists=True)
@@ -157,12 +198,36 @@ class NativeProgressPanel:
         provider = snapshot_speech_provider(provider)
         previous = self.feedback.set_speech_provider(provider)
         self.speech_provider = provider
+        # This is the ownership boundary. The caller may release its temporary
+        # reference now; a later failure must not close this accepted selection.
+        notices = []
         if previous is not None and previous is not provider:
-            close = getattr(previous, 'close', None)
-            if callable(close):
-                close()
-        self.feedback.set_preferences(self._effective_preferences(self.preferences))
-        self.refresh_audio_state()
+            try:
+                notice = self._release_speech_provider(previous)
+            except Exception as exc:
+                # Admission already succeeded. Retain the retired owner even
+                # if scheduling its canonical cleanup itself is unavailable.
+                with _PROVIDER_CLEANUP_LOCK:
+                    retained = getattr(self, '_speech_release_unconfirmed', None)
+                    if retained is None:
+                        retained = self._speech_release_unconfirmed = []
+                    if not any(value is previous for value in retained):
+                        retained.append(previous)
+                notice = 'Previous progress voice cleanup needs attention: ' + str(exc)
+            if notice:
+                notices.append(notice)
+        try:
+            self.feedback.set_preferences(self._effective_preferences(self.preferences))
+            self.refresh_audio_state()
+        except Exception as exc:
+            notices.append('Progress voice selected; feedback refresh needs attention: ' + str(exc))
+            try:
+                self.feedback.suspend()
+            except Exception:
+                pass
+        if notices:
+            self.notice = '\n'.join(filter(None, (self.notice, *notices)))
+        return provider
 
     def hold_audio(self, *, recording=False):
         return self.media.hold_audio(recording=recording)
@@ -221,7 +286,7 @@ class NativeProgressPanel:
                               or character == '\n' else ' ' for character in str(warning))[:1000]
             task.unavailable(message)
         self.notice = str(warning)
-        if task is self.active_task:
+        if task is not None and task is self.active_task:
             self._reporting_failure = task.operation_id, actual_state, str(warning)
             self.feedback.suspend()
         self.refresh()
@@ -399,10 +464,12 @@ class NativeProgressPanel:
             # SIP can already have invalidated the native timer at destruction.
             pass
         self.feedback.close()
-        close = getattr(self.speech_provider, 'close', None)
-        if callable(close):
-            close()
-        self.media.close()
+        try:
+            notice = self._release_speech_provider(self.speech_provider)
+            if notice:
+                self.notice = '\n'.join(filter(None, (self.notice, notice)))
+        finally:
+            self.media.close()
 
 
 class ProgressSettingsDialog:

@@ -1,0 +1,44 @@
+{
+  "status": "SOURCE_ONLY_NOT_EXECUTED",
+  "supersedes_manifest": "19ba53612e5045397751a9f05973320ad3062dcc",
+  "summary": "Preserve explicit close acknowledgements; retain the exact shared registry cleanup before thread admission using existing pending_cleanup/CleanupOwner. Repeated closes never decrement selection references twice or wait on native close in the GUI.",
+  "dependencies": [
+    "carr_library.audio.cleanup.pending_cleanup/CleanupOwner existing API unchanged",
+    "canonical merged speech/runtime.py 2a486028c14010a8ae28cbd4fa0171d1b0b054ff"
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "ac453123656de606dc4110b8ea35bfb3579be82f",
+      "supersedes_blob": "f977907ae646cfd8ca636deea3dc8670844fc5e5",
+      "blob": "e2e44dbf5c4c90b8231cfb6748b0c3ece9973adb",
+      "sha256": "632ae1920d85d67f14cf49bc8a941ba7108d48ae815170a3a6ac02ab838e9785"
+    },
+    {
+      "path": "carr-library/tests/speech/test_snapshot_progress_speech.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": null,
+      "supersedes_blob": "713f5479ebf4d2eeabb48e1bcddecb9ec0ceeed0",
+      "blob": "dbb2aeabde33bc9c11b1a66044994abd202b2415",
+      "sha256": "1d53b7550a99692b4eae606ed85ba764a68d86b8cbae3fd9a47375c1cde12a08"
+    }
+  ],
+  "tests": {
+    "path": "carr-library/tests/speech/test_snapshot_progress_speech.py",
+    "cases": 5,
+    "execution": "NOT_RUN",
+    "actual_objects": [
+      "VoiceRegistry",
+      "LocalProgressSpeech",
+      "CleanupOwner"
+    ],
+    "regressions": [
+      "explicit False is not acknowledged",
+      "same exception and None contract",
+      "rejected Thread.start, repeated close and view GC preserve registry owner",
+      "independent copied selection stays open and releases once",
+      "real bounded retry acknowledges only after provider close"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "scope": "Exact local citation source composition only",
+  "python": "3.12.14",
+  "quickjs_ng": "0.18.0.2",
+  "formatter_blob": "bf56aebd7636c33ecf13a4f919eab2d7a190a3ff",
+  "executor_budget": {
+    "memory_bytes": 536870912,
+    "stack_bytes": 4194304,
+    "cpu_seconds": 30,
+    "input_bytes": 16777216,
+    "output_bytes": 16777216,
+    "host_callbacks": false
+  },
+  "suites": [
+    "tests/citations/test_csl.py",
+    "tests/citations/test_custom_csl.py",
+    "tests/academic_integration/test_formatting.py",
+    "tests/academic_integration/test_regeneration.py",
+    "tests/academic_integration/test_citation_ui.py"
+  ],
+  "result": {
+    "passed": 279,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 269.46
+  },
+  "source_files_hashed_before_after": 438,
+  "source_changed_during_run": false,
+  "diagnosis": {
+    "profile": "Chicago author-date",
+    "prior_limit_bytes": 268435456,
+    "prior_malloc_bytes": 268065696,
+    "prior_result": "JSException null at allocator ceiling",
+    "canonical_limit_bytes": 536870912,
+    "observed_malloc_bytes": 296775440,
+    "result": "PASS"
+  },
+  "limitations": {
+    "native_windows": "NOT_RUN",
+    "installed_artifact": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "complete_canonical_composition": "NOT_QUALIFIED"
+  },
+  "privacy": "Synthetic repository test inputs only; no owner recordings, voices, credentials, library files or private runtime source included."
+}

@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 32208)
+Total output lines: 1744
+
 name: CARR Windows integrated desktop
 
 on:
@@ -693,16 +696,16 @@ jobs:
           if (!(Test-Path -LiteralPath $inno -PathType Leaf)) { throw 'The native Inno Setup compiler is unavailable.' }
           $innoHash = (Get-FileHash -LiteralPath $inno -Algorithm SHA256).Hash.ToLowerInvariant()
           @{ path=$inno; version=(Get-Item -LiteralPath $inno).VersionInfo.FileVersion; sha256=$innoHash } | ConvertTo-Json | Set-Content 'ci-results/standard-installer-compiler.json'
-          $manifestHash = $manifestBefore.ToLowerInvariant()
+          $standardManifestHash = (Get-FileHash -LiteralPath (Join-Path $nativeBundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
           $standardBuild = Join-Path $bundleWork 'standard-installer-build'
           $negativeBuild = Join-Path $bundleWork 'standard-installer-negative-fixture'
-          & $env:CARR_PYTHON -I -B packaging/build_standard_installer.py --bundle $bundle --source-commit $sourceCommit --manifest-sha256 $manifestHash --output $standardBuild --compiler $inno --compiler-sha256 $innoHash 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+          & $env:CARR_PYTHON -I -B packaging/build_standard_installer.py --bundle $nativeBundle --source-commit $sourceCommit --manifest-sha256 $standardManifestHash --output $standardBuild --compiler $inno --compiler-sha256 $innoHash 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Native standard installer compilation failed.' }
-          & $env:CARR_PYTHON -I -B tests/packaging/build_standard_failure_fixture.py --bundle $bundle --source-commit $sourceCommit --manifest-sha256 $manifestHash --output $negativeBuild --compiler $inno --compiler-sha256 $innoHash 2>&1 | Tee-Object 'ci-results/standard-installer-negative-build.txt'
+          & $env:CARR_PYTHON -I -B tests/packaging/build_standard_failure_fixture.py --bundle $nativeBundle --source-commit $sourceCommit --manifest-sha256 $standardManifestHash --output $negativeBuild --compiler $inno --compiler-sha256 $innoHash 2>&1 | Tee-Object 'ci-results/standard-installer-negative-build.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Native failed-bootstrap fixture compilation failed.' }
           $standardProof = Get-Content -LiteralPath (Join-Path $standardBuild 'installer-build.json') -Raw | ConvertFrom-Json
           $negativeProof = Get-Content -LiteralPath (Join-Path $negativeBuild 'installer-build.json') -Raw | ConvertFrom-Json
-          if ($standardProof.status -ne 'compiled' -or $negativeProof.status -ne 'compiled' -or $standardProof.source_commit -ne $sourceCommit -or $negativeProof.source_commit -ne $sourceCommit -or $standardProof.compiler_sha256 -ne $innoHash -or $negativeProof.compiler_sha256 -ne $innoHash -or $standardProof.manifest_sha256 -ne $manifestHash) { throw 'Installer compilation receipts do not bind the complete bundle and selected compiler.' }
+          if ($standardProof.status -ne 'compiled' -or $negativeProof.status -ne 'compiled' -or $standardProof.source_commit -ne $sourceCommit -or $negativeProof.source_commit -ne $sourceCommit -or $standardProof.compiler_sha256 -ne $innoHash -or $negativeProof.compiler_sha256 -ne $innoHash -or $standardProof.manifest_sha256 -ne $standardManifestHash) { throw 'Installer compilation receipts do not bind the transferable no-audio bundle and selected compiler.' }
           Copy-Item -LiteralPath (Join-Path $standardBuild 'installer-build.json') -Destination 'ci-results/standard-installer-build.json'
           Copy-Item -LiteralPath (Join-Path $negativeBuild 'installer-build.json') -Destination 'ci-results/standard-installer-negative-build.json'
           $standardSetup = Join-Path $standardBuild $standardProof.installer.path
@@ -741,11 +744,11 @@ jobs:
           if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
           @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
           try {
-            & $env:CARR_PYTHON -I -B packaging/probe_standard_installer_windows.py --setup $standardSetup --setup-sha256 $standardProof.installer.sha256 --failed-setup $negativeSetup --failed-setup-sha256 $negativeProof.installer.sha256 --source-commit $sourceCommit --manifest-sha256 $manifestHash --work $standardWork --report 'ci-results/standard-installer-native.json' --disposable-ci 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
+            & $env:CARR_PYTHON -I -B packaging/probe_standard_installer_windows.py --setup $standardSetup --setup-sha256 $standardProof.installer.sha256 --failed-setup $negativeSetup --failed-setup-sha256 $negativeProof.installer.sha256 --source-commit $sourceCommit --manifest-sha256 $standardManifestHash --work $standardWork --report 'ci-results/standard-installer-native.json' --disposable-ci 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native install, failed-bootstrap preservation, repair or uninstall failed.' }
             $standardAcceptance = Get-Content -LiteralPath 'ci-results/standard-installer-native.json' -Raw | ConvertFrom-Json
             if ($standardAcceptance.failed_installer_sha256 -ne $negativeProof.installer.sha256 -or -not $standardAcceptance.one_start_menu_entry -or ($standardAcceptance.checks -join ',') -ne 'failed-bootstrap-preserves-previous,install,repair,uninstall') { throw 'Standard installation acceptance lacks its exact negative artifact or lifecycle checks.' }
-            if ($standardAcceptance.status -ne 'passed' -or $standardAcceptance.source_commit -ne $sourceCommit -or $standardAcceptance.manifest_sha256 -ne $manifestHash -or $standardAcceptance.installer_sha256 -ne $standardProof.installer.sha256 -or -not $standardAcceptance.native_install_repair_uninstall -or -not $standardAcceptance.failed_bootstrap_preserves_previous_registration -or -not $standardAcceptance.old_process_survived_repair -or -not $standardAcceptance.research_and_unknown_files_preserved -or -not $standardAcceptance.actual_installed_app_self_test) { throw 'Standard installation acceptance is incomplete or differs from the reviewed payload.' }
+            if ($standardAcceptance.status -ne 'passed' -or $standardAcceptance.source_commit -ne $sourceCommit -or $standardAcceptance.manifest_sha256 -ne $standardManifestHash -or $standardAcceptance.installer_sha256 -ne $standardProof.installer.sha256 -or -not $standardAcceptance.native_install_repair_uninstall -or -not $standardAcceptance.failed_bootstrap_preserves_previous_registration -or -not $standardAcceptance.old_process_survived_repair -or -not $standardAcceptance.research_and_unknown_files_preserved -or -not $standardAcceptance.actual_installed_app_self_test) { throw 'Standard installation acceptance is incomplete or differs from the reviewed payload.' }
           } finally {
             # Preserve diagnostic text only; setup executables, copied payloads,
             # native runtimes and models remain private to this disposable job.
@@ -785,71 +788,7 @@ jobs:
           $env:CARR_V3_AUDIO = Join-Path $bundle 'audio-runtime'
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_v3_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-primary-studio.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle --result 'ci-results/full-bundle-assistant.json' 2>&1 | Tee-Object 'ci-results/full-bundle-assistant.log'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --source-commit $sourceCommit --report 'ci-results/installed-native-launcher.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $installedLauncher = Get-Content -LiteralPath 'ci-results/installed-native-launcher.json' -Raw | ConvertFrom-Json
-          if ($installedLauncher.status -ne 'passed' -or $installedLauncher.launcher_sha256 -ne $env:CARR_NATIVE_LAUNCHER_SHA256 -or -not $installedLauncher.actual_installed_app_self_test_verified) { throw 'Installed native launcher acceptance must match the sealed executable.' }
-          # This probe imports wx first: hold the application's verified DLL
-          # directory handle before loading that native extension.
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_bibliography_interchange_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-bibliography-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_operations_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-native-operations.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $nativeOperations = Get-Content -LiteralPath 'ci-results/installed-native-operations.json' -Raw | ConvertFrom-Json
-          if ($nativeOperations.status -ne 'PASS' -or $nativeOperations.native_destruction -ne 'PASS' -or $nativeOperations.native_parent_destruction -ne 'PASS' -or $nativeOperations.named_controls_and_policy_save -ne 'PASS' -or $nativeOperations.native_close_during_initialization -ne 'PASS') { throw 'Installed native resource controls did not complete their actual acceptance.' }
-          & $installedPython -I -B -X utf8 scripts/windows_save_timer_smoke.py --output 'ci-results/installed-save-timer.json' 2>&1 | Tee-Object 'ci-results/installed-save-timer.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native draft timer lifetime acceptance failed.' }
-          & $installedPython -I -B scripts/windows_live_reading_smoke.py --output 'ci-results/installed-live-reading.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-results/installed-document-formats.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/installed-advanced-search.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-results/installed-translation-v3.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_citation_regeneration_smoke.py 2>&1 | Tee-Object 'ci-results/installed-citation-regeneration.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' --daisy-schemas $env:CARR_DAISY_SCHEMAS --require-sapi 2>&1 | Tee-Object 'ci-results/installed-native-publishing.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native synchronized publication acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-recording.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Required installed recording acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_clip_editor_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-clip-editor.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Required installed clip-editor acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_epub_reading_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-epub-reading.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Required installed epub-reading acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/native-pronunciation.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Required installed pronunciation acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/native-command-palette.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Required installed command-palette acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_reader_lifetime_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-lifetime.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Required installed reader-lifetime acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_audio_conversion_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-audio-conversion.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native audio conversion failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_playback_navigation_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-playback-navigation.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio navigation failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/native-studio-pronunciation.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio pronunciation review failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_reader_tools_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-tools.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native reader editing and keymap tools failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_reader_appearance_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-appearance.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native reader appearance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_spellcheck_smoke.py 2>&1 | Tee-Object 'ci-results/native-spellcheck.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native spelling review failed.' }
-          & $installedPython -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-trust-status.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
-          & $installedPython -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-results/native-portable-sync.txt'
-          if ($LASTEXITCODE -ne 0) { throw 'Installed native encrypted snapshot workflow failed.' }
-          & $installedPython -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-results/external-test-audio-binding.json' --require-installed --report 'ci-results/installed-epub-conformance.json' 2>&1 | Tee-Object 'ci-results/installed-epub-conformance.txt'
+          & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle --result 'ci-results/full-…2208 tokens truncated…          & $installedPython -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-results/external-test-audio-binding.json' --require-installed --report 'ci-results/installed-epub-conformance.json' 2>&1 | Tee-Object 'ci-results/installed-epub-conformance.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed EPUBCheck conformance acceptance failed.' }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
@@ -902,7 +841,7 @@ jobs:
                                               carr_library.ui.command_palette, carr_library.ui.language_matrix,
                                               carr_library.assistant.llm, carr_library.assistant.service)}
           additional_names = ('carr_library.reader.appearance', 'carr_library.ui.reader_appearance', 'carr_library.speech.spellcheck', 'carr_library.speech.spell_worker', 'carr_library.ui.spellcheck_dialog', 'carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings', 'carr_library.reader.reading_units')
-          additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.citations.csl', 'carr_library.academic_integration.formatting', 'carr_library.audio_runtime', 'carr_library.runtime_settings', 'carr_library.command_registry', 'carr_library.keyboard_preferences', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.integrations.supplied_transcription', 'carr_library.ui.progress_media')))
+          additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.citations.csl', 'carr_library.academic_integration.formatting', 'carr_library.audio_runtime', 'carr_library.runtime_settings', 'carr_library.ui.command_registry', 'carr_library.keyboard_preferences', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.integrations.supplied_transcription', 'carr_library.ui.progress_media')))
           for name in additional_names:
               module = importlib.import_module(name)
               installed_origins[name] = str(pathlib.Path(module.__file__).resolve())
@@ -963,6 +902,7 @@ jobs:
               'tests/e2e/test_managed_ocr_import.py',
               'tests/extract/test_ocr_languages.py',
               'tests/storage/test_v3_state_backup.py',
+              'tests/storage/test_backup_reader_appearance.py',
               'tests/speech/test_source.py',
               'tests/speech/test_reading.py',
               'tests/speech/test_session.py',
@@ -1045,10 +985,13 @@ jobs:
               'tests/speech/test_discovery_boundaries.py',
               'tests/integrations/test_dordiai_convergence.py',
               'tests/speech/test_progress_speech.py',
+              'tests/speech/test_snapshot_progress_speech.py',
               'tests/integrations/test_dordiai_ownership.py',
               'tests/integrations/test_dordiai_probe_cancellation.py',
               'tests/studio/test_production_cancellation_outcomes.py',
+              'tests/audio_acceptance/test_primary_publication_budget.py',
               'tests/packaging/test_refresh_private_bundle_review.py',
+              'tests/packaging/test_audio_bundle_convergence.py',
               'tests/ui/test_keyboard_settings.py',
               'tests/speech/test_pronunciation_review.py',
               'tests/speech/test_pronunciation_reader_hook.py',
@@ -1347,6 +1290,7 @@ jobs:
             'tests/storage/test_pending_backup.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/storage/test_v3_state_backup.py',
+            'tests/storage/test_backup_reader_appearance.py',
             'tests/speech/test_source.py',
             'tests/speech/test_reading.py',
             'tests/speech/test_session.py',
@@ -1498,10 +1442,13 @@ jobs:
             'tests/speech/test_discovery_boundaries.py',
             'tests/integrations/test_dordiai_convergence.py',
             'tests/speech/test_progress_speech.py',
+            'tests/speech/test_snapshot_progress_speech.py',
             'tests/integrations/test_dordiai_ownership.py',
             'tests/integrations/test_dordiai_probe_cancellation.py',
             'tests/studio/test_production_cancellation_outcomes.py',
+            'tests/audio_acceptance/test_primary_publication_budget.py',
             'tests/packaging/test_refresh_private_bundle_review.py',
+            'tests/packaging/test_audio_bundle_convergence.py',
             'tests/ui/test_keyboard_settings.py',
             'tests/speech/test_pronunciation_review.py',
             'tests/speech/test_pronunciation_reader_hook.py',
@@ -1624,7 +1571,7 @@ jobs:
             'tests/storage/test_backup_canonical_union.py',
             'tests/studio/test_production_total_budget_ownership.py',
             'tests/integrations/test_dordiai_canonical_convergence.py',
-            'tests/storage/test_legacy_research_note.py',
+            'tests/storage/test_legacy_research_note.py'
 
           )
           $previousPath = $env:PATH

@@ -17,7 +17,7 @@ import subprocess
 
 CANONICAL = "966e5ccf892243ead6942c635af5fbab47e72551"
 SHARED = "8e6d410019f90f54ea694a5ff69402bc52567d57"
-CHECKPOINT = "56a502124e41baf90ee87bdca43ff53b38dd3dc7"
+CHECKPOINT = "e286be421f143c76c4dbd3bb7d1c2d30721f6d21"
 PREFIX = Path("recovery/canonical-composition-20261127")
 CITATION_PATHS = (
     "carr-library/src/carr_library/citations/csl.py",
@@ -149,7 +149,8 @@ def prepare(root, shared, canonical, report, manifest):
                 inventory.append({"path": path.relative_to(shared).as_posix(),
                                   "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
     result = {"status": "PREPARED_NOT_TESTED", "shared_base": SHARED, "canonical_resources": CANONICAL,
-              "recovery_checkpoint": CHECKPOINT, "candidate_paths": list(CITATION_PATHS),
+              "recovery_checkpoint": CHECKPOINT, "validation_commit": git(root, "rev-parse", "HEAD"),
+              "candidate_paths": list(CITATION_PATHS),
               "scope": "source-only citation composition, not the complete canonical merge",
               "source_inventory": inventory, "installed": "NOT_RUN", "native_windows": "NOT_RUN"}
     report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
