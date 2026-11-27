@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import struct
 import zipfile
+from types import SimpleNamespace
 
 import pytest
 
@@ -234,6 +235,26 @@ def test_signature_duplicate_and_missing_reports_fail_closed():
     for value in (reports[:1], [reports[0], reports[0]], {}, None):
         with pytest.raises(endpoint.EvaluationError):
             endpoint.validate_signature_reports(value, pins)
+
+
+def test_python_writes_exact_three_target_json_request_for_fresh_powershell(tmp_path, monkeypatch):
+    pins, reports = signatures()
+    paths = {name: tmp_path / name for name in endpoint.STAGED}
+    observed = []
+    def run(command, **kwargs):
+        payload = json.loads(Path(command[-1]).read_text(encoding="utf-8"))
+        observed.extend(payload)
+        assert command[1:4] == ["-NoLogo", "-NoProfile", "-NonInteractive"]
+        assert command[4] == "-File"
+        assert command[-2] == "-InputPath"
+        assert "Bypass" not in command
+        assert kwargs["stdin"] == endpoint.subprocess.DEVNULL
+        return SimpleNamespace(returncode=0, stdout=json.dumps(reports).encode(), stderr=b"")
+    monkeypatch.setattr(endpoint.subprocess, "run", run)
+    native = SimpleNamespace(system_directory=tmp_path / "System32")
+    endpoint.verify_signatures(paths, pins, native, tmp_path)
+    assert observed == [{"file": name, "path": str(paths[name])} for name in endpoint.SIGNED]
+    assert len(observed) == 3 and len({item["file"] for item in observed}) == 3
 
 
 @pytest.mark.parametrize("name", [endpoint.SYS_NAME, endpoint.ARM_SYS_NAME, endpoint.CAT_NAME])

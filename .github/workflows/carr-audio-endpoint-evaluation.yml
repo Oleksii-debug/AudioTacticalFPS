@@ -87,6 +87,16 @@ jobs:
             }
           }
 
+      - name: Verify only JSON serialization in separate PowerShell 5.1 and 7 processes
+        timeout-minutes: 2
+        run: |
+          $legacy = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell/v1.0/powershell.exe'
+          $modern = Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
+          & $legacy -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps51.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $modern -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps7.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Evaluate the exact signed driver under normal Windows policy
         timeout-minutes: 4
         run: |
