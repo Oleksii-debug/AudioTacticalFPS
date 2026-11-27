@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 import wave
 import struct
 import math
@@ -204,7 +205,20 @@ class ProductionRenderTests(unittest.TestCase):
 
     def test_generated_music_companions_survive_complete_render(self):
         plan = parse_script('[output sample_rate=8000 stems=true]\n[music mood=calm tempo=90 seed=7]\nNarrator: Music fixture.\n[pause 0.3]')
-        result = self.run_plan(plan)
+        # FFmpeg 9 removed the old script option. Reproduce that CLI boundary
+        # on older developer runtimes too, while the actual selected executable
+        # still generates the audio and companions checked below.
+        from carr_library.audio import music
+        run_music = music._run
+        commands = []
+        def supported_cli(command, **kwargs):
+            self.assertNotIn('-filter_complex_script', command)
+            self.assertEqual(Path(command[0]).resolve(), FFMPEG.resolve())
+            commands.append(tuple(command))
+            return run_music(command, **kwargs)
+        with mock.patch.object(music, '_run', side_effect=supported_cli):
+            result = self.run_plan(plan)
+        self.assertTrue(commands)
         names = {item['name'] for item in result['files']}
         self.assertIn('music-000001.mid', names)
         self.assertIn('music-000001.music.json', names)
