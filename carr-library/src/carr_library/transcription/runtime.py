@@ -266,7 +266,11 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
         'python_executable': str(python), 'python_resolved': str(resolved_python),
         'python_identity': file_identity(resolved_python, cancel=cancel),
         'python_configuration': configurations, 'python_support': python_support,
-        'runtime_distributions': runtime_files, 'runtime_auxiliary': runtime_auxiliary,
+        # Keep the supplied worker checkpoint's seven-package dialect. Extra
+        # installed distributions are bound by the outer profile fingerprint,
+        # which the service revalidates before publication and on rebind.
+        'runtime_distributions': {name: runtime_files[name] for name in RUNTIME_DISTRIBUTIONS},
+        'runtime_auxiliary': runtime_auxiliary,
         'runtime_capability': 'installed-files-reviewed; execution-and-quality-unqualified',
         'worker_path': str(worker), 'worker_identity': file_identity(worker, cancel=cancel, maximum=16 * 1024**2),
         'model_directory': str(model), 'model_name': model.name,
@@ -275,6 +279,10 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
     local_path(python.parent, exists=True)
     if python.resolve(strict=True) != resolved_python:
         raise ValueError('The selected Python executable link changed during inspection.')
+    additional = {name: identity for name, identity in runtime_files.items()
+                  if name not in RUNTIME_DISTRIBUTIONS}
+    if additional:
+        manifest['runtime_additional_distributions'] = additional
     manifest['model_content_fingerprint'] = fingerprint(manifest['model_files'])
     manifest['fingerprint'] = fingerprint(manifest)
     return manifest
