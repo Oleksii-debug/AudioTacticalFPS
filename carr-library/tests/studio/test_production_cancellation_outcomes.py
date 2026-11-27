@@ -394,3 +394,33 @@ def test_production_output_component_stays_bounded():
     assert len(name) <= 83
     assert len(name.encode('utf-8')) <= 255
     assert name != _production_output_name('Український' * 100, 'a' * 79 + 'b')
+
+
+@pytest.mark.parametrize('unavailable', ['empty', 'raises'])
+def test_exact_submission_replay_does_not_requery_voice(submission, monkeypatch, unavailable):
+    service, project, output = submission
+    job = service.submit(project, output, operation_id='voice-replay')
+    receipt = service.jobs_root / job / 'job.json'
+    raw = receipt.read_bytes()
+    saved = service.get(job)
+
+    def broken_registry():
+        pytest.fail('A committed submission must not enumerate voices again.')
+
+    monkeypatch.setattr(service.voices, 'voices',
+                        (lambda: ()) if unavailable == 'empty' else broken_registry)
+    assert service.submit(project, output, operation_id=job) == job
+    assert service.get(job) == saved
+    assert receipt.read_bytes() == raw
+    assert len(service.jobs()) == 1
+    with pytest.raises(ValueError, match='different production plan'):
+        service.submit(project, output, operation_id=job, stems=False)
+
+
+def test_new_submission_still_requires_available_voice(submission, monkeypatch):
+    service, project, output = submission
+    monkeypatch.setattr(service.voices, 'voices', lambda: ())
+    with pytest.raises(ValueError, match='voice is no longer available'):
+        service.submit(project, output, operation_id='new-no-voice')
+    assert not (service.jobs_root / 'new-no-voice' / 'job.json').exists()
+    assert not service.jobs()
