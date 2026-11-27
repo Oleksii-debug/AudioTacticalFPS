@@ -300,6 +300,7 @@ def test_rejected_publication_preserves_committed_state_and_cleans_only_staging(
     stages = []
 
     def denied(source, destination):
+        source = Path(source)
         assert destination == target
         assert source.parent == target.parent
         assert source.read_bytes() == state._json_bytes({'done': 1})
