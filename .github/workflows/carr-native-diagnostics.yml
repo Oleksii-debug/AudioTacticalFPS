@@ -103,6 +103,13 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-keyboard-settings.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise candidate keyboard remapping with non-editing native function keys
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_nontext_probe.py --native 2>&1 | Tee-Object 'ci-results/native-keyboard-nontext-candidate.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise actual contextual Reader key remapping
         if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 3

@@ -143,6 +143,13 @@ def run_native(source=None, timeout=120):
         settings = None
 
         def preserved():
+            print(json.dumps({'diagnostic_preserved': {'library': frame.library is library,
+                              'active': frame.active == (workspace, topic),
+                              'note': frame.evidence.note.GetValue(), 'expected_note': draft,
+                              'dirty': frame._dirty(),
+                              'saved_note': library.evidence(workspace, topic)[0].note,
+                              'original_asset': library.assets.resolve(imported['asset']).read_bytes() == original_bytes}},
+                             ensure_ascii=False), flush=True)
             return (frame.library is library and frame.active == (workspace, topic)
                     and frame.evidence.note.GetValue() == draft and frame._dirty()
                     and library.evidence(workspace, topic)[0].note == saved_note
@@ -184,6 +191,8 @@ def run_native(source=None, timeout=120):
                     frame._restore_note_focus()
                     focus(frame.evidence.note)
                     press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                    print(json.dumps({'diagnostic_host_key': letter, 'note': frame.evidence.note.GetValue(),
+                                      'expected_note': draft, 'calls': len(calls)}, ensure_ascii=False), flush=True)
 
                 host_key('J')
                 check('actual default shortcut dispatches the current native menu handler',
