@@ -63,7 +63,7 @@ jobs:
             tests/assistant/test_local_assistant.py tests/assistant/test_local_tools.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/assistant/test_workflow_template_parameters.py tests/assistant/test_workflow_templates_cli.py tests/assistant/test_workflow_template_editor.py tests/assistant/test_player_tools.py tests/assistant/test_search_paging.py \
             tests/extract/test_language_detection.py tests/extract/test_ocr_language_regions.py tests/storage/test_ocr_language_presets.py tests/ui/test_ocr_selection.py tests/audio/test_metadata.py tests/audio/test_metadata_cleanup_scope.py tests/audio/test_metadata_publication.py tests/audio/test_metadata_stream_hash.py tests/audio/test_metadata_review.py tests/ui/test_audio_metadata_dialog.py tests/ui/test_audio_metadata_lifetime.py tests/audio/test_audio_process.py tests/e2e/test_source_file.py tests/extract/test_raster_pages.py tests/e2e/test_raster_import.py tests/citations/test_anchors.py tests/catalog/test_streaming_intake.py tests/ingest/test_large_source_intake.py tests/ingest/test_batch_continuation.py tests/ingest/test_batch_continuation_cli.py tests/e2e/test_import_legacy_config.py tests/e2e/test_import_commit_supervisor.py tests/ui/test_import_center.py tests/search/test_search_paging.py tests/search/test_literal_readonly.py tests/search/test_thematic_budget.py tests/search/test_federated.py tests/search/test_federated_independent.py \
             tests/ui/test_federated_search.py tests/ui/test_federated_labels.py tests/ui/test_desktop_handlers.py tests/ui/test_desktop_query_jobs.py tests/e2e/test_research_search_cli.py 2>&1 | tee reader-completion.txt
-      - name: Require actual local planning HTTP and CLI in isolated loopback namespace
+      - name: Require actual local planning and translation in isolated loopback namespace
         if: ${{ always() && !cancelled() }}
         run: |
           set -euo pipefail
@@ -72,5 +72,5 @@ jobs:
           sudo unshare --net -- bash -c '
             set -euo pipefail
             ip link set lo up
-            exec runuser -u "$1" -- "$2" "$3" --loopback-only tests/assistant/test_local_planning_loopback.py
+            exec runuser -u "$1" -- "$2" "$3" --loopback-only tests/assistant/test_local_planning_loopback.py tests/assistant/test_translation_local_loopback.py
           ' bash "$(id -un)" "$(command -v python)" "$PWD/scripts/ci_check.py" 2>&1 | tee reader-loopback.txt
