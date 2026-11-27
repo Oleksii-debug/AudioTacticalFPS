@@ -49,6 +49,76 @@ def historical_job(setup):
     return partial
 
 
+@pytest.mark.parametrize('mutation', ['same_size', 'grow', 'truncate'])
+def test_export_rejects_changed_payload_before_external_publication(setup, monkeypatch, mutation):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    record = service._receipt(state, state['results'][0])['files']['txt']
+    path = service._job_root(state['id']) / record['path']
+    before = path.read_bytes()
+    assert before
+    changed = {'same_size': bytes([before[0] ^ 1]) + before[1:],
+               'grow': before + b'x', 'truncate': before[:-1]}[mutation]
+    verify = service._verify_source
+
+    def mutate_after_receipt(*args, **kwargs):
+        verify(*args, **kwargs)
+        path.write_bytes(changed)
+
+    destination = runtime.root / 'export-mutation'
+    destination.mkdir()
+    monkeypatch.setattr(service, '_verify_source', mutate_after_receipt)
+    with pytest.raises(ValueError, match='changed before export'):
+        service.export(state['id'], destination, formats=['txt'])
+    assert not list(destination.iterdir())
+    assert path.read_bytes() == changed
+    assert service._load(state['id'])['results'] == state['results']
+
+
+def test_export_receipt_verification_observes_cancellation(setup, monkeypatch):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    destination = runtime.root / 'export-cancel'
+    destination.mkdir()
+    receipt = service._receipt
+    entered = []
+
+    def cancel():
+        return bool(entered)
+
+    def verify(*args, **kwargs):
+        entered.append(True)
+        assert kwargs.get('cancel') is cancel
+        return receipt(*args, **kwargs)
+
+    monkeypatch.setattr(service, '_receipt', verify)
+    with pytest.raises(InterruptedError):
+        service.export(state['id'], destination, formats=['txt'], cancel=cancel)
+    assert not list(destination.iterdir())
+    assert service._load(state['id'])['results'] == state['results']
+
+
+def test_export_payload_is_bounded_and_interruptible(tmp_path):
+    from hashlib import sha256
+    path = tmp_path / 'synthetic.txt'
+    payload = b'x' * (2 * 1024 * 1024 + 17)
+    path.write_bytes(payload)
+    record = {'size': len(payload), 'sha256': sha256(payload).hexdigest()}
+    assert module._export_payload(path, record) == payload
+    polls = []
+
+    def cancel():
+        polls.append(True)
+        return len(polls) >= 3
+
+    with pytest.raises(InterruptedError):
+        module._export_payload(path, record, cancel=cancel)
+    assert len(polls) == 3
+    assert path.read_bytes() == payload
+
+
 @pytest.mark.parametrize('intent', ['pause', 'cancel'])
 def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeypatch, intent):
     service, runtime, profile, sources = setup
@@ -304,3 +374,71 @@ def test_cancelled_post_admission_check_preserves_committed_valid_receipt(setup,
     resumed = service.resume(state['id'])
     assert resumed['status'] == 'complete' and resumed['results'] == [accepted], resumed
     assert starts(runtime) == 1
+
+
+@pytest.mark.parametrize('intent', ['pause', 'cancel', 'callback'])
+@pytest.mark.parametrize('completed', [False, True])
+def test_stop_during_historical_receipt_hash_preserves_durable_results(setup, monkeypatch, intent, completed):
+    service, runtime, profile, sources = setup
+    if completed:
+        state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+        assert state['status'] == 'complete', state
+    else:
+        state = historical_job(setup)
+    previous = list(state['results'])
+    before_starts = starts(runtime)
+    target = service._job_root(state['id']) / previous[0]['receipt']
+    entered, release, token = threading.Event(), threading.Event(), threading.Event()
+    original = module.file_identity
+    callbacks, outcome = [], {}
+
+    def controlled_hash(path, *, cancel=None, maximum=64 * 1024**3):
+        if Path(path) == target:
+            callbacks.append(cancel)
+            entered.set()
+            while not release.wait(.01):
+                module.stopped(cancel)
+        return original(path, cancel=cancel, maximum=maximum)
+
+    monkeypatch.setattr(module, 'file_identity', controlled_hash)
+
+    def run():
+        try:
+            outcome['state'] = service.resume(state['id'], cancel=token.is_set)
+        except BaseException as error:
+            outcome['error'] = error
+
+    runner = threading.Thread(target=run)
+    runner.start()
+    promptly_stopped = False
+    try:
+        assert entered.wait(4), 'Historical receipt verification was not reached.'
+        if intent == 'callback':
+            token.set()
+        else:
+            getattr(service, intent)(state['id'])
+        runner.join(1.5)
+        promptly_stopped = not runner.is_alive()
+    finally:
+        release.set()
+        runner.join(6)
+    assert not runner.is_alive()
+    assert promptly_stopped, 'Historical receipt verification blocked stop.'
+    assert callbacks and all(callable(callback) for callback in callbacks)
+    saved = service.get_job(state['id'])
+    assert saved['results'] == previous and saved['done'] == len(previous)
+    assert starts(runtime) == before_starts
+    assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+    if completed:
+        assert isinstance(outcome.get('error'), InterruptedError), outcome
+        assert saved['status'] == 'complete'
+    else:
+        assert 'error' not in outcome, outcome
+        expected = 'paused' if intent == 'pause' else 'cancelled'
+        assert saved['status'] == outcome['state']['status'] == expected
+    # A fresh explicit resume revalidates the original receipt; no accepted
+    # historical source is transcribed twice.
+    resumed = service.resume(state['id'])
+    assert resumed['status'] == 'complete', resumed
+    assert resumed['results'][:len(previous)] == previous
+    assert starts(runtime) == before_starts + (0 if completed else 1)

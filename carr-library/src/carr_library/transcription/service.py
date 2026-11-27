@@ -148,6 +148,32 @@ def _published_identity(path):
     return {'sha256': digest.hexdigest(), 'size': size}
 
 
+def _export_payload(path, record, *, cancel=None):
+    """Bind the actual bytes to the receipt before publishing outside the library."""
+    stopped(cancel)
+    size = record['size']
+    if type(size) is not int or not 0 <= size <= MAX_RESULT_BYTES:
+        raise ValueError('The transcript export exceeds its byte budget.')
+    if regular(path).st_size != size:
+        raise ValueError('A saved transcript changed before export; no changed bytes were published.')
+    payload = bytearray()
+    with path.open('rb') as stream:
+        while True:
+            stopped(cancel)
+            # Read at most one byte beyond the declared length, even if a
+            # concurrent writer grows the file after the initial stat.
+            block = stream.read(min(1024 * 1024, size - len(payload) + 1))
+            if not block:
+                break
+            payload.extend(block)
+            if len(payload) > size:
+                raise ValueError('A saved transcript changed before export; no changed bytes were published.')
+    stopped(cancel)
+    if len(payload) != size or sha256(payload).hexdigest() != record['sha256']:
+        raise ValueError('A saved transcript changed before export; no changed bytes were published.')
+    return bytes(payload)
+
+
 class TranscriptionService:
     def __init__(self, root, *, broker=None, budget=None, stop_grace=2.0):
         self.root = local_path(root)
@@ -570,12 +596,39 @@ class TranscriptionService:
                 state.update(status='interrupted', recovery_review_required=True)
                 self._save(state)
                 raise RuntimeError('The prior runner did not close; confirm its worker stopped before resuming.')
-            for result in state['results']:
-                self._receipt(state, result)
+            if state.get('recovery_review_required') and not state.get('restored') and state['status'] != 'complete':
+                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
+
+            def action():
+                selected = self._control(identity)
+                if selected == 'run' and cancel is not None and cancel():
+                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
+                    selected = 'cancel'
+                return selected
+
+            # Historical receipts are read before any worker or resource lease
+            # starts. A stop must interrupt their existing chunked hash reader.
+            try:
+                for result in state['results']:
+                    self._receipt(state, result, cancel=lambda: action() != 'run')
+                stopped(lambda: action() != 'run')
+            except InterruptedError:
+                selected = action()
+                if selected == 'run' or state['status'] == 'complete':
+                    # Do not return an unverified completed result or downgrade
+                    # its durable committed status because this read was stopped.
+                    raise
+                state['status'] = 'paused' if selected == 'pause' else 'cancelled'
+                state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
+                self._save(state)
+                if progress:
+                    progress({'phase': 'Transcript job ' + state['status'],
+                              'status': state['status'], 'done': state['done'],
+                              'total': state['total'], 'current': state.get('current', ''),
+                              'indeterminate': False})
+                return state
             if state['status'] == 'complete':
                 return state
-            if state.get('recovery_review_required') and not state.get('restored'):
-                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
             profile = self._profile(state['profile_id'])
             previous_results = list(state['results'])
             if state.get('worker_cache_rejected'):
@@ -600,13 +653,6 @@ class TranscriptionService:
                 if progress and key != last_report:
                     progress(event)
                     last_report = key
-
-            def action():
-                selected = self._control(identity)
-                if selected == 'run' and cancel is not None and cancel():
-                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
-                    selected = 'cancel'
-                return selected
 
             def poll():
                 nonlocal stop_started, last_admit
@@ -806,16 +852,18 @@ class TranscriptionService:
         files, warnings = [], []
         for result in state['results']:
             stopped(cancel)
-            receipt = self._receipt(state, result)
+            receipt = self._receipt(state, result, cancel=cancel)
             source = next(source for source in state['sources'] if source['id'] == result['source_id'])
             self._verify_source(state, source, cancel=cancel)
             for name in selected:
                 if name not in receipt['files']:
                     raise ValueError('This format was not requested for the job; create a reviewed export plan first.')
                 record = receipt['files'][name]
-                path = self._job_root(identity) / record['path']
+                root = self._job_root(identity)
+                path = local_path(root / record['path'], root=root, exists=True)
+                payload = _export_payload(path, record, cancel=cancel)
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}.{name}"
-                published = write_binary_export(target, path.read_bytes(), private_root=self.library_root,
+                published = write_binary_export(target, payload, private_root=self.library_root,
                                                 cancelled=cancel or (lambda: False), require_absent=True)
                 if _published_identity(published.path) != {'sha256': record['sha256'], 'size': record['size']}:
                     raise OSError('An exported transcript failed byte verification.')
