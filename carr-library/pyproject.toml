@@ -67,7 +67,7 @@ test = [
 
 [project.scripts]
 research-library = "carr_library.__main__:main"
-research-library-trust = "carr_library.security.cli:main"
+research-library-trust = "carr_library.security.__main__:main"
 research-library-bibliography = "carr_library.bibliography_cli:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 
