@@ -158,6 +158,12 @@ def main():
         if options.get('fail_after') == index + 1:
             return 3
 
+    replacements = options.get('status_replacements', 0)
+    if type(replacements) is not int or not 0 <= replacements <= 10000:
+        raise ValueError('Invalid synthetic status replacement count.')
+    for _ in range(replacements):
+        status('обробка', len(sources))
+
     completion = {'kind': 'whisper-transcribe-completion', 'version': 1,
                   'job_name': config['job_name'], 'run_id': run_id,
                   'files': sorted(artifacts, key=lambda row: row['path']), 'inputs': records}

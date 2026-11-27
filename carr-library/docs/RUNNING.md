@@ -1,4 +1,9 @@
-# Universal Research Library
+# Резонанс / Resonance
+
+The integrated Windows dependency profile targets CPython 3.11 x64. A separate
+Windows 3.12 compatibility run exposed file-metadata differences in historical
+backup producers and immutable file readers; that source/runtime combination
+is not qualified. Isolated engines can use their independently verified runtime.
 
 An offline desktop research library with separate workspaces, books and
 collections, literal and thematic search, source context, saved evidence, notes,
@@ -203,8 +208,10 @@ positions for every library. Restore preserves their exact source revision,
 names and timestamps in the new data folder. The backup checksums cover this
 reading state as well as the database and retained originals. Older backups
 without reading state still restore; use a separate reading-state export to
-transfer those older bookmarks. Interrupted import queues are not part of the
-backup. See [reading desk](READING_DESK.md) for historical-position handling.
+transfer those older bookmarks. Current complete backups also retain supported
+unfinished imports, their source bytes, batches, journals and reviews. Restoring
+never starts those jobs automatically. See [complete backup](COMPLETE_BACKUP.md)
+and [reading desk](READING_DESK.md) for recovery and historical-position handling.
 
 ## Review the source catalog
 
@@ -460,4 +467,4 @@ prepared package does not establish permission for public binary distribution.
 
 ## Guided local assistant
 
-Open **Tools → Local assistant** (**Ctrl+Alt+J**) to preview and run scoped local library and audio tasks. Choose input/output folders and whole-job budgets before running. Restored jobs retain readable history and require new permission review before unfinished steps can run. See **docs/LOCAL_ASSISTANT.md** for commands, narration language selection and complete-backup behavior. This guided tool runner does not yet provide a general-language LLM.
+Open **Tools → Local assistant** (**Ctrl+Alt+J**) to preview and run scoped local library and audio tasks. Choose input/output folders and whole-job budgets before running. Restored jobs retain readable history and require new permission review before unfinished steps can run. See **docs/LOCAL_ASSISTANT.md** for commands, narration language selection and complete-backup behavior. Guided commands remain available. A separately configured local language model can propose a typed plan through the same permission boundary; its exact runtime and quality qualification are recorded separately.

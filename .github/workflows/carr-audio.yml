@@ -71,13 +71,15 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force 'ci-audio-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-audio-results/tested-commit.txt'
-          python -m pytest -q -rs tests/audio tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py tests/packaging/test_windows_bundle.py tests/packaging/test_delivery_archive.py tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_audio_effects.py tests/ui/test_audio_playback_controls.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_audio_cli.py tests/test_progress.py tests/ui/test_progress_view.py tests/ui/test_reading_audio_bridge.py --import-mode=importlib --junitxml=ci-audio-results/audio-tests.xml
+          python -m pytest -q -rs tests/audio tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py tests/packaging/test_windows_bundle.py tests/packaging/test_delivery_archive.py tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_audio_effects.py tests/ui/test_audio_playback_controls.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_audio_cli.py tests/test_progress.py tests/ui/test_progress_view.py tests/ui/test_progress_voice.py tests/ui/test_reading_audio_bridge.py --import-mode=importlib --junitxml=ci-audio-results/audio-tests.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify real offline SAPI output, native controls and OS credential vault
         run: |
           python -I -B scripts/windows_audio_smoke.py 2>&1 | Tee-Object 'ci-audio-results/native-audio.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object 'ci-audio-results/native-effects.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/windows_progress_voice_smoke.py --native --output 'ci-audio-results/native-progress-voice.json' 2>&1 | Tee-Object 'ci-audio-results/native-progress-voice.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify the installed library still works
         run: |

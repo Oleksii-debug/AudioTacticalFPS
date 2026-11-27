@@ -13,6 +13,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import threading
+import time
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
@@ -464,6 +465,7 @@ class AudioStudioDialog:
         self.controls.append(self.voice)
         voice_row.Add(self.voice, 1, wx.RIGHT, 8)
         self._button(script_page, voice_row, 'Reload local voices', self.reload_voices)
+        self._button(script_page, voice_row, 'Use voice for progress', self.use_progress_voice)
         script_layout.Add(voice_row, 0, wx.EXPAND | wx.ALL, 5)
         self.language = self._text(script_page, script_layout, 'Language code, for example uk, sk or en', controller.language)
         script_layout.Add(wx.StaticText(script_page, label='Editable narration or dialogue script'), 0, wx.ALL, 5)
@@ -729,6 +731,7 @@ class AudioStudioDialog:
         from ..progress import ProgressTracker
         tracker = progress_tracker or ProgressTracker(label)
         view = getattr(self, 'progress_view', None)
+        self._invalidate_playback_start()
         try:
             self.playback.stop()
         except Exception as exc:
@@ -784,6 +787,61 @@ class AudioStudioDialog:
                     self.close()
             self.wx.CallAfter(apply)
         future.add_done_callback(complete)
+
+    def use_progress_voice(self, event=None):
+        """Explicit session selection; no project text, voice or saved mode changes."""
+        try:
+            index = self.voice.GetSelection()
+            if not 0 <= index < len(self.voice_rows):
+                raise ValueError('Choose an installed local voice before selecting progress speech.')
+            voice_id = self.voice_rows[index]['id']
+            language = self.language.GetValue().strip()
+            controller, registry = self.controller, self.controller.registry
+            if registry is None:
+                raise ValueError('Reload installed local voices before selecting progress speech.')
+            root, ffmpeg = Path(controller.private_root).resolve(), controller.ffmpeg
+            parent = self.parent
+
+            def guard():
+                if (controller.registry is not registry or controller.ffmpeg != ffmpeg
+                        or Path(controller.private_root).resolve() != root):
+                    raise ValueError('Local voice configuration changed. Select the progress voice again.')
+                library = getattr(parent, 'library', None)
+                if library is not None and Path(library.root).resolve() != root:
+                    raise ValueError('The library folder changed. Select its progress voice again.')
+
+            def activate():
+                from ..audio.progress_speech import activate_progress_voice
+                guard()
+                if self.cancelled.is_set():
+                    raise InterruptedError('Progress voice selection cancelled.')
+                return activate_progress_voice(root, registry, voice_id, language=language, guard=guard)
+
+            def accepted(provider):
+                if self.closed or self.cancelled.is_set():
+                    provider.close()
+                    return
+                other = None
+                try:
+                    guard()
+                    parent_view = getattr(parent, 'progress_view', None)
+                    other = provider.copy_selection() if parent_view is not None else None
+                    self.progress_view.set_speech_provider(provider)
+                    if parent_view is not None:
+                        parent_view.set_speech_provider(other)
+                except Exception:
+                    provider.close()
+                    if other is not None:
+                        other.close()
+                    self.progress_view.set_speech_provider(None)
+                    raise
+                self._message('Progress voice selected for this session: ' + provider.label
+                    + '. Open Progress sound settings to choose Speech or Beep + Speech. '
+                      'Project text and rendering settings are unchanged.', focus=True)
+
+            self._run('Selecting a local progress voice', activate, accepted)
+        except Exception as exc:
+            self._error(exc)
 
     def reload_voices(self, event=None):
         def loaded(value):
@@ -1169,6 +1227,7 @@ class AudioStudioDialog:
         self._with_quiet_output(lambda: self._play_after_progress(event))
 
     def stop_playback(self, event=None):
+        self._invalidate_playback_start()
         try:
             self.playback.stop()
             self.refresh_playback()
@@ -1187,21 +1246,61 @@ class AudioStudioDialog:
         # A failed native cleanup may still own audible driver buffers.
         view.set_media_active(active or isinstance(cleanup, str) and bool(cleanup))
 
+    def _invalidate_playback_start(self):
+        self._playback_start_token = None
+        timer = getattr(self, '_playback_start_timer', None)
+        self._playback_start_timer = None
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:
+                pass  # The invalidated token also prevents an already queued start.
+
     def _with_quiet_output(self, action):
         if self.closed:
             return
         if self.busy:
             self._error(ValueError('Wait for the current studio operation or choose Cancel studio operation.'))
             return
+        self._invalidate_playback_start()
+        token = self._playback_start_token = object()
+        clock = getattr(self, '_quiet_clock', time.monotonic)
+        deadline = clock() + 3.0
         view = getattr(self, 'progress_view', None)
         try:
             if view is not None:
                 view.set_media_active(True)
-            action()
         except Exception as exc:
+            self._playback_start_token = None
             self._error(exc)
-        finally:
-            self._sync_playback_media()
+            return
+
+        def attempt():
+            if self._playback_start_token is not token:
+                return
+            if self.closed or self.busy:
+                self._playback_start_token = None
+                return
+            try:
+                if view is not None and not view.audio_quiescent:
+                    if clock() >= deadline:
+                        raise RuntimeError('Progress audio has not confirmed silence. Playback was not started.')
+                    self._playback_start_timer = self.wx.CallLater(25, attempt)
+                    return
+                self._playback_start_token = None
+                action()
+            except Exception as exc:
+                self._playback_start_token = None
+                self._error(exc)
+            finally:
+                if self._playback_start_token is None:
+                    # Native ownership remains authoritative. If observation
+                    # itself fails, retain the existing admission hold.
+                    try:
+                        self._sync_playback_media()
+                    except Exception as exc:
+                        self._message('Playback progress feedback is unavailable: ' + str(exc))
+        attempt()
 
     def _play_after_progress(self, event=None):
         try:
@@ -1241,6 +1340,7 @@ class AudioStudioDialog:
             self._message(message, focus=True)
 
     def _stop_for_project_change(self):
+        self._invalidate_playback_start()
         try:
             self.playback.stop()
             self.refresh_playback()
@@ -1418,6 +1518,7 @@ class AudioStudioDialog:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
+        self._invalidate_playback_start()
         try:
             self.playback.close()
         except Exception as exc:
@@ -1443,6 +1544,7 @@ class AudioStudioDialog:
             self.script.SetFocus()
             self.dialog.ShowModal()
         finally:
+            self._invalidate_playback_start()
             try:
                 self.playback.close()
             finally:

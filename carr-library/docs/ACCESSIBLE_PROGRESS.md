@@ -1,4 +1,4 @@
-# Operation progress and optional tones
+# Operation progress and optional local sound
 
 The main window, Import Center and Audio Studio use the same progress model and
 named native Windows gauge. A read-only field beside the gauge gives the current
@@ -17,9 +17,10 @@ batch report. Failures and files awaiting independent page review leave the
 operation marked **Needs attention**. Cancelled work remains **Cancelled**.
 
 A work counter reaching its total displays at most **99 percent** until the
-operation returns successfully and the UI accepts its result. Only then can it
-display **100 percent**. A failed submit, worker error, invalid result or cancelled
-operation cannot produce a success percentage.
+operation returns successfully and its authoritative result is validated. Only then
+can it display **100 percent**. A failed submit, worker error, invalid result or
+cancellation before publication cannot produce a success percentage. After durable
+publication, a late Cancel or a display error does not relabel the saved result.
 
 Audio duration, voice generation time, mixing and final validation cannot be
 reliably inferred from a count of script segments. Audio rendering therefore
@@ -41,13 +42,17 @@ queue. A terminal result or an explicit query can refresh immediately.
 
 ## Screen reader and application sound choices
 
-Application tones are **off by default**. NVDA users can choose their own progress
+Application sounds are **off by default**. NVDA users can choose their own progress
 speech or beep settings in NVDA. This application does not change NVDA settings,
-and no NVDA manual acceptance is claimed by automated tests. Application speech
-is explicitly unavailable in this build; no new speech engine is installed or
-downloaded.
+and no NVDA manual acceptance is claimed by automated tests. Optional application
+speech uses an installed CPU voice that you explicitly select in Audio Studio
+with **Use voice for progress**. The selection applies only to this session and
+does not enable sound by itself. No engine is installed or downloaded. See
+[Local progress voice](LOCAL_PROGRESS_VOICE.md) for supported engines/languages
+and the independent execution boundaries.
 
-**Progress sound settings** offers Off or Beep, volume from 0 to 100, a minimum
+**Progress sound settings** offers Off, Beep, Speech and Beep + Speech,
+notification volume from 0 to 100, a minimum
 interval from 1 to 60 seconds, mute, and permission to sound while the window is
 in the background. The default volume is 20, interval five seconds, and
 background sound is disabled. Saved choices are loaded before opening settings
@@ -65,7 +70,10 @@ remain suppressed until Stop playback, a new studio operation, an unsuccessful
 playback start or closing the studio. A rejected new playback request does not
 unmute a still-playing preview. This conservative gate also prevents a queued
 progress sound from replacing the preview in Windows' shared playback API.
-Tones are independent notifications and are never inputs to rendered audio.
+Tones and speech are independent notifications and are never inputs to rendered
+audio. A speech notice uses a bounded private temporary PCM file and its own
+player. Studio waits for confirmed notification silence without blocking the UI
+thread. Failed native cleanup retains its owned buffers and prevents overlap.
 On other operating systems the native gauge/status work, while application
 tones are unavailable in this build.
 
@@ -73,11 +81,14 @@ tones are unavailable in this build.
 
 The library root stores sound choices in `progress-settings.json`. The strict
 versioned JSON contains only mode, volume, interval, mute and background settings;
-it has an 8192-byte budget and rejects unknown/duplicate fields. Saving uses the
+version 2 adds speech/both while version 1 remains readable. Voice identity and
+execution authority are not saved in this file or restored from backup. The file
+has an 8192-byte budget and rejects unknown/duplicate fields. Saving uses the
 shared library writer lock, a flushed temporary file and atomic replacement.
 Malformed or linked settings are rejected, with tones kept off and an explanatory
 status. Existing invalid files are not silently rewritten. Complete library
-backup format 4 includes this allowlisted file and validates it before restore.
+backups include this allowlisted file and validate it before restore. Restoring
+Speech mode still requires a new explicit voice selection.
 
 ## Verification boundaries
 

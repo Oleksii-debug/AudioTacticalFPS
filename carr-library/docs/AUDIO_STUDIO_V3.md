@@ -227,6 +227,7 @@ document-format readers, local CSL formatting and bibliography DOCX export.
 Full Resonance acceptance still requires the finite requested reading/synthesis
 workflow checklist, remaining formats, language-specific prosody quality,
 microphone/device and professional editing controls, synchronized publishing,
-large-library scale measurements, qualified local LLM planning, supplied
-transcription integration, actual optional engines and independent Windows/NVDA
+large-library scale measurements, qualified local LLM planning, actual
+interoperability with the supplied private transcription worker, optional engines
+and independent Windows/NVDA
 and listening evidence. This audio module does not close those platform gates.

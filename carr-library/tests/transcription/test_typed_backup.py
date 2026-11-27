@@ -27,7 +27,8 @@ def prepared(synthetic_asr_runtime, tmp_path):
     source = tmp_path / 'source.wav'
     source.write_bytes(b'Purpose-written protocol input, not decoded speech.')
     job = service.create_job(profile['id'], [source])
-    assert service.run(job['id'])['status'] == 'complete'
+    completed = service.run(job['id'])
+    assert completed['status'] == 'complete', {key: completed[key] for key in ('status', 'error', 'done', 'total')}
     return app, service, runtime, profile, source, job
 
 

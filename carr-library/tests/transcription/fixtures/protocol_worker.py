@@ -109,6 +109,11 @@ def main():
         status('обробка', number + 1)
         if options.get('fail_after') == number + 1:
             raise SystemExit(3)
+    replacements = options.get('status_replacements', 0)
+    if type(replacements) is not int or not 0 <= replacements <= 10000:
+        raise ValueError('Invalid synthetic status replacement count.')
+    for _ in range(replacements):
+        status('обробка', len(sources))
     status('завершено', len(sources))
     if options.get('exit_failure'):
         raise SystemExit(4)

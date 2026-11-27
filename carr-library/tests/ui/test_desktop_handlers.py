@@ -1001,3 +1001,73 @@ def test_completion_updates_status_without_overriding_result_focus(classes):
     assert focus == ['result']
     value.status.SetValue.assert_called_with('Search: complete.')
     assert not value.working and not value.busy
+
+
+def test_desktop_backup_cancel_wiring_and_committed_result(classes, tmp_path):
+    env, _ = classes
+    value = frame(classes)
+    value.library = LibraryApp(tmp_path / 'library')
+    value.library.create_workspace('Backup command fixture')
+    dialog = Mock()
+    dialog.ShowModal.return_value = env['wx'].ID_OK
+    dialog.GetPath.return_value = str(tmp_path)
+    env['wx'].DirDialog = Mock(return_value=dialog)
+    value.run_job = Mock()
+    value.backup(None)
+    title, operation, completed = value.run_job.call_args.args
+    options = value.run_job.call_args.kwargs
+    assert options['done_is_observer'] is True
+    value.cancel_event.set()
+    with pytest.raises(InterruptedError):
+        operation()
+    assert not list(tmp_path.glob('ResearchLibrary-backup-*/manifest.json'))
+    value.cancel_event.clear()
+    checksum = operation()
+    saved, = tmp_path.glob('ResearchLibrary-backup-*/manifest.json')
+    assert len(checksum) == 64 and saved.is_file()
+    value.cancel_event.set()
+    assert options['progress_outcome'](checksum) == 'completed'
+    completed(checksum)
+    message = env['show_text'].call_args.args[2]
+    assert checksum in message and 'Unfinished imports' in message
+    assert 'are excluded' not in message
+
+
+def test_desktop_restore_cancel_and_inert_state_notice(classes, tmp_path):
+    env, _ = classes
+    value = frame(classes)
+    original = LibraryApp(tmp_path / 'original')
+    original.create_workspace('Restore command fixture')
+    old_state = original.root / 'state' / 'studio'
+    old_state.mkdir(parents=True)
+    payload = b'{"title":"Private synthetic script","text":"Reviewed later."}\n'
+    (old_state / 'project.json').write_bytes(payload)
+    source = tmp_path / 'backup'
+    checksum = original.backup(source)
+    dialogs = [Mock(), Mock()]
+    for dialog, selected in zip(dialogs, (source, tmp_path)):
+        dialog.ShowModal.return_value = env['wx'].ID_OK
+        dialog.GetPath.return_value = str(selected)
+    env['wx'].DirDialog = Mock(side_effect=dialogs)
+    env['text_dialog'].return_value = checksum
+    value.run_job = Mock()
+    value._open_data_root = Mock()
+    value.restore_backup(None)
+    _, operation, completed = value.run_job.call_args.args
+    options = value.run_job.call_args.kwargs
+    assert options['done_is_observer'] is True
+    value.cancel_event.set()
+    with pytest.raises(InterruptedError):
+        operation()
+    assert not list(tmp_path.glob('ResearchLibrary-restored-*/library.sqlite'))
+    value.cancel_event.clear()
+    restored = operation()
+    assert (restored / 'preserved-state/files/studio/project.json').read_bytes() == payload
+    assert not (restored / 'state/studio/project.json').exists()
+    value.cancel_event.set()
+    assert options['progress_outcome'](restored) == 'completed'
+    completed(restored)
+    assert 'requires review' in env['wx'].MessageBox.call_args.args[0]
+    assert 'requires review' in env['show_text'].call_args.args[2]
+    value._open_data_root.assert_not_called()
+    assert (old_state / 'project.json').read_bytes() == payload

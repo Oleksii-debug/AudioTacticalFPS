@@ -133,5 +133,12 @@ jobs:
             tests/audio/test_playback.py \
             tests/audio/test_player.py \
             tests/ui/test_audio_playback_controls.py \
+            tests/ingest/test_import_metadata_shape.py \
+            tests/test_delivery_contract.py \
+            tests/storage/test_canonical_state_compatibility.py \
+            tests/transcription/test_completion_boundary.py \
+            tests/qualification/test_official_tiny_contract.py \
+            tests/audio/test_progress_speech.py \
+            tests/ui/test_progress_voice.py \
             tests/operations/posix_fork_case.py
       # This source-only job supplements the complete native Windows/bundle gate.

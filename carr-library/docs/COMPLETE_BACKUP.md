@@ -38,11 +38,12 @@ This does not capture text still only in an open control: save it or allow its
 recovery draft to finish before starting the backup.
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
-New backups use version 5, or version 6 when saved local transcription or resource
-policy state is present, with typed sidecars, explicit LOCAL ONLY restoration
-and a separate typed pending-import component. Even an empty queue has an explicit
-empty component. Restore still accepts the exact supported version-1 through
-version-6 layouts and validates their database schema. Older
+New backups use version 5, version 6 when saved local transcription or resource
+policy state is present, or version 7 when incompatible legacy application state
+must be preserved for review. Each has typed sidecars, explicit LOCAL ONLY
+restoration and a separate typed pending-import component. Even an empty queue
+has an explicit empty component. Restore accepts the exact supported version-1
+through version-7 layouts and validates their database schema. Older
 backups contain only the state supported by their original format; unknown or
 mixed manifest fields are rejected.
 
@@ -180,7 +181,7 @@ Cancellation during publication may leave an incomplete folder without its final
 manifest. Restore rejects that folder; retry to a different new destination.
 After the final manifest has been published, a later cancellation does not relabel
 that completed backup as cancelled. Existing overwrite protection, component
-size limits and exact version-1 through version-5 restore validation still apply.
+size limits and exact version-1 through version-7 restore validation still apply.
 
 Pending files consume the existing aggregate byte and file ceilings and the
 caller's lower allowances; adding this component does not raise those ceilings.
@@ -194,8 +195,11 @@ or SQLite operation may finish before the next cooperative check.
 
 ## Boundaries
 
-The backup does not copy arbitrary neighboring files, API credentials, runtime
-model weights, temporary render files or arbitrary external documents. A selected
+The current typed adapters do not copy arbitrary neighboring files, API
+credentials, runtime model weights, temporary render files or arbitrary external
+documents. Incompatible historical state is preserved as opaque local data under
+the separate review rules below; those historical bytes are not claimed to be
+sanitized or free of old secrets. A selected
 pending import contributes only its validated, referenced source bytes. Unreferenced
 retained files without a supported request, batch or journal identity are excluded.
 
@@ -227,8 +231,9 @@ from portable file/database regression tests.
 
 A library containing local transcription profiles/jobs or the saved cooperative
 resource policy uses complete-backup manifest version 6. A library without those
-files still writes the exact version-5 shape. Readers accept the exact supported
-version-1 through version-6 schemas; unknown fields and versions fail closed.
+files still writes the exact version-5 shape unless it contains preserved legacy
+state, which selects version 7. Readers accept only the supported exact schemas;
+unknown fields and versions fail closed.
 
 The version-6 transcription component streams retained original audio/video,
 the job's accepted recognition receipts and every requested accepted export,
@@ -262,3 +267,33 @@ readable from its verified retained input and host receipts without re-execution
 Recognition and reading edits remain unqualified derivatives, without citation
 authority. The saved resource allowances are cooperative policy, not a hardware
 capacity measurement.
+
+## Canonical backups and preserved application state
+
+The earlier canonical producer used different version-3 and version-4 manifest
+field sets from this implementation. Restore recognizes those exact shapes and
+checks their catalog schema, originals, pending imports and authenticated raw
+state inventory. The numeric version alone never selects compatibility.
+
+Legacy Studio, speech, assistant and translation state remains in
+preserved-state/files with a sealed review.json inventory. It is not installed
+as active current state. The restored folder displays a review notice before
+opening. Recorded engine paths, jobs, provider approvals and quotation authority
+are not activated, and no external path is opened. These bytes may retain private
+text or old references from the original backup; preservation does not sanitize
+them. Semantic migration and resumability remain separate reviewed work.
+
+A subsequent version-7 backup retains that whole inert component together with
+all supported current typed state. Both share the existing aggregate file and
+byte ceilings. Current transcription and resource policy continue through their
+typed adapters, which exclude external engines, model files and live leases.
+A mixed legacy/current translation layout with independent cost ledgers fails
+explicitly for review rather than combining authorization or dropping records.
+
+The complete format, exact canonical producers, interruption behavior and
+verification boundaries are documented in
+[CANONICAL_STATE_COMPATIBILITY.md](CANONICAL_STATE_COMPATIBILITY.md).
+
+The desktop passes its Cancel action into both backup and restore. A cancellation
+before publication stops the work; a late cancellation or display failure cannot
+relabel an already committed result. Recovery still uses a new destination.

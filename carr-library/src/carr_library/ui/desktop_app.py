@@ -528,7 +528,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Резонанс / Resonance')
         self.SetMinSize((760, 650))
         from .progress_view import ProgressView
         self.progress_view = ProgressView(self.host, settings_root=lambda: self.library.root,
@@ -1246,7 +1246,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete library backup, including pending imports and saved transcription work')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1260,11 +1260,16 @@ class DesktopFrame(WorkspaceFrame):
                 'All completed libraries, original files, saved evidence, notes, tags, searches, '
                 'reading positions, bookmarks and saved reading-copy projects are included. '
                 'Keyboard, OCR and progress settings, disconnected API profiles and the API operation ledger '
-                'are included when present. Credentials are excluded; reconnect keys and approve new tasks '
-                'after restoring. Audio Studio projects and outputs use their separate audio snapshot. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'are included when present. Reconnect API credentials and approve new tasks '
+                'after restoring. Unfinished imports, batches, pending reviews and their retained originals '
+                'are included. Saved transcription jobs, retained inputs, result receipts and transcript edits '
+                'are included when present; external runtimes and model packs remain separate. '
+                'Audio Studio projects and outputs use their separate audio snapshot. '
+                'Legacy application-state files are preserved for review without activating their jobs or providers.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
+        self.run_job('Backing up all libraries',
+            lambda: self.library.backup(destination, cancelled=self.cancel_event.is_set), done,
+            progress_outcome=lambda result: 'completed', done_is_observer=True)
 
     def restore_backup(self, event):
         dialog = wx.DirDialog(self, 'Select the backup folder')
@@ -1286,16 +1291,24 @@ class DesktopFrame(WorkspaceFrame):
             dialog.Destroy()
         from datetime import datetime
         from ..library_backup import restore_backup
+        from ..preserved_state import review_notice
         destination = parent / ('ResearchLibrary-restored-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(path):
-            if wx.MessageBox('Backup restored successfully. Open the restored libraries now?',
+            notice = review_notice(path)
+            message = 'Backup restored successfully.'
+            if notice:
+                message += '\n\n' + notice
+            message += '\n\nOpen the restored libraries now?'
+            if wx.MessageBox(message,
                 'Restore complete',wx.YES_NO | wx.ICON_QUESTION,self) == wx.YES:
                 self._open_data_root(path)
             else:
                 show_text(self,'Restore complete',f'Restored library folder: {path}\n\n'
-                    'You can open it later through Library, Open existing library folder.')
-        self.run_job('Restoring backup', lambda: restore_backup(source, destination, expected_manifest_sha256=checksum.strip()),
-            done)
+                    'You can open it later through Library, Open existing library folder.'
+                    + ('\n\n' + notice if notice else ''))
+        self.run_job('Restoring backup', lambda: restore_backup(source, destination,
+            expected_manifest_sha256=checksum.strip(), cancelled=self.cancel_event.is_set), done,
+            progress_outcome=lambda result: 'completed', done_is_observer=True)
 
     def check_installation(self, event):
         from ..__main__ import self_test
@@ -1382,7 +1395,10 @@ class DesktopFrame(WorkspaceFrame):
             'Complete backups include libraries, unfinished import requests, batches, pending reviews and their retained source bytes.\n'
             'Reading positions, bookmarks and reading-copy projects are included in complete library backups. '
             'Progress preferences, disconnected API profiles and the operation ledger are included when present. '
+            'Saved transcription jobs, retained inputs, result receipts and separate transcript edits are included; '
+            'external runtimes and model packs remain separate. '
             'After restore, reconnect credentials and explicitly approve new API work. '
+            'Preserved legacy state needs review before migration or job resumption. '
             'Audio Studio has a separate Back up audio project command for its outputs and assets. '
             'The Reading menu also provides separate bookmark export and import.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')

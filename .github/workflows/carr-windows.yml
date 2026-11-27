@@ -367,7 +367,7 @@ jobs:
             'tests/research/test_csl_author_boundaries.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/reader/test_export_no_clobber.py',
-              'tests/reader/test_export_publication_boundary.py',
+            'tests/reader/test_export_publication_boundary.py',
             'tests/audio/test_input_asset_backup.py',
             'tests/audio/test_reading_copy_backup.py',
             'tests/assistant/test_local_assistant.py',
@@ -411,7 +411,14 @@ jobs:
             'tests/ui/test_audio_effects.py',
             'tests/audio/test_playback.py',
             'tests/audio/test_player.py',
-            'tests/ui/test_audio_playback_controls.py'
+            'tests/ui/test_audio_playback_controls.py',
+            'tests/ingest/test_import_metadata_shape.py',
+            'tests/test_delivery_contract.py',
+            'tests/storage/test_canonical_state_compatibility.py',
+            'tests/transcription/test_completion_boundary.py',
+            'tests/qualification/test_official_tiny_contract.py',
+            'tests/audio/test_progress_speech.py',
+            'tests/ui/test_progress_voice.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -774,12 +781,12 @@ jobs:
               'tests/audio/test_input_asset_backup.py',
               'tests/audio/test_reading_copy_backup.py',
               'tests/assistant/test_local_assistant.py',
-            'tests/assistant/test_local_llm.py',
-            'tests/e2e/test_import_worker_publication.py',
-            'tests/e2e/test_google_translation_gateway.py',
-            'tests/assistant/test_translation.py',
-            'tests/ui/test_translation_dialog.py',
-            'tests/storage/test_backup_translation.py',
+              'tests/assistant/test_local_llm.py',
+              'tests/e2e/test_import_worker_publication.py',
+              'tests/e2e/test_google_translation_gateway.py',
+              'tests/assistant/test_translation.py',
+              'tests/ui/test_translation_dialog.py',
+              'tests/storage/test_backup_translation.py',
               'tests/assistant/test_audio_bridge.py',
               'tests/assistant/test_backup_receipt.py',
               'tests/assistant/test_backup_late_recovery.py',
@@ -814,6 +821,13 @@ jobs:
               'tests/audio/test_playback.py',
               'tests/audio/test_player.py',
               'tests/ui/test_audio_playback_controls.py',
+              'tests/ingest/test_import_metadata_shape.py',
+              'tests/test_delivery_contract.py',
+              'tests/storage/test_canonical_state_compatibility.py',
+              'tests/transcription/test_completion_boundary.py',
+              'tests/qualification/test_official_tiny_contract.py',
+              'tests/audio/test_progress_speech.py',
+              'tests/ui/test_progress_voice.py',
           ]
           # Preserve option/value pairs and run overlapping required suites once.
           arguments = sys.argv[2:]

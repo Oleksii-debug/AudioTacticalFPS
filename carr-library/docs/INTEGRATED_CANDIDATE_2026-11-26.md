@@ -1,5 +1,12 @@
 # Integrated desktop candidate — 2026-11-26
 
+> Historical checkpoint. The package identities and results below describe that
+snapshot only. Current source behavior and open acceptance are tracked in
+[Resonance integration evidence](RESONANCE_INTEGRATION_EVIDENCE.md),
+[COMPLETE_BACKUP.md](COMPLETE_BACKUP.md) and the current PR. In particular,
+pending imports, transcription work and preserved legacy state now have explicit
+backup paths; the exclusions recorded below belong to the older snapshot.
+
 Version: `0.1.0.dev1`. Integration branch: `carr/finish-desktop-20261126`.
 The starting assembly is `7924b6fd46887e626b876ce7040f0d35ce5b3a7e`; the
 final reconciliation preserves the published desktop/OCR checkpoint

@@ -48,6 +48,98 @@ def _protocol_digest(value):
                              separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
 
 
+def _open_worker_status(path):
+    """Read dynamic status with delete sharing on Windows, never a reparse target."""
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    if os.name != 'nt':
+        return os.open(path, flags)
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    class Attributes(ctypes.Structure):
+        _fields_ = [('attributes', wintypes.DWORD), ('tag', wintypes.DWORD)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                  wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.GetFileInformationByHandleEx.argtypes = (
+        wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD)
+    kernel.GetFileInformationByHandleEx.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel.CloseHandle.restype = wintypes.BOOL
+    # FILE_SHARE_READ|WRITE|DELETE lets the producer atomically replace status.
+    # OPEN_REPARSE_POINT avoids following a link swapped in after lstat.
+    handle = kernel.CreateFileW(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle in (None, ctypes.c_void_p(-1).value):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        attributes = Attributes()
+        if not kernel.GetFileInformationByHandleEx(handle, 9, ctypes.byref(attributes),
+                                                   ctypes.sizeof(attributes)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if attributes.attributes & (0x400 | 0x10):
+            raise ValueError('Worker status must use a regular local file without links.')
+        descriptor = msvcrt.open_osfhandle(int(handle), os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        kernel.CloseHandle(handle)
+        raise
+    return descriptor  # fdopen owns and closes this handle.
+
+
+def _observe_worker_status(path):
+    """Take one bounded observation of an atomically replaced progress file.
+
+    An unlinked/replaced inode is a missed observation, not a failed job.
+    Persistent links, reparse points, oversized files and stable malformed JSON
+    still fail. Immutable receipts and final completion retain strict readers.
+    """
+    path = Path(path)
+    path = local_path(path.parent, exists=True) / path.name
+    maximum = 256 * 1024
+
+    def ordinary(info):
+        if (not stat.S_ISREG(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or info.st_nlink > 1):
+            raise ValueError('Worker status must use a regular local file without links.')
+        if not 0 <= info.st_size <= maximum:
+            raise ValueError('The worker status exceeds its byte budget.')
+        return info.st_nlink == 1
+
+    def binding(info):
+        return info.st_dev, info.st_ino, info.st_size, info.st_nlink
+
+    for _ in range(3):
+        try:
+            before = path.lstat()
+            if not ordinary(before):
+                continue
+            with os.fdopen(_open_worker_status(path), 'rb') as stream:
+                opened = os.fstat(stream.fileno())
+                if not ordinary(opened) or binding(opened) != binding(before):
+                    continue
+                raw = stream.read(maximum + 1)
+                after_open = os.fstat(stream.fileno())
+                after = path.lstat()
+                if not ordinary(after_open) or not ordinary(after):
+                    continue
+                # Compare each stat API to itself, with stable identity binding.
+                if (len(raw) != before.st_size or len(raw) > maximum
+                        or _stamp(opened) != _stamp(after_open)
+                        or _stamp(before) != _stamp(after)
+                        or binding(after_open) != binding(after)):
+                    continue
+            value = verified_protocol.decode(raw)
+            if type(value) is not dict:
+                raise ValueError('The worker returned invalid status.')
+            return value
+        except FileNotFoundError:
+            continue
+    return None
+
+
 def expand_sources(paths, *, recursive=False, cancel=None):
     if not isinstance(paths, (list, tuple)) or not paths or type(recursive) is not bool:
         raise ValueError('Select local audio/video files or folders.')
@@ -463,7 +555,7 @@ class TranscriptionService:
         return verified_protocol.ReceiptReader(worker_root,
             verified_protocol.result_directory(worker_root, status), bound, expected_settings, profile)
 
-    def _admit_verified_results(self, state, profile, expected_settings):
+    def _admit_verified_results(self, state, profile, expected_settings, *, status=None):
         worker_root = self._job_root(state['id']) / 'worker'
         if not (worker_root / 'job_status.json').exists():
             return  # No guessed result namespace or loose-cache adoption.
@@ -471,7 +563,7 @@ class TranscriptionService:
         sources = [source for source in state['sources'] if source['id'] not in accepted]
         if not sources:
             return
-        reader = self._verified_reader(state, profile, expected_settings, sources=sources)
+        reader = self._verified_reader(state, profile, expected_settings, sources=sources, status=status)
         by_id = {source['id']: source for source in sources}
         for checkpoint in reader.checkpoints():
             source = by_id[checkpoint.source_id]
@@ -625,10 +717,8 @@ class TranscriptionService:
                     report('Stopping at the next worker checkpoint')
                     return time.monotonic() - stop_started >= self.stop_grace
                 status_path = worker_root / 'job_status.json'
-                if status_path.exists():
-                    if regular(status_path).st_size > 256 * 1024:
-                        raise ValueError('The worker status exceeds its byte budget.')
-                    current = read_json(status_path)
+                current = _observe_worker_status(status_path)
+                if current is not None:
                     if type(current) is not dict or not isinstance(current.get('state'), str):
                         raise ValueError('The worker returned invalid status.')
                     for name in ('done', 'failed', 'total'):
@@ -643,7 +733,11 @@ class TranscriptionService:
                         worker_run_id = run_id
                     state['current'] = str(current.get('current', ''))[:2048]
                 if time.monotonic() - last_admit >= .25:
-                    self._admit_results(state, profile, expected_settings)
+                    if verified:
+                        if current is not None:
+                            self._admit_verified_results(state, profile, expected_settings, status=current)
+                    else:
+                        self._admit_results(state, profile, expected_settings)
                     last_admit = time.monotonic()
                 report('Transcribing locally; verified files are retained')
                 return False

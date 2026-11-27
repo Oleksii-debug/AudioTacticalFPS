@@ -5,6 +5,8 @@ by Sceneria Innovative Technologies. Carr is an optional collection. The Python
 package, existing data identities and internal CARR commands remain stable.
 The current platform requirements are in
 [V3 finalization](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md).
+[Integration evidence](docs/RESONANCE_INTEGRATION_EVIDENCE.md) distinguishes
+executed source/native checks from model quality, NVDA and delivery acceptance.
 
 ## Run the desktop
 
@@ -17,7 +19,7 @@ installation, launch and a temporary synthetic self-test. A build is not a
 qualified delivery until its exact source, installed Windows behavior and
 component distribution profile have passed their separate acceptance gates.
 
-From a Python 3.11+ development environment:
+From a development environment (the qualified Windows dependency profile targets CPython 3.11 x64):
 
 ```sh
 python -m pip install '.[desktop]'
