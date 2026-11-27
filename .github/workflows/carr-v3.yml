@@ -49,6 +49,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify canonical citation and DOCX regeneration boundaries
+        timeout-minutes: 5
+        run: |
+          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/ci_check.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare the verified OCR engine before installed recovery acceptance
         timeout-minutes: 10
         run: |
@@ -103,9 +110,12 @@ jobs:
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_keeps_ordinary_unicode_names',
                     'tests/storage/test_state_backup_portability.py::test_portable_snapshot_roundtrip_unicode',
+                    'tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree',
+                    'tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree',
                     'tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory',
                     'tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound',
                     'tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries',
+                    'tests/speech/test_python_helper.py',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
@@ -126,11 +136,14 @@ jobs:
           required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
           ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact
+          required_state = {'test_state_inventory_rejects_unreadable_subtree[snapshot]', 'test_state_inventory_rejects_unreadable_subtree[restore]', 'test_state_restore_rejects_unlisted_file_before_scanning_later_subtree'}
+          state_inventory_exact = required_state <= {c.get('name') for c in cases}
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact and state_inventory_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
-                        ocr_inventory_exact=ocr_exact, manual_nvda='NOT_RUN')
+                        ocr_inventory_exact=ocr_exact, state_inventory_exact=state_inventory_exact,
+                        manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)
@@ -197,7 +210,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

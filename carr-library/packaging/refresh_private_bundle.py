@@ -13,7 +13,7 @@ import shutil
 from tempfile import TemporaryDirectory
 
 from build_windows_bundle import (read_lock, wheel_metadata, verify_application_source,
-                                  verify_dependency_closure, sha256)
+                                  verify_dependency_closure, sha256, copy_user_guides)
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
 from create_delivery import _read_manifest, _manifest
@@ -126,8 +126,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         (stage / 'install.lock').write_text('\n'.join(requirements) + '\n', encoding='utf-8')
         for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
             shutil.copyfile(HERE / name, stage / name)
-        shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
-        shutil.copyfile(HERE.parent / 'docs' / 'START_V3_UK.txt', stage / 'START_V3_UK.txt')
+        copy_user_guides(HERE.parent / 'docs', stage)
         (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
         for origin in (HERE / 'wheel-notices').iterdir():
             regular(origin)
@@ -148,7 +147,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
                 shutil.copyfile(HERE / lock_name, stage / directory / 'provenance.json')
         (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
         manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
-        manifest.update(source_commit=source_commit, bundled_audio=bool(audio_files),
+        manifest.update(source_commit=source_commit, source_tree=identity['source_tree'],
+                        bundled_audio=bool(audio_files),
                         bundled_citation_runtime=bool(node_files), use_scope='private-personal-installation',
                         parent_source_commit=previous['source_commit'],
                         parent_manifest_sha256=parent_manifest_sha256,

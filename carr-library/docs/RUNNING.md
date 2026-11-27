@@ -167,7 +167,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS or CSL JSON files through a preview. Select the records to keep;
+Import BibTeX, RIS or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -177,8 +177,10 @@ Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
 readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+BibTeX import resolves bounded macros and cross-references before the preview;
+unsupported or malformed records remain visible for review. Optional DOI lookup
+requires an explicit network request approval. Merely entering a DOI or URL does
+not send a request or download an attachment.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -186,6 +188,33 @@ Install an update into a new program folder, with a backup of your library saved
 first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
+
+Full library backups also include personal page bookmarks and reading resume
+positions for every library. Restore preserves their exact source revision,
+names and timestamps in the new data folder. The backup checksums cover this
+reading state as well as the database and retained originals. Older backups
+without reading state still restore; use a separate reading-state export to
+transfer those older bookmarks. Current full backups also retain pending import
+bytes and their resumable identities, application settings, project state and
+saved transcription jobs. External runtime/model locations and operating-system
+credential secrets must be configured separately after a move. See
+[reading desk](READING_DESK.md) for historical-position handling.
+
+## Local audio and video transcription
+
+Choose **Library, Transcription: local audio and video...** and configure a supported supplied
+worker profile, its Python interpreter and already installed local models.
+Choose **Додати записи** for individual media files or **Додати папку з
+підпапками** for one folder including nested folders. Intake reports retained
+media and excluded sidecars, preserves relative names and rejects unsafe paths
+or exceeded limits before publishing a job.
+
+Use **Запустити / продовжити** to run a saved job. Stop retains reusable progress
+without accepting unverified output as complete. Verified transcript text can be
+edited and exported through separate derivatives; original recordings and first
+results remain available. See [transcription](TRANSCRIPTION.md) for protocol
+compatibility, output formats and the distinction between controlled tests and
+actual neural inference.
 
 ## Review the source catalog
 
@@ -270,6 +299,14 @@ Use **Cancel operation** to stop a long operation before publication. Export des
 use the same checked Save workflow as topic exports.
 
 ### Search and source actions
+
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ADVANCED_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
 
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently

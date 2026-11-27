@@ -48,12 +48,11 @@ def desktop():
     frame.menu_bar.GetMenuCount.return_value = 2
     frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
     text, reports = ['Ready'], []
-    frame.status = SimpleNamespace(GetValue=lambda: text[0])
+    frame.status = SimpleNamespace(GetValue=lambda: text[0], SetValue=lambda value: text.__setitem__(0, value))
     def report(message):
         text[0] = message
         reports.append(message)
     frame.report = report
-    frame.status.SetValue = report
     frame._finish_job_controls = lambda: env['_finish_job_controls'](frame)
     frame.run_job = lambda *args, **kwargs: env['run_job'](frame, *args, **kwargs)
     return frame, queued, reports
@@ -197,6 +196,27 @@ def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     assert reports[-1] == 'Render…'
 
 
+def test_generic_completion_updates_notice_without_overriding_callback_focus(desktop):
+    frame, queued, reports = desktop
+    focused = ['query']
+    report = frame.report
+    def focusing_report(message):
+        focused[0] = 'host-status'
+        report(message)
+    frame.report = focusing_report
+    future = Future()
+    frame.executor.submit.return_value = future
+    def display_results(result):
+        focused[0] = 'result-grid'
+    frame.run_job('Search', lambda: ['source result'], display_results)
+    future.set_result(['source result'])
+    queued.pop()()
+    assert focused[0] == 'result-grid'
+    assert frame.status.GetValue() == 'Search: complete.'
+    assert reports == ['Search…']
+    assert frame.operation_progress.tracker.event.state == 'succeeded'
+
+
 @pytest.mark.parametrize('observer', ['start', 'update', 'succeed', 'finalize'])
 def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, observer):
     frame, queued, reports = desktop
@@ -212,7 +232,8 @@ def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, obs
     done.assert_called_once_with({'state': 'complete', 'destination': 'committed output'})
     failed.assert_not_called()
     assert not frame.working and not frame.busy
-    assert 'Progress reporting is unavailable' in reports[-1]
+    assert 'Progress reporting is unavailable' in frame.status.GetValue()
+    assert reports == ['Import…']
 
 
 def test_receipt_classifier_failure_preserves_successful_publication(desktop, monkeypatch):
@@ -227,7 +248,8 @@ def test_receipt_classifier_failure_preserves_successful_publication(desktop, mo
     done.assert_called_once_with('committed')
     failed.assert_not_called()
     assert not frame.working
-    assert 'Progress reporting is unavailable' in reports[-1]
+    assert 'Progress reporting is unavailable' in frame.status.GetValue()
+    assert reports == ['Export…']
     assert not any(event.percent == 100 for event in frame.operation_progress.history)
 
 

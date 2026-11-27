@@ -99,7 +99,7 @@ def _request_identity(record):
         'metadata', 'config', 'expected_manifest')}
 
 
-def _publication_state(db, record, revision):
+def _publication_state(db, record, revision, *, check=lambda: None, max_payload=None):
     """Inspect this exact sealed revision and registration in the caller's snapshot.
 
     The digest includes original source identity, requested catalog metadata and
@@ -109,6 +109,7 @@ def _publication_state(db, record, revision):
     from ..application import LibraryApp
     from ..catalog.membership import Catalog
 
+    check()
     workspace, metadata = record['workspace'], record['metadata']
     LibraryApp._authorize(db, workspace)
     row = db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
@@ -135,13 +136,18 @@ def _publication_state(db, record, revision):
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):
         raise ValueError('Import publication metadata changed.')
-    authors = tuple(r[0] for r in db.execute(
-        'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
-        (workspace, metadata['work_id'])))
+    authors = []
+    for author in db.execute(
+            'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
+            (workspace, metadata['work_id'])):
+        check()
+        authors.append(author[0])
+    authors = tuple(authors)
     if authors != tuple(metadata['authors']):
         raise ValueError('Import publication authors changed.')
     scoped = Catalog(db, workspace)
     for collection in metadata['collections']:
+        check()
         scoped._active_collection(collection)
         if not db.execute('SELECT 1 FROM catalog_membership '
                           'WHERE workspace=? AND collection=? AND edition=?',
@@ -154,19 +160,30 @@ def _publication_state(db, record, revision):
             '; '.join(authors) or None, metadata['title'] or 'Unknown title',
             metadata['volume'], metadata['edition']):
         raise ValueError('Import publication source metadata changed.')
+    check()
     digest = sha256(canonical([_request_identity(record), list(row), list(catalog),
                                list(source), authors]).encode('utf-8'))
     completed = 0
-    for page in db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
-                           'FROM page WHERE revision=? ORDER BY ordinal', (revision,)):
+    # The normal publishing path retains the canonical digest byte-for-byte.
+    # Recovery additionally caps each fetched payload and checks its deadline.
+    if max_payload is None:
+        pages = db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
+                           'FROM page WHERE revision=? ORDER BY ordinal', (revision,))
+    else:
+        pages = db.execute('SELECT ordinal,physical,printed,verified,'
+                           'CASE WHEN length(CAST(raw AS BLOB))<=? THEN raw END,digest '
+                           'FROM page WHERE revision=? ORDER BY ordinal', (max_payload, revision))
+    for page in pages:
+        check()
         completed += 1
         # Extraction already enforces its format-specific capacity. This
         # streaming verifier must not impose the PDF page limit on DOCX records.
-        if (page[0] != completed
+        if (page[0] != completed or not isinstance(page[4], str)
                 or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):
             raise ValueError('Import publication page integrity changed.')
         digest.update(b'\n')
         digest.update(canonical(list(page)).encode('utf-8'))
+    check()
     if completed == 0:
         raise ValueError('Import publication contains no source pages.')
     return dict(sha256=digest.hexdigest(), completed=completed, manifest=manifest)
@@ -197,49 +214,11 @@ def record_publication_candidate(root, request_id, db, workspace, revision):
         attempt=attempt, revision=revision, **state))
 
 
-def _reconcile_publication(root, request_id, attempt):
-    """Recover only a fresh publication from this stopped child, without replay."""
-    record = load_request(root, request_id)
-    candidate = record.get('publication_candidate')
-    if candidate is None:
-        return None
-    if (record.get('attempt') != attempt or not isinstance(candidate, dict)
-            or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
-            or candidate.get('attempt') != attempt
-            or not isinstance(candidate.get('revision'), str)
-            or not re.fullmatch('[0-9a-f]{64}', candidate['revision'])
-            or not isinstance(candidate.get('sha256'), str)
-            or not re.fullmatch('[0-9a-f]{64}', candidate['sha256'])
-            or type(candidate.get('completed')) is not int or candidate['completed'] < 1
-            or not isinstance(candidate.get('manifest'), dict)):
-        raise ValueError('Import publication candidate changed.')
-    from ..application import LibraryApp
-    from ..citations.anchors import Identity
+def _reconcile_publication(root, request_id, attempt, *, workspace, timeout=1.0):
+    """Recover this child's transaction receipt without replay or writable open."""
+    from .publication import completed_request
 
-    app = LibraryApp(root)
-    with app.read(record['workspace']) as db:
-        receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
-                             'WHERE revision=?', (candidate['revision'],)).fetchone()
-        if receipt is None or tuple(receipt[:2]) != (request_id, attempt):
-            # An intact equal revision may have been committed by a competitor
-            # after this child rolled back. Its receipt cannot complete us.
-            return None
-        if receipt['sha256'] != candidate['sha256']:
-            raise ValueError('Import publication receipt differs from its candidate.')
-        state = _publication_state(db, record, candidate['revision'])
-        if state is None:  # The child died before its SQLite transaction committed.
-            return None
-        if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
-            raise ValueError('Committed import differs from its publication candidate.')
-        identity = Identity(record['workspace'], record['metadata']['edition_id'],
-                            state['manifest']['sha256'], candidate['revision'])
-        app._retained_source(db, record['workspace'], identity)
-    return dict(state='complete', id=candidate['revision'], workspace=record['workspace'],
-                edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
-                completed=state['completed'], total=state['completed'], error=None,
-                verified=state['manifest']['mime'] == 'text/plain',
-                publication_recovered=True,
-                message='Import completed before the worker stopped; the committed source was verified.')
+    return completed_request(root, workspace, request_id, attempt=attempt, timeout=timeout)
 
 
 class RuntimeBoundIngest(Ingest):
@@ -518,6 +497,33 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
                             request_id=request_id, new=new)
 
 
+def _publication_error_details(error):
+    """Keep useful recovery diagnostics without exposing exception payloads/paths."""
+    kind = type(error).__name__
+    details = [kind if re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]{0,79}', kind) else 'Error']
+    location = None
+    trace = error.__traceback__
+    while trace is not None:
+        module = trace.tb_frame.f_globals.get('__name__', '')
+        if isinstance(module, str) and re.fullmatch(r'carr_library\.[A-Za-z_0-9.]{1,160}', module):
+            location = f'{module}:{trace.tb_lineno}'
+        trace = trace.tb_next
+    if location is not None:
+        details.append(location)
+    for name in ('errno', 'winerror', 'sqlite_errorcode'):
+        value = getattr(error, name, None)
+        if type(value) is int and 0 <= value <= 0xFFFFFFFF:
+            details.append(f'{name}={value}')
+    value = getattr(error, 'sqlite_errorname', None)
+    if isinstance(value, str) and re.fullmatch(r'SQLITE_[A-Z_0-9]{1,64}', value):
+        details.append(value)
+    return ', '.join(details)
+
+
+class _UnreportedWorkerExit(dict):
+    """Host-only marker: the child supplied no explicit error reply."""
+
+
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
                  timeout, request_id, new):
     if (not callable(cancelled) or type(timeout) not in (int, float)
@@ -536,12 +542,24 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
-    if result.get('state') in ('cancelled', 'timed_out', 'failed'):
+    # A real error reply remains an error, even if its source was published.
+    # Only an absent/invalid reply can represent a lost post-commit response.
+    unreported_exit = isinstance(result, _UnreportedWorkerExit)
+    result = dict(result)  # Never persist or expose the host-only marker.
+    if result.get('state') in ('cancelled', 'timed_out') or unreported_exit:
         try:
-            committed = _reconcile_publication(root, request_id, attempt)
-        except (KeyError, TypeError, ValueError, OSError, sqlite3.Error):
-            result = dict(state='failed', message=
-                          'The stopped import could not verify its publication. Review or resume this request.')
+            committed = _reconcile_publication(root, request_id, attempt,
+                                               workspace=workspace, timeout=min(timeout, 1.0))
+        except (KeyError, TypeError, ValueError, OSError, sqlite3.Error) as error:
+            from .writer_guard import WriterBusy
+            details = _publication_error_details(error)
+            if isinstance(error, (TimeoutError, InterruptedError, WriterBusy)):
+                result = dict(result, message=f"{result.get('message', 'Import worker stopped.')} "
+                              f'Publication verification is pending ({details}); resume to check it.')
+            else:
+                result = dict(state='failed', message=
+                              f'The stopped import could not verify its publication ({details}); '
+                              'review or resume to check it.')
         else:
             if committed is not None:
                 result = committed
@@ -611,8 +629,11 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                     if (process.returncode != 0 or not isinstance(reply, dict)
                             or not isinstance(reply.get('result'), dict)):
                         message = reply.get('error') if isinstance(reply, dict) else None
-                        result = {'state': 'failed', 'message': message or
-                                  f'Import worker exited unexpectedly ({process.returncode}).'}
+                        if isinstance(message, str) and message:
+                            result = {'state': 'failed', 'message': message}
+                        else:
+                            result = _UnreportedWorkerExit(state='failed', message=
+                                f'Import worker exited unexpectedly ({process.returncode}).')
                     else:
                         result = reply['result']
     finally:
