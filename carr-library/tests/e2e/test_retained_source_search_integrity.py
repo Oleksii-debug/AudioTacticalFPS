@@ -76,9 +76,9 @@ def test_validation_cache_is_per_search_and_does_not_repeat_each_pdf_page(mixed,
     original = app.assets.resolve
     calls = []
 
-    def resolve(digest):
+    def resolve(digest, **options):
         calls.append(digest)
-        return original(digest)
+        return original(digest, **options)
 
     monkeypatch.setattr(app.assets, 'resolve', resolve)
     assert len(app.search(workspace, 'PDFonly')) == 2
@@ -94,8 +94,8 @@ def test_cancel_during_original_validation_keeps_previous_complete_selection(mix
     original = app.assets.resolve
     stopped = Event()
 
-    def resolve(digest):
-        path = original(digest)
+    def resolve(digest, **options):
+        path = original(digest, **options)
         stopped.set()
         return path
 
@@ -110,8 +110,8 @@ def test_original_validation_consumes_existing_search_deadline(mixed, monkeypatc
     current = [100.0]
     original = app.assets.resolve
 
-    def resolve(digest):
-        path = original(digest)
+    def resolve(digest, **options):
+        path = original(digest, **options)
         current[0] += 2.0
         return path
 

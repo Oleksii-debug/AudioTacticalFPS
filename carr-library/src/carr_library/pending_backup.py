@@ -20,7 +20,8 @@ import re
 import sqlite3
 import time
 
-from .catalog.intake import MAX_BYTES, classify
+from .catalog.intake import (MAX_BYTES, source_limit, source_snapshot, copy_snapshot,
+    AssetSnapshot, FileSnapshot, text_segments)
 from .durable_state import local_path, regular, sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
@@ -181,7 +182,7 @@ def _entry(path, name, cancelled):
 def _manifest(value):
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or not _hash(value['sha256']) or value['mime'] not in SUFFIXES
-            or type(value['size']) is not int or not 0 < value['size'] <= MAX_BYTES):
+            or type(value['size']) is not int or not 0 < value['size'] <= source_limit(value['mime'])):
         raise ValueError('Invalid pending source manifest.')
     return value
 
@@ -588,8 +589,12 @@ def _references(requests, batches):
                 yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None
 
 
-def _source_checkpoints(asset, raw, jobs, journal):
-    """A TXT checkpoint is verifiable against original bytes without parsing."""
+def _source_checkpoints(asset, raw, jobs, journal, *, cancelled=lambda: False):
+    """Verify real logical segments against retained bytes without loading a whole TXT."""
+    original = raw if isinstance(raw, (AssetSnapshot, FileSnapshot)) else AssetSnapshot(
+        asset['sha256'], asset['mime'], len(raw), raw)
+    if original.manifest() != dict(sha256=asset['sha256'], mime=asset['mime'], size=asset['size_bytes']):
+        raise ValueError('Pending source manifest differs from its retained snapshot.')
     for job in jobs.values():
         if job['asset'] != asset['sha256']:
             continue
@@ -597,16 +602,21 @@ def _source_checkpoints(asset, raw, jobs, journal):
         if (asset['mime'], kind) not in (('text/plain', 'logical_segment'), ('application/pdf', 'physical_page')):
             raise ValueError('Pending journal MIME differs from the source format.')
         if kind == 'logical_segment':
-            segments = raw.decode('utf-8-sig').split('\f')
-            if len(segments) != job['count'] or not any(item.strip() for item in segments):
+            checkpoints = iter(journal.execute('SELECT ordinal,payload FROM checkpoint WHERE job=? ORDER BY ordinal', (job['id'],)))
+            checkpoint = next(checkpoints, None)
+            count, nonempty = 0, False
+            for count, segment in enumerate(text_segments(original, cancelled=cancelled), 1):
+                _check(cancelled)
+                nonempty = nonempty or bool(segment.strip())
+                if checkpoint is not None and checkpoint['ordinal'] == count:
+                    payload = json.loads(checkpoint['payload'])
+                    if (payload['raw_text'] != segment
+                            or payload['provenance'] != {'asset_sha256': job['asset'], 'method': 'strict_utf8'}
+                            or payload['status'] != 'candidate' or payload['blocks'] != [] or payload['warnings'] != []):
+                        raise ValueError('Pending text checkpoint differs from the exact original bytes.')
+                    checkpoint = next(checkpoints, None)
+            if count != job['count'] or not nonempty or checkpoint is not None:
                 raise ValueError('Pending text source count differs from its journal.')
-            for checkpoint in journal.execute('SELECT ordinal,payload FROM checkpoint WHERE job=? ORDER BY ordinal', (job['id'],)):
-                payload = json.loads(checkpoint['payload'])
-                if (payload['raw_text'] != segments[checkpoint['ordinal'] - 1]
-                        or payload['provenance'] != {'asset_sha256': job['asset'], 'method': 'strict_utf8'}
-                        or payload['status'] != 'candidate' or payload['blocks'] != [] or payload['warnings'] != []):
-                    raise ValueError('Pending text checkpoint differs from the exact original bytes.')
-
 
 def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: False):
     """Create a self-contained component under the caller's root writer guard."""
@@ -681,7 +691,7 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                     if any(os.path.lexists(path) for path in candidates):
                         retained = app.assets.resolve(wanted)
                 try:
-                    incoming = planned_snapshot(local_path(retained or source, exists=True)) if retained or source else None
+                    incoming = planned_snapshot(local_path(retained or source, exists=True), cancelled=cancelled) if retained or source else None
                 except FileNotFoundError as exc:
                     raise ValueError('Pending import source bytes are missing; restore the selected original before a complete backup.') from exc
                 if incoming is None:
@@ -689,8 +699,11 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
                 name = incoming.digest + SUFFIXES[incoming.mime]
-                reserve(len(incoming.data))
-                entry = _write(target / 'originals' / name, incoming.data)
+                reserve(incoming.size)
+                destination = local_path(target / 'originals' / name)
+                destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                copy_snapshot(incoming, destination, cancelled=cancelled)
+                entry = dict(filename=name, size_bytes=incoming.size, sha256=incoming.digest)
                 entry['filename'] = name
                 entry['mime'] = incoming.mime
                 assets[incoming.digest] = entry
@@ -707,7 +720,8 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 bindings.append(dict(filename=name, row_id=row_id, source=source, asset_sha256=asset_hash))
             for asset in assets.values():
                 _check(cancelled)
-                _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
+                original = source_snapshot(target / 'originals', asset['filename'], cancelled=cancelled)
+                _source_checkpoints(asset, original, jobs, journal, cancelled=cancelled)
         if _inventory(root) != before:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
         # Windows file timestamps can stay unchanged after a same-sized edit.
@@ -747,7 +761,8 @@ def validate_pending(metadata):
                 or not _hash(item['sha256']) or type(item['size_bytes']) is not int or item['size_bytes'] <= 0):
             raise ValueError('Invalid pending import file manifest.')
         name = item['filename']
-        limit = MAX_JOURNAL if name == 'imports.sqlite' else MAX_BYTES if name.startswith('originals/') else (
+        original_mime = next((mime for mime, suffix in SUFFIXES.items() if name.endswith(suffix)), None)
+        limit = MAX_JOURNAL if name == 'imports.sqlite' else source_limit(original_mime) if name.startswith('originals/') else (
             MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST)
         if item['size_bytes'] > limit:
             raise ValueError('Pending import file exceeds its byte budget.')
@@ -760,7 +775,7 @@ def validate_pending(metadata):
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256', 'mime'}
                 or not _hash(item['sha256']) or item['mime'] not in SUFFIXES
                 or item['filename'] != item['sha256'] + SUFFIXES[item['mime']]
-                or item['sha256'] in assets or type(item['size_bytes']) is not int or not 0 < item['size_bytes'] <= MAX_BYTES):
+                or item['sha256'] in assets or type(item['size_bytes']) is not int or not 0 < item['size_bytes'] <= source_limit(item['mime'])):
             raise ValueError('Invalid pending original manifest.')
         expected = dict(filename='originals/' + item['filename'], size_bytes=item['size_bytes'], sha256=item['sha256'])
         if files.get(expected['filename']) != expected:
@@ -842,10 +857,10 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
             if set(bindings) != expected_bindings or referenced != set(assets):
                 raise ValueError('Pending backup contains missing or unreferenced original bytes.')
             for asset in assets.values():
-                raw = _read(verified / 'originals' / asset['filename'], MAX_BYTES)
-                if classify(raw, Path(asset['filename']).suffix) != asset['mime'] or sha256(raw).hexdigest() != asset['sha256']:
+                original = source_snapshot(verified / 'originals', asset['filename'], cancelled=cancelled)
+                if original.manifest() != dict(sha256=asset['sha256'], mime=asset['mime'], size=asset['size_bytes']):
                     raise ValueError('Pending original MIME or checksum mismatch.')
-                _source_checkpoints(asset, raw, jobs, journal)
+                _source_checkpoints(asset, original, jobs, journal, cancelled=cancelled)
 
             # Change only the explicitly listed location fields. Existing
             # status, job, expected manifest, result and identity fields survive.
@@ -886,8 +901,8 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     for asset in metadata['assets']:
         target = stage / 'originals' / asset['filename']
         if os.path.lexists(target):
-            raw = _read(target, MAX_BYTES)
-            if len(raw) != asset['size_bytes'] or sha256(raw).hexdigest() != asset['sha256']:
+            checked = _entry(target, target.name, cancelled)
+            if checked['size_bytes'] != asset['size_bytes'] or checked['sha256'] != asset['sha256']:
                 raise ValueError('Pending original conflicts with a catalog original.')
         else:
             _copy(verified / 'originals' / asset['filename'], target, asset, cancelled)

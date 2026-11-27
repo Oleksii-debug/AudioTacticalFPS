@@ -9,7 +9,7 @@ import os
 import re
 import stat
 
-from ..catalog.intake import snapshot
+from ..catalog.intake import source_snapshot as snapshot
 from ..extract.document_formats import SUPPORTED_SUFFIXES
 
 
@@ -60,7 +60,7 @@ def _row(path, root, state, message, manifest=None, duplicate_of=None):
                 message=message, manifest=manifest, duplicate_of=duplicate_of)
 
 
-def planned_snapshot(path):
+def planned_snapshot(path, *, cancelled=lambda: False):
     """Read one planned source under the preflight file policy.
 
     Import workers reuse this helper when consuming a saved plan. They compare
@@ -76,7 +76,7 @@ def planned_snapshot(path):
         raise ValueError('The planned source must be a regular file without links or reparse points.')
     if before.st_nlink != 1:
         raise ValueError('Hard-linked source files are not imported.')
-    asset = snapshot(path.parent, path.name)
+    asset = snapshot(path.parent, path.name, cancelled=cancelled)
     after = path.lstat()
     _parents(path)
     if _linked(after) or after.st_nlink != 1 or _stamp(after) != _stamp(before):
@@ -96,8 +96,8 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
 
     Cancellation raises InterruptedError, discarding this unfinished plan. The
     caller must revalidate bytes when importing: a preflight is not authority to
-    read a subsequently changed file. Memory retains one <=64 MiB intake
-    snapshot at a time, bounded path lists, manifests and digest identities.
+    read a subsequently changed file. Memory-format snapshots remain <=64 MiB;
+    larger TXT/PDF use verified streams, alongside bounded path lists and manifests.
 
     Internal adapters may select another bounded file policy. ``file_manifest``
     returns a streaming-verified SHA256/size/MIME manifest; document callers keep
@@ -215,7 +215,7 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
                 raise ValueError('Hard-linked source files are not imported.')
             check()
             if file_manifest is None:
-                asset = planned_snapshot(path)
+                asset = planned_snapshot(path, cancelled=cancelled)
                 manifest = asset.manifest()
                 del asset
             else:

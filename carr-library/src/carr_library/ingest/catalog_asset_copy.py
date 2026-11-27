@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 
+from carr_library.catalog.intake import source_snapshot, source_limit
 from carr_library.ingest.retained_assets import (
     MAX_BYTES, SUFFIXES, RetainedAssets, RetentionError,
 )
@@ -57,7 +58,7 @@ def catalog_inventory(db, *, include_all_workspaces=False,
     total = 0
     for digest, mime, size in rows:
         if (not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
-                or mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_BYTES):
+                or mime not in SUFFIXES or type(size) is not int or not 0 < size <= source_limit(mime)):
             raise RetentionError('invalid or unsupported catalog asset manifest')
         total += size
         if total > max_bytes:
@@ -66,20 +67,20 @@ def catalog_inventory(db, *, include_all_workspaces=False,
     return tuple(entries)
 
 
-def _checked_path(store, entry):
-    path = store.resolve(entry.digest)  # existing hash, file type and link checks
+def _checked_path(store, entry, *, cancelled=lambda: False):
+    path = store.resolve(entry.digest, cancelled=cancelled)  # existing hash, file type and link checks
     if path.name != entry.filename or path.stat().st_size != entry.size:
         raise RetentionError('retained asset disagrees with catalog MIME or size')
     return path
 
 
-def verify_catalog_assets(db, store, **limits):
+def verify_catalog_assets(db, store, *, cancelled=lambda: False, **limits):
     """Verify exact copied namespace and return catalog-derived manifest entries."""
     entries = catalog_inventory(db, **limits)
     if {p.name for p in store.root.iterdir()} != {e.filename for e in entries}:
         raise RetentionError('unexpected or incomplete catalog asset namespace')
     for entry in entries:
-        _checked_path(store, entry)
+        _checked_path(store, entry, cancelled=cancelled)
     return entries
 
 
@@ -100,9 +101,15 @@ def copy_catalog_assets(db, source, destination, **limits):
     destination.mkdir(mode=0o700)
     target = RetainedAssets(destination)
     for entry, path in zip(entries, paths):
-        with path.open('rb') as stream:
-            data = stream.read(entry.size + 1)
-        if len(data) != entry.size:
-            raise RetentionError('retained asset size changed')
-        target.retain(data, entry.mime, entry.digest)
+        if entry.size > MAX_BYTES:
+            asset = source_snapshot(path.parent, path.name)
+            if asset.manifest() != dict(sha256=entry.digest, mime=entry.mime, size=entry.size):
+                raise RetentionError('retained asset manifest changed')
+            target.retain_snapshot(asset)
+        else:
+            with path.open('rb') as stream:
+                data = stream.read(entry.size + 1)
+            if len(data) != entry.size:
+                raise RetentionError('retained asset size changed')
+            target.retain(data, entry.mime, entry.digest)
     return verify_catalog_assets(db, target, **limits)
