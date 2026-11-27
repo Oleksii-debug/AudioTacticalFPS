@@ -91,4 +91,4 @@ def test_full_legacy_restore_dispatch_rejects_portability_before_missing_payload
     assert not destination.exists()
     assert manifest_path.read_bytes() == raw
     assert app.database.read_bytes() == database_before
-    assert app.search(workspace, 'Unchanged')[0].edition == original['edition']
+    assert app.search(workspace, 'Unchanged')[0].edition_id == original['edition']
