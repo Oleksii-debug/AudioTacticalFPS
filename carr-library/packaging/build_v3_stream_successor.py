@@ -328,7 +328,8 @@ def build(args):
     work.mkdir(mode=0o700)
     log, commands = work / 'build.log', []
     source = work / 'source'
-    run([sys.executable, '-m', 'pip', '--version'], cwd=work, log=log, commands=commands)
+    if not args.application_wheel:
+        run([sys.executable, '-m', 'pip', '--version'], cwd=work, log=log, commands=commands)
     git = ['git', '--no-replace-objects']
     run(git + ['clone', '--shared', '--no-checkout', str(repository), str(source)],
         cwd=work, log=log, commands=commands)
@@ -416,13 +417,17 @@ def build(args):
         raise ValueError('The dedicated dependency input contains unlisted files.')
 
     print('Building and verifying the exact-source application wheel and minimal production bundle.', flush=True)
-    run([sys.executable, '-m', 'pip', '--isolated', '--disable-pip-version-check', 'wheel',
-         '--no-index', '--no-deps', '--no-build-isolation', '--wheel-dir', str(wheel_dir), str(project)],
-        cwd=source, log=log, commands=commands)
-    wheels = list(wheel_dir.glob('*.whl'))
-    if len(wheels) != 1:
-        raise ValueError('Expected exactly one fresh application wheel.')
-    application = wheels[0]
+    if args.application_wheel:
+        application = delivery._absolute(args.application_wheel)
+        delivery._plain(application)
+    else:
+        run([sys.executable, '-m', 'pip', '--isolated', '--disable-pip-version-check', 'wheel',
+             '--no-index', '--no-deps', '--no-build-isolation', '--wheel-dir', str(wheel_dir), str(project)],
+            cwd=source, log=log, commands=commands)
+        wheels = list(wheel_dir.glob('*.whl'))
+        if len(wheels) != 1:
+            raise ValueError('Expected exactly one fresh application wheel.')
+        application = wheels[0]
     source_identity = wheel_verifier.verify_application_wheel(application, source, commit)
     if not old_licenses.items() <= wheel_licenses(application).items():
         raise ValueError('An application license changed or disappeared.')
@@ -549,6 +554,7 @@ def build(args):
             'buffer_bytes': CHUNK, 'duplicate_minimal_dependency_bytes_removed': removed_bytes,
             'extracted_dependency_bytes_retained': sum(item['bytes'] for item in dependency_records),
             'dependency_inputs_reused': bool(args.dependency_wheelhouse),
+            'application_wheel_reused': bool(args.application_wheel),
             'dependency_input_directory': str(dependency_dir),
             'estimated_output_and_reserve_bytes': required_free, 'free_bytes_before_output': free},
         'instructions': delivery.INSTRUCTIONS,
@@ -579,6 +585,8 @@ def main(argv=None):
     parser.add_argument('--output', required=True, type=Path, help='New delivery directory, atomically published after verification')
     parser.add_argument('--source-companion', required=True, type=Path)
     parser.add_argument('--filename', help='Optional simple application ZIP filename')
+    parser.add_argument('--application-wheel', type=Path,
+                        help='Reuse a completed wheel only after verifying it against the exact frozen source')
     parser.add_argument('--dependency-wheelhouse', type=Path,
                         help='Reuse a dedicated extracted dependency input after exact current pin/hash verification')
     parser.add_argument('--work', type=Path, help='Fresh small source/wheel build directory, retained')
