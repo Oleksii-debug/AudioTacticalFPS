@@ -12,7 +12,7 @@ from carr_library.audio.process import publish_file, run_process
 
 
 def execute(code, **kwargs):
-    return run_process([str(Path(sys.executable).resolve()), '-I', '-c', code], **kwargs)
+    return run_process([str(Path(sys.executable).resolve()), '-I', '-B', '-c', code], **kwargs)
 
 
 def test_fast_stdout_overflow_is_detected_after_child_exit():
