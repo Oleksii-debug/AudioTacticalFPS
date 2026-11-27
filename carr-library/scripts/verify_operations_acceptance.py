@@ -87,7 +87,8 @@ SUITES = [
     "tests/assistant/test_providers.py",
     "tests/assistant/test_translation_v3.py",
     "tests/assistant/test_translation_narration.py",
-    "tests/ui/test_profile_project_exports.py"
+    "tests/ui/test_profile_project_exports.py",
+    "tests/ui/test_transcription_lifetime.py"
 ]
 CROSS_PROCESS = {
     'test_actual_cross_process_studio_asr_contention_cancel_and_crash[' + outcome + ']'

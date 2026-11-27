@@ -47,7 +47,7 @@ jobs:
       - name: Verify retained inputs, actual child protocol, recovery and CLI
         shell: pwsh
         run: |
-          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/ui/test_progress_job_review.py
+          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/ui/test_progress_job_review.py tests/ui/test_transcription_lifetime.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install actual native desktop controls
         if: runner.os == 'Windows'

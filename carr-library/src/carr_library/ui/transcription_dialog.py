@@ -22,6 +22,50 @@ def show_transcription(frame, *, job_id=None):
     selected_ready = False
     rows, source_rows = [], []
     cancel = threading.Event()
+    frame_cancel = frame.cancel_event
+    owner_id, parent_id = dialog.GetId(), frame.GetId()
+    native_destroyed = parent_destroyed = False
+    def destroyed(event):
+        nonlocal alive, native_destroyed, parent_destroyed
+        identity = event.GetId()
+        if identity == owner_id:
+            native_destroyed = True
+        elif identity == parent_id:
+            parent_destroyed = True
+        if identity in (owner_id, parent_id):
+            alive = False
+            cancel.set()
+        event.Skip()
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+    frame.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+    def available():
+        return (alive and not native_destroyed and not parent_destroyed
+                and dialog and not dialog.IsBeingDeleted()
+                and frame and not frame.IsBeingDeleted())
+    def choose(factory, *args, read, **kwargs):
+        """Read one explicit modal answer only while its native owner survives."""
+        if not available():
+            return None
+        picker = factory(dialog, *args, **kwargs)
+        picker_id, picker_alive = picker.GetId(), True
+        def picker_destroyed(event):
+            nonlocal picker_alive
+            if event.GetId() == picker_id:
+                picker_alive = False
+            event.Skip()
+        picker.Bind(wx.EVT_WINDOW_DESTROY, picker_destroyed)
+        try:
+            answer = picker.ShowModal()
+            if (answer != wx.ID_OK or not available() or not picker_alive
+                    or not picker or picker.IsBeingDeleted()):
+                return None
+            return read(picker)
+        finally:
+            if (not native_destroyed and not parent_destroyed and picker_alive
+                    and frame and not frame.IsBeingDeleted()
+                    and dialog and not dialog.IsBeingDeleted()
+                    and picker and not picker.IsBeingDeleted()):
+                picker.Destroy()
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 4)
         control = factory(dialog, **kwargs)
@@ -62,10 +106,10 @@ def show_transcription(frame, *, job_id=None):
     layout.Add(row, 0, wx.EXPAND)
     dialog.SetSizer(layout)
     def report(value):
-        if alive:
+        if available():
             status.ChangeValue(str(value))
     def controls():
-        if not alive:
+        if not available():
             return
         for control in (jobs, title, model, language, device, words, mixed, sources, text):
             control.Enable(not busy)
@@ -76,11 +120,15 @@ def show_transcription(frame, *, job_id=None):
         buttons['save'].Enable(not busy and selected_ready and dirty)
     def can_replace():
         nonlocal dirty
+        if not available():
+            return False
         if not dirty:
             return True
         discard = wx.MessageBox('Відкинути незбережені правки поточного тексту? '
                                 'Щоб зберегти їх, оберіть «Ні», потім «Зберегти правки».',
                                 'Незбережені правки', wx.YES_NO | wx.NO_DEFAULT, dialog)
+        if not available():
+            return False
         if discard == wx.YES:
             dirty = False
             return True
@@ -88,6 +136,8 @@ def show_transcription(frame, *, job_id=None):
         return False
     def load_source():
         nonlocal selected_source, selected_ready, dirty
+        if not available():
+            return
         index = sources.GetSelection()
         selected_source = source_rows[index]['filename'] if 0 <= index < len(source_rows) else None
         selected_ready = False
@@ -112,6 +162,8 @@ def show_transcription(frame, *, job_id=None):
                 begin('Перевірка й читання транскрипції', read_text, loaded)
     def load_job():
         nonlocal current, source_rows
+        if not available():
+            return
         index = jobs.GetSelection()
         current = rows[index]['id'] if 0 <= index < len(rows) else None
         source_rows = service.get(current)['sources'] if current else []
@@ -134,6 +186,8 @@ def show_transcription(frame, *, job_id=None):
                    '\nПравки тексту не змінюють аудіо та початкові часові мітки.')
     def refresh(select=None):
         nonlocal rows
+        if not available():
+            return
         rows = list(service.list())
         jobs.SetItems([f"{item['title']} — {item['status']} ({item['done']}/{len(item['sources'])})" for item in rows])
         if rows:
@@ -142,7 +196,7 @@ def show_transcription(frame, *, job_id=None):
         load_job()
     def begin(label, operation, complete, *, allow_dirty=False):
         nonlocal busy
-        if busy or (not allow_dirty and not can_replace()):
+        if not available() or busy or (not allow_dirty and not can_replace()):
             return
         if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
             report('Спочатку завершіть поточну операцію програми.')
@@ -154,7 +208,7 @@ def show_transcription(frame, *, job_id=None):
             nonlocal busy
             busy = False
             controls()
-            if alive:
+            if available():
                 try:
                     complete(result)
                 except (ValueError, OSError, RuntimeError) as exc:
@@ -164,42 +218,52 @@ def show_transcription(frame, *, job_id=None):
             busy = False
             controls()
             report(error)
-        if frame.run_job(label, operation, done=done, failed=failed) is False:
+        def guarded_operation():
+            if cancelled():
+                from ..audio.models import AudioCancelled
+                raise AudioCancelled('The transcription window closed before the operation started.')
+            return operation()
+        if frame.run_job(label, guarded_operation, done=done, failed=failed) is False:
             busy = False
             controls()
     def cancelled():
-        return cancel.is_set() or frame.cancel_event.is_set()
+        return cancel.is_set() or frame_cancel.is_set()
     def configure(event):
+        if not available():
+            return
         try:
             from ..transcription import PROTOCOLS
-            with wx.SingleChoiceDialog(dialog,
-                    'Оберіть контракт саме встановленого worker.py. V5 потребує також local_models.py і transcript_features.py; '
-                    'виконує до трьох спроб зі збереженням мови. Старі завдання зберігають свій профіль.',
-                    'Профіль локального Whisper',
-                    ['receipts-v1 — worker із квитанціями результатів',
-                     'whisper-v5-manifest-v1 — виправлений приватний V5']) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                protocol = PROTOCOLS[chooser.GetSelection()]
-            with wx.FileDialog(dialog, 'Оберіть Python локального Whisper', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                python = chooser.GetPath()
-            with wx.FileDialog(dialog, 'Оберіть перевірений worker.py', wildcard='Python (*.py)|*.py',
-                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                worker = chooser.GetPath()
-            with wx.DirDialog(dialog, 'Оберіть папку вже встановлених моделей', style=wx.DD_DIR_MUST_EXIST) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                models_dir = chooser.GetPath()
+            selected = choose(wx.SingleChoiceDialog,
+                'Оберіть контракт саме встановленого worker.py. V5 потребує також local_models.py і transcript_features.py; '
+                'виконує до трьох спроб зі збереженням мови. Старі завдання зберігають свій профіль.',
+                'Профіль локального Whisper',
+                ['receipts-v1 — worker із квитанціями результатів',
+                 'whisper-v5-manifest-v1 — виправлений приватний V5'],
+                read=lambda picker: picker.GetSelection())
+            if selected is None:
+                return
+            protocol = PROTOCOLS[selected]
+            python = choose(wx.FileDialog, 'Оберіть Python локального Whisper',
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST, read=lambda picker: picker.GetPath())
+            if python is None:
+                return
+            worker = choose(wx.FileDialog, 'Оберіть перевірений worker.py',
+                wildcard='Python (*.py)|*.py', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                read=lambda picker: picker.GetPath())
+            if worker is None:
+                return
+            models_dir = choose(wx.DirDialog, 'Оберіть папку вже встановлених моделей',
+                style=wx.DD_DIR_MUST_EXIST, read=lambda picker: picker.GetPath())
+            if models_dir is None:
+                return
             begin('Підключення локального Whisper', lambda: service.configure(python, worker, models_dir, protocol=protocol),
                   lambda value: report('Профіль підключено: ' + value['protocol'] + '. ' + value.get('retry_policy', '') +
                       ' Якість моделі ще не підтверджена фактичним розпізнаванням.'))
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def create_selected(selected, *, folder=False):
+        if not available():
+            return
         options = {'model': model.GetValue().strip(), 'language': language.GetValue().strip(),
                    'word_timestamps': words.GetValue(), 'multilingual': mixed.GetValue(),
                    'device': 'cuda' if device.GetSelection() == 1 else 'cpu',
@@ -221,26 +285,26 @@ def show_transcription(frame, *, job_id=None):
         if not can_replace():
             return
         try:
-            with wx.FileDialog(dialog, 'Оберіть аудіо або відео', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                selected = chooser.GetPaths()
-            create_selected(selected)
+            selected = choose(wx.FileDialog, 'Оберіть аудіо або відео',
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE,
+                read=lambda picker: picker.GetPaths())
+            if selected is not None:
+                create_selected(selected)
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def create_folder(event):
         if not can_replace():
             return
         try:
-            with wx.DirDialog(dialog, 'Оберіть папку аудіо або відео; підпапки буде включено',
-                              style=wx.DD_DIR_MUST_EXIST) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                selected = chooser.GetPath()
-            create_selected(selected, folder=True)
+            selected = choose(wx.DirDialog, 'Оберіть папку аудіо або відео; підпапки буде включено',
+                style=wx.DD_DIR_MUST_EXIST, read=lambda picker: picker.GetPath())
+            if selected is not None:
+                create_selected(selected, folder=True)
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def run(event):
+        if not available():
+            return
         identity = current
         if identity is None:
             report('Спочатку додайте записи або оберіть збережене завдання.')
@@ -265,7 +329,7 @@ def show_transcription(frame, *, job_id=None):
             return service.run(identity, cancelled=cancelled, progress=advanced)
         begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity))
     def save(event):
-        if current is None or selected_source is None or not selected_ready:
+        if not available() or current is None or selected_source is None or not selected_ready:
             return
         identity, source_id, value = current, selected_source, text.GetValue()
         def saved(revision):
@@ -282,15 +346,16 @@ def show_transcription(frame, *, job_id=None):
             return
         identity = current
         try:
-            with wx.DirDialog(dialog, 'Оберіть батьківську папку експорту', style=wx.DD_DIR_MUST_EXIST) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                parent = Path(chooser.GetPath())
-            with wx.TextEntryDialog(dialog, 'Назва нової папки', 'Експорт транскрипції',
-                                    'transcription-' + identity[:8]) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                name = chooser.GetValue().strip()
+            selected = choose(wx.DirDialog, 'Оберіть батьківську папку експорту',
+                style=wx.DD_DIR_MUST_EXIST, read=lambda picker: picker.GetPath())
+            if selected is None:
+                return
+            parent = Path(selected)
+            selected = choose(wx.TextEntryDialog, 'Назва нової папки', 'Експорт транскрипції',
+                'transcription-' + identity[:8], read=lambda picker: picker.GetValue())
+            if selected is None:
+                return
+            name = selected.strip()
             from ..state_backup import relative_name
             if len(relative_name(name).parts) != 1:
                 raise ValueError('Вкажіть лише назву нової папки.')
@@ -300,11 +365,18 @@ def show_transcription(frame, *, job_id=None):
             report(exc)
     def changed(event):
         nonlocal dirty
+        if not available():
+            event.Skip()
+            return
         dirty = True
         controls()
         event.Skip()
     def select_job(event):
+        if not available():
+            return
         if not can_replace():
+            if not available():
+                return
             ids = [item['id'] for item in rows]
             if current in ids:
                 jobs.SetSelection(ids.index(current))
@@ -314,7 +386,11 @@ def show_transcription(frame, *, job_id=None):
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def select_source(event):
+        if not available():
+            return
         if not can_replace():
+            if not available():
+                return
             ids = [item['filename'] for item in source_rows]
             if selected_source in ids:
                 sources.SetSelection(ids.index(selected_source))
@@ -331,6 +407,9 @@ def show_transcription(frame, *, job_id=None):
                 report(exc)
     def close(event):
         nonlocal alive
+        if not available():
+            event.Skip()
+            return
         if busy:
             cancel.set()
             report('Зупиняю поточне завдання. Після зупинки вікно можна закрити.')
@@ -360,7 +439,12 @@ def show_transcription(frame, *, job_id=None):
     finally:
         alive = False
         cancel.set()
-        dialog.Destroy()
+        if not parent_destroyed and frame and not frame.IsBeingDeleted():
+            frame.Unbind(wx.EVT_WINDOW_DESTROY, handler=destroyed)
+        if (not native_destroyed and not parent_destroyed
+                and frame and not frame.IsBeingDeleted()
+                and dialog and not dialog.IsBeingDeleted()):
+            dialog.Destroy()
 
 
 def install_transcription_actions(frame):
