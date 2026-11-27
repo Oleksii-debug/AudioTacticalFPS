@@ -635,7 +635,8 @@ jobs:
             'tests/assistant/test_topic_state.py',
             'tests/reader/test_legacy_reader_session.py',
             'tests/storage/test_legacy_reader_session_backup.py',
-            'tests/ui/test_legacy_reader_session.py'
+            'tests/ui/test_legacy_reader_session.py',
+            'tests/ui/test_progress_concurrency.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1642,7 +1643,8 @@ jobs:
               'tests/assistant/test_topic_state.py',
               'tests/reader/test_legacy_reader_session.py',
               'tests/storage/test_legacy_reader_session_backup.py',
-              'tests/ui/test_legacy_reader_session.py'
+              'tests/ui/test_legacy_reader_session.py',
+              'tests/ui/test_progress_concurrency.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

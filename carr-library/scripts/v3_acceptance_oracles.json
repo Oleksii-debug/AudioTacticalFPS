@@ -2415,6 +2415,23 @@
       "test_explicit_session_review_reuses_current_editor_without_applying_saved_voice": 1,
       "test_cancelled_or_stale_session_review_cannot_publish_or_open": 5,
       "test_retained_envelope_reopens_all_history_after_original_is_removed": 1
+    },
+    "tests.ui.test_progress_concurrency": {
+      "test_absent_snapshot_is_passive_and_has_a_distinct_absence_token": 1,
+      "test_snapshot_binds_exact_current_or_canonical_bytes_without_rewriting": 2,
+      "test_observed_save_refuses_foreign_state_including_absent_to_created": 4,
+      "test_changed_bytes_after_stage_flush_refuse_publication_even_without_an_observed_token": 2,
+      "test_precommit_failure_retains_old_selection_and_removes_only_owned_stage": 2,
+      "test_postcommit_directory_flush_failure_remains_committed_success": 2,
+      "test_two_actual_writers_cannot_both_publish_from_the_same_observation": 1,
+      "test_presenter_conflict_preserves_its_observation_runtime_and_foreign_settings": 1,
+      "test_readable_invalid_settings_have_an_exact_explicit_repair_token": 1,
+      "test_unreadable_linked_settings_never_gain_a_replacement_token": 1,
+      "test_immediate_mute_survives_a_save_conflict_without_overwriting_the_other_window": 1,
+      "test_reopened_modal_displays_foreign_selection_but_cancel_keeps_runtime_and_old_token": 1,
+      "test_reopened_modal_ok_saves_only_the_newly_reviewed_observation": 1,
+      "test_modal_ok_rejects_a_change_after_the_displayed_observation": 1,
+      "test_invalid_observation_never_mutates_saved_settings": 6
     }
   },
   "installed": {
@@ -4762,6 +4779,23 @@
       "test_explicit_session_review_reuses_current_editor_without_applying_saved_voice": 1,
       "test_cancelled_or_stale_session_review_cannot_publish_or_open": 5,
       "test_retained_envelope_reopens_all_history_after_original_is_removed": 1
+    },
+    "tests.ui.test_progress_concurrency": {
+      "test_absent_snapshot_is_passive_and_has_a_distinct_absence_token": 1,
+      "test_snapshot_binds_exact_current_or_canonical_bytes_without_rewriting": 2,
+      "test_observed_save_refuses_foreign_state_including_absent_to_created": 4,
+      "test_changed_bytes_after_stage_flush_refuse_publication_even_without_an_observed_token": 2,
+      "test_precommit_failure_retains_old_selection_and_removes_only_owned_stage": 2,
+      "test_postcommit_directory_flush_failure_remains_committed_success": 2,
+      "test_two_actual_writers_cannot_both_publish_from_the_same_observation": 1,
+      "test_presenter_conflict_preserves_its_observation_runtime_and_foreign_settings": 1,
+      "test_readable_invalid_settings_have_an_exact_explicit_repair_token": 1,
+      "test_unreadable_linked_settings_never_gain_a_replacement_token": 1,
+      "test_immediate_mute_survives_a_save_conflict_without_overwriting_the_other_window": 1,
+      "test_reopened_modal_displays_foreign_selection_but_cancel_keeps_runtime_and_old_token": 1,
+      "test_reopened_modal_ok_saves_only_the_newly_reviewed_observation": 1,
+      "test_modal_ok_rejects_a_change_after_the_displayed_observation": 1,
+      "test_invalid_observation_never_mutates_saved_settings": 6
     }
   },
   "native_trust": [

@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -116,11 +116,28 @@
       "test_source_identities_require_full_lowercase_git_sha": 10,
       "test_unknown_installation_fields_are_still_rejected": 1,
       "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
+    },
+    "tests/ui/test_progress_concurrency.py": {
+      "test_absent_snapshot_is_passive_and_has_a_distinct_absence_token": 1,
+      "test_snapshot_binds_exact_current_or_canonical_bytes_without_rewriting": 2,
+      "test_observed_save_refuses_foreign_state_including_absent_to_created": 4,
+      "test_changed_bytes_after_stage_flush_refuse_publication_even_without_an_observed_token": 2,
+      "test_precommit_failure_retains_old_selection_and_removes_only_owned_stage": 2,
+      "test_postcommit_directory_flush_failure_remains_committed_success": 2,
+      "test_two_actual_writers_cannot_both_publish_from_the_same_observation": 1,
+      "test_presenter_conflict_preserves_its_observation_runtime_and_foreign_settings": 1,
+      "test_readable_invalid_settings_have_an_exact_explicit_repair_token": 1,
+      "test_unreadable_linked_settings_never_gain_a_replacement_token": 1,
+      "test_immediate_mute_survives_a_save_conflict_without_overwriting_the_other_window": 1,
+      "test_reopened_modal_displays_foreign_selection_but_cancel_keeps_runtime_and_old_token": 1,
+      "test_reopened_modal_ok_saves_only_the_newly_reviewed_observation": 1,
+      "test_modal_ok_rejects_a_change_after_the_displayed_observation": 1,
+      "test_invalid_observation_never_mutates_saved_settings": 6
     }
   },
-  "total_cases": 232,
+  "total_cases": 259,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
-  "canonical_progress_cases": 32,
+  "canonical_progress_cases": 59,
   "headless_admission_cases": 9
 }

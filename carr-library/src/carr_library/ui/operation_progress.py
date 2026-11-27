@@ -7,19 +7,22 @@ No source text, rendered master or user recording is altered.
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 import threading
 import time
 import weakref
 
-from ..progress import (ProgressPreferences, display_message,
-                        finish_result, load_preferences, save_preferences)
+from ..progress import (ProgressPreferences, decode_preferences, display_message,
+                        encode_preferences, finish_result, preference_snapshot, save_preferences)
 from ..progress_audio import (NotificationWorker, configured_registry,
                               voice_fingerprint)
 
 from .command_registry import CommandSpec
 from .keyboard_settings import register_menu_command
 from .progress_view import shared_hub
+
+_CURRENT_PREFERENCES = object()
 
 COMMANDS = (
     CommandSpec('progress.query', 'Query current progress'),
@@ -214,8 +217,10 @@ class OperationProgress:
 
 
     def _load(self):
+        self._preferences_sha256 = 'unavailable'
         try:
-            return load_preferences(self.library.root), ''
+            raw, self._preferences_sha256 = preference_snapshot(self.library.root)
+            return (ProgressPreferences() if raw is None else decode_preferences(raw)), ''
         except (OSError, ValueError, RuntimeError) as exc:
             return ProgressPreferences(), 'Progress audio is Off: saved settings were kept and need review. ' + display_message(exc)
 
@@ -394,14 +399,17 @@ class OperationProgress:
         self.session_quiet = bool(quiet)
         self._environment()
 
-    def configure(self, preferences, *, registry=None, expected_root=None):
+    def configure(self, preferences, *, registry=None, expected_root=None,
+                  expected_sha256=_CURRENT_PREFERENCES):
         if not isinstance(preferences, ProgressPreferences):
             raise ValueError('Use validated progress preferences.')
         if preferences.mode in ('speech', 'beep_speech') and not preferences.voice_id:
             raise ValueError('Choose an explicit local voice before enabling progress speech.')
         if not self.scope_current or (expected_root is not None and Path(expected_root) != self.root):
             raise ValueError('The library folder changed while progress settings were open.')
-        save_preferences(self.library.root, preferences)
+        observed = self._preferences_sha256 if expected_sha256 is _CURRENT_PREFERENCES else expected_sha256
+        save_preferences(self.library.root, preferences, expected_sha256=observed)
+        self._preferences_sha256 = sha256(encode_preferences(preferences)).hexdigest()
         self.preferences = preferences
         if registry is not None:
             self.notifications.set_registry(registry)
@@ -542,7 +550,8 @@ class OperationProgress:
             self.notifications.configure(requested)
             self.preferences = requested
             try:
-                save_preferences(self.root, requested)
+                save_preferences(self.root, requested, expected_sha256=self._preferences_sha256)
+                self._preferences_sha256 = sha256(encode_preferences(requested)).hexdigest()
                 self.notice = ''
             except (OSError, ValueError) as error:
                 self.notice = 'Muted for this session; settings were not saved. ' + str(error)
@@ -615,7 +624,18 @@ class OperationProgress:
 
 def show_progress_settings(presenter):
     """Actual named native controls; Cancel publishes no preference changes."""
-    wx, frame, initial = presenter.wx, presenter.frame, presenter.preferences
+    wx, frame = presenter.wx, presenter.frame
+    try:
+        raw, observed = preference_snapshot(presenter.library.root)
+    except (OSError, ValueError, RuntimeError) as error:
+        frame.report('Saved progress settings could not be read and were kept. ' + display_message(error))
+        return False
+    notice = ''
+    try:
+        initial = ProgressPreferences() if raw is None else decode_preferences(raw)
+    except (ValueError, TypeError):
+        initial = ProgressPreferences()
+        notice = 'Saved settings need review. Choose OK to replace them with these settings.'
     dialog = wx.Dialog(frame, title='Progress feedback', size=(620, 590),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
@@ -650,7 +670,7 @@ def show_progress_settings(presenter):
     choose = wx.Button(dialog, label='Choose local progress voice')
     choose.SetName('Choose local progress voice')
     layout.Add(choose, 0, wx.ALL, 5)
-    status = wx.StaticText(dialog, label='No voice is selected automatically. Settings apply only to progress feedback.')
+    status = wx.StaticText(dialog, label=notice or 'No voice is selected automatically. Settings apply only to progress feedback.')
     status.SetName('Progress settings status')
     layout.Add(status, 0, wx.EXPAND | wx.ALL, 5)
     layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.EXPAND | wx.ALL, 8)
@@ -718,7 +738,7 @@ def show_progress_settings(presenter):
                 interval_seconds=float(interval.GetValue()), volume=float(volume.GetValue()),
                 **{key: field.GetValue() for key, field in values.items()},
                 voice_id=selected[0], voice_language=selected[1], voice_fingerprint=selected[2])
-            presenter.configure(preferences, registry=registry[0])
+            presenter.configure(preferences, registry=registry[0], expected_sha256=observed)
         except (ValueError, OSError, RuntimeError) as exc:
             status.SetLabel(display_message(exc))
             return

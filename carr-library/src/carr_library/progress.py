@@ -9,6 +9,7 @@ It has no wx, audio renderer, network, or speech-engine dependency.
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, replace
+from hashlib import sha256
 import json
 import math
 import os
@@ -159,14 +160,14 @@ def _identity(info):
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
-def load_preferences(root):
+def _read_preference_bytes(root):
     path = _checked_path(Path(root) / FILENAME)
     try:
         before = path.lstat()
         descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
                              | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_BINARY', 0))
     except FileNotFoundError:
-        return ProgressPreferences()
+        return None
     with os.fdopen(descriptor, 'rb') as stream:
         opened = os.fstat(stream.fileno())
         if (_identity(before) != _identity(opened) or not stat.S_ISREG(opened.st_mode)
@@ -178,14 +179,31 @@ def load_preferences(root):
     if (_identity(before) != _identity(after) or _identity(before) != _identity(path.lstat())
             or len(raw) != before.st_size):
         raise ValueError('Progress settings changed while reading.')
-    return decode_preferences(raw)
+    return raw
 
 
-def save_preferences(root, preferences):
+def preference_snapshot(root):
+    """Read the exact passive bytes and their optimistic concurrency token."""
+    raw = _read_preference_bytes(root)
+    return raw, None if raw is None else sha256(raw).hexdigest()
+
+
+def load_preferences(root):
+    raw, _ = preference_snapshot(root)
+    return ProgressPreferences() if raw is None else decode_preferences(raw)
+
+
+def save_preferences(root, preferences, *, expected_sha256=_UNSET):
     raw = encode_preferences(preferences)
+    if (expected_sha256 is not _UNSET and expected_sha256 is not None
+            and (type(expected_sha256) is not str
+                 or re.fullmatch('[0-9a-f]{64}', expected_sha256) is None)):
+        raise ValueError('Saved progress settings could not be observed. Reopen settings before saving.')
     path = _checked_path(Path(root) / FILENAME)
     with exclusive_writer(path.parent):
-        _checked_path(path)
+        _, current = preference_snapshot(path.parent)
+        if expected_sha256 is not _UNSET and current != expected_sha256:
+            raise ValueError('Progress preferences changed in another window. Reopen settings before saving.')
         temporary = None
         try:
             with NamedTemporaryFile(dir=path.parent, prefix='.progress-', suffix='.tmp', delete=False) as stream:
@@ -193,14 +211,19 @@ def save_preferences(root, preferences):
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())  # Writable descriptor, including Windows.
-            _checked_path(path)
+            if preference_snapshot(path.parent)[1] != current:
+                raise ValueError('Progress preferences changed before saving. Reopen settings before saving.')
             os.replace(temporary, path)
+            temporary = None  # Publication committed; no later cleanup can target this old name.
             if hasattr(os, 'O_DIRECTORY'):
-                descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
                 try:
-                    os.fsync(descriptor)
-                finally:
-                    os.close(descriptor)
+                    descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                    try:
+                        os.fsync(descriptor)
+                    finally:
+                        os.close(descriptor)
+                except OSError:
+                    pass  # The atomic preference publication already committed.
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)

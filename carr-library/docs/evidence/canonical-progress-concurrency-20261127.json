@@ -1,0 +1,42 @@
+{
+  "schema": "carr-canonical-progress-concurrency/1",
+  "status": "SOURCE_RECONCILED_RUNTIME_NOT_RUN",
+  "canonical_source": "a333f0723df107aa60b60b8ee2c5ba9f85b25475",
+  "canonical_owner": "src/carr_library/progress_preferences.py:ProgressPreferenceStore",
+  "current_owner": "src/carr_library/progress.py and src/carr_library/ui/operation_progress.py",
+  "observed_gap": "The current writer serialized save operations but did not bind them to the preferences shown when a window loaded or opened its settings. A later window could overwrite another selection; a directory flush error after replacement could report a completed write as failure.",
+  "changes": [
+    "Read-only exact-byte snapshot returns a SHA256 observation or an explicit missing-file observation. Invalid readable JSON remains available for explicit repair without automatic migration.",
+    "The existing atomic writer optionally checks the caller's observation under its existing writer guard and always rechecks the initial raw-byte digest after stage flush, before replacement.",
+    "The successful atomic replacement is the publication point. A later directory flush error does not cause a second write; temporary cleanup no longer addresses the old stage name after publication.",
+    "The current presenter retains its own observation, updates it only after successful save, and never adopts a foreign version on conflict.",
+    "Each settings dialog reads a separate fresh snapshot for the displayed fields. OK uses exactly that observation; Cancel leaves the presenter's preferences, notification runtime and observation unchanged.",
+    "Immediate mute remains available when persistence fails, with the existing visible session-only notice. No voice discovery, engine activation or network request is added."
+  ],
+  "preserved": [
+    "All existing progress schemas and 32 canonical preference compatibility cases.",
+    "Existing save return value and callers without an observation argument.",
+    "Existing single-link/no-reparse/file-identity/read-size guards, writer owner and backup byte preservation.",
+    "Existing explicit voice selection and media suppression."
+  ],
+  "declared_regressions": {
+    "source": 27,
+    "installed": 27,
+    "selector": "tests/ui/test_progress_concurrency.py",
+    "oracle": "scripts/v3_acceptance_oracles.json",
+    "deterministic_presenter_boundaries": "NOT_NATIVE_WX_PROOF",
+    "actual_two_thread_writer_race": true,
+    "status": "NOT_RUN"
+  },
+  "focused_population": {
+    "previous": 232,
+    "current": 259,
+    "old_cases_retained": true
+  },
+  "qualification": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native_windows_gui": "NOT_RUN_FOR_THIS_CHANGE",
+    "nvda": "NOT_RUN"
+  }
+}
