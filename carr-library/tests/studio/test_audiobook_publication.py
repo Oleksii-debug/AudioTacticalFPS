@@ -299,3 +299,75 @@ def test_production_runtime_identity_binds_measured_audiobook_implementation(tmp
     changed = True
     second = production_runtime_identity(runtime, {'version': 'same inert fixture'})
     assert len(calls) == 2 and first != second
+
+
+def test_failed_encoded_receipt_resume_keeps_warning_history_bounded_and_restorable(tmp_path, monkeypatch):
+    import carr_library.audio.audiobook as audiobook
+    import carr_library.studio.render as render
+    from carr_library.application import LibraryApp
+    from carr_library.durable_state import atomic_json, read_json
+    from carr_library.library_backup import create_backup, restore_backup
+
+    assert shutil.which('ffmpeg') and shutil.which('ffprobe'), 'Actual FFmpeg is required.'
+    app = LibraryApp(tmp_path / 'library')
+    output = tmp_path / 'output'
+    output.mkdir()
+    service = ProductionService(app.root / 'state' / 'studio')
+    identity = service.submit(silent_project(), output, format='m4b', stems=False)
+    checkpoint = service.jobs_root / identity / 'job.json'
+    state = service.get(identity)
+    original_history = [f'Historical warning {number}' for number in range(999)]
+    state['warnings'] = original_history.copy()
+    atomic_json(checkpoint, state, replace=True)
+    real_publish, real_write = audiobook.publish_file, render.atomic_json
+    current = ['writer-warning-A']
+    emitted, receipt_failures, snapshots = [], [], []
+
+    def published_then_warning(staged, target, **options):
+        real_publish(staged, target, **options)
+        raise OSError(current[0])
+
+    def fail_encoded_receipt(path, value, **options):
+        if Path(path).name.endswith('-encoded.json'):
+            receipt_failures.append(str(path))
+            raise OSError('Injected encoded-cache receipt failure')
+        return real_write(path, value, **options)
+
+    monkeypatch.setattr(audiobook, 'publish_file', published_then_warning)
+    monkeypatch.setattr(render, 'atomic_json', fail_encoded_receipt)
+    try:
+        for message in ('writer-warning-A', 'writer-warning-A', 'writer-warning-B', 'writer-warning-B'):
+            current[0] = message
+            with pytest.raises(OSError, match='encoded-cache receipt failure'):
+                service.run(identity, progress=emitted.append)
+            saved = read_json(checkpoint)
+            assert saved['status'] == 'failed'
+            assert len(saved['warnings']) == 1000
+            assert saved['warnings'][:999] == original_history
+            assert all(isinstance(row, str) and 0 < len(row) <= 1800 for row in saved['warnings'])
+            snapshots.append(saved['warnings'].copy())
+            assert service.broker.snapshot()['leases'] == []
+        assert len(receipt_failures) == 4
+        assert snapshots[0] == snapshots[1]
+        assert snapshots[2] == snapshots[3]
+        assert 'writer-warning-A' in snapshots[0][-1]
+        assert 'omitted' in snapshots[2][-1] and 'writer-warning-B' in snapshots[2][-1]
+        assert sum('writer-warning-A' in row for row in emitted) == 2
+        assert sum('omitted' in row and 'writer-warning-B' in row for row in emitted) == 2
+
+        saved_bytes = checkpoint.read_bytes()
+        backup = tmp_path / 'bounded-warning-backup'
+        checksum = create_backup(app, backup)
+        relative = 'state/studio/jobs/' + identity + '/job.json'
+        assert (backup / relative).read_bytes() == saved_bytes
+        restored_root = restore_backup(backup, tmp_path / 'restored-warning-library', checksum)
+        restored = ProductionService(restored_root / 'state' / 'studio')
+        try:
+            recovered = restored.get(identity)
+            assert recovered['status'] == 'waiting-input' and recovered['destination'] == ''
+            assert recovered['warnings'] == snapshots[-1] and recovered['artifact_version'] == 2
+        finally:
+            restored.close()
+        assert checkpoint.read_bytes() == saved_bytes
+    finally:
+        service.close()

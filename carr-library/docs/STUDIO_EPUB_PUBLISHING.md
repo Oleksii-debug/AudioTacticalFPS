@@ -151,7 +151,10 @@ external outputs. A receipt's optional format is `epub` or `daisy-2.02`;
 historical absence means EPUB. Invalid/mismatched formats are rejected.
 
 Bounded Studio warnings and the artifact-version marker are preserved as passive
-recovery metadata. A restored production still needs explicit destination/input
+recovery metadata. Identical warnings are deduplicated. Once the 1000-entry limit
+is reached, the first 999 remain and the last entry visibly reports omitted
+additional history plus the latest message, still within 1800 characters. Each
+current callback is also reported through the existing progress channel. A restored production still needs explicit destination/input
 review. Restored publication verification requires selecting the existing exact
 archive; it never re-renders. Publication and verification share the receipt
 lock, and verification reads its current snapshot only after acquiring that lock.

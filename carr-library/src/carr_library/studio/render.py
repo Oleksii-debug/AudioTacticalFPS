@@ -824,8 +824,16 @@ class ProductionService:
                             encoded = self.cache / (key + '-' + uuid4().hex[:10] + '.' + state['format'])
                         if state['format'] == 'm4b':
                             def audiobook_warning(message):
-                                state.setdefault('warnings', []).append(str(message)[:1800])
-                                report(str(message))
+                                current = str(message)[:1800]
+                                history = state.setdefault('warnings', [])
+                                if current not in history:
+                                    if len(history) < 1000:
+                                        history.append(current)
+                                    else:
+                                        current = ('Additional earlier M4B warnings were omitted to keep '
+                                                   'the 1000-entry history. Latest: ' + current)[:1800]
+                                        history[999:] = [current]
+                                report(current)
                             generate(encoded, lambda target: runtime.audiobook(master, target,
                                 chapters=chapter_data, title=project.title,
                                 sample_rate=project.sample_rate, cancelled=stopping,
