@@ -454,7 +454,7 @@ jobs:
           if ($installedLauncher.status -ne 'passed' -or $installedLauncher.launcher_sha256 -ne $env:CARR_NATIVE_LAUNCHER_SHA256 -or -not $installedLauncher.actual_installed_app_self_test_verified) { throw 'Installed native launcher acceptance must match the sealed executable.' }
           # This probe imports wx first: hold the application's verified DLL
           # directory handle before loading that native extension.
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
+          & $installedPython -I -B -X faulthandler -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
