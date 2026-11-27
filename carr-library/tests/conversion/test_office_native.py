@@ -78,8 +78,82 @@ def wordperfect(text):
     return b'\xffWPC' + struct.pack('<I', 32) + bytes((1, 10, 0, 0)) + b'\0' * 20 + text.encode('ascii')
 
 
+def _xls_visibility_diagnostic(message, result):
+    """Inert census of this public synthetic fixture after child settlement."""
+    if result.get('state') == 'complete':
+        return
+    import json
+    from io import BytesIO
+    from zipfile import ZipFile
+    from defusedxml import ElementTree
+    from carr_library.audio.jobs import regular_file, verified_reader, file_identity
+    selected = Path(message['source']).parent / 'office-output' / 'source.ods'
+    report = {'family': 'office', 'event': 'xls-visibility-census',
+              'synthetic_fixture': True, 'acceptance_changed': False,
+              'worker_state': result.get('state')}
+    try:
+        info = regular_file(selected)
+        if info.st_nlink != 1 or not 0 < info.st_size <= 8 * 1024 * 1024:
+            raise ValueError('Synthetic intermediate exceeds the diagnostic file bound.')
+        with verified_reader(selected, expected_identity=file_identity(info)) as stream:
+            raw = stream.read(8 * 1024 * 1024 + 1)
+        if len(raw) != info.st_size:
+            raise ValueError('Synthetic intermediate changed during diagnostic read.')
+        report.update(intermediate_bytes=len(raw), intermediate_sha256=sha256(raw).hexdigest())
+        report['members'] = []
+        text_ns = '{urn:oasis:names:tc:opendocument:xmlns:text:1.0}'
+        style_ns = '{urn:oasis:names:tc:opendocument:xmlns:style:1.0}'
+        fo_ns = '{urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0}'
+        with ZipFile(BytesIO(raw)) as archive:
+            if len(archive.infolist()) > 128:
+                raise ValueError('Synthetic intermediate exceeds diagnostic entry bound.')
+            for name in ('content.xml', 'styles.xml'):
+                entries = [row for row in archive.infolist() if row.filename == name]
+                if len(entries) != 1 or not 0 < entries[0].file_size <= 1024 * 1024:
+                    raise ValueError('Synthetic XML exceeds diagnostic member bound.')
+                with archive.open(entries[0]) as stream:
+                    content = stream.read(1024 * 1024 + 1)
+                if len(content) != entries[0].file_size:
+                    raise ValueError('Synthetic XML changed during diagnostic read.')
+                root = ElementTree.fromstring(content)
+                pending, count, offenders, references = [(root, [])], 0, [], {}
+                while pending:
+                    element, ancestors = pending.pop()
+                    count += 1
+                    if count > 10000 or len(ancestors) > 64:
+                        raise ValueError('Synthetic XML exceeds diagnostic structural bound.')
+                    attributes = {key: value[:256] for key, value in element.attrib.items()}
+                    if len(attributes) > 64:
+                        raise ValueError('Synthetic XML exceeds diagnostic attribute bound.')
+                    for key, value in attributes.items():
+                        if key.endswith(('}style-name', '}parent-style-name')):
+                            references[value] = references.get(value, 0) + 1
+                    hidden = (element.get(text_ns + 'display') in ('none', 'false')
+                              or element.get(fo_ns + 'visibility') in ('hidden', 'collapse')
+                              or element.get(style_ns + 'display') == 'false')
+                    current = {'tag': element.tag, 'attributes': attributes}
+                    if hidden:
+                        if len(offenders) >= 64:
+                            raise ValueError('Synthetic XML exceeds diagnostic hidden-node bound.')
+                        offenders.append(dict(current, ancestors=ancestors[-6:]))
+                    pending.extend((child, [*ancestors, current]) for child in reversed(element))
+                report['members'].append({'name': name, 'bytes': len(content),
+                    'sha256': sha256(content).hexdigest(), 'nodes': count,
+                    'hidden_nodes': offenders, 'style_references': references})
+        encoded = json.dumps(report, ensure_ascii=True, sort_keys=True)
+        if len(encoded) > 64 * 1024:
+            raise ValueError('Synthetic visibility census exceeds its output bound.')
+    except Exception as exc:
+        encoded = json.dumps(dict(report, diagnostic_error=type(exc).__name__,
+                                  diagnostic_message=str(exc)[:500]), ensure_ascii=True, sort_keys=True)
+        if len(encoded) > 64 * 1024:
+            encoded = json.dumps({'family': 'office', 'event': 'xls-visibility-census',
+                                  'diagnostic_error': 'output-limit'})
+    print('NATIVE_DIAGNOSTIC ' + encoded, flush=True)
+
+
 @pytest.mark.parametrize('kind', ['doc', 'ppt', 'xls', 'wpd', 'pdb'])
-def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_path, kind):
+def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_path, monkeypatch, kind):
     text = 'Selected legacy reading document.'
     if kind in ('doc', 'ppt', 'xls'):
         source = legacy_office(tmp_path, kind, text)
@@ -87,6 +161,14 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
         source = tmp_path / ('Оригінал.' + kind)
         source.write_bytes((wordperfect if kind == 'wpd' else palmdoc)(text))
     original = source.read_bytes()
+    if kind == 'xls':
+        from carr_library.conversion import service as service_module
+        actual_invoke = service_module._invoke
+        def observed(message, **options):
+            result = actual_invoke(message, **options)
+            _xls_visibility_diagnostic(message, result)
+            return result
+        monkeypatch.setattr(service_module, '_invoke', observed)
     destination = tmp_path / 'Читальна копія'
     destination.mkdir()
     result = ConversionService(destination, input_roots=(source,), office=office()).extract(source, 'reading.txt')
