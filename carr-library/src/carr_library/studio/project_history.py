@@ -24,6 +24,22 @@ class RevisionRef:
             raise ValueError('Invalid saved project identity.')
 
 
+@dataclass(frozen=True)
+class ClipReference:
+    """A passive selection in an existing immutable project revision."""
+    project_id: str
+    source: RevisionRef
+    scene_id: str
+    clip_id: str
+
+    def __post_init__(self):
+        if not isinstance(self.source, RevisionRef):
+            raise ValueError('Choose an exact saved project revision.')
+        for value in (self.project_id, self.scene_id, self.clip_id):
+            if type(value) is not str or not 1 <= len(value) <= 256 or '\0' in value:
+                raise ValueError('Invalid copied clip identity.')
+
+
 def revisions(store, project, *, before_revision=None, limit=100, cancelled=lambda: False):
     """Return newest references first, with an explicit cursor for earlier rows."""
     if type(limit) is not int or not 1 <= limit <= 200:

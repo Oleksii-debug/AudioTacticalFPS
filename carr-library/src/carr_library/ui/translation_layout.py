@@ -64,10 +64,16 @@ def show_translation_layout(frame, *, document_format='docx'):
     glossary = field('DOCX Advanced glossary; blank for none', value='')
     budget = field('DOCX total approved USD budget; local service requires 0', value='')
     rate = field('DOCX optional current contract price per million characters', value='')
+    source_limits = (
+        'Up to 2,048 nonempty text fragments and 2,000,000 source characters. '
+        'Eligible DOCX notes and embedded pictures use a fixed-marker source profile; '
+        'the actual inspected source and its limitations are shown before approval.'
+        if document_format == 'docx' else
+        'Up to 2,048 nonempty canonical spine blocks and 2,000,000 source characters. '
+        'The actual inspected XHTML profile and its limitations are shown before approval.')
     selected = field('Selected retained DOCX and paragraph jobs', proportion=1,
         style=wx.TE_MULTILINE | wx.TE_READONLY,
-        value='Explicitly choose one retained DOCX from the current catalog page. '
-              'Up to 2,048 nonempty paragraphs and 2,000,000 source characters. Larger bodies use one source-bound job with exact paragraph partitions.')
+        value='Explicitly choose one retained DOCX from the current catalog page. ' + source_limits)
     status = field('Formatted translation status and limitations', proportion=1,
         style=wx.TE_MULTILINE | wx.TE_READONLY, value=notice)
     buttons, row = {}, wx.WrapSizer(wx.HORIZONTAL)

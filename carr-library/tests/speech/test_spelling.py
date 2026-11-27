@@ -88,8 +88,9 @@ def test_mutation_during_profile_hash_is_refused(profile):
         if calls == 2:
             path.write_bytes(b'2\nchanged\nbytes\n')
         return False
-    with pytest.raises(ValueError, match='changed'):
+    with pytest.raises(ValueError, match='changed|size budget'):
         spelling._review_file(path, 'dictionary', mutate)
+    assert calls >= 2 and path.read_bytes() == b'2\nchanged\nbytes\n'
 
 
 def test_profile_hash_budget_and_cancel_stop_before_any_runtime(profile, monkeypatch):

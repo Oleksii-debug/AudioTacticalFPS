@@ -1,0 +1,691 @@
+{
+  "schema": "resonance-next9-source-completion-preflight/1",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "base": {
+    "commit": "fabae325a1a197ac6959732254ddf16d3ecef367",
+    "tree": "96decbfdd19bf67e3c88f9d27169d6dd3479f21e",
+    "earlier_source_map": "1d006cbcdb81c2aa4ddaece6c382a2d28971b427"
+  },
+  "purpose": "Qualify complete rich DOCX, clip clipboard and observed regressions against the exact cumulative source before final integration.",
+  "features": {
+    "rich_docx_and_native_cleanup": "41db5198a9c00aba8373f15ee79332a56c0f6015",
+    "clip_copy_cut_paste": "d9b522f074023e68041a0dd8124e49d6529e7b56",
+    "windows_intake": "2c141cc0a78d3e8662a65450ecce0c3546ef1940",
+    "book_batch_and_cli": "933e8cbbe00794b9538b40a3977a9937e8492a4a",
+    "desktop_fixture": "7044151f3dc7339282f5de9333440e1a558f93c6",
+    "reader_engine_fixtures": "1186a93d72ee4448411bf65e11a1130f787c19f3",
+    "replay_fixtures": "4c89ef13bce4a3ebade5e32b5172e93abd612282",
+    "hunspell_fixture": "0c94043c33776c10873c39bc003da7662b10e2a6",
+    "full_required_gates": "4c4dbb8819e5b0af0b8355e715317265c4239595"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/extract/docx_rich.py",
+      "preimage": null,
+      "sha": "809217cb1718c7422bca6b13498a0f54f30862d3",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/docx_ordered.py",
+      "preimage": "a2f59b8b5840e2c425fe428fe856a20bbf9c424e",
+      "sha": "67fb9fe39762285be0af4038f524ccac4a66be60",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_docx_rich.py",
+      "preimage": null,
+      "sha": "0fb5c483bf503a79fb4b6372a8733558385394dd",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "preimage": "6430dea3a6c56e30e33ab958df653e8472b1f85e",
+      "sha": "ed5d9734edd89ac3c40ce19ccd6fc866f8c31d0f",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "preimage": "2428f4fa27656eb692f96ebdd2e665c46754c53e",
+      "sha": "f91173da3d90bb6b17be4d184799993ddfa91def",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "preimage": "c16d50ac29e2a89edc5d498a833108f0116d395b",
+      "sha": "db1fc8bc4c01149059cd8af346f23778fdc18855",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "preimage": "37a12fdba6d69ed7bb88961e38ea3a405b8920d5",
+      "sha": "6cab457cf792b39217f0c7733cf0ccf93234263d",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/translation_rich_docx_fixtures.py",
+      "preimage": null,
+      "sha": "2e36000ad9b6f2bdef4d6ae2a99cb4e696cc8d38",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/extract/test_docx_rich.py",
+      "preimage": null,
+      "sha": "a58b721be5abc4f74016d9cbf7265d5cb8350b63",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx.py",
+      "preimage": null,
+      "sha": "0f59e27cf30a76636c61293a0e957a9be60d5918",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_rich_docx.py",
+      "preimage": null,
+      "sha": "2926bc215df907b8efd754c012942874953f8375",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx_cli.py",
+      "preimage": null,
+      "sha": "50319fe1b7c91561a6e1d3b42d2e01b6104a3115",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_rich_docx_smoke.py",
+      "preimage": null,
+      "sha": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "preimage": "f7a2de69fc679a734ffba5f1be5943531143bd74",
+      "sha": "826c94c39467df1087cb81d71278359aebb34f63",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "preimage": "e7957fa3785e5e7663403fe0b7189223f84ba7cf",
+      "sha": "3dff8332d0ee7507c9ee3dfaffac2eabff099796",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+      "preimage": "171600d9dd771a377e9170d2149d5e1c94ccc943",
+      "sha": "4b26382f7f71449f896ec7f29afd75f2ebd63824",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project_history.py",
+      "preimage": "55be6fcdc5266a546b60541b2bb72768ade8c800",
+      "sha": "ad9dd72a8101639cf03a02420dbb0c2b0c0cc7be",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "preimage": "fb038128ffb1ba636b31a07410fb8729a532d323",
+      "sha": "f77512fc1f0f242a6202ffa247e5ce9049debefc",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "preimage": "2e8d4c92b2a0fcf8d115fb87ec0befe7a263384f",
+      "sha": "d926e06b20694c0e586a102bd0ec25747faea444",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_copy.py",
+      "preimage": null,
+      "sha": "fa35b61f5fd75066bc01bb209f00b8154629503c",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_copy_dialog.py",
+      "preimage": null,
+      "sha": "b473afbdc68d289c547d261585d2c9af9fecc917",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "preimage": "de123b44e46d0131e068cc1155955bc3ba14f62d",
+      "sha": "f64a4dcc568614542f704f01b3da08dd26a29ab9",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/docs/STUDIO_CLIP_HISTORY.md",
+      "preimage": "ea8610c2d4ad846c7f726bb5c0c9bfba2d8504d1",
+      "sha": "734ae7b31ec916ab0e4e355dcec51673e6d20dbc",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_batch.py",
+      "preimage": "13888a514f26f46f6d66d1e12efa9728032dbbb0",
+      "sha": "1b414a49cb44894a27a4d17d79560cc1ccddd268",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "preimage": "c0bec70998f06de20023c5fd9cc868bd75eba86a",
+      "sha": "335d74a0a3c139cbc45a192a9eed4ffb652c37e7",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "preimage": "a9b757cbd67923919e64ba94bbd6c11a502bf4c6",
+      "sha": "860b5e112e803527add77983733b0f1833b465e5",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_cli.py",
+      "preimage": "58058c00f909f406ab4097874ebe21d0ce28f07d",
+      "sha": "ea88a403fae7126931c13cba7c303811529eabda",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "preimage": "66cf246df02472b131133ece8e1859eceec04224",
+      "sha": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/catalog/test_streaming_intake.py",
+      "preimage": "84fe7a923a0871aa20f9d3d1739d73dfe808371d",
+      "sha": "15285cceb4098ad84d86ac7f36ab28283f3a3a44",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "preimage": "b2a6ae41bc9742dc7c8ab951041c5006566fcf34",
+      "sha": "280b9723d2301a21a13308841df3de624b75759a",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "preimage": "61e8ff1cf190e9fe86ee7f522bf7a23077ac94c7",
+      "sha": "e429312dc32f1c18df10215977050f9382296c2f",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_engine_settings_lifetime.py",
+      "preimage": "b000cf4410a0392b00d90a2eee4d97f1114f61c8",
+      "sha": "b8297a4688f10faac5ec2b620a511b204e504fca",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_replay_identity.py",
+      "preimage": "fe84d8a406aa85e5fdb12452df8ac8ed2815be3c",
+      "sha": "befd833938c370498f42d612d2515e4eeca64af0",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ingest/test_terminal_replay_registration.py",
+      "preimage": "19176dd41b5d0454812b35a9d580f264c40f1bf6",
+      "sha": "9cc8a5e4e6c968f0c978dfe1ce5cb9b7c9c450d6",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ingest/test_txt_replay_registration.py",
+      "preimage": "ee542dc44f8b7674710796bd33c4fb787ccf7553",
+      "sha": "460c6570f16f7f869f183063671cca6c78748f18",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_publication_point.py",
+      "preimage": "8cdbbd19ec125fa1256262d4a1d70cb814b2cb1b",
+      "sha": "cb8ea117b42866ef4d8527a1ef14d3615ae0e39a",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling.py",
+      "preimage": "6bde6f86f3298700e51cf91aae675302c3e6e0be",
+      "sha": "15e7f8ea5322a9bd5e8781e11a8841b0b4e7ae8b",
+      "manifests": [
+        "accepted-feature-and-actual-regression-maps"
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "34b134cc8f8575b74a2f6cf8b7e07224f56eade2",
+      "sha": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "manifests": [
+        "d14dc7d4c3b5ceb012f326a1d96216641889487b",
+        "4c4dbb8819e5b0af0b8355e715317265c4239595"
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "e8595b9e56b25053f1c0fe10e18000a287bbf80c",
+      "sha": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac",
+      "manifests": [
+        "d14dc7d4c3b5ceb012f326a1d96216641889487b",
+        "4c4dbb8819e5b0af0b8355e715317265c4239595"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "preimage": "17878fdf081092becb082e6ba07039ee5be5928a",
+      "sha": "194df6f0589c077fac26fc38751d79068c7570ea",
+      "manifests": [
+        "d14dc7d4c3b5ceb012f326a1d96216641889487b"
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": null,
+      "sha": "3ee29faae1a19e9ca4f124b7aca27020dfba1c0b",
+      "manifests": [
+        "diagnostic-3ee29-peer-reviewed"
+      ]
+    }
+  ],
+  "composition": [
+    {
+      "path": "carr-library/src/carr_library/extract/docx_rich.py",
+      "from": null,
+      "to": "809217cb1718c7422bca6b13498a0f54f30862d3",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/docx_ordered.py",
+      "from": "a2f59b8b5840e2c425fe428fe856a20bbf9c424e",
+      "to": "67fb9fe39762285be0af4038f524ccac4a66be60",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_docx_rich.py",
+      "from": null,
+      "to": "0fb5c483bf503a79fb4b6372a8733558385394dd",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "from": "6430dea3a6c56e30e33ab958df653e8472b1f85e",
+      "to": "ed5d9734edd89ac3c40ce19ccd6fc866f8c31d0f",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "from": "2428f4fa27656eb692f96ebdd2e665c46754c53e",
+      "to": "f91173da3d90bb6b17be4d184799993ddfa91def",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "from": "c16d50ac29e2a89edc5d498a833108f0116d395b",
+      "to": "db1fc8bc4c01149059cd8af346f23778fdc18855",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "from": "37a12fdba6d69ed7bb88961e38ea3a405b8920d5",
+      "to": "6cab457cf792b39217f0c7733cf0ccf93234263d",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/scripts/translation_rich_docx_fixtures.py",
+      "from": null,
+      "to": "2e36000ad9b6f2bdef4d6ae2a99cb4e696cc8d38",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/extract/test_docx_rich.py",
+      "from": null,
+      "to": "a58b721be5abc4f74016d9cbf7265d5cb8350b63",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx.py",
+      "from": null,
+      "to": "0f59e27cf30a76636c61293a0e957a9be60d5918",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_rich_docx.py",
+      "from": null,
+      "to": "2926bc215df907b8efd754c012942874953f8375",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx_cli.py",
+      "from": null,
+      "to": "50319fe1b7c91561a6e1d3b42d2e01b6104a3115",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_rich_docx_smoke.py",
+      "from": null,
+      "to": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "from": "f7a2de69fc679a734ffba5f1be5943531143bd74",
+      "to": "826c94c39467df1087cb81d71278359aebb34f63",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "from": "e7957fa3785e5e7663403fe0b7189223f84ba7cf",
+      "to": "3dff8332d0ee7507c9ee3dfaffac2eabff099796",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+      "from": "171600d9dd771a377e9170d2149d5e1c94ccc943",
+      "to": "4b26382f7f71449f896ec7f29afd75f2ebd63824",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project_history.py",
+      "from": "55be6fcdc5266a546b60541b2bb72768ade8c800",
+      "to": "ad9dd72a8101639cf03a02420dbb0c2b0c0cc7be",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "from": "fb038128ffb1ba636b31a07410fb8729a532d323",
+      "to": "f77512fc1f0f242a6202ffa247e5ce9049debefc",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "from": "2e8d4c92b2a0fcf8d115fb87ec0befe7a263384f",
+      "to": "d926e06b20694c0e586a102bd0ec25747faea444",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_copy.py",
+      "from": null,
+      "to": "fa35b61f5fd75066bc01bb209f00b8154629503c",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_copy_dialog.py",
+      "from": null,
+      "to": "b473afbdc68d289c547d261585d2c9af9fecc917",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "from": "de123b44e46d0131e068cc1155955bc3ba14f62d",
+      "to": "f64a4dcc568614542f704f01b3da08dd26a29ab9",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/docs/STUDIO_CLIP_HISTORY.md",
+      "from": "ea8610c2d4ad846c7f726bb5c0c9bfba2d8504d1",
+      "to": "734ae7b31ec916ab0e4e355dcec51673e6d20dbc",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_batch.py",
+      "from": "13888a514f26f46f6d66d1e12efa9728032dbbb0",
+      "to": "1b414a49cb44894a27a4d17d79560cc1ccddd268",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "from": "c0bec70998f06de20023c5fd9cc868bd75eba86a",
+      "to": "335d74a0a3c139cbc45a192a9eed4ffb652c37e7",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "from": "a9b757cbd67923919e64ba94bbd6c11a502bf4c6",
+      "to": "860b5e112e803527add77983733b0f1833b465e5",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_cli.py",
+      "from": "58058c00f909f406ab4097874ebe21d0ce28f07d",
+      "to": "ea88a403fae7126931c13cba7c303811529eabda",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "from": "66cf246df02472b131133ece8e1859eceec04224",
+      "to": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_streaming_intake.py",
+      "from": "84fe7a923a0871aa20f9d3d1739d73dfe808371d",
+      "to": "15285cceb4098ad84d86ac7f36ab28283f3a3a44",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "from": "b2a6ae41bc9742dc7c8ab951041c5006566fcf34",
+      "to": "280b9723d2301a21a13308841df3de624b75759a",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "from": "61e8ff1cf190e9fe86ee7f522bf7a23077ac94c7",
+      "to": "e429312dc32f1c18df10215977050f9382296c2f",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ui/test_engine_settings_lifetime.py",
+      "from": "b000cf4410a0392b00d90a2eee4d97f1114f61c8",
+      "to": "b8297a4688f10faac5ec2b620a511b204e504fca",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_replay_identity.py",
+      "from": "fe84d8a406aa85e5fdb12452df8ac8ed2815be3c",
+      "to": "befd833938c370498f42d612d2515e4eeca64af0",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_terminal_replay_registration.py",
+      "from": "19176dd41b5d0454812b35a9d580f264c40f1bf6",
+      "to": "9cc8a5e4e6c968f0c978dfe1ce5cb9b7c9c450d6",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_txt_replay_registration.py",
+      "from": "ee542dc44f8b7674710796bd33c4fb787ccf7553",
+      "to": "460c6570f16f7f869f183063671cca6c78748f18",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_publication_point.py",
+      "from": "8cdbbd19ec125fa1256262d4a1d70cb814b2cb1b",
+      "to": "cb8ea117b42866ef4d8527a1ef14d3615ae0e39a",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling.py",
+      "from": "6bde6f86f3298700e51cf91aae675302c3e6e0be",
+      "to": "15e7f8ea5322a9bd5e8781e11a8841b0b4e7ae8b",
+      "manifest": "accepted-feature-and-actual-regression-maps"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "from": "34b134cc8f8575b74a2f6cf8b7e07224f56eade2",
+      "to": "ff99316d90710b4bba3977016b6419588564f065",
+      "manifest": "d14dc7d4c3b5ceb012f326a1d96216641889487b"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "from": "e8595b9e56b25053f1c0fe10e18000a287bbf80c",
+      "to": "707a2af38d6c966d573ad7987644fd7f95e8ef8d",
+      "manifest": "d14dc7d4c3b5ceb012f326a1d96216641889487b"
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "from": "17878fdf081092becb082e6ba07039ee5be5928a",
+      "to": "194df6f0589c077fac26fc38751d79068c7570ea",
+      "manifest": "d14dc7d4c3b5ceb012f326a1d96216641889487b"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "from": "ff99316d90710b4bba3977016b6419588564f065",
+      "to": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "manifest": "4c4dbb8819e5b0af0b8355e715317265c4239595"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "from": "707a2af38d6c966d573ad7987644fd7f95e8ef8d",
+      "to": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac",
+      "manifest": "4c4dbb8819e5b0af0b8355e715317265c4239595"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "from": null,
+      "to": "3ee29faae1a19e9ca4f124b7aca27020dfba1c0b",
+      "manifest": "diagnostic-3ee29-peer-reviewed"
+    }
+  ],
+  "execution": {
+    "source": {
+      "whole_suites": 41,
+      "expected_cases": 1079,
+      "expected": {
+        "tests/extract/test_docx_rich.py": 55,
+        "tests/assistant/test_translation_rich_docx.py": 17,
+        "tests/ui/test_translation_rich_docx.py": 5,
+        "tests/assistant/test_translation_rich_docx_cli.py": 4,
+        "tests/assistant/test_translation_partition.py": 26,
+        "tests/assistant/test_translation_layout.py": 33,
+        "tests/ui/test_translation_layout.py": 23,
+        "tests/assistant/test_translation_layout_cli.py": 5,
+        "tests/storage/test_backup_translation.py": 14,
+        "tests/assistant/test_translation_epub_layout.py": 31,
+        "tests/ui/test_translation_epub_layout.py": 6,
+        "tests/assistant/test_translation_epub_cli.py": 5,
+        "tests/studio/test_clip_copy.py": 17,
+        "tests/studio/test_clip_copy_dialog.py": 10,
+        "tests/studio/test_clip_operations.py": 59,
+        "tests/studio/test_project_history.py": 29,
+        "tests/studio/test_clip_history_dialog.py": 22,
+        "tests/studio/test_clip_editing.py": 20,
+        "tests/studio/test_clip_dialog.py": 45,
+        "tests/studio/test_clip_restoration.py": 24,
+        "tests/studio/test_clip_cli.py": 8,
+        "tests/catalog/test_streaming_intake.py": 16,
+        "tests/studio/test_book_batch.py": 29,
+        "tests/studio/test_book_cli.py": 18,
+        "tests/ui/test_desktop_handlers.py": 60,
+        "tests/ui/test_progress_voice_actions.py": 22,
+        "tests/ui/test_engine_settings_lifetime.py": 33,
+        "tests/assistant/test_translation.py": 168,
+        "tests/assistant/test_translation_local.py": 39,
+        "tests/assistant/test_translation_documents.py": 20,
+        "tests/ui/test_translation_documents.py": 29,
+        "tests/studio/test_book_audio.py": 46,
+        "tests/extract/test_docx_ordered.py": 9,
+        "tests/extract/test_docx_omitted_content.py": 20,
+        "tests/extract/test_docx_hidden_styles.py": 13,
+        "tests/ingest/test_application_atomic_docx_gate.py": 1,
+        "tests/ingest/test_import_replay_identity.py": 24,
+        "tests/ingest/test_terminal_replay_registration.py": 10,
+        "tests/ingest/test_txt_replay_registration.py": 7,
+        "tests/ingest/test_import_publication_point.py": 2,
+        "tests/speech/test_spelling.py": 55
+      },
+      "status": "NOT_RUN"
+    },
+    "windows": {
+      "whole_suites": 5,
+      "expected_cases": 59,
+      "expected": {
+        "tests/catalog/test_streaming_intake.py": 16,
+        "tests/ingest/test_import_replay_identity.py": 24,
+        "tests/ingest/test_terminal_replay_registration.py": 10,
+        "tests/ingest/test_txt_replay_registration.py": 7,
+        "tests/ingest/test_import_publication_point.py": 2
+      },
+      "status": "NOT_RUN"
+    },
+    "workflow_parser": {
+      "actual_parser_required": true,
+      "status": "NOT_RUN"
+    },
+    "inner_deadlines": "Unchanged reviewed 600/900-second whole-suite and native deadlines; only explicit outer orchestration headroom changed."
+  },
+  "scope": {
+    "installed_package": "NOT_RUN",
+    "native_feature_union": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "real_translation_quality": "NOT_RUN",
+    "real_models_and_private_assets": "NOT_RUN",
+    "full_scale_qualification": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "publisher_signing": "NOT_RUN"
+  },
+  "isolation": "Only public source and synthetic reports. No private engines, models, samples, credentials, external ChatGPT automations or source release ref changes. No prior successful run is promoted to this source."
+}

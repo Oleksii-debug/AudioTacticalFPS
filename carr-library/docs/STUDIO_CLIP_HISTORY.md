@@ -46,6 +46,34 @@ fingerprint, so an intervening edit cannot be overwritten. A cancelled operation
 before publication creates no new revision. Reviewed book-audio plans continue
 to require their own source/effects review rather than generic Studio editing.
 
+## Copy, cut and paste saved clips
+
+**Copy selected saved clip** remembers its project, scene, stable clip ID and exact
+saved revision. Copy does not open media or voices, alter audio, create a project
+revision, or use the operating system clipboard. The selection stays inside this
+clip-editor session; choosing another project clears it.
+
+**Cut selected saved clip for Paste** removes that selection through the existing
+project writer and remembers the earlier revision. Other clip positions remain
+unchanged. The original audio and the removed selection's immutable history stay
+available. This is separate from cutting an interval and leaving its time silent.
+
+**Paste copied clip at a scene position** asks for a destination time in the
+currently selected scene of the same project. It retrieves the exact copied
+revision and verifies its fingerprint, then reads the current managed original
+through the existing source/decoder checks. It gives the new clip a fresh ID,
+preserves its original trim, duration, role, gain, pan, fades, title and effect
+chain, and changes only the requested scene position. Later changes to the
+original clip cannot silently change the copied selection. Different scenes of
+the same project are supported; cross-project or foreign-file references are
+refused.
+
+Paste checks the current project's revision and full fingerprint again at
+publication. Changed or missing history, changed retained audio, cancellation,
+an invalid time, and a competing edit stop publication. A successful cut or
+paste participates in the same project Undo/Redo history. An explicitly later
+paste can reuse the copied selection; no playback or rendering starts by itself.
+
 ## Undo, redo and whole-project history
 
 Undo and redo cover successful saved edits made in the current editor session.
@@ -74,9 +102,14 @@ remain in the durable project history.
 Three complete new test modules cover pure sample/curve geometry, real history
 and compare-and-swap races, actual PCM split/cut/restoration, and queued native
 controller behavior. Their expected static counts are 59, 29 and 22 respectively.
-The required Windows Studio probe also traverses the actual keyboard-driven
+Two additional whole suites require 17 real source/history/PCM cases and 10
+queued UI/scope cases for Copy/Cut/Paste. Their fixtures reuse the existing
+project-history and dialog test companions. The required Windows Studio probe
+also traverses the actual keyboard-driven
 timeline menu, split, undo, redo, rejoin, cut, rendered silence and exact history
-restoration, retaining the existing envelope/effects checks and source origins.
+restoration and Copy/Cut/Paste/Undo, retaining the existing envelope/effects
+checks and source origins. A real nested-modal control checks failure cleanup;
+host shutdown uses the actual DesktopFrame Close and existing owner drain.
 
 At this checkpoint these new tests and the extended native probe are **NOT_RUN**.
 The earlier envelope-only source result cannot qualify these later clip changes.

@@ -219,6 +219,10 @@ def test_late_callback_after_dialog_lifetime_has_no_reads_writes_or_control_upda
 
 @pytest.mark.parametrize('action', ['executable', 'registration', 'dordiai', 'disable', 'reset'])
 def test_current_explicit_choice_still_persists_through_existing_shared_settings(owner, monkeypatch, action):
+    preferences = {'favorites': ['fixture:voice'], 'defaults': {'uk': 'fixture:voice'},
+        'profiles': {'Reading': {'voice_id': 'fixture:voice', 'language': 'uk', 'rate': 0, 'volume': 100}}}
+    runtime_settings.save_voice_preferences(owner.root / 'state', preferences,
+        expected=runtime_settings.load_voice_preferences(owner.root / 'state'))
     new_executable = owner.tmp_path / 'new-helper.fixture'
     new_executable.write_bytes(b'Explicit public path; never executed.')
     chosen = new_executable if action == 'executable' else selected(owner, action)
@@ -233,6 +237,7 @@ def test_current_explicit_choice_still_persists_through_existing_shared_settings
     answers.on_open = lambda: answers.press(action)
     engine_settings.show_engine_settings(owner.frame)
     result = runtime_settings.load_settings(owner.root / 'state')
+    assert result['voice_preferences'] == preferences
     if action == 'executable':
         assert result['ffmpeg'] == str(new_executable)
     elif action == 'registration':
@@ -244,7 +249,8 @@ def test_current_explicit_choice_still_persists_through_existing_shared_settings
         assert result['dordiai'] is None and owner.engine.is_dir()
     else:
         assert result == {'schema': 1, 'ffmpeg': None, 'ffprobe': None, 'piper': [],
-                          'voice_helpers': [], 'music_models': [], 'fluidsynth': None, 'dordiai': None}
+                          'voice_helpers': [], 'music_models': [], 'fluidsynth': None, 'dordiai': None,
+                          'voice_preferences': preferences}
         assert owner.executable.exists() and owner.engine.is_dir()
     assert len(answers.status_values) == 2
     assert answers.status_name == 'Local engine configuration and availability'

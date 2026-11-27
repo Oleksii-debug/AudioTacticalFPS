@@ -103,9 +103,28 @@ def test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech(bat
     assert {row['status'] for book in status['books'] for row in book['items']} == {'pending'}
 
 
-def test_actual_two_book_render_and_reopened_resume_verify_original_outputs(batch):
+def test_actual_two_book_render_and_reopened_resume_verify_original_outputs(batch, monkeypatch):
+    from carr_library.studio import book_batch, render
     e = batch
     _, ready = prepare(e)
+    # Real retained-tree accounting invokes the live stop predicate once per
+    # path. It must not re-open immutable active JSON for each visited entry.
+    # Full active identity checks still occur at actual source boundaries.
+    actual_read = book_batch.read_json
+    actual_accounting = render._retained_bytes
+    active_reads, scans = [], []
+    def observed_read(path, **options):
+        if Path(path).name.endswith('.active.json'):
+            active_reads.append(str(path))
+        return actual_read(path, **options)
+    def observed_accounting(roots, cancelled):
+        before = len(active_reads)
+        result = actual_accounting(roots, cancelled)
+        assert len(active_reads) == before
+        scans.append(result)
+        return result
+    monkeypatch.setattr(book_batch, 'read_json', observed_read)
+    monkeypatch.setattr(render, '_retained_bytes', observed_accounting)
     progress = []
     result = e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint, progress=progress.append)
     assert result['status'] == 'complete'
@@ -130,6 +149,7 @@ def test_actual_two_book_render_and_reopened_resume_verify_original_outputs(batc
                       for path in before}
     assert all(e.app.assets.resolve(item['asset']).read_bytes() == text.encode()
                for item, text in zip(e.imported, e.texts))
+    assert scans and active_reads  # real accounting plus full live boundary validation
 
 
 @pytest.mark.parametrize('change', ['order', 'voice', 'format', 'destination'])
@@ -488,3 +508,32 @@ def test_saved_batch_inventory_never_silently_omits_unreadable_directory(batch, 
         with pytest.raises(PermissionError):
             e.groups.saved()
     assert e.groups.saved() == (e.selected,)
+
+
+@pytest.mark.parametrize('change', ['replace-token', 'remove-active'])
+def test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books(batch, change):
+    e = batch
+    _, ready = prepare(e)
+    tampered = []
+    def after_actual_pcm():
+        if tampered:
+            return
+        root, path = e.groups._controls(e.selected)
+        previous = read_json(path)
+        tampered.append(previous)
+        if change == 'replace-token':
+            token = ('0' if previous['token'][0] != '0' else '1') + previous['token'][1:]
+            atomic_json(path, dict(previous, token=token), replace=True)
+        else:
+            path.unlink()
+    e.voices.after_write = after_actual_pcm
+    with pytest.raises((ValueError, OSError)) as failed:
+        e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+    assert tampered and len(e.voices.calls) == 1
+    assert failed.value.book_batch_result['status'] == 'failed'
+    assert failed.value.book_batch_result['control_cleanup_pending'] is True
+    assert e.production.get(e.plans[0].job_id(1))['status'] == 'failed'
+    assert e.production.get(e.plans[1].job_id(1))['status'] == 'pending'
+    assert not any(path.is_file() for output in e.outputs for path in output.rglob('*'))
+    assert all(e.app.assets.resolve(item['asset']).read_bytes() == text.encode()
+               for item, text in zip(e.imported, e.texts))

@@ -20,6 +20,7 @@ from .models import canonical
 from .translation_documents import (SelectedDocument, review_documents, prepare_documents,
                                     MAX_DOCUMENTS)
 from .translation_partition import make_partition, partition_ranges, partition_chunk_groups
+from .translation_docx_rich import PROFILE as RICH_PROFILE, NOTICE as RICH_NOTICE
 from .translation_layout_worker import MAX_ARCHIVE, MAX_CHARACTERS, MAX_REPLY, MAX_REQUEST, MAX_UNITS, NOTICE, PROFILE
 from ..audio.models import AudioBudget, AudioCleanupPending
 from ..audio.process import run_process
@@ -56,6 +57,9 @@ def _bound_cancel(library, expected, cancelled, guard):
 
 
 def _mapping(value):
+    if type(value) is dict and value.get('schema') == RICH_PROFILE:
+        from .translation_docx_rich import validate_mapping
+        return validate_mapping(value)
     if (type(value) is not dict or set(value) != {'schema', 'source_sha256', 'source_size',
             'records', 'characters', 'selected', 'notice', 'quotation_authority'}
             or value['schema'] != PROFILE or value['notice'] != NOTICE
@@ -129,11 +133,14 @@ class LayoutDocument:
 
     def summary(self):
         data = self.mapping
-        return {'schema': PROFILE, 'title': self.title, 'workspace': self.workspace,
+        return {'schema': data['schema'], 'title': self.title, 'workspace': self.workspace,
             'edition': self.edition, 'revision': self.revision,
             'source_sha256': self.asset_sha256, 'mapping_sha256': self.mapping_sha256,
             'paragraphs': data['selected'], 'characters': data['characters'],
-            'notice': NOTICE, 'quotation_authority': False,
+            'notice': data['notice'], 'quotation_authority': False,
+            **({'text_fragments': data['selected'], 'canonical_paragraphs': len(data['records']),
+                'note_paragraphs': sum(type(row['locator']) is dict for row in data['records'])}
+               if data['schema'] == RICH_PROFILE else {}),
             **({'partitioned_jobs': 1, 'source_partition': self.source_partition}
                if self.partition_json is not None else {})}
 
@@ -155,13 +162,15 @@ def _combined_partition(mapping, selection, mapping_sha256):
                 or position['text_sha256'] != row['sha256']
                 or document.source_text[first:last] != row['text']):
             raise ValueError('The DOCX partition source positions changed.')
-        for end in (first, last):
+        ends = ([first + boundary for unit in row['units'] for boundary in (unit['start'], unit['end'])]
+                if mapping['schema'] == RICH_PROFILE else (first, last))
+        for end in ends:
             if end > previous:
                 boundaries.append(end)
                 previous = end
     if previous < len(document.source_text):
         boundaries.append(len(document.source_text))
-    return make_partition(document.source_text, PROFILE, mapping_sha256, boundaries)
+    return make_partition(document.source_text, mapping['schema'], mapping_sha256, boundaries)
 
 
 def _same_layout_anchor(actual, expected):
@@ -287,7 +296,10 @@ def _command(request, digest, timeout, *, kind='docx'):
 
 def _changed_members(value, kind):
     if kind == 'docx':
-        return value == ['word/document.xml']
+        return (type(value) is list
+                and all(type(name) is str and name in ('word/document.xml', 'word/footnotes.xml',
+                                                       'word/endnotes.xml') for name in value)
+                and value == sorted(set(value)) and 'word/document.xml' in value)
     if type(value) is not list or not 1 <= len(value) <= 1001:
         return False
     from pathlib import PurePosixPath
@@ -392,7 +404,8 @@ def _invoke(library, desk, *, action, replacements=None, cancelled=lambda: False
                     or any(c not in '0123456789abcdef' for c in response['mapping_sha256'])
                     or response['output_bytes'] != output.size or type(response['output_bytes']) is not int
                     or not _changed_members(response['changed_members'], kind)
-                    or response['quotation_authority'] is not False or response['notice'] != notice
+                    or response['quotation_authority'] is not False
+                    or response['notice'] not in ((notice, RICH_NOTICE) if kind == 'docx' else (notice,))
                     or type(response['paragraphs']) is not int or response['paragraphs'] != len(replacements)
                     or type(response['preserved_members']) is not dict
                     or len(response['preserved_members']) > 10000
@@ -422,14 +435,14 @@ def capture_layout(library, workspace, edition, *, topic=None, cancelled=lambda:
         check_cancelled(stopped)
         if page.kind != 'logical_segment' or page.ordinal != row['ordinal'] or page.text_sha256 != row['sha256']:
             raise ValueError('The DOCX paragraph differs from its retained source segment.')
-        if row['selected'] and mapping['selected'] <= MAX_DOCUMENTS:
+        if row['selected'] and mapping['selected'] <= MAX_DOCUMENTS and mapping['schema'] != RICH_PROFILE:
             source = read_source_range(desk, page.ordinal, page.ordinal,
                                        cancelled=base, guard=guard)
             if source.text != row['text']:
                 raise ValueError('The DOCX text differs from its current retained source.')
             selected.append(SelectedDocument(source.reading_document(), topic))
     partition_json = None
-    if mapping['selected'] > MAX_DOCUMENTS:
+    if mapping['selected'] > MAX_DOCUMENTS or mapping['schema'] == RICH_PROFILE:
         source = read_source_range(desk, 1, len(desk.pages), cancelled=base, guard=guard,
                                    max_characters=MAX_CHARACTERS)
         selected = [SelectedDocument(source.reading_document(), topic)]
@@ -578,24 +591,31 @@ def _completed_partition(service, layout, identity, *, cancelled, guard):
     if index != len(job['chunks']) or index != len(job['receipts']):
         raise ValueError('The completed layout receipt inventory changed.')
     replacements, receipts = [], []
-    for row, position in zip(layout.mapping['records'],
+    mapping = layout.mapping
+    for row, position in zip(mapping['records'],
                              layout.selections[0].document.source_anchor['positions']):
         if not row['selected']:
             continue
-        key = (position['start'], position['end'])
-        if key not in translated:
-            raise ValueError('A source paragraph is not an exact approved layout partition.')
-        value, indices = translated[key]
-        replacements.append({'ordinal': row['ordinal'], 'source_sha256': row['sha256'], 'text': value})
-        receipts.append({'id': identity, 'ordinal': row['ordinal'], 'source_sha256': row['sha256'],
-                         'translation_sha256': _hash(value.encode('utf-8')),
-                         'receipt_indices': list(indices)})
+        units = (row['units'] if mapping['schema'] == RICH_PROFILE else
+                 [{'ordinal': row['ordinal'], 'sha256': row['sha256'],
+                   'start': 0, 'end': len(row['text'])}])
+        for unit in units:
+            key = (position['start'] + unit['start'], position['start'] + unit['end'])
+            if key not in translated:
+                raise ValueError('A source text unit is not an exact approved layout partition.')
+            value, indices = translated[key]
+            replacements.append({'ordinal': unit['ordinal'], 'source_sha256': unit['sha256'], 'text': value})
+            receipts.append({'id': identity, 'ordinal': unit['ordinal'], 'source_sha256': unit['sha256'],
+                             'translation_sha256': _hash(value.encode('utf-8')),
+                             'receipt_indices': list(indices),
+                             **({'source_record': row['ordinal']} if mapping['schema'] == RICH_PROFILE else {})})
     return replacements, receipts
 
 
 def export_layout(service, layout, identities, destination, *, approval=None,
                   cancelled=lambda: False, guard=lambda: None, broker=None):
     desk, base = _checked_desk(service.library, layout, cancelled=cancelled, guard=guard)
+    captured_mapping = layout.mapping
     stopped = _source_cancel(desk, base)
     requested = Path(destination)
     if requested.suffix.lower() != '.docx':
@@ -611,7 +631,8 @@ def export_layout(service, layout, identities, destination, *, approval=None,
         replacements, receipts = _completed(service, layout, identities, cancelled=stopped, guard=guard)
         data, result = _invoke(service.library, desk, action='render', replacements=replacements,
                                cancelled=stopped, broker=broker)
-        if result['mapping_sha256'] != layout.mapping_sha256:
+        if (result['mapping_sha256'] != layout.mapping_sha256
+                or result['changed_members'] != captured_mapping.get('parts', ['word/document.xml'])):
             raise ValueError('The completed DOCX mapping differs from the captured source review.')
         with exclusive_writer(service.library.root):
             def publishing_cancelled():
@@ -633,4 +654,4 @@ def export_layout(service, layout, identities, destination, *, approval=None,
                 'output_sha256': result['output_sha256'], 'output_bytes': len(data),
                 'changed_members': result['changed_members'],
                 'preserved_member_count': len(result['preserved_members']),
-                'quotation_authority': False, 'notice': NOTICE}
+                'quotation_authority': False, 'notice': captured_mapping['notice']}

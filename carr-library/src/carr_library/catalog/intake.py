@@ -157,6 +157,48 @@ def _stream_change_time(stream):
     return info.ChangeTime
 
 
+
+def _open_file_source(path):
+    """Hold a Windows read handle that excludes concurrent writes and renames.
+
+    File timestamps can stay equal across quick writes. Sharing protection lasts
+    for this exact held descriptor; later opens still recheck the saved identity.
+    Other readers remain allowed. The portable reader retains its current checks.
+    """
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = [wintypes.HANDLE], wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ only; OPEN_EXISTING;
+    # OPEN_REPARSE_POINT so the following held-descriptor checks reject a swap.
+    handle = create(str(path), 0x80000000, 0x00000001, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        code = ctypes.get_last_error()
+        raise IntakeError('The selected source changed or is unavailable for a stable read '
+                          f'(Windows error {code}). Close any application writing it and retry.')
+    descriptor = None
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+        handle = None  # CRT descriptor now owns the exact native handle.
+        result = os.fdopen(descriptor, 'rb')
+        descriptor = None  # The Python stream now owns the descriptor.
+        return result
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        elif handle is not None:
+            close(handle)
+
+
 def _selected(root, relative):
     raw = os.fspath(relative)
     if not isinstance(raw, str) or "\\" in raw or ":" in raw or "\x00" in raw:
@@ -202,12 +244,16 @@ class FileSnapshot:
         if (_stamp(before) != self.identity or before.st_size != self.size
                 or self.mime not in STREAM_MIMES or not 0 < self.size <= source_limit(self.mime)):
             raise IntakeError('File-backed source changed before reading.')
-        with path.open('rb') as stream:
+        with _open_file_source(path) as stream:
             if _stamp(os.fstat(stream.fileno())) != self.identity:
                 raise IntakeError('File-backed source changed while opening.')
             change_time = _stream_change_time(stream)
             try:
                 yield stream
+            except OSError as error:
+                if os.name != 'nt' or isinstance(error, (InterruptedError, TimeoutError)):
+                    raise
+                raise IntakeError('File-backed source changed or became unavailable while reading.') from error
             finally:
                 _, named = _selected(path.parent, path.name)
                 if (_stamp(os.fstat(stream.fileno())) != self.identity

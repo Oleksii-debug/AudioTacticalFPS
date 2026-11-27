@@ -126,8 +126,12 @@ def test_actual_cli_preview_prepare_run_status_and_verified_resume(actual_cli):
     reviewed = json.loads(preview.stdout)
     assert reviewed['prepared'] is False and len(reviewed['books']) == 2
     assert not books.production.jobs() and all(not list(parent.iterdir()) for parent in outputs)
+    prior_review = (review_path.read_bytes(), review_path.stat().st_mtime_ns)
     repeated = cli(app.root, workspace, 'preview', '--request', request_path, '--review', review_path)
-    assert repeated.returncode == 1 and 'not be overwritten' in repeated.stderr
+    assert repeated.returncode == 1 and not repeated.stdout
+    assert ('not be overwritten' in repeated.stderr or 'file was not changed' in repeated.stderr)
+    assert (review_path.read_bytes(), review_path.stat().st_mtime_ns) == prior_review
+    assert not books.production.jobs() and all(not list(parent.iterdir()) for parent in outputs)
     wrong = cli(app.root, workspace, 'prepare', '--review', review_path, '--approval', '0' * 64)
     assert wrong.returncode == 1 and not books.production.jobs()
     prepared = cli(app.root, workspace, 'prepare', '--review', review_path, '--approval', reviewed['approval'])
@@ -221,7 +225,7 @@ def test_actual_cli_restore_prepares_new_outputs_without_old_external_review(act
 
 @pytest.mark.parametrize('existing', [False, True])
 def test_cli_review_source_change_inside_real_export_fsync_preserves_destination(batch, tmp_path, monkeypatch, existing):
-    from carr_library.reader import export_file
+    from carr_library.research import export_file
     from carr_library.studio.book_cli import _publish_review
     e = batch
     declaration = request(e)
@@ -230,7 +234,7 @@ def test_cli_review_source_change_inside_real_export_fsync_preserves_destination
     destination = tmp_path / 'review-output.json'
     if existing:
         destination.write_bytes(b'prior explicit document')
-        with pytest.raises(FileExistsError):
+        with pytest.raises((FileExistsError, TimeoutError), match='not be overwritten|file was not changed'):
             _publish_review(e.books, e.groups, selected, plans, outputs, review, destination, lambda: False)
         assert destination.read_bytes() == b'prior explicit document'
         return
@@ -247,6 +251,7 @@ def test_cli_review_source_change_inside_real_export_fsync_preserves_destination
             _publish_review(e.books, e.groups, selected, plans, outputs, review, destination, lambda: False)
     assert changed and not destination.exists()
     assert not tuple(tmp_path.glob('.carr-export-*'))
+    assert not tuple(tmp_path.glob('.research-export-*'))
     assert not e.voices.calls
 
 
@@ -292,3 +297,13 @@ def test_cli_close_failure_keeps_returned_result_and_strong_owner_until_explicit
     assert ref() is e.books
     assert book_cli.retry_pending_cleanup() == 0 and e.books not in book_cli._pending_cleanup
     assert len(calls) == 2
+
+
+def test_review_reader_rejects_bytes_beyond_the_writer_budget_before_parsing(tmp_path):
+    from carr_library import durable_state
+    path = tmp_path / 'oversized-review.json'
+    with path.open('wb') as stream:
+        stream.truncate(durable_state.MAX_JSON_BYTES + 1)
+    with pytest.raises(ValueError, match='State exceeds its configured JSON budget'):
+        read_review(path, 'unopened-library', None)
+    assert path.stat().st_size == durable_state.MAX_JSON_BYTES + 1

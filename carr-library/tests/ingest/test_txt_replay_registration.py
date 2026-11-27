@@ -84,11 +84,13 @@ def test_txt_replay_rejects_conflicting_identity(imported):
 
 
 def test_cancelled_completed_replay_never_adds_membership(imported):
-    app, ws, _, first, requested, src, _, meta, initial = imported
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: True, **meta)
+    app, ws, _, first, requested, src, raw, meta, initial = imported
+    cancelled = app.import_file(ws, src, collections=(first, requested), cancelled=lambda: True, **meta)
+    assert cancelled['state'] == 'cancelled' and 'cancelled' in cancelled['message'].lower()
+    assert 'id' not in cancelled and not cancelled.get('publication_recovered')
     assert app.browse(ws, collection=requested) == ()
     assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']
+    assert src.read_bytes() == raw and app.assets.resolve(initial['asset']).read_bytes() == raw
 
 
 def test_cancellation_during_completed_replay_validation_rolls_back_membership(imported, monkeypatch):
@@ -131,11 +133,13 @@ def test_superseded_replay_requires_current_metadata_without_reactivation(import
 
 
 def test_cancelled_completed_replay_preserves_membership(imported):
-    app, ws, _, first, requested, src, _, meta, initial = imported
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)
+    app, ws, _, first, requested, src, raw, meta, initial = imported
+    cancelled = app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)
+    assert cancelled['state'] == 'cancelled' and 'cancelled' in cancelled['message'].lower()
+    assert 'id' not in cancelled and not cancelled.get('publication_recovered')
     assert app.browse(ws, collection=requested) == ()
     assert app.browse(ws, collection=first)
+    assert src.read_bytes() == raw and app.assets.resolve(initial['asset']).read_bytes() == raw
 
 
 def test_pdf_completed_replay_registers_exact_source_without_approving_it(tmp_path):

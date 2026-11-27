@@ -46,6 +46,44 @@ REQUIRED = (
 )
 
 
+PROVIDER_MODULES = MODULES + (
+    'carr_library.assistant.credentials',
+    'carr_library.assistant.llm',
+    'carr_library.assistant.google_oauth',
+)
+PROVIDER_TEST = 'tests/assistant/test_providers.py'
+PROVIDER_REQUIRED = (
+    "test_local_only_denies_before_any_vault_or_connection",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change0]",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change1]",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change2]",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change3]",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change4]",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change5]",
+    "test_remote_envelope_rejects_wrong_scope_before_credentials[change6]",
+    "test_unknown_cost_rejected_and_budget_retains_uncertain_reservation",
+    "test_actual_loopback_chat_and_separate_account_routing",
+    "test_redirect_never_forwarded_and_error_is_redacted",
+    "test_invalid_remote_endpoint_cannot_save_credentials[http://api.example.test/v1]",
+    "test_invalid_remote_endpoint_cannot_save_credentials[https://user:password@example.com/v1]",
+    "test_invalid_remote_endpoint_cannot_save_credentials[https://example.com/v1?api_key=secret]",
+    "test_invalid_remote_endpoint_cannot_save_credentials[https://example.com/#token]",
+    "test_invalid_remote_endpoint_cannot_save_credentials[https://127.0.0.1/v1]",
+    "test_invalid_remote_endpoint_cannot_save_credentials[https://localhost/v1]",
+    "test_invalid_remote_endpoint_cannot_save_credentials[https://example.com/%2Fescape]",
+    "test_untrusted_response_tool_call_and_wrong_content_type_are_rejected",
+    "test_response_bounds_and_pretransmission_cancel",
+    "test_profiles_export_never_contains_secret_references_or_enabled_state",
+    "test_credential_references_cannot_cross_accounts",
+    "test_windows_vault_has_no_plaintext_fallback",
+    "test_actual_local_planner_output_cannot_grant_tool_or_scope_permissions",
+    "test_elevenlabs_templates_are_typed_and_locked_to_official_host",
+    "test_untrusted_provider_response_cannot_echo_a_credential",
+    "test_native_header_encoding_error_does_not_expose_secret",
+    "test_authorized_remote_route_budget_and_unsafe_retry_with_local_mock",
+)
+
+
 def firewall_receipt(path):
     value = json.loads(path.read_text(encoding='utf-8-sig'))
     if value.get('status') != 'PASS' or value.get('allowed_test_peer') != '127.0.0.1':
@@ -81,10 +119,22 @@ def firewall_receipt(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', choices=('source', 'installed'), required=True)
+    parser.add_argument('--suite', choices=('translation', 'providers'), default='translation')
     parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--firewall-receipt', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
     args = parser.parse_args()
+    provider_suite = args.suite == 'providers'
+    module_names = PROVIDER_MODULES if provider_suite else MODULES
+    test_relative = PROVIDER_TEST if provider_suite else TEST
+    required = PROVIDER_REQUIRED if provider_suite else REQUIRED
+    case_count = len(required)
+    test_module = Path(test_relative).stem
+    report_prefix = 'provider-loopback-' if provider_suite else 'translation-loopback-'
+    acceptance = 'exact 28 provider' if provider_suite else 'exact seven'
+    transport = ('127.0.0.1 synthetic HTTP provider fixtures' if provider_suite
+                 else '127.0.0.1 synthetic HTTP and isolated CLI subprocesses')
+    case_label = 'local provider HTTP cases' if provider_suite else 'local translation HTTP/CLI cases'
     if os.name != 'nt':
         parser.error('This required gate uses the calling Windows process-level firewall.')
     source_root = args.source_root.resolve(strict=True)
@@ -99,8 +149,8 @@ def main():
     if args.mode == 'source':
         sys.path.insert(0, str(source_root))
     expected = {name: sha256((source_root / Path(*name.split('.')).with_suffix('.py')).read_bytes()).hexdigest()
-                for name in MODULES}
-    modules = {name: importlib.import_module(name) for name in MODULES}
+                for name in module_names}
+    modules = {name: importlib.import_module(name) for name in module_names}
     def origins():
         result = {}
         for name, module in modules.items():
@@ -124,8 +174,8 @@ def main():
         selected = ()
         def pytest_collection_modifyitems(self, items):
             self.selected = tuple(item.nodeid.rsplit('::', 1)[-1] for item in items)
-            if Counter(self.selected) != Counter(REQUIRED):
-                raise pytest.UsageError('The exact seven local HTTP/CLI cases were not collected.')
+            if Counter(self.selected) != Counter(required):
+                raise pytest.UsageError('The required ' + acceptance + ' local HTTP cases were not collected.')
         def pytest_runtest_logreport(self, report):
             if hasattr(report, 'wasxfail'):
                 self.expected_failure = True
@@ -133,13 +183,13 @@ def main():
                 print('\nIMMEDIATE_FAILURE ' + report.nodeid + ' [' + report.when + ']', flush=True)
                 print(report.longreprtext, flush=True)
     policy = Strict()
-    xml = output / ('translation-loopback-' + args.mode + '.xml')
-    receipt_path = output / ('translation-loopback-' + args.mode + '.json')
-    test_source = checkout / TEST
+    xml = output / (report_prefix + args.mode + '.xml')
+    receipt_path = output / (report_prefix + args.mode + '.json')
+    test_source = checkout / test_relative
     test_sha = sha256(test_source.read_bytes()).hexdigest()
     with TemporaryDirectory(prefix='carr-translation-loopback-') as temporary:
         root = Path(temporary)
-        selected_test = root / TEST
+        selected_test = root / test_relative
         selected_test.parent.mkdir(parents=True)
         shutil.copyfile(test_source, selected_test)
         if sha256(selected_test.read_bytes()).hexdigest() != test_sha:
@@ -157,22 +207,22 @@ def main():
     cases = list(ET.parse(xml).iter('testcase')) if xml.is_file() else []
     names = tuple(case.get('name') for case in cases)
     valid = (int(result) == 0 and not policy.expected_failure
-        and Counter(policy.selected) == Counter(REQUIRED)
-        and Counter(names) == Counter(REQUIRED) and len(cases) == 7
-        and all(case.get('classname', '').rsplit('.', 1)[-1] == 'test_translation_local_loopback'
+        and Counter(policy.selected) == Counter(required)
+        and Counter(names) == Counter(required) and len(cases) == case_count
+        and all(case.get('classname', '').rsplit('.', 1)[-1] == test_module
                 and not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
                 for case in cases))
-    receipt = {'status': 'PASS' if valid else 'FAIL', 'mode': args.mode,
-        'cases': len(cases), 'required': list(REQUIRED), 'pytest_exit': int(result),
+    receipt = {'status': 'PASS' if valid else 'FAIL', 'mode': args.mode, 'suite': args.suite,
+        'cases': len(cases), 'required': list(required), 'pytest_exit': int(result),
         'xfail_or_xpass': policy.expected_failure, 'source_origins': after_origins,
         'test_sha256': test_sha, 'junit_sha256': sha256(xml.read_bytes()).hexdigest() if xml.is_file() else None,
-        'firewall': boundary, 'actual_transport': '127.0.0.1 synthetic HTTP and isolated CLI subprocesses',
+        'firewall': boundary, 'actual_transport': transport,
         'actual_local_model_inference': 'NOT_RUN', 'quality_or_135_language_qualification': 'NOT_RUN'}
     receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, ensure_ascii=False), flush=True)
     if not valid:
         return 1
-    print('PASS: exact seven ' + args.mode + ' local translation HTTP/CLI cases; no skips/XFAIL/XPASS', flush=True)
+    print('PASS: ' + acceptance + ' ' + args.mode + ' ' + case_label + '; no skips/XFAIL/XPASS', flush=True)
     return 0
 
 

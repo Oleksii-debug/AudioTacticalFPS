@@ -192,3 +192,79 @@ def test_large_txt_requires_original_bounded_logical_segments(tmp_path):
     source = source_snapshot(tmp_path, path.name)
     with pytest.raises(IntakeError, match='logical segment exceeds 4 MiB'):
         TextSegments(source)
+
+
+def test_held_source_allows_another_reader_and_keeps_its_exact_identity(tmp_path):
+    path = tmp_path / 'shared-read.txt'
+    original = b'Original selected bytes.'
+    path.write_bytes(original)
+    source = file_snapshot(tmp_path, path.name)
+    with source.open() as first, source.open() as second:
+        assert first.read() == second.read() == original
+        assert source.manifest() == dict(sha256=sha256(original).hexdigest(),
+                                        mime='text/plain', size=len(original))
+    source.verify()
+    assert path.read_bytes() == original
+
+
+def test_held_source_excludes_windows_writes_or_rejects_portable_drift(tmp_path):
+    path = tmp_path / 'held-source.txt'
+    original = b'Original selected bytes.'
+    path.write_bytes(original)
+    source = file_snapshot(tmp_path, path.name)
+    if os.name == 'nt':
+        with source.open() as reader:
+            with pytest.raises(PermissionError):
+                with path.open('r+b') as writer:
+                    writer.write(b'Changed!')
+            assert reader.read() == original
+        assert path.read_bytes() == original
+        # The held descriptor is closed: an explicitly later edit can proceed.
+        with path.open('r+b') as writer:
+            writer.write(b'Changed!')
+            writer.flush()
+            os.fsync(writer.fileno())
+        with pytest.raises(IntakeError, match='changed'):
+            source.verify()
+    else:
+        with pytest.raises(IntakeError, match='changed'):
+            with source.open() as reader:
+                assert reader.read() == original
+                with path.open('r+b') as writer:
+                    writer.write(b'Changed!')
+                    writer.flush()
+                    os.fsync(writer.fileno())
+    assert path.read_bytes() != original
+
+
+def test_open_writer_is_never_admitted_as_a_stable_windows_source(tmp_path):
+    path = tmp_path / 'already-open.txt'
+    original = b'Original selected bytes.'
+    path.write_bytes(original)
+    with path.open('r+b') as writer:
+        if os.name == 'nt':
+            with pytest.raises(IntakeError, match='stable read'):
+                file_snapshot(tmp_path, path.name)
+        else:
+            # POSIX retains its existing detection contract; this control
+            # performs no write and makes no claim of a mandatory POSIX lock.
+            assert file_snapshot(tmp_path, path.name).digest == sha256(original).hexdigest()
+    assert file_snapshot(tmp_path, path.name).digest == sha256(original).hexdigest()
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize('failure', [InterruptedError, TimeoutError])
+def test_held_source_cleanup_preserves_the_original_cancellation(tmp_path, failure):
+    path = tmp_path / 'cancel-held.txt'
+    path.write_bytes(b'Original selected bytes.')
+    source = file_snapshot(tmp_path, path.name)
+    with pytest.raises(failure, match='explicit cancellation'):
+        with source.open():
+            raise failure('explicit cancellation')
+    # No retained read lock may survive cancellation.
+    with path.open('r+b') as writer:
+        writer.write(b'Changed!')
+        writer.flush()
+        os.fsync(writer.fileno())
+    with pytest.raises(IntakeError, match='changed'):
+        source.verify()

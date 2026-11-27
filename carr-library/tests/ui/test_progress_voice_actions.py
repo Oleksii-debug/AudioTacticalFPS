@@ -172,17 +172,20 @@ def reader(tmp_path, monkeypatch):
         library_identity=(tmp_path.stat().st_dev, tmp_path.stat().st_ino),
         progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
-        alive=True, playback_generation=0, repeat_scheduled=None,
+        alive=True, busy=False, playback_generation=0, repeat_scheduled=None,
+        remembered_voice_id='', reader_tabs=None,
         cancel=threading.Event(), player=Mock(), playback_timer=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
-        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set(), owned_listening=set())
+        unregister=Mock(), detach_desktop=Mock(),
+        owned_registries={registry}, owned_progress_voices=set(), owned_listening=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['check_current', 'reload', 'select_progress_voice', 'playback_scope',
-         'playback_failed', 'start_playback', 'stop_audio', 'closing'],
+         'playback_failed', 'start_playback', 'stop_audio',
+         'confirm_current_close', 'reader_tools_notice', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
@@ -242,6 +245,7 @@ def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(read
         reader.values['dialog'].EndModal.assert_called_once_with(1)
         # Execute the real outer finally block when the simulated modal unwinds.
         reader.handlers.cleanup()
+        reader.values['detach_desktop'].assert_called_once_with()
         reader.values['player'].close.assert_called_once()
         reader.values['dialog'].Destroy.assert_called_once()
         reader.values['audio_files'].cleanup.assert_not_called()
@@ -496,6 +500,7 @@ def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reade
 def test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup(reader):
     reader.progress.unregister_player = Mock(side_effect=RuntimeError('Progress observer detached'))
     reader.handlers.cleanup()
+    reader.values['detach_desktop'].assert_called_once_with()
     reader.values['player'].close.assert_called_once()
     reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=False)
     reader.values['dialog'].Destroy.assert_called_once()

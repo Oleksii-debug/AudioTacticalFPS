@@ -53,6 +53,8 @@ def main():
         translation_partition)
     checks, errors, calls, children, origins = [], [], [], [], {}
     ui_thread = threading.get_ident()
+    modal_loops, handled_failures = [], []
+    unwind_pending, expected_failure = False, None
     def check(label, condition):
         if not condition:
             raise AssertionError(label)
@@ -69,16 +71,89 @@ def main():
 
     class App(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            self.ExitMainLoop()
-            return False
+            current = sys.exc_info()[1]
+            if (expected_failure is not None and current is expected_failure[0]
+                    and user32.IsWindow(expected_failure[2])
+                    and expected_failure[3].IsRunning()):
+                handled_failures.append(current)
+            else:
+                errors.append(traceback.format_exc())
+            unwind()
+            return True  # Retain real failures; close only the active owned loop.
     app = App(False)
+    app.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
+    app.SetExitOnFrameDelete(False)
     simulator = wx.UIActionSimulator()
     check('native Windows wx', wx.Platform == '__WXMSW__')
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
     user32.SetForegroundWindow.argtypes, user32.SetForegroundWindow.restype = [wintypes.HWND], wintypes.BOOL
     user32.GetForegroundWindow.argtypes, user32.GetForegroundWindow.restype = [], wintypes.HWND
+    def own_modal(window):
+        loop = wx.EventLoopBase.GetActive()
+        if loop is None or not loop.IsRunning() or loop.IsMain() or not window.IsModal():
+            raise AssertionError('The owned translation modal has no running native event loop.')
+        record = (window, window.GetHandle(), loop)
+        modal_loops.append(record)
+        return record
+
+    def unwind():
+        nonlocal unwind_pending
+        if unwind_pending:
+            return
+        unwind_pending = True
+        def close_active():
+            nonlocal unwind_pending
+            unwind_pending = False
+            try:
+                for window, handle, loop in reversed(modal_loops):
+                    if window and user32.IsWindow(handle) and window.IsModal() and loop.IsRunning():
+                        window.EndModal(wx.ID_CANCEL)
+                        return
+                active = wx.EventLoopBase.GetActive()
+                if errors and active is not None and active.IsMain():
+                    active.ScheduleExit(1)
+            except Exception:
+                errors.append(traceback.format_exc())
+                # A finite watchdog remains armed. Never destroy or EndModal a
+                # suspended/unowned window to turn an unconfirmed cleanup green.
+        wx.CallAfter(close_active)
+
+    def exercise_nested_failure(parent):
+        nonlocal expected_failure
+        parent_record = modal_loops[-1]
+        fixture = wx.Dialog(parent, title='Native translation failure cleanup fixture')
+        marker = RuntimeError('Controlled owned translation modal failure.')
+        observed, requests, owned_children = len(handled_failures), len(calls), len(children)
+        def fail_inside_owned_modal():
+            nonlocal expected_failure
+            try:
+                window, handle, loop = own_modal(fixture)
+                expected_failure = (marker, window, handle, loop)
+                try:
+                    raise marker
+                except RuntimeError:
+                    # wx.Timer.Notify must not propagate exceptions. Invoke the
+                    # actual app handler while this exact exception is active,
+                    # inside the real nested native modal callback.
+                    if app.OnExceptionInMainLoop() is not True:
+                        raise AssertionError('The owned failure handler terminated its event loop.')
+            except Exception:
+                errors.append(traceback.format_exc())
+                unwind()
+        try:
+            wx.CallLater(60, fail_inside_owned_modal)
+            result = fixture.ShowModal()
+            check('nested native failure unwinds only the active owned modal',
+                  result == wx.ID_CANCEL and handled_failures[observed:] == [marker]
+                  and not errors and user32.IsWindow(parent_record[1])
+                  and parent.IsModal() and parent_record[2].IsRunning()
+                  and len(calls) == requests and len(children) == owned_children
+                  and not frame.executor._shutdown)
+        finally:
+            expected_failure = None
+            fixture.Destroy()
+
     def pump(predicate, label, timeout=35, *, cleanup=False):
         until = monotonic() + timeout
         while not predicate():
@@ -148,6 +223,7 @@ def main():
     actual = (http.client.HTTPConnection, wx.MessageBox, wx.SingleChoiceDialog, wx.FileDialog,
               translation_layout.run_process, translation_layout.write_binary_export)
     frame = None
+    host_handle, host_executor, host_cancel = None, None, None
     with TemporaryDirectory(prefix='resonance-docx-translation-') as temporary:
         root = Path(temporary)
         try:
@@ -206,6 +282,7 @@ def main():
                 return result
             translation_layout.run_process = owned_format
             frame = desktop_app.DesktopFrame(library)
+            host_handle, host_executor, host_cancel = frame.GetHandle(), frame.executor, frame.cancel_event
             frame.Show()
             app.SetTopWindow(frame)
             check('actual shared desktop executor', isinstance(frame.executor, worker_lifetime.DesktopExecutor))
@@ -222,6 +299,7 @@ def main():
                 try:
                     dialog = next(item for item in wx.GetTopLevelWindows()
                                   if item.GetName() == 'Formatted DOCX translation workstation')
+                    own_modal(dialog)
                     check('formatted workstation is a native modal', dialog.IsModal())
                     status = find(dialog, 'Formatted translation status and limitations')
                     selection = find(dialog, 'Selected retained DOCX and paragraph jobs')
@@ -294,25 +372,25 @@ def main():
                     press(find(dialog, 'Close formatted translation'))
                 except Exception:
                     errors.append(traceback.format_exc())
-                    if dialog is not None and dialog.IsModal():
-                        dialog.EndModal(wx.ID_CANCEL)
+                    unwind()
 
             def document_phase():
                 dialog = None
                 try:
                     dialog = next(item for item in wx.GetTopLevelWindows()
                                   if item.GetName() == 'Document translation workstation')
+                    own_modal(dialog)
                     check('existing document workstation route preserved', dialog.IsModal())
+                    exercise_nested_failure(dialog)
                     wx.CallLater(150, formatted_phase)
                     press(find(dialog, 'Translate DOCX with layout'))
                     if not errors:
                         press(find(dialog, 'Close'))
-                    elif dialog.IsModal():
-                        dialog.EndModal(wx.ID_CANCEL)
+                    else:
+                        unwind()
                 except Exception:
                     errors.append(traceback.format_exc())
-                    if dialog is not None and dialog.IsModal():
-                        dialog.EndModal(wx.ID_CANCEL)
+                    unwind()
 
             def opened():
                 try:
@@ -321,25 +399,29 @@ def main():
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
-                    app.ExitMainLoop()
+                    active = wx.EventLoopBase.GetActive()
+                    if active is not None and active.IsMain():
+                        active.ScheduleExit(1 if errors else 0)
+                    elif errors:
+                        unwind()
             wx.CallAfter(opened)
             app.MainLoop()
         finally:
             try:
-                if frame is not None:
-                    handle, executor = frame.GetHandle(), frame.executor
-                    frame.cancel_event.set()
+                if host_executor is not None:
+                    host_cancel.set()
                     try:
-                        # Exercise the real host owner order, including its
-                        # schedules/tray hooks before executor finalization.
-                        frame.Close(force=True)
-                        pump(lambda: not user32.IsWindow(handle),
+                        # The handle/executor were captured while the frame was
+                        # alive; an earlier owned Close may already have destroyed it.
+                        if user32.IsWindow(host_handle):
+                            frame.Close(force=True)
+                        pump(lambda: not user32.IsWindow(host_handle),
                              'Actual host Close did not release its native owners.',
                              cleanup=True)
                     finally:
-                        executor.shutdown(wait=True, cancel_futures=True)
+                        host_executor.shutdown(wait=True, cancel_futures=True)
                     check('host shutdown retains no failed cleanup owner',
-                          not user32.IsWindow(handle) and not executor.cleanup_failures)
+                          not user32.IsWindow(host_handle) and not host_executor.cleanup_failures)
                 app.Yield()
             finally:
                 (http.client.HTTPConnection, wx.MessageBox, wx.SingleChoiceDialog, wx.FileDialog,
@@ -357,6 +439,7 @@ def main():
         'source_origins': origins, 'native_keyboard': 'PASS', 'format_children': 'PASS',
         'source_bound_docx': 'PASS', 'package_preservation': 'PASS',
         'completed_offline_export': 'PASS', 'late_stop_completion': 'PASS',
+        'native_failure_cleanup': 'PASS',
         'synthetic_protocol_calls': len(calls), 'controlled_pickers_and_consent': True,
         'real_translation_service': 'NOT_RUN', 'translation_quality': 'NOT_RUN',
         'Word_layout': 'NOT_RUN', 'nvda': 'NOT_RUN'}, ensure_ascii=True), flush=True)

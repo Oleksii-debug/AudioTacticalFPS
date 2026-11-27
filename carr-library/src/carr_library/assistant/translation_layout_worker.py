@@ -59,6 +59,8 @@ def _package(data):
             raise LayoutError('Macro-enabled packages are not supported for translation.')
         if str(document.part.partname) != '/word/document.xml':
             raise LayoutError('Choose an ordinary DOCX main document part.')
+    if extracted['provenance'].get('source_profile') == 'carr-docx-rich-source/1':
+        return document, None, extracted['records']
     paragraphs = []
     for index, block in enumerate(document.iter_inner_content(), 1):
         if isinstance(block, Paragraph):
@@ -107,6 +109,9 @@ def _text_runs(paragraph):
 
 def describe(data):
     _, paragraphs, records = _package(data)
+    if paragraphs is None:
+        from .translation_docx_rich import describe as describe_rich
+        return describe_rich(data)
     rows, selected = [], 0
     for ordinal, ((locator, paragraph), record) in enumerate(zip(paragraphs, records), 1):
         runs, mode = _text_runs(paragraph)
@@ -127,6 +132,9 @@ def render(data, replacements):
     from docx.opc.oxml import serialize_part_xml
     from .models import canonical, text
     mapping = describe(data)
+    if mapping['schema'] == 'carr-docx-rich-layout/1':
+        from .translation_docx_rich import render as render_rich
+        return render_rich(data, replacements)
     if type(replacements) is not list or len(replacements) != mapping['selected']:
         raise LayoutError('A completed translation is required for every selected body paragraph.')
     expected = [row for row in mapping['records'] if row['selected']]

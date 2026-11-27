@@ -9,7 +9,8 @@ import re
 from .models import text
 
 SCHEMA = 'carr-translation-partition/1'
-PROFILES = frozenset(('carr-docx-body-layout/1', 'carr-epub-xhtml-layout/1'))
+PROFILES = frozenset(('carr-docx-body-layout/1', 'carr-epub-xhtml-layout/1',
+                      'carr-docx-rich-layout/1'))
 MAX_PARTS = 4096
 
 

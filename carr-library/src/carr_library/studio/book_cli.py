@@ -102,7 +102,8 @@ def reviewed_document(batch, plans, outputs, review):
 
 
 def read_review(path, workspace, topic):
-    value = read_json(path, maximum=64 * 1024 * 1024)
+    # Use the same bounded JSON contract as encode() in _publish_review.
+    value = read_json(path)
     if (type(value) is not dict or set(value) != {'schema', 'batch', 'plans', 'outputs', 'review_sha256'}
             or value['schema'] != 'carr-book-batch-review/1'
             or type(value['plans']) is not list or not 1 <= len(value['plans']) <= MAX_BOOKS
@@ -158,8 +159,6 @@ def _publish_review(books, groups, batch, plans, outputs, review, path, cancelle
     if not approval.require_absent:
         raise FileExistsError('The review file already exists and will not be overwritten.')
     raw = encode(reviewed_document(batch, plans, outputs, review))
-    if len(raw) > 64 * 1024 * 1024:
-        raise ValueError('The book review exceeds its bounded metadata budget.')
     return write_binary_export(path, raw, private_root=books.library.root,
         cancelled=checked, require_absent=True, approval=approval)
 

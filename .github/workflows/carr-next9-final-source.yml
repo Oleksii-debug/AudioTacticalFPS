@@ -1,0 +1,326 @@
+name: CARR next9 completed source and regression preflight
+
+on:
+  push:
+    branches: ['carr/ci-next9-final-source-*']
+    paths: ['carr-library/**', '.github/workflows/carr-next9-final-source.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contracts:
+    name: Ubuntu complete rich documents, clipboard and measured regression contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: carr-next9-final-source-source-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare existing pinned headless dependencies and Ubuntu codec
+        id: dependencies
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          mkdir ci-next9-results
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg flite
+          python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          python -B -m pip check
+          python -I -B - <<'PY' | tee ci-next9-results/runtime.json
+          from hashlib import sha256
+          import json, os, platform, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path.cwd().resolve()
+          def run(args):
+              return subprocess.run(args, check=True, stdin=subprocess.DEVNULL,
+                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30).stdout
+          head = run(['git', 'rev-parse', 'HEAD']).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          runtime = {}
+          for name in ('ffmpeg', 'ffprobe'):
+              path = Path(shutil.which(name) or '/missing').resolve(strict=True)
+              assert path == Path('/usr/bin/' + name).resolve(strict=True)
+              runtime[name] = {'sha256': sha256(path.read_bytes()).hexdigest(),
+                               'version': run([str(path), '-version']).splitlines()[0]}
+          flite = Path(shutil.which('flite') or '/missing').resolve(strict=True)
+          assert flite == Path('/usr/bin/flite').resolve(strict=True)
+          runtime['flite'] = {'sha256': sha256(flite.read_bytes()).hexdigest()}
+          filters = run(['/usr/bin/ffmpeg', '-hide_banner', '-filters'])
+          assert 'aeval' in filters and 'alimiter' in filters and 'loudnorm' in filters
+          result = {'status': 'PREPARED', 'head': head,
+              'tree': run(['git', 'rev-parse', 'HEAD^{tree}']).strip(),
+              'python': sys.version, 'platform': platform.platform(), 'runtime': runtime,
+              'packages': run(['dpkg-query', '-W', 'ffmpeg', 'libavfilter9', 'flite']).splitlines(),
+              'qualification': 'Ubuntu source PCM only; not Windows installed, playback, acoustic, native-egress or release acceptance'}
+          print(json.dumps(result, indent=2))
+          PY
+      - name: Compile every current Python application and verification source
+        id: syntax
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          root = Path.cwd()
+          inventory = {}
+          for folder in ('src', 'bootstrap', 'scripts', 'tests', 'packaging'):
+              for path in sorted((root / folder).rglob('*.py')):
+                  raw = path.read_bytes()
+                  compile(raw, str(path), 'exec', dont_inherit=True)
+                  inventory[path.relative_to(root).as_posix()] = sha256(raw).hexdigest()
+          assert inventory and 'src/carr_library/assistant/google_oauth.py' in inventory
+          report = {'status': 'PASS', 'python_files': len(inventory), 'source_sha256': inventory}
+          Path('ci-next9-results/python-syntax.json').write_text(
+              json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          print('Actual Python compile PASS:', len(inventory), 'files')
+          PY
+      - name: Require whole new suites and existing affected processing contracts
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          python -B scripts/ci_check.py --jobs 3 \
+            tests/extract/test_docx_rich.py \
+            tests/assistant/test_translation_rich_docx.py \
+            tests/ui/test_translation_rich_docx.py \
+            tests/assistant/test_translation_rich_docx_cli.py \
+            tests/extract/test_docx_ordered.py \
+            tests/extract/test_docx_omitted_content.py \
+            tests/extract/test_docx_hidden_styles.py \
+            tests/ingest/test_application_atomic_docx_gate.py \
+            tests/assistant/test_translation_partition.py \
+            tests/assistant/test_translation_layout.py \
+            tests/ui/test_translation_layout.py \
+            tests/assistant/test_translation_layout_cli.py \
+            tests/storage/test_backup_translation.py \
+            tests/assistant/test_translation_epub_layout.py \
+            tests/ui/test_translation_epub_layout.py \
+            tests/assistant/test_translation_epub_cli.py \
+            tests/studio/test_clip_copy.py \
+            tests/studio/test_clip_copy_dialog.py \
+            tests/studio/test_clip_operations.py \
+            tests/studio/test_project_history.py \
+            tests/studio/test_clip_history_dialog.py \
+            tests/studio/test_clip_editing.py \
+            tests/studio/test_clip_dialog.py \
+            tests/studio/test_clip_restoration.py \
+            tests/studio/test_clip_cli.py \
+            tests/catalog/test_streaming_intake.py \
+            tests/ingest/test_import_replay_identity.py \
+            tests/studio/test_book_batch.py \
+            tests/studio/test_book_cli.py \
+            tests/studio/test_book_audio.py \
+            tests/ui/test_desktop_handlers.py \
+            tests/ui/test_progress_voice_actions.py \
+            tests/ui/test_engine_settings_lifetime.py \
+            tests/assistant/test_translation.py \
+            tests/assistant/test_translation_local.py \
+            tests/assistant/test_translation_documents.py \
+            tests/ui/test_translation_documents.py \
+            tests/ingest/test_terminal_replay_registration.py \
+            tests/ingest/test_txt_replay_registration.py \
+            tests/ingest/test_import_publication_point.py \
+            tests/speech/test_spelling.py \
+            2>&1 | tee ci-next9-results/source-contracts.txt
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          root = Path('ci-next9-results')
+          raw = (root / 'source-contracts.txt').read_bytes()
+          lines = raw.decode('utf-8').splitlines()
+          expected = {
+              "tests/extract/test_docx_rich.py": 55,
+              "tests/assistant/test_translation_rich_docx.py": 17,
+              "tests/ui/test_translation_rich_docx.py": 5,
+              "tests/assistant/test_translation_rich_docx_cli.py": 4,
+              "tests/assistant/test_translation_partition.py": 26,
+              "tests/assistant/test_translation_layout.py": 33,
+              "tests/ui/test_translation_layout.py": 23,
+              "tests/assistant/test_translation_layout_cli.py": 5,
+              "tests/storage/test_backup_translation.py": 14,
+              "tests/assistant/test_translation_epub_layout.py": 31,
+              "tests/ui/test_translation_epub_layout.py": 6,
+              "tests/assistant/test_translation_epub_cli.py": 5,
+              "tests/studio/test_clip_copy.py": 17,
+              "tests/studio/test_clip_copy_dialog.py": 10,
+              "tests/studio/test_clip_operations.py": 59,
+              "tests/studio/test_project_history.py": 29,
+              "tests/studio/test_clip_history_dialog.py": 22,
+              "tests/studio/test_clip_editing.py": 20,
+              "tests/studio/test_clip_dialog.py": 45,
+              "tests/studio/test_clip_restoration.py": 24,
+              "tests/studio/test_clip_cli.py": 8,
+              "tests/catalog/test_streaming_intake.py": 16,
+              "tests/studio/test_book_batch.py": 29,
+              "tests/studio/test_book_cli.py": 18,
+              "tests/ui/test_desktop_handlers.py": 60,
+              "tests/ui/test_progress_voice_actions.py": 22,
+              "tests/ui/test_engine_settings_lifetime.py": 33,
+              "tests/assistant/test_translation.py": 168,
+              "tests/assistant/test_translation_local.py": 39,
+              "tests/assistant/test_translation_documents.py": 20,
+              "tests/ui/test_translation_documents.py": 29,
+              "tests/studio/test_book_audio.py": 46,
+              "tests/extract/test_docx_ordered.py": 9,
+              "tests/extract/test_docx_omitted_content.py": 20,
+              "tests/extract/test_docx_hidden_styles.py": 13,
+              "tests/ingest/test_application_atomic_docx_gate.py": 1,
+              "tests/ingest/test_import_replay_identity.py": 24,
+              "tests/ingest/test_terminal_replay_registration.py": 10,
+              "tests/ingest/test_txt_replay_registration.py": 7,
+              "tests/ingest/test_import_publication_point.py": 2,
+              "tests/speech/test_spelling.py": 55
+          }
+          for name, count in expected.items():
+              assert lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') == 1, name
+          selected_suites = ["tests/extract/test_docx_rich.py","tests/assistant/test_translation_rich_docx.py","tests/ui/test_translation_rich_docx.py","tests/assistant/test_translation_rich_docx_cli.py","tests/extract/test_docx_ordered.py","tests/extract/test_docx_omitted_content.py","tests/extract/test_docx_hidden_styles.py","tests/ingest/test_application_atomic_docx_gate.py","tests/assistant/test_translation_partition.py","tests/assistant/test_translation_layout.py","tests/ui/test_translation_layout.py","tests/assistant/test_translation_layout_cli.py","tests/storage/test_backup_translation.py","tests/assistant/test_translation_epub_layout.py","tests/ui/test_translation_epub_layout.py","tests/assistant/test_translation_epub_cli.py","tests/studio/test_clip_copy.py","tests/studio/test_clip_copy_dialog.py","tests/studio/test_clip_operations.py","tests/studio/test_project_history.py","tests/studio/test_clip_history_dialog.py","tests/studio/test_clip_editing.py","tests/studio/test_clip_dialog.py","tests/studio/test_clip_restoration.py","tests/studio/test_clip_cli.py","tests/catalog/test_streaming_intake.py","tests/ingest/test_import_replay_identity.py","tests/studio/test_book_batch.py","tests/studio/test_book_cli.py","tests/studio/test_book_audio.py","tests/ui/test_desktop_handlers.py","tests/ui/test_progress_voice_actions.py","tests/ui/test_engine_settings_lifetime.py","tests/assistant/test_translation.py","tests/assistant/test_translation_local.py","tests/assistant/test_translation_documents.py","tests/ui/test_translation_documents.py","tests/ingest/test_terminal_replay_registration.py","tests/ingest/test_txt_replay_registration.py","tests/ingest/test_import_publication_point.py","tests/speech/test_spelling.py"]
+          actual_suites = [line.split(': ', 2)[1] for line in lines if line.startswith('PASS: tests/')]
+          assert sorted(actual_suites) == sorted(selected_suites), (actual_suites, selected_suites)
+          result = {'status': 'PASS', 'expected_new_whole_suites': expected,
+                    'all_whole_suites': 41, 'strict_fail_skip_xfail_xpass_policy': True,
+                    'log_sha256': sha256(raw).hexdigest(), 'qualification': 'Exact source only'}
+          (root / 'source-summary.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-final-source-contracts-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next9-results/
+          if-no-files-found: error
+
+  powershell-syntax:
+    name: Real YAML and PowerShell parser over current workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    concurrency:
+      group: carr-next9-final-source-parser-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Parse committed workflow bodies without execution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path ci-next9-parser | Out-Null
+          & ./carr-library/scripts/check_workflow_powershell.ps1 -RepositoryRoot $PWD.Path -Output (Join-Path $PWD.Path 'ci-next9-parser/workflow-powershell.json')
+          if ($LASTEXITCODE -ne 0) { throw 'PowerShell parser command failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-final-workflow-parser-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-next9-parser/
+          if-no-files-found: error
+
+  windows-intake:
+    name: Windows actual file-sharing and import cancellation contracts
+    runs-on: windows-2022
+    timeout-minutes: 25
+    concurrency:
+      group: carr-next9-final-intake-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare existing pinned Windows source dependencies
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path ci-next9-intake | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'The requested source commit changed.' }
+          & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency installation failed.' }
+          & python -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned dependencies are inconsistent.' }
+      - name: Run every actual Windows intake and replay case
+        timeout-minutes: 14
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suites = @(
+            'tests/catalog/test_streaming_intake.py'
+            'tests/ingest/test_import_replay_identity.py'
+            'tests/ingest/test_terminal_replay_registration.py'
+            'tests/ingest/test_txt_replay_registration.py'
+            'tests/ingest/test_import_publication_point.py'
+          )
+          & python -B scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object -FilePath ci-next9-intake/source-contracts.txt
+          if ($LASTEXITCODE -ne 0) { throw 'An entire required Windows suite failed.' }
+          @'
+          from hashlib import sha256
+          import json, os, platform, sys
+          from pathlib import Path
+          root = Path('ci-next9-intake')
+          raw = (root / 'source-contracts.txt').read_bytes()
+          lines = raw.decode('utf-8-sig').splitlines()
+          expected = {"tests/catalog/test_streaming_intake.py":16,"tests/ingest/test_import_replay_identity.py":24,"tests/ingest/test_terminal_replay_registration.py":10,"tests/ingest/test_txt_replay_registration.py":7,"tests/ingest/test_import_publication_point.py":2}
+          for name, count in expected.items():
+              assert lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') == 1, name
+          actual = [line.split(': ', 2)[1] for line in lines if line.startswith('PASS: tests/')]
+          assert sorted(actual) == sorted(expected), (actual, expected)
+          assert os.name == 'nt' and sys.platform == 'win32'
+          report = {'status': 'PASS', 'head': os.environ['EXPECTED_SOURCE_SHA'],
+              'platform': platform.platform(), 'python': sys.version, 'whole_suites': expected,
+              'strict_fail_skip_xfail_xpass_policy': True,
+              'log_sha256': sha256(raw).hexdigest(),
+              'qualification': 'Actual Windows source file-sharing and import contracts; no installed or Windows11/NVDA claim'}
+          (root / 'summary.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(report, indent=2))
+          '@ | & python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Windows suite counts and platform evidence failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-windows-intake-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next9-intake/
+          if-no-files-found: error

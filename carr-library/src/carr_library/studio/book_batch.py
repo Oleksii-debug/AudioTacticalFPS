@@ -404,7 +404,10 @@ class BookBatchService:
                 if reason is not None:
                     return True
                 self.books._check_scope()
-                self._control(read_json(path, maximum=4096), batch, token)
+                # This callback also runs once per retained file and codec poll.
+                # The immutable active record is checked by current_scope at
+                # every source/engine/publication boundary, not reopened here.
+                # The invocation-specific mutable stop signal stays live.
                 action = (self._control(read_json(signal, maximum=4096), batch, token)['action']
                           if os.path.lexists(signal) else 'run')
                 if self._stopped(cancelled):
@@ -418,6 +421,7 @@ class BookBatchService:
 
             def current_scope():
                 self._guard(batch, guard)
+                self._control(read_json(path, maximum=4096), batch, token)
                 if self.load(batch.id).fingerprint != batch.fingerprint:
                     raise ValueError('The saved batch selection changed during rendering.')
 

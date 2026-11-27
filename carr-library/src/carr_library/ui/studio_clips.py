@@ -36,6 +36,7 @@ class ClipDialog(wx.Dialog):
         self.project = None
         self._undo = []
         self._redo = []
+        self._copied_clip = None
         self.pending = self.closing = self.closed = False
         self.player = None
         self.playback_generation = 0
@@ -281,7 +282,10 @@ class ClipDialog(wx.Dialog):
         if not preserve_history:
             self._undo, self._redo = [], []
         index = self.project_choice.GetSelection()
+        previous = getattr(self, 'project', None)
         self.project = self.projects[index] if 0 <= index < len(self.projects) else None
+        if (previous is None or self.project is None or previous.id != self.project.id):
+            self._copied_clip = None
         scenes = self.project.scenes if self.project else ()
         self.scene_choice.Set([scene.title for scene in scenes])
         self.scene_choice.SetSelection(0 if scenes else wx.NOT_FOUND)
@@ -487,6 +491,9 @@ class ClipDialog(wx.Dialog):
             'Undo the last saved project edit in this session',
             'Redo the last undone project edit in this session',
             'Browse and restore an earlier saved project revision...',
+            'Copy selected saved clip',
+            'Cut selected saved clip for Paste',
+            'Paste copied clip at a scene position...',
         )
         chooser = wx.SingleChoiceDialog(self,
             'Choose a saved-project operation. Original audio is always retained.',
@@ -499,7 +506,8 @@ class ClipDialog(wx.Dialog):
             chooser.Destroy()
         if self.pending or self.frame.working or not self._scope_current():
             return
-        actions = (self.split, self.cut, self.join, self.undo, self.redo, self.history)
+        actions = (self.split, self.cut, self.join, self.undo, self.redo, self.history,
+                   self.copy_clip, self.cut_for_paste, self.paste_clip)
         if 0 <= index < len(actions):
             actions[index]()
 
@@ -565,6 +573,50 @@ class ClipDialog(wx.Dialog):
             second = candidates[index]
             self._run('Rejoining saved clip sections', lambda: self.editor.join(
                 project, scene.id, cue.id, second.id, cancelled=self._cancelled), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+
+    def copy_clip(self, event=None):
+        try:
+            project, scene, cue = self.project, self._scene(), self._clip()
+            def copied(reference):
+                if self.project is not None and self.project.id == project.id:
+                    self._copied_clip = reference
+                    self.message('Copied the saved clip. Choose Paste and its new scene position. '
+                                 'No audio or project content was changed.')
+            self._run('Copying saved clip selection', lambda: self.editor.copy(
+                project, scene.id, cue.id, cancelled=self._cancelled), copied)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def cut_for_paste(self, event=None):
+        try:
+            project, scene, cue = self.project, self._scene(), self._clip()
+            def completed(result):
+                self._copied_clip = result['reference']
+                self._accept(result['project'])
+                self.message('Cut the saved clip. Paste can place its exact selection in this project. '
+                             'Original audio is retained; Undo can restore the previous project.')
+            self._run('Cutting saved clip for Paste', lambda: self.editor.cut_for_paste(
+                project, scene.id, cue.id, cancelled=self._cancelled), completed)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def paste_clip(self, event=None):
+        try:
+            project, scene = self.project, self._scene()
+            reference = getattr(self, '_copied_clip', None)
+            if reference is None:
+                raise ValueError('Copy or cut a saved clip from this project first.')
+            value = self._time_entry('Paste saved clip',
+                'Position in seconds from the destination scene start. '
+                'The copied original selection and effects are preserved; other clips stay in place.')
+            if value is None:
+                return
+            seconds = float(value)
+            self._run('Pasting saved clip', lambda: self.editor.paste(
+                project, scene.id, reference, seconds, cancelled=self._cancelled), self._accept)
         except (ValueError, OSError) as exc:
             self.message(exc)
 

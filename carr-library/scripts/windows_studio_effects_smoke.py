@@ -51,6 +51,8 @@ def main():
     from carr_library.ui.desktop_app import DesktopFrame
 
     checks, errors, proof, module_origins, module_hashes = [], [], {}, {}, {}
+    modal_loops = []
+    unwind_pending = False
     def check(name, condition):
         if not condition:
             raise AssertionError(name)
@@ -60,8 +62,8 @@ def main():
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc())
-            self.ExitMainLoop()
-            return False
+            unwind()
+            return True
 
     gui = ProbeApp(False)
     gui.SetExitOnFrameDelete(False)
@@ -71,11 +73,38 @@ def main():
     user32.SetForegroundWindow.restype = wintypes.BOOL
     user32.GetForegroundWindow.argtypes = ()
     user32.GetForegroundWindow.restype = wintypes.HWND
+    user32.IsWindow.argtypes, user32.IsWindow.restype = (wintypes.HWND,), wintypes.BOOL
 
-    def pump(predicate, label, timeout=45):
+    def own_modal(window):
+        loop = wx.EventLoopBase.GetActive()
+        if (not window.IsModal() or loop is None or not loop.IsRunning() or loop.IsMain()):
+            raise AssertionError('The selected Studio modal has no active owned loop.')
+        modal_loops.append((window, window.GetHandle(), loop))
+
+    def unwind():
+        nonlocal unwind_pending
+        if unwind_pending:
+            return
+        unwind_pending = True
+        def close_active():
+            nonlocal unwind_pending
+            unwind_pending = False
+            try:
+                for window, handle, loop in reversed(modal_loops):
+                    if window and user32.IsWindow(handle) and window.IsModal() and loop.IsRunning():
+                        window.EndModal(wx.ID_CANCEL)
+                        return
+                active = wx.EventLoopBase.GetActive()
+                if errors and active is not None and active.IsMain():
+                    active.ScheduleExit(1)
+            except Exception:
+                errors.append(traceback.format_exc())
+        wx.CallAfter(close_active)
+
+    def pump(predicate, label, timeout=45, *, cleanup=False):
         deadline = monotonic() + timeout
         while not predicate():
-            if errors:
+            if errors and not cleanup:
                 raise RuntimeError('\n'.join(errors))
             if monotonic() >= deadline:
                 raise TimeoutError(label)
@@ -115,14 +144,12 @@ def main():
                     wx.CallLater(20, invoke)
                     return
                 popup, = dialogs
+                own_modal(popup)
                 callback(popup)
             except Exception:
                 errors.append(traceback.format_exc())
-                # Failure cleanup does not stand in for any successful action.
-                for window in wx.GetTopLevelWindows():
-                    if isinstance(window, wx.Dialog) and window.IsModal():
-                        window.EndModal(wx.ID_CANCEL)
-                gui.ExitMainLoop()
+                # A suspended outer modal cannot be ended while its child loop runs.
+                unwind()
         wx.CallLater(20, invoke)
 
     def set_gain(popup, value):
@@ -161,8 +188,51 @@ def main():
               actual.is_relative_to(Path(sys.prefix).resolve()) and not actual.is_relative_to(checkout)
               and sha256(actual.read_bytes()).digest() == sha256(original.read_bytes()).digest())
 
+
+    def verify_nested_cleanup():
+        outer = wx.Dialog(None, title='Studio cleanup outer')
+        inner = wx.Dialog(outer, title='Studio cleanup inner')
+        observed = []
+        def inside():
+            try:
+                own_modal(outer)
+                def close_inner():
+                    own_modal(inner)
+                    unwind()
+                wx.CallAfter(close_inner)
+                observed.append(inner.ShowModal() == wx.ID_CANCEL)
+                observed.append(outer.IsModal() and wx.EventLoopBase.GetActive().IsRunning())
+                wx.CallAfter(unwind)
+            except Exception:
+                errors.append(traceback.format_exc())
+                unwind()
+        try:
+            wx.CallAfter(inside)
+            observed.append(outer.ShowModal() == wx.ID_CANCEL)
+        finally:
+            inner.Destroy()
+            outer.Destroy()
+            gui.Yield()
+        check('native Studio failure cleanup closes only the running owned modal',
+              observed == [True, True, True] and not errors)
+
+    def close_host():
+        if host_executor is None:
+            return
+        try:
+            if frame and user32.IsWindow(host_handle):
+                frame.cancel_event.set()
+                frame.Close(force=True)
+                pump(lambda: not user32.IsWindow(host_handle),
+                     'Actual Studio host Close did not finish.', cleanup=True)
+        finally:
+            host_executor.shutdown(wait=True, cancel_futures=True)
+        check('Studio effect worker cleanup is complete',
+              not user32.IsWindow(host_handle) and not host_executor.cleanup_failures)
+
     original_picker, original_directory_picker = wx.FileDialog, wx.DirDialog
     frame = dialog = service = voices = None
+    host_handle = host_executor = None
 
     def pcm(path):
         with wave.open(str(path), 'rb') as stream:
@@ -175,6 +245,7 @@ def main():
         return raw, shape, math.sqrt(math.fsum(value * value for value in values) / len(values))
 
     try:
+        verify_nested_cleanup()
         with TemporaryDirectory(prefix='resonance-native-studio-effects-') as temporary:
             root = Path(temporary)
             source = root / 'Synthetic original — Україна.wav'
@@ -192,6 +263,7 @@ def main():
                             ffprobe=str(selected_audio / 'bin' / 'ffprobe.exe'))
             runtime_settings.save_settings(library.root / 'state', settings)
             frame = DesktopFrame(library)
+            host_handle, host_executor = frame.GetHandle(), frame.executor
             frame.Show()
             gui.SetTopWindow(frame)
             voices = VoiceRegistry([])
@@ -463,6 +535,41 @@ def main():
                           and pcm(curve_master)[0] == new_pcm.tobytes()
                           and pcm(cut_master)[1] == (24000, 2, 24000))
 
+
+                    clipboard_origin = edited
+                    original_clip, = edited.scenes[0].cues
+                    timeline_action(6)
+                    copied_reference = dialog._copied_clip
+                    check('native Copy retains an exact saved selection without mutation',
+                          service.projects.load(project.id) == edited
+                          and copied_reference.source.revision == edited.revision
+                          and copied_reference.source.fingerprint == edited.fingerprint
+                          and copied_reference.clip_id == original_clip.id)
+                    timeline_action(8, 'Paste saved clip', '1')
+                    pasted = service.projects.load(project.id)
+                    initial_clip, pasted_clip = pasted.scenes[0].cues
+                    check('native Paste preserves original selection and effects at a new scene position',
+                          initial_clip == original_clip
+                          and pasted_clip.id != original_clip.id and pasted_clip.start == 1
+                          and replace(pasted_clip, id=original_clip.id, start=original_clip.start) == original_clip)
+                    timeline_action(7)
+                    cut_for_paste = service.projects.load(project.id)
+                    check('native Cut for Paste retains the removed clip in immutable history',
+                          cut_for_paste.scenes[0].cues == (original_clip,)
+                          and dialog._copied_clip.clip_id == pasted_clip.id
+                          and dialog._copied_clip.source.fingerprint == pasted.fingerprint)
+                    timeline_action(8, 'Paste saved clip', '2')
+                    repasted = service.projects.load(project.id)
+                    recovered_clip = repasted.scenes[0].cues[1]
+                    check('native Paste reuses the cut selection with a fresh stable identity',
+                          recovered_clip.id not in (original_clip.id, pasted_clip.id)
+                          and recovered_clip.start == 2
+                          and replace(recovered_clip, id=original_clip.id, start=original_clip.start) == original_clip)
+                    timeline_action(3)
+                    edited = service.projects.load(project.id)
+                    check('native Undo restores content after clipboard edits',
+                          replace(edited, revision=clipboard_origin.revision) == clipboard_origin)
+
                     newer = None
                     def concurrent_review(popup):
                         nonlocal newer
@@ -490,37 +597,29 @@ def main():
             gui.MainLoop()
             if errors:
                 raise RuntimeError('\n'.join(errors))
-            frame.cancel_event.set()
-            frame._closing = True
-            frame.executor.shutdown(wait=True, cancel_futures=True)
-            check('Studio effect worker cleanup is complete', not frame.executor.cleanup_failures)
             dialog.Destroy()
             dialog = None
             service.close()
             service = None
             voices.close()
             voices = None
-            frame.progress_panel.close()
-            frame.Destroy()
+            close_host()
             frame = None
             gui.Yield()
     finally:
         wx.FileDialog, wx.DirDialog = original_picker, original_directory_picker
         if frame is not None:
             frame.cancel_event.set()
-            frame._closing = True
-            frame.executor.shutdown(wait=True, cancel_futures=True)
         if dialog is not None:
             dialog.stop()
             dialog.Destroy()
+        if frame is not None:
+            close_host()
+            gui.Yield()
         if service is not None:
             service.close()
         if voices is not None:
             voices.close()
-        if frame is not None:
-            frame.progress_panel.close()
-            frame.Destroy()
-            gui.Yield()
         if native_handle is not None:
             native_handle.close()
     for name, location in module_origins.items():
@@ -529,6 +628,7 @@ def main():
     print(json.dumps({'result': 'PASS', 'checks': checks, 'module_origins': module_origins,
         'module_sha256': module_hashes, 'actual_gain_envelope': 'PASS',
         'actual_clip_editing': 'PASS', 'project_history_restore': 'PASS',
+        'native_clipboard': 'PASS', 'native_failure_cleanup': 'PASS',
         'audio_runtime': proof, 'native_keyboard': 'PASS', 'actual_ffmpeg': 'PASS',
         'fixture': 'actual synthetic PCM and a dormant role; no speech inference',
         'project_schema': 3, 'native_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN',

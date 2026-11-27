@@ -319,6 +319,65 @@ class ClipEditor:
                                            for cue in scene.cues if cue.id != second_id))
         return self._save_clip_operation(project, changed, cancelled=cancelled)
 
+
+    def copy(self, project, scene_id, clip_id, *, cancelled=lambda: False):
+        """Remember one saved selection without reading media or creating a revision."""
+        from .project_history import ClipReference, RevisionRef
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        scene = self._scene(project, scene_id)
+        cue = self._selected_clip(scene, clip_id)
+        self._cancel(cancelled)
+        return ClipReference(project.id, RevisionRef(project.revision, project.fingerprint),
+                             scene.id, cue.id)
+
+    def cut_for_paste(self, project, scene_id, clip_id, *, cancelled=lambda: False):
+        """Remove one saved clip and retain its exact earlier revision for Paste."""
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        scene = self._scene(project, scene_id)
+        reference = self.copy(project, scene_id, clip_id, cancelled=cancelled)
+        remaining = tuple(cue for cue in scene.cues if cue.id != clip_id)
+        minimum = scene.minimum_duration
+        if not remaining and not scene.lines and not scene.music:
+            minimum = max(minimum, 1)
+        changed = self._save_clip_operation(project,
+            replace(scene, cues=remaining, minimum_duration=minimum), cancelled=cancelled)
+        return {'project': changed, 'reference': reference}
+
+    def paste(self, project, scene_id, reference, start, *, cancelled=lambda: False):
+        """Copy the selected saved cue through the current project's protected writer."""
+        from .clip_operations import sample_index
+        from .project_history import ClipReference, restored_project
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        destination = self._scene(project, scene_id)
+        if not isinstance(reference, ClipReference) or reference.project_id != project.id:
+            raise ValueError('Copy a saved clip from this project before pasting.')
+        if len(destination.cues) >= AudioBudget().max_inputs - 2:
+            raise ValueError('This scene has reached its simultaneous audio input allowance.')
+        if reference.source.revision == project.revision:
+            if reference.source.fingerprint != project.fingerprint:
+                raise ValueError('The copied current project identity changed.')
+            saved = project
+        else:
+            saved = restored_project(self.service.projects, project, reference.source)
+        self._portable(saved)
+        source_scene = self._scene(saved, reference.scene_id)
+        source_cue = self._selected_clip(source_scene, reference.clip_id)
+        cue = replace(source_cue, id=uuid4().hex,
+            start=sample_index(start, project.sample_rate, 'Paste position') / project.sample_rate)
+        # Reuse the existing managed-input and decoder checks. A reference to
+        # an old revision grants no access to a changed or foreign audio file.
+        self._validate_selection(cue, cancelled=cancelled)
+        return self._save_clip_operation(project,
+            replace(destination, cues=(*destination.cues, cue)), cancelled=cancelled)
+
     def history(self, project, *, before_revision=None, cancelled=lambda: False):
         """Browse existing saved project identities without loading voices or media."""
         from .project_history import revisions
