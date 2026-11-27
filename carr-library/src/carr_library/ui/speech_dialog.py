@@ -9,6 +9,7 @@ from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
+from .reader_playback import ReaderPlaybackControls
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
@@ -21,6 +22,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     cancel = threading.Event()
     audio_files = TemporaryDirectory(prefix='research-reader-')
     player = WavePlayer()
+    reader_library = getattr(parent, 'library', None)
+    reader_root = getattr(reader_library, 'root', None)
     progress = getattr(parent, 'operation_progress', None)
     if progress is not None:
         progress.register_player(player)
@@ -111,6 +114,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     for control in (seek, cleanup, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
+    transport = ReaderPlaybackControls(dialog, layout, player,
+        start=lambda action, on_error: start_playback(action, on_error=on_error),
+        guard=lambda: playback_guard(), cancelled=cancel.is_set,
+        alive=lambda: alive, report=lambda message, focus=False: report(message, focus=focus), wx=wx)
     dialog.SetSizer(layout)
     dialog.SetEscapeId(wx.ID_CANCEL)
 
@@ -119,6 +126,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             status.ChangeValue(message)
             if focus:
                 status.SetFocus()
+
+    def playback_guard():
+        if (not alive or getattr(parent, '_closing', False)
+                or getattr(parent, 'library', None) is not reader_library
+                or getattr(reader_library, 'root', None) != reader_root):
+            raise ValueError('The library folder changed. Open the reader again.')
+        source_guard()
 
     def capabilities(event=None):
         selected = voice_choice.GetSelection()
@@ -178,11 +192,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
         run(lambda: activate_progress_voice(library_root, voice_id), activated)
 
-    def start_playback(action):
+    def start_playback(action, *, on_error=None):
         generation = playback_generation
-        play_when_quiet((progress,), action, schedule=wx.CallLater,
-            alive=lambda: alive and generation == playback_generation,
-            on_error=lambda exc: report(f'Playback did not start. {exc}', focus=True))
+        def admitted():
+            playback_guard()
+            if not cancel.is_set():
+                action()
+        play_when_quiet((progress,), admitted, schedule=wx.CallLater,
+            alive=lambda: alive and not cancel.is_set() and generation == playback_generation,
+            on_error=on_error or (lambda exc: report(f'Playback did not start. {exc}', focus=True)))
 
     def reload(event=None):
         def discover_configured():
@@ -389,7 +407,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path, draft_store, recovery_notice
+        nonlocal document, save_path, draft_store, recovery_notice, last_audio, playback_generation
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -416,7 +434,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if source_loader is not None and (not source_loaded or loaded.source_anchor is None
                     or loaded.source_anchor != document.source_anchor):
                 raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
+            playback_generation += 1
             player.stop()
+            last_audio = None
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
@@ -516,6 +536,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         worker_finished = False
         notices = []
         try:
+            try:
+                transport.close(stop=False)
+            except (OSError, RuntimeError) as exc:
+                notices.append(f'Repeat and sleep timer could not be stopped: {exc}')
             try:
                 autosave_timer.Stop()
             except (OSError, RuntimeError) as exc:

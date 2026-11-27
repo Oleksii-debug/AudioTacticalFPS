@@ -1,10 +1,84 @@
 # Resonance composite V3 integration
 
 This candidate reconciles the accepted platform source at
-c9cdacd93dd57e8644889761a44b01b59c4fda20 with the reviewed integration
+1eff701fe848a3bd9eb088c85e5372a7c0a73861 with the reviewed integration
 lineage recorded in PR127. The current
 UNIVERSAL_SCOPE_V3_FINALIZATION.md remains authoritative. This record is not
 full-platform acceptance or distribution clearance.
+
+## Current composition and exact predecessor evidence
+
+The current source adds the reviewed native reading transport, retained-source
+translation, owner-profile registration and optional delivery lifecycle to the
+same application services. Its installed Windows gates include the actual wx
+dialogs, real Windows playback transport, synthetic isolated owner worker,
+source-revocation boundaries, full backup before update approval, and shared
+timer shutdown. Each new gate must pass on the final composed commit; portable
+counts from earlier feature checkpoints are not inherited.
+
+| Requirement | Integrated source change | Evidence boundary |
+| --- | --- | --- |
+| V3-02/03 | Reuse the existing reader for A/B repeat, a disarmable sleep timer, keyboard transport and source/close generation invalidation | Synthetic PCM through actual Windows MCI is a transport check; voice quality and human NVDA remain separate |
+| V3-03/21 | Explicit owner backend/profile selection and verified model/reference inventories in the existing voice settings | Original private source/models/recordings are absent; synthetic helper tests do not establish cloning inference |
+| V3-11/20/22 | Translation of exact retained documents or bounded ranges, source-bound consent, saved-job resume/export and linked reading derivatives | Existing gateway/ledger/ReadingDocument are reused; no live Google request or local neural translation is claimed |
+| V3-16/18/22 | Optional provider-injected host lifecycle, worker-thread renewal, offline file import/export and one-use update approval after complete backup | Public providers are synthetic; private verifier, supported installer and production trust are separately required |
+| V3-05/17 | Accessible local installation/verification of the reviewed audio runtime through existing settings | Audio-bearing archives remain blocked from transfer; actual runtime execution and distribution clearance are separate |
+| V3-06 | Coherent Windows JSON snapshot reads and exact-owner draft timer shutdown | Existing atomic writer and shared Save/Edit menus remain in use |
+| V3-06/16 | Canonical bounded import metadata, portable backup path collisions and model-probe binding | Canonical negative controls remain mandatory; a manifest alone is not runtime evidence |
+
+### Final portable composition checks
+
+The restored Python 3.12/Linux checkout completed the following component
+gates before the successor commit was created. Separate gates overlap and
+must not be summed as a unique-test total.
+
+- Host lifecycle, CLI, real backup, desktop, saved drafts and JSON reader:
+  158 passed, zero skipped.
+- Retained-source translation, dialogs and restored settings: 195 passed,
+  zero skipped.
+- Canonical metadata, backup portability, migration, legacy music contract,
+  archive guard and CI cleanup: 303 passed plus three passing subtests,
+  zero skipped.
+- Reader, speech, progress and voice profiles: 337 passed and one explicit
+  native-Windows SAPI case skipped on Linux. A separate final portable reader
+  checkpoint completed 254 passed with zero skips.
+- Composed local-audio setup, CLI, packaging, settings and desktop integration:
+  179 passed, zero skipped. The last modal progress and desktop-lifecycle
+  follow-up completed 76 passed, zero skipped; five targeted result-disposal,
+  activation and folder-selection cases also passed.
+
+These executed portable results do not replace the final Windows gates. The
+native job tests the exact installed source with actual wx controls, process
+cleanup, Windows playback and SAPI, including the case that cannot run on Linux.
+
+### Executed predecessor, not successor acceptance
+
+Commit `90496fad8f397dbd007d2a9531709be82c9d9f2b` was checked out explicitly
+by the Windows jobs, independently from the pull request's synthetic merge ref.
+
+- Native launcher workflow 45938085966: SUCCESS.
+- Bibliography workflow 45938085896: SUCCESS.
+- Dedicated transcription workflow 45938085967: SUCCESS.
+- Integrated Windows workflow 45938086016: FAILURE overall. Its required
+  source-suite aggregator completed **221/221 suites**, zero failed suites.
+  Four generated EPUB fixtures passed pinned EPUBCheck 5.3.0, and the deliberate
+  invalid fixture was rejected. These do not qualify the complete delivery.
+- The remaining integrated failures were the real descendant cleanup race,
+  an ASR native fixture whose terminal-state assertion lacked status details,
+  and an installed-native wrapper passing an extra script-path argument.
+  The cleanup now waits for captured Windows child process objects; the ASR
+  check retains its completed/six-artifact requirement with bounded diagnostics;
+  all affected wrapper argument lists are corrected.
+- V3 workflow 45938085918 failed collection because a migration test imported a
+  sibling fixture by a bare module name. The existing fixture is now loaded by
+  its exact file location under isolated import mode. The gate was not removed.
+
+The successor source adds PR163's reviewed snapshot reader and timer lifetime
+corrections, preserving this host's already shared recovery menu. PR164's
+pytest-ID-only change targets a different host and its absent modules are not
+introduced here. Source and full installed suites retain strict no-skip/no-XFAIL
+acceptance. Actual audio model inference, human NVDA, signing and final private
+delivery identity remain independent gates.
 
 ## Preserved contracts
 
@@ -128,7 +202,7 @@ dedicated transcription workflow. Broader execution exposed fixture and
 shared-export regressions, so that commit is not an application delivery
 candidate. The repairs preserve native/installed/offline gates, add the
 canonical installed recovery checks, and retain individual strict suite
-verdicts. The source inventory now includes 221 modules. Local results,
+verdicts. That predecessor source inventory included 221 modules. Local results,
 different-head results and interrupted runs never replace the complete
 successor Windows result and its retained tested wheel.
 

@@ -97,6 +97,7 @@ def describe_engine_settings(settings):
         ('RESTORED: engine activation is blocked until you review and revalidate these registrations.\n'
          if restored else 'Local registration review is current; installed assets are checked again when used.\n')
         + 'All paths refer to local installations. No download or remote API is started.\n'
+        + 'Complete runtime manifest: ' + str(settings.get('audio_runtime_manifest_sha256', 'no complete-pack selection')) + '\n'
         + 'FFmpeg: ' + str(settings['ffmpeg'] or 'Discover installed executable') + '\n'
         + 'FFprobe: ' + str(settings['ffprobe'] or 'Discover installed executable') + '\n'
         + f'Piper registrations: {len(settings["piper"])}\n'
@@ -139,7 +140,9 @@ def show_engine_settings(frame):
             describe('Local review stopped: ' + (str(error) or 'The operation was cancelled.'))
             status.SetFocus()
         else:
-            describe('Local registrations were verified and saved. This is not a neural-inference acceptance test.')
+            describe('Local registrations were verified and saved. Use Local audio runtime setup: Verify current '
+                     'registration to apply a changed complete-pack selection in this session. '
+                     'This is not a neural-inference acceptance test.')
         enabled()
 
     def start_review(candidate=None):
@@ -158,7 +161,11 @@ def show_engine_settings(frame):
         picker = wx.FileDialog(dialog, 'Choose installed ' + key, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
             if picker.ShowModal() == wx.ID_OK:
-                start_review({**review.settings, key: picker.GetPath()})
+                candidate = {**review.settings, key: picker.GetPath()}
+                # Choosing an individual executable is an explicit legacy override.
+                # Never keep a complete-pack seal on a different loose path.
+                candidate.pop('audio_runtime_manifest_sha256', None)
+                start_review(candidate)
         finally:
             picker.Destroy()
 
@@ -206,6 +213,7 @@ def show_engine_settings(frame):
             return
         candidate = {**review.settings, 'ffmpeg': None, 'ffprobe': None, 'piper': [],
                      'voice_helpers': [], 'music_models': [], 'fluidsynth': None}
+        candidate.pop('audio_runtime_manifest_sha256', None)
         start_review(candidate)
 
     def cancel(event):

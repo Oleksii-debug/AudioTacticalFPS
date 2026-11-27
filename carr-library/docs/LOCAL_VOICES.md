@@ -110,7 +110,11 @@ configured executable and manifest-listed files are individually fingerprinted.
 dordiai settings are `protocol: "nvda-worker-jsonl-pcm24k-v1"`, optional
 relative `python`, `worker`, `catalog` paths (defaults `python/python.exe`,
 `nvda_worker.py`, `models/voices/catalog.json`), and Carr's explicit per-profile
-review metadata. For example, for an actual installed profile called `profileA`:
+review metadata. `reference_engine` accepts exactly `holos`, `openvoice` or
+`omnivoice`; the compatibility default is `holos`. The relative directory
+settings `models`, `reference_model` and `references` default to `models`,
+`models/Holos` and `models/voices`. Selected directories must already exist and
+contain assets listed in the complete reviewed manifest. For example, for an actual installed profile called `profileA`:
 
 ```json
 "profile_languages": {
@@ -118,7 +122,8 @@ review metadata. For example, for an actual installed profile called `profileA`:
 }
 ```
 
-Only languages present in the installed catalog may be declared. The catalog's
+Only languages present in the installed legacy catalog or the selected managed
+profile may be declared. The catalog's
 global language inventory never becomes support for every profile. Only that
 profile's `supported` list participates in production/default selection; its
 `candidates` remain visible review metadata and are refused for synthesis.
@@ -134,12 +139,92 @@ denials and offline environment flags supplement the trusted installation;
 they do not sandbox arbitrary native dependencies.
 
 Both adapters expose relative registry rate `0.5` to `2.0`, volume `0` to `1`,
-bounded PCM WAV output and cancellation. They do not expose a cloning command
-or claim undocumented controls. Manifest enumeration reports inference as
+bounded PCM WAV output and cancellation. The owner reference backend reuses its
+existing clone-prompt synthesis; Carr adds no model training pipeline or
+undocumented synthesis controls. Manifest enumeration reports inference as
 unverified until an actual configured runtime is exercised. Use
 `tests/audio/native_configured_model_probe.py --config ... --voice ... --language uk`
 for that separate installed-runtime test; it writes a temporary synthetic-text
 utterance and reports measurements without publishing private voice names.
+
+## Reference voice packages through the existing owner API
+
+Open **Audio Studio → Local voice engines… → Reference voice packages…** after
+registering the reviewed owner installation. This uses the same voice registry
+as Studio, the reader and command-line production.
+
+1. Select **holos**, **openvoice** or **omnivoice** and the existing relative
+   model and reference folders. Choose **Save backend and folders**. Changing
+   backend or reference folders clears prior production-language approvals.
+2. Choose **Inspect data-only package…**. The installed owner's
+   inspect_package/validate_adapter functions verify the package; the dialog
+   displays its exact identity, version, source, license and reference roles.
+   OmniVoice requires reference_audio and reference_text, OpenVoice requires
+   target_embedding, and Holos requires holos_profile.
+3. Confirm **I have permission to use the exact voice references shown in this
+   review**. Enter only the profile's languages you have reviewed for production,
+   separated by commas. A blank field preserves all declared languages as
+   candidates and does not make the profile selectable for synthesis.
+4. Choose **Apply reviewed profile**. Carr invokes the existing owner
+   install_voice_package, verifies the resulting data and activation index,
+   checks that unrelated runtime files stayed unchanged, and updates the
+   reviewed local inventory and library registration. No model is downloaded
+   and no reference leaves the local computer.
+5. For a previously installed version, enter the profile ID, choose
+   **List installed versions**, enter the version, then choose **Review selected
+   installed version**. Activation calls the owner's activate_voice_version
+   and requires a fresh explicit rights/language review.
+6. Open a new Studio or reader window, select that profile and explicitly
+   generate an audition. Inspecting or installing metadata does not run a
+   neural model or certify the voice's sound.
+
+The runtime must include its reviewed voice_policy.py, voice_packages.py
+and voice_assets.py alongside its selected worker. Those private modules are
+not included in Carr. A bounded isolated child captures and hashes their source
+and compiles those exact bytes; it does not load their bytecode caches or import
+them into the application process. The existing network and child-process
+audit denials remain active. Some owner multilingual routes require additional
+native helpers; they remain unavailable under this restriction until their
+exact helpers are independently reviewed. A Python audit hook does not sandbox
+arbitrary native code.
+
+Managed discovery applies the owner's profile policy and active-package
+inventory. An inactive, damaged or incompatible managed identity cannot be
+silently replaced by a legacy voice with the same ID. Production language
+claims are checked against that individual package. A changed reference,
+package version or permission review changes cache provenance; a stale review
+does not authorize the new data.
+
+The explicit review is recorded in the local installation manifest as
+profile_reviews, bound to the version, package metadata hash and each reference
+role's asset hash. These records establish which bytes the user approved; they
+do not establish legal ownership or acoustic quality. Research-library backups
+retain only the existing local registration, with its restore/revalidation
+barrier. They do not copy the separate private runtime, reference recordings,
+embeddings or voice packages.
+
+Cancel or close requests stop the bounded metadata child and prevent a later
+unreviewed registration. If the owner installer had already written data when
+it was interrupted, the old registration fails closed. Review the external
+installation and its complete inventory before re-registering; the application
+does not silently delete package data or invent a rollback. A failure while
+rebinding a successfully updated manifest requires explicit revalidation in
+**Local voice engines**.
+
+The transport still accepts bounded 24 kHz mono PCM16 chunks or one-shot PCM.
+The 4 MiB JSON-line ceiling limits a one-shot OmniVoice reply to approximately
+65 seconds of audio; oversized replies fail visibly. Long production remains
+segmented by the existing Studio workflow. Worker/model caching across segments,
+recording new reference samples, reference-quality assessment, expressive
+controls beyond the existing adapter, and real multilingual similarity and
+listening acceptance are separate work and are not certified by package
+registration.
+
+Portable tests run actual isolated children against explicitly synthetic owner
+API fixtures. tests/ui/native_voice_packages_smoke.py exercises actual wx
+backend, rights, language and installed-version controls with that same
+synthetic API. Its output separately labels real model inference, the native
+file picker, reference quality and NVDA speech as **NOT_RUN**.
 
 ## Reading edits
 

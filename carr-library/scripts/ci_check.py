@@ -10,42 +10,144 @@ import signal
 import subprocess
 import sys
 import tempfile
+from time import monotonic
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE_TIMEOUT_SECONDS = 600
 
 
+
+def _windows_descendant_handles(parent_pid):
+    """Capture wait-only handles before taskkill can remove parent ancestry.
+
+    Windows process termination is asynchronous. Taskkill success does not
+    prove that every child released its file handles; wait on these exact
+    process objects before deleting the synthetic suite directory.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class ProcessEntry(ctypes.Structure):
+        _fields_ = [('dwSize', wintypes.DWORD), ('cntUsage', wintypes.DWORD),
+            ('th32ProcessID', wintypes.DWORD), ('th32DefaultHeapID', ctypes.c_size_t),
+            ('th32ModuleID', wintypes.DWORD), ('cntThreads', wintypes.DWORD),
+            ('th32ParentProcessID', wintypes.DWORD), ('pcPriClassBase', wintypes.LONG),
+            ('dwFlags', wintypes.DWORD), ('szExeFile', wintypes.WCHAR * 260)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateToolhelp32Snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    for name in ('Process32FirstW', 'Process32NextW'):
+        function = getattr(kernel, name)
+        function.argtypes = (wintypes.HANDLE, ctypes.POINTER(ProcessEntry))
+        function.restype = wintypes.BOOL
+    kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel.CloseHandle.restype = wintypes.BOOL
+    snapshot = kernel.CreateToolhelp32Snapshot(0x2, 0)  # TH32CS_SNAPPROCESS
+    if snapshot == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    parents, handles = {}, []
+    try:
+        entry = ProcessEntry()
+        entry.dwSize = ctypes.sizeof(entry)
+        more = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
+        while more:
+            parents[entry.th32ProcessID] = entry.th32ParentProcessID
+            if len(parents) > 65536:
+                raise OSError('The suite process snapshot exceeded its bound.')
+            more = kernel.Process32NextW(snapshot, ctypes.byref(entry))
+        error = ctypes.get_last_error()
+        if error != 18:  # ERROR_NO_MORE_FILES
+            raise ctypes.WinError(error)
+    finally:
+        kernel.CloseHandle(snapshot)
+    descendants = {parent_pid}
+    while True:
+        expanded = descendants | {pid for pid, parent in parents.items() if parent in descendants}
+        if expanded == descendants:
+            break
+        descendants = expanded
+        if len(descendants) > 4096:
+            raise OSError('The required suite process tree exceeded its bound.')
+    try:
+        for pid in sorted(descendants - {parent_pid}):
+            handle = kernel.OpenProcess(0x100000, False, pid)  # SYNCHRONIZE only
+            if not handle:
+                error = ctypes.get_last_error()
+                if error == 87:  # Process already exited before its handle opened.
+                    continue
+                raise ctypes.WinError(error)
+            handles.append(handle)
+        return kernel, handles
+    except BaseException:
+        for handle in handles:
+            kernel.CloseHandle(handle)
+        raise
+
+
+def _wait_windows_descendants(kernel, handles, timeout=10):
+    """A timeout remains a failed cleanup; it never permits a green suite."""
+    deadline = monotonic() + timeout
+    for handle in handles:
+        milliseconds = max(0, int((deadline - monotonic()) * 1000))
+        result = kernel.WaitForSingleObject(handle, milliseconds)
+        if result == 0:  # WAIT_OBJECT_0: the process and pending I/O have ended.
+            continue
+        if result == 258:  # WAIT_TIMEOUT
+            raise OSError('A required-suite descendant did not finish termination.')
+        import ctypes
+        raise ctypes.WinError(ctypes.get_last_error())
+
 def _terminate_process_tree(process: subprocess.Popen) -> None:
-    """Stop the owned suite tree before removing its temporary library files."""
+    """Stop and reap the owned suite tree before removing its temporary files."""
     cleanup_error = None
+    kernel, handles = None, []
+    if os.name == 'nt':
+        try:
+            kernel, handles = _windows_descendant_handles(process.pid)
+        except OSError as exc:
+            cleanup_error = exc
     try:
-        if os.name == 'nt':
-            # Keep the parent alive until taskkill has enumerated descendants.
-            # Killing pytest first loses the ancestry needed by /T.
-            taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32' / 'taskkill.exe'
-            result = subprocess.run(
-                [str(taskkill), '/PID', str(process.pid), '/T', '/F'],
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL, timeout=15, check=False,
-            )
-            if result.returncode:
-                cleanup_error = OSError('Windows could not terminate the complete suite process tree.')
-        else:
-            os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        cleanup_error = exc
-    if cleanup_error is not None:
-        # Reap our direct child even when tree termination failed; still fail
-        # closed and never report that the complete tree was cleaned up.
-        process.kill()
-    try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=5)
+        try:
+            if os.name == 'nt':
+                # Keep the parent alive until taskkill has enumerated descendants.
+                taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32' / 'taskkill.exe'
+                result = subprocess.run(
+                    [str(taskkill), '/PID', str(process.pid), '/T', '/F'],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, timeout=15, check=False,
+                )
+                if result.returncode:
+                    cleanup_error = OSError('Windows could not terminate the complete suite process tree.')
+            else:
+                os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            cleanup_error = exc
+        if cleanup_error is not None and process.poll() is None:
+            # Still reap our direct child on an error, without claiming that
+            # the complete tree was cleaned up.
+            process.kill()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+        if kernel is not None:
+            try:
+                _wait_windows_descendants(kernel, handles)
+            except OSError as exc:
+                cleanup_error = exc
+    finally:
+        if kernel is not None:
+            for handle in handles:
+                kernel.CloseHandle(handle)
     if cleanup_error is not None:
         raise OSError('Required-suite process-tree cleanup failed.') from cleanup_error
 

@@ -22,12 +22,37 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
 | Supplied transcription | Isolated reviewed worker protocol on shared jobs/progress, bound local model inventory, six validated exports, separate edit revisions, cancellation/resume and restored-job review | Actual Windows native controls and synthetic worker subprocesses pass; the supplied original has a separate private repair adapter; real Whisper acoustic inference remains unqualified |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
-| Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
+| Private integration boundary | Versioned entitlement/update protocols, optional worker-based host lifecycle, one-use approval and complete backup before installation; user-data operations remain available | Synthetic provider and real-host/backup gates pass; no production verifier, authority, trust root or operating-system installer is enabled by default |
 
 The native V3 acceptance script performs installed SAPI synthesis, scene
 production, output verification, restart, CSL/DOCX, isolated text conversion and
 named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
+
+## Current completion pass
+
+The authoritative specification was rechecked at accepted source
+`1eff701fe848a3bd9eb088c85e5372a7c0a73861`. The next candidate retains the
+full requested platform scope. It adds native A/B and sleep controls, retained
+document/range translation, explicit owner voice profiles, accessible local
+audio-runtime setup and an optional provider-injected delivery lifecycle.
+Those implementations are **INTEGRATED source / portable component gates passed /
+Windows execution pending** until the exact successor Windows result is recorded. Private engine/authority source,
+weights, voice recordings, signing material and actual service policy are not
+part of public source.
+
+Predecessor `90496fad8f397dbd007d2a9531709be82c9d9f2b` passed its native
+launcher, bibliography and dedicated transcription workflows and all 221
+required integrated source suites. Its aggregate Windows and V3 workflows
+still failed; it is not an accepted delivery wheel. The concrete failures and
+the successor corrections are recorded in COMPOSITE_V3_INTEGRATION.md.
+
+The canonical transfer producer refuses audio-bearing bundles. The owner
+application delivery therefore excludes that runtime and offers an explicit
+native local setup workflow for the exact reviewed package. The same package
+can be used for local execution and acceptance without being distributed as
+part of an application archive. This preserves the distinction between runtime
+qualification and permission to redistribute each component.
 
 ## Additions awaiting the composite execution gate
 

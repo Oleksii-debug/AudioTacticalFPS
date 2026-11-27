@@ -98,9 +98,10 @@ class VoiceSettingsDialog:
         self.revalidate_button = wx.Button(self.dialog, label='&Revalidate saved paths')
         self.reset_button = wx.Button(self.dialog, label='&Reset to installed defaults')
         self.stop_button = wx.Button(self.dialog, label='&Cancel verification')
+        self.packages_button = wx.Button(self.dialog, label='Reference voice &packages...')
         for button, action in ((self.save_button, self.save), (self.import_button, self.import_config),
                                (self.revalidate_button, self.revalidate), (self.reset_button, self.reset),
-                               (self.stop_button, self.stop)):
+                               (self.stop_button, self.stop), (self.packages_button, self.packages)):
             button.Bind(wx.EVT_BUTTON, action)
             commands.Add(button, 0, wx.ALL, 4)
         layout.Add(commands, 0, wx.EXPAND | wx.ALL, 4)
@@ -141,7 +142,7 @@ class VoiceSettingsDialog:
 
     def enable(self):
         for control in (self.sapi, self.flite, self.espeak, *self.fields.values(), *self.browse_buttons,
-                        self.save_button, self.import_button, self.revalidate_button, self.reset_button):
+                        self.save_button, self.import_button, self.revalidate_button, self.reset_button, self.packages_button):
             control.Enable(not self.busy)
         self.stop_button.Enable(self.busy)
 
@@ -211,6 +212,13 @@ class VoiceSettingsDialog:
             self.say('Optional registrations detached. Installed assets remain in their original folders. New Studio windows use installed defaults.', focus=True)
         except Exception as error:
             self.say('Voice settings could not be reset: ' + str(error), focus=True)
+
+    def packages(self, event=None):
+        if self.busy:
+            return
+        from .voice_packages import show_voice_packages
+        show_voice_packages(self.dialog, self.model.root)
+        self.load()
 
     def stop(self, event=None):
         self.cancelled.set()

@@ -109,7 +109,7 @@ bootstrap = "bootstrap"
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
-"carr_library.audio" = ["legacy-runtime-lock.json"]
+"carr_library.audio" = ["legacy-runtime-lock.json", "runtime-source-lock.json", "runtime-setup-README.txt"]
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 "carr_library.academic_integration" = ["styles/*.csl", "locales/*.xml", "vendor/*", "csl_worker.cjs"]
 "carr_library.language_qualification" = ["data/*.md"]

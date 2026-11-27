@@ -18,7 +18,13 @@ from carr_library.storage.schema_identity import expected_schema_fingerprint
 
 # The existing populated historical-source fixture is also used by the released
 # V3/V4/V5 migration regressions. No second catalog assembler is introduced.
-from test_academic_migration import v3_library
+from importlib.util import module_from_spec, spec_from_file_location
+
+_fixture_spec = spec_from_file_location(
+    '_carr_academic_migration_fixture', Path(__file__).with_name('test_academic_migration.py'))
+_fixture_module = module_from_spec(_fixture_spec)
+_fixture_spec.loader.exec_module(_fixture_module)
+v3_library = _fixture_module.v3_library
 
 
 _PUBLICATIONS = (

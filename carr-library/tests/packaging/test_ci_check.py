@@ -282,5 +282,52 @@ def test_parallel_barrier():
                     libc.prctl(36, previous_subreaper.value, 0, 0, 0)
 
 
+    def test_windows_taskkill_acknowledgement_waits_for_descendant_completion(self):
+        # Model the documented asynchronous termination boundary: taskkill and
+        # the direct pytest process have ended while a descendant still owns
+        # its library file. Existing real-process coverage verifies Win32 APIs.
+        spec = importlib.util.spec_from_file_location('ci_cleanup_barrier', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        child = {'alive': True}
+        kernel = types.SimpleNamespace(CloseHandle=mock.Mock())
+        def wait(handle, milliseconds):
+            self.assertTrue(child['alive'])
+            self.assertEqual(handle, 101)
+            self.assertGreaterEqual(milliseconds, 0)
+            child['alive'] = False
+            return 0
+        kernel.WaitForSingleObject = wait
+        process = mock.Mock(pid=42)
+        process.wait.return_value = 1
+        api = types.SimpleNamespace(**vars(subprocess))
+        api.run = mock.Mock(return_value=types.SimpleNamespace(returncode=0))
+        with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt', environ={})),
+              mock.patch.object(runner, 'subprocess', api),
+              mock.patch.object(runner, '_windows_descendant_handles', return_value=(kernel, [101]))):
+            runner._terminate_process_tree(process)
+        self.assertFalse(child['alive'], 'Temporary cleanup cannot precede descendant completion.')
+        kernel.CloseHandle.assert_called_once_with(101)
+        process.kill.assert_not_called()
+
+    def test_windows_descendant_that_never_finishes_keeps_cleanup_failed(self):
+        spec = importlib.util.spec_from_file_location('ci_cleanup_deadline', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        kernel = types.SimpleNamespace(WaitForSingleObject=lambda handle, milliseconds: 258,
+                                       CloseHandle=mock.Mock())
+        process = mock.Mock(pid=42)
+        process.wait.return_value = 1
+        api = types.SimpleNamespace(**vars(subprocess))
+        api.run = mock.Mock(return_value=types.SimpleNamespace(returncode=0))
+        with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt', environ={})),
+              mock.patch.object(runner, 'subprocess', api),
+              mock.patch.object(runner, '_windows_descendant_handles', return_value=(kernel, [101]))):
+            with self.assertRaisesRegex(OSError, 'process-tree cleanup failed'):
+                runner._terminate_process_tree(process)
+        kernel.CloseHandle.assert_called_once_with(101)
+
+
+
 if __name__ == '__main__':
     unittest.main()

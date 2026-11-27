@@ -270,12 +270,12 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     identifiers = count(10000)
     wx = SimpleNamespace(Dialog=Dialog, FileDialog=FileDialog, TextEntryDialog=FileDialog,
         TextCtrl=Control, StaticText=Control, Choice=Control, SpinCtrl=Control,
-        Button=Control, BoxSizer=Control, Timer=Control,
+        Button=Control, CheckBox=Control, BoxSizer=Control, Timer=Control,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
-        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer')
+        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_CHECKBOX='checkbox')
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
@@ -283,7 +283,9 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
-        position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None))
+        position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None,
+        path=None, session_generation=0, repeat_enabled=False, repeat_count=0,
+        sleep_remaining_seconds=None))
     parent = SimpleNamespace(library=app, report=statuses.append)
 
     ui.show_speech_reader(parent, source_guard=scope,

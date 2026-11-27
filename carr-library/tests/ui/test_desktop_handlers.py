@@ -134,6 +134,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     for module, installer in (
             ('academic_tools', 'install_source_comparison_actions'),
             ('audio_studio', 'install_audio_studio'),
+            ('audio_runtime_setup', 'install_audio_runtime_setup'),
             ('audio_effects', 'install_audio_effects'),
             ('local_assistant', 'install_local_assistant'),
             ('provider_settings', 'install_provider_settings'),
@@ -145,7 +146,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
             ('operation_progress', 'install_operation_progress'),
             ('transcription_dialog', 'install_transcription_actions'),
             ('command_palette', 'install_command_palette'),
-            ('diagnostics_dialog', 'install_diagnostics')):
+            ('diagnostics_dialog', 'install_diagnostics'),
+            ('delivery_dialog', 'install_delivery_actions')):
         callback = Mock()
         additional.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
@@ -604,39 +606,125 @@ def test_no_pending_review_starts_no_approval(classes):
     assert 'no page awaiting review' in f.report.call_args.args[0]
 
 
-def test_failed_open_retains_current_library_and_draft(classes,tmp_path):
+@pytest.fixture
+def local_audio_binding(monkeypatch):
+    binding = SimpleNamespace(notice='', close=Mock(), activate=Mock())
+    binding.activate.return_value = binding
+    prepare = Mock(return_value=binding)
+    monkeypatch.setitem(sys.modules, 'carr_library.audio.local_runtime',
+                        SimpleNamespace(prepare_local_audio_runtime=prepare))
+    return prepare, binding
+
+
+def test_failed_open_retains_current_library_and_draft(classes, tmp_path, local_audio_binding):
     f = frame(classes)
     old = SimpleNamespace(semantic_ranker=None)
-    f.library = old
+    f.library, f.run_job = old, Mock()
     f._confirm = Mock(return_value=True)
     f._drop = Mock()
     f.remember_data_dir = Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
     classes[0]['LibraryApp'].side_effect = ValueError('corrupt library')
-    with pytest.raises(ValueError,match='corrupt'):
-        f._open_data_root(tmp_path)
+    assert f._open_data_root(tmp_path)
+    classes[0]['LibraryApp'].assert_not_called()
+    worker = f.run_job.call_args.args[1]
+    with pytest.raises(ValueError, match='corrupt'):
+        worker(Mock())
     assert f.library is old
     f._drop.assert_not_called()
     f.remember_data_dir.assert_not_called()
+    local_audio_binding[0].assert_not_called()
 
 
-def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
+def test_folder_switch_remembers_only_valid_opened_library(classes, tmp_path, local_audio_binding):
+    prepare, binding = local_audio_binding
     f = frame(classes)
-    f.library = SimpleNamespace(semantic_ranker=None)
+    old = f.library = SimpleNamespace(semantic_ranker=None)
+    previous = f.audio_runtime_binding = Mock()
+    f.run_job = Mock()
     f._confirm = Mock(return_value=True)
-    f._drop,f.refresh_scopes = Mock(),Mock()
+    f._drop, f.refresh_scopes = Mock(), Mock()
     f.scopes = []
     f.remember_data_dir = Mock()
     f.keyboard_settings, f.operation_progress = Mock(), Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
-    candidate = SimpleNamespace(root=tmp_path,list_scopes=Mock(return_value=()))
+    candidate = SimpleNamespace(root=tmp_path, list_scopes=Mock(return_value=()))
     classes[0]['LibraryApp'].return_value = candidate
     assert f._open_data_root(tmp_path)
-    assert f.library is candidate
+    assert f.library is old
+    classes[0]['LibraryApp'].assert_not_called()
+    prepare.assert_not_called()
+    worker, done = f.run_job.call_args.args[1:3]
+    progress = Mock()
+    result = worker(progress)
+    assert f.library is old
+    f.remember_data_dir.assert_not_called()
+    prepare.assert_called_once()
+    assert prepare.call_args.args == (tmp_path,)
+    assert prepare.call_args.kwargs['cancelled'] == f.cancel_event.is_set
+    prepare.call_args.kwargs['progress']('Verifying audio inventory', 1, 3)
+    progress.assert_called_once_with(1, 3, 'Verifying audio inventory')
+    binding.activate.assert_not_called()
+    done(result)
+    assert f.library is candidate and f.audio_runtime_binding is binding
+    binding.activate.assert_called_once_with(previous=previous, strict=False)
     f.remember_data_dir.assert_called_once_with(tmp_path)
     f._drop.assert_called_once()
     f.keyboard_settings.reload.assert_called_once_with()
     f.operation_progress.reload_preferences.assert_called_once_with()
+
+
+@pytest.mark.parametrize('reason', ['cancelled', 'changed', 'closing'])
+def test_prepared_folder_binding_is_discarded_when_completion_loses_scope(
+        classes, tmp_path, local_audio_binding, reason):
+    prepare, binding = local_audio_binding
+    f = frame(classes)
+    original = f.library = SimpleNamespace(semantic_ranker=None)
+    previous = f.audio_runtime_binding = Mock()
+    f.run_job, f._confirm, f._drop = Mock(), Mock(return_value=True), Mock()
+    f.remember_data_dir = Mock()
+    (tmp_path / 'library.sqlite').write_bytes(b'fixture')
+    classes[0]['LibraryApp'].return_value = SimpleNamespace(root=tmp_path)
+    assert f._open_data_root(tmp_path)
+    worker, done = f.run_job.call_args.args[1:3]
+    result = worker(Mock())
+    if reason == 'cancelled':
+        f.cancel_event.set()
+    elif reason == 'changed':
+        f.library = SimpleNamespace(semantic_ranker=None)
+    else:
+        f._closing = True
+    current = f.library
+    with pytest.raises((InterruptedError, ValueError)):
+        done(result)
+    assert f.library is current and f.audio_runtime_binding is previous
+    binding.close.assert_called_once_with()
+    binding.activate.assert_not_called()
+    previous.close.assert_not_called()
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+
+
+def test_folder_binding_is_closed_when_scope_changes_on_the_worker(
+        classes, tmp_path, local_audio_binding):
+    prepare, binding = local_audio_binding
+    f = frame(classes)
+    f.library = SimpleNamespace(semantic_ranker=None)
+    f.run_job, f._confirm, f._drop = Mock(), Mock(return_value=True), Mock()
+    f.remember_data_dir = Mock()
+    (tmp_path / 'library.sqlite').write_bytes(b'fixture')
+    classes[0]['LibraryApp'].return_value = SimpleNamespace(root=tmp_path)
+    def change_scope(*args, **kwargs):
+        f.library = SimpleNamespace(semantic_ranker=None)
+        return binding
+    prepare.side_effect = change_scope
+    assert f._open_data_root(tmp_path)
+    with pytest.raises(ValueError, match='current library changed'):
+        f.run_job.call_args.args[1](Mock())
+    binding.close.assert_called_once_with()
+    binding.activate.assert_not_called()
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
 
 
 def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
@@ -809,3 +897,66 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
     chooser.return_value.Destroy.assert_called_once()
+
+
+def test_folder_activation_failure_preserves_prior_library_binding_and_preferences(
+        classes, tmp_path, local_audio_binding):
+    prepare, binding = local_audio_binding
+    f = frame(classes)
+    original = f.library = SimpleNamespace(semantic_ranker=None)
+    previous = f.audio_runtime_binding = Mock()
+    f.run_job, f._confirm, f._drop = Mock(), Mock(return_value=True), Mock()
+    f.remember_data_dir = Mock()
+    (tmp_path / 'library.sqlite').write_bytes(b'fixture')
+    classes[0]['LibraryApp'].return_value = SimpleNamespace(root=tmp_path)
+    binding.activate.side_effect = ValueError('The verified pack changed before activation.')
+    assert f._open_data_root(tmp_path)
+    worker, done = f.run_job.call_args.args[1:3]
+    result = worker(Mock())
+    with pytest.raises(ValueError, match='pack changed'):
+        done(result)
+    assert f.library is original and f.audio_runtime_binding is previous
+    binding.close.assert_called_once_with()
+    previous.close.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+    f._drop.assert_not_called()
+
+
+@pytest.mark.parametrize('worker_finished_first', [False, True])
+def test_forced_close_discards_prepared_result_through_real_dispatcher_once(
+        classes, worker_finished_first):
+    f = frame(classes)
+    future = Future()
+    f.executor.submit.return_value = future
+    done, dispose = Mock(), Mock()
+    resource = object()
+    f.run_job('Prepare resource', lambda: resource, done, discard=dispose)
+    if worker_finished_first:
+        future.set_result(resource)
+        assert len(classes[1]) == 1
+    event = close_event(False)
+    f.on_close(event)
+    assert f._closing and event.skipped
+    if not worker_finished_first:
+        future.set_result(resource)
+    for callback in classes[1]:
+        callback()
+    dispose.assert_called_once_with(resource)
+    done.assert_not_called()
+    f.book.Enable.assert_not_called()
+    f.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    assert getattr(f, '_pending_job_discard', None) is None
+
+
+def test_normal_completion_transfers_prepared_resource_without_discard(classes):
+    f = frame(classes)
+    future = Future()
+    f.executor.submit.return_value = future
+    done, dispose = Mock(), Mock()
+    resource = object()
+    f.run_job('Prepare resource', lambda: resource, done, discard=dispose)
+    future.set_result(resource)
+    classes[1].pop(0)()
+    done.assert_called_once_with(resource)
+    dispose.assert_not_called()
+    assert getattr(f, '_pending_job_discard', None) is None

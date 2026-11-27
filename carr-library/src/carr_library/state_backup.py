@@ -9,6 +9,7 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
 
@@ -17,13 +18,19 @@ MAX_STATE_BYTES = 32 * 1024**3
 
 
 def relative_name(value):
-    if not isinstance(value, str) or not value or '\\' in value or ':' in value or any(ord(c) < 32 for c in value):
+    if (not isinstance(value, str) or not value
+            or any(c in '<>:"\\|?*' or ord(c) < 32 for c in value)):
         raise ValueError('Invalid state manifest path.')
     path = PurePosixPath(value)
-    if path.is_absolute() or str(path) != value or any(x in ('.', '..') or x.endswith((' ', '.')) for x in path.parts):
+    if (not path.parts or path.is_absolute() or str(path) != value
+            or any(x in ('.', '..') or x.endswith((' ', '.')) for x in path.parts)):
         raise ValueError('Invalid state manifest path.')
-    if any(x.split('.')[0].casefold() in {'con','prn','aux','nul',*(f'com{i}' for i in range(1,10)),
-                                        *(f'lpt{i}' for i in range(1,10))} for x in path.parts):
+    # Win32 also reserves superscript 1, 2 and 3 for COM/LPT devices.
+    # A name valid on a POSIX source must not create an unrestorable backup.
+    digits = '123456789\u00b9\u00b2\u00b3'
+    reserved = {'con', 'prn', 'aux', 'nul', 'conin$', 'conout$',
+                *(f'{prefix}{i}' for prefix in ('com', 'lpt') for i in digits)}
+    if any(x.split('.')[0].rstrip(' ').casefold() in reserved for x in path.parts):
         raise ValueError('Invalid portable state filename.')
     return path
 
@@ -127,23 +134,41 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    # Validate portable names after the final content reread, before publication.
+    validate_state(entries)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
 def validate_state(entries):
     if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
         raise ValueError('Invalid application state manifest.')
-    names, total = set(), 0
+    names, directories, portable_paths, total = set(), set(), {}, 0
     for item in entries:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
                 or type(item['size_bytes']) is not int or item['size_bytes'] < 0
                 or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
             raise ValueError('Invalid application state manifest.')
         name = relative_name(item['filename']).as_posix()
-        if name.casefold() in names:
+        key = unicodedata.normalize('NFC', name).casefold()
+        if key in names:
             raise ValueError('Duplicate application state filename.')
-        names.add(name.casefold())
+        names.add(key)
+        # Reuse the typed sidecar portable-path policy, including ancestors.
+        # A/one and a/two may coexist on POSIX but alias on Windows.
+        path = PurePosixPath(name)
+        for component in (path, *path.parents):
+            current = str(component)
+            if current == '.':
+                continue
+            portable = unicodedata.normalize('NFC', current).casefold()
+            previous = portable_paths.setdefault(portable, current)
+            if previous != current:
+                raise ValueError('Application state paths collide on a portable filesystem.')
+            if component != path:
+                directories.add(portable)
         total += item['size_bytes']
+    if names & directories:
+        raise ValueError('Application state file and directory paths collide.')
     if total > MAX_STATE_BYTES:
         raise ValueError('Application state manifest exceeds its byte budget.')
 

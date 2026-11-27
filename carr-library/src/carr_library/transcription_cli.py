@@ -67,8 +67,10 @@ def main(argv=None):
                       if args.operation == 'create-folder' else
                       {'id': service.submit(args.files, title=args.title, options=options)})
         elif args.operation == 'run':
-            result = service.run(args.job, timeout=args.timeout,
-                progress=lambda done, total, state: print(f'{done}/{total}: {state}', file=sys.stderr, flush=True))
+            from .audio.local_runtime import open_local_audio_runtime
+            with open_local_audio_runtime(app.root, strict=True):
+                result = service.run(args.job, timeout=args.timeout,
+                    progress=lambda done, total, state: print(f'{done}/{total}: {state}', file=sys.stderr, flush=True))
         elif args.operation == 'show':
             result = service.get(args.job)
         elif args.operation == 'verify':

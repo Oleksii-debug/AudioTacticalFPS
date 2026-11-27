@@ -93,7 +93,14 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 state['phase'] = 1
             elif state['phase'] == 1 and not frame.working:
                 job = service.verify(state['job'])
-                assert job['status'] == 'completed' and len(job['artifacts']) == 6
+                diagnostic = {key: job.get(key) for key in (
+                    'status', 'done', 'failed', 'last_error', 'worker_run_id')}
+                diagnostic['artifact_count'] = len(job['artifacts'])
+                diagnostic['ui_status'] = find('Стан транскрипції').GetValue()[:3000]
+                diagnostic['configured_python'] = str(sys.executable)
+                assert job['status'] == 'completed' and len(job['artifacts']) == 6, (
+                    'Synthetic native ASR protocol did not complete: ' +
+                    json.dumps(diagnostic, ensure_ascii=False, sort_keys=True))
                 editor = find('Текст: редагування зберігається окремою версією')
                 assert editor.IsEnabled() and 'Український' in editor.GetValue()
                 editor.SetFocus()

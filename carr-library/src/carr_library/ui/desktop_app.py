@@ -481,8 +481,11 @@ class DesktopSearchPanel(PagedSearchPanel):
 
 
 class DesktopFrame(WorkspaceFrame):
-    def __init__(self, library, remember_data_dir=None):
+    def __init__(self, library, remember_data_dir=None, *, delivery=None, audio_runtime_binding=None):
         self.library = library
+        self.audio_runtime_binding = audio_runtime_binding
+        from ..delivery_service import DeliveryService
+        self.delivery = DeliveryService() if delivery is None else delivery
         self.remember_data_dir = remember_data_dir
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
         self.cancel_event = threading.Event()
@@ -565,6 +568,8 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .audio_studio import install_audio_studio
         install_audio_studio(self)
+        from .audio_runtime_setup import install_audio_runtime_setup
+        install_audio_runtime_setup(self)
         from .audio_effects import install_audio_effects
         install_audio_effects(self)
         from .local_assistant import install_local_assistant
@@ -589,6 +594,8 @@ class DesktopFrame(WorkspaceFrame):
         install_command_palette(self)
         from .diagnostics_dialog import install_diagnostics
         install_diagnostics(self)
+        from .delivery_dialog import install_delivery_actions
+        install_delivery_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -694,7 +701,7 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
+    def run_job(self, title, operation, done=None, failed=None, *, with_progress=False, discard=None):
         from concurrent.futures import CancelledError
         if self._closing:
             return
@@ -758,11 +765,48 @@ class DesktopFrame(WorkspaceFrame):
                 failed(exc)
             return
 
+        # A prepared resource can finish after forced Close, or after its UI
+        # completion was queued. Discard it once without touching native controls.
+        from threading import Lock
+        result_lock = Lock()
+        result_claimed = False
+
+        def claim_result():
+            nonlocal result_claimed
+            with result_lock:
+                if result_claimed:
+                    return False
+                result_claimed = True
+            if getattr(self, '_pending_job_discard', None) is discard_result:
+                self._pending_job_discard = None
+            return True
+
+        def discard_result():
+            if not future.done() or not claim_result():
+                return
+            try:
+                result = future.result()
+            except Exception:
+                return
+            if discard is not None:
+                try:
+                    discard(result)
+                except Exception:
+                    from logging import getLogger
+                    getLogger(__name__).warning('Prepared result cleanup failed during shutdown.')
+
+        if discard is not None:
+            self._pending_job_discard = discard_result
+
         def finish(future):
             if self._closing:
+                discard_result()
                 return
             def apply():
                 if self._closing:
+                    discard_result()
+                    return
+                if not claim_result():
                     return
                 self._finish_job_controls()
                 before = status_text()
@@ -825,23 +869,64 @@ class DesktopFrame(WorkspaceFrame):
             raise ValueError('Choose an existing research-library data folder containing library.sqlite.')
         if not self._confirm():
             return False
-        candidate = LibraryApp(path,semantic_ranker=self.library.semantic_ranker)
-        if self.remember_data_dir is not None:
-            self.remember_data_dir(candidate.root)
-        self._drop()
-        self.library = candidate
-        if getattr(self, 'keyboard_settings', None) is not None:
-            self.keyboard_settings.reload()
-        if getattr(self, 'operation_progress', None) is not None:
-            self.operation_progress.reload_preferences()
-        self.list_scopes = candidate.list_scopes
-        keyboard = getattr(self, 'keyboard_actions', None)
-        keyboard_notice = keyboard.reload() if keyboard is not None else ''
-        self.refresh_scopes()
-        if self.scopes:
-            self.choice.SetSelection(0)
-            self.open_selected()
-        self.report(f'Opened library folder: {candidate.root}' + ('\n' + keyboard_notice if keyboard_notice else ''))
+        origin = self.library
+        cancelled = self.cancel_event.is_set
+
+        def check_scope():
+            if self._closing or cancelled():
+                raise InterruptedError('Opening the library folder was cancelled.')
+            if self.library is not origin:
+                raise ValueError('The current library changed while opening another folder.')
+
+        def prepare(progress):
+            from ..audio.local_runtime import prepare_local_audio_runtime
+            check_scope()
+            candidate = LibraryApp(path, semantic_ranker=origin.semantic_ranker)
+            def report_audio(phase, completed, total):
+                progress(completed, total, phase)
+            binding = prepare_local_audio_runtime(candidate.root, cancelled=cancelled, progress=report_audio)
+            try:
+                check_scope()
+            except BaseException:
+                binding.close()
+                raise
+            return candidate, binding
+
+        def ready(result):
+            candidate, binding = result
+            try:
+                check_scope()
+                # Full inventory hashes were checked on the shared worker.
+                # Activation only rechecks the captured bounded snapshot here.
+                binding.activate(previous=getattr(self, 'audio_runtime_binding', None), strict=False)
+            except BaseException:
+                binding.close()
+                raise
+            self._drop()
+            self.library = candidate
+            self.audio_runtime_binding = binding
+            if getattr(self, 'keyboard_settings', None) is not None:
+                self.keyboard_settings.reload()
+            if getattr(self, 'operation_progress', None) is not None:
+                self.operation_progress.reload_preferences()
+            self.list_scopes = candidate.list_scopes
+            keyboard = getattr(self, 'keyboard_actions', None)
+            keyboard_notice = keyboard.reload() if keyboard is not None else ''
+            self.refresh_scopes()
+            if self.scopes:
+                self.choice.SetSelection(0)
+                self.open_selected()
+            preference_notice = ''
+            if self.remember_data_dir is not None:
+                try:
+                    self.remember_data_dir(candidate.root)
+                except (OSError, ValueError) as exc:
+                    preference_notice = f'The last-folder preference could not be saved: {exc}'
+            notices = '\n'.join(filter(None, (keyboard_notice, binding.notice, preference_notice)))
+            self.report(f'Opened library folder: {candidate.root}' + ('\n' + notices if notices else ''))
+
+        self.run_job('Opening library folder and checking local audio', prepare, ready, with_progress=True,
+                     discard=lambda result: result[1].close())
         return True
 
     def open_library_folder(self,event):
@@ -1190,7 +1275,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete library and recoverable-jobs backup')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1201,8 +1286,9 @@ class DesktopFrame(WorkspaceFrame):
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'All completed libraries, original files, saved evidence, notes, tags, and searches are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'Libraries, retained originals, saved evidence, notes, settings, reading state and recoverable pending jobs are included. '
+                'The manifest lists included inputs and excluded or separately installed assets. '
+                'Credentials and external model packs need their own recovery; generated audio is optional.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 
@@ -1305,8 +1391,8 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'Library backups include retained sources, reading state, settings and recoverable pending jobs; inspect the manifest for excluded assets.\n'
+            'Reading positions and bookmarks also have separate export and import actions in the Reading menu.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):
@@ -1319,5 +1405,18 @@ class DesktopFrame(WorkspaceFrame):
         if not event.GetVeto():
             self._closing = True
             self.cancel_event.set()
-            self.executor.shutdown(wait=False, cancel_futures=True)
+            pending_discard = getattr(self, '_pending_job_discard', None)
+            if pending_discard is not None:
+                pending_discard()
+            delivery_actions = getattr(self, 'delivery_actions', None)
+            try:
+                if delivery_actions is not None:
+                    delivery_actions.close()
+            finally:
+                try:
+                    audio_binding = getattr(self, 'audio_runtime_binding', None)
+                    if audio_binding is not None:
+                        audio_binding.close()
+                finally:
+                    self.executor.shutdown(wait=False, cancel_futures=True)
 

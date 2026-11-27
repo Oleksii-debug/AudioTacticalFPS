@@ -30,6 +30,15 @@ MODES = ('LOCAL_ONLY', 'APPROVED_REMOTE', 'HYBRID')
 from .providers import HTTPResult, HTTPTransport, ProviderError
 
 
+def translation_receipt_sha256(value, detected_source):
+    """Bind decoded translation and language independently of wire JSON."""
+    text(value, 'decoded translation', maximum=2_000_000)
+    if detected_source is not None and (not isinstance(detected_source, str)
+            or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected_source)):
+        raise ValueError('Invalid detected translation language.')
+    return sha256(canonical({'text': value, 'detected_source': detected_source}).encode('utf-8')).hexdigest()
+
+
 def money(value):
     try:
         result = Decimal(str(value))
@@ -116,10 +125,16 @@ def validate_usage_ledger_document(value):
                 or row['status'] not in ('reserved', 'complete', 'uncertain', 'not_sent')):
             raise ValueError('Invalid provider operation charge state.')
         usage = row['usage']
-        if usage is not None and (type(usage) is not dict
-                or set(usage) - {'prompt_tokens', 'completion_tokens', 'total_tokens', 'submitted_characters'}
-                or any(type(number) is not int or number < 0 for number in usage.values())):
-            raise ValueError('Invalid provider usage counters.')
+        if usage is not None:
+            counters = {'prompt_tokens', 'completion_tokens', 'total_tokens', 'submitted_characters'}
+            decoded = 'decoded_translation_sha256'
+            if (type(usage) is not dict or set(usage) - counters - {decoded}
+                    or any(type(usage[key]) is not int or usage[key] < 0 for key in set(usage) & counters)):
+                raise ValueError('Invalid provider usage counters.')
+            if decoded in usage:
+                if row['operation'] != 'translation.text':
+                    raise ValueError('A decoded translation digest belongs only to translation usage.')
+                digest(usage[decoded], 'decoded translation')
     return value
 
 
@@ -433,7 +448,8 @@ class Gateway:
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result['detected_source'] = detected
-                        usage = {'submitted_characters': len(body['q'])}
+                        usage = {'submitted_characters': len(body['q']),
+                                 'decoded_translation_sha256': translation_receipt_sha256(result['text'], detected)}
                 else:
                     choices = parsed.get('choices') if type(parsed) is dict else None
                     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):

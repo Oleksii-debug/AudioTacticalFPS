@@ -28,7 +28,8 @@ def _translation(value):
     # structural check deliberately creates no Gateway, vault or HTTP client.
     from .assistant.profiles import ProviderProfile
     from .assistant.providers import Authorization, money
-    from .assistant.translation import split_text
+    from .assistant.translation import split_text, validate_translation_source_record
+    from .assistant.models import canonical
     source = value.get('source_text')
     if (not isinstance(source, str) or value.get('source_sha256') != _hash(source)
             or value.get('chunks') != list(split_text(source))
@@ -44,6 +45,16 @@ def _translation(value):
     ProviderProfile(**value['profile'])
     Authorization(**value['authorization'])
     money(value['per_call_cost'])
+    marker = value.get('restore_requires_review', False)
+    if type(marker) is not bool:
+        raise ValueError('Invalid restored translation review marker.')
+    prior_profile = value.get('original_profile_sha256')
+    if prior_profile is not None and (marker is not True or not isinstance(prior_profile, str)
+            or not re.fullmatch('[0-9a-f]{64}', prior_profile)):
+        raise ValueError('Invalid historical translation profile binding.')
+    validate_translation_source_record(value)
+    if not marker:
+        value['original_profile_sha256'] = _hash(canonical(value['profile']))
     value['profile'] = {**value['profile'], 'credential_ref': None, 'enabled': False}
     value['restore_requires_review'] = True
 
@@ -115,11 +126,14 @@ def _prepared(relative, value):
     if path == PurePosixPath('audio/engines.json'):
         fields = {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'}
         if (type(schema) is not int or schema != 1
-                or set(value) not in (fields, fields | {'restore_requires_revalidation'})
+                or not fields <= set(value)
+                or set(value) - fields - {'restore_requires_revalidation', 'audio_runtime_manifest_sha256'}
                 or type(value.get('restore_requires_revalidation', False)) is not bool
                 or any(not isinstance(value[key], list) or len(value[key]) > 100
                        for key in ('piper', 'voice_helpers', 'music_models'))):
             raise ValueError('Invalid restored local-engine configuration.')
+        from .runtime_settings import validate_audio_runtime_binding
+        validate_audio_runtime_binding(value)
         # Keep original paths/hashes as evidence; do not resolve an executable
         # or model on the previous machine during backup or restoration.
         return {**value, 'restore_requires_revalidation': True}

@@ -766,5 +766,5 @@ class ProviderGateway:
 # Canonical public provider API shares this module's sole HTTP/TLS transport.
 from .canonical_gateway import (
     Authorization, Gateway, UsageLedger, money, _request,
-    _reject_decoded_credential, validate_usage_ledger_document,
+    _reject_decoded_credential, validate_usage_ledger_document, translation_receipt_sha256,
 )

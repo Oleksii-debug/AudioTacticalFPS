@@ -39,9 +39,13 @@ def main(argv=None):
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
     args = parser.parse_args(argv)
+    binding = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
+        if args.operation in ('render', 'resume', 'capabilities'):
+            from ..audio.local_runtime import open_local_audio_runtime
+            binding = open_local_audio_runtime(app.root, strict=True)
         service = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
         if args.operation == 'voices':
             result = [json_safe(asdict(voice)) for voice in service.voices.voices()]
@@ -77,6 +81,9 @@ def main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        if binding is not None:
+            binding.close()
 
 
 def assistant_main(argv=None):
@@ -98,7 +105,12 @@ def assistant_main(argv=None):
         from ..assistant import AssistantService, Scope
         app = LibraryApp(data_directory(args.data_dir))
         production = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
-        service = AssistantService(app, production=production.assistant_callback)
+        def produce(arguments, output_directory, cancelled, progress):
+            # Pure previews, backups and search do not need an audio runtime.
+            from ..audio.local_runtime import open_local_audio_runtime
+            with open_local_audio_runtime(app.root, strict=True, cancelled=cancelled):
+                return production.assistant_callback(arguments, output_directory, cancelled, progress)
+        service = AssistantService(app, production=produce)
         if args.resume:
             if not args.run:
                 result = asdict(service.get(args.resume))

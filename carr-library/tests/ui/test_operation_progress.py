@@ -387,6 +387,7 @@ def test_registered_wave_players_follow_actual_eof_and_device_error_without_stuc
     second_process.poll = lambda: second_process.returncode
     for player, process in ((first, first_process), (second, second_process)):
         player._state, player._process, player.duration_seconds = 'playing', process, 2.0
+        player._end_seconds = 2.0  # Same native EOF endpoint established by play().
         controller.register_player(player)
     controller.start('Rendering another output')
     assert sound.muted and not sound.calls

@@ -14,13 +14,14 @@ from zipfile import ZipFile, ZipInfo
 import pytest
 
 from carr_library.audio import runtime
+from carr_library.audio import windows_setup as prepare
 from carr_library.audio.render import tool_path
 
 
 PRODUCT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('prepare_windows_audio_tested', PRODUCT/'packaging/prepare_windows_audio.py')
-prepare = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(prepare)
+packaging_prepare = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(packaging_prepare)
 
 
 def digest(path):
@@ -53,7 +54,7 @@ def package(tmp_path, monkeypatch):
                                 for name, data in files.items()})
     source = setup/'audio-runtime/source-lock.json'
     source.write_text(json.dumps(lock), encoding='utf-8')
-    monkeypatch.setattr(prepare, 'HERE', setup)
+    monkeypatch.setattr(prepare, 'NOTICE', setup/'audio-runtime/README.txt')
     monkeypatch.setattr(prepare, 'SOURCE_LOCK', source)
     monkeypatch.setattr(prepare, 'SOURCE_LOCK_SHA256', digest(source))
     monkeypatch.setattr(runtime, 'SOURCE_LOCK_SHA256', digest(source))
@@ -137,9 +138,9 @@ def test_archive_link_and_case_collision_rejected(package):
 
 
 def test_prepare_has_no_implicit_network_mode(monkeypatch, tmp_path):
-    monkeypatch.setattr(prepare, 'download_archive', lambda *_: pytest.fail('unexpected network acquisition'))
+    monkeypatch.setattr(packaging_prepare, 'download_archive', lambda *_: pytest.fail('unexpected network acquisition'))
     with pytest.raises(SystemExit) as error:
-        prepare.main(['--output', str(tmp_path/'output')])
+        packaging_prepare.main(['--output', str(tmp_path/'output')])
     assert error.value.code == 2
 
 
@@ -320,8 +321,8 @@ def test_changed_audio_inventory_between_verification_and_copy_is_rejected(packa
     root, _, _ = make_bundle(package)
     builder, _, application, wheels, lock = bundle_tools_and_inputs(package)
     original = runtime.verify_audio_runtime
-    def verify_then_replace(directory, expected_manifest_sha256=None):
-        result = original(directory, expected_manifest_sha256)
+    def verify_then_replace(directory, expected_manifest_sha256=None, **options):
+        result = original(directory, expected_manifest_sha256, **options)
         (Path(directory)/runtime.MANIFEST).write_text('{"files":{"../escape":{}}}', encoding='utf-8')
         return result
     monkeypatch.setattr(runtime, 'verify_audio_runtime', verify_then_replace)

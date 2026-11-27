@@ -475,6 +475,7 @@ class VoiceRegistry:
                 'model_manifests': model_identities,
                 'model_adapter_sha256': _digest(Path(__file__).with_name('model_voices.py')),
                 'model_validator_sha256': _digest(Path(__file__).with_name('voice_manifest.py')),
+                'owner_package_adapter_sha256': _digest(Path(__file__).with_name('voice_packages.py')),
                 'registry_sha256': _digest(Path(__file__)),
                 'fingerprint_scope': 'executables, versions, helpers, installed identities, configured model manifests and verified assets'}
 

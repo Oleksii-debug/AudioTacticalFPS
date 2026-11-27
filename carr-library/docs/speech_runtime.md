@@ -179,6 +179,45 @@ project can be updated only if its previous digest still matches. Original
 source paths, symlinks, reparse points, hard-linked outputs and accidental
 overwrites are rejected.
 
+## A/B repeat and sleep timer
+
+The existing reader exposes native named controls for **Mark A**, **Mark B**,
+**Set A/B times**, **Enable A/B repeat**, **Clear A/B**, **Sleep timer**, and a
+focusable status query. Use ordinary Tab, Space and Enter; existing F6/F7/F8 and
+save shortcuts retain their meaning. These controls refer to the currently
+opened PCM recording, not quotation ranges or text offsets.
+
+Points must satisfy `0 <= A < B <= measured audio duration`. Setting points
+does not enable repeat. Windows MCI receives a native `to` endpoint, rounded
+inward to its millisecond resolution; shorter intervals are rejected. The
+existing ffplay fallback uses its native duration limit. Repeat waits for actual
+transport completion and passes through the shared progress quiet boundary
+before restarting. It never restarts a user-paused recording.
+
+The sleep dialog accepts minutes, with zero meaning Off. Its monotonic deadline
+starts at that explicit action and continues while playback is paused. The
+100 ms GUI timer checks expiry when the event loop is responsive; it is not a
+hard-real-time guarantee during a blocked UI or suspended process. Expiry
+clears timer and repeat, releases output, and retains a resumable paused position
+when playback was active. F7 resumes explicitly without rearming either control.
+
+New audio, Stop/F8, cancellation, changed library/source scope, and Close disarm
+these controls and invalidate queued repeat callbacks. A failed device stop
+still disarms automatic actions and reports uncertainty. Points and deadlines
+are session-only: canonical project/recovery formats remain unchanged, and
+reopening a draft never starts a timer or audio.
+
+Portable boundaries are checked by
+[tests/speech/test_player_controls.py](../tests/speech/test_player_controls.py).
+The installed Windows gate,
+[scripts/windows_reader_controls_smoke.py](../scripts/windows_reader_controls_smoke.py),
+uses an explicitly synthetic PCM fixture, actual WinMM and native keys. It does
+not establish voice inference, human listening or NVDA acceptance.
+
+The finite [28-workflow checklist](READING_WORKFLOW_ACCEPTANCE.md) maps requested
+reading/synthesis behavior to existing producers, gates and concrete limits.
+Device selection, legacy engines and presentation gaps remain visible there.
+
 ## Worker and playback boundaries
 
 Every native speech call has bounded text chunks, deadline, diagnostic output

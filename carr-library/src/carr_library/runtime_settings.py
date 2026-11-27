@@ -3,11 +3,12 @@ import os
 from pathlib import Path, PureWindowsPath
 import re
 
-from .durable_state import atomic_json, read_json
+from .durable_state import atomic_json, read_json, state_lock
 
 
 _FIELDS = {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'}
 _RESTORE = 'restore_requires_revalidation'
+_RUNTIME_SEAL = 'audio_runtime_manifest_sha256'
 
 
 def settings_path(state_root):
@@ -29,8 +30,27 @@ def _declared_path(value):
         raise ValueError('Engine paths cannot contain traversal or alternate streams.')
 
 
+
+def validate_audio_runtime_binding(value):
+    """Pure optional seal/path validation shared with backup restore admission."""
+    if _RUNTIME_SEAL not in value:
+        return value
+    seal = value[_RUNTIME_SEAL]
+    if (not isinstance(seal, str) or not re.fullmatch('[0-9a-f]{64}', seal)
+            or value.get('ffmpeg') is None or value.get('ffprobe') is None):
+        raise ValueError('A selected complete audio runtime needs both executable paths and its exact manifest SHA256.')
+    _declared_path(value['ffmpeg'])
+    _declared_path(value['ffprobe'])
+    path_type = PureWindowsPath if PureWindowsPath(value['ffmpeg']).drive else Path
+    ffmpeg, ffprobe = path_type(value['ffmpeg']), path_type(value['ffprobe'])
+    if (ffmpeg.name.casefold() != 'ffmpeg.exe' or ffprobe.name.casefold() != 'ffprobe.exe'
+            or ffmpeg.parent != ffprobe.parent or ffmpeg.parent.name.casefold() != 'bin'):
+        raise ValueError('A sealed audio runtime must select FFmpeg and FFprobe from the same reviewed bin directory.')
+    return value
+
+
 def _settings_document(value):
-    if (type(value) is not dict or set(value) - _FIELDS - {_RESTORE}
+    if (type(value) is not dict or set(value) - _FIELDS - {_RESTORE, _RUNTIME_SEAL}
             or not _FIELDS <= set(value) or type(value['schema']) is not int
             or value['schema'] != 1
             or (_RESTORE in value and type(value[_RESTORE]) is not bool)):
@@ -38,6 +58,7 @@ def _settings_document(value):
     for key in ('ffmpeg', 'ffprobe'):
         if value[key] is not None:
             _declared_path(value[key])
+    validate_audio_runtime_binding(value)
     for key in ('piper', 'voice_helpers', 'music_models'):
         if (type(value[key]) is not list or len(value[key]) > 100
                 or any(type(item) is not dict for item in value[key])):
@@ -80,16 +101,41 @@ def load_settings(state_root):
     return _settings_document(value)
 
 
-def _enabled_settings(state_root):
+def _enabled_settings(state_root, *, cancelled=None):
     value = load_settings(state_root)
     if value.get(_RESTORE, False):
         raise ValueError('Restored local engine settings require explicit revalidation in '
                          'Local engine settings before any voice or music activation.')
+    verify_configured_audio_runtime(value, cancelled=cancelled)
     from .audio.musicgen_worker import plain_local
     for key in ('ffmpeg', 'ffprobe'):
         if value[key] is not None:
             plain_local(value[key])
     return value
+
+
+
+def configured_audio_runtime_root(value):
+    """Resolve no files; restored and sealed identity checks precede activation."""
+    value = _settings_document(value)
+    if value.get(_RESTORE, False):
+        raise ValueError('Restored local engine settings require explicit revalidation before audio activation.')
+    if _RUNTIME_SEAL not in value:
+        return None
+    root = Path(value['ffmpeg']).parent.parent
+    if not root.is_absolute():
+        raise ValueError('This reviewed audio runtime belongs to another operating system; select local files again.')
+    return root
+
+
+def verify_configured_audio_runtime(value, *, cancelled=None, progress=None):
+    root = configured_audio_runtime_root(value)
+    if root is None:
+        return None
+    from .audio.runtime import verify_audio_runtime
+    from .audio.render import _require_local_volume
+    _require_local_volume(root)
+    return verify_audio_runtime(root, value[_RUNTIME_SEAL], cancelled=cancelled, progress=progress)
 
 
 def _review_cancellation(cancelled):
@@ -165,20 +211,26 @@ def _registry(state_root, value, *, discover=True):
     return registry
 
 
-def save_settings(state_root, value, *, cancelled=None):
+def save_settings(state_root, value, *, cancelled=None, expected_settings=None):
     """Explicitly review configured assets before clearing a restore barrier."""
     cancelled = _review_cancellation(cancelled)
     _check_review(cancelled)
     value = _settings_document(value)
+    previous = load_settings(state_root) if expected_settings is None else _settings_document(expected_settings)
     from .audio.models import LocalModelConfig
     from .audio.music import validate_model
     from .audio.musicgen_worker import plain_local
-    from .audio.render import run_process, tool_path
+    from .audio.render import run_process
+    # Explicit revalidation may clear the restore marker, but only after the
+    # same sealed inventory has been checked; never silently erase its digest.
+    review_value = {**value, _RESTORE: False}
+    verify_configured_audio_runtime(review_value, cancelled=cancelled)
     for key in ('ffmpeg', 'ffprobe'):
         _check_review(cancelled)
         if value[key] is not None:
-            binary = tool_path(key, value[key])
-            plain_local(binary)
+            # Review the explicit candidate, even when another runtime remains
+            # active. Production invocation still uses the active-runtime guard.
+            binary = str(plain_local(value[key]))
             run_process([binary, '-version'], timeout_seconds=20, cancelled=cancelled)
     # Enumerate enabled helpers and check complete pinned Piper assets. Merely
     # parsing their paths cannot authorize execution after a restore.
@@ -203,7 +255,11 @@ def save_settings(state_root, value, *, cancelled=None):
         candidate[_RESTORE] = False
     path = settings_path(state_root)
     _check_review(cancelled)
-    atomic_json(path, candidate, replace=os.path.lexists(path))
+    with state_lock(path.parent, 'engines'):
+        _check_review(cancelled)
+        if load_settings(state_root) != previous:
+            raise ValueError('Local engine settings changed during review. Reopen the dialog before saving.')
+        atomic_json(path, candidate, replace=os.path.lexists(path))
     return candidate
 
 

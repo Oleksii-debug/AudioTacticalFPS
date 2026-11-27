@@ -1,7 +1,8 @@
 """One verifier for preparing, packaging and activating optional Windows audio.
 
-Discovery follows the running interpreter's installation, never an environment
-override, current directory or arbitrary user script. A declared runtime cannot
+Bundled discovery follows the running interpreter's installation. Separate
+local activation requires an explicitly saved complete-pack identity; neither
+route accepts an environment override, current directory or arbitrary script. A declared runtime cannot
 silently fall back to a different PATH executable when validation fails.
 """
 from dataclasses import dataclass
@@ -23,15 +24,19 @@ MAX_FILES = 10000
 MAX_BYTES = 1536 * 1024**2
 _active_lock = RLock()
 _active = None
+_audio_block = None
+_binding_owner = None
 
 
-def verify_audio_runtime(runtime_dir, expected_manifest_sha256=None):
+def verify_audio_runtime(runtime_dir, expected_manifest_sha256=None, *, cancelled=None, progress=None):
     """Verify all original publisher bytes and the enclosing package seal, if given."""
+    from .render import check_cancelled, file_sha256
+    check_cancelled(cancelled)
     root = _absolute(runtime_dir)
     _directory(root)
     manifest_path = root / MANIFEST
     _plain(manifest_path)
-    manifest_digest = _sha(manifest_path)
+    manifest_digest = file_sha256(manifest_path, cancelled)
     if expected_manifest_sha256 is not None and manifest_digest != expected_manifest_sha256:
         raise ValueError('Audio runtime manifest differs from the sealed application bundle.')
     manifest = _read(manifest_path)
@@ -46,7 +51,7 @@ def verify_audio_runtime(runtime_dir, expected_manifest_sha256=None):
     lock_path = root / 'carr-provenance' / 'source-lock.json'
     _directory(lock_path.parent)
     _plain(lock_path)
-    if _sha(lock_path) != SOURCE_LOCK_SHA256:
+    if file_sha256(lock_path, cancelled) != SOURCE_LOCK_SHA256:
         raise ValueError('Audio runtime source lock differs from the reviewed publisher package.')
     lock = _read(lock_path)
     originals = lock.get('original_files')
@@ -67,7 +72,9 @@ def verify_audio_runtime(runtime_dir, expected_manifest_sha256=None):
                           'carr-provenance/native-version-report.json'}):
         raise ValueError('Unexpected audio runtime provenance files.')
     actual, total = set(), 0
+    expected_bytes = sum(record['size_bytes'] for record in manifest['files'].values())
     for path in root.rglob('*'):
+        check_cancelled(cancelled)
         details = path.lstat()
         if stat.S_ISDIR(details.st_mode):
             _plain(path, directory=True)
@@ -81,8 +88,11 @@ def verify_audio_runtime(runtime_dir, expected_manifest_sha256=None):
         if total > MAX_BYTES or len(actual) > MAX_FILES or name not in manifest['files']:
             raise ValueError('Unexpected audio runtime file or size.')
         record = manifest['files'][name]
-        if details.st_size != record['size_bytes'] or _sha(path) != record['sha256']:
+        if details.st_size != record['size_bytes'] or file_sha256(path, cancelled) != record['sha256']:
             raise ValueError('Audio runtime checksum failed: ' + name)
+        if progress is not None:
+            progress('Verifying the complete audio runtime inventory', total, expected_bytes)
+    check_cancelled(cancelled)
     if actual != set(manifest['files']):
         raise ValueError('Audio runtime files are missing.')
     for name in ('ffmpeg.exe', 'ffprobe.exe', 'ffplay.exe'):
@@ -262,19 +272,85 @@ def activate_bundled_audio_runtime(bundle_root=None):
     if verified is None or sys.platform != 'win32':
         return None
     runtime, executables = verified
+    return _activate_verified_audio(runtime, executables)
+
+
+
+def _activate_verified_audio(runtime, executables, *, previous=None):
+    """Common handle activation after a complete bundle/local verification."""
+    global _active
     directory = runtime / 'bin'
     with _active_lock:
+        if previous is not None:
+            if not isinstance(previous, AudioRuntimeHandle):
+                raise ValueError('Expected the existing audio runtime handle.')
+            previous.close()
         if _active is not None:
             if _active['directory'] != directory:
-                raise ValueError('A different bundled audio runtime is already active.')
+                raise ValueError('A different reviewed audio runtime is still active. Close its owner before switching.')
             _active['users'] += 1
         else:
-            previous = os.environ.get('PATH')
-            installed = str(directory) + (os.pathsep + previous if previous is not None else '')
-            _active = {'directory': directory, 'previous': previous, 'installed': installed,
+            old_path = os.environ.get('PATH')
+            installed = str(directory) + (os.pathsep + old_path if old_path is not None else '')
+            _active = {'directory': directory, 'previous': old_path, 'installed': installed,
                        'users': 1, 'executables': executables}
             os.environ['PATH'] = installed
         return AudioRuntimeHandle(directory, _active['previous'], _active['installed'])
+
+
+def activate_local_audio_runtime(runtime_dir, expected_manifest_sha256, *,
+                                 previous=None, cancelled=None, progress=None):
+    """Activate one explicitly selected complete pack outside the application.
+
+    This retains local-installation-only identity. It does not attach files to
+    a distributable bundle, rewrite its manifest or grant transfer permission.
+    The previous handle is untouched until all new verification has succeeded.
+    """
+    from .render import check_cancelled, _require_local_volume
+    if sys.platform != 'win32':
+        raise RuntimeError('The reviewed Windows audio runtime can only be activated on Windows.')
+    root = _absolute(runtime_dir)
+    _require_local_volume(root)
+    report = verify_audio_runtime(root, expected_manifest_sha256,
+                                  cancelled=cancelled, progress=progress)
+    from .windows_setup import verify_native_versions
+    verify_native_versions(root, cancelled=cancelled, progress=progress)
+    check_cancelled(cancelled)
+    return _activate_verified_audio(root, report['executables'], previous=previous)
+
+
+def _claim_audio_binding(owner, previous_owner=None):
+    """One library owns local selection, including an invalid/default selection."""
+    global _binding_owner
+    with _active_lock:
+        if _binding_owner is not None and _binding_owner not in (owner, previous_owner):
+            raise RuntimeError('Another library owns the local audio selection. Supply its current binding before switching.')
+        if _audio_block is not None and _audio_block[0] not in (owner, previous_owner):
+            raise RuntimeError('Another library owns an unavailable local audio selection.')
+        _binding_owner = owner
+
+
+def _release_audio_binding(owner):
+    global _binding_owner
+    with _active_lock:
+        if _binding_owner is owner:
+            _binding_owner = None
+
+
+def _set_audio_block(owner, reason):
+    """Retain an invalid explicit selection as an error, never a PATH fallback."""
+    global _audio_block
+    with _active_lock:
+        if _audio_block is not None and _audio_block[0] is not owner:
+            raise RuntimeError('An unrelated local audio selection cannot be cleared or replaced.')
+        _audio_block = None if reason is None else (owner, str(reason))
+
+
+def _clear_audio_block(owner):
+    global _audio_block
+    with _active_lock:
+        if _audio_block is not None and _audio_block[0] is owner:
+            _audio_block = None
 
 
 def resolve_active_audio_tool(name):
@@ -288,6 +364,8 @@ def resolve_active_audio_tool(name):
     if executable not in ('ffmpeg.exe', 'ffprobe.exe', 'ffplay.exe'):
         return None
     with _active_lock:
+        if _audio_block is not None:
+            raise RuntimeError(_audio_block[1])
         if _active is None:
             return None
         directory = _active['directory']

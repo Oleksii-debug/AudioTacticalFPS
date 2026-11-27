@@ -30,7 +30,7 @@ from .voice_manifest import (LocalModelManifest, ModelManifestError, digest_file
                              local_path, offline_environment, read_json)
 
 
-ADAPTER_VERSION = 'reviewed-model-voice-3'
+ADAPTER_VERSION = 'reviewed-model-voice-4'
 MAX_TEXT = 8000  # per worker request; long books are scheduled as many requests
 MAX_LOG_BYTES = 1024 * 1024
 MAX_PCM_BYTES = 256 * 1024 * 1024  # per request, not total project duration
@@ -293,10 +293,12 @@ class DordiaiVoicesEngine:
     def __init__(self, manifest, *, timeout=900):
         self.manifest = LocalModelManifest.load(manifest, engine=self.id)
         settings = self.manifest.settings
-        if set(settings) - {'protocol', 'python', 'worker', 'catalog', 'profile_languages'}:
+        from .voice_packages import RUNTIME_FIELDS, runtime_settings
+        if set(settings) - {'protocol', 'python', 'worker', 'catalog', 'profile_languages'} - RUNTIME_FIELDS:
             raise ModelManifestError('Unknown dordiai-voices runtime settings.')
         if settings.get('protocol') != 'nvda-worker-jsonl-pcm24k-v1':
             raise ModelManifestError('Unsupported dordiai-voices worker protocol.')
+        self.runtime = runtime_settings(settings)
         self.binary = _binary(self.manifest.asset(settings.get('python', 'python/python.exe')))
         self.worker = self.manifest.asset(settings.get('worker', 'nvda_worker.py'))
         self.catalog_path = self.manifest.asset(settings.get('catalog', 'models/voices/catalog.json'))
@@ -312,6 +314,20 @@ class DordiaiVoicesEngine:
         languages = catalog.get('languages') if isinstance(catalog, dict) else None
         if not isinstance(profiles, dict) or not isinstance(languages, dict) or len(profiles) > 4096:
             raise ModelManifestError('Invalid dordiai-voices catalogue.')
+        managed, owned = {}, ()
+        if self.manifest.settings.get('managed_profiles', False):
+            from .voice_packages import managed_catalog
+            profiles, managed, owned = managed_catalog(self.manifest, profiles)
+            profiles = dict(profiles)
+            languages = dict(languages)
+            for identity in owned:
+                profiles.setdefault(identity, {'name': identity})
+            for identity, document in managed.items():
+                profiles[identity] = {'name': document['name']}
+                for code in document['languages']:
+                    normalized = code.replace('_', '-').lower()
+                    if not any(key.replace('_', '-').lower() == normalized for key in languages):
+                        languages[code] = code
         language_codes = {}
         for code in languages:
             if not isinstance(code, str) or not re.fullmatch('[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*', code):
@@ -360,15 +376,32 @@ class DordiaiVoicesEngine:
             identity = self.id + ':' + key
             profile_languages = declared.get(key, {'supported': (), 'candidates': ()})
             supported = profile_languages['supported']
+            candidates = profile_languages['candidates']
+            reason = '' if supported else 'No reviewed per-profile language support.'
+            if key in owned:
+                from .voice_packages import approved_profile
+                document = managed.get(key)
+                if document is None:
+                    supported = ()
+                    reason = 'The owned profile is inactive, incompatible or unavailable; no legacy voice is substituted.'
+                else:
+                    actual = tuple(code.replace('_', '-').lower() for code in document['languages'])
+                    if set(supported) - set(actual) or set(candidates) - set(actual):
+                        raise ModelManifestError('A profile declaration exceeds its own package languages.')
+                    if not approved_profile(self.manifest, document):
+                        supported, candidates = (), actual
+                        reason = 'The exact reference data and rights have not been explicitly reviewed.'
+                    elif not supported:
+                        candidates = actual
             if supported:
                 records[identity] = key
                 supported_by_profile[identity] = supported
             rows.append(Voice(identity, name, supported, self.id,
                               available=bool(supported),
-                              reason='' if supported else 'No reviewed per-profile language support.',
+                              reason=reason,
                               controls=('rate', 'pitch', 'volume'), license=self.manifest.license,
                               revision=self.manifest.revision,
-                              candidate_languages=profile_languages['candidates']))
+                              candidate_languages=candidates))
         self._profiles, self._profile_languages, self._language_codes = records, supported_by_profile, language_codes
         return tuple(rows)
 
@@ -378,8 +411,11 @@ class DordiaiVoicesEngine:
         if voice not in self._profiles:
             raise EngineUnavailable('Choose an enabled profile from the installed dordiai-voices catalogue.')
         self.manifest.verify(require_complete=True)
+        from .voice_packages import bridge_identity
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION, 'voice': voice,
-                'protocol': 'nvda-worker-jsonl-pcm24k-v1'}
+                'protocol': 'nvda-worker-jsonl-pcm24k-v1',
+                'reference_engine': self.runtime['reference_engine'],
+                'owner_package_bridge_sha256': bridge_identity() if self.manifest.settings.get('managed_profiles') else None}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False, max_output_bytes=MAX_PCM_BYTES + 4096):
@@ -399,21 +435,25 @@ class DordiaiVoicesEngine:
         self.manifest.verify(cancelled=cancelled, require_complete=True)
         target = _output(output)
         root = self.manifest.root
+        from .voice_packages import runtime_directory
+        paths = {key: runtime_directory(self.manifest, self.runtime[key])
+                 for key in ('models', 'reference_model', 'references')}
+        backend = self.runtime['reference_engine']
         # Arguments are the versioned installed worker's fixed interface, not a
         # command supplied by a script, book, scene or model response.
         command = [str(self.binary), '-I', '-B', '-u', '-c', _DORDIAI_OFFLINE_BOOTSTRAP,
-                   str(self.worker), str(root / 'models'),
-                   '--reference-model', str(root / 'models/Holos'),
-                   '--references', str(root / 'models/voices'), '--reference-engine', 'holos',
+                   str(self.worker), str(paths['models']),
+                   '--reference-model', str(paths['reference_model']),
+                   '--references', str(paths['references']), '--reference-engine', backend,
                    '--preload-language', 'mixed']
         request = {'mode': 'reference', 'profile': self._profiles[voice], 'language': code,
-                   'text': text, 'speed': 2 ** (rate / 10), 'stream': True,
+                   'text': text, 'speed': 2 ** (rate / 10), 'stream': backend != 'omnivoice',
                    'controls': {'pitch': round(50 + pitch * 3), 'timbre': 50, 'volume': round(volume * 100)},
-                   'numberLanguage': 'auto', 'character': False, 'nativeProfile': base_language in {'en', 'ru'},
+                   'numberLanguage': 'auto', 'character': False, 'nativeProfile': backend == 'holos' and base_language in {'en', 'ru'},
                    'nativeEnglish': False}
-        if base_language in {'sk', 'pl', 'de', 'fr', 'da', 'it', 'es'}:
+        if backend == 'holos' and base_language in {'sk', 'pl', 'de', 'fr', 'da', 'it', 'es'}:
             request['nativeLocale'] = True
-        elif base_language not in {'uk', 'en', 'ru'}:
+        elif backend == 'holos' and base_language not in {'uk', 'en', 'ru'}:
             request.update(wideLocale=True, reportLoading=True)
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'

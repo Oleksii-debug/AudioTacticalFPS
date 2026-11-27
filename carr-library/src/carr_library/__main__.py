@@ -62,14 +62,20 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
-def main(argv=None):
+def main(argv=None, *, delivery=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['delivery']:
+        from .delivery_cli import main as delivery_main
+        return delivery_main(arguments[1:], service=delivery)
     if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
         from .academic_integration.doi import _worker_main
         return _worker_main(arguments[1:])
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
+    if arguments and arguments[0] == 'translate':
+        from .translation_cli import main as translation_main
+        return translation_main(arguments[1:])
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
@@ -152,7 +158,8 @@ def main(argv=None):
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and not identifier_lookup:
         parser.error('--workspace is used with --search, --lookup-doi or --lookup-isbn.')
-    native_handle = audio_handle = None
+    native_handle = local_audio_binding = None
+    frame = None
     try:
         if args.document_formats:
             from .extract.document_formats import supported_formats_text
@@ -182,8 +189,6 @@ def main(argv=None):
                 result = store.select(args.ocr_profile, args.verify_ocr_models).fingerprint()
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
-        from .audio.runtime import activate_bundled_audio_runtime
-        audio_handle = activate_bundled_audio_runtime()
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0
@@ -210,6 +215,12 @@ def main(argv=None):
                 args.data_dir = default
         if audio_requested(args):
             from .audio.cli import execute as execute_audio
+            media_operation = bool(args.music_sample or ((args.audio_output or args.studio_resume)
+                and not any((args.voices, args.studio_list, args.studio_jobs, args.studio_status))))
+            if media_operation:
+                from .audio.local_runtime import open_local_audio_runtime
+                with open_local_audio_runtime(args.data_dir, strict=True):
+                    return execute_audio(args, args.data_dir)
             return execute_audio(args, args.data_dir)
         from .application import LibraryApp
         ranker = None
@@ -249,6 +260,9 @@ def main(argv=None):
             checksum = app.backup(args.backup)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
+        from .audio.local_runtime import prepare_local_audio_runtime
+        local_audio_binding = prepare_local_audio_runtime(app.root).activate(strict=False)
+        app.semantic_notice = ' '.join(filter(None, (app.semantic_notice, local_audio_binding.notice)))
         try:
             import wx
         except ImportError as exc:
@@ -256,7 +270,9 @@ def main(argv=None):
         from .ui.desktop_app import DesktopFrame
         from .preferences import remember_directory
         desktop = wx.App(False)
-        frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        frame = DesktopFrame(app, remember_data_dir=remember_directory,
+                             audio_runtime_binding=local_audio_binding, **(
+            {'delivery': delivery} if delivery is not None else {}))
         frame.Show()
         desktop.MainLoop()
         return 0
@@ -264,8 +280,11 @@ def main(argv=None):
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
     finally:
-        if audio_handle is not None:
-            audio_handle.close()
+        active_binding = getattr(frame, 'audio_runtime_binding', None) if frame is not None else local_audio_binding
+        if active_binding is not None:
+            active_binding.close()
+        if local_audio_binding is not None and local_audio_binding is not active_binding:
+            local_audio_binding.close()
         if native_handle is not None:
             native_handle.close()
 

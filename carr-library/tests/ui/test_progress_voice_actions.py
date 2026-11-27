@@ -145,7 +145,8 @@ def reader(tmp_path, monkeypatch):
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
+        dialog=Mock(), autosave_timer=Mock(), transport=Mock(), playback_guard=Mock(),
+        executor=Mock(), audio_files=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
@@ -208,6 +209,7 @@ def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(read
         # Execute the real outer finally block when the simulated modal unwinds.
         reader.handlers.cleanup()
         reader.values['player'].close.assert_called_once()
+        reader.values['transport'].close.assert_called_once_with(stop=False)
     reader.progress.ready = True
     reader.scheduler.tick()
     started.assert_not_called()
@@ -439,3 +441,38 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
     reader.values['dialog'].Destroy.assert_called_once()
     assert any('Progress observer detached' in message for message in reader.reports)
     assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+def test_reader_deferred_playback_rechecks_source_before_native_start(reader):
+    started = Mock()
+    reader.handlers.start_playback(started)
+    assert reader.scheduler.pending
+    reader.values['playback_guard'].side_effect = ValueError('Retained source authorization changed')
+    reader.progress.ready = True
+    reader.scheduler.tick()
+    started.assert_not_called()
+    reader.values['playback_guard'].assert_called_once()
+    assert all(hold.closed for hold in reader.progress.holds)
+    assert any('Retained source authorization changed' in report for report in reader.reports)
+
+
+@pytest.mark.parametrize('boundary', ['library', 'root', 'closing'])
+def test_reader_transport_guard_rejects_changed_context_before_source_access(tmp_path, boundary):
+    library = SimpleNamespace(root=tmp_path)
+    parent = SimpleNamespace(library=library, _closing=False)
+    source_guard = Mock()
+    handler = callbacks('speech_dialog.py', 'show_speech_reader', ['playback_guard'],
+        dict(parent=parent, alive=True, reader_library=library, reader_root=tmp_path,
+             source_guard=source_guard)).playback_guard
+    handler()
+    source_guard.assert_called_once()
+    source_guard.reset_mock()
+    if boundary == 'library':
+        parent.library = SimpleNamespace(root=tmp_path)
+    elif boundary == 'root':
+        library.root = tmp_path / 'different'
+    else:
+        parent._closing = True
+    with pytest.raises(ValueError, match='library folder changed'):
+        handler()
+    source_guard.assert_not_called()

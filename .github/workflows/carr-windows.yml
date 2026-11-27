@@ -294,6 +294,24 @@ jobs:
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/audio/test_local_runtime_cli.py',
+            'tests/audio/test_local_runtime_setup.py',
+            'tests/ui/test_audio_runtime_setup.py',
+            'tests/storage/test_translation_runtime_recovery.py',
+            'tests/test_delivery_contract.py',
+            'tests/test_delivery_service.py',
+            'tests/test_delivery_cli.py',
+            'tests/speech/test_player_controls.py',
+            'tests/audio/test_voice_packages.py',
+            'tests/ui/test_reference_voice_controls.py',
+            'tests/assistant/test_translation.py',
+            'tests/assistant/test_library_translation.py',
+            'tests/ui/test_translation_selection.py',
+            'tests/ui/test_library_translation_dialog.py',
+            'tests/storage/test_state_json_reader.py',
+            'tests/ui/test_save_actions.py',
+            'tests/packaging/test_delivery_archive.py',
+            'tests/ingest/test_import_metadata_shape.py',
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
             'tests/packaging/test_windows_bundle.py',
@@ -539,6 +557,25 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_transcription_smoke.py 2>&1 | Tee-Object 'ci-results/native-transcription-controls.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise native reader, translation, voice setup and delivery lifecycle
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $nativeFailures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_delivery_lifecycle_smoke.py 2>&1 | Tee-Object 'ci-results/native-delivery-lifecycle.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'delivery-lifecycle' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_controls_smoke.py --report ci-results/native-reader-controls.json 2>&1 | Tee-Object 'ci-results/native-reader-controls.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'reader-controls' }
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_voice_packages_smoke.py 2>&1 | Tee-Object 'ci-results/native-owner-voice-controls.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'owner-voice-controls' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_translation_source_smoke.py 2>&1 | Tee-Object 'ci-results/native-translation-source.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'translation-source' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_save_timer_smoke.py --output ci-results/native-draft-timer.json 2>&1 | Tee-Object 'ci-results/native-draft-timer.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'draft-timer' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_audio_runtime_setup_smoke.py --runtime $env:CARR_AUDIO_RUNTIME --report ci-results/native-audio-runtime-setup.json 2>&1 | Tee-Object 'ci-results/native-audio-runtime-setup.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'local-audio-setup' }
+          if ($nativeFailures.Count) { throw ('Native shared workflow failures: ' + ($nativeFailures -join ', ')) }
+
       - name: Exercise native extended-document imports and exact retained reading
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 3
@@ -755,23 +792,35 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --lock packaging/epubcheck.json --report ci-results/offline-bundle-epubcheck.json --require-installed 2>&1 | Tee-Object 'ci-results/offline-bundle-epubcheck.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_document_formats_smoke.py).Path 2>&1 | Tee-Object 'ci-results/offline-bundle-document-formats.json'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_document_formats_smoke.py).Path 2>&1 | Tee-Object 'ci-results/offline-bundle-document-formats.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # This probe imports wx first: hold the application's verified DLL
           # directory handle before loading that native extension.
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_citation_styles_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path scripts/windows_citation_styles_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_audio_studio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-studio.json'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_audio_studio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-studio.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_audio_effects_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-effects.json'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_audio_effects_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-effects.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -X utf8 -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_voice_settings_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-voice-settings.json'
+          & $installedPython -I -B -X utf8 -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_voice_settings_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-voice-settings.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_delivery_lifecycle_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-delivery-lifecycle.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_controls_smoke.py --report ci-results/bundle-reader-controls.json 2>&1 | Tee-Object 'ci-results/full-bundle-reader-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_voice_packages_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-owner-voice-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_translation_source_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-translation-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_save_timer_smoke.py --output ci-results/bundle-draft-timer.json 2>&1 | Tee-Object 'ci-results/full-bundle-draft-timer.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_audio_runtime_setup_smoke.py --runtime $env:CARR_AUDIO_RUNTIME --report ci-results/bundle-audio-runtime-setup.json 2>&1 | Tee-Object 'ci-results/full-bundle-audio-runtime-setup.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
@@ -815,7 +864,24 @@ jobs:
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
-          contents_suites = ['tests/reader/test_ebook_contents.py',
+          contents_suites = ['tests/audio/test_local_runtime_cli.py',
+                            'tests/audio/test_local_runtime_setup.py',
+                            'tests/ui/test_audio_runtime_setup.py',
+                            'tests/storage/test_translation_runtime_recovery.py',
+                            'tests/test_delivery_contract.py',
+                            'tests/test_delivery_service.py',
+                            'tests/test_delivery_cli.py',
+                            'tests/speech/test_player_controls.py',
+                            'tests/audio/test_voice_packages.py',
+                            'tests/ui/test_reference_voice_controls.py',
+                            'tests/assistant/test_translation.py',
+                            'tests/assistant/test_library_translation.py',
+                            'tests/ui/test_translation_selection.py',
+                            'tests/ui/test_library_translation_dialog.py',
+                            'tests/storage/test_state_json_reader.py',
+                            'tests/ui/test_save_actions.py',
+                            'tests/reader/test_ebook_contents.py',
+                            'tests/ingest/test_import_metadata_shape.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
                             'tests/audio/test_render.py', 'tests/audio/test_effects.py',
                             'tests/audio/test_music.py', 'tests/audio/test_music_settings.py',
@@ -907,7 +973,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources','test_cancelled_extended_import_can_resume_same_identity','test_windows_native_dialog_async_lookup_focus_and_close','test_real_application_lookup_save_apply_from_dialog_preserves_source','test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources','test_cancelled_extended_import_can_resume_same_identity','test_windows_native_dialog_async_lookup_focus_and_close','test_real_application_lookup_save_apply_from_dialog_preserves_source','test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape']; assert len(metadata_cases)==58 and len({c.get('name') for c in metadata_cases})==58; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
