@@ -1,0 +1,483 @@
+{
+  "schema": "carr-reviewed-source-handoff/1",
+  "feature": "Ordered BookBatch through existing BookAudioService and Studio",
+  "base_head": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "base_tree": "d3bc50fa71c7a5b1b946205ecbaeadeb723f972a",
+  "status": "DRAFT_NOT_RUN",
+  "source_review": "Exact readbacks and unique reversible shared hooks only; no parser, pytest or native execution claimed.",
+  "donor": {
+    "head": "dc477add6db2fc0348637dd460d03b76d8e1c75f",
+    "book_batch": "70b292614da69419e09c3dd0cd30d5d9d63593e4",
+    "book_batch_dialog": "ac3fdbc6b9eff34487cb33935b57fd241c430c55",
+    "test_book_batch": "d4a80b808fb9eed7f75b841dd8ad49526784bcdf",
+    "test_book_batch_dialog": "cd2c8996a154775fc61c70453071ce5708c42286",
+    "note": "Bounded subset adapted to current schema2 Book plans, current bool-based ProductionService close and current source/root/progress/backup contracts. No new donor headings, duration splitting or profile store."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "blob": "1b41db402b78523af4f19405245eedf3f2f9a4fd",
+      "preimage_blob": "7d4a9a0064b75deacf9a06fd1945751e6df4adb8"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_batch.py",
+      "blob": "13888a514f26f46f6d66d1e12efa9728032dbbb0",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "blob": "cc9d716c52f82d2d96fbca27ab99d7fcc5ac0f2a",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "blob": "8a6fa07bb4241c2265c0b2ac5a7e4c501ba860bf",
+      "preimage_blob": "3bbaadf71006bbdac71b41743708df612e17bde4"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_batch_dialog.py",
+      "blob": "ed5bd304055fa31b6d522a78f6df6ab626c4a4e0",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_book_batches.py",
+      "blob": "1db56a806f6fcb50f9d19dabf790a0b196eb87ab",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "blob": "a9b757cbd67923919e64ba94bbd6c11a502bf4c6",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_cli.py",
+      "blob": "58058c00f909f406ab4097874ebe21d0ce28f07d",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_batch_dialog.py",
+      "blob": "a8edb3c8790ec7290bb74f437688b38b77b08257",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_book_batches.py",
+      "blob": "2518a92b798c21d6bed8536b246c2bcc34b2219f",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/scripts/windows_book_batch_smoke.py",
+      "blob": "cb4a1713fee5cd4993b1d26e1d39f73521279552",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/docs/BOOK_BATCHES.md",
+      "blob": "8ca7505177859fb6235df914e2959513a2abed8a",
+      "preimage_blob": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "blob": "e7661f1af04c027431f315abd01a1062bb6f2e82",
+      "preimage_blob": "40390b406ca318ffac31ecc20f6d6c6980281278",
+      "apply": "Prefer unique exact hooks from 62123c3322626bd84abcda13652a24a98dc5ef11 if newer shared changes exist."
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "blob": "e58ea58cca77f7178ab508ce37c428a90fbf3c4c",
+      "preimage_blob": "ba268ebe0da616dce392a14b0306fa83f5913e1b",
+      "apply": "Prefer unique exact hooks from 62123c3322626bd84abcda13652a24a98dc5ef11 if newer shared changes exist."
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "blob": "2698d4cacce0213d51af6e18be24c35292227f24",
+      "preimage_blob": "fb672fe02721a64aa889d1afa0e3792b77f6e748",
+      "apply": "Prefer unique exact hooks from 62123c3322626bd84abcda13652a24a98dc5ef11 if newer shared changes exist."
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "blob": "2f6c68cb0e68d02db4f7cf8d737e61f95ad918de",
+      "preimage_blob": "a63f622678277f345d0de38376c70ab319adc71e",
+      "apply": "Prefer unique exact hooks from 62123c3322626bd84abcda13652a24a98dc5ef11 if newer shared changes exist."
+    }
+  ],
+  "shared_hooks": {
+    "blob": "62123c3322626bd84abcda13652a24a98dc5ef11",
+    "count": 19,
+    "policy": "Each before/after occurs once; reverse reconstruction equals the pinned original. No desktop/__main__/workflow edits."
+  },
+  "required_validation": {
+    "whole_suites": [
+      {
+        "path": "tests/studio/test_book_batch.py",
+        "expected_cases_static": 27,
+        "functions": 20,
+        "names": [
+          {
+            "name": "test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech",
+            "cases": 1
+          },
+          {
+            "name": "test_actual_two_book_render_and_reopened_resume_verify_original_outputs",
+            "cases": 1
+          },
+          {
+            "name": "test_changed_review_cannot_reuse_preparation_approval",
+            "cases": 4
+          },
+          {
+            "name": "test_scope_duplicate_and_missing_plan_bindings_are_rejected",
+            "cases": 1
+          },
+          {
+            "name": "test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second",
+            "cases": 1
+          },
+          {
+            "name": "test_active_control_stops_current_item_and_never_starts_later_books",
+            "cases": 2
+          },
+          {
+            "name": "test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate",
+            "cases": 1
+          },
+          {
+            "name": "test_old_invocation_signal_cannot_stop_a_new_explicit_run",
+            "cases": 1
+          },
+          {
+            "name": "test_observer_failure_does_not_relabel_or_repeat_completed_books",
+            "cases": 1
+          },
+          {
+            "name": "test_backup_restore_preserves_order_and_requires_new_explicit_destination_review",
+            "cases": 1
+          },
+          {
+            "name": "test_passive_backup_refuses_unbound_batch_membership",
+            "cases": 3
+          },
+          {
+            "name": "test_plan_save_then_prepare_uses_one_lock_at_a_time",
+            "cases": 1
+          },
+          {
+            "name": "test_stop_between_books_does_not_signal_a_foreign_locked_job",
+            "cases": 2
+          },
+          {
+            "name": "test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume",
+            "cases": 1
+          },
+          {
+            "name": "test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio",
+            "cases": 1
+          },
+          {
+            "name": "test_primary_failure_is_not_masked_by_control_cleanup_failure",
+            "cases": 1
+          },
+          {
+            "name": "test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs",
+            "cases": 1
+          },
+          {
+            "name": "test_competing_same_bytes_selection_is_not_adopted_as_our_commit",
+            "cases": 1
+          },
+          {
+            "name": "test_same_path_library_replacement_invalidates_existing_batch_service_before_writes",
+            "cases": 1
+          },
+          {
+            "name": "test_saved_batch_inventory_never_silently_omits_unreadable_directory",
+            "cases": 1
+          }
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      },
+      {
+        "path": "tests/studio/test_book_cli.py",
+        "expected_cases_static": 17,
+        "functions": 10,
+        "names": [
+          {
+            "name": "test_request_freezes_explicit_voice_settings_and_request_changes_do_not_mutate_review",
+            "cases": 1
+          },
+          {
+            "name": "test_invalid_or_unavailable_request_never_prepares_or_speaks",
+            "cases": 7
+          },
+          {
+            "name": "test_output_mapping_is_complete_unique_and_follows_saved_order",
+            "cases": 1
+          },
+          {
+            "name": "test_actual_cli_preview_prepare_run_status_and_verified_resume",
+            "cases": 1
+          },
+          {
+            "name": "test_actual_cli_rechecks_source_before_preparation",
+            "cases": 1
+          },
+          {
+            "name": "test_actual_book_help_creates_no_library",
+            "cases": 1
+          },
+          {
+            "name": "test_actual_cli_restore_prepares_new_outputs_without_old_external_review",
+            "cases": 1
+          },
+          {
+            "name": "test_cli_review_source_change_inside_real_export_fsync_preserves_destination",
+            "cases": 2
+          },
+          {
+            "name": "test_cli_json_stdout_is_safe_for_a_real_cp1252_stream",
+            "cases": 1
+          },
+          {
+            "name": "test_cli_close_failure_keeps_returned_result_and_strong_owner_until_explicit_retry",
+            "cases": 1
+          }
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      },
+      {
+        "path": "tests/ui/test_book_batch_dialog.py",
+        "expected_cases_static": 18,
+        "functions": 16,
+        "names": [
+          {
+            "name": "test_batch_real_review_prepare_order_and_per_item_settings_use_existing_worker",
+            "cases": 1
+          },
+          {
+            "name": "test_batch_run_requires_explicit_frozen_review_and_keeps_borrowed_owner",
+            "cases": 1
+          },
+          {
+            "name": "test_mutated_title_cannot_reuse_batch_approval",
+            "cases": 1
+          },
+          {
+            "name": "test_queued_preview_freezes_inputs_and_rejects_later_ui_changes",
+            "cases": 1
+          },
+          {
+            "name": "test_close_cancels_queued_source_review_without_closing_parent_service",
+            "cases": 1
+          },
+          {
+            "name": "test_source_scope_change_blocks_queued_preparation",
+            "cases": 1
+          },
+          {
+            "name": "test_cancel_before_queued_render_does_not_enter_production",
+            "cases": 1
+          },
+          {
+            "name": "test_active_batch_stop_uses_existing_worker_and_retains_borrowed_service",
+            "cases": 3
+          },
+          {
+            "name": "test_saved_batch_reopens_references_and_does_not_resume",
+            "cases": 1
+          },
+          {
+            "name": "test_existing_per_book_review_mode_freezes_explicit_voice_controls_without_jobs",
+            "cases": 1
+          },
+          {
+            "name": "test_confirmation_rechecks_order_after_the_actual_modal_answer",
+            "cases": 1
+          },
+          {
+            "name": "test_parent_close_invalidates_queued_child_work_and_late_callbacks",
+            "cases": 1
+          },
+          {
+            "name": "test_same_path_root_replacement_blocks_queued_child_before_any_write",
+            "cases": 1
+          },
+          {
+            "name": "test_destroyed_child_ignores_late_completion_without_closing_borrowed_service",
+            "cases": 1
+          },
+          {
+            "name": "test_failed_next_part_callback_shows_actual_returned_receipts",
+            "cases": 1
+          },
+          {
+            "name": "test_reviewed_child_rechecks_exact_settings_after_confirmation",
+            "cases": 1
+          }
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      },
+      {
+        "path": "tests/storage/test_backup_book_batches.py",
+        "expected_cases_static": 33,
+        "functions": 8,
+        "names": [
+          {
+            "name": "test_partial_preparation_roundtrips_order_and_plans_without_execution_authority",
+            "cases": 6
+          },
+          {
+            "name": "test_resigned_copied_batch_or_plan_mismatch_refuses_before_target_creation",
+            "cases": 10
+          },
+          {
+            "name": "test_reserved_directory_alias_and_nested_namespace_fail_closed",
+            "cases": 6
+          },
+          {
+            "name": "test_full_backup_checks_resealed_plan_source_against_copied_database",
+            "cases": 1
+          },
+          {
+            "name": "test_bounded_passive_reader_refuses_untrusted_inventory_before_runtime",
+            "cases": 5
+          },
+          {
+            "name": "test_exact_local_batch_lock_is_not_portable_authority",
+            "cases": 2
+          },
+          {
+            "name": "test_batch_record_hardlink_is_not_a_private_regular_backup_input",
+            "cases": 2
+          },
+          {
+            "name": "test_standalone_restore_never_overwrites_existing_batch_bytes",
+            "cases": 1
+          }
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      }
+    ],
+    "static_case_total": 95,
+    "source_and_installed": true,
+    "prerequisites": "Actual FFmpeg/FFprobe before all four suites. Actual installed local SAPI on Windows or reviewed Linux Flite for the real CLI fixture. No intentional skips/XFAIL. Keep existing BookAudio46, BookDialog29, book-backup32, Studio schema3/receipt/process/backup suites unchanged.",
+    "fixture_companions": [
+      "tests/studio/test_book_audio.py",
+      "tests/studio/test_book_batch.py",
+      "tests/ui/test_book_audio_dialog.py",
+      "tests/storage/test_backup_book_audio.py"
+    ],
+    "installed_origins": [
+      "carr_library.studio.book_batch",
+      "carr_library.studio.book_audio",
+      "carr_library.studio.book_cli",
+      "carr_library.ui.book_audio_dialog",
+      "carr_library.ui.book_batch_dialog",
+      "carr_library.backup_book_batches",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.studio.render",
+      "carr_library.studio.project",
+      "carr_library.reader.reading_desk",
+      "carr_library.speech.source",
+      "carr_library.runtime_settings",
+      "carr_library.operations.broker",
+      "carr_library.audio.dsp",
+      "carr_library.audio.process",
+      "carr_library.ui.desktop_app"
+    ],
+    "additional_existing_backup_origins": [
+      "carr_library.backup_producers",
+      "carr_library.backup_sidecars",
+      "carr_library.state_backup"
+    ],
+    "native": {
+      "script": "scripts/windows_book_batch_smoke.py",
+      "command": "<installed-python> -I -B scripts/windows_book_batch_smoke.py --audio-directory <already-verified-directory> --audio-lock packaging/windows-audio.lock.json",
+      "status": "NOT_RUN",
+      "watchdog_seconds": 360,
+      "hard_deadline_includes_cleanup": true,
+      "essential_checks": [
+        "real native Windows batch controls",
+        "existing Book command uses canonical command_id",
+        "existing host owns one serial worker and original scope",
+        "real Multiple books action opens the existing batch workspace",
+        "actual native library chooser selects two existing books",
+        "choosing books does not prepare or synthesize",
+        "per-book native review remains nonexecuting",
+        "per-book review has native status focus",
+        "nested review returns to its owning batch without jobs",
+        "whole batch preview contains immutable order and source identities",
+        "whole batch preview still starts no jobs or speech",
+        "actual default-No batch confirmation creates no jobs",
+        "Prepare retains two existing schema2 Studio jobs without speech",
+        "native reordered plans retain exact independent voice controls and formats",
+        "all reviewed output folders are still empty",
+        "actual native Run completes both ordered source-bound jobs",
+        "actual SAPI follows the exact reviewed order and controls",
+        "literal original texts are narrated without Studio cues",
+        "completed batch returns actual native status focus",
+        "explicit native resume verifies completed bytes without synthesis",
+        "reopened batch has no automatic resume authority",
+        "retained original assets remain byte-identical",
+        "batch narration creates no quotation approval",
+        "native batch close preserves borrowed Book service",
+        "native Escape unwinds both existing Book workspaces",
+        "native batch host shutdown retains no failed owner",
+        "explicit selected audio executable: ffmpeg",
+        "pinned audio executable bytes: ffmpeg",
+        "explicit selected audio executable: ffprobe",
+        "pinned audio executable bytes: ffprobe",
+        "actual installed SAPI is available for reviewed book 1",
+        "actual rendered batch PCM: 1",
+        "exact batch source receipt: 1",
+        "actual installed SAPI is available for reviewed book 2",
+        "actual rendered batch PCM: 2",
+        "exact batch source receipt: 2",
+        "confirmation defaults to No: Use reviewed book in batch",
+        "confirmation defaults to No: Prepare reviewed batch",
+        "confirmation defaults to No: Run reviewed book batch"
+      ],
+      "required_installed_checks": [
+        "exact installed source: carr_library.studio.book_batch",
+        "exact installed source: carr_library.studio.book_audio",
+        "exact installed source: carr_library.studio.book_cli",
+        "exact installed source: carr_library.ui.book_audio_dialog",
+        "exact installed source: carr_library.ui.book_batch_dialog",
+        "exact installed source: carr_library.backup_book_batches",
+        "exact installed source: carr_library.ui.worker_lifetime",
+        "exact installed source: carr_library.studio.render",
+        "exact installed source: carr_library.studio.project",
+        "exact installed source: carr_library.reader.reading_desk",
+        "exact installed source: carr_library.speech.source",
+        "exact installed source: carr_library.runtime_settings",
+        "exact installed source: carr_library.operations.broker",
+        "exact installed source: carr_library.audio.dsp",
+        "exact installed source: carr_library.audio.process",
+        "exact installed source: carr_library.ui.desktop_app"
+      ],
+      "fields": {
+        "status": "PASS",
+        "native_keyboard": "PASS",
+        "native_sapi_render": "PASS",
+        "installed_modules": "PASS",
+        "manual_keyboard": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "listening_quality": "NOT_RUN",
+        "physical_device": "NOT_RUN",
+        "private_model_inference": "NOT_RUN"
+      },
+      "source_bound_audio": "Both executables must be samefile with selected explicit directory and match current audio lock size/SHA. Existing native Book probe and every old assertion remain unchanged."
+    }
+  },
+  "contracts": {
+    "selection": "Immutable ordered exact BookPlan identities only; no output permission, runtime token or automatic execution.",
+    "execution": "Sequential existing Studio jobs. Book lock never nests itself. Stop writes only the actually current lock-owned job; waiting/next/other jobs remain untouched.",
+    "outcome": "Actual returned part results survive a later error; file cleanup failure never relabels committed Studio outcomes. Visible selection with directory-sync failure yields typed warning; explicit retry performs directory sync.",
+    "restore": "Exact manifest verified batch->plan links in both backup routes; existing Book adapter binds copied DB/source/job receipts. Zero/partial prepared jobs remain valid. No old-path I/O; local Studio origin excluded; fresh output Prepare required.",
+    "voice": "Explicit installed ID, exact language and supported rate/volume; no unknown/profile fields, fallback, model download or account transfer.",
+    "ui": "Existing Book workspace Multiple books button, same borrowed service and serial host worker, nested owner/root/scope guards and confirmation rechecks.",
+    "dependencies": "No new runtime dependency, package namespace, player, renderer or worker queue."
+  },
+  "docs": {
+    "path": "docs/BOOK_BATCHES.md",
+    "suggested_guide_inventory_addition": "Add BOOK_BATCHES.md to the existing USER_GUIDES inventory when root composes packaging; no builder source overwritten."
+  },
+  "known_remaining": "All source/installed/native execution remains NOT_RUN until exact successor gates execute; acoustic quality, manual keyboard/NVDA, physical devices and private engines are not qualified."
+}

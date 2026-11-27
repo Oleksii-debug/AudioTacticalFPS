@@ -1,0 +1,1137 @@
+{
+  "schema": "resonance-integrated-candidate/1",
+  "candidate": 8,
+  "status": "SOURCE_COMPOSED_FRESH_CI_REQUIRED",
+  "first_parent": "f68c53fb653812d4da838fa67d92941e7017eadb",
+  "canonical_parent": "a44fac04072389caa40e0d6e799b13797712f797",
+  "date_utc": "2026-11-27",
+  "exact_prior_runtime_evidence": {
+    "candidate7": "46d83c6639e56c0c98b511909b29473dd413306f",
+    "source_tree": "d3bc50fa71c7a5b1b946205ecbaeadeb723f972a",
+    "main_run": 46016015733,
+    "success": [
+      "managed Windows A-to-B update and rollback",
+      "native keyboard and draft recovery",
+      "source syntax and package metadata",
+      "signed client boundaries on Windows and Ubuntu",
+      "encrypted transfer on Windows and Ubuntu",
+      "six actual Linux Flite cases",
+      "bibliography and import acceptance",
+      "native Windows launcher"
+    ],
+    "failed": [
+      "source fast27: BRF oversized test ID and executable mode comparison; corrections included, retest required",
+      "Windows ASR service happy-path completion and40-case aggregate timeout; diagnostic/finite test envelope included, retest required"
+    ],
+    "not_transferred": "No prior PASS is claimed for candidate8 or its installed artifact.",
+    "composed_source_run": {
+      "run_id": 46022851960,
+      "head": "8329a4832e811aaf8b28f292c264a02e5d38bfba",
+      "suites": 85,
+      "passed": 67,
+      "failed": 18,
+      "artifact_id": 15211654502,
+      "corrections": "Included here; no historical pass is transferred to this new tree."
+    },
+    "actual_converter_metadata": {
+      "named_mode": 33279,
+      "held_mode": 33206,
+      "remaining_six_fields": "equal",
+      "whole_suites_passed": {
+        "conversion_batch": 42,
+        "conversion_cli": 4,
+        "braille": 40
+      }
+    }
+  },
+  "qualifications": {
+    "source_diagnostic_commit": "8329a4832e811aaf8b28f292c264a02e5d38bfba",
+    "source_diagnostic_run": 46022851960,
+    "source_diagnostic_state": "completed:67 PASS,18 FAIL across85 whole suites; concrete corrections included and fresh98-suite run required",
+    "windows_correction_commit": "838adc15bef0fffcc107cdc2704eec71b24e6893",
+    "windows_correction_run": 46024915697,
+    "windows_correction_state": "queued at composition"
+  },
+  "preserved": [
+    "all15 existing ChatGPT automation IDs, states and cadences untouched",
+    "incoming measured utterance geometry and bounded PCM assembly385377",
+    "current immutable import publication receipt, exact attempt/request binding and one-second stop reconciliation",
+    "all prior required selectors/native assertions/installed origins; additive gates only",
+    "current serial desktop worker, global resource broker, typed backups and no-clobber publications"
+  ],
+  "pending_in_this_run": [
+    "Actual execution of this reconciled tree and all consequential fixes.",
+    "Hunspell actual native integration and final guide/probe handoff.",
+    "Actual retained-book corpus benchmark harness, tests and finite qualification runs.",
+    "Remaining technical-scope code gaps recorded in the source-linked audit; not reclassified as hardware-only.",
+    "Private owner delivery without audio binaries or Node after required validation; no delivery yet."
+  ],
+  "delivery_state": "NOT_RELEASE_READY",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "sha": "66cf246df02472b131133ece8e1859eceec04224",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "sha": "ed743778b3454a168aa5b97fe0234e13daa68fa1",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/text_attestation.py",
+      "sha": "ebf00c3594cc448657868ee322af3e663e594d58",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats.py",
+      "sha": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "sha": "a1d8a04b3dc67ae5fdf834c4d366ad7f42024d7e",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/raster_pages.py",
+      "sha": "4f7604903df04e9174ee14420cca39c4161f912c",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "sha": "8d2b355ee2e95fcf4d2134d7d3143c26ab617365",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/asset_copy.py",
+      "sha": "81156333a3c357613da20af9484faa3892ab0ff9",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_cli.py",
+      "sha": "97cfe10705ffa2368d5c2361481b341376ef8e03",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "sha": "6c6c346ce6d5ad51a6cf4fbe5037ff2290369c0a",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "sha": "74478a6cd7643b4ba730211234d7fd5bcbd03dc3",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "sha": "07cec2575e5e72e4b252afcd787a3e7ce7c4aa66",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "sha": "23f32ae91afbf154689c7f56a385f1c062f32f81",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "sha": "8e13ac17b7da61af48ecfc68af60ba9897bbf553",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "sha": "acbaabd4b5661daadc83dfec6cda9394deb35ce3",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "sha": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "edf34a6000cb47e7230b8fbcb726f21745b2f187",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "sha": "b0b56a25310375d41cfc1bbbc20ca76d7a854cb1",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "8987d40771f9758137c991dcd398c5fdcfd9b5fe",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "sha": "505553ef6bf28eb073133ad1f4597a15930924f9",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/publication.py",
+      "sha": "a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/source_review.py",
+      "sha": "4b798a282ded3e79b520496d125070149cd8bd0b",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/anchors.py",
+      "sha": "ea012622fcf4feebd61f8d44feba87d6900b232a",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "sha": "714540bcab93aae319788fbeb57848ea34a8c203",
+      "preimage": "4b521d584fed29dfca88c96c8e2a906efb0dbcfb",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "sha": "4c4e43c4842a2f3b309cc0d79eca20a171d54650",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "2da122b36792579a442e976548ec72db1b868ab6",
+      "preimage": "1135886dedf44a1ce0e62ced5fbcb5ca9b6cdaad",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "sha": "d73fa894e40f5b0697a8c99cafcb6402db8bbe1d",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "sha": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "sha": "4f7b9c34bd161bf8d7918f6a09535c563d2c139d",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/semantic_windows.py",
+      "sha": "e695d5407d8413879b75570d5a2e7d271c126017",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/thematic.py",
+      "sha": "4c77e1912f23ec0c4e5b32ea1b7b86bfb2c9a399",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "sha": "19f7f5758613b94a37792ca2b3e4bb2f268468d8",
+      "from": "import-search"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_streaming_intake.py",
+      "sha": "84fe7a923a0871aa20f9d3d1739d73dfe808371d",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/citations/test_anchors.py",
+      "sha": "ca2801e12af9f07b863baf269c356bb7638948ba",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/citations/test_authorized_action.py",
+      "sha": "90eb318db98945e7d77076213fd8fa0c12656c58",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/citations/test_finish_label_integrity.py",
+      "sha": "07205bf102818161b4a138b24e5ba45f4fd94a0b",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/citations/test_historical.py",
+      "sha": "e624caf98a04803762ffd01381c1f84670964fc4",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/citations/test_printed_label_attestation.py",
+      "sha": "1ee6b8ea29271d3bbca692f9e202577d94cef14d",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/citations/test_span_approval_integration.py",
+      "sha": "afd9e2ba6ae60ba19da4d33809e4d7b080fcc982",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_application.py",
+      "sha": "5de1dfe13b352c2d429d785e5d84c0a583b7ea37",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+      "sha": "1a17b57b9b581d57e43d3bc77e5dc73d32f02b1e",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_raster_import.py",
+      "sha": "02643f21a3f1c31be1ad523b50d33730eedaa8ae",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_raster_ocr_native.py",
+      "sha": "d56f21cf140d89e09bf11416812697e0b3cbdb81",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_retained_source_search_integrity.py",
+      "sha": "e76900b55329bc139e0f9fe478627877df8cd2dd",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/extract/test_raster_pages.py",
+      "sha": "b2a5667899d06ade0a516033705cdadfa746399f",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_continuation.py",
+      "sha": "adce2719c3de7a852d2df3bffe17624086e633ee",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_continuation_cli.py",
+      "sha": "ee0a44037e2b18b27bbfac1369507ae50b834907",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_academic_documents.py",
+      "sha": "a1ef7c56b9ba8a450e404eec586d0adad0911bc7",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_anchored_export.py",
+      "sha": "a20ebc4a3ffc6ff732cfb71301fe3a922be61a22",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_bibliographic_locators.py",
+      "sha": "157b2668902aab78f9735d12d1ee0195075b6c3b",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_context.py",
+      "sha": "a911791aea6897b0954c142763f266b87f14fe93",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_evidence_export.py",
+      "sha": "f366ec36bf218ec5f885d5142d58b4806a2cf1e6",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_finish_export_formats.py",
+      "sha": "93c3612f6d9c2b0299c7e299712b05fd2325924d",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_historical_reader_integration.py",
+      "sha": "9d8307409a7e0ea8cf1856d28c16930f61f7e33d",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_reading_desk.py",
+      "sha": "310bf6c90668fe00c2eb2cd60a55412f7eed3710",
+      "from": "actual-reader-cancellation-fixture-correction"
+    },
+    {
+      "path": "carr-library/tests/reader/test_saved_span_compatibility.py",
+      "sha": "15da926d0d11796b24e756b5d4dc82d4ca870e8d",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_span_snapshot.py",
+      "sha": "643bfcc5675ff22068fcf9376fac412dd8f7b410",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/reader/test_topic_literature_matrix.py",
+      "sha": "1c145b57dee05cad0314f1f71bac2556948911fe",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/research/test_outline_export.py",
+      "sha": "82f37bdcecb544a8fbb4b11189e9c4afd5d2e879",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/search/test_federated_epub.py",
+      "sha": "9c5acf3c96ed537e0c0f64b73d1bc9edbdf5b0e3",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_readonly.py",
+      "sha": "f609a2c6a1658b974e883e959b0af00a62123601",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_budget.py",
+      "sha": "f18b338b34fdf273fa09e66ac7e9cdad690a465a",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+      "sha": "36fe4b61a3a61351fecc1a88016c1e1db32275d5",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/storage/test_pending_backup.py",
+      "sha": "6de7ad58d8225f4850379142a27ba73dd455bda4",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "sha": "82f31e5ba0528351a805a62826549d3cdd469a22",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/native_evidence_pages_smoke.py",
+      "sha": "7dbeee840364d72bb2c80e92461070acc1512fe7",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_page_context_dialog.py",
+      "sha": "c9d983650fa8f5552e7492d9651ef72880c12095",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "sha": "b2a6ae41bc9742dc7c8ab951041c5006566fcf34",
+      "preimage": "af7e619bd1116b4496bbf69aa1d3d46ee1428ff2",
+      "from": "actual-menu-fixture-and-scheduler"
+    },
+    {
+      "path": "carr-library/tests/ui/test_federated_labels.py",
+      "sha": "1a21395275e9f60b472701e10f9d53f4b4a81af0",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_center.py",
+      "sha": "18ffd2adffe4d68ab4a0d7e3ff6b9fb00c7d5486",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/test_source_open_handler.py",
+      "sha": "051ab1cce4ecff4d4f6b0ba4258fa1ed4363dee8",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/test_source_review.py",
+      "sha": "2e6457e0c37c79ea5a5ba3d8e3d816792ad9adf5",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_research_search_cli.py",
+      "sha": "cbbb9b639c515ff3be1c9be833b61331a0225f97",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/search/test_federated.py",
+      "sha": "cd706c3d117aea902c544acec1851e283296d858",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ui/federated_native_smoke.py",
+      "sha": "2c188e9f6fd11d1755cba6b4878551e1751acb8d",
+      "from": "reviewed-native-import-search"
+    },
+    {
+      "path": "carr-library/tests/ui/test_federated_search.py",
+      "sha": "6a3078c0796863d6612593205dc97b26bc8086dd",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/tests/search/test_search_paging.py",
+      "sha": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_scan_root_binding.py",
+      "sha": "293d80c45fbfbf0de0232b2247e93528d0ccfc50",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ingest/large_source_fixtures.py",
+      "sha": "7d59170c1d372d9b1bbdfa672dfd2d80021a26df",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "sha": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5",
+      "from": "actual-windows-sqlite-fixture-correction"
+    },
+    {
+      "path": "carr-library/scripts/windows_import_scan_smoke.py",
+      "sha": "2e854e4dd98690e74b2e8ab30b7048995e5602f5",
+      "from": "reviewed-native-import-search"
+    },
+    {
+      "path": "carr-library/docs/IMPORT_SCAN_CONTINUATION.md",
+      "sha": "beba2baef5421f3fe0d731e5a4fff41c8372fb76",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/docs/LARGE_SOURCE_INTAKE.md",
+      "sha": "0ff1fb385050ec52bf5c7567099c7afb022b8f27",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/docs/SEARCH_PAGING.md",
+      "sha": "78f3c3e2eb63f44e50fa3e04fd0d10dd9a42d0c9",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_FORMATS_V3.md",
+      "sha": "b47293e2926e433ce98dd7998cf5fb7bbd72ab65",
+      "from": "import-search-validation"
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "sha": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "sha": "8fcebccb61d1e0a3b616928a75a22f3e9306ed77",
+      "from": "incoming-narration-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "sha": "ae9e812f169409232773f082a06f44d7b5e75232",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/marks.py",
+      "sha": "5f2459052d21d0c358641738cb595b265ef01a48",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/tabs.py",
+      "sha": "00067da194596d014ca7b1a826bf55c75a0c410a",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/presentation.py",
+      "sha": "55681bf8f712c1ff43bfd4cc8e9c948df738134a",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "sha": "269814e94549fdff700027afa450686a4a15f81b",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_tabs.py",
+      "sha": "d275bb802ae4821895141834f0e2733ff9a724c0",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "d4e6f21083b393dd31135626b7bc475cab011c62",
+      "from": "incoming-narration-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "sha": "73abb2139623cfb0873fae3e13a4d6557f09169b",
+      "from": "incoming-narration-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_preferences.py",
+      "sha": "b94eaca264c9d6a1ec3390925de04cac6e09aa58",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_tools.py",
+      "sha": "39b145318d8e5c8953009227572c593b0f1920ed",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_presentation.py",
+      "sha": "f4793e92177c584ce95ed8c95e534d34322bc196",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "sha": "33c4ef1a242bab6226ef5cf27b1fc2bec09c5608",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_marks.py",
+      "sha": "5ecd99794e7c59748b1e1df017c651d8fd4c76d9",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reading_tools.py",
+      "sha": "b25f92728d18b8298f5b259b85969eb4bf221736",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_tabs.py",
+      "sha": "9e7610d1892341ab48fc1ba8f86b7f45652229fd",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_tabs.py",
+      "sha": "34cd5178ed7aa46cb9848156245c370eb67af46c",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation.py",
+      "sha": "b43d3423b398c1eda457d50c058950809fa32081",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation_handlers.py",
+      "sha": "11a5fbdb2118cf99a56bdc1f5f717e510f515b63",
+      "from": "actual-reader-fixture-correction"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation_reader_hook.py",
+      "sha": "b3e8caad709c4cf6b5dfd65625a047b1baeafa3f",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_reading_presentation_driver.py",
+      "sha": "8b184b29424c4393ec651ce7f3bb076bade35cc2",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/speech/test_voice_preferences.py",
+      "sha": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/storage/test_voice_preferences_backup.py",
+      "sha": "39364cacad912036d6d52322f28986312a6a3ec1",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/ui/test_voice_preferences_dialog.py",
+      "sha": "9a8f5a85ed23e419b5029bcaa5cc920a17a5979c",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "sha": "13f4b9df63d5bd45a49a6ee760dcb4df9801119c",
+      "from": "desktop-shared-composition"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_navigation_ui.py",
+      "sha": "083d06a6590d17a90ef99f18f2d0cacbc7dc97a3",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_view_hooks.py",
+      "sha": "0651cdfa71bfc92cd4ae29592e662cff5d67f793",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/tests/storage/test_reader_preferences_state.py",
+      "sha": "b848559af2b0f604ad7ca3c4a5127cc4f4d5b485",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_presentation_smoke.py",
+      "sha": "66c0c971e63bcbbccddeaba30cc467e2f5e4ff0c",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_tabs_smoke.py",
+      "sha": "905f5a1a0bb18f02d2ef19914412a22af439d4f0",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "sha": "69636973b5b387fdeaf62a16540d59f144556e0b",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/docs/READING_TABS.md",
+      "sha": "4690c347f9cc43e80c86aba7488cbb1c0fae7d66",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/docs/READING_TOOLS.md",
+      "sha": "84e0d94386aad467f2a6b6d0616495671fcd1064",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/docs/READING_PRESENTATION.md",
+      "sha": "8f1149f4c598a3ec21ebfb1d6298bd6b57013f1e",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/docs/VOICE_PREFERENCES.md",
+      "sha": "0625dec4cc3603398fc0d3df3d70f50559162c58",
+      "from": "reader"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "sha": "1b41db402b78523af4f19405245eedf3f2f9a4fd",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_batch.py",
+      "sha": "13888a514f26f46f6d66d1e12efa9728032dbbb0",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "sha": "c0bec70998f06de20023c5fd9cc868bd75eba86a",
+      "from": "actual-windows-book-cli-correction"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "sha": "8a6fa07bb4241c2265c0b2ac5a7e4c501ba860bf",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_batch_dialog.py",
+      "sha": "ed5bd304055fa31b6d522a78f6df6ab626c4a4e0",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_book_batches.py",
+      "sha": "1db56a806f6fcb50f9d19dabf790a0b196eb87ab",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "sha": "a9b757cbd67923919e64ba94bbd6c11a502bf4c6",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_cli.py",
+      "sha": "58058c00f909f406ab4097874ebe21d0ce28f07d",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_batch_dialog.py",
+      "sha": "a8edb3c8790ec7290bb74f437688b38b77b08257",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_book_batches.py",
+      "sha": "2518a92b798c21d6bed8536b246c2bcc34b2219f",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_batch_smoke.py",
+      "sha": "cb4a1713fee5cd4993b1d26e1d39f73521279552",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/docs/BOOK_BATCHES.md",
+      "sha": "8ca7505177859fb6235df914e2959513a2abed8a",
+      "from": "book"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/recording.py",
+      "sha": "7a71d0975cba5ada05772b43b881998e87b61326",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/recording_monitor.py",
+      "sha": "dbcdf2502fbf1d4cfae3c75a8f28916e98110a19",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/recording_dialog.py",
+      "sha": "d2447529f7f5ac6ee07de2e06c9da7189ee3c067",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording.py",
+      "sha": "ff8304e8f27ae8faaddb28737774752ffe9d6817",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_controls.py",
+      "sha": "e07f220a0143196b042eb0b301edd43c86073dc1",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_monitor.py",
+      "sha": "845e55e672981b21bfe0bd5d961e9384d5fae358",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/tests/ui/test_recording_dialog.py",
+      "sha": "f4ff23078f837a75854317ead94ec203273420a4",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_recording_controls.py",
+      "sha": "6a994500f4d49161353502344d21c59c7fd89df6",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/scripts/windows_recording_smoke.py",
+      "sha": "10b85f6a8c827c3e0db9068dc5bd4ec721e557ff",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/docs/recording.md",
+      "sha": "2390ca16d6152a3ed35978a4e6d2e07c0e43f201",
+      "from": "recording"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "71741e60eb237ac93268f5e3447bfec7abd40c5a",
+      "preimage": "a2e97d9fe0683dda95682480f625b5b11ad05abd",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "7156285a9254bcec66088cb2b53928180c40a171",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "9a03ff34ec8393a98b6d1e43df562f74a7858761",
+      "preimage": "2726e65eef04c46febc48a7db1e859eed00e9876",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "sha": "2f6c68cb0e68d02db4f7cf8d737e61f95ad918de",
+      "from": "composed-shared"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/conversion_batch.py",
+      "sha": "459478ce10eabe93dbf23c05be5948b26d2f437e",
+      "from": "measured-correction-draft"
+    },
+    {
+      "path": "carr-library/tests/audio/test_conversion_batch.py",
+      "sha": "0d5f4b12e82f888f28c7585f55dd51287c583798",
+      "from": "measured-correction-draft"
+    },
+    {
+      "path": "carr-library/tests/reader/test_braille.py",
+      "sha": "ee09f17174c10436cea430fe88ff13f038805360",
+      "from": "measured-correction-draft"
+    },
+    {
+      "path": ".github/workflows/carr-next8-source-verification.yml",
+      "sha": "3a0e4b291acb1627464cfe3474c37715cd09b209",
+      "from": "actual-source-regression-gate-98"
+    },
+    {
+      "path": "resonance-status/Next8_Composed_Source_20261127.json",
+      "sha": "bd984d64d2e5acbbce4306c995bcc5ad54d6556c",
+      "from": "manifest"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_source_open_native.py",
+      "sha": "5974877ea736d4aa9d8f8ee58d5aef8a26e99028",
+      "from": "reviewed-native-import-search"
+    },
+    {
+      "path": "carr-library/src/carr_library/desktop_preferences.py",
+      "sha": "2a7d1d315a081d5ddd92718f344eed41f4f26d33",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_integration.py",
+      "sha": "03f5a8876d03452145d251e0b7540d1083304b22",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_settings.py",
+      "sha": "a30d58fa01ac6c412612042cad61504418751543",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/tests/storage/test_desktop_preferences.py",
+      "sha": "efddd6e66dddbfe86dfd8af8cbcbf491ca9e662c",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_integration.py",
+      "sha": "2c3525d3cd9ecc7cd1be566fbdebf446662fe271",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_settings.py",
+      "sha": "4ac3d2101bbd3bfde52488d4c560c6c300beaa81",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_host_lifecycle.py",
+      "sha": "b4b33b0239869d25d7940ffa724e9c92a671437c",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/scripts/windows_desktop_integration_smoke.py",
+      "sha": "0cb5c0cc2e81d97a7e70d0847725e14123c0df3e",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/docs/DESKTOP_INTEGRATION.md",
+      "sha": "8f24f4b4c0f58ccdd85dc63768119eb38fe433d3",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/docs/CLIPBOARD_READING.md",
+      "sha": "8a1487bdf3c6d1d240037d11ca94323ea4b4aef8",
+      "from": "desktop-integration"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "335fd4d03ed4e612d628ec2f93b615feba49e97d",
+      "from": "incoming-strong-export"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_reconciliation.py",
+      "sha": "474a72e6d3f7c62bdb0bfb4ed748d11c6ef3a21a",
+      "from": "combined-export-28"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "6847510e152b22c6a0eaacfe1a338889c10a026c",
+      "from": "final-current-required-gates"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "08e8f65fc634ba230d8656d9140f5e0175dbf031",
+      "from": "final-current-required-gates"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "sha": "0a318607b4fe4f96082b51a02a8cfc1c8c8383e4",
+      "from": "final-current-required-gates"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "sha": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+      "from": "bounded-windows311-timed-diagnostic"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "sha": "33d9b62c6aabeea518751aaef3cafb865ab7f919",
+      "from": "bounded-windows311-timed-diagnostic-32"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "sha": "f1c6525b4e01fbc9cefefd00aa97cb25191fe3b5",
+      "from": "gates-and-measured-asr-regressions"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "sha": "3782ee9348d35d4f732cc5df778d9845f1a102bc",
+      "from": "gates-and-measured-asr-regressions"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "sha": "2bcaa3b3a6410e28e8d35b0cdb33852b4aeae864",
+      "from": "current-guide-composition"
+    },
+    {
+      "path": "resonance-status/Next8_Import_Search_Production_20261127.json",
+      "sha": "dfbe455300173548893a45f11f7079bdbc217d7a",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Import_Search_Validation_20261127.json",
+      "sha": "1e73b9c9be884e72bd7fabf9057cfc055af895b9",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Reader_20261127.json",
+      "sha": "4ab76414a557cbe4bed0c4fc255f02eacbb1e87a",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Book_Batches_20261127.json",
+      "sha": "2ae3337b1306940fb3a10904f7bf16ac10384b13",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Recording_20261127.json",
+      "sha": "886b6e9b0c53e18e66477bce4a645d8f4bccd2a2",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Shared_Passive_State_20261127.json",
+      "sha": "0b7927c036ae29647101dbec3ee63899b950a380",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Import_Search_Native_20261127.json",
+      "sha": "c913a4e1c30f24eae77292cd60b566b124a4ab54",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Desktop_20261127.json",
+      "sha": "a96d75005fecb5bdcd5152bdc7a8481acf133206",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Desktop_Composition_20261127.json",
+      "sha": "d795b40dcc475d0dc74100e326868ebe77a1a5b9",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Canonical_Export_20261127.json",
+      "sha": "e460b88a9c8f41d8191b1c5a3824efb9311f3c08",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Gates_20261127.json",
+      "sha": "31b2917df1b3a7fc397b795a1fdf7e0f4904e85a",
+      "from": "review-manifest"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedule_model.py",
+      "sha": "b226e776ecceaf056fe185a3e4e05c046149d2c6",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedules.py",
+      "sha": "13c2a3044729bd91c34cc055c92d62db7b5db71b",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedules_cli.py",
+      "sha": "84a006ef3a87873ae52ac08238b96c5863a55880",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_local_schedules.py",
+      "sha": "3df4730c2bbee888bca204c408bc0632f70b6268",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/local_schedules.py",
+      "sha": "fc3fac9e65e2d07741e84ef045535b08b6b4b310",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/tests/storage/test_local_schedules.py",
+      "sha": "cc7a8c7245d893efe1923a19f5c583ec3e50a20f",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/tests/ui/test_local_schedules.py",
+      "sha": "6bb5f68b21c303ee9d55a785fe98aa5fd9b0f5af",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_local_schedules.py",
+      "sha": "72420d4c9c4c16fa670dc87b5ddfa2c550de32e9",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_local_schedules_cli.py",
+      "sha": "dfcf69c33fe49c7f519ae866598b6a98dfe8d47b",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/scripts/windows_local_schedules_smoke.py",
+      "sha": "7581c232457c226b9f5f551afd7d3c7fcaaf221c",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/docs/LOCAL_SCHEDULES.md",
+      "sha": "6fc58c844676ffb116aeff2899bf2071469ff72f",
+      "from": "scheduler"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/evidence_export.py",
+      "sha": "f6fab87a2e85f55de70bc74cb148fad852d2cddf",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/docs/PRIMARY_STATE_BACKUP.md",
+      "sha": "5f45fcaeae604dbcce8f9977e26babdfee71862b",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "sha": "b5ef583cedcf120b9a0a03369e10b07631a01722",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_backup.py",
+      "sha": "ba9889e81a8d0cf85dfc567cf0ebf8a0812a21ad",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/tests/storage/test_transcription_backup.py",
+      "sha": "e1b61592543d840abe092958b3daecc61affd9e2",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/narration_receipt.py",
+      "sha": "ca91ea958c84d4056768d2b42a74e31654f9eecb",
+      "from": "incoming-narration-physical-locator"
+    },
+    {
+      "path": "carr-library/tests/speech/test_narration_receipt.py",
+      "sha": "e90777a844f2a3775e942735e5e4e669d98c7352",
+      "from": "incoming-narration-73"
+    },
+    {
+      "path": "resonance-status/Next8_Local_Schedules_Composition_20261127.json",
+      "sha": "0f990f7fcb5b7d4622d2b418a3f313eaf4341506",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Windows_Source_Corrections_20261127.json",
+      "sha": "2a8dc9804d9ea16ac164be7a8bd2857fda3e5687",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Incoming_Export_Narration_ASR_20261127.json",
+      "sha": "27c9afb1aa70cc00b686b424f5adfbe18c2c4df8",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Local_Schedules_20261127.json",
+      "sha": "77a619d71686b010fba23ee7796cea4463f493eb",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Reader_Fixture_Corrections_20261127.json",
+      "sha": "52e75df73edce78660e1c675026da39a686daaf2",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Incoming_Narration_Composition_20261127.json",
+      "sha": "ef88e359ccd6e29bdbd642f488ff02c777e3978a",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Windows_Diagnostic_Corrections_20261127.json",
+      "sha": "ea35c6c2e8eb92e805e42207d4a6c3185a7e995e",
+      "from": "review-manifest"
+    },
+    {
+      "path": "resonance-status/Next8_Remaining_Scope_Audit_20261127.json",
+      "sha": "30befda2d7a8704c7855597ae7f5bf62f8d0d293",
+      "from": "review-manifest"
+    }
+  ],
+  "current_gates": {
+    "diagnostic_source_whole_suites": 98,
+    "main_source_whole_suites": 392,
+    "main_fast_source_whole_suites": 74,
+    "main_installed_contents_suites": 226,
+    "v3_installed_publication_suites": 83,
+    "v3_installed_recovery_suites": 72,
+    "status": "NOT_RUN_ON_THIS_COMPOSITION",
+    "strict": "No skips/XFAIL/XPASS or weaker failure acceptance introduced."
+  }
+}

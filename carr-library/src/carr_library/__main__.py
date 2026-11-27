@@ -73,12 +73,18 @@ def main(argv=None):
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
+    if arguments and arguments[0] == 'import-batches':
+        from .ingest.batch_cli import run as import_batches_main
+        return import_batches_main(arguments[1:])
     if arguments and arguments[0] == 'operations':
         from .operations.cli import main as operations_main
         return operations_main(arguments[1:])
     if arguments and arguments[0] == 'sync':
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])
+    if arguments and arguments[0] == 'local-schedules':
+        from .local_schedules_cli import main as local_schedules_main
+        return local_schedules_main(arguments[1:])
     if arguments and arguments[0] == 'backup-repository':
         from .incremental_backup_cli import main as backup_repository_main
         return backup_repository_main(arguments[1:])
@@ -143,7 +149,13 @@ def main(argv=None):
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
     parser.add_argument('--offset-per-library', type=int, default=0,
-                        help='Nonnegative result offset for All words or Advanced searches')
+                        help='Nonnegative result offset within this bounded source window')
+    parser.add_argument('--library-offset', type=int, default=0,
+                        help='Continue the selected-library list, 20 libraries per invocation')
+    parser.add_argument('--source-cursors', default='{}',
+                        help='Exact next_source_cursors JSON from the previous search; passive navigation only')
+    parser.add_argument('--search-timeout', type=float, default=300,
+                        help='Cooperative search allowance in seconds, at most 86400')
     args = parser.parse_args(argv)
     validate_arguments(parser, args)
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
@@ -168,8 +180,8 @@ def main(argv=None):
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and args.lookup_doi is None:
         parser.error('--workspace is used with --search or --lookup-doi.')
-    if args.offset_per_library and args.search is None:
-        parser.error('--offset-per-library is only used with --search.')
+    if (args.offset_per_library or args.library_offset or args.source_cursors != '{}' or args.search_timeout != 300) and args.search is None:
+        parser.error('Search navigation and time-budget arguments require --search.')
     native_handle = None
     try:
         if args.document_formats:
@@ -246,16 +258,27 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
+            if len(args.source_cursors.encode('utf-8')) > 1024 * 1024:
+                raise ValueError('Source continuation exceeds its navigation budget.')
+            source_cursors = json.loads(args.source_cursors)
+            if type(source_cursors) is not dict:
+                raise ValueError('Source continuation must be a workspace-to-cursor JSON object.')
             session = FederatedSearch(app).search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
                 limit_per_library=args.limit_per_library, offset_per_library=args.offset_per_library,
-                on_status=notices.append)
+                on_status=notices.append, paged=True, source_cursors=source_cursors,
+                library_offset=args.library_offset, timeout=args.search_timeout)
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
                 'offset_per_library': session.offset_per_library,
                 'has_more': session.has_more,
-                'ordering': 'Selected libraries in selection order; relevance is local to each library.',
+                'ordering': 'Selected libraries in selection order; relevance is local to the current source window.',
+                'library_offset': session.library_offset, 'selected_library_count': len(session.selected_workspaces),
+                'has_more_libraries': session.has_more_libraries,
+                'next_source_cursors': dict(session.next_source_cursors),
+                'source_windows': [dict(workspace=row[0], source_pages=row[1], editions=row[2], characters=row[3])
+                                   for row in session.source_windows],
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}

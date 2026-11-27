@@ -42,6 +42,19 @@ USER_GUIDES = (
     "BOOK_AUDIO.md", "WORKFLOW_TEMPLATES.md", "AUDIO_EFFECTS.md", "translation_workstation.md",
     "BRAILLE_BRF.md", "LISTENING_SPEED.md", "READER_PLAYBACK_OUTPUT.md",
     "PLAYBACK_QUEUE.md", "AUDIO_CONVERSION_BATCH.md",
+    "READING_TABS.md",
+    "READING_TOOLS.md",
+    "READING_PRESENTATION.md",
+    "VOICE_PREFERENCES.md",
+    "BOOK_BATCHES.md",
+    "recording.md",
+    "IMPORT_SCAN_CONTINUATION.md",
+    "LARGE_SOURCE_INTAKE.md",
+    "SEARCH_PAGING.md",
+    "DOCUMENT_FORMATS_V3.md",
+    "DESKTOP_INTEGRATION.md",
+    "CLIPBOARD_READING.md",
+    "LOCAL_SCHEDULES.md",
 )
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))

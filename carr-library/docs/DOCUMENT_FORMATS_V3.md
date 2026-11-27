@@ -16,7 +16,8 @@ Interrupted queues can be reopened and continued. Successfully published
 sources are not silently imported a second time during queue recovery.
 
 After import, select the book and use **Ctrl+R** to read its extracted text, or
-search normally. Locations identify **logical segments** in extraction order.
+search normally. For the text-document formats in the table below, locations
+identify **logical segments** in extraction order.
 They are not physical pages, printed pages, spreadsheet coordinates presented
 as pages, or an assertion that the original layout has been reproduced.
 
@@ -64,7 +65,7 @@ the filename extension in the private original store, not the source bytes.
 ### Formats outside this component
 
 V3 also requests AZW/AZW3, CHM, DjVu, legacy DOC/PPT/XLS, LIT, MOBI, PDB/PRC,
-RTF, TCR, WPD, additional raster-image workflows and more complex conversion
+RTF, TCR, WPD, other raster formats and more complex conversion
 features. A suffix in that requirements list is not evidence of implemented
 support. These formats must not be accepted by renaming them to TXT or by
 claiming their output came from a supported parser.
@@ -121,3 +122,64 @@ then reads an actually imported HTML source through the native Reading Desk.
 Input paths are supplied by the synthetic test; operating the operating-system
 file picker and manual NVDA are explicitly not claimed. A missing display or
 wx runtime returns `NOT_RUN` (exit 77), never a passing acceptance result.
+
+## Retained raster images and multipage TIFF
+
+JPEG (`.jpg`, `.jpeg`), PNG (`.png`) and TIFF (`.tif`, `.tiff`) use the
+same file selector, Import Center queue, retained-original store and isolated
+import worker. JPEG and PNG contain one supported image; animated PNG and
+multi-picture JPEG are refused rather than silently dropping frames. TIFF
+frames retain their file order as 1-based physical positions.
+
+The already pinned Pillow runtime decodes one frame at a time. The existing
+local Tesseract policy receives those pixels through the same OCR function used
+for scanned PDF pages. No new recognizer, model installer or automatic download
+is introduced. An unavailable or failed OCR runtime leaves the import awaiting
+attention. A nonblank OCR result stays quarantined until **Library → Review
+pending imported page** records an explicit independent comparison. Resume
+continues the same journal; each later OCR frame requires its own review.
+Neither a filename nor image metadata creates a printed-page number.
+
+Original bytes are retained exactly. The extraction record binds the original
+SHA-256, image format, frame order/count, bounded frame inventory, stored EXIF
+orientation, normalization policy and SHA-256 of decoded pixels. Pillow's EXIF
+orientation handling is applied consistently; alpha pixels are composited over
+opaque white. OCR coordinates refer to this normalized displayed frame, not to
+untransformed file coordinates. The independent review renderer uses the same
+normalization but does not recognize or approve text.
+
+A raster source is at most **64 MiB**, **1000 physical frames**, and **20 million
+pixels per frame**, or the smaller selected OCR pixel bound. These checks occur
+before full frame allocation, and the existing worker time/cancellation limits
+still apply. Arbitrary embedded files and remote references are not followed.
+All-white decoded frames preserve the existing empty-page rule; they do not
+produce quotations. Nonempty recognized text is never approved by parser
+agreement or confidence.
+
+The existing full backup stores unfinished raster jobs, exact source bytes and
+per-frame reviews through the typed pending-import producer. Restore validates
+those passive records without decoding images or invoking OCR. It requires a
+separate explicit resume. Completed-source search, Reading Desk, copied
+citations and review revocation use the same physical-page authority as PDF.
+The medium-neutral display **Physical page N** changes no stored locator JSON,
+source hash, saved anchor or printed-label verification state.
+
+### Raster test coverage
+
+- `tests/extract/test_raster_pages.py`: actual encoded headers/frames, EXIF
+  orientation, transparent pixels, exact normalized fingerprints, malformed
+  input, pre-decode pixel/byte/frame limits, APNG refusal and cancellation.
+- `tests/e2e/test_raster_import.py`: real source files and canonical journals
+  with a deterministic synthetic recognizer; the actual isolated review
+  renderer, explicit per-frame review, revocation, unchanged originals,
+  passive backup/delete-original/restore and tamper refusal. This suite does
+  not claim real OCR accuracy.
+- `tests/e2e/test_raster_ocr_native.py`: actual supervised import and installed
+  Tesseract recognition for JPEG, PNG and compressed multipage TIFF, explicit
+  source review, deleted-original resume and verified-source restore. Run it
+  after OCR runtime preparation; absence of that runtime is reported as
+  `NOT_RUN`, never a passing qualification.
+
+These new tests were authored during executor unavailability. Their results
+must be attached to the exact integrated CI revision; no new local or native
+Windows passing result is claimed here.

@@ -337,7 +337,7 @@ class VoiceRegistry:
         return sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
 
     def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False,
-                   before_publish=None):
+                   before_publish=None, narration=None):
         if not callable(cancelled):
             raise ValueError('A cancellation callback is required.')
         caller_cancelled = cancelled
@@ -355,11 +355,31 @@ class VoiceRegistry:
             raise ValueError('This voice does not expose synthesis rate control.')
         if options.volume != 100 and 'volume' not in voice.capabilities:
             raise ValueError('This voice does not expose synthesis volume control.')
+        pcm_hash = runtime_identity = None
+        if narration is not None:
+            from .narration_receipt import validate_narration
+            narration = validate_narration(narration, text)
+            if not callable(before_publish):
+                raise ValueError('A narrated WAV receipt requires publication-time source validation.')
+            check_cancelled(cancelled)
+            # Enumerated synthetic/test providers can lack a runtime executable.
+            # Do not invent a model fingerprint for such providers.
+            if getattr(provider, 'executable', None) is not None:
+                runtime_identity = self.fingerprint(voice_id)
+            check_cancelled(cancelled)
+            pcm_hash = sha256()
         count, frames, params = 0, 0, None
         target = Path(destination).absolute()
         def attest_publication(staged):
             if before_publish is not None:
                 before_publish(staged)
+                if narration is not None:
+                    current_voice, current_provider = self._selection(voice_id)
+                    if current_voice != voice or current_provider is not provider:
+                        raise ValueError('The selected narration voice changed during rendering.')
+                    if runtime_identity is not None and self.fingerprint(voice_id) != runtime_identity:
+                        raise ValueError('The narration voice runtime changed during rendering.')
+                    check_cancelled(cancelled)
                 # The source check may take time; do not publish bytes that no
                 # longer match the measured rendering receipt.
                 if digest(staged) != checksum:
@@ -404,6 +424,8 @@ class VoiceRegistry:
                                 if copied > expected_bytes:
                                     raise ValueError('The voice output length changed during assembly.')
                                 combined.writeframesraw(block)
+                                if pcm_hash is not None:
+                                    pcm_hash.update(block)
                         if copied != expected_bytes:
                             raise ValueError('The voice output length changed during assembly.')
                         frames += size
@@ -414,6 +436,11 @@ class VoiceRegistry:
                 cancelled=cancelled, max_output_bytes=options.max_output_bytes)
             if (rate, channels, width) != params or measured_frames != frames:
                 raise ValueError('The assembled WAV does not match the measured utterances.')
+            if narration is not None:
+                from .narration_receipt import append_narration_receipt
+                append_narration_receipt(staged, narration, voice, options,
+                    pcm_sha256=pcm_hash.hexdigest(), runtime_sha256=runtime_identity,
+                    cancelled=cancelled)
             checksum = digest(staged)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)

@@ -79,6 +79,45 @@ jobs:
           python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require retained large-source, raster and search-page contracts after verified OCR setup
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.ocr-runtime.outcome == 'success' }}
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          PYTEST_ADDOPTS: ''
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            python scripts/ci_check.py --jobs 3 tests/catalog/test_streaming_intake.py tests/e2e/test_raster_import.py tests/e2e/test_raster_ocr_native.py tests/extract/test_raster_pages.py tests/ingest/test_batch_continuation.py tests/ingest/test_batch_continuation_cli.py tests/ui/test_import_center.py tests/e2e/test_research_search_cli.py tests/search/test_federated.py tests/ui/test_federated_search.py tests/search/test_search_paging.py tests/ingest/test_scan_root_binding.py tests/ingest/test_large_source_intake.py 2>&1 | Tee-Object 'ci-v3-results/import-search-source.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $importSearchExpected = @{
+              'tests/catalog/test_streaming_intake.py' = 11
+              'tests/e2e/test_raster_import.py' = 11
+              'tests/e2e/test_raster_ocr_native.py' = 3
+              'tests/extract/test_raster_pages.py' = 23
+              'tests/ingest/test_batch_continuation.py' = 18
+              'tests/ingest/test_batch_continuation_cli.py' = 3
+              'tests/ui/test_import_center.py' = 42
+              'tests/e2e/test_research_search_cli.py' = 15
+              'tests/search/test_federated.py' = 100
+              'tests/ui/test_federated_search.py' = 114
+              'tests/search/test_search_paging.py' = 27
+              'tests/ingest/test_scan_root_binding.py' = 4
+              'tests/ingest/test_large_source_intake.py' = 6
+            }
+            foreach ($entry in $importSearchExpected.GetEnumerator()) {
+              $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+              if (@(Select-String -LiteralPath 'ci-v3-results/import-search-source.txt' -Pattern $pattern).Count -ne 1) { throw ('Required exact source case inventory differs: ' + $entry.Key) }
+            }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
       - name: Verify installed source translation, backup and import publication integrity
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.ocr-runtime.outcome == 'success' }}
         # Exact 324b087d reached 86% at 10 minutes while still advancing.
@@ -130,7 +169,45 @@ jobs:
                    'carr_library.studio.cli', 'carr_library.ui.assistant_dialog',
                    'carr_library.studio.project', 'carr_library.studio.managed_inputs')
           import importlib
-          completion_names = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.backup_book_audio","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.audio.effect_presets","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_documents","carr_library.ui.translation_dialog","carr_library.ui.translation_documents","carr_library.assistant.translation_cli","carr_library.ui.assistant_dialog","carr_library.speech._wave_output","carr_library.speech.player","carr_library.speech.playlist","carr_library.speech.playback_devices","carr_library.ui.audio_playback","carr_library.ui.reader_playback","carr_library.ui.desktop_app","carr_library.studio.clips","carr_library.ui.save_all","carr_library.operations.broker","carr_library.backup_playback_queue","carr_library.audio.conversion_batch","carr_library.audio.conversion_batch_cli","carr_library.audio.conversion","carr_library.ui.audio_conversion_batch","carr_library.ui.audio_conversion"]
+          completion_names = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.backup_book_audio","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.audio.effect_presets","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_documents","carr_library.ui.translation_dialog","carr_library.ui.translation_documents","carr_library.assistant.translation_cli","carr_library.ui.assistant_dialog","carr_library.speech._wave_output","carr_library.speech.player","carr_library.speech.playlist","carr_library.speech.playback_devices","carr_library.ui.audio_playback","carr_library.ui.reader_playback","carr_library.ui.desktop_app","carr_library.studio.clips","carr_library.ui.save_all","carr_library.operations.broker","carr_library.backup_playback_queue","carr_library.audio.conversion_batch","carr_library.audio.conversion_batch_cli","carr_library.audio.conversion","carr_library.ui.audio_conversion_batch","carr_library.ui.audio_conversion",
+              "carr_library.catalog.intake",
+              "carr_library.citations.pdf_review_attestation",
+              "carr_library.citations.text_attestation",
+              "carr_library.extract.document_formats",
+              "carr_library.extract.page_ocr",
+              "carr_library.extract.raster_pages",
+              "carr_library.extract.runtime_identity",
+              "carr_library.ingest.asset_copy",
+              "carr_library.ingest.batch_cli",
+              "carr_library.ingest.batch_pages",
+              "carr_library.ingest.batch_scan",
+              "carr_library.ingest.batches",
+              "carr_library.ingest.catalog_asset_copy",
+              "carr_library.ingest.pipeline",
+              "carr_library.ingest.retained_assets",
+              "carr_library.ingest.worker",
+              "carr_library.library_backup",
+              "carr_library.pending_backup",
+              "carr_library.application",
+              "carr_library.ui.import_center",
+              "carr_library.ingest.publication",
+              "carr_library.ui.source_review",
+              "carr_library.citations.anchors",
+              "carr_library.ui.federated_search",
+              "carr_library.search.paging",
+              "carr_library.search.federated",
+              "carr_library.search.literal",
+              "carr_library.search.semantic_windows",
+              "carr_library.search.thematic",
+              "carr_library.semantic",
+              "carr_library.integrations.transcription_backup",
+              "carr_library.integrations.transcription_values",
+              "carr_library.integrations.transcription_scope",
+              "carr_library.integrations.transcription_runtime",
+              "carr_library.integrations.transcription_protocol",
+              "carr_library.integrations.transcription_exports",
+              "carr_library.transcription",
+          ]
           for name in completion_names:
               importlib.import_module(name)
           names += tuple(completion_names)
@@ -210,12 +287,46 @@ jobs:
                     'tests/ui/test_find_replace_hooks.py',
                     'tests/ui/test_reader_navigation_ui.py',
                     'tests/ui/test_find_replace_ui.py',
-                    'tests/ui/test_find_replace.py']
+                    'tests/ui/test_find_replace.py',
+              "tests/catalog/test_streaming_intake.py",
+              "tests/e2e/test_raster_import.py",
+              "tests/e2e/test_raster_ocr_native.py",
+              "tests/extract/test_raster_pages.py",
+              "tests/ingest/test_batch_continuation.py",
+              "tests/ingest/test_batch_continuation_cli.py",
+              "tests/ui/test_import_center.py",
+              "tests/e2e/test_research_search_cli.py",
+              "tests/search/test_federated.py",
+              "tests/ui/test_federated_search.py",
+              "tests/search/test_search_paging.py",
+              "tests/ingest/test_scan_root_binding.py",
+              "tests/ingest/test_large_source_intake.py",
+              "tests/storage/test_transcription_backup.py",
+          ]
+          reviewed_fixture_paths = ["tests/ingest/large_source_fixtures.py",
+              "tests/transcription/fixture_runtime.py",
+          ]
+          reviewed_fixture_hashes = {}
+          for relative in reviewed_fixture_paths:
+              fixture = pathlib.Path.cwd() / relative
+              assert fixture.is_file() and not fixture.is_symlink(), relative
+              reviewed_fixture_hashes[relative] = __import__('hashlib').sha256(fixture.read_bytes()).hexdigest()
           status = pytest.main(['-vv', '--tb=short', '-o', 'faulthandler_timeout=120',
                                '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
           cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          assert reviewed_fixture_hashes == {relative: __import__('hashlib').sha256((pathlib.Path.cwd() / relative).read_bytes()).hexdigest() for relative in reviewed_fixture_paths}, 'Reviewed fixture companion changed during installed tests'
+          print(json.dumps({'status': 'PASS', 'reviewed_installed_fixture_companions': reviewed_fixture_hashes}), flush=True)
+          reviewed_feature_cases = {"tests/catalog/test_streaming_intake.py":{"count":11,"functions":["test_large_txt_manifest_and_exact_segments_use_bounded_python_buffers","test_real_pdf_exactly_at_profile_limit_is_screened_without_materializing_it","test_small_snapshot_keeps_immutable_bytes_and_original_identity","test_streamed_utf8_crosses_block_boundary_without_newline_or_bom_rewriting","test_cancel_during_streamed_hash_never_returns_an_admitted_manifest","test_source_changed_after_genuine_final_hash_is_rejected","test_saved_file_identity_rejects_same_bytes_path_replacement","test_streamed_retention_cancellation_cleans_only_its_private_stage","test_no_replace_retention_and_late_external_drift_remain_explicit","test_profile_does_not_raise_other_format_or_absolute_maximum","test_large_txt_requires_original_bounded_logical_segments"]},"tests/e2e/test_raster_import.py":{"count":11,"functions":["test_actual_containers_keep_physical_order_and_require_each_review","test_existing_source_review_revokes_raster_without_recreating_approval","test_backup_delete_original_restore_preserves_tiff_review_and_requires_explicit_resume","test_changed_retained_image_never_reuses_source_review","test_cancel_after_real_decode_is_durable_and_reuses_same_plan","test_passive_backup_rejects_raster_checkpoint_inventory_tamper","test_rehashed_checkpoint_cannot_turn_raster_candidate_into_native_text"]},"tests/e2e/test_raster_ocr_native.py":{"count":3,"functions":["test_actual_isolated_ocr_review_and_restored_source"]},"tests/extract/test_raster_pages.py":{"count":23,"functions":["test_real_headers_registry_and_retained_identity","test_malformed_container_is_not_admitted_as_a_source_page","test_png_cannot_be_relabelled_as_another_format","test_real_tiff_frame_order_and_independent_pixel_identity","test_actual_exif_orientation_is_bound_to_normalized_pixels","test_transparent_pixels_are_composited_over_explicit_white","test_selected_pixel_bound_refuses_before_decoding","test_frame_and_byte_bounds_reject_real_containers","test_animated_png_is_refused_without_silently_importing_first_frame","test_cancel_during_real_decode_keeps_original_and_never_calls_ocr","test_cancelled_or_expired_inventory_never_opens_image","test_mid_inventory_cancel_is_not_converted_to_malformed_image","test_stored_raw_text_and_layout_keep_shared_ocr_review_policy"]},"tests/ingest/test_batch_continuation.py":{"count":18,"functions":["test_more_than_5000_actual_sources_continue_after_process_restart","test_cancelled_source_review_saves_prefix_without_advancing_unaccepted_file","test_scan_lease_survives_through_durable_page_publication","test_changed_active_directory_refuses_continuation_before_any_new_source_read","test_actual_child_death_after_next_page_commit_reuses_exact_row_identities","test_entry_allowance_continues_empty_directories_and_files_without_skipping","test_cross_page_duplicate_reference_is_scoped_and_can_be_explicitly_included","test_source_manifest_is_rechecked_by_isolated_import_before_publication","test_actual_backup_restores_pages_but_revokes_external_cursor_authority","test_foreign_scan_duplicate_reference_cannot_pass_typed_backup","test_cancelled_before_admission_does_not_open_sources_and_keeps_inert_cursor","test_invalid_cursor_refuses_before_any_directory_or_source_read","test_cursor_validation_is_passive_for_foreign_platform_selection","test_actual_admission_consumes_page_budget_before_any_source_scan"]},"tests/ingest/test_batch_continuation_cli.py":{"count":3,"functions":["test_actual_cli_continuation_is_passive_and_run_imports_only_selected_page","test_actual_cli_restored_cursor_refuses_continuation_and_never_auto_runs","test_actual_cli_wrong_workspace_and_page_budget_never_rewrite_existing_plan"]},"tests/ui/test_import_center.py":{"count":42,"functions":["test_import_report_capture_precedes_render_and_protects_competing_file","test_import_report_decline_does_not_render_or_write","test_plan_captures_choices_and_passes_live_cancellation_to_background_work","test_invalid_plan_choices_never_start_a_job","test_progress_is_marshaled_and_completion_preserves_quarantine_status","test_previous_job_progress_cannot_replace_a_new_batch","test_previous_job_completion_cannot_finish_the_next_job","test_mismatched_progress_identity_is_ignored","test_planning_cancel_and_close_keep_prior_pages_without_claiming_current_page_committed","test_failure_restores_controls_then_close_ends_the_modal","test_closed_view_drops_progress_and_completion","test_replaced_data_directory_cannot_receive_old_completion","test_out_of_bounds_file_selection_cannot_mutate_a_row","test_explicit_file_selection_uses_stable_row_identity","test_lost_authorization_clears_visible_batch_data","test_custom_fast_script_selection_is_captured_only_for_new_plans","test_cancel_model_chooser_preserves_previous_selection_and_settings","test_reconfiguring_models_replaces_the_single_custom_choice","test_text_folder_plan_never_opens_model_selection_automatically","test_saved_batch_resume_does_not_replace_recorded_config_with_current_custom_choice","test_unconfigured_or_invalid_custom_choice_cannot_start_plan","test_model_chooser_does_not_open_during_an_import_job","test_model_choice_is_not_applied_after_library_folder_changes","test_import_report_picker_rechecks_scope_before_destination_inspection","test_continue_scan_captures_saved_identity_and_page_limits_without_auto_import","test_queued_source_page_refuses_retargeted_library_before_any_scan","test_legacy_batch_has_no_invented_scan_continuation","test_scan_summary_distinguishes_page_rows_complete_traversal_and_restored_authority","test_invalid_page_budget_never_starts_source_review","test_queued_source_page_refuses_same_path_replaced_root_before_scan"]},"tests/e2e/test_research_search_cli.py":{"count":15,"functions":["test_cli_child_uses_current_distribution_without_writing_runtime_bytecode","test_list_libraries_and_search_only_explicit_selection_without_desktop","test_existing_modes_and_metadata_filters_apply_in_each_selected_library","test_missing_library_selection_is_an_error_and_does_not_create_data","test_missing_last_library_or_corrupted_original_never_prints_partial_results","test_conflicting_operations_and_invalid_result_limit_fail_clearly","test_corrupt_library_database_fails_clearly_without_partial_json_or_replacing_it","test_advanced_cli_pages_keep_originals_and_selected_libraries","test_cli_passive_source_cursor_continues_beyond_one_hundred_segments"]},"tests/search/test_federated.py":{"count":100,"functions":["test_grouped_explicit_selection_dedup_caps_and_independent_host_refs","test_existing_modes_metadata_filters_and_empty_selected_group","test_name_refresh_and_only_explicit_libraries_are_searched","test_missing_last_library_preserves_completed_session_and_original_host","test_cancellation_after_first_library_retains_previous_capabilities","test_single_deadline_shrinks_across_libraries_and_rejects_final_late_result","test_name_lookup_time_consumes_the_same_deadline","test_coarse_clock_does_not_expand_maximum_host_budget","test_source_tampering_is_an_error_and_does_not_replace_previous_session","test_actions_reauthorize_collection_and_archived_workspace","test_old_and_copied_tokens_cannot_drive_new_session_or_foreign_topic","test_real_pdf_preview_cannot_be_copied_or_saved_as_verified","test_invalid_or_implicit_selection_is_rejected_before_reads","test_invalid_options_keep_completed_session","test_cancelled_search_never_initializes_a_second_database_or_reads","test_malformed_query_rejected_even_for_empty_corpus_before_host_calls","test_valid_query_boundary_and_allowed_whitespace"]},"tests/ui/test_federated_search.py":{"count":114,"functions":["test_only_explicit_libraries_default_current_and_no_implicit_all","test_filters_group_labels_limit_and_source_details","test_advanced_query_searches_only_checked_libraries_with_source_filters","test_invalid_advanced_query_does_not_start_worker_or_keep_old_handles","test_builder_cancel_keeps_results_scope_and_current_query","test_builder_use_withdraws_old_handles_and_preserves_notebook","test_builder_cannot_replace_changed_scope_or_options","test_running_search_cannot_open_builder","test_search_center_builder_keyboard_shortcut_dispatches_without_main_menu","test_previous_next_pages_keep_exact_scope_filters_and_allow_exhausted_library","test_changing_query_or_filters_clears_paging_and_cannot_repeat_previous_query","test_ranked_and_phrase_modes_do_not_expose_unstable_result_paging","test_cancelled_result_page_withdraws_navigation_and_source_actions","test_copy_context_and_save_route_to_result_library_without_touching_notebook","test_pdf_preview_has_no_verified_actions","test_actions_reverify_original_bytes_and_clear_failed_results","test_save_dialog_rechecks_result_options_topic_and_active_scope","test_failed_composite_hides_old_results_and_does_not_publish_partial","test_cancel_between_libraries_never_shows_first_library_rows","test_queued_worker_rejects_changed_scope_and_late_callbacks","test_cancellation_after_worker_finished_still_hides_search_results","test_late_copy_completion_cannot_copy_new_selection","test_queued_save_rechecks_scope_before_any_write","test_data_folder_change_withdraws_idle_results_before_copy","test_close_requests_cancel_and_keeps_modal_alive_until_worker_finishes","test_native_close_veto_and_deferred_destruction","test_forced_window_destruction_never_hides_or_destroys_deleted_controls","test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_search","test_topic_choices_distinguish_equivalent_spoken_names_without_reordering","test_topic_choice_paths_preserve_hierarchy_and_reject_cycles","test_equivalent_topic_labels_save_to_each_original_destination","test_native_checklist_preserves_checked_library_identity_with_distinct_labels","test_identical_library_names_remain_distinct_in_results_counts_and_source_actions","test_result_labels_include_unknown_edition_and_number_repeated_same_page_hits","test_federated_topic_choices_are_distinct_and_retain_identity_order","test_federated_topic_labels_preserve_paths_and_reject_cycles","test_native_library_checklist_uses_distinct_choices_without_reordering","test_same_title_and_library_results_identify_editions_and_save_exact_source","test_result_ordinals_distinguish_repeated_page_and_unknown_edition","test_source_windows_continue_on_existing_worker_and_keep_exact_library","test_selected_library_pages_preserve_user_selection_and_unsaved_notebook"]},"tests/search/test_search_paging.py":{"count":27,"functions":["test_actual_501_editions_are_visited_with_bounded_source_windows","test_one_long_edition_continues_source_and_result_pages_without_gaps","test_literal_many_matches_on_one_page_keep_result_continuation_after_presentation_dedup","test_source_cursor_is_bound_to_exact_requested_scope","test_cursor_with_unmatched_active_revision_rejects_resume_before_publishing_new_handles","test_more_than_twenty_selected_libraries_uses_one_bounded_owned_session","test_explicit_larger_time_allowances_reach_all_nested_source_engines","test_invalid_time_allowances_never_replace_previous_handles","test_cancellation_during_window_selection_keeps_previous_completed_source_handles","test_source_cursor_cannot_cross_an_authorized_topic"]},"tests/ingest/test_scan_root_binding.py":{"count":4,"functions":["test_recreated_library_path_refuses_before_creating_a_replacement_queue","test_retargeted_library_during_real_admission_refuses_source_scan_and_releases_lease","test_retargeted_library_at_publication_preserves_sources_without_a_saved_page","test_byte_identical_replacement_journal_directory_cannot_continue_old_store"]},"tests/ingest/test_large_source_intake.py":{"count":6,"functions":["test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker","test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review","test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear","test_large_source_completed_before_real_child_cancel_is_recovered_without_republication","test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication"]},"tests/ui/test_reader_navigation_ui.py":{"count":11,"functions":["test_current_previous_next_select_without_speech_or_source_edits","test_read_current_unit_is_an_explicit_separate_action","test_navigation_refuses_busy_unloaded_or_revoked_source_without_speaking","test_invalid_unit_keeps_selection_and_produces_no_audio","test_from_cursor_and_autosave_use_observed_unicode_offsets","test_a_finished_navigation_does_not_wrap_or_start_full_document_speech","test_navigation_refuses_a_replaced_reader_scope_before_selection"]},"tests/reader/test_export_reconciliation.py":{"count":28,"functions":["test_unapproved_file_is_not_opened","test_default_creation_does_not_clobber_at_publication","test_hash_cancellation_stops_after_first_real_block","test_capture_cancelled_before_open","test_receipt_and_native_digest_shape_are_preserved","test_mismatched_existing_approval_rejected_before_open","test_replaced_existing_destination_not_opened","test_unapproved_windows_native_metadata_is_not_queried"]},"tests/storage/test_transcription_backup.py":{"count":143,"functions":["test_complete_backup_preserves_pending_sources_after_original_is_lost_and_requires_review","test_completed_transcript_and_edits_restore_without_external_runtime_or_cache","test_tampered_retained_input_cannot_publish_restore","test_typed_cache_inclusion_keeps_source_and_result_authority","test_consistent_manifest_cannot_hide_mismatched_source_binding","test_untyped_or_forged_asr_data_refuses_backup","test_silent_empty_exports_and_historical_edits_survive_typed_backup","test_input_streaming_has_separate_budget_and_honors_whole_backup_limit","test_legacy_state_manifest_keeps_typed_asr_and_revokes_execution","test_cancellation_during_final_asr_restore_review_prevents_publication","test_asr_paths_and_sizes_are_narrowly_bounded","test_manifest_requires_explicit_optional_asr_cache_inclusion","test_restore_rejects_cache_contradicting_manifest_inclusion"]}}
+          for suite, contract in reviewed_feature_cases.items():
+              module = suite[:-3].replace('/', '.')
+              selected = [case for case in cases if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
+              assert len(selected) == contract['count'], (suite, len(selected), contract['count'])
+              assert len({case.get('name') for case in selected}) == len(selected), (suite, 'duplicate JUnit cases')
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
+              observed = {case.get('name', '').split('[', 1)[0] for case in selected}
+              assert set(contract['functions']) <= observed, (suite, sorted(set(contract['functions']) - observed))
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
@@ -241,7 +352,22 @@ jobs:
           integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in integrity_modules}
           incremental_expected = ('test_incremental_backup', 'test_incremental_backup_cli', 'test_vault', 'test_incremental_backup_dialog')
           incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in incremental_expected}
-          completion_suites = ["tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_studio_draft.py","tests/assistant/test_translation_local.py","tests/assistant/test_translation_documents.py","tests/ui/test_translation_documents.py"]
+          completion_suites = ["tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_studio_draft.py","tests/assistant/test_translation_local.py","tests/assistant/test_translation_documents.py","tests/ui/test_translation_documents.py",
+              "tests/catalog/test_streaming_intake.py",
+              "tests/e2e/test_raster_import.py",
+              "tests/e2e/test_raster_ocr_native.py",
+              "tests/extract/test_raster_pages.py",
+              "tests/ingest/test_batch_continuation.py",
+              "tests/ingest/test_batch_continuation_cli.py",
+              "tests/ui/test_import_center.py",
+              "tests/e2e/test_research_search_cli.py",
+              "tests/search/test_federated.py",
+              "tests/ui/test_federated_search.py",
+              "tests/search/test_search_paging.py",
+              "tests/ingest/test_scan_root_binding.py",
+              "tests/ingest/test_large_source_intake.py",
+              "tests/storage/test_transcription_backup.py",
+          ]
           completion_counts = {}
           for suite in completion_suites:
               module = suite[:-3].replace('/', '.')
@@ -465,7 +591,7 @@ jobs:
       - name: Require publication, recording, portable clip and reader source contracts
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/audio/test_effect_presets.py tests/audio/test_audio_conversion.py tests/ui/test_audio_conversion.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py tests/reader/test_ebook_audio.py tests/ui/test_ebook_audio_lifetime.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_backup_book_audio.py tests/storage/test_backup_effect_presets.py tests/reader/test_braille.py tests/ui/test_braille_actions.py tests/studio/test_project_effects.py tests/storage/test_backup_studio_effects.py tests/integrations/test_dordiai_host_lifecycle.py tests/ui/test_engine_settings_lifetime.py tests/speech/test_listening.py tests/speech/test_playback_devices.py tests/ui/test_reader_listening_hooks.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/audio/test_conversion_batch.py tests/ui/test_audio_conversion_batch.py tests/studio/test_conversion_batch_cli.py tests/speech/test_publication_validation.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
+          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/audio/test_effect_presets.py tests/audio/test_audio_conversion.py tests/ui/test_audio_conversion.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py tests/reader/test_ebook_audio.py tests/ui/test_ebook_audio_lifetime.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_backup_book_audio.py tests/storage/test_backup_effect_presets.py tests/reader/test_braille.py tests/ui/test_braille_actions.py tests/studio/test_project_effects.py tests/storage/test_backup_studio_effects.py tests/integrations/test_dordiai_host_lifecycle.py tests/ui/test_engine_settings_lifetime.py tests/speech/test_listening.py tests/speech/test_playback_devices.py tests/ui/test_reader_listening_hooks.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/audio/test_conversion_batch.py tests/ui/test_audio_conversion_batch.py tests/studio/test_conversion_batch_cli.py tests/speech/test_publication_validation.py tests/speech/test_reading_marks.py tests/ui/test_reading_tools.py tests/speech/test_reading_tabs.py tests/ui/test_reader_tabs.py tests/speech/test_reading_presentation.py tests/speech/test_reading_presentation_handlers.py tests/speech/test_reading_presentation_reader_hook.py tests/ui/test_native_reading_presentation_driver.py tests/speech/test_voice_preferences.py tests/storage/test_voice_preferences_backup.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_view_hooks.py tests/storage/test_reader_preferences_state.py tests/studio/test_book_batch.py tests/studio/test_book_cli.py tests/ui/test_book_batch_dialog.py tests/storage/test_backup_book_batches.py tests/audio/test_recording_controls.py tests/audio/test_recording_monitor.py tests/storage/test_backup_recording_controls.py tests/storage/test_desktop_preferences.py tests/ui/test_desktop_integration.py tests/ui/test_desktop_settings.py tests/ui/test_desktop_host_lifecycle.py tests/speech/test_narration_receipt.py tests/storage/test_local_schedules.py tests/ui/test_local_schedules.py tests/storage/test_backup_local_schedules.py tests/packaging/test_local_schedules_cli.py tests/storage/test_transcription_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $speechVerdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
           if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
@@ -500,10 +626,43 @@ jobs:
             'tests/speech/test_playlist.py' = 21
             'tests/speech/test_playlist_recovery.py' = 36
             'tests/ui/test_audio_playback.py' = 24
-            'tests/audio/test_conversion_batch.py' = 36
+            'tests/audio/test_conversion_batch.py' = 42
             'tests/ui/test_audio_conversion_batch.py' = 21
             'tests/studio/test_conversion_batch_cli.py' = 4
             'tests/speech/test_publication_validation.py' = 12
+            'tests/speech/test_reading_marks.py' = 36
+            'tests/ui/test_reading_tools.py' = 14
+            'tests/speech/test_reading_tabs.py' = 25
+            'tests/ui/test_reader_tabs.py' = 20
+            'tests/speech/test_reading_presentation.py' = 32
+            'tests/speech/test_reading_presentation_handlers.py' = 20
+            'tests/speech/test_reading_presentation_reader_hook.py' = 9
+            'tests/ui/test_native_reading_presentation_driver.py' = 9
+            'tests/speech/test_voice_preferences.py' = 23
+            'tests/storage/test_voice_preferences_backup.py' = 2
+            'tests/ui/test_voice_preferences_dialog.py' = 12
+            'tests/ui/test_reader_view_hooks.py' = 11
+            'tests/storage/test_reader_preferences_state.py' = 7
+            'tests/studio/test_book_batch.py' = 27
+            'tests/studio/test_book_cli.py' = 17
+            'tests/ui/test_book_batch_dialog.py' = 18
+            'tests/storage/test_backup_book_batches.py' = 33
+            'tests/audio/test_recording_controls.py' = 30
+            'tests/audio/test_recording_monitor.py' = 21
+            'tests/storage/test_backup_recording_controls.py' = 20
+            'tests/audio/test_recording.py' = 31
+            'tests/ui/test_recording_dialog.py' = 28
+            'tests/reader/test_export_reconciliation.py' = 28
+            'tests/storage/test_desktop_preferences.py' = 22
+            'tests/ui/test_desktop_integration.py' = 37
+            'tests/ui/test_desktop_settings.py' = 4
+            'tests/ui/test_desktop_host_lifecycle.py' = 4
+            'tests/speech/test_narration_receipt.py' = 73
+            'tests/storage/test_transcription_backup.py' = 143
+            'tests/storage/test_local_schedules.py' = 43
+            'tests/ui/test_local_schedules.py' = 21
+            'tests/storage/test_backup_local_schedules.py' = 23
+            'tests/packaging/test_local_schedules_cli.py' = 11
           }
           foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -570,7 +729,43 @@ jobs:
                    'carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup',
                     'carr_library.audio.audiobook', 'carr_library.audio.dsp', 'carr_library.studio.daisy', 'carr_library.backup_producers', 'carr_library.backup_sidecars',
                    'carr_library.reader.ebook_audio', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.reading_desk', 'carr_library.runtime_settings', 'carr_library.speech.player', 'carr_library.audio.process', 'carr_library.audio.cleanup')
-          completion_names = ["carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio","carr_library.audio.effect_presets","carr_library.audio.conversion","carr_library.ui.effects_dialog","carr_library.ui.audio_conversion","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.__main__","carr_library.application","carr_library.integrations.liblouis","carr_library.reader.braille","carr_library.reader.reading_desk","carr_library.speech.source","carr_library.research.export_file","carr_library.audio.process","carr_library.operations.broker","carr_library.operations.models","carr_library.ui.braille_actions","carr_library.ui.reading_desk","carr_library.studio.project","carr_library.studio.clips","carr_library.studio.managed_inputs","carr_library.studio.render","carr_library.ui.studio_clips","carr_library.audio.dsp","carr_library.durable_state","carr_library.runtime_settings","carr_library.integrations.dordiai_voices","carr_library.integrations.dordiai_speech","carr_library.speech.runtime","carr_library.speech._io","carr_library.ui.engine_settings","carr_library.speech.player","carr_library.speech.playback_devices","carr_library.speech.listening","carr_library.audio_runtime","carr_library.ui.reader_playback","carr_library.ui.speech_dialog","carr_library.speech._wave_output","carr_library.speech.playlist","carr_library.ui.audio_playback","carr_library.ui.desktop_app","carr_library.ui.save_all","carr_library.backup_playback_queue","carr_library.audio.conversion_batch","carr_library.audio.conversion_batch_cli","carr_library.ui.audio_conversion_batch"]
+          completion_names = ["carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio","carr_library.audio.effect_presets","carr_library.audio.conversion","carr_library.ui.effects_dialog","carr_library.ui.audio_conversion","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.__main__","carr_library.application","carr_library.integrations.liblouis","carr_library.reader.braille","carr_library.reader.reading_desk","carr_library.speech.source","carr_library.research.export_file","carr_library.audio.process","carr_library.operations.broker","carr_library.operations.models","carr_library.ui.braille_actions","carr_library.ui.reading_desk","carr_library.studio.project","carr_library.studio.clips","carr_library.studio.managed_inputs","carr_library.studio.render","carr_library.ui.studio_clips","carr_library.audio.dsp","carr_library.durable_state","carr_library.runtime_settings","carr_library.integrations.dordiai_voices","carr_library.integrations.dordiai_speech","carr_library.speech.runtime","carr_library.speech._io","carr_library.ui.engine_settings","carr_library.speech.player","carr_library.speech.playback_devices","carr_library.speech.listening","carr_library.audio_runtime","carr_library.ui.reader_playback","carr_library.ui.speech_dialog","carr_library.speech._wave_output","carr_library.speech.playlist","carr_library.ui.audio_playback","carr_library.ui.desktop_app","carr_library.ui.save_all","carr_library.backup_playback_queue","carr_library.audio.conversion_batch","carr_library.audio.conversion_batch_cli","carr_library.ui.audio_conversion_batch",
+              "carr_library.speech.reading",
+              "carr_library.speech.session",
+              "carr_library.speech.marks",
+              "carr_library.speech.tabs",
+              "carr_library.speech.presentation",
+              "carr_library.ui.reader_tabs",
+              "carr_library.ui.builtin_keyboard_commands",
+              "carr_library.ui.voice_preferences",
+              "carr_library.ui.reading_tools",
+              "carr_library.ui.reading_presentation",
+              "carr_library.studio.book_batch",
+              "carr_library.studio.book_cli",
+              "carr_library.ui.book_batch_dialog",
+              "carr_library.backup_book_batches",
+              "carr_library.audio.recording",
+              "carr_library.audio.recording_monitor",
+              "carr_library.operations._locks",
+              "carr_library.audio.cleanup",
+              "carr_library.ui.recording_dialog",
+              "carr_library.desktop_preferences",
+              "carr_library.ui.desktop_integration",
+              "carr_library.ui.desktop_settings",
+              "carr_library.ui.keyboard_settings",
+              "carr_library.ui.command_registry",
+              "carr_library.ui.worker_cleanup",
+              "carr_library.native_runtime",
+              "carr_library.speech.narration_receipt",
+              "carr_library.local_schedule_model",
+              "carr_library.local_schedules",
+              "carr_library.local_schedules_cli",
+              "carr_library.backup_local_schedules",
+              "carr_library.ui.local_schedules",
+              "carr_library.incremental_backup",
+              "carr_library.sync.vault",
+              "carr_library.ingest.batches",
+          ]
           names += tuple(completion_names)
           for name in names:
               importlib.import_module(name)
@@ -626,11 +821,59 @@ jobs:
                     'tests/ui/test_audio_conversion_batch.py',
                     'tests/studio/test_conversion_batch_cli.py',
                     'tests/speech/test_publication_validation.py',
+              "tests/speech/test_reading_marks.py",
+              "tests/ui/test_reading_tools.py",
+              "tests/speech/test_reading_tabs.py",
+              "tests/ui/test_reader_tabs.py",
+              "tests/speech/test_reading_presentation.py",
+              "tests/speech/test_reading_presentation_handlers.py",
+              "tests/speech/test_reading_presentation_reader_hook.py",
+              "tests/ui/test_native_reading_presentation_driver.py",
+              "tests/speech/test_voice_preferences.py",
+              "tests/storage/test_voice_preferences_backup.py",
+              "tests/ui/test_voice_preferences_dialog.py",
+              "tests/ui/test_reader_view_hooks.py",
+              "tests/storage/test_reader_preferences_state.py",
+              "tests/studio/test_book_batch.py",
+              "tests/studio/test_book_cli.py",
+              "tests/ui/test_book_batch_dialog.py",
+              "tests/storage/test_backup_book_batches.py",
+              "tests/audio/test_recording_controls.py",
+              "tests/audio/test_recording_monitor.py",
+              "tests/storage/test_backup_recording_controls.py",
+              "tests/storage/test_desktop_preferences.py",
+              "tests/ui/test_desktop_integration.py",
+              "tests/ui/test_desktop_settings.py",
+              "tests/ui/test_desktop_host_lifecycle.py",
+              "tests/speech/test_narration_receipt.py",
+              "tests/storage/test_local_schedules.py",
+              "tests/ui/test_local_schedules.py",
+              "tests/storage/test_backup_local_schedules.py",
+              "tests/packaging/test_local_schedules_cli.py",
           ]
+          reviewed_fixture_paths = ["tests/studio/test_book_audio.py","tests/studio/test_book_batch.py","tests/ui/test_book_audio_dialog.py","tests/storage/test_backup_book_audio.py","scripts/windows_reading_presentation_smoke.py",
+              "tests/ui/test_desktop_integration.py",
+          ]
+          reviewed_fixture_hashes = {}
+          for relative in reviewed_fixture_paths:
+              fixture = pathlib.Path.cwd() / relative
+              assert fixture.is_file() and not fixture.is_symlink(), relative
+              reviewed_fixture_hashes[relative] = __import__('hashlib').sha256(fixture.read_bytes()).hexdigest()
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
                                '--import-mode=importlib', '--junitxml=' + str(report), *suites],
                               plugins=[policy])
           cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          assert reviewed_fixture_hashes == {relative: __import__('hashlib').sha256((pathlib.Path.cwd() / relative).read_bytes()).hexdigest() for relative in reviewed_fixture_paths}, 'Reviewed fixture companion changed during installed tests'
+          print(json.dumps({'status': 'PASS', 'reviewed_installed_fixture_companions': reviewed_fixture_hashes}), flush=True)
+          reviewed_feature_cases = {"tests/speech/test_reading_marks.py":{"count":36,"functions":["test_real_project_round_trip_preserves_bookmark_identity_history_and_exact_original","test_bookmark_is_bound_to_exact_text_and_undo_restores_it","test_invalid_passive_bookmarks_are_rejected","test_bookmark_wire_is_strict_and_bounded","test_bookmark_limit_and_invalid_cursor_do_not_change_previous_marks","test_paragraph_split_and_join_are_independent_undoable_reading_edits","test_invalid_split_keeps_history_and_original","test_invalid_join_keeps_history_and_original","test_join_mixed_blank_lines_and_spaces_changes_only_the_next_boundary","test_adding_passive_bookmarks_does_not_invalidate_saved_audio_position","test_bookmarks_survive_actual_backup_delete_and_relocated_recovery"]},"tests/ui/test_reading_tools.py":{"count":14,"functions":["test_native_bookmark_add_go_to_and_late_callback_are_explicit","test_native_changed_text_cannot_be_followed_as_the_old_bookmark","test_native_paragraph_actions_preserve_source_and_support_undo","test_native_stale_or_revoked_scope_does_not_apply_a_queued_action","test_actual_reader_hook_mutates_and_saves_only_the_reviewed_reading_copy","test_actual_reader_hook_vetoes_unsafe_paragraph_mutation"]},"tests/speech/test_reading_tabs.py":{"count":25,"functions":["test_exact_json_snapshot_reports_actual_bytes_not_reserialized_value","test_format_only_competing_write_is_preserved_and_stale_save_refused","test_fresh_instance_rejects_stale_membership_and_missing_draft","test_tab_labels_and_ids_cannot_carry_paths_or_invalid_text","test_membership_has_only_bounded_passive_fields","test_actual_backup_delete_and_relocate_keeps_two_independent_histories","test_resigned_invalid_tab_collection_never_publishes_destination","test_replaced_library_directory_invalidates_existing_store","test_json_snapshot_rejects_inplace_mutation_after_bytes_were_read","test_json_snapshot_keeps_checked_descriptor_after_path_rebinding"]},"tests/ui/test_reader_tabs.py":{"count":20,"functions":["test_switch_and_fresh_reopen_keep_each_copy_voice_cursor_and_undo","test_failed_switch_keeps_native_selection_and_both_drafts","test_close_uses_confirmation_preserves_files_and_ignores_reentrant_events","test_late_native_events_after_close_do_not_access_destroyed_controls","test_rename_after_modal_revalidates_exact_membership_before_native_label","test_save_all_writes_independent_projects_and_restores_selected_tab","test_cancel_close_stays_on_unsaved_tab_and_retains_other_copy","test_busy_close_does_not_activate_a_different_copy_for_confirmation","test_edit_invalidates_saved_numeric_playback_position","test_explicit_text_appends_without_overwriting_recovered_copy","test_explicit_text_preserves_pre_tabs_manual_recovery","test_clean_close_flushes_latest_voice_cursor_and_numeric_audio_before_autosave","test_dirty_discard_does_not_flush_rejected_edits_or_replace_prior_recovery","test_cancel_other_dirty_copy_does_not_flush_active_clean_copy","test_clean_close_cas_conflict_preserves_other_writer_and_prevents_completion"]},"tests/speech/test_reading_presentation.py":{"count":32,"functions":["test_real_profile_defaults_save_reopen_reset_and_independent_libraries","test_exact_compare_before_save_rejects_other_window_and_format_only_changes","test_typed_profile_rejects_unbounded_or_ambiguous_values","test_native_font_fields_are_finite_and_bounded","test_invalid_saved_profile_is_preserved_instead_of_silently_reset","test_growth_between_stat_and_open_is_rejected_before_read","test_replaced_library_and_linked_state_are_not_write_authority","test_actual_backup_delete_restore_preserves_profile_text_source_history_and_cursor"]},"tests/speech/test_reading_presentation_handlers.py":{"count":20,"functions":["test_native_preview_apply_reset_preserve_exact_text_native_positions_source_and_history","test_font_change_restores_native_selection_and_caret_without_character_conversion","test_silently_edited_zoom_invalidates_review_even_without_native_event","test_partial_zoom_edit_is_visible_and_cannot_escape_native_handler","test_scope_change_and_closed_dialog_prevent_profile_or_reader_changes","test_native_picker_cancel_and_changed_scope_preserve_original_choices","test_saved_font_missing_after_restore_stays_explicit_and_reset_is_reviewable","test_other_window_save_rolls_back_native_display_and_requires_reload","test_profile_file_write_failure_rolls_back_display_without_touching_text","test_controls_have_distinct_accessible_names_and_escape_closes","test_reader_startup_restores_only_display_and_preserves_invalid_profile"]},"tests/speech/test_reading_presentation_reader_hook.py":{"count":9,"functions":["test_real_reader_hook_retains_library_source_and_focus_authority"]},"tests/ui/test_native_reading_presentation_driver.py":{"count":9,"functions":["test_key_release_failure_retains_exact_modifier_tuple_for_final_retry","test_cleanup_releases_keys_and_restores_fixtures_after_a_failed_timer_stop","test_cleanup_does_not_swallow_process_control_exceptions","test_nested_unwind_waits_for_child_destruction_before_ending_reader","test_unwind_still_closes_owned_modal_when_key_release_raises","test_failed_modal_exit_still_schedules_the_retained_outer_loop_exit","test_unwind_has_a_finite_deadline_for_an_owned_child_that_never_destroys"]},"tests/speech/test_voice_preferences.py":{"count":23,"functions":["test_legacy_load_does_not_rewrite_bytes_or_probe_optional_engines","test_reload_persists_exact_ids_profiles_and_external_declarations","test_two_windows_refuse_stale_preference_save_without_overwriting","test_engine_window_cannot_overwrite_a_later_voice_preference_change","test_shared_settings_lock_refuses_overlapping_changes","test_explicit_voice_beats_default_but_not_exact_language_guard","test_profile_controls_are_not_applied_to_a_different_voice_or_language","test_no_region_or_script_fallback_to_similarly_named_voice","test_adapter_underscore_tag_and_request_case_use_one_exact_language","test_removed_voice_and_unsupported_controls_do_not_pick_another_voice","test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values","test_owner_guard_is_rechecked_after_latest_settings_read_before_commit"]},"tests/storage/test_voice_preferences_backup.py":{"count":2,"functions":["test_voice_preferences_backup_restore_preserves_exact_bytes_without_discovery","test_resigned_invalid_profile_rejects_restore_without_touching_backup"]},"tests/ui/test_voice_preferences_dialog.py":{"count":12,"functions":["test_open_close_does_not_discover_speak_or_write_preferences","test_favorite_captures_selected_id_before_background_save","test_default_requires_exact_current_voice_language","test_saved_default_changes_only_selection_and_keeps_reviewed_controls","test_saved_profile_displays_and_applies_its_exact_controls","test_missing_default_stays_visible_and_never_selects_substitute","test_pending_write_rechecks_owner_before_touching_settings","test_stale_window_preserves_other_settings_and_can_explicitly_reload","test_profile_replacement_requires_explicit_confirmation","test_no_callback_can_apply_a_voice_after_modal_close","test_invalid_profile_controls_fail_before_queueing"]},"tests/ui/test_reader_view_hooks.py":{"count":11,"functions":["test_current_reading_desk_appearance_keeps_source_and_modal_owner","test_missing_voice_preferences_remain_reviewable_but_late_owner_changes_are_refused"]},"tests/storage/test_reader_preferences_state.py":{"count":7,"functions":["test_actual_state_only_relocation_preserves_drafts_marks_appearance_and_dormant_voices","test_resigned_state_only_reader_damage_is_refused_before_caller_publication","test_snapshot_refuses_a_live_tab_index_without_its_retained_draft"]},"tests/studio/test_book_batch.py":{"count":27,"functions":["test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech","test_actual_two_book_render_and_reopened_resume_verify_original_outputs","test_changed_review_cannot_reuse_preparation_approval","test_scope_duplicate_and_missing_plan_bindings_are_rejected","test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second","test_active_control_stops_current_item_and_never_starts_later_books","test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate","test_old_invocation_signal_cannot_stop_a_new_explicit_run","test_observer_failure_does_not_relabel_or_repeat_completed_books","test_backup_restore_preserves_order_and_requires_new_explicit_destination_review","test_passive_backup_refuses_unbound_batch_membership","test_plan_save_then_prepare_uses_one_lock_at_a_time","test_stop_between_books_does_not_signal_a_foreign_locked_job","test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume","test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio","test_primary_failure_is_not_masked_by_control_cleanup_failure","test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs","test_competing_same_bytes_selection_is_not_adopted_as_our_commit","test_same_path_library_replacement_invalidates_existing_batch_service_before_writes","test_saved_batch_inventory_never_silently_omits_unreadable_directory"]},"tests/studio/test_book_cli.py":{"count":17,"functions":["test_request_freezes_explicit_voice_settings_and_request_changes_do_not_mutate_review","test_invalid_or_unavailable_request_never_prepares_or_speaks","test_output_mapping_is_complete_unique_and_follows_saved_order","test_actual_cli_preview_prepare_run_status_and_verified_resume","test_actual_cli_rechecks_source_before_preparation","test_actual_book_help_creates_no_library","test_actual_cli_restore_prepares_new_outputs_without_old_external_review","test_cli_review_source_change_inside_real_export_fsync_preserves_destination","test_cli_json_stdout_is_safe_for_a_real_cp1252_stream","test_cli_close_failure_keeps_returned_result_and_strong_owner_until_explicit_retry"]},"tests/ui/test_book_batch_dialog.py":{"count":18,"functions":["test_batch_real_review_prepare_order_and_per_item_settings_use_existing_worker","test_batch_run_requires_explicit_frozen_review_and_keeps_borrowed_owner","test_mutated_title_cannot_reuse_batch_approval","test_queued_preview_freezes_inputs_and_rejects_later_ui_changes","test_close_cancels_queued_source_review_without_closing_parent_service","test_source_scope_change_blocks_queued_preparation","test_cancel_before_queued_render_does_not_enter_production","test_active_batch_stop_uses_existing_worker_and_retains_borrowed_service","test_saved_batch_reopens_references_and_does_not_resume","test_existing_per_book_review_mode_freezes_explicit_voice_controls_without_jobs","test_confirmation_rechecks_order_after_the_actual_modal_answer","test_parent_close_invalidates_queued_child_work_and_late_callbacks","test_same_path_root_replacement_blocks_queued_child_before_any_write","test_destroyed_child_ignores_late_completion_without_closing_borrowed_service","test_failed_next_part_callback_shows_actual_returned_receipts","test_reviewed_child_rechecks_exact_settings_after_confirmation"]},"tests/storage/test_backup_book_batches.py":{"count":33,"functions":["test_partial_preparation_roundtrips_order_and_plans_without_execution_authority","test_resigned_copied_batch_or_plan_mismatch_refuses_before_target_creation","test_reserved_directory_alias_and_nested_namespace_fail_closed","test_full_backup_checks_resealed_plan_source_against_copied_database","test_bounded_passive_reader_refuses_untrusted_inventory_before_runtime","test_exact_local_batch_lock_is_not_portable_authority","test_batch_record_hardlink_is_not_a_private_regular_backup_input","test_standalone_restore_never_overwrites_existing_batch_bytes"]},"tests/audio/test_recording_controls.py":{"count":30,"functions":["test_actual_pause_closes_capture_then_resume_retains_exact_segment_frames","test_stop_while_paused_publishes_retained_frames_without_reopening_input","test_cancel_while_paused_discards_only_unfinished_take","test_changed_runtime_while_paused_refuses_before_second_input","test_initial_pause_never_opens_input_and_has_bounded_wait","test_controlled_default_never_opens_monitor_and_legacy_receipt_stays_v1","test_monitor_taps_actual_same_pcm_with_bounded_blocks_and_no_second_input","test_unconfirmed_monitor_close_holds_existing_lease_staging_and_capture_admission","test_aggregate_native_cleanup_cannot_release_one_owner_before_the_other","test_changed_completed_segment_refuses_assembly_and_publication","test_segment_changed_immediately_after_genuine_hash_cannot_mint_new_frame_receipt","test_late_cancel_after_controlled_publication_retains_committed_receipt","test_v2_backup_restore_verifies_retained_frames_without_engine_or_input_authority","test_receipt_rejects_unknown_authority_noncontiguous_frames_and_invalid_monitor_counts","test_updated_whole_file_receipt_cannot_hide_changed_retained_pcm_range","test_unchanged_v1_receipt_remains_passively_readable","test_stop_while_shared_admission_waits_never_opens_input","test_pause_keeps_shared_admission_without_claiming_active_cpu_measurement","test_stale_library_identity_refuses_capture_before_admission","test_replaced_capture_staging_is_not_deleted_by_owned_cleanup","test_replaced_lock_leaf_is_never_unlinked_when_old_admission_is_released"]},"tests/audio/test_recording_monitor.py":{"count":21,"functions":["test_explicit_format_query_precedes_open_and_windows_structures_have_fixed_widths","test_four_native_buffers_bound_latency_and_release_only_after_done_and_unprepare","test_partial_submission_failure_keeps_exact_pcm_memory_until_acknowledged_close","test_unconfirmed_native_cleanup_retains_authority_and_prevents_new_monitor","test_close_failure_retry_never_resets_or_unprepares_released_header","test_selected_output_displacement_during_open_closes_without_submitting","test_cancellation_after_native_open_confirms_close_before_returning","test_cancellation_before_native_open_has_no_output_side_effect","test_monitor_refuses_partial_or_oversized_frames_before_native_buffer_allocation","test_real_growing_pcm_tap_reads_only_bounded_tail_without_changing_capture","test_growing_pcm_identity_replacement_is_refused_before_more_output","test_invalid_partial_header_closes_reader_and_does_not_submit","test_output_identity_tracks_opaque_selection_not_transient_ordinal","test_opened_monitor_stream_must_match_the_selected_private_inode","test_monitor_uses_the_existing_fixed_waveoutput_abi"]},"tests/storage/test_backup_recording_controls.py":{"count":20,"functions":["test_recorded_segments_survive_deleted_original_root_and_explicit_export","test_resigned_recording_range_corruption_fails_before_restore_publication","test_snapshot_does_not_publish_a_recording_with_forged_retained_frame_hash"]},"tests/audio/test_recording.py":{"count":31,"functions":["test_device_inventory_excludes_video_and_preserves_unique_microphone_identity","test_device_cannot_inject_another_stream_or_external_source","test_capture_limits_are_validated_before_opening_any_device","test_actual_pcm_publication_is_verified_and_reopenable","test_actual_graceful_stop_finalizes_short_pcm","test_actual_cancel_discards_incomplete_capture","test_unknown_device_and_early_stop_do_not_launch_any_capture","test_new_capture_never_overwrites_an_existing_identity","test_bad_pcm_and_changed_runtime_do_not_publish","test_observer_failure_cannot_erase_valid_recording","test_receipt_does_not_grant_external_path_authority","test_listing_rejects_malformed_audio_receipts_without_opening_saved_pcm","test_actual_capture_backup_delete_original_root_restore_and_verify","test_capture_admission_is_exclusive_and_released_after_failure","test_recording_receipt_validation_is_pure_and_rejects_incomplete_limits","test_unverified_original_listing_is_read_only_and_never_probes_audio","test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks","test_pcm_validation_cancellation_uses_the_shared_bounded_wave_reader","test_failed_admission_release_is_retried_only_by_explicit_capture"]},"tests/ui/test_recording_dialog.py":{"count":28,"functions":["test_discovery_never_records_or_automatically_selects_even_a_single_microphone","test_start_waits_for_recording_silence_then_passes_explicit_device_and_options","test_stop_or_cancel_while_waiting_for_silence_never_opens_microphone","test_close_active_capture_waits_for_cleanup_without_releasing_recording_hold","test_partial_silence_admission_failure_releases_existing_holds_and_does_not_record","test_exceptional_modal_exit_retains_audio_hold_until_capture_future_completes","test_progress_observer_failure_cannot_turn_retained_recording_into_failed_work","test_detached_waiting_prepare_never_touches_destroyed_controls_or_opens_capture","test_pending_native_cleanup_retains_holds_after_future_and_modal_completion","test_cleanup_retry_start_failure_keeps_existing_owner_and_quiet_holds","test_queued_capture_loses_admission_when_its_exact_library_scope_changes","test_late_completed_recording_is_not_applied_to_a_replacement_library","test_pending_preview_cannot_start_after_same_path_library_replacement","test_wav_export_is_explicit_and_queued_under_the_same_library","test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned","test_pause_and_resume_wait_for_actual_service_acknowledgment_and_keep_quiet_holds","test_monitor_output_discovery_never_selects_or_opens_an_output","test_enabled_monitor_requires_explicit_output_before_any_capture_hold","test_explicit_monitor_selection_is_passed_unchanged_to_same_capture","test_modal_player_cleanup_uses_borrowed_worker_and_is_idempotent","test_failed_player_cleanup_keeps_registered_owner_for_explicit_host_retry","test_failed_cleanup_submission_keeps_registered_owner"]},"tests/storage/test_desktop_preferences.py":{"count":22,"functions":["test_missing_profile_is_inert_and_saved_choices_have_no_activation_fields","test_invalid_or_authorizing_preference_fields_are_refused","test_unknown_future_commands_are_valid_inert_data_not_runtime_admission","test_actual_compare_and_swap_does_not_overwrite_another_window","test_explicit_malformed_profile_repair_preserves_changed_bytes_and_refuses_hardlinks","test_actual_backup_restore_preserves_only_passive_choices","test_invalid_desktop_sidecar_cannot_complete_a_backup","test_empty_malformed_choices_can_only_be_repaired_by_explicit_save","test_same_path_library_replacement_refuses_old_store_without_new_files","test_visible_save_with_failed_directory_sync_requires_real_explicit_retry","test_later_competing_save_is_not_adopted_after_unconfirmed_visible_save","test_actual_preference_read_refuses_oversized_regular_file_without_rewriting","test_backup_validator_refuses_private_or_live_desktop_authority_fields"]},"tests/ui/test_desktop_integration.py":{"count":37,"functions":["test_watch_is_inert_then_coalesces_exact_text_and_never_opens_or_persists_it","test_invalid_watch_input_clears_previous_pending_without_changing_source","test_closed_or_changed_scope_never_releases_a_pending_copy","test_hotkeys_require_explicit_enable_and_dispatch_semantic_identity_only","test_invalid_or_conflicting_global_assignments_do_not_register_any_native_key","test_unsupported_platform_is_visible_and_performs_no_registration","test_partial_native_registration_conflict_releases_only_owned_new_keys","test_unconfirmed_release_retains_exact_retry_ownership_without_dispatch","test_changed_local_assignment_and_reentrant_modal_event_cannot_dispatch_stale_action","test_controller_never_reads_on_open_or_after_close_and_clears_pending_before_root_change","test_watch_suspends_in_modals_and_jobs_then_requires_explicit_review","test_reader_global_controls_dispatch_exact_buttons_then_detach_before_native_destroy","test_new_scope_cannot_use_previous_readers_buttons","test_win32_adapter_requires_exact_window_and_retains_native_no_repeat","test_direct_native_destroy_cleans_only_the_actual_owner_and_drops_late_timer","test_tray_uses_semantic_actions_and_uncertain_removal_is_visible_and_retryable","test_scope_changed_inside_actual_clipboard_read_drops_text_without_retention","test_missing_scope_during_poll_discards_pending_without_another_read","test_passive_clipboard_notice_changes_status_without_moving_keyboard_focus","test_same_path_replacement_revokes_watch_and_reader_before_control_access","test_one_shot_clipboard_rechecks_root_after_native_read_before_opening","test_explicit_clipboard_is_unbound_and_does_not_start_watch_or_playback","test_failed_native_close_remains_strongly_owned_and_retries_without_dispatch","test_direct_destroy_retains_uncertain_tray_until_explicit_ui_thread_retry","test_tray_destroy_failure_retains_exact_removed_icon_for_one_retry","test_root_change_attempts_all_native_cleanup_and_never_admits_new_scope_on_failure","test_native_cleanup_from_other_thread_refuses_before_handle_access","test_actual_hotkey_dispatch_releases_admission_after_same_path_root_replacement"]},"tests/ui/test_desktop_settings.py":{"count":4,"functions":["test_native_handler_saves_exact_choices_then_explicitly_enables_and_releases","test_invalid_assignment_and_unsaved_enable_leave_existing_file_and_keys_untouched","test_unknown_saved_assignment_can_be_removed_without_granting_it_runtime_authority","test_scope_change_and_late_callback_do_not_write_or_touch_destroyed_controls"]},"tests/ui/test_desktop_host_lifecycle.py":{"count":4,"functions":["test_normal_host_close_releases_native_owner_before_real_worker_finalizers","test_unconfirmed_native_close_vetoes_without_stopping_worker_then_retries","test_forced_host_close_keeps_actual_worker_cleanup_after_native_refusal","test_optional_desktop_rebind_failure_does_not_leave_host_on_old_catalog"]},"tests/speech/test_narration_receipt.py":{"count":73,"functions":["test_receipt_roundtrip_preserves_pcm_and_unicode_identity","test_invalid_snapshot_receipt_is_rejected","test_modified_wav_rejected_after_reopen","test_resealed_invalid_metadata_remains_inert_and_is_rejected","test_plain_wave_is_not_reclassified_as_provenance","test_same_pcm_cannot_retarget_saved_reading_snapshot","test_second_receipt_never_overwrites_first","test_receipt_budget_counts_audio_and_metadata","test_receipt_inspection_cancellation_preserves_bytes","test_wrong_pcm_hash_refuses_attachment","test_description_distinguishes_snapshot_from_selection","test_description_bounds_long_logical_snapshot_without_inventing_range"]},"tests/speech/test_publication_validation.py":{"count":12,"functions":["test_valid_callback_publishes_the_exact_measured_wave","test_callback_parent_replacement_rejects_identical_staging_bytes","test_callback_staging_hardlink_alias_cannot_be_published","test_utterance_geometry_cannot_change_between_measurement_and_copy","test_oversized_utterance_container_is_rejected_before_pcm_inspection","test_reopened_narration_source_publication"]},"tests/storage/test_local_schedules.py":{"count":43,"functions":["test_save_and_new_sessions_never_execute_or_auto_arm","test_actual_watched_folder_import_dedup_changed_bytes_and_no_empty_batches","test_actual_two_successive_backups_restore_independently_and_inactive","test_changed_current_vault_head_requires_new_explicit_token_review","test_exact_source_root_or_target_replacement_refuses_before_dispatch","test_same_path_library_replacement_rejects_stale_store_and_session","test_same_byte_policy_restore_invalidates_live_ticket_identity","test_expired_window_is_attention_without_catchup","test_utc_rollback_disarms_without_running_a_later_tick","test_close_and_disarm_cancel_only_their_live_ticket","test_actual_native_catalog_lock_denies_competing_dispatch","test_waiting_for_shared_admission_stops_before_any_source_scan","test_observer_failure_cannot_reverse_actual_watched_import","test_partial_cancel_keeps_exact_existing_batch_and_requires_review","test_actual_process_death_never_replays_unsettled_dispatch","test_returned_backup_receipt_survives_later_schedule_write_failure","test_actual_visible_dispatch_fsync_failure_does_not_execute","test_same_byte_competing_policy_creation_is_a_conflict","test_unknown_aliased_or_nested_schedule_namespace_fails_before_work","test_hardlinked_policy_and_hardlinked_watched_input_are_rejected","test_current_workspace_archive_denies_dispatch_without_authorizing_a_neighbor","test_saved_policy_validation_is_strict_and_passive","test_rule_count_limit_and_disabled_policy_never_auto_arms","test_replacement_inside_canonical_service_checkpoint_stops_unapproved_target","test_invalid_returned_snapshot_contract_cannot_be_classified_complete","test_returned_snapshot_survives_post_release_failure_without_auto_repetition","test_cross_operation_options_are_rejected_without_silent_ignoring"]},"tests/ui/test_local_schedules.py":{"count":21,"functions":["test_queued_save_never_crosses_exact_host_root_or_window_generation","test_late_committed_save_does_not_update_stale_native_view","test_default_no_arm_does_not_dispatch_or_start_timer","test_reviewed_rule_arms_on_existing_worker_then_real_timer_tick_is_single","test_busy_host_does_not_read_policy_files_from_timer","test_disarm_does_not_cancel_an_unrelated_host_operation","test_same_window_reopen_cannot_run_an_old_queued_operation","test_root_change_closes_only_schedule_view_and_disarms","test_close_retries_native_timer_release_and_retains_own_handle","test_confirmation_scope_change_cannot_arm_a_new_window","test_late_cancel_preserves_returned_result_and_disarms_repetition","test_submit_refusal_reenables_current_controls_without_new_owner","test_review_text_names_exact_scope_and_inert_restart_contract"]},"tests/storage/test_backup_local_schedules.py":{"count":23,"functions":["test_actual_full_restore_preserves_bytes_but_never_arms_or_opens_old_targets","test_actual_state_only_restore_retains_inert_policies_with_deleted_external_folders","test_resigned_invalid_schedule_state_refuses_before_target_creation","test_incoming_reserved_namespace_rejects_aliases_temporaries_and_unlisted_shapes","test_snapshot_omits_only_its_exact_transient_lock_not_unknown_lock_named_state","test_actual_32_rule_collection_bound_refuses_a_33rd_copied_policy","test_actual_copied_byte_tampering_is_not_trusted_from_a_recorded_digest","test_copied_schedule_cancellation_never_reads_external_target","test_common_backup_validator_requires_copied_workspace_but_accepts_archived_scope","test_exact_64k_policy_boundary_and_one_extra_byte_are_enforced_on_copied_bytes","test_actual_hardlinked_copied_policy_is_rejected_before_restore"]},"tests/packaging/test_local_schedules_cli.py":{"count":11,"functions":["test_actual_cli_save_and_list_are_utf8_and_never_arm","test_actual_cli_finite_watch_run_uses_verified_existing_batch","test_actual_cli_snapshot_restores_through_canonical_validator","test_actual_cli_requires_separate_run_approval","test_actual_cli_rejects_unbounded_or_invalid_foreground_lifetimes","test_actual_cli_does_not_initialize_a_missing_library","test_actual_cli_rejects_stale_rule_hash_and_preserves_disabled_declaration","test_actual_cli_zero_wait_disarms_a_future_rule_without_execution"]}}
+          for suite, contract in reviewed_feature_cases.items():
+              module = suite[:-3].replace('/', '.')
+              selected = [case for case in cases if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
+              assert len(selected) == contract['count'], (suite, len(selected), contract['count'])
+              assert len({case.get('name') for case in selected}) == len(selected), (suite, 'duplicate JUnit cases')
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
+              observed = {case.get('name', '').split('[', 1)[0] for case in selected}
+              assert set(contract['functions']) <= observed, (suite, sorted(set(contract['functions']) - observed))
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           expected = {'test_publishing': 48, 'test_audiobook': 17, 'test_audiobook_publication': 1, 'test_daisy_publishing': 29, 'test_daisy_boundaries': 15, 'test_publishing_boundaries': 15, 'test_publishing_handlers': 12, 'test_publishing_cli': 7, 'test_backup_publication_formats': 8}
@@ -655,7 +898,37 @@ jobs:
           ebook_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
           assert all(ebook_counts.values()) and ebook_counts['test_ebook_audio_lifetime'] == 14, ebook_counts
           assert ebook_required <= ebook_seen, sorted(ebook_required - ebook_seen)
-          completion_suites = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/storage/test_backup_book_audio.py","tests/audio/test_effect_presets.py","tests/audio/test_audio_conversion.py","tests/ui/test_audio_conversion.py","tests/storage/test_backup_effect_presets.py","tests/reader/test_braille.py","tests/ui/test_braille_actions.py","tests/studio/test_project_effects.py","tests/storage/test_backup_studio_effects.py","tests/integrations/test_dordiai_host_lifecycle.py","tests/ui/test_engine_settings_lifetime.py","tests/speech/test_listening.py","tests/speech/test_playback_devices.py","tests/ui/test_reader_listening_hooks.py","tests/speech/test_wave_output.py","tests/speech/test_playlist.py","tests/speech/test_playlist_recovery.py","tests/ui/test_audio_playback.py","tests/audio/test_conversion_batch.py","tests/ui/test_audio_conversion_batch.py","tests/studio/test_conversion_batch_cli.py","tests/speech/test_publication_validation.py"]
+          completion_suites = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/storage/test_backup_book_audio.py","tests/audio/test_effect_presets.py","tests/audio/test_audio_conversion.py","tests/ui/test_audio_conversion.py","tests/storage/test_backup_effect_presets.py","tests/reader/test_braille.py","tests/ui/test_braille_actions.py","tests/studio/test_project_effects.py","tests/storage/test_backup_studio_effects.py","tests/integrations/test_dordiai_host_lifecycle.py","tests/ui/test_engine_settings_lifetime.py","tests/speech/test_listening.py","tests/speech/test_playback_devices.py","tests/ui/test_reader_listening_hooks.py","tests/speech/test_wave_output.py","tests/speech/test_playlist.py","tests/speech/test_playlist_recovery.py","tests/ui/test_audio_playback.py","tests/audio/test_conversion_batch.py","tests/ui/test_audio_conversion_batch.py","tests/studio/test_conversion_batch_cli.py","tests/speech/test_publication_validation.py",
+              "tests/speech/test_reading_marks.py",
+              "tests/ui/test_reading_tools.py",
+              "tests/speech/test_reading_tabs.py",
+              "tests/ui/test_reader_tabs.py",
+              "tests/speech/test_reading_presentation.py",
+              "tests/speech/test_reading_presentation_handlers.py",
+              "tests/speech/test_reading_presentation_reader_hook.py",
+              "tests/ui/test_native_reading_presentation_driver.py",
+              "tests/speech/test_voice_preferences.py",
+              "tests/storage/test_voice_preferences_backup.py",
+              "tests/ui/test_voice_preferences_dialog.py",
+              "tests/ui/test_reader_view_hooks.py",
+              "tests/storage/test_reader_preferences_state.py",
+              "tests/studio/test_book_batch.py",
+              "tests/studio/test_book_cli.py",
+              "tests/ui/test_book_batch_dialog.py",
+              "tests/storage/test_backup_book_batches.py",
+              "tests/audio/test_recording_controls.py",
+              "tests/audio/test_recording_monitor.py",
+              "tests/storage/test_backup_recording_controls.py",
+              "tests/storage/test_desktop_preferences.py",
+              "tests/ui/test_desktop_integration.py",
+              "tests/ui/test_desktop_settings.py",
+              "tests/ui/test_desktop_host_lifecycle.py",
+              "tests/speech/test_narration_receipt.py",
+              "tests/storage/test_local_schedules.py",
+              "tests/ui/test_local_schedules.py",
+              "tests/storage/test_backup_local_schedules.py",
+              "tests/packaging/test_local_schedules_cli.py",
+          ]
           effects_required = set(["test_actual_saved_order_changes_audio_and_bypassed_chain_preserves_source_pcm","test_complete_library_backup_preserves_user_presets_without_generated_audio","test_preset_growth_after_initial_stat_respects_the_actual_read_limit","test_old_preset_owner_cannot_write_into_same_path_replacement","test_processed_copy_tempo_and_pitch_have_separate_measured_meanings","test_source_byte_mutation_is_detected_even_when_observed_metadata_is_unchanged","test_same_byte_competing_create_is_never_reconciled_as_our_success","test_committed_copy_remains_completed_after_late_cancellation","test_postcommit_directory_flush_failure_reports_saved_but_unconfirmed_durability","test_postcommit_staging_cleanup_retains_owner_without_reclassifying_output","test_cancellation_during_real_shared_admission_starts_no_copy_or_decoder","test_actual_blocked_capability_probe_is_cancelled_and_never_cached","test_decoder_cleanup_holds_staging_and_native_admission_until_actual_child_death","test_close_while_capability_review_is_queued_cancels_its_own_work","test_named_preset_is_not_written_after_nested_name_dialog_loses_source_scope","test_refused_capability_submission_keeps_modal_cleanup_and_current_status","test_low_rate_high_bitrate_conversion_must_admit_its_real_encoded_output_cap","test_actual_preset_commit_with_directory_flush_failure_retains_its_identity[False]","test_actual_preset_commit_with_directory_flush_failure_retains_its_identity[True]","test_preset_precommit_flush_failure_never_claims_a_saved_record","test_preset_same_byte_competitor_remains_a_create_only_conflict","test_preset_editor_reports_visible_commit_identity_after_actual_flush_failure"])
           effects_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
           effects_seen.update(case.get('name', '') for case in cases)
@@ -669,9 +942,9 @@ jobs:
               selected = [case for case in cases if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
               assert selected and all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
               completion_counts[suite] = len(selected)
-          completed_feature_expected = {"tests/reader/test_braille.py":40,"tests/ui/test_braille_actions.py":8,"tests/studio/test_project_effects.py":25,"tests/storage/test_backup_studio_effects.py":21,"tests/integrations/test_dordiai_host_lifecycle.py":13,"tests/ui/test_engine_settings_lifetime.py":33,"tests/speech/test_listening.py":28,"tests/speech/test_playback_devices.py":53,"tests/ui/test_reader_listening_hooks.py":24,"tests/speech/test_wave_output.py":31,"tests/speech/test_playlist.py":21,"tests/speech/test_playlist_recovery.py":36,"tests/ui/test_audio_playback.py":24,"tests/audio/test_conversion_batch.py":36,"tests/ui/test_audio_conversion_batch.py":21,"tests/studio/test_conversion_batch_cli.py":4,"tests/speech/test_publication_validation.py":12}
+          completed_feature_expected = {"tests/reader/test_braille.py":40,"tests/ui/test_braille_actions.py":8,"tests/studio/test_project_effects.py":25,"tests/storage/test_backup_studio_effects.py":21,"tests/integrations/test_dordiai_host_lifecycle.py":13,"tests/ui/test_engine_settings_lifetime.py":33,"tests/speech/test_listening.py":28,"tests/speech/test_playback_devices.py":53,"tests/ui/test_reader_listening_hooks.py":24,"tests/speech/test_wave_output.py":31,"tests/speech/test_playlist.py":21,"tests/speech/test_playlist_recovery.py":36,"tests/ui/test_audio_playback.py":24,"tests/audio/test_conversion_batch.py":42,"tests/ui/test_audio_conversion_batch.py":21,"tests/studio/test_conversion_batch_cli.py":4,"tests/speech/test_publication_validation.py":12,"tests/speech/test_reading_marks.py":36,"tests/ui/test_reading_tools.py":14,"tests/speech/test_reading_tabs.py":25,"tests/ui/test_reader_tabs.py":20,"tests/speech/test_reading_presentation.py":32,"tests/speech/test_reading_presentation_handlers.py":20,"tests/speech/test_reading_presentation_reader_hook.py":9,"tests/ui/test_native_reading_presentation_driver.py":9,"tests/speech/test_voice_preferences.py":23,"tests/storage/test_voice_preferences_backup.py":2,"tests/ui/test_voice_preferences_dialog.py":12,"tests/ui/test_reader_view_hooks.py":11,"tests/storage/test_reader_preferences_state.py":7,"tests/studio/test_book_batch.py":27,"tests/studio/test_book_cli.py":17,"tests/ui/test_book_batch_dialog.py":18,"tests/storage/test_backup_book_batches.py":33,"tests/audio/test_recording_controls.py":30,"tests/audio/test_recording_monitor.py":21,"tests/storage/test_backup_recording_controls.py":20,"tests/speech/test_narration_receipt.py":73,"tests/storage/test_local_schedules.py":43,"tests/ui/test_local_schedules.py":21,"tests/storage/test_backup_local_schedules.py":23,"tests/packaging/test_local_schedules_cli.py":11}
           assert all(completion_counts.get(name) == count for name, count in completed_feature_expected.items()), completion_counts
-          reviewed_queue_batch_required = set(["test_unconfirmed_native_close_retains_whole_listening_owner_after_ui_released","test_changed_prepared_copy_cannot_be_reaccepted_at_native_open","test_review_copy_and_hash_hold_one_actual_shared_reservation","test_declared_disk_refusal_precedes_playlist_review_or_input_creation","test_same_path_library_replacement_after_policy_discovery_prevents_copy","test_same_byte_competing_create_is_never_claimed_as_this_save","test_visible_save_warning_retries_even_when_current_matches_former_baseline","test_late_modal_review_cannot_touch_replacement_scope","test_real_backup_restores_saved_queue_after_original_and_library_deletion","test_standalone_state_roundtrip_keeps_queue_passive_and_uses_only_copied_pcm","test_resealed_queue_cannot_invent_pcm_dimensions","test_reserved_queue_aliases_and_descendants_fail_closed","test_incoming_saved_queue_lock_is_not_recovery_payload","test_saved_queue_record_budget_is_enforced_before_copy","test_actual_same_byte_competitor_is_uncertain_and_never_recovered","test_actual_child_death_retains_uncertain_output_without_hash_adoption[after-link]","test_actual_child_death_retains_uncertain_output_without_hash_adoption[before-success-receipt]","test_successful_output_with_failed_receipt_write_is_reported_without_retry","test_checkpoint_never_runs_after_actual_visible_commit","test_manifest_semantic_change_after_review_refuses_even_with_unchanged_stat","test_full_backup_keeps_external_manifest_external_and_restore_cannot_reauthorize_it","test_actual_cli_requires_explicit_review_then_exports_unicode_and_resumes_without_rewriting","test_default_no_review_never_admits_conversion","test_valid_callback_publishes_the_exact_measured_wave","test_callback_parent_replacement_rejects_identical_staging_bytes","test_callback_staging_hardlink_alias_cannot_be_published","test_utterance_geometry_cannot_change_between_measurement_and_copy[shorter]","test_utterance_geometry_cannot_change_between_measurement_and_copy[rate]","test_utterance_geometry_cannot_change_between_measurement_and_copy[truncated]","test_oversized_utterance_container_is_rejected_before_pcm_inspection","test_reopened_narration_source_publication[none]","test_reopened_narration_source_publication[foreign-workspace]","test_reopened_narration_source_publication[stale-revision]","test_reopened_narration_source_publication[forged-asset]","test_reopened_narration_source_publication[archived-topic]"])
+          reviewed_queue_batch_required = set(["test_unconfirmed_native_close_retains_whole_listening_owner_after_ui_released","test_changed_prepared_copy_cannot_be_reaccepted_at_native_open","test_review_copy_and_hash_hold_one_actual_shared_reservation","test_declared_disk_refusal_precedes_playlist_review_or_input_creation","test_same_path_library_replacement_after_policy_discovery_prevents_copy","test_same_byte_competing_create_is_never_claimed_as_this_save","test_visible_save_warning_retries_even_when_current_matches_former_baseline","test_late_modal_review_cannot_touch_replacement_scope","test_real_backup_restores_saved_queue_after_original_and_library_deletion","test_standalone_state_roundtrip_keeps_queue_passive_and_uses_only_copied_pcm","test_resealed_queue_cannot_invent_pcm_dimensions","test_reserved_queue_aliases_and_descendants_fail_closed","test_incoming_saved_queue_lock_is_not_recovery_payload","test_saved_queue_record_budget_is_enforced_before_copy","test_actual_same_byte_competitor_is_uncertain_and_never_recovered","test_actual_child_death_retains_uncertain_output_without_hash_adoption[after-link]","test_actual_child_death_retains_uncertain_output_without_hash_adoption[before-success-receipt]","test_successful_output_with_failed_receipt_write_is_reported_without_retry","test_checkpoint_never_runs_after_actual_visible_commit","test_manifest_semantic_change_after_review_refuses_even_with_unchanged_stat","test_full_backup_keeps_external_manifest_external_and_restore_cannot_reauthorize_it","test_actual_cli_requires_explicit_review_then_exports_unicode_and_resumes_without_rewriting","test_default_no_review_never_admits_conversion","test_valid_callback_publishes_the_exact_measured_wave","test_callback_parent_replacement_rejects_identical_staging_bytes","test_callback_staging_hardlink_alias_cannot_be_published","test_utterance_geometry_cannot_change_between_measurement_and_copy[shorter]","test_utterance_geometry_cannot_change_between_measurement_and_copy[rate]","test_utterance_geometry_cannot_change_between_measurement_and_copy[truncated]","test_oversized_utterance_container_is_rejected_before_pcm_inspection","test_reopened_narration_source_publication[none]","test_reopened_narration_source_publication[foreign-workspace]","test_reopened_narration_source_publication[stale-revision]","test_reopened_narration_source_publication[forged-asset]","test_reopened_narration_source_publication[archived-topic]","test_receipt_roundtrip_preserves_pcm_and_unicode_identity","test_invalid_snapshot_receipt_is_rejected","test_modified_wav_rejected_after_reopen","test_resealed_invalid_metadata_remains_inert_and_is_rejected","test_plain_wave_is_not_reclassified_as_provenance","test_same_pcm_cannot_retarget_saved_reading_snapshot","test_second_receipt_never_overwrites_first","test_receipt_budget_counts_audio_and_metadata","test_receipt_inspection_cancellation_preserves_bytes","test_wrong_pcm_hash_refuses_attachment","test_description_distinguishes_snapshot_from_selection","test_description_bounds_long_logical_snapshot_without_inventing_range"])
           reviewed_queue_batch_seen = {case.get('name', '') for case in cases}
           reviewed_queue_batch_base = {name.split('[', 1)[0] for name in reviewed_queue_batch_seen}
           assert all(name in (reviewed_queue_batch_seen if '[' in name else reviewed_queue_batch_base) for name in reviewed_queue_batch_required), sorted(reviewed_queue_batch_required - reviewed_queue_batch_seen)
@@ -699,6 +972,43 @@ jobs:
             try {
             & $python -I -B scripts/windows_recording_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native synthetic recording failed.' }
+          $verifyRecordingControls = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-recording.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "actual_pause_resume" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"status\":\"PASS\",\"actual_native_keys\":true,\"actual_ffmpeg_synthetic_capture\":true,\"verified_wav_export\":true,\"actual_pause_resume\":true,\"actual_selected_waveout_monitor\":true,\"retained_frame_ranges\":true,\"owned_cleanup_and_shared_admission\":true,\"file_destination\":\"CONTROLLED_FIXTURE\",\"physical_microphone\":\"NOT_RUN\",\"nvda\":\"NOT_RUN\",\"audio_listening\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("checks")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["export requests a new WAV without overwrite permission","captured segment stays within native fixture byte bound","opening the dialog does not discover or capture","standalone recording does not expose an unused selection action","recording progress has a native accessible gauge","single discovered input is not automatically selected","Start remains disabled until explicit selection","actual FFmpeg reports recorded PCM while UI remains responsive","Pause acknowledges actual capture exit before enabling Resume","paused recording retains its real shared admission lease","paused source does not acquire synthetic frames","Stop finalizes and verifies an actual retained recording","Pause Resume receipt binds unchanged contiguous PCM ranges","default capture opens no monitoring output","Stop reports retained completion","native export copies exact verified WAV without changing retained input","native export reports its completed destination","Cancel removes unfinished audio and preserves prior original","Cancel is announced distinctly","new dialog starts with dry monitoring disabled","monitor enumeration does not open output or select a fallback","monitoring Start requires explicit selected output","explicit dry monitoring owns an actual selected waveOut handle","monitored Pause waits for producer and output buffer quiescence","monitored Pause keeps resource reservation until final save","dry monitored pause omits wall-time frames","actual dry monitor records bounded submission evidence without changing saved PCM","monitored Stop releases all owned buffers and shared leases","Escape closes only after active capture cleanup","closing preserves exactly the verified original","second explicit monitoring dialog closes after completed cleanup","installed exact source: carr_library.audio.process","installed exact source: carr_library.audio.recording","installed exact source: carr_library.audio.recording_monitor","installed exact source: carr_library.speech._wave_output","installed exact source: carr_library.operations.broker","installed exact source: carr_library.operations._locks","installed exact source: carr_library.audio.cleanup","installed exact source: carr_library.speech.playback_devices","installed exact source: carr_library.ui.worker_lifetime","installed exact source: carr_library.ui.recording_dialog"])
+          assert required <= set(checks), sorted(required - set(checks))
+          assert any(name.startswith("native focus reaches ") and len(name) > 21 for name in checks), 'Missing native control-focus evidence'
+          selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, evidence in report['audio_runtime'].items():
+              binary = pathlib.Path(evidence['path']).resolve(strict=True)
+              expected = pin['output_files']['bin/' + name + '.exe']
+              assert binary == selected / 'bin' / (name + '.exe') and binary.samefile(selected / 'bin' / (name + '.exe'))
+              assert binary.stat().st_size == expected['size']
+              with binary.open('rb') as stream:
+                  actual = file_digest(stream, 'sha256').hexdigest()
+              assert evidence['sha256'] == actual == expected['sha256'], name
+          pathlib.Path("ci-v3-results/native-recording.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyRecordingControls | & $python -I -B -X utf8 - $env:CARR_V3_PUBLICATION_AUDIO
+          if ($LASTEXITCODE -ne 0) { throw 'Recording native capture, pause, selected-output and ownership evidence is incomplete.' }
             } catch {
               $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='recording'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
               Write-Host ('REQUIRED NATIVE BLOCK FAILED [recording]: ' + $_.Exception.Message)
@@ -748,6 +1058,277 @@ jobs:
               Write-Host ('REQUIRED NATIVE BLOCK FAILED [book-audio]: ' + $_.Exception.Message)
               @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
             }
+          try {
+          & $python -I -B -X utf8 scripts/windows_reading_presentation_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reading-presentation.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required reading-presentation native process failed.' }
+          $verifyReviewedReadingPresentation = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-reading-presentation.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "native_reader_lifecycle" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"result\":\"PASS\",\"native_reader_lifecycle\":\"PASS\",\"native_text_presentation\":\"PASS\",\"native_font_colour_pickers\":\"NOT_RUN\",\"speech_engine\":\"NOT_RUN\",\"manual_nvda\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("check_names")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["installed exact source: carr_library.speech.presentation","installed exact source: carr_library.speech.reading","installed exact source: carr_library.speech.session","installed exact source: carr_library.ui.reading_presentation","installed exact source: carr_library.ui.speech_dialog","installed exact source: carr_library.ui.ebook_model","installed exact source: carr_library.durable_state","installed exact source: carr_library.ui.builtin_keyboard_commands","installed exact source: carr_library.ui.reading_shortcuts","actual native Windows controls","both real Reader modal lifetimes completed","restart restores exact edited text and selected native font","restart retains source and canonical undo history","actual keyboard edit retains native undo","actual saved draft retains immutable original source and an edit","actual native zoom entry is exact","native preview remains separate from reader and durable state","native font colors and zoom match the saved explicit profile","appearance preserves exact Unicode text native selection caret and undo","appearance does not edit saved reading source or history","picker fixture selections were explicit and finite","appearance close restores reader keyboard focus","OS reset is a preview until explicitly applied","explicit reset saves defaults and restores native OS presentation","canonical undo survives appearance and reader restart","original source remains exact after undo and new save","actual native reader workflow completed twice"])
+          assert required <= set(checks), sorted(required - set(checks))
+          assert type(report.get("checks")) is int and report["checks"] == len(checks), 'Native check count differs from its evidence'
+          names = set(["carr_library.speech.presentation","carr_library.speech.reading","carr_library.speech.session","carr_library.ui.reading_presentation","carr_library.ui.speech_dialog","carr_library.ui.ebook_model","carr_library.durable_state","carr_library.ui.builtin_keyboard_commands","carr_library.ui.reading_shortcuts"])
+          assert set(report['source_identity']) == names
+          for name in sorted(names):
+              expected = pathlib.Path('src').joinpath(*name.split('.')).with_suffix('.py')
+              assert report['source_identity'][name] == sha256(expected.read_bytes()).hexdigest(), name
+          pathlib.Path("ci-v3-results/native-reading-presentation.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedReadingPresentation | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required reading-presentation native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='reading-presentation'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [reading-presentation]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+          try {
+          & $python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reading-tabs.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required reading-tabs native process failed.' }
+          $verifyReviewedReadingTabs = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-reading-tabs.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "native_reading_tabs" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"result\":\"PASS\",\"native_reading_tabs\":\"PASS\",\"keyboard_and_restart\":\"PASS\",\"voice_inventory\":\"EXPLICIT_EMPTY_FIXTURE\",\"speech_engine\":\"NOT_RUN\",\"manual_nvda\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("check_names")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["installed exact source: carr_library.speech.tabs","installed exact source: carr_library.speech.session","installed exact source: carr_library.speech.reading","installed exact source: carr_library.ui.reader_tabs","installed exact source: carr_library.ui.speech_dialog","installed exact source: carr_library.speech.marks","installed exact source: carr_library.ui.reading_tools","installed exact source: carr_library.durable_state","installed exact source: carr_library.ui.builtin_keyboard_commands","installed exact source: carr_library.ui.reading_shortcuts","actual native Windows notebook and text controls","both owned reader modal lifetimes completed","first native tab contains exact Unicode source with native line endings","first native keyboard edit is retained","first copy saves original and independent undo","actual native bookmark name and list controls are available","native bookmark action persists exact text and cursor","native paragraph split is undoable and preserves the original","native bookmark navigation restores cursor and reader focus","native paragraph Undo restores the bookmarked text version","Control T creates and focuses a separate native page","second copy receives an actual independent keyboard edit","separate durable identities and originals","Control Tab restores the first native editor and text","Control Tab restores the second text and cursor","fresh reader recovers both pages and selected identity","restart restores saved cursor with no installed voice","restart retains first edited Unicode text","restart retains the native-created bookmark and exact version","first undo is independent after actual reader restart","first undo preserves second history and original source","actual native tabs workflow completed twice"])
+          assert required <= set(checks), sorted(required - set(checks))
+          assert type(report.get("checks")) is int and report["checks"] == len(checks), 'Native check count differs from its evidence'
+          names = set(["carr_library.speech.tabs","carr_library.speech.session","carr_library.speech.reading","carr_library.ui.reader_tabs","carr_library.ui.speech_dialog","carr_library.speech.marks","carr_library.ui.reading_tools","carr_library.durable_state","carr_library.ui.builtin_keyboard_commands","carr_library.ui.reading_shortcuts"])
+          assert set(report['source_identity']) == names
+          for name in sorted(names):
+              expected = pathlib.Path('src').joinpath(*name.split('.')).with_suffix('.py')
+              assert report['source_identity'][name] == sha256(expected.read_bytes()).hexdigest(), name
+          pathlib.Path("ci-v3-results/native-reading-tabs.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedReadingTabs | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required reading-tabs native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='reading-tabs'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [reading-tabs]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+          try {
+          & $python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-voice-preferences.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required voice-preferences native process failed.' }
+          $verifyReviewedVoicePreferences = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-voice-preferences.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "native_voice_preferences" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"result\":\"PASS\",\"native_voice_preferences\":\"PASS\",\"actual_reader_worker\":\"PASS\",\"voice_inventory\":\"SYNTHETIC_DECLARATIONS\",\"speech_engine\":\"NOT_RUN\",\"acoustic_quality\":\"NOT_RUN\",\"manual_nvda\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("check_names")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["installed exact source: carr_library.runtime_settings","installed exact source: carr_library.durable_state","installed exact source: carr_library.speech.runtime","installed exact source: carr_library.speech.reading","installed exact source: carr_library.speech.session","installed exact source: carr_library.speech.tabs","installed exact source: carr_library.ui.voice_preferences","installed exact source: carr_library.ui.speech_dialog","installed exact source: carr_library.ui.builtin_keyboard_commands","installed exact source: carr_library.ui.reading_shortcuts","installed exact source: carr_library.ui.worker_lifetime","actual native Windows preference controls","reader cleanup settles the original provider once","preference workflow never synthesizes or plays audio","opening preferences is silent and does not write","native favorite persists","native exact-language default persists","native profile applies exact declared controls","changed library refuses native save","changed library suppresses stale native notices","closed modal has no pending worker callback","actual reader save keeps selected voice without a project picker","actual reader preferences workflow and cleanup completed"])
+          assert required <= set(checks), sorted(required - set(checks))
+          assert type(report.get("checks")) is int and report["checks"] == len(checks), 'Native check count differs from its evidence'
+          names = set(["carr_library.runtime_settings","carr_library.durable_state","carr_library.speech.runtime","carr_library.speech.reading","carr_library.speech.session","carr_library.speech.tabs","carr_library.ui.voice_preferences","carr_library.ui.speech_dialog","carr_library.ui.builtin_keyboard_commands","carr_library.ui.reading_shortcuts","carr_library.ui.worker_lifetime"])
+          assert set(report['source_identity']) == names
+          for name in sorted(names):
+              expected = pathlib.Path('src').joinpath(*name.split('.')).with_suffix('.py')
+              assert report['source_identity'][name] == sha256(expected.read_bytes()).hexdigest(), name
+          pathlib.Path("ci-v3-results/native-voice-preferences.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedVoicePreferences | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required voice-preferences native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='voice-preferences'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [voice-preferences]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+          try {
+          & $python -I -B -X utf8 scripts/windows_book_batch_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-book-batch.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required book-batch native process failed.' }
+          $verifyReviewedBookBatch = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-book-batch.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "native_sapi_render" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"status\":\"PASS\",\"native_keyboard\":\"PASS\",\"native_sapi_render\":\"PASS\",\"installed_modules\":\"PASS\",\"manual_keyboard\":\"NOT_RUN\",\"nvda\":\"NOT_RUN\",\"listening_quality\":\"NOT_RUN\",\"physical_device\":\"NOT_RUN\",\"private_model_inference\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("checks")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["real native Windows batch controls","existing Book command uses canonical command_id","existing host owns one serial worker and original scope","real Multiple books action opens the existing batch workspace","actual native library chooser selects two existing books","choosing books does not prepare or synthesize","per-book native review remains nonexecuting","per-book review has native status focus","nested review returns to its owning batch without jobs","whole batch preview contains immutable order and source identities","whole batch preview still starts no jobs or speech","actual default-No batch confirmation creates no jobs","Prepare retains two existing schema2 Studio jobs without speech","native reordered plans retain exact independent voice controls and formats","all reviewed output folders are still empty","actual native Run completes both ordered source-bound jobs","actual SAPI follows the exact reviewed order and controls","literal original texts are narrated without Studio cues","completed batch returns actual native status focus","explicit native resume verifies completed bytes without synthesis","reopened batch has no automatic resume authority","retained original assets remain byte-identical","batch narration creates no quotation approval","native batch close preserves borrowed Book service","native Escape unwinds both existing Book workspaces","native batch host shutdown retains no failed owner","explicit selected audio executable: ffmpeg","pinned audio executable bytes: ffmpeg","explicit selected audio executable: ffprobe","pinned audio executable bytes: ffprobe","actual installed SAPI is available for reviewed book 1","actual rendered batch PCM: 1","exact batch source receipt: 1","actual installed SAPI is available for reviewed book 2","actual rendered batch PCM: 2","exact batch source receipt: 2","confirmation defaults to No: Use reviewed book in batch","confirmation defaults to No: Prepare reviewed batch","confirmation defaults to No: Run reviewed book batch","exact installed source: carr_library.studio.book_batch","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.studio.book_cli","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.book_batch_dialog","exact installed source: carr_library.backup_book_batches","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app"])
+          assert required <= set(checks), sorted(required - set(checks))
+          selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, evidence in report['audio_runtime'].items():
+              binary = pathlib.Path(evidence['path']).resolve(strict=True)
+              expected = pin['output_files']['bin/' + name + '.exe']
+              assert binary == selected / 'bin' / (name + '.exe') and binary.samefile(selected / 'bin' / (name + '.exe'))
+              assert binary.stat().st_size == expected['size']
+              with binary.open('rb') as stream:
+                  actual = file_digest(stream, 'sha256').hexdigest()
+              assert evidence['sha256'] == actual == expected['sha256'], name
+          pathlib.Path("ci-v3-results/native-book-batch.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedBookBatch | & $python -I -B -X utf8 - $env:CARR_V3_PUBLICATION_AUDIO
+          if ($LASTEXITCODE -ne 0) { throw 'Required book-batch native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='book-batch'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [book-batch]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+          try {
+          & $python -I -B -X utf8 scripts/windows_import_scan_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-import-scan.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required import-scan native process failed.' }
+          $verifyReviewedImportScan = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-import-scan.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "actual_isolated_imports" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"result\":\"PASS\",\"native_controls\":\"PASS\",\"actual_isolated_imports\":\"PASS\",\"native_folder_picker\":\"NOT_RUN\",\"nvda\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("checks")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["actual wx Windows controls","existing-folder picker contract","native budget controls are actual SpinCtrls","first native page retains two queued rows without importing","native page budget is saved exactly","first page explicitly reports remaining source entries","native exclusion affects only the selected row","explicit first-page run uses actual verified isolated child","first-page exact quotation is retained","native continuation creates the exact next saved page without auto import","continuation preserves reviewed scope and OCR settings","last native source page proves complete traversal and exact count","second native page imports exactly its selected original","reopen preserves previous imports exclusions and stable request identities","actual import and scanning release every resource lease","all selected source bytes remain unchanged","native completion focus is readable","native continuation scenario completed","native host shutdown settles all registered owners","original desktop HWND is destroyed","installed module: carr_library.application","exact candidate installed bytes: carr_library.application","installed module: carr_library.ingest.batch_scan","exact candidate installed bytes: carr_library.ingest.batch_scan","installed module: carr_library.ingest.batch_pages","exact candidate installed bytes: carr_library.ingest.batch_pages","installed module: carr_library.ingest.batches","exact candidate installed bytes: carr_library.ingest.batches","installed module: carr_library.ui.import_center","exact candidate installed bytes: carr_library.ui.import_center","installed module: carr_library.ui.desktop_app","exact candidate installed bytes: carr_library.ui.desktop_app","installed module: carr_library.ingest.worker","exact candidate installed bytes: carr_library.ingest.worker","installed module: carr_library.ingest.publication","exact candidate installed bytes: carr_library.ingest.publication","installed module: carr_library.ui.worker_lifetime","exact candidate installed bytes: carr_library.ui.worker_lifetime"])
+          assert required <= set(checks), sorted(required - set(checks))
+          assert any(name.startswith("named native control: ") and len(name) > 22 for name in checks), 'Missing native control-focus evidence'
+          assert any(name.startswith("native Space down: ") and len(name) > 19 for name in checks), 'Missing native control-focus evidence'
+          assert any(name.startswith("native Space up: ") and len(name) > 17 for name in checks), 'Missing native control-focus evidence'
+          import sysconfig
+          native_origins = report['origins']
+          expected_names = set(["carr_library.application","carr_library.ingest.batch_scan","carr_library.ingest.batch_pages","carr_library.ingest.batches","carr_library.ui.import_center","carr_library.ui.desktop_app","carr_library.ingest.worker","carr_library.ingest.publication","carr_library.ui.worker_lifetime"])
+          assert isinstance(native_origins, dict) and set(native_origins) == expected_names
+          installed = pathlib.Path(sysconfig.get_path('purelib')).resolve(strict=True)
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          for name, evidence in native_origins.items():
+              actual = pathlib.Path(evidence['path']).resolve(strict=True)
+              expected = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              assert evidence['sha256'] == sha256(actual.read_bytes()).hexdigest() == sha256(expected.read_bytes()).hexdigest(), name
+          pathlib.Path("ci-v3-results/native-import-scan.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedImportScan | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required import-scan native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='import-scan'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [import-scan]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+          try {
+          $runReviewedFederatedSearch = @'
+          import os, runpy, sys
+          from carr_library.native_runtime import activate_bundled_runtime
+          handle = activate_bundled_runtime()
+          if os.environ.get('CARR_PROGRAM_DIR'):
+              assert handle is not None, 'Installed native dependency handle is required.'
+          try:
+              runpy.run_path(sys.argv[1], run_name='__main__')
+          finally:
+              if handle is not None:
+                  handle.close()
+          '@
+          $runReviewedFederatedSearch | & $python -I -B -X utf8 - (Resolve-Path 'tests/ui/probe_source_open_native.py').Path 2>&1 | Tee-Object 'ci-v3-results/native-federated-search.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required federated-search native process failed.' }
+          $verifyReviewedFederatedSearch = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-federated-search.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "federated_search" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"status\":\"PASS\",\"platform\":\"Windows\",\"windows_nvda\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("checks")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["actual TXT imports","native search event","exact selected result","native original-source event","verified viewing-copy bytes","retained original unchanged","controls restored","search-status focus"])
+          assert required <= set(checks), sorted(required - set(checks))
+          nested = report['federated_search']
+          assert nested.get('status') == 'PASS' and nested.get('windows_nvda') == 'NOT_RUN'
+          nested_required = set(["fresh original context and result focus restoration","fresh verified native clipboard copy","native topic chooser saves only in result library","native builder Cancel preserves query mode results and source scope","native builder Use preserves checked libraries and filters while withdrawing stale results","actual multi-library Advanced AND OR NOT and NEAR search with metadata filter","advanced result authentic quotation copied to native clipboard","current-library-only default","explicit multi-library native search event","library and verification labels","worker controls disabled and restored","native Next and Previous pages preserve unchanged source order","last page stops navigation without duplicate source results","page navigation reuses the selected libraries and query","actual native source-window continuation across 105 retained segments","source-window Previous restores exact source order without autoplay or scope change","explicit native 300-second search budget","option changes invalidate previous results","cancelled search exposes no rows","close veto while worker active","desktop scope and selection cache preserved"])
+          assert isinstance(nested.get('checks'), list) and nested_required <= set(nested['checks']), sorted(nested_required - set(nested.get('checks', [])))
+          import sysconfig
+          native_origins = nested['origins']
+          expected_names = set(["carr_library.application","carr_library.search.paging","carr_library.search.federated","carr_library.search.literal","carr_library.search.semantic_windows","carr_library.search.thematic","carr_library.semantic","carr_library.ui.federated_search","carr_library.ui.desktop_app"])
+          assert isinstance(native_origins, dict) and set(native_origins) == expected_names
+          installed = pathlib.Path(sysconfig.get_path('purelib')).resolve(strict=True)
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          for name, evidence in native_origins.items():
+              actual = pathlib.Path(evidence['path']).resolve(strict=True)
+              expected = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              assert evidence['sha256'] == sha256(actual.read_bytes()).hexdigest() == sha256(expected.read_bytes()).hexdigest(), name
+          assert report['desktop_app_sha256'] == sha256(pathlib.Path('src/carr_library/ui/desktop_app.py').read_bytes()).hexdigest()
+          assert report['source_file_sha256'] == sha256(pathlib.Path('src/carr_library/reader/source_file.py').read_bytes()).hexdigest()
+          assert nested['federated_ui_sha256'] == native_origins['carr_library.ui.federated_search']['sha256']
+          pathlib.Path("ci-v3-results/native-federated-search.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedFederatedSearch | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required federated-search native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='federated-search'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [federated-search]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
           try {
           & $python -I -B scripts/windows_effect_chain_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-effects.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Actual installed native ordered effects failed.' }
@@ -1090,6 +1671,82 @@ jobs:
           '@
             $verifyDaisy | & $python -I -B -
             if ($LASTEXITCODE -ne 0) { throw 'DAISY validator identity or exact three-case evidence is incomplete.' }
+          try {
+          & $python -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-v3-results/native-desktop-integration.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required desktop-integration native process failed.' }
+          $verifyReviewedDesktopIntegration = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-desktop-integration.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "native_windows" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"status\":\"PASS\",\"native_windows\":\"EXECUTED\",\"speech_audio\":\"NOT_RUN\",\"nvda\":\"NOT_RUN\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("checks")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["native Space","open actual Windows clipboard","write synthetic native clipboard text","native main window has an actual HWND","native tray available","native saved choices remain inactive","actual system tray icon installed","native global key explicitly active","native reader contains the exact admitted copy","global controls bind actual canonical reader buttons","native Ctrl+S explicitly saves only the admitted reading copy","explicit clipboard draft remains unbound to retained sources","native global Stop key down","held global key dispatches once without autorepeat","native global Stop key up","opening native desktop starts no clipboard observation or OS hotkeys","explicit Hide retains an actual tray icon","actual global Show key from another window","reserve real conflict key","conflict keeps dispatch off and no partial owned registrations","release real conflict key","watching never opened a reader or persisted its pending text","closed native reader detached its global controls","clipboard recovery is an independent exact reading derivative","manual draft and retained original survived clipboard reading","production reading never rewrote native clipboard","explicit clipboard action is registered by semantic identity","second reader detached before returning to desktop","one-shot clipboard keeps the prior watched copy and manual recovery exact","one-shot clipboard action never modifies the retained original","Stop watching discards in-memory source text","tray disable leaves the window reachable","actual native main window was destroyed","existing host owner finalizers completed without a retained failure","close owns all timer and native-key cleanup","closed owner actually released the OS key","probe releases the recovered key","sealed installed origin: carr_library.desktop_preferences","sealed installed origin: carr_library.ui.desktop_app","sealed installed origin: carr_library.ui.desktop_integration","sealed installed origin: carr_library.ui.desktop_settings","sealed installed origin: carr_library.ui.speech_dialog","sealed installed origin: carr_library.ui.keyboard_settings","sealed installed origin: carr_library.ui.command_registry","sealed installed origin: carr_library.ui.worker_lifetime","sealed installed origin: carr_library.ui.worker_cleanup","sealed installed origin: carr_library.speech.session","sealed installed origin: carr_library.native_runtime"])
+          assert required <= set(checks), sorted(required - set(checks))
+          names = set(["carr_library.desktop_preferences","carr_library.ui.desktop_app","carr_library.ui.desktop_integration","carr_library.ui.desktop_settings","carr_library.ui.speech_dialog","carr_library.ui.keyboard_settings","carr_library.ui.command_registry","carr_library.ui.worker_lifetime","carr_library.ui.worker_cleanup","carr_library.speech.session","carr_library.native_runtime"])
+          assert isinstance(report['installed_modules'], dict) and set(report['installed_modules']) == names
+          for name in sorted(names):
+              expected = pathlib.Path('src').joinpath(*name.split('.')).with_suffix('.py')
+              assert report['installed_modules'][name] == sha256(expected.read_bytes()).hexdigest(), name
+          pathlib.Path("ci-v3-results/native-desktop-integration.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedDesktopIntegration | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required desktop-integration native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='desktop-integration'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [desktop-integration]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+          try {
+          & $python -I -B -X utf8 scripts/windows_local_schedules_smoke.py --source-root (Join-Path (Get-Location) 'src') 2>&1 | Tee-Object 'ci-v3-results/local-schedules-native.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required local-schedules native process failed.' }
+          $verifyReviewedLocalSchedules = @'
+          from hashlib import file_digest, sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/local-schedules-native.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and "actual_timer" in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native report is missing or ambiguous.'
+          report = reports[0]
+          expected_fields = json.loads("{\"status\":\"PASS\",\"native_keyboard\":\"PASS\",\"actual_timer\":\"PASS\",\"actual_watch_import\":\"PASS\",\"canonical_backup_restore\":\"PASS\",\"external_automations\":\"NOT_USED\"}")
+          assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
+          checks = report.get("checks")
+          assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
+          required = set(["actual host installed one local scheduling controller","actual command uses current canonical registry","scheduler owns no private executor or progress hub","folder picker is requested by the actual local schedule dialog","initial saved rule inventory is empty and inactive","native review text is read-only","native save creates no import or active timer","saved rule status has readable focus","default-No arm leaves actual source and services untouched","actual native timer dispatched one verified isolated import","scheduled import used the current worker off the GUI thread","watched source bytes are unchanged","native completed status remains readable and focused","native Disarm stops repeat admission and native timer","native backup save creates no snapshot","native backup review displays exact selected repository","actual native timer dispatched one canonical complete snapshot","both operations used the same current host worker","native result exposes actual snapshot identity","reopened native window is inactive despite saved completed rules","actual native menu command dispatched","native Close ended the schedule window","one explicit source folder and one explicit repository were chosen","scheduled snapshot passes independent complete-backup verification","actual restored library contains both exact source revisions","restoration arms no timer and runs no saved rule","restoration leaves the original current host library selected","same native menu reopens inactive declarations","second native Close completed","passive reopening never recreated missing external folders","actual host shutdown has no retained worker cleanup failure","installed source origin before: carr_library.local_schedule_model","installed source bytes before: carr_library.local_schedule_model","installed source origin after: carr_library.local_schedule_model","installed source bytes after: carr_library.local_schedule_model","installed source origin before: carr_library.local_schedules","installed source bytes before: carr_library.local_schedules","installed source origin after: carr_library.local_schedules","installed source bytes after: carr_library.local_schedules","installed source origin before: carr_library.local_schedules_cli","installed source bytes before: carr_library.local_schedules_cli","installed source origin after: carr_library.local_schedules_cli","installed source bytes after: carr_library.local_schedules_cli","installed source origin before: carr_library.backup_local_schedules","installed source bytes before: carr_library.backup_local_schedules","installed source origin after: carr_library.backup_local_schedules","installed source bytes after: carr_library.backup_local_schedules","installed source origin before: carr_library.ui.local_schedules","installed source bytes before: carr_library.ui.local_schedules","installed source origin after: carr_library.ui.local_schedules","installed source bytes after: carr_library.ui.local_schedules","installed source origin before: carr_library.incremental_backup","installed source bytes before: carr_library.incremental_backup","installed source origin after: carr_library.incremental_backup","installed source bytes after: carr_library.incremental_backup","installed source origin before: carr_library.sync.vault","installed source bytes before: carr_library.sync.vault","installed source origin after: carr_library.sync.vault","installed source bytes after: carr_library.sync.vault","installed source origin before: carr_library.ingest.batches","installed source bytes before: carr_library.ingest.batches","installed source origin after: carr_library.ingest.batches","installed source bytes after: carr_library.ingest.batches","installed source origin before: carr_library.operations.broker","installed source bytes before: carr_library.operations.broker","installed source origin after: carr_library.operations.broker","installed source bytes after: carr_library.operations.broker","installed source origin before: carr_library.operations._locks","installed source bytes before: carr_library.operations._locks","installed source origin after: carr_library.operations._locks","installed source bytes after: carr_library.operations._locks","installed source origin before: carr_library.durable_state","installed source bytes before: carr_library.durable_state","installed source origin after: carr_library.durable_state","installed source bytes after: carr_library.durable_state","installed source origin before: carr_library.ui.desktop_app","installed source bytes before: carr_library.ui.desktop_app","installed source origin after: carr_library.ui.desktop_app","installed source bytes after: carr_library.ui.desktop_app"])
+          assert required <= set(checks), sorted(required - set(checks))
+          names = set(["carr_library.local_schedule_model","carr_library.local_schedules","carr_library.local_schedules_cli","carr_library.backup_local_schedules","carr_library.ui.local_schedules","carr_library.incremental_backup","carr_library.sync.vault","carr_library.ingest.batches","carr_library.operations.broker","carr_library.operations._locks","carr_library.durable_state","carr_library.ui.desktop_app"])
+          assert isinstance(report.get('origins'), dict) and set(report['origins']) == names
+          for name in sorted(names):
+              expected = pathlib.Path('src').joinpath(*name.split('.')).with_suffix('.py')
+              assert report['origins'][name] == sha256(expected.read_bytes()).hexdigest(), name
+          pathlib.Path("ci-v3-results/local-schedules-native.json").write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'required_native_checks': len(required), 'observed_native_checks': len(checks), 'qualification': 'Exact installed native controls and declared fixture boundaries only'}, ensure_ascii=True), flush=True)
+          '@
+          $verifyReviewedLocalSchedules | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Required local-schedules native evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='local-schedules'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [local-schedules]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
             @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
             if ($requiredPublicationNativeFailures.Count -ne 0) {
               throw ('Required native acceptance failed after independent checks: ' + (($requiredPublicationNativeFailures.ToArray() | ForEach-Object { $_.block }) -join ', '))

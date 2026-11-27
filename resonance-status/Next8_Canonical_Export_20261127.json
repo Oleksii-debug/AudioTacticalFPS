@@ -1,0 +1,24 @@
+{
+  "schema": "resonance-canonical-export-reconciliation/1",
+  "canonical_commit": "a333f0723df107aa60b60b8ee2c5ba9f85b25475",
+  "integration_parent": "385377eee0c17139f46e79a7584e3369f88d91fc",
+  "upstream_pr": 191,
+  "status": "STATIC_COMPOSITION_NOT_RUN",
+  "policy": "Port early destination metadata refusal into the existing stronger held-descriptor, route-recheck and bytes-digest implementation. Preserve exact ExportDestination.state bytes and content_sha256 compatibility, bounded reads, cancellation, native ChangeTime, no-clobber and postcommit receipt cleanup.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "554b2e455cac8a9251632c3611cd2be4679e4e80"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_reconciliation.py",
+      "sha": "42bec92257c9c6c05c417724b14d95453f3e1a31"
+    }
+  ],
+  "expected_test_cases": 20,
+  "notes": [
+    "Original16 export reconciliation cases retained; incoming4cases retained and additionally assert no native metadata query after stale replacement.",
+    "No adoption of older _content_fingerprint route behavior or class shape."
+  ],
+  "peer_review": "Static peer caught a shared-context hunk moving the prior no-inspection assertion; restored it to its original test. All original16/new4 assertions retained."
+}

@@ -17,7 +17,7 @@ def test_invalid_limit(limit):
         thematic.search('A', [page()], 'railway', limit=limit)
 
 
-@pytest.mark.parametrize('timeout', [True, 0, -1, float('nan'), float('inf'), 61])
+@pytest.mark.parametrize('timeout', [True, 0, -1, float('nan'), float('inf'), 86401])
 def test_invalid_timeout(timeout):
     with pytest.raises(ValueError):
         thematic.search('A', [page()], 'railway', timeout=timeout)

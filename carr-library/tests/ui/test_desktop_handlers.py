@@ -137,6 +137,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('recording_dialog', 'install_recording_actions'),
                               ('citation_formatting', 'install_citation_actions'),
                               ('studio_dialog', 'install_studio_actions'),
+                              ('audio_playback', 'install_audio_playback'),
                               ('book_audio_dialog', 'install_book_audio_actions'),
                               ('incremental_backup_dialog', 'install_incremental_backup'),
                               ('portable_sync', 'install_portable_sync_actions'),
@@ -146,7 +147,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('save_actions', 'install_save_actions'),
                               ('document_conversion', 'install_conversion_actions'),
                               ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions')]:
+                              ('translation_dialog', 'install_translation_actions'),
+                              ('desktop_integration', 'install_desktop_integration'),
+                              ('local_schedules', 'install_local_schedules')]:
         callback = Mock()
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,

@@ -3,6 +3,8 @@
 A separately loaded, approved local tokenizer must have padding and truncation
 disabled. Only the prefixless 128-token MiniLM contract is supported here.
 """
+from .paging import MAX_TIMEOUT_SECONDS
+
 from dataclasses import replace
 from hashlib import sha256
 from time import monotonic
@@ -80,7 +82,7 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     if (tokenizer is None or not callable(semantic_ranker) or not callable(cancelled)
             or not isinstance(workspace, str) or not workspace
             or type(limit) is not int or not 1 <= limit <= 100
-            or type(timeout) not in (int, float) or not 0 < timeout <= 60):
+            or type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS):
         raise ValueError('invalid semantic window scope or budget')
     deadline = monotonic() + timeout
     latched = False

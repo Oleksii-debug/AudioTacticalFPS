@@ -1,0 +1,278 @@
+{
+  "schema": "carr.integration-gates-successor/1",
+  "status": "READY_FOR_ROOT_COMPOSITION_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_context": {
+    "integration_parent": "f68c53fb653812d4da838fa67d92941e7017eadb",
+    "canonical_parent": "a44fac04072389caa40e0d6e799b13797712f797",
+    "source_owned_by": "root",
+    "no_commit_or_ref_mutation": true
+  },
+  "lineage": {
+    "previous_complete_manifest": "2d8d4741cf3a8a8732115a9d84ed7e9fd79447b9",
+    "previous_narration_gate_manifest": "380deb73f4bf75ed653b210116da9c16cd31b4ad",
+    "scheduler_manifest": "77a619d71686b010fba23ee7796cea4463f493eb",
+    "reader_fixture_manifest": "52e75df73edce78660e1c675026da39a686daaf2",
+    "gate_patch": "96a260c2952a656215cb4a112cebe8c98511e443"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "base": "9b854593953fb1196ef567aaf37d5b02daa62760",
+      "sha": "6847510e152b22c6a0eaacfe1a338889c10a026c",
+      "chars": 357695,
+      "readback": "EXACT"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "base": "4c4d0273968bcde504f9cf30688b11378ebc7795",
+      "sha": "08e8f65fc634ba230d8656d9140f5e0175dbf031",
+      "chars": 246425,
+      "readback": "EXACT"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "base": "86c81ded4ccf1069245ea26ad797d2af5b37e978",
+      "sha": "0a318607b4fe4f96082b51a02a8cfc1c8c8383e4",
+      "chars": 14480,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "base": "d882b4730c101ed6777d967ea9dcf5fec215652d",
+      "sha": "2bcaa3b3a6410e28e8d35b0cdb33852b4aeae864",
+      "chars": 27438,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "base": "02c89435d1ebd070fb619ab12111242152662679",
+      "sha": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+      "owner": "canonical_regression",
+      "readback": "FETCHED_EXACT",
+      "change": "Root-approved Windows CPython3.11 timed diagnostic ownership only; existing strict policy and 600/900 bounds preserved."
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "base": "8b0ced0c5f2bdab5a59acbe7af4d0ed7a7205297",
+      "sha": "33d9b62c6aabeea518751aaef3cafb865ab7f919",
+      "owner": "canonical_regression",
+      "readback": "FETCHED_EXACT",
+      "expected_methods": 32
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation_handlers.py",
+      "base": "6c626cd42a05a51cead09c82c5e6bb28058a21b5",
+      "sha": "11a5fbdb2118cf99a56bdc1f5f717e510f515b63",
+      "readback": "EXACT",
+      "change": "Fixture-only: embeds exact donor native stand-ins while retaining all20 test bodies."
+    },
+    {
+      "path": "carr-library/tests/reader/test_reading_desk.py",
+      "base": "6353bf195c671dcb49e1bda33dcecc9c6376d246",
+      "sha": "310bf6c90668fe00c2eb2cd60a55412f7eed3710",
+      "readback": "EXACT",
+      "change": "Fixture-only: forwards the actual cancelled keyword in two existing deadline/cancellation wrappers."
+    }
+  ],
+  "required_preexisting_source": [
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "sha": "f1c6525b4e01fbc9cefefd00aa97cb25191fe3b5",
+      "reason": "Only accepted happy edit/read setup timeout30 with explicit initial complete; product budgets unchanged."
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "sha": "3782ee9348d35d4f732cc5df778d9845f1a102bc",
+      "reason": "Parent short parameter IDs preserve exact oversized bytes and40cases."
+    }
+  ],
+  "root_owned_source_bindings": [
+    {
+      "path": "carr-library/tests/storage/test_transcription_backup.py",
+      "sha": "e1b61592543d840abe092958b3daecc61affd9e2",
+      "expected_cases": 143
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_backup.py",
+      "sha": "ba9889e81a8d0cf85dfc567cf0ebf8a0812a21ad"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_reconciliation.py",
+      "sha": "474a72e6d3f7c62bdb0bfb4ed748d11c6ef3a21a",
+      "expected_cases": 28
+    },
+    {
+      "path": "carr-library/tests/speech/test_narration_receipt.py",
+      "sha": "e90777a844f2a3775e942735e5e4e669d98c7352",
+      "expected_cases": 73
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/narration_receipt.py",
+      "sha": "ca91ea958c84d4056768d2b42a74e31654f9eecb",
+      "scope": "Physical-page labels and exact stored snapshot vs selected range."
+    }
+  ],
+  "audit": {
+    "delta": {
+      "main": {
+        "missing_paths": [],
+        "missing_cases": [],
+        "missing_origins": [],
+        "steps_preserved": true,
+        "here_open": 30,
+        "here_close": 30
+      },
+      "v3": {
+        "missing_paths": [],
+        "missing_cases": [],
+        "missing_origins": [],
+        "steps_preserved": true,
+        "here_open": 22,
+        "here_close": 22
+      },
+      "asr": {
+        "missing_paths": [],
+        "missing_cases": [],
+        "missing_origins": [],
+        "steps_preserved": true,
+        "here_open": 2,
+        "here_close": 2
+      }
+    },
+    "counts": {
+      "mainSource": 392,
+      "fast": 74,
+      "mainInstalled": 226,
+      "mainCompletion": 85,
+      "v3Publication": 83,
+      "v3Completion": 54,
+      "v3Recovery": 72,
+      "v3RecoveryCompletion": 20
+    },
+    "required_static_cases": {
+      "tests/speech/test_narration_receipt.py": 73,
+      "tests/reader/test_export_reconciliation.py": 28,
+      "tests/storage/test_transcription_backup.py": 143,
+      "tests/storage/test_local_schedules.py": 43,
+      "tests/ui/test_local_schedules.py": 21,
+      "tests/storage/test_backup_local_schedules.py": 23,
+      "tests/packaging/test_local_schedules_cli.py": 11
+    },
+    "ci_check_methods": 32,
+    "scheduler": {
+      "whole_suites": 4,
+      "expected_cases": 98,
+      "essential_checks": 31,
+      "origins": 12,
+      "origin_assertions_before_and_after": 48,
+      "watchdog_seconds": 180,
+      "no_audio_prerequisite": true
+    },
+    "preserved_asr": {
+      "source_minutes": 20,
+      "installed_minutes": 35,
+      "job_minutes": 60,
+      "default_suite_seconds": 600,
+      "only_explicit_allowance": "tests/transcription/test_admission_boundaries.py=900"
+    },
+    "parser_status": "NOT_RUN_EXECUTOR_UNAVAILABLE",
+    "execution_status": "NOT_RUN",
+    "guide_added": "LOCAL_SCHEDULES.md"
+  },
+  "installed_fixtures": {
+    "new": "tests/transcription/fixture_runtime.py",
+    "status": "Hash checked before and after actual installed-package runs; preserves all previous fixture companions.",
+    "old_presentation_donor_import": "Removed from the fixture module, so no phantom test_pronunciation_handlers.py copy is needed."
+  },
+  "scheduler_native": {
+    "path": "scripts/windows_local_schedules_smoke.py",
+    "sha": "7581c232457c226b9f5f551afd7d3c7fcaaf221c",
+    "command": "<installed-python> -I -B scripts/windows_local_schedules_smoke.py --source-root <checkout>/carr-library/src",
+    "prerequisites": [
+      "installed current wheel",
+      "wxPython and current native dependencies",
+      "local synthetic TXT and temporary local Vault only"
+    ],
+    "no_audio_prerequisite": true,
+    "watchdog_seconds": 180,
+    "pump_deadline_seconds": 150,
+    "origins": [
+      "carr_library.local_schedule_model",
+      "carr_library.local_schedules",
+      "carr_library.local_schedules_cli",
+      "carr_library.backup_local_schedules",
+      "carr_library.ui.local_schedules",
+      "carr_library.incremental_backup",
+      "carr_library.sync.vault",
+      "carr_library.ingest.batches",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.durable_state",
+      "carr_library.ui.desktop_app"
+    ],
+    "required_checks": [
+      "actual host installed one local scheduling controller",
+      "actual command uses current canonical registry",
+      "scheduler owns no private executor or progress hub",
+      "folder picker is requested by the actual local schedule dialog",
+      "initial saved rule inventory is empty and inactive",
+      "native review text is read-only",
+      "native save creates no import or active timer",
+      "saved rule status has readable focus",
+      "default-No arm leaves actual source and services untouched",
+      "actual native timer dispatched one verified isolated import",
+      "scheduled import used the current worker off the GUI thread",
+      "watched source bytes are unchanged",
+      "native completed status remains readable and focused",
+      "native Disarm stops repeat admission and native timer",
+      "native backup save creates no snapshot",
+      "native backup review displays exact selected repository",
+      "actual native timer dispatched one canonical complete snapshot",
+      "both operations used the same current host worker",
+      "native result exposes actual snapshot identity",
+      "reopened native window is inactive despite saved completed rules",
+      "actual native menu command dispatched",
+      "native Close ended the schedule window",
+      "one explicit source folder and one explicit repository were chosen",
+      "scheduled snapshot passes independent complete-backup verification",
+      "actual restored library contains both exact source revisions",
+      "restoration arms no timer and runs no saved rule",
+      "restoration leaves the original current host library selected",
+      "same native menu reopens inactive declarations",
+      "second native Close completed",
+      "passive reopening never recreated missing external folders",
+      "actual host shutdown has no retained worker cleanup failure"
+    ],
+    "required_fields": {
+      "status": "PASS",
+      "native_keyboard": "PASS",
+      "actual_timer": "PASS",
+      "actual_watch_import": "PASS",
+      "canonical_backup_restore": "PASS",
+      "external_automations": "NOT_USED"
+    },
+    "report_format": "Progress lines followed by one pretty JSON object; parse final JSON using existing raw_decode pattern.",
+    "unqualified": [
+      "manual NVDA",
+      "physical storage",
+      "power loss",
+      "unattended background service"
+    ],
+    "essential_check_count": 31,
+    "derived_installed_origin_phase_checks": 48,
+    "caller": "Existing main/V3 native failure aggregation; current installed interpreter -I -B -X utf8; no audio argument or acquisition added."
+  },
+  "qualification": {
+    "all_new_collection": "NOT_RUN",
+    "python_yaml_powershell_parse": "NOT_RUN_EXECUTOR_UNAVAILABLE",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "native_windows": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "private_model_inference": "NOT_RUN",
+    "no_retained_wheel_or_final_package_claim": true
+  },
+  "deferred": "Hunspell exact final handoff remains separate; no speculative gate names or counts added."
+}

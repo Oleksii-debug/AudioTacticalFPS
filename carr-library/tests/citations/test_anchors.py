@@ -21,7 +21,7 @@ def test_exact_unicode_and_metadata_snapshot():
     a = anchor(start=5, end=11)
     assert a.quote == RAW[5:11]
     assert resolve(a, I, P, RAW) == RAW
-    assert format_citation(a) == 'Synthetic author, Same title, vol. 2, edition 3, p. iv (PDF page 4)'
+    assert format_citation(a) == 'Synthetic author, Same title, vol. 2, edition 3, p. iv (physical page 4)'
     corrected = replace(M, author='Other author')
     assert corrected != a.metadata and a.metadata == M
 
@@ -46,7 +46,7 @@ def test_reject_tampering_and_unverified_text():
 
 def test_logical_and_unknown_and_repeat_labels():
     assert 'Segment 1 (unpaginated)' in format_citation(anchor(locator=Locator('logical_segment', 1)))
-    assert 'PDF page' not in format_citation(anchor(locator=Locator('logical_segment', 1)))
+    assert 'Physical page' not in format_citation(anchor(locator=Locator('logical_segment', 1)))
     assert 'printed page unverified' in format_citation(anchor(locator=Locator('physical_page', 1, '1')))
     with pytest.raises(ValueError):
         Locator('logical_segment', 1, '1', True)
@@ -100,8 +100,8 @@ def test_span_resolves_every_page_without_fabricating_range():
         return i, p, raw[p.index], True
     assert resolve_span(iter([a, b, c]), load) == ((a, 'first'), (b, 'middle'), (c, 'last'))
     assert format_span_citation([a, b, c], load) == (
-        'Synthetic author, Same title, vol. 2, edition 3, p. iv (PDF page 4); '
-        'p. iv (PDF page 5); PDF page 6 (printed page unverified)')
+        'Synthetic author, Same title, vol. 2, edition 3, p. iv (physical page 4); '
+        'p. iv (physical page 5); Physical page 6 (printed page unverified)')
     assert '99' not in format_span_citation([a, b, c], load)
     assert format_span_citation([a], load) == format_citation(a)
     with pytest.raises(ValueError):
@@ -148,3 +148,22 @@ def test_manual_correction_does_not_mutate_saved_anchor():
 def test_label_state_rejects_mutable_or_non_boolean_values(verified, printed):
     with pytest.raises(ValueError):
         Locator('physical_page', 1, printed, verified)
+
+
+def test_medium_neutral_display_preserves_legacy_locator_and_anchor_wire():
+    from dataclasses import asdict
+    from hashlib import sha256
+    import json
+
+    legacy = '{"kind":"physical_page","index":4,"printed":"iv","verified":true}'
+    locator = Locator(**json.loads(legacy))
+    source = anchor(locator=locator)
+    encoded_before = json.dumps(asdict(source), ensure_ascii=False, sort_keys=True,
+                                separators=(',', ':')).encode('utf-8')
+    identity_before = sha256(encoded_before).hexdigest()
+    assert locator.display() == 'p. iv (physical page 4)'
+    assert json.dumps(asdict(locator), separators=(',', ':')) == legacy
+    assert json.loads(encoded_before)['locator'] == json.loads(legacy)
+    assert resolve(source, I, Locator(**json.loads(legacy)), RAW) == RAW
+    assert sha256(json.dumps(asdict(source), ensure_ascii=False, sort_keys=True,
+                             separators=(',', ':')).encode('utf-8')).hexdigest() == identity_before

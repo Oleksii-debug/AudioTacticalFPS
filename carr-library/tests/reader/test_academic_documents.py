@@ -106,7 +106,7 @@ def test_multpage_evidence_keeps_separate_slices_and_one_note(format):
     assert quotes == [first.quote, second.quote]
     assert notes == [first.note]
     assert 'Source slice 1 of 2' in text and 'Source slice 2 of 2' in text
-    assert 'PDF page 2; printed page ix' in text and 'PDF page 3; printed page x' in text
+    assert 'Physical page 2; printed page ix' in text and 'Physical page 3; printed page x' in text
     assert 'Bibliography entries: 1.' in text
     assert first.raw_text_sha256 in text and second.raw_text_sha256 in text
     assert first.quote + second.quote not in text
@@ -134,13 +134,13 @@ def test_unknown_metadata_and_unverified_printed_page_are_explicit(format):
     _, _, text = unpack(documents.export_document('workspace', 'topic', [row], format=format), format)
     assert 'Author unknown. Title unknown. Edition unknown; volume unknown.' in text
     assert 'Publication year and publisher are not recorded' in text
-    assert 'PDF page 2; printed page unknown' in text
+    assert 'Physical page 2; printed page unknown' in text
     assert 'Unverified candidate 55' not in text
     logical = replace(row, kind='logical_segment', physical_index=None, segment_index=4,
                       printed_label=None)
     _, _, logical_text = unpack(documents.export_document('workspace', 'topic', [logical], format=format), format)
     assert 'Segment 4 (unpaginated)' in logical_text
-    assert 'PDF page' not in logical_text
+    assert 'Physical page' not in logical_text
 
 
 @pytest.mark.parametrize('format', ['docx', 'html'])

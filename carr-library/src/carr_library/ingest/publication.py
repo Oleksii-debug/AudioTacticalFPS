@@ -13,7 +13,9 @@ import time
 
 from ..durable_state import regular
 from ..storage.revisions import CURRENT_SCHEMA_VERSION, _schema_signature, _expected_signature
-from .retained_assets import MAX_BYTES, SUFFIXES
+from .retained_assets import SUFFIXES
+from ..catalog.intake import source_limit
+from ..extract.document_formats import PHYSICAL_MIMES, RASTER_MIMES, RASTER_BY_MIME
 from .writer_guard import exclusive_writer, _regular_if_present
 
 
@@ -123,7 +125,7 @@ def completed_request(root, workspace, request_id, *, attempt, timeout=1.0, init
                 raise ValueError('Committed import differs from its publication candidate.')
             manifest = state['manifest']
             asset, mime, size = manifest['sha256'], manifest['mime'], manifest['size']
-            if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_BYTES:
+            if mime not in SUFFIXES or type(size) is not int or not 0 < size <= source_limit(mime):
                 raise ValueError('Retained source manifest changed.')
             # The immutable receipt binds these bytes, while this independent
             # check binds the extraction configuration to the current request.
@@ -143,11 +145,14 @@ def completed_request(root, workspace, request_id, *, attempt, timeout=1.0, init
                               .encode('utf-8')).hexdigest() != candidate['revision']
                     or record.get('job') not in (None, candidate['revision'])):
                 raise ValueError('Import publication configuration changed.')
-            if mime == 'application/pdf':
+            if mime in PHYSICAL_MIMES:
+                adapter = 'raster_ocr-v1' if mime in RASTER_MIMES else 'page_ocr-v1'
                 valid = (record.get('job') == candidate['revision']
-                         and settings.get('adapter') == 'page_ocr-v1'
+                         and settings.get('adapter') == adapter
                          and settings.get('kind') == 'physical_page'
-                         and settings.get('config') == record['config'])
+                         and settings.get('config') == record['config']
+                         and (mime not in RASTER_MIMES
+                              or settings.get('format') == RASTER_BY_MIME[mime].name))
             else:
                 adapter = ('strict-utf8-v1' if mime == 'text/plain' else
                            'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else

@@ -93,7 +93,7 @@ def test_native_adapter_controls_and_failure(source, monkeypatch):
         nxt.Enable.assert_called_with(True)
         nxt.Bind.call_args.args[1](None)
         reader.ChangeValue.assert_called_with(raw[1])
-        status.ChangeValue.assert_called_with('Context page 2 of 2\nAuthor, Title, PDF page 4 (printed page unverified)')
+        status.ChangeValue.assert_called_with('Context page 2 of 2\nAuthor, Title, Physical page 4 (printed page unverified)')
         prev.Enable.assert_called_with(True)
         nxt.Enable.assert_called_with(False)
         state.fault = 'drift'

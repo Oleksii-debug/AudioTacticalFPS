@@ -252,25 +252,29 @@ def test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_loc
                 callback()
             else:
                 self.callbacks.append(callback)
+        def close(self):
+            return self.quiescent
         def confirm(self):
             self.quiescent_event.set()
             callbacks, self.callbacks = self.callbacks, []
             for callback in callbacks:
                 callback()
 
-    owner, staged = Owner(), []
+    owner, staged, entered = Owner(), [], threading.Event()
     def unfinished(args, **kwargs):
         assert kwargs['owned_windows_job'] is (os.name == 'nt')
         path = Path(args[-1])
         path.write_bytes(b'Incomplete capture remains owned until native silence')
         staged.append(path)
+        entered.set()
         raise AudioCleanupPending('Synthetic retained native owner', cleanup_owner=owner)
     monkeypatch.setattr(recording, 'run_process', unfinished)
     with ThreadPoolExecutor(max_workers=1) as workers:
         pending = workers.submit(capture.service.capture, capture.device.id, options=capture.options)
         try:
-            with pytest.raises(AudioCleanupPending):
-                pending.result(timeout=5)
+            assert entered.wait(5)
+            assert not pending.done()
+            assert len(capture.service._broker_instance.snapshot()['leases']) == 1
             assert staged and staged[0].read_bytes().startswith(b'Incomplete capture')
             assert not list(capture.service.root.glob('*.wav'))
             assert not list(capture.service.root.glob('*.json'))
@@ -285,6 +289,9 @@ def test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_loc
             assert check.returncode == 0, check.stderr
         finally:
             owner.confirm()
+        with pytest.raises(AudioCleanupPending):
+            pending.result(timeout=5)
+    assert capture.service._broker_instance.snapshot()['leases'] == []
     assert not staged[0].parent.exists()
     assert recording._CAPTURE.acquire(blocking=False)
     recording._CAPTURE.release()
@@ -317,13 +324,15 @@ def test_failed_admission_release_is_retried_only_by_explicit_capture(capture, m
                 callback()
             else:
                 self.callbacks.append(callback)
+        def close(self):
+            return self.quiescent
         def confirm(self):
             self.quiescent_event.set()
             callbacks, self.callbacks = self.callbacks, []
             for callback in callbacks:
                 callback()
 
-    owner = Owner()
+    owner, entered = Owner(), threading.Event()
     reservations, releases, launches, staged = [], [], [], []
     original_init = recording._CaptureReservation.__init__
     original_run = recording.run_process
@@ -348,6 +357,7 @@ def test_failed_admission_release_is_retried_only_by_explicit_capture(capture, m
             path = Path(args[-1])
             path.write_bytes(b'Unfinished capture remains private until native silence')
             staged.append(path)
+            entered.set()
             raise AudioCleanupPending('Synthetic retained native owner', cleanup_owner=owner)
         return original_run(args, **kwargs)
 
@@ -356,17 +366,25 @@ def test_failed_admission_release_is_retried_only_by_explicit_capture(capture, m
     first = None
     try:
         if deferred:
-            with pytest.raises(AudioCleanupPending):
-                capture.service.capture(capture.device.id, options=capture.options)
-            assert reservations[0].release_attempts == 0
-            assert not reservations[0].release_retry_required
-            with pytest.raises(RuntimeError, match='cleanup'):
-                capture.service.capture(capture.device.id, options=capture.options)
-            assert len(launches) == 1 and reservations[0].release_attempts == 0
-            assert staged[0].is_file()
-            assert not list(capture.service.root.glob('*.wav'))
-            owner.confirm()
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=1) as workers:
+                pending = workers.submit(capture.service.capture, capture.device.id, options=capture.options)
+                try:
+                    assert entered.wait(5) and not pending.done()
+                    assert reservations[0].release_attempts == 0
+                    assert not reservations[0].release_retry_required
+                    assert len(capture.service._broker_instance.snapshot()['leases']) == 1
+                    with pytest.raises(RuntimeError, match='cleanup'):
+                        capture.service.capture(capture.device.id, options=capture.options)
+                    assert len(launches) == 1 and reservations[0].release_attempts == 0
+                    assert staged[0].is_file()
+                    assert not list(capture.service.root.glob('*.wav'))
+                finally:
+                    owner.confirm()
+                with pytest.raises(AudioCleanupPending):
+                    pending.result(timeout=5)
             assert not staged[0].parent.exists()
+            assert capture.service._broker_instance.snapshot()['leases'] == []
         else:
             first = capture.service.capture(capture.device.id, options=capture.options)
             assert capture.service.get(first['id']) == first

@@ -1,0 +1,29 @@
+{
+  "schema": "resonance-import-search-native-composition/1",
+  "status": "STATIC_REVIEW_NOT_RUN",
+  "source_base": "8329a4832e811aaf8b28f292c264a02e5d38bfba",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_import_scan_smoke.py",
+      "sha": "2e854e4dd98690e74b2e8ab30b7048995e5602f5"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_source_open_native.py",
+      "sha": "5974877ea736d4aa9d8f8ee58d5aef8a26e99028"
+    },
+    {
+      "path": "carr-library/tests/ui/federated_native_smoke.py",
+      "sha": "2c188e9f6fd11d1755cba6b4878551e1751acb8d"
+    }
+  ],
+  "process_deadline_seconds": 180,
+  "source_search_ui_deadline_seconds": 130,
+  "federated_helper_deadline_seconds": 90,
+  "notes": [
+    "Existing native checks preserved; same original desktop and modal lifetimes.",
+    "Import scan now calls real host Close and checks original HWND destruction and no retained worker cleanup failures.",
+    "All process watchdogs include cleanup and any retained non-daemon thread exit.",
+    "Search native report includes exact9 imported source origins; caller verifies installed paths and candidate hashes.",
+    "Import native report includes9 origins including immutable publication and current worker lifetime."
+  ]
+}

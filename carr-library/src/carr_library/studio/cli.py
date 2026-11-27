@@ -50,6 +50,10 @@ from ..installation_lease import installed_entrypoint
 
 @installed_entrypoint
 def main(argv=None):
+    values = list(sys.argv[1:] if argv is None else argv)
+    if values and values[0] == 'book':
+        from .book_cli import main as book_main
+        return book_main(values[1:])
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--input-root', action='append', type=Path, default=[], help='Explicit local cue folder; repeat if needed')

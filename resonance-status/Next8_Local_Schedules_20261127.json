@@ -1,0 +1,189 @@
+{
+  "schema": "resonance-local-schedule-handoff/1",
+  "status": "DRAFT_NOT_RUN",
+  "source_checkpoint": "37a903e9258ba796db6fc6df7eacbd51092383b3",
+  "preserved_published_parent": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/local_schedule_model.py",
+      "preimage": null,
+      "sha": "b226e776ecceaf056fe185a3e4e05c046149d2c6"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedules.py",
+      "preimage": null,
+      "sha": "13c2a3044729bd91c34cc055c92d62db7b5db71b"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedules_cli.py",
+      "preimage": null,
+      "sha": "84a006ef3a87873ae52ac08238b96c5863a55880"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_local_schedules.py",
+      "preimage": null,
+      "sha": "3df4730c2bbee888bca204c408bc0632f70b6268"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/local_schedules.py",
+      "preimage": null,
+      "sha": "fc3fac9e65e2d07741e84ef045535b08b6b4b310"
+    },
+    {
+      "path": "carr-library/tests/storage/test_local_schedules.py",
+      "preimage": null,
+      "sha": "cc7a8c7245d893efe1923a19f5c583ec3e50a20f"
+    },
+    {
+      "path": "carr-library/tests/ui/test_local_schedules.py",
+      "preimage": null,
+      "sha": "6bb5f68b21c303ee9d55a785fe98aa5fd9b0f5af"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_local_schedules.py",
+      "preimage": null,
+      "sha": "72420d4c9c4c16fa670dc87b5ddfa2c550de32e9"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_local_schedules_cli.py",
+      "preimage": null,
+      "sha": "dfcf69c33fe49c7f519ae866598b6a98dfe8d47b"
+    },
+    {
+      "path": "carr-library/scripts/windows_local_schedules_smoke.py",
+      "preimage": null,
+      "sha": "7581c232457c226b9f5f551afd7d3c7fcaaf221c"
+    },
+    {
+      "path": "carr-library/docs/LOCAL_SCHEDULES.md",
+      "preimage": null,
+      "sha": "6fc58c844676ffb116aeff2899bf2071469ff72f"
+    }
+  ],
+  "shared_hooks": "667ca617fc389b1257585d6556975615c62dd3e8",
+  "shared_hooks_count": 25,
+  "source_readback": "All eleven final source/test/native/doc blobs, corrected desktop fixture and all shared-hook bytes independently fetched and matched exactly.",
+  "source_parse": "NOT_RUN: executor unavailable.",
+  "tests": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "static_expected_counts": {
+      "tests/storage/test_local_schedules.py": 43,
+      "tests/ui/test_local_schedules.py": 21,
+      "tests/storage/test_backup_local_schedules.py": 23,
+      "tests/packaging/test_local_schedules_cli.py": 11
+    },
+    "expected_total": 98,
+    "count_notice": "Manually enumerated definitions and parametrizations; actual collection required. No skips or xfails intentionally added.",
+    "requirement": "All four whole modules in source and installed gates; preserve every existing selector and strict outcome policy.",
+    "child_binding": "Actual crash children assert local_schedules.__file__ equals the parent imported module; installed tests never force repository src."
+  },
+  "native": {
+    "path": "scripts/windows_local_schedules_smoke.py",
+    "sha": "7581c232457c226b9f5f551afd7d3c7fcaaf221c",
+    "command": "<installed-python> -I -B scripts/windows_local_schedules_smoke.py --source-root <checkout>/carr-library/src",
+    "prerequisites": [
+      "installed current wheel",
+      "wxPython and current native dependencies",
+      "local synthetic TXT and temporary local Vault only"
+    ],
+    "no_audio_prerequisite": true,
+    "watchdog_seconds": 180,
+    "pump_deadline_seconds": 150,
+    "origins": [
+      "carr_library.local_schedule_model",
+      "carr_library.local_schedules",
+      "carr_library.local_schedules_cli",
+      "carr_library.backup_local_schedules",
+      "carr_library.ui.local_schedules",
+      "carr_library.incremental_backup",
+      "carr_library.sync.vault",
+      "carr_library.ingest.batches",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.durable_state",
+      "carr_library.ui.desktop_app"
+    ],
+    "required_checks": [
+      "actual host installed one local scheduling controller",
+      "actual command uses current canonical registry",
+      "scheduler owns no private executor or progress hub",
+      "folder picker is requested by the actual local schedule dialog",
+      "initial saved rule inventory is empty and inactive",
+      "native review text is read-only",
+      "native save creates no import or active timer",
+      "saved rule status has readable focus",
+      "default-No arm leaves actual source and services untouched",
+      "actual native timer dispatched one verified isolated import",
+      "scheduled import used the current worker off the GUI thread",
+      "watched source bytes are unchanged",
+      "native completed status remains readable and focused",
+      "native Disarm stops repeat admission and native timer",
+      "native backup save creates no snapshot",
+      "native backup review displays exact selected repository",
+      "actual native timer dispatched one canonical complete snapshot",
+      "both operations used the same current host worker",
+      "native result exposes actual snapshot identity",
+      "reopened native window is inactive despite saved completed rules",
+      "actual native menu command dispatched",
+      "native Close ended the schedule window",
+      "one explicit source folder and one explicit repository were chosen",
+      "scheduled snapshot passes independent complete-backup verification",
+      "actual restored library contains both exact source revisions",
+      "restoration arms no timer and runs no saved rule",
+      "restoration leaves the original current host library selected",
+      "same native menu reopens inactive declarations",
+      "second native Close completed",
+      "passive reopening never recreated missing external folders",
+      "actual host shutdown has no retained worker cleanup failure"
+    ],
+    "required_fields": {
+      "status": "PASS",
+      "native_keyboard": "PASS",
+      "actual_timer": "PASS",
+      "actual_watch_import": "PASS",
+      "canonical_backup_restore": "PASS",
+      "external_automations": "NOT_USED"
+    },
+    "report_format": "Progress lines followed by one pretty JSON object; parse final JSON using existing raw_decode pattern.",
+    "unqualified": [
+      "manual NVDA",
+      "physical storage",
+      "power loss",
+      "unattended background service"
+    ]
+  },
+  "accepted_boundaries": [
+    "One existing host worker/ProgressHub and ResourceBroker; no new thread, task queue, process manager or snapshot format.",
+    "Timer arming is volatile and requires exact current rule review plus default-No consent. Save, restore, startup and reopening never arm.",
+    "Existing canonical full-backup/Vault and ImportBatchStore remain authoritative; no external/network scheduling.",
+    "Exact root, selected target, saved file identity and hash guards remain current throughout existing canonical checkpoints.",
+    "Actual returned receipt is validated before completion classification. Later metadata or control cleanup failure preserves it and disarms repetition.",
+    "Persistent dispatch claim prevents automatic replay after interruption. Planned import ID is recorded before existing batch execution.",
+    "Passive copied-data validators never resolve saved external paths; all unknown namespace and active-authority payloads fail closed.",
+    "Existing 15 ChatGPT automations, OS task schedules, service configuration and all unrelated host owners are untouched."
+  ],
+  "dependencies": {
+    "import_batches": "07cec2575e5e72e4b252afcd787a3e7ce7c4aa66",
+    "durable_read_json_snapshot": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "native_lock": "ac567ba23b52f59ebc61fb0c25131b6126674c91",
+    "resource_broker": "Current candidate8 existing ResourceBroker; no API changes."
+  },
+  "documentation": {
+    "guide": "docs/LOCAL_SCHEDULES.md",
+    "packaging_hook": "Add this existing plain guide to the current guide-copy list if distributing a private bundle; no builder replacement.",
+    "disclosed_limits": "Host-session only; no unattended OS service, calendar recurrence, network sync, automatic pruning or new encryption."
+  },
+  "no_refs_changed": true,
+  "prerequisite_fixes": [
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "preimage": "b96e0f4d7aa2c870ea3f2db5079933fce5a1d1ec",
+      "sha": "af7e619bd1116b4496bbf69aa1d3d46ee1428ff2",
+      "reason": "Actual Windows85 suite: 59 passed/1 failed because combined-menu AST fixture entered new real playback installer. Add playback and desktop-integration mocks to the existing called-once installer list; all assertions/cases retained.",
+      "test_status": "NOT_RUN after correction; exact failing job140586631041 inspected.",
+      "scheduler_hook": "The one additional local-schedules installer mock applies only together with the scheduler desktop installer."
+    }
+  ]
+}

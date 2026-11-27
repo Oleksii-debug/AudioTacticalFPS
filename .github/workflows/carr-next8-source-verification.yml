@@ -1,0 +1,216 @@
+name: CARR composed feature source verification
+
+on:
+  push:
+    branches: ['carr/ci-next8-source-*', 'carr/resonance-final-integration-20261127-5a9e']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: next8-composition-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-corrections:
+    name: Windows composed reader, import, search, books and recording
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare locked dependencies and the existing pinned codec
+        run: |
+          New-Item -ItemType Directory -Force 'ci-next8-source-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-next8-source-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m venv (Join-Path $env:RUNNER_TEMP 'carr-completion-python')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $env:RUNNER_TEMP 'carr-completion-python/Scripts/python.exe'
+          "CARR_COMPLETION_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-completion-audio'
+          & $python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-completion-audio-cache') --output $audio --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Prepare actual verified OCR and verify composed Python syntax
+        run: |
+          $python = $env:CARR_COMPLETION_PYTHON
+          & $python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-next8-source-ocr'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          $ocr = Join-Path $ocrWork 'ocr'
+          & $python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'cache') --output $ocr --source-archive (Join-Path $ocrWork 'corresponding-source.tar') --download | Tee-Object 'ci-next8-source-results/ocr-preparation.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "TESSDATA_PREFIX=$(Join-Path $ocr 'tessdata')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          @'
+          from pathlib import Path
+          paths = sorted(p for root in ('src', 'tests', 'scripts') for p in Path(root).rglob('*.py'))
+          for path in paths:
+              compile(path.read_bytes(), str(path), 'exec')
+          print(f'Python 3.11 compiled without creating bytecode: {len(paths)} files.')
+          '@ | & $python -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Measure named and held executable metadata without executing probe bytes
+        run: |
+          @'
+          import json, os, shutil, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path('src').resolve()))
+          from carr_library.audio.conversion import _stamp
+          for name in ('ffmpeg', 'ffprobe'):
+              path = Path(shutil.which(name))
+              named = _stamp(path.stat())
+              with path.open('rb') as stream:
+                  held = _stamp(os.fstat(stream.fileno()))
+              print(json.dumps({'tool': name, 'named': named, 'held': held,
+                  'different_fields': [key for key, a, b in zip(
+                      ('dev','ino','mode','nlink','size','mtime_ns','ctime_ns'), named, held) if a != b]}))
+          '@ | & $env:CARR_COMPLETION_PYTHON -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run required source regressions before the full bundle finishes
+        run: |
+          $completionSuites = @(
+            'tests/catalog/test_streaming_intake.py',
+            'tests/citations/test_anchors.py',
+            'tests/citations/test_authorized_action.py',
+            'tests/citations/test_finish_label_integrity.py',
+            'tests/citations/test_historical.py',
+            'tests/citations/test_printed_label_attestation.py',
+            'tests/citations/test_span_approval_integration.py',
+            'tests/e2e/test_application.py',
+            'tests/e2e/test_extended_document_workflows.py',
+            'tests/e2e/test_raster_import.py',
+            'tests/e2e/test_raster_ocr_native.py',
+            'tests/e2e/test_retained_source_search_integrity.py',
+            'tests/extract/test_raster_pages.py',
+            'tests/ingest/test_batch_continuation.py',
+            'tests/ingest/test_batch_continuation_cli.py',
+            'tests/reader/test_academic_documents.py',
+            'tests/reader/test_anchored_export.py',
+            'tests/reader/test_bibliographic_locators.py',
+            'tests/reader/test_context.py',
+            'tests/reader/test_evidence_export.py',
+            'tests/reader/test_finish_export_formats.py',
+            'tests/reader/test_historical_reader_integration.py',
+            'tests/reader/test_reading_desk.py',
+            'tests/reader/test_saved_span_compatibility.py',
+            'tests/reader/test_span_snapshot.py',
+            'tests/reader/test_topic_literature_matrix.py',
+            'tests/research/test_outline_export.py',
+            'tests/search/test_federated_epub.py',
+            'tests/search/test_literal_readonly.py',
+            'tests/search/test_thematic_budget.py',
+            'tests/storage/test_complete_pending_backup.py',
+            'tests/storage/test_pending_backup.py',
+            'tests/ui/test_desktop_handlers.py',
+            'tests/ui/test_federated_labels.py',
+            'tests/ui/test_import_center.py',
+            'tests/ui/test_source_open_handler.py',
+            'tests/ui/test_source_review.py',
+            'tests/e2e/test_research_search_cli.py',
+            'tests/search/test_federated.py',
+            'tests/ui/test_federated_search.py',
+            'tests/search/test_search_paging.py',
+            'tests/ingest/test_scan_root_binding.py',
+            'tests/ingest/test_large_source_intake.py',
+            'tests/speech/test_reading_marks.py',
+            'tests/ui/test_reading_tools.py',
+            'tests/speech/test_reading_tabs.py',
+            'tests/ui/test_reader_tabs.py',
+            'tests/speech/test_reading_presentation.py',
+            'tests/speech/test_reading_presentation_handlers.py',
+            'tests/speech/test_reading_presentation_reader_hook.py',
+            'tests/ui/test_native_reading_presentation_driver.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/storage/test_voice_preferences_backup.py',
+            'tests/ui/test_voice_preferences_dialog.py',
+            'tests/ui/test_progress_job_review.py',
+            'tests/ui/test_reader_navigation_ui.py',
+            'tests/ui/test_reader_view_hooks.py',
+            'tests/storage/test_reader_preferences_state.py',
+            'tests/studio/test_book_batch.py',
+            'tests/studio/test_book_cli.py',
+            'tests/ui/test_book_batch_dialog.py',
+            'tests/storage/test_backup_book_batches.py',
+            'tests/audio/test_recording_controls.py',
+            'tests/audio/test_recording_monitor.py',
+            'tests/storage/test_backup_recording_controls.py',
+            'tests/audio/test_recording.py',
+            'tests/audio/test_recording_cleanup.py',
+            'tests/audio/test_recording_compatibility.py',
+            'tests/audio/test_recording_export.py',
+            'tests/ui/test_recording_dialog.py',
+            'tests/audio/test_audio_process.py',
+            'tests/audio/test_windows_audio_ownership.py',
+            'tests/audio/test_conversion_batch.py',
+            'tests/studio/test_conversion_batch_cli.py',
+            'tests/speech/test_publication_validation.py',
+            'tests/reader/test_braille.py',
+            'tests/storage/test_incremental_backup.py',
+            'tests/storage/test_backup_book_audio.py',
+            'tests/storage/test_backup_effect_presets.py',
+            'tests/storage/test_backup_studio_effects.py',
+            'tests/speech/test_reading.py',
+            'tests/speech/test_session.py',
+            'tests/studio/test_book_audio.py',
+            'tests/ui/test_book_audio_dialog.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/storage/test_desktop_preferences.py',
+            'tests/ui/test_desktop_integration.py',
+            'tests/ui/test_desktop_settings.py',
+            'tests/ui/test_desktop_host_lifecycle.py',
+            'tests/packaging/test_ci_check.py',
+            'tests/reader/test_export_reconciliation.py',
+            'tests/storage/test_local_schedules.py',
+            'tests/ui/test_local_schedules.py',
+            'tests/storage/test_backup_local_schedules.py',
+            'tests/packaging/test_local_schedules_cli.py',
+            'tests/storage/test_transcription_backup.py',
+            'tests/speech/test_narration_receipt.py',
+            'tests/speech/test_reader_usability.py'
+          )
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'
+          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }
+      - name: Retain source-only composition diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-next8-source-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next8-source-results/*.txt
+          if-no-files-found: error
+          retention-days: 3
+

@@ -34,6 +34,9 @@ class View:
     def set_navigation(self, previous, next_page):
         self.navigation = previous, next_page
 
+    def set_scope_navigation(self, source_previous, source_next, library_previous, library_next):
+        self.scope_navigation = source_previous, source_next, library_previous, library_next
+
     def query_value(self):
         return self.query
 
@@ -715,6 +718,9 @@ def test_equivalent_topic_labels_save_to_each_original_destination(center):
 @pytest.mark.parametrize('reverse', [False, True])
 def test_native_checklist_preserves_checked_library_identity_with_distinct_labels(center, monkeypatch, names, reverse):
     wx = MagicMock()
+    # Each native field is an independent control, including the time budget.
+    wx.TextCtrl.side_effect = lambda *args, **kwargs: MagicMock()
+    wx.Choice.side_effect = lambda *args, **kwargs: MagicMock()
     monkeypatch.setitem(sys.modules, 'wx', wx)
     rows = [SimpleNamespace(id=f'library-{index}', name=name)
             for index, name in enumerate(names)]
@@ -731,12 +737,15 @@ def test_native_checklist_preserves_checked_library_identity_with_distinct_label
     native.libraries_control.IsChecked.side_effect = lambda index: rows[index].id == 'library-1'
     for control in (native.retrieval, native.presentation, native.limit):
         control.GetSelection.return_value = 0
+    assert len({id(control) for control in (native.query, native.timeout, *native.filters.values())}) == 6
     native.query.GetValue.return_value = 'history'
+    native.timeout.GetValue.return_value = '300'
     for control in native.filters.values():
         control.GetValue.return_value = ''
     native._search()
     options, = native.controller.search.call_args.args
     assert options.workspaces == ('library-1',)
+    assert options.timeout == 300
 
 
 @pytest.mark.parametrize('names', [('Same', 'Same'), ('Café', 'Cafe\u0301'),
@@ -785,15 +794,6 @@ def test_result_labels_include_unknown_edition_and_number_repeated_same_page_hit
     assert 'Unknown edition' in result_label(hit)
 
 
-from unittest.mock import Mock
-
-
-from carr_library.ui.federated_search import (
-    NativeSearchCenter, SearchCenter, SearchOptions, default_libraries,
-    install_federated_search_actions, _topic_labels,
-)
-
-
 COLLIDING_NAMES = [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
     ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
     ('Same', 'Same', 'Same (library w; topic 0)'), ('Same', 'Same'), ('Unique', 'Distinct')]
@@ -834,7 +834,7 @@ def test_native_library_checklist_uses_distinct_choices_without_reordering(monke
     wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate((
         'VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL',
         'LEFT', 'RIGHT', 'TE_PROCESS_ENTER', 'LB_SINGLE', 'TE_READONLY',
-        'TE_MULTILINE', 'ALIGN_RIGHT'))})
+        'TE_MULTILINE', 'ALIGN_RIGHT', 'EVT_BUTTON'))})
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer', 'CheckListBox',
                  'TextCtrl', 'Choice', 'Button', 'ListBox'):
         setattr(wx, name, Mock(side_effect=lambda *args, **kwargs: Mock()))
@@ -894,7 +894,7 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
                               groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),))
     controller = SimpleNamespace(view=View(), epoch=0, _ready=Mock(), _clear_rows=Mock(),
         selection_changed=Mock(), _report_error=Mock(), _cancelled=lambda: False,
-        _refresh_navigation=Mock(),
+        _refresh_navigation=Mock(), source_history=[],
         service=SimpleNamespace(search=Mock(return_value=session)))
     controller._job = lambda title, operation, done, **kwargs: done(operation())
     SearchCenter.search(controller, SearchOptions(('w',), 'test'))
@@ -904,3 +904,51 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
     assert 'Unknown edition' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.messages[-1]
+
+
+def test_source_windows_continue_on_existing_worker_and_keep_exact_library(center):
+    text = '\f'.join(f'Continuation witness {number:03d}.' for number in range(105))
+    imported = center.app.add_text(center.one, 'Source window test', text, edition_id='page-window')
+    options = SearchOptions((center.one,), 'Continuation', mode='terms', limit_per_library=100, timeout=300)
+    center.controller.search(options)
+    first = tuple((hit.result.edition_id, hit.result.page, hit.result.quote) for hit in center.controller.rows)
+    assert first and center.view.scope_navigation == (False, True, False, False)
+    old = center.controller.rows[0]
+    center.controller.navigate_scope('sources', 1)
+    second = tuple((hit.result.edition_id, hit.result.page, hit.result.quote) for hit in center.controller.rows)
+    assert len(first) + len(second) == 105 and not set(first) & set(second)
+    assert center.view.scope_navigation == (True, False, False, False)
+    assert center.frame.worker_threads and all(value != get_ident() for value in center.frame.worker_threads)
+    with pytest.raises(ValueError, match='latest completed'):
+        center.controller.service.copy(old)
+    center.controller.navigate_scope('sources', -1)
+    assert tuple((hit.result.edition_id, hit.result.page, hit.result.quote)
+                 for hit in center.controller.rows) == first
+    assert center.app.assets.resolve(imported['asset']).read_bytes() == text.encode('utf-8')
+    center.controller.navigate_scope('sources', 1)
+    assert center.controller.source_history
+    center.controller.search(options)
+    assert center.controller.source_history == []
+    assert tuple((hit.result.edition_id, hit.result.page, hit.result.quote)
+                 for hit in center.controller.rows) == first
+    assert center.view.scope_navigation == (False, True, False, False)
+    center.controller.options_changed()
+    assert center.controller.source_history == [] and center.controller.rows == ()
+    assert center.view.scope_navigation == (False, False, False, False)
+
+
+def test_selected_library_pages_preserve_user_selection_and_unsaved_notebook(center):
+    extra = tuple(center.app.create_workspace(f'Additional search library {number}') for number in range(20))
+    center.app.add_text(extra[-1], 'Last selected source', 'Continuation in the final selected library.')
+    selected = (center.one, *extra)
+    center.controller.search(SearchOptions(selected, 'Continuation', mode='terms', timeout=300))
+    assert center.view.scope_navigation[2:] == (False, True)
+    center.controller.navigate_scope('libraries', 1)
+    assert center.controller.options.workspaces == selected
+    assert center.controller.options.library_offset == 20
+    assert len(center.controller.rows) == 1 and center.controller.rows[0].workspace == extra[-1]
+    assert center.view.scope_navigation[2:] == (True, False)
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
+    center.controller.navigate_scope('libraries', -1)
+    assert center.controller.options.library_offset == 0 and center.controller.rows == ()
