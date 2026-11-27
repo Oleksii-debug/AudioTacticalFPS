@@ -518,6 +518,11 @@ def _read_manifest(directory, expected_manifest_sha256):
     if manifest['version'] == 4 and not (names.intersection(_V4_SIDECARS)
                                         or any(is_assistant_sidecar(name) for name in names)):
         raise RestoreError('version 4 backup manifest has no version 4 state')
+    # Pending state shares the existing aggregate resource contract on read as
+    # well as write. A newly signed outer manifest cannot increase that ceiling.
+    inventory = declared_backup_files(manifest)
+    _check_backup_budget(size + sum(entry['size_bytes'] for entry in inventory.values()),
+                         1 + len(inventory), MAX_BACKUP_BYTES, MAX_BACKUP_FILES)
     _check_backup_namespace(directory, names, pending=manifest['version'] == 5)
     return manifest
 

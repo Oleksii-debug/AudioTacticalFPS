@@ -361,3 +361,24 @@ def test_rebased_batch_cannot_exceed_reader_limit(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match='Rebased.*byte budget'):
         restore_backup(folder, target, digest)
     assert not target.exists()
+
+
+@pytest.mark.parametrize(('name', 'message'), [
+    ('MAX_BACKUP_BYTES', 'byte limit'), ('MAX_BACKUP_FILES', 'file limit'),
+])
+def test_reader_counts_pending_inside_the_existing_aggregate_ceiling(tmp_path, monkeypatch, name, message):
+    from carr_library import library_backup
+    app, _, _, _ = _planned(tmp_path)
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    files = [path for path in folder.rglob('*') if path.is_file()]
+    ordinary = [path for path in files if not path.is_relative_to(folder / 'pending')]
+    measure = (lambda paths: sum(path.stat().st_size for path in paths)
+               if name == 'MAX_BACKUP_BYTES' else len(paths))
+    ceiling = measure(files) - 1
+    assert measure(ordinary) <= ceiling
+    monkeypatch.setattr(library_backup, name, ceiling)
+    target = tmp_path / 'rejected'
+    with pytest.raises(ValueError, match=message):
+        restore_backup(folder, target, digest)
+    assert not target.exists()
