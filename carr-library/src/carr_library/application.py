@@ -33,7 +33,8 @@ from .research.saved_topic_query import SavedTopicQueries
 from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
-from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
+from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
+                                _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
 
 
@@ -114,6 +115,8 @@ class _CatalogPublisher:
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
+        self.published_here = False
+        self.before_commit = lambda workspace, revision: None
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
@@ -140,6 +143,8 @@ class _CatalogPublisher:
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
             self.storage._check()
+            self.before_commit(workspace, revision)
+        self.published_here = True
 
     def check(self):
         return self.storage.check()
@@ -163,7 +168,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.check()
 
     def _check_database_paths(self):
@@ -194,7 +199,8 @@ class LibraryApp:
                 db.execute('PRAGMA recursive_triggers=ON')
                 db.execute('PRAGMA query_only=ON')
                 db.execute('BEGIN')
-                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
+                if (db.execute('PRAGMA user_version').fetchone()[0] != CURRENT_SCHEMA_VERSION
+                        or _schema_signature(db) != _expected_signature(CURRENT_SCHEMA_VERSION)):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
@@ -211,7 +217,7 @@ class LibraryApp:
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -379,7 +385,7 @@ class LibraryApp:
         revision = uuid4().hex
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
@@ -572,16 +578,17 @@ class LibraryApp:
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
-                from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
-                record_progress(self.root, _request_id, asset_sha256=asset.digest,
-                    publication_watermark=storage.db.execute(
-                        'SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0])
+                from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
+                                            record_publication_candidate)
+                record_progress(self.root, _request_id, asset_sha256=asset.digest)
                 publisher = _CatalogPublisher(storage, record)
+                publisher.before_commit = lambda scope, revision: record_publication_candidate(
+                    self.root, _request_id, storage.db, scope, revision)
                 if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
@@ -643,7 +650,7 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] in ('complete', 'superseded'):
+                    if result['state'] in ('complete', 'superseded') and not publisher.published_here:
                         if cancelled():
                             raise InterruptedError('Import cancelled before catalog registration.')
                         # Recovery validates the retained asset/configuration and

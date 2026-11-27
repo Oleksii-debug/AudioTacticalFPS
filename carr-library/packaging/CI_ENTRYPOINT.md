@@ -32,7 +32,20 @@ result against the pinned executable path and hash. Selection evidence is saved
 before the strict guard; native smoke applies outbound firewall coverage to that
 same executable. A preparation PASS alone does not establish native execution.
 
-The earlier combined selection guard failed without recording its operands;
-its log does not establish whether path discovery or a hash comparison differed.
+The later diagnostic for source `912b705` established that the explicit
+PowerShell Application lookup returned both the pinned and system Node paths.
+Each consumer now selects the first effective command result, then still
+verifies that exact path and hash against both the lock and Python discovery.
 The successor must pass both complete Windows workflows at its own exact source
 commit. Prior test counts and uploaded artifacts are not transferred as PASS.
+
+## Installed translation and local proposal gates
+
+Advanced v3 uses the existing gateway, vault, consent and checkpoint contracts;
+its native probe uses synthetic HTTPS responses with actual installed widgets
+and credentials. Local proposal validation is covered by strict offline suites.
+The separate native/HTTP gate permits loopback for a synthetic local model peer
+while blocking other IPv4/IPv6 destinations for the selected Python and
+PowerShell executables. It verifies each active firewall rule and address filter,
+then restores the prior profiles in `finally`. This is executable-scoped evidence,
+not a whole-machine sandbox or actual-model quality qualification.

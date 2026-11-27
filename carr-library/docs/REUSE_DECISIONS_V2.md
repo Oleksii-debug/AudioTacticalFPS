@@ -64,6 +64,56 @@ Reuse canonical implementation → reconcile an existing reviewed PR → adopt a
 
 Record exact source commit/release, binary/model hashes, license texts/notices, dependencies/assets, supported hardware/OS, chosen distribution profile and real acceptance results. A code license does not automatically license weights, voices, training/reference recordings, SoundFonts, citation styles or generated content. GPL/AGPL allow commercial use but may impose incompatible source/combination duties for a particular closed application; IPC and a “private” ZIP are not automatic exemptions. Resolve the affected package rather than blocking unrelated platform work.
 
+## Selective Advanced v3 adoption — 2026-11-27
+
+Reuse the Advanced translation slice of [PR112 head
+`8bf411718548809793748ed01f458c79f3692e98`](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/8bf411718548809793748ed01f458c79f3692e98),
+whose feature implementation originates in
+`20e275e5112566cd07c3aa56459bd8634240bc3e`. The broad donor branch is not merged.
+The reviewed slice extends `assistant/profiles.py`, `providers.py` and
+`translation.py`, the existing provider settings and translation dialog, and adds
+`assistant/translation_cli.py` with one main-entrypoint dispatch. Existing
+credential renewal is reused unchanged. No new SDK, model, provider queue,
+database or dependency is introduced. Existing source lineage, ASR, resource
+admission, rendering and export-approval implementations are retained.
+
+The service performs plain-text NMT and applies an already existing glossary,
+using a manually supplied expiring OAuth token held in the OS vault. It verifies
+the exact numeric project, region, requested model and glossary in the response
+before publishing a derivative. This does not implement automatic ADC discovery
+or refresh, glossary creation, Cloud Storage batch translation, formatted
+document translation or local translation inference.
+
+Evidence: the three integrated provider/Basic v2/Advanced v3 suites passed 122
+tests, including unchanged v2 credential-redaction and not-sent replay guards.
+The donor's [Windows run45929429163](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45929429163),
+job140278375920, passed its separate Advanced native step23. Its broader workflow
+has unrelated failures and is not release acceptance. The required new
+`windows_translation_v3_smoke.py` uses installed wx controls and the actual
+Windows vault but synthetic HTTPS, confirmations and directory pickers; it must
+pass again for the exact integrated build. No live Google calls, upload of user
+text, charges, independent linguistic quality or NVDA listening acceptance are
+claimed. Google account/IAM, quota/billing and glossary rights remain explicit
+owner configuration and acceptance boundaries.
+
+Official REST/authentication references were checked on2026-11-27:
+[translateText](https://docs.cloud.google.com/translate/docs/reference/rest/v3/projects.locations/translateText),
+[supported-language request](https://docs.cloud.google.com/translate/docs/list-supported-languages),
+[authentication](https://docs.cloud.google.com/translate/docs/authentication).
+
+The same exact donor's local-model planning slice is selectively adopted in
+`assistant/llm.py`, `assistant/service.py`, the assistant dialog and only
+`assistant_main` in `studio/cli.py`. The canonical production service, broker and
+process handling are retained. Its existing lazy `.voices` property and inventory
+resolve on the dialog worker; donor `discover_voices`/`close` methods are not
+imported or called. Proposal, review and explicit execution stay separate, using
+the existing typed scope/parser and jobs. No model/server download or startup is
+added. The three integrated planning suites passed41 cases with actual local
+HTTP/CLI and synthetic model responses. The donor Windows job's native planning
+step19 and loopback step24 passed; `windows_local_planning_smoke.py` and the
+required suites must pass on the integrated build. This evidence does not
+establish a particular local model's planning quality, model rights or NVDA.
+
 ## Current reuse map
 
 | Area | Reuse decision | Rights / qualification boundary and primary source |
@@ -81,8 +131,8 @@ Record exact source commit/release, binary/model hashes, license texts/notices, 
 | MusicGen | Retain optional adapter for terms-compatible use profiles | AudioCraft code MIT, released MusicGen weights CC-BY-NC4.0. Not the default unrestricted commercial-use pack. Real inference/quality remains separate. [AudioCraft](https://github.com/facebookresearch/audiocraft), [weights license](https://github.com/facebookresearch/audiocraft/blob/main/LICENSE_weights) |
 | MIDI | Review FluidSynth/Pretty MIDI where current MIDI path lacks a required capability | FluidSynth LGPL2.1, Pretty MIDI MIT; SoundFonts/dependencies separately licensed. Do not label the current simple synthesis fallback professional sound-library output. [FluidSynth](https://github.com/FluidSynth/fluidsynth), [Pretty MIDI](https://github.com/craffel/pretty-midi) |
 | Transcription | Adopt the supplied Whisper Transcribe headless worker after targeted corrections | Uses faster-whisper; retain model session and existing file-job protocol through a versioned adapter. Source review is in TRANSCRIPTION_INTEGRATION_REVIEW.md. [faster-whisper MIT](https://github.com/SYSTRAN/faster-whisper), [Whisper code/weights](https://github.com/openai/whisper); supplied wrapper/dependency/model distribution rights still need a complete record. |
-| Local agent | Keep current typed plans/executor; evaluate llama.cpp for actual model planning | Runtime MIT, selected LLM weights separate. Guided regex commands do not demonstrate LLM planning. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
-| Translation | Add official Google through the existing gateway; independently qualify local engines | Basic v2 supports API keys; Advanced v3 requires supported IAM/ADC authentication. Coverage, glossaries/batch and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
+| Local agent | Reuse the typed executor and selected loopback model proposal/review workflow; no runtime/model launch or download | Actual HTTP/native control fixtures use synthetic model responses. The selected installed server, model weights/rights and multilingual planning quality require separate acceptance. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
+| Translation | Reuse Basic v2 and the selectively adopted Advanced v3 NMT extension through the existing gateway; independently qualify local engines | Basic v2 uses API keys; Advanced v3 uses explicitly entered expiring IAM/ADC-derived OAuth tokens and existing glossary resources. Automatic token refresh, document/batch translation and local model inference remain unimplemented. Coverage and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
 | Bibliography | Preserve existing RIS/BibTeX/CSL-JSON and candidate citeproc-js/QuickJS integration | citeproc-js CPAL1.0/AGPL alternative and CSL styles/locales have distinct obligations. Verify accessible attribution/source in the shipped package; do not replace a working adapter solely because it is not MIT. [citeproc-js](https://github.com/Juris-M/citeproc-js) |
 | Larger applications | Use Zotero/calibre/Audacity and similar tools as interoperability/reference candidates where suitable | Do not embed a second GUI/database or copy an entire licensed application without an explicit integration/distribution decision. Existing standard-format interchange is preferable when it meets the task. |
 | Updates/security | Reuse reviewed signed-update/entitlement and credential contracts | Evaluate python-tuf/standard Windows tooling for actual gaps; signatures, key lifecycle, installer/runtime and data migration all require exact tests. No new cryptographic protocol. [TUF](https://theupdateframework.io/docs/security/) |

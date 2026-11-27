@@ -117,7 +117,7 @@ def main():
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
-        inspect_dialog(show_translation, ('Google Basic v2 account', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
+        inspect_dialog(show_translation, ('Google API account and edition', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
         frame.Close()
         app.Yield()

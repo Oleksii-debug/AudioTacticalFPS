@@ -47,6 +47,14 @@ def main():
     options = json.loads(options_file.read_text(encoding='utf-8')) if options_file.exists() else {}
     if options.get('require_utf8') and not sys.flags.utf8_mode:
         raise RuntimeError('The external protocol process requires explicit UTF-8 mode.')
+    if options.get('import_probe'):
+        from importlib.util import module_from_spec, spec_from_file_location
+        probe = Path(options['import_probe'])
+        spec = spec_from_file_location('synthetic_bytecode_probe', probe)
+        loaded = module_from_spec(spec)
+        spec.loader.exec_module(loaded)
+        write(directory / 'bytecode-probe.json',
+              {'dont_write_bytecode': sys.dont_write_bytecode, 'value': loaded.VALUE})
     if options.get('diagnostic'):
         print(options['diagnostic'], flush=True)
         print(options['diagnostic'], file=sys.stderr, flush=True)
@@ -107,6 +115,12 @@ def main():
         with Path(__file__).with_name('fixture-sources.log').open('a', encoding='utf-8') as stream:
             stream.write(source.parent.name + '\n')
         status('обробка', number + 1)
+        deadline = time.monotonic() + options.get('hold_after_checkpoint', 0)
+        while time.monotonic() < deadline:
+            if (directory / 'stop.flag').exists() and not options.get('ignore_stop'):
+                status('зупинено', number + 1)
+                return
+            time.sleep(.02)
         if options.get('fail_after') == number + 1:
             raise SystemExit(3)
     status('завершено', len(sources))

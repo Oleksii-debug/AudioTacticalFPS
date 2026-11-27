@@ -8,7 +8,6 @@ from pathlib import Path
 import sys
 import threading
 from types import ModuleType, SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 
@@ -43,7 +42,7 @@ class Control:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Control)
@@ -74,8 +73,10 @@ def module():
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
-    with patch.dict(sys.modules, {'wx': wx}):
-        spec.loader.exec_module(mod)
+    # Restore only wx. Rolling back the entire module map removes newly imported
+    # export_file while the dialog retains its old ExportDestination class.
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    spec.loader.exec_module(mod)
     return mod
 
 
@@ -214,6 +215,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert not destination.exists() and library.calls == []
     frame.finish()
     assert library.calls == [expected]
+    assert destination.is_file(), form.status.GetValue()
     assert destination.read_bytes() == library.export_value.encode('utf-8')
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'exported to' in form.status.GetValue() and form.status.focused

@@ -31,6 +31,10 @@ MAX_JOB_BYTES = 64 * 1024**3
 ACTIVE = frozenset(('running', 'pausing', 'cancelling'))
 
 
+class _RuntimeProfileChanged(ValueError):
+    """A selected execution identity could no longer be verified."""
+
+
 def _id(value):
     if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{32}', value):
         raise ValueError('Invalid transcription identity.')
@@ -197,10 +201,19 @@ class TranscriptionService:
     def _verify_profile(self, profile, *, cancel=None, progress=None):
         if profile.get('trusted') is not True:
             raise PermissionError('Review and explicitly trust the local runtime/model profile before execution.')
-        current = inspect_runtime(profile['python_executable'], profile['worker_path'],
-                                  profile['model_directory'], cancel=cancel, progress=progress)
+        stopped(cancel)
+        try:
+            if self._profile(profile['id']) != profile:
+                raise _RuntimeProfileChanged('The selected runtime profile changed during verification.')
+            current = inspect_runtime(profile['python_executable'], profile['worker_path'],
+                                      profile['model_directory'], cancel=cancel, progress=progress)
+        except InterruptedError:
+            raise
+        except (OSError, ValueError) as error:
+            raise _RuntimeProfileChanged('Runtime or model identity could not be verified: ' + str(error)) from error
         if current['fingerprint'] != profile['fingerprint']:
-            raise ValueError('Runtime or model files changed; inspect and register the exact new bytes.')
+            raise _RuntimeProfileChanged('Runtime or model files changed; inspect and register the exact new bytes.')
+        stopped(cancel)
         return profile
 
     def _job_root(self, identity):
@@ -321,6 +334,22 @@ class TranscriptionService:
             self._save(state)
             return state
 
+    def _archive_worker(self, state, profile_id):
+        """Move an inactive, rejected workspace without deleting its evidence."""
+        job_root = self._job_root(state['id'])
+        worker = job_root / 'worker'
+        if os.path.lexists(worker):
+            regular(local_path(worker, root=job_root, exists=True), directory=True)
+            history = local_path(job_root / 'worker-history', root=job_root)
+            history.mkdir(exist_ok=True)
+            local_path(history, root=job_root, exists=True)
+            archived = history / (_id(profile_id) + '-' + uuid4().hex)
+            if os.path.lexists(archived):
+                raise FileExistsError('The previous worker workspace history already exists.')
+            worker.rename(archived)
+            sync_directory(history)
+            sync_directory(job_root)
+
     def rebind_runtime(self, identity, profile_id):
         job_root = self._job_root(identity)
         with state_lock(job_root, 'run'):
@@ -334,23 +363,12 @@ class TranscriptionService:
             if (profile['model_content_fingerprint'] != previous['model_content_fingerprint'] or
                     profile['worker_identity'] != previous['worker_identity']):
                 raise ValueError('Resuming requires the same model content and worker; create a new job for a different engine/model.')
-            if profile['fingerprint'] != previous['fingerprint'] or state.get('restored'):
-                worker = job_root / 'worker'
-                if os.path.lexists(worker):
-                    regular(local_path(worker, root=job_root, exists=True), directory=True)
-                    history = local_path(job_root / 'worker-history', root=job_root)
-                    history.mkdir(exist_ok=True)
-                    local_path(history, root=job_root, exists=True)
-                    archived = history / (previous['id'] + '-' + uuid4().hex)
-                    if os.path.lexists(archived):
-                        raise FileExistsError('The previous worker workspace history already exists.')
-                    # The worker checkpoint does not report every base/native
-                    # support file in our admission profile. Never relabel its
-                    # old raw cache with a newly reviewed profile. Keep it for
-                    # recovery evidence; accepted artifacts stay in place.
-                    worker.rename(archived)
-                    sync_directory(history)
-                    sync_directory(job_root)
+            if (profile['fingerprint'] != previous['fingerprint'] or state.get('restored')
+                    or state.get('worker_cache_rejected')):
+                # A worker checkpoint cannot acquire a newly reviewed profile.
+                # Accepted historical artifacts stay in place.
+                self._archive_worker(state, previous['id'])
+                state.pop('worker_cache_rejected', None)
             state['profile_id'], state['profile_fingerprint'] = profile_id, profile['fingerprint']
             state['plan_fingerprint'] = self._plan(state)
             if state.get('restored'):
@@ -392,10 +410,10 @@ class TranscriptionService:
                 'sha256': source['sha256'], 'size': source['size']}:
             raise ValueError('Retained source audio changed; it was not silently replaced.')
 
-    def _receipt(self, state, result):
+    def _receipt(self, state, result, *, cancel=None):
         root = self._job_root(state['id'])
         path = local_path(root / result['receipt'], root=root, exists=True)
-        if digest_file(path) != result['sha256']:
+        if file_identity(path, cancel=cancel, maximum=32 * 1024**2)['sha256'] != result['sha256']:
             raise ValueError('The saved transcript receipt changed.')
         receipt = read_json(path)
         if receipt.get('schema') != 'resonance-transcription-result/1' or receipt.get('source_id') != result['source_id']:
@@ -405,23 +423,25 @@ class TranscriptionService:
             raise ValueError('The transcript belongs to a different retained source.')
         for record in receipt['files'].values():
             target = local_path(root / record['path'], root=root, exists=True)
-            if file_identity(target, maximum=MAX_RESULT_BYTES) != {'sha256': record['sha256'], 'size': record['size']}:
+            if file_identity(target, cancel=cancel, maximum=MAX_RESULT_BYTES) != {'sha256': record['sha256'], 'size': record['size']}:
                 raise ValueError('A completed transcript export changed; the existing file was preserved.')
         return receipt
 
-    def _publish_result(self, state, source, result, provenance):
+    def _publish_result(self, state, source, result, provenance, *, cancel=None, verify=None):
+        stopped(cancel)
         root = self._job_root(state['id'])
         folder = root / 'artifacts' / source['id'] / uuid4().hex
         folder.mkdir(parents=True)
         files = {}
         for format, payload in encoded_outputs(result, provenance).items():
+            stopped(cancel)
             if not state['settings']['output_' + format]:
                 continue
             if len(payload) > MAX_RESULT_BYTES:
                 raise ValueError('The transcript export exceeds its byte budget.')
             target = folder / ('transcript.' + format)
             atomic_bytes(target, payload)
-            actual = file_identity(target, maximum=MAX_RESULT_BYTES)
+            actual = file_identity(target, cancel=cancel, maximum=MAX_RESULT_BYTES)
             expected = {'sha256': sha256(payload).hexdigest(), 'size': len(payload)}
             if actual != expected:
                 raise OSError('A transcript export failed its durable byte verification.')
@@ -430,33 +450,64 @@ class TranscriptionService:
                    'result': result, 'provenance': provenance, 'files': files,
                    'created': time.time(), 'status': 'complete'}
         target = folder / 'receipt.json'
+        stopped(cancel)
         atomic_json(target, receipt)
         record = {'source_id': source['id'], 'receipt': target.relative_to(root).as_posix(),
-                  'sha256': digest_file(target), 'formats': list(files), 'language': result['language'],
+                  'sha256': file_identity(target, cancel=cancel, maximum=32 * 1024**2)['sha256'],
+                  'formats': list(files), 'language': result['language'],
                   'duration': result['duration'], 'segments': len(result['segments'])}
-        self._receipt(state, record)
+        self._receipt(state, record, cancel=cancel)
+        if verify is not None:
+            verify()  # New durable files remain unaccepted until identity passes.
+        stopped(cancel)
         state['results'].append(record)
         state['done'] = len(state['results'])
         self._save(state)
 
-    def _admit_results(self, state, profile, expected_settings):
+    def _checkpoints(self, cache_root, *, cancel=None):
+        """Bound and cancel traversal, including directories without markers."""
+        pending, entries, markers = [cache_root], 0, 0
+        while pending:
+            stopped(cancel)
+            folder = local_path(pending.pop(), root=cache_root, exists=True)
+            regular(folder, directory=True)
+            with os.scandir(folder) as children:
+                for entry in children:
+                    stopped(cancel)
+                    entries += 1
+                    if entries > self.budget.max_staging_files:
+                        raise ValueError('The worker cache exceeds its bounded file inventory.')
+                    if entry.is_dir(follow_symlinks=False):
+                        pending.append(local_path(entry.path, root=cache_root, exists=True))
+                    elif entry.name.endswith('.cache.json'):
+                        markers += 1
+                        if markers > MAX_SOURCES * 16:
+                            raise ValueError('The worker cache exceeds its bounded checkpoint inventory.')
+                        yield local_path(entry.path, root=cache_root, exists=True)
+
+    def _admit_results(self, state, profile, expected_settings, *, cancel=None):
         """Admit atomic worker recognition checkpoints into app-owned receipts.
 
         Accepted artifacts live outside cache, so ordinary data backup preserves
         them even if the optional worker cache is omitted.
         """
+        stopped(cancel)
+        if state.get('worker_cache_rejected'):
+            raise ValueError('The rejected worker workspace must be archived before admitting checkpoints.')
         root = self._job_root(state['id'])
         cache_root = root / 'worker' / 'logs' / 'cache'
         if not cache_root.exists():
             return
         accepted = {result['source_id'] for result in state['results']}
-        sources = {str(self._source_path(state, source)): source for source in state['sources'] if source['id'] not in accepted}
-        count = 0
-        for marker in cache_root.rglob('*.cache.json'):
-            count += 1
-            if count > MAX_SOURCES * 16:
-                raise ValueError('The worker cache exceeds its bounded checkpoint inventory.')
-            marker = local_path(marker, root=cache_root, exists=True)
+        sources = {}
+        for source in state['sources']:
+            stopped(cancel)
+            if source['id'] not in accepted:
+                sources[str(self._source_path(state, source))] = source
+        if not sources:
+            return
+        admitted = False
+        for marker in self._checkpoints(cache_root, cancel=cancel):
             checkpoint = read_json(marker)
             identity = checkpoint.get('identity', {})
             source = sources.get(identity.get('source', {}).get('path'))
@@ -477,13 +528,15 @@ class TranscriptionService:
                     or runtime.get('executable') != profile['python_identity']
                     or runtime.get('packages') != profile['runtime_distributions']):
                 raise ValueError('The worker checkpoint does not match the selected runtime/model identity.')
-            self._verify_source(state, source)
+            self._verify_source(state, source, cancel=cancel)
             text_path, meta_path = marker.with_name(key + '.txt'), marker.with_name(key + '.json')
-            if (file_identity(text_path, maximum=MAX_RESULT_BYTES) != checkpoint.get('text') or
-                    file_identity(meta_path, maximum=MAX_RESULT_BYTES) != checkpoint.get('meta')):
+            if (file_identity(text_path, cancel=cancel, maximum=MAX_RESULT_BYTES) != checkpoint.get('text') or
+                    file_identity(meta_path, cancel=cancel, maximum=MAX_RESULT_BYTES) != checkpoint.get('meta')):
                 raise ValueError('A worker recognition checkpoint was modified or incomplete.')
             meta = read_json(meta_path)
+            stopped(cancel)
             result = validated_result(meta, text_path.read_text(encoding='utf-8'))
+            stopped(cancel)
             effective = meta.get('effective_settings', meta.get('settings'))
             if not isinstance(effective, dict) or effective.get('language') != expected_settings['language'] or effective.get('task') != expected_settings['task']:
                 raise ValueError('The worker silently changed the requested language or task.')
@@ -494,12 +547,19 @@ class TranscriptionService:
                           'worker_sha256': profile['worker_identity']['sha256'],
                           'python_sha256': profile['python_identity']['sha256'],
                           'runtime_identity_sha256': fingerprint(runtime),
-                          'worker_checkpoint_sha256': digest_file(marker),
+                          'worker_checkpoint_sha256': file_identity(marker, cancel=cancel, maximum=32 * 1024**2)['sha256'],
                           'settings': state['settings'], 'effective_settings': effective,
                           'translation_target': 'en' if expected_settings['task'] == 'translate' else None,
                           'diarization': False}
-            self._publish_result(state, source, result, provenance)
+            self._publish_result(state, source, result, provenance, cancel=cancel,
+                                 verify=lambda: self._verify_profile(profile, cancel=cancel))
             accepted.add(source['id'])
+            admitted = True
+        if admitted:
+            # A final/resume admission can itself be the last work before
+            # `complete`; verify its snapshot again after the actual commits.
+            # This does no runtime hashing on an idle poll.
+            self._verify_profile(profile, cancel=cancel)
 
     def run(self, identity, *, progress=None, cancel=None):
         from ..operations import ResourceBroker, ResourceRequest
@@ -517,6 +577,13 @@ class TranscriptionService:
             if state.get('recovery_review_required') and not state.get('restored'):
                 raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
             profile = self._profile(state['profile_id'])
+            previous_results = list(state['results'])
+            if state.get('worker_cache_rejected'):
+                # A prior archive failure or interruption cannot make rejected
+                # raw checkpoints eligible merely because old bytes returned.
+                self._archive_worker(state, profile['id'])
+                state.pop('worker_cache_rejected', None)
+                self._save(state)
             stop_started, last_report, last_admit = None, None, 0.0
             expected_settings = worker_settings(state['settings'], profile['model_name'])
             worker_root = job_root / 'worker'
@@ -566,7 +633,15 @@ class TranscriptionService:
                             raise ValueError('The worker returned invalid progress counts.')
                     state['current'] = str(current.get('current', ''))[:2048]
                 if time.monotonic() - last_admit >= .25:
-                    self._admit_results(state, profile, expected_settings)
+                    try:
+                        self._admit_results(state, profile, expected_settings,
+                                            cancel=lambda: action() != 'run')
+                    except InterruptedError:
+                        if action() == 'run':
+                            raise
+                        # Route a stop observed inside a long hash through the
+                        # same cooperative flag/grace path as an idle poll.
+                        return poll()
                     last_admit = time.monotonic()
                 report('Transcribing locally; verified files are retained')
                 return False
@@ -580,7 +655,7 @@ class TranscriptionService:
                     raise ValueError('The job is bound to a different reviewed runtime profile.')
                 for source in state['sources']:
                     self._verify_source(state, source, cancel=lambda: action() != 'run')
-                self._admit_results(state, profile, expected_settings)
+                self._admit_results(state, profile, expected_settings, cancel=lambda: action() != 'run')
                 pending = [source for source in state['sources'] if source['id'] not in {x['source_id'] for x in state['results']}]
                 if not pending:
                     state.update(status='complete', done=state['total'], error='')
@@ -625,7 +700,7 @@ class TranscriptionService:
                         return poll()
                     # Isolated mode ignores PYTHON* environment variables.
                     # Set UTF-8 explicitly for protocol paths and worker pipes.
-                    run_process([profile['python_executable'], '-I', '-X', 'utf8', profile['worker_path'],
+                    run_process([profile['python_executable'], '-I', '-B', '-X', 'utf8', profile['worker_path'],
                                  '--job-dir', str(worker_root)], budget=self.budget,
                                 cancelled=checked_poll, watch=(worker_root / 'logs', worker_root / 'results'),
                                 env=environment, cwd=worker_root)
@@ -633,24 +708,43 @@ class TranscriptionService:
                 if selected != 'run':
                     state['status'] = 'paused' if selected == 'pause' else 'cancelled'
                 else:
-                    self._verify_profile(profile)
-                    self._admit_results(state, profile, expected_settings)
+                    self._verify_profile(profile, cancel=lambda: action() != 'run')
+                    self._admit_results(state, profile, expected_settings, cancel=lambda: action() != 'run')
                     status = read_json(worker_root / 'job_status.json')
                     if status.get('state') != 'завершено' or status.get('failed') != 0 or state['done'] != state['total']:
                         raise ValueError('The worker exited without a complete set of verified requested results.')
                     state['status'] = 'complete'
                 state['error'] = ''
             except Exception as error:
-                selected = action()
-                if selected != 'run':
-                    state['status'] = 'paused' if selected == 'pause' else 'cancelled'
-                    state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
-                else:
+                invalid_runtime = error if isinstance(error, _RuntimeProfileChanged) else None
+                if invalid_runtime is None and action() == 'run':
                     try:
-                        self._verify_profile(profile)
-                        self._admit_results(state, profile, expected_settings)
+                        self._verify_profile(profile, cancel=lambda: action() != 'run')
+                        self._admit_results(state, profile, expected_settings, cancel=lambda: action() != 'run')
+                    except _RuntimeProfileChanged as invalid:
+                        invalid_runtime = invalid
                     except Exception as invalid:
                         state['error'] = str(error) + ' Checkpoint admission: ' + str(invalid)
+                if invalid_runtime is not None:
+                    # run_process has closed its child/readers before this
+                    # handler. Preserve every historical receipt and all bytes,
+                    # but retract this attempt's new records and reject its raw
+                    # cache durably before moving the inactive workspace.
+                    state['results'], state['done'] = previous_results, len(previous_results)
+                    state['worker_cache_rejected'] = True
+                    state['status'] = 'partial' if previous_results else 'failed'
+                    state['error'] = str(invalid_runtime) + ' New results from this attempt were rejected; prior verified results are retained.'
+                    self._save(state)
+                    try:
+                        self._archive_worker(state, profile['id'])
+                    except (OSError, ValueError) as archive_error:
+                        state['error'] += ' Worker evidence could not be archived yet: ' + str(archive_error)
+                    else:
+                        state.pop('worker_cache_rejected', None)
+                elif action() != 'run':
+                    state['status'] = 'paused' if action() == 'pause' else 'cancelled'
+                    state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
+                else:
                     state['status'] = 'partial' if state['results'] else 'failed'
                     state['error'] = state['error'] or str(error)
             self._save(state)

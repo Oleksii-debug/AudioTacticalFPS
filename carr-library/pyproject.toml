@@ -110,3 +110,4 @@ bootstrap = "bootstrap"
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
+markers = ["requires_loopback: exercises a synthetic local HTTP server; requires a separately declared loopback-enabled gate"]

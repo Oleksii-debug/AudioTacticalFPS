@@ -130,7 +130,7 @@ def test_isolated_worker_preserves_unicode_paths_and_diagnostics(tmp_path, monke
     assert result['status'] == 'complete', result['error']
     assert len(processes) == 1
     argv, process = processes[0]
-    assert argv[1:4] == ['-I', '-X', 'utf8']
+    assert argv[1:5] == ['-I', '-B', '-X', 'utf8']
     assert diagnostic in process.stdout.decode('utf-8')
     assert diagnostic in process.stderr.decode('utf-8')
     assert service.read_transcript(result['id'])['text'] == 'Синтетичний протокольний результат.'
