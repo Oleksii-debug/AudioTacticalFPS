@@ -36,9 +36,11 @@ ADVANCED_SCHEMA = 'carr-translation-job/2'
 ADVANCED_CACHE_SCHEMA = 'carr-translation-languages/2'
 _JOB = re.compile(r'([0-9a-f]{32})\.json')
 _CACHE = re.compile(r'languages-([a-zA-Z0-9_-]{1,100})\.json')
+_SCOPE = re.compile(r'scope-([0-9a-f]{32})\.json')
+MAX_SCOPES = 100
 _TRANSIENT = re.compile(
     r'(?:\.state\.lock|[0-9a-f]{32}\.lock|'
-    r'\.(?:[0-9a-f]{32}|languages-[a-zA-Z0-9_-]{1,100})\.json\.[0-9a-f]{32}\.tmp)')
+    r'\.(?:[0-9a-f]{32}|scope-[0-9a-f]{32}|languages-[a-zA-Z0-9_-]{1,100})\.json\.[0-9a-f]{32}\.tmp)')
 _HEX = re.compile(r'[0-9a-f]{64}')
 _LANGUAGE = re.compile(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}')
 _ADVANCED_LANGUAGE = re.compile(r'[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}')
@@ -258,19 +260,28 @@ def is_state_path(relative):
     if not isinstance(relative, str) or not relative.startswith(DIRECTORY + '/'):
         return False
     name = relative[len(DIRECTORY) + 1:]
-    return bool(_JOB.fullmatch(name) or _CACHE.fullmatch(name))
+    return bool(_JOB.fullmatch(name) or _CACHE.fullmatch(name) or _SCOPE.fullmatch(name))
 
 
 def state_limit(relative):
     if not is_state_path(relative):
         raise ValueError('Unsupported translation backup sidecar.')
-    return MAX_CACHE_BYTES if _CACHE.fullmatch(relative.rsplit('/', 1)[-1]) else MAX_JOB_BYTES
+    name = relative.rsplit('/', 1)[-1]
+    if _SCOPE.fullmatch(name):
+        from .translation_scope_state import MAX_SCOPE_BYTES
+        return MAX_SCOPE_BYTES
+    return MAX_CACHE_BYTES if _CACHE.fullmatch(name) else MAX_JOB_BYTES
 
 
 def validate_state_document(name, raw):
     if not isinstance(raw, bytes):
         raise ValueError('Translation checkpoint bytes are required.')
-    job, cache = _JOB.fullmatch(name), _CACHE.fullmatch(name)
+    job, cache, scope = _JOB.fullmatch(name), _CACHE.fullmatch(name), _SCOPE.fullmatch(name)
+    if scope:
+        from .translation_scope_state import MAX_SCOPE_BYTES, validate_scope_plan
+        if not 0 < len(raw) <= MAX_SCOPE_BYTES:
+            raise ValueError('Invalid scoped translation checkpoint size.')
+        return validate_scope_plan(decode_state_json(raw), identity=scope[1])
     if not (job or cache) or not 0 < len(raw) <= (MAX_JOB_BYTES if job else MAX_CACHE_BYTES):
         raise ValueError('Invalid translation checkpoint filename or size.')
     value = decode_state_json(raw)
@@ -289,12 +300,12 @@ def state_paths(root, *, cancelled=lambda: False):
         local_path(folder)
         if not folder.is_dir():
             raise ValueError('Translation state needs ordinary local directories.')
-    paths, jobs, caches, size = [], 0, 0, 0
+    paths, jobs, caches, scopes, size = [], 0, 0, 0, 0
     with os.scandir(folder) as entries:
         for count, entry in enumerate(entries, 1):
             if cancelled():
                 raise InterruptedError('Translation snapshot cancelled.')
-            if count > (MAX_JOBS + MAX_CACHES) * 4 + 16:
+            if count > (MAX_JOBS + MAX_CACHES + MAX_SCOPES) * 4 + 16:
                 raise ValueError('Translation checkpoint directory exceeds its entry budget.')
             path = Path(entry.path)
             info = regular(path)
@@ -305,8 +316,9 @@ def state_paths(root, *, cancelled=lambda: False):
                 raise ValueError('Unexpected or oversized translation checkpoint.')
             jobs += bool(_JOB.fullmatch(entry.name))
             caches += bool(_CACHE.fullmatch(entry.name))
+            scopes += bool(_SCOPE.fullmatch(entry.name))
             size += info.st_size
-            if jobs > MAX_JOBS or caches > MAX_CACHES or size > MAX_SNAPSHOT_BYTES:
+            if jobs > MAX_JOBS or caches > MAX_CACHES or scopes > MAX_SCOPES or size > MAX_SNAPSHOT_BYTES:
                 raise ValueError('Translation checkpoints exceed their snapshot budget.')
             paths.append(path)
     return tuple(sorted(paths))
@@ -323,16 +335,29 @@ def snapshot_guard(root):
     with state_write_guard(directory), ExitStack() as stack:
         paths = state_paths(root)
         for path in paths:
-            if _JOB.fullmatch(path.name):
-                stack.enter_context(snapshot_job_guard(directory, path.stem))
+            match = _JOB.fullmatch(path.name) or _SCOPE.fullmatch(path.name)
+            if match:
+                stack.enter_context(snapshot_job_guard(directory, match[1]))
         yield
 
 
 def validate_state_tree(db, root, *, cancelled=lambda: False):
-    """Translation sources are explicit selected text, not database quotations."""
+    """Selected/scoped snapshots grant no database quotation or remote authority."""
+    scopes = []
     for path in state_paths(root, cancelled=cancelled):
         relative = path.relative_to(root).as_posix()
-        validate_state_document(path.name, read_bytes(path, maximum=state_limit(relative)))
+        value = validate_state_document(path.name, read_bytes(path, maximum=state_limit(relative)))
+        if _SCOPE.fullmatch(path.name):
+            scopes.append(value)
+    if scopes:
+        from .translation_scope_state import validate_scope_links
+        def load_child(identity):
+            path = Path(root) / DIRECTORY / (identity + '.json')
+            return validate_state_document(path.name, read_bytes(path, maximum=MAX_JOB_BYTES))
+        for value in scopes:
+            if cancelled():
+                raise InterruptedError('Translation snapshot cancelled.')
+            validate_scope_links(value, load_child)
 
 
 class TranslationStore:
@@ -382,7 +407,8 @@ class TranslationStore:
                 raise ValueError('Translation checkpoints exceed their snapshot budget.')
             jobs = sum(bool(_JOB.fullmatch(item.name)) for item in new_inventory) + bool(_JOB.fullmatch(path.name))
             caches = sum(bool(_CACHE.fullmatch(item.name)) for item in new_inventory) + bool(_CACHE.fullmatch(path.name))
-            if jobs > MAX_JOBS or caches > MAX_CACHES:
+            scopes = sum(bool(_SCOPE.fullmatch(item.name)) for item in new_inventory) + bool(_SCOPE.fullmatch(path.name))
+            if jobs > MAX_JOBS or caches > MAX_CACHES or scopes > MAX_SCOPES:
                 raise ValueError('Too many saved translation checkpoints.')
             atomic_json(path, value)
 
