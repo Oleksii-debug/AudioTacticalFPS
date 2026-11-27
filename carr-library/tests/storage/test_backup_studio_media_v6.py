@@ -265,3 +265,27 @@ def test_resealed_v6_shape_or_media_identity_fails_before_publication(tmp_path, 
     with pytest.raises(ValueError):
         restore_backup(backup, target, digest)
     assert not target.exists()
+
+
+def test_typed_media_pools_do_not_inherit_the_legacy_aggregate_cap(tmp_path, monkeypatch):
+    import shutil
+    from carr_library import state_backup
+
+    app, _, audio, orphan, publication, _ = media_library(tmp_path)
+    folder = tmp_path / 'typed'
+    digest = create_backup(app, folder)
+    legacy = tmp_path / 'historical'
+    shutil.copytree(folder, legacy)
+    legacy_digest = as_legacy_media_v6(legacy)
+    manifest = read_json(folder / 'manifest.json')
+    state_bytes = sum(row['size_bytes'] for row in manifest['sidecars']
+                      if row['filename'].startswith('state/'))
+    # Scale only the historical envelope cap. Current typed retained/metadata
+    # budgets stay unchanged; every file is real and its PCM/hash is verified.
+    monkeypatch.setattr(state_backup, 'MAX_STATE_BYTES', state_bytes - 1)
+    target = restore_backup(folder, tmp_path / 'restored-typed', digest)
+    assert (target / audio.relative_to(app.root)).read_bytes() == audio.read_bytes()
+    assert (target / orphan.relative_to(app.root)).read_bytes() == orphan.read_bytes()
+    with pytest.raises(ValueError, match='legacy state|byte budget'):
+        restore_backup(legacy, tmp_path / 'rejected-historical', legacy_digest)
+    assert not (tmp_path / 'rejected-historical').exists()

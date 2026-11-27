@@ -150,7 +150,12 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
-def validate_state(entries):
+def validate_state(entries, *, max_bytes=None):
+    # Historical readers keep their original cap. Only the already typed
+    # restored projection supplies its separately checked aggregate budget.
+    maximum = MAX_STATE_BYTES if max_bytes is None else max_bytes
+    if type(maximum) is not int or maximum < 1:
+        raise ValueError('Application state validation needs a positive byte budget.')
     if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
         raise ValueError('Invalid application state manifest.')
     names, directories, portable_paths, total = set(), set(), {}, 0
@@ -180,7 +185,7 @@ def validate_state(entries):
         total += item['size_bytes']
     if names & directories:
         raise ValueError('Application state file and directory paths collide.')
-    if total > MAX_STATE_BYTES:
+    if total > maximum:
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 

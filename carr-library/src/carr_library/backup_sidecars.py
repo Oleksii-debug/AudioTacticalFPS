@@ -852,9 +852,14 @@ def restore_media_inputs(db, stage, destination, inventory, *, cancelled):
             projected.append(dict(filename=relative, size_bytes=size, sha256=checksum))
             if len(projected) > MAX_FILES:
                 raise RestoreError('Restored application state exceeds its file budget.')
-    validate_state(state_entries(projected))
+    if inventory.legacy_state is not None:
+        validate_state(state_entries(projected))
+    else:
+        validate_state(state_entries(projected), max_bytes=MAX_SNAPSHOT_BYTES)
     projected.extend(entry for entry in inventory.entries
                      if not entry['filename'].startswith('state/'))
+    if inventory.legacy_state is None:
+        _check_collection_budget(projected, MAX_SNAPSHOT_BYTES)
     _check_cancelled(cancelled)
     return replace(inventory, entries=tuple(sorted(projected, key=lambda entry: entry['filename'])))
 
