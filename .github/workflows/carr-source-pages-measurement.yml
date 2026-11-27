@@ -1,0 +1,100 @@
+name: CARR retained source page measurements
+on:
+  push:
+    branches: [carr/source-pages-measurement-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-source-pages-measurement.yml']
+permissions:
+  contents: read
+concurrency:
+  group: carr-source-pages-measurement-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  measure:
+    name: source pages / ${{ matrix.os }} / ${{ matrix.mode }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+        mode: [source, installed]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact application and record runtime
+        id: install
+        run: |
+          New-Item -ItemType Directory -Force measurement-evidence | Out-Null
+          git rev-parse HEAD | Set-Content measurement-evidence/tested-commit.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip list --format=json | Set-Content measurement-evidence/installed-packages.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Measure actual retained 1000 10000 and 50000 logical pages
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          CARR_MEASUREMENT_MODE: ${{ matrix.mode }}
+          CARR_MEASUREMENT_OS: ${{ matrix.os }}
+        run: |
+          $arguments = @('-I', '-B', '-X', 'utf8', 'scripts/benchmark_semantic_cache.py', '--source-pages',
+            '--output-dir', 'measurement-evidence/experiment', '--sizes', '1000', '10000', '50000',
+            '--hardware-label', ($env:CARR_MEASUREMENT_OS + '-' + $env:CARR_MEASUREMENT_MODE))
+          if ($env:CARR_MEASUREMENT_MODE -eq 'installed') { $arguments += '--installed' }
+          & python @arguments 2>&1 | Tee-Object measurement-evidence/measurement.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Report bounded summaries without assigning performance acceptance
+        if: ${{ always() }}
+        run: |
+          $report = 'measurement-evidence/experiment/source-pages.json'
+          if (Test-Path $report) {
+            $data = Get-Content -Raw -Encoding utf8 $report | ConvertFrom-Json
+            $data | Select-Object outcome, environment, hardware_label, production_python_inventory_sha256, claims | ConvertTo-Json -Depth 8
+            foreach ($case in $data.cases) {
+              foreach ($measurement in $case.measurements) {
+                [pscustomobject]@{ pages=$case.source_pages; mode=$measurement.mode;
+                  corpus=$case.corpus.content_sha256; first=$measurement.first_page;
+                  continuation=$measurement.continuation_pages; rss=$measurement.process_peak_rss_bytes;
+                  timeouts=$measurement.search_timeouts; complete_trials=$measurement.sampling_complete_trials } | ConvertTo-Json -Depth 8
+              }
+            }
+          } elseif (Test-Path 'measurement-evidence/experiment/source-pages-incomplete.json') {
+            Get-Content -Raw -Encoding utf8 'measurement-evidence/experiment/source-pages-incomplete.json'
+          }
+      - name: Preserve only public synthetic measurement receipts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-source-pages-${{ matrix.os }}-${{ matrix.mode }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/measurement-evidence/*.txt
+            carr-library/measurement-evidence/*.json
+            carr-library/measurement-evidence/experiment/*.json
+            carr-library/measurement-evidence/experiment/benchmark-harness.py
+            carr-library/measurement-evidence/experiment/*/corpus.json
+            carr-library/measurement-evidence/experiment/*/build.json
+            carr-library/measurement-evidence/experiment/*/phrase.json
+            carr-library/measurement-evidence/experiment/*/thematic.json
+          if-no-files-found: error
+          retention-days: 7
