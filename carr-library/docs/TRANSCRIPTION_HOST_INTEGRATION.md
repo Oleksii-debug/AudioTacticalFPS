@@ -68,6 +68,15 @@ links, changed inputs and exceeded limits before publishing a job.
   `881b6f94d995be81310795c8dc31f6593bc6e115`. Read/write/delete sharing allows
   the worker's concurrent atomic replacement. Bounded JSON, duplicate-key,
   non-finite-number, regular-file and link checks remain enabled.
+- The selected virtual-environment Python entry is retained while its resolved
+  executable is hashed. The actual child therefore uses the explicitly chosen
+  environment's packages.
+- On Windows, only the child job's live `job_status.json` publication has a
+  narrowly guarded native rename fallback when ordinary replacement is denied.
+  It retains the open reader's old snapshot while new readers see the new
+  status; the original source/destination audit and file guards remain.
+- Saving a transcript edit reacquires the existing application writer guard
+  and rechecks authorization immediately before publishing its revision.
 - New JSON and job/export publication use the current exclusive publication
   primitive, preserving concurrent destinations without hardlink aliases.
   Replacement state remains protected by its existing job lock.
@@ -103,9 +112,9 @@ Required source and installed cases include:
 
 | Suite | Required cases |
 |---|---:|
-| `tests/transcription/test_supplied_worker_bridge.py` | 59 |
+| `tests/transcription/test_supplied_worker_bridge.py` | 64 |
 | `tests/transcription/test_pr99_host.py` | 35 |
-| `tests/transcription/test_v5_worker_profile.py` | 37 |
+| `tests/transcription/test_v5_worker_profile.py` | 39 |
 | `tests/storage/test_transcription_backup.py` | 42 |
 | `tests/ui/test_progress_view.py` | 25 |
 

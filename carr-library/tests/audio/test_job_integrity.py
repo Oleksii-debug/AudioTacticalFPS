@@ -1,6 +1,8 @@
 """Real file, crash and storage regressions; no speech-quality claims."""
 import errno
 from contextlib import contextmanager
+import hashlib
+import json
 import os
 from pathlib import Path
 import stat
@@ -114,16 +116,76 @@ def test_checksum_rejects_same_size_mutation_during_read(tmp_path):
     source = tmp_path / 'input'
     source.write_bytes(b'old input')
     changed = False
+    denied = []
 
     def mutate():
         nonlocal changed
         if not changed:
             changed = True
-            source.write_bytes(b'new input')
+            try:
+                source.write_bytes(b'new input')
+            except PermissionError as exc:
+                if (os.name != 'nt' or exc.errno != errno.EACCES
+                        or getattr(exc, 'winerror', None) not in (None, 32)):
+                    raise
+                denied.append(exc.errno)
         return False
 
-    with pytest.raises(RuntimeError, match='changed'):
-        jobs.sha256_file(source, cancelled=mutate)
+    if os.name == 'nt':
+        # A Windows write within the same timestamp tick must be prevented,
+        # not mistaken for unchanged input because its length is identical.
+        digest = jobs.sha256_file(source, cancelled=mutate)
+        assert denied == [errno.EACCES]
+        assert source.read_bytes() == b'old input'
+        assert digest == hashlib.sha256(b'old input').hexdigest()
+        source.write_bytes(b'new input')  # The verifier released its owned handle.
+        assert source.read_bytes() == b'new input'
+    else:
+        with pytest.raises(RuntimeError, match='changed'):
+            jobs.sha256_file(source, cancelled=mutate)
+        assert changed and source.read_bytes() == b'new input'
+
+
+def test_verified_input_detects_or_prevents_an_independent_process_writer(tmp_path):
+    source = tmp_path / 'independent-input'
+    source.write_bytes(b'old input')
+    code = """
+import errno, json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+result = {'before': path.read_bytes().decode('ascii')}
+try:
+    path.write_bytes(b'new input')
+except PermissionError as error:
+    result.update(denied=True, errno=error.errno, winerror=getattr(error, 'winerror', None))
+else:
+    result.update(denied=False)
+print(json.dumps(result))
+"""
+
+    def inspect():
+        with jobs.verified_reader(source) as stream:
+            child = subprocess.run([sys.executable, '-B', '-c', code, str(source)],
+                                   capture_output=True, text=True, timeout=20, check=True)
+            observed = json.loads(child.stdout)
+            assert observed['before'] == 'old input'  # A second reader stays allowed.
+            if os.name == 'nt':
+                assert observed['denied'] is True
+                assert observed['errno'] == errno.EACCES
+                assert observed['winerror'] in (None, 32)
+                assert stream.read() == b'old input'
+            else:
+                assert observed['denied'] is False
+                assert stream.read() == b'new input'
+
+    if os.name == 'nt':
+        inspect()
+        assert source.read_bytes() == b'old input'
+        source.write_bytes(b'after close')
+        assert source.read_bytes() == b'after close'
+    else:
+        with pytest.raises(RuntimeError, match='changed'):
+            inspect()
 
 
 def test_streamed_concat_binds_inputs_to_preflight_identity(tmp_path):
@@ -238,8 +300,16 @@ def test_json_read_stays_bounded_when_file_grows_after_stat(tmp_path, monkeypatc
 
                 def read(self, count):
                     observed.append(count)
-                    with Path(path).open('ab') as writer:
-                        writer.write(b' ' * (1024 ** 2))
+                    try:
+                        with Path(path).open('ab') as writer:
+                            writer.write(b' ' * (1024 ** 2))
+                    except PermissionError as exc:
+                        assert os.name == 'nt' and exc.errno == errno.EACCES
+                        assert getattr(exc, 'winerror', None) in (None, 32)
+                        assert Path(path).read_bytes() == b'{}'
+                        # Native locking already rejected growth. Still inject
+                        # it at the read boundary to verify the parser's limit.
+                        return b'{}' + b' ' * (count - 2)
                     return stream.read(count)
             yield Reader()
 

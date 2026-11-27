@@ -30,6 +30,16 @@ The selected implementation includes:
 - Native snapshot confirmation retains real owned-window/UIA/receipt checks
   through the successor password dialog; OCR keeps strict model identifiers
   while accepting the native Windows report's script separators.
+- Windows audio input hashing/copying holds a read-only sharing handle so an
+  in-place writer cannot evade detection through timestamp coincidence. All
+  existing regular-file/reparse/identity/resource guards remain.
+- Oversized malformed discovery input keeps its original payload and uses short
+  semantic test IDs, avoiding the Windows environment-value limit.
+- Transcription preserves the selected virtual environment, rechecks edit
+  publication authorization under the existing writer lock, and uses a bounded
+  live-status rename fallback only inside the authorized worker job.
+- Evidence recovery stops/unbinds its exact native timer before owner disposal.
+  Queued callbacks do not touch destroyed controls or restart recovery work.
 - Isolated test replays load the exact trusted sibling watchdog. The separate
   bibliography workflow uses its existing two-worker runner within unchanged
   deadlines.
@@ -49,7 +59,10 @@ existing audio formatter, with exact actual-child SRT/VTT byte assertions,
 passed all 79 V5-profile and typed-backup cases. The completed transcript
 Save All/current-draft selection passed 55 cases, including all 35 current-host
 cases. These selections overlap and are not the composed Windows or installed
-acceptance verdict.
+acceptance verdict. The exact audio-boundary component also passed 68 focused
+Linux cases. The final PR159 current-host port was independently reviewed;
+its new virtual-environment, publication-race and held-status-reader cases
+require the new composed Windows run.
 
 ## Exact preceding CBA Windows result
 
