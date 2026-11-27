@@ -70,6 +70,9 @@ def main(argv=None):
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
+    if arguments[:1] == ['translation']:
+        from .assistant.translation_cli import main as translation_main
+        return translation_main(arguments[1:])
     if arguments[:1] == ['transcription']:
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])

@@ -238,5 +238,7 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     assert 'native device did not confirm silence' in diagnostic
     assert 'local progress view is detached' in diagnostic
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    executor.submit.assert_called_once_with(service.close)
+    service.close.assert_not_called()
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
     dialog.EndModal.assert_called_once_with(321)

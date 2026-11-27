@@ -231,3 +231,101 @@ def test_entrypoint_guard_requires_same_active_library_object_and_scope(prepared
     frame.working = True
     with pytest.raises(ValueError, match="current operation"):
         _scope(frame)
+
+
+def saved_document(prepared, tmp_path):
+    library, workspace, _, _, _, _ = prepared
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    result = controller.render(snapshot)
+    path = controller.export_docx(snapshot, result, tmp_path / 'selected-citations.docx')
+    return controller, path
+
+
+def test_saved_docx_regenerates_from_reviewed_snapshot_in_an_empty_active_workspace(prepared, tmp_path):
+    from carr_library.ui.citation_formatting import REGENERATION_NOTICE
+    library, *_ = prepared
+    _, source = saved_document(prepared, tmp_path)
+    original = source.read_bytes()
+    before = read_citation_docx(source)
+    empty = library.create_workspace('Independent saved document review')
+    controller = CitationFormattingController(library, empty)
+    inspected = controller.inspect_docx(source)
+    assert REGENERATION_NOTICE in inspected.summary
+    assert inspected.sha256 in inspected.summary
+    assert 'Private workspace notes' not in inspected.summary
+    target = controller.regenerate_docx(inspected, tmp_path / 'new-snapshot.docx')
+    assert read_citation_docx(target) == before
+    assert source.read_bytes() == original
+    assert AcademicController(library, empty).list() == ()
+    with pytest.raises(FileExistsError):
+        controller.regenerate_docx(inspected, source)
+    with pytest.raises(FileExistsError):
+        controller.regenerate_docx(inspected, target)
+    with pytest.raises(ValueError, match='outside'):
+        controller.regenerate_docx(inspected, library.root / 'unapproved.docx')
+    assert source.read_bytes() == original and read_citation_docx(target) == before
+
+
+def test_changed_docx_after_review_is_rejected_before_processor_admission(prepared, tmp_path, monkeypatch):
+    from carr_library.academic_integration import regeneration
+    controller, source = saved_document(prepared, tmp_path)
+    inspected = controller.inspect_docx(source)
+    changed = b'Newer independently saved document'
+    source.write_bytes(changed)
+    monkeypatch.setattr(regeneration, 'render_citations',
+                        lambda *args, **kwargs: pytest.fail('A stale reviewed document reached the processor'))
+    target = tmp_path / 'stale-review.docx'
+    with pytest.raises(CitationError, match='Open and review'):
+        controller.regenerate_docx(inspected, target)
+    assert not target.exists() and source.read_bytes() == changed
+
+
+def test_regeneration_rechecks_workspace_access_after_actual_document_assembly(prepared, tmp_path, monkeypatch):
+    from docx.document import Document
+    library, workspace, *_ = prepared
+    controller, source = saved_document(prepared, tmp_path)
+    inspected = controller.inspect_docx(source)
+    original = source.read_bytes()
+    actual_save = Document.save
+    def assemble_then_archive(document, destination):
+        actual_save(document, destination)
+        library.archive_workspace(workspace)
+    monkeypatch.setattr(Document, 'save', assemble_then_archive)
+    target = tmp_path / 'archived-scope.docx'
+    with pytest.raises(ValueError, match='archived'):
+        controller.regenerate_docx(inspected, target)
+    assert not target.exists() and source.read_bytes() == original
+
+
+def test_live_export_rechecks_reference_identity_after_actual_document_assembly(prepared, tmp_path, monkeypatch):
+    from docx.document import Document
+    library, workspace, _, academic, reference, _ = prepared
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    result = controller.render(snapshot)
+    actual_save = Document.save
+    def assemble_then_edit_reference(document, destination):
+        actual_save(document, destination)
+        academic.update(reference, {'title': 'New reference saved during document assembly'})
+    monkeypatch.setattr(Document, 'save', assemble_then_edit_reference)
+    target = tmp_path / 'stale-live-export.docx'
+    with pytest.raises(ValueError, match='changed'):
+        controller.export_docx(snapshot, result, target)
+    assert not target.exists()
+    assert academic.get(reference.id).title == 'New reference saved during document assembly'
+
+
+def test_saved_docx_review_is_controller_bound_and_cancellable(prepared, tmp_path):
+    library, workspace, other, *_ = prepared
+    controller, source = saved_document(prepared, tmp_path)
+    inspected = controller.inspect_docx(source)
+    for foreign in (CitationFormattingController(library, workspace),
+                    CitationFormattingController(library, other)):
+        with pytest.raises(ValueError, match='in this dialog'):
+            foreign.regenerate_docx(inspected, tmp_path / 'foreign.docx')
+    with pytest.raises(InterruptedError):
+        controller.inspect_docx(source, cancelled=lambda: True)
+    with pytest.raises(InterruptedError):
+        controller.regenerate_docx(inspected, tmp_path / 'cancelled.docx', cancelled=lambda: True)
+    assert not (tmp_path / 'foreign.docx').exists() and not (tmp_path / 'cancelled.docx').exists()

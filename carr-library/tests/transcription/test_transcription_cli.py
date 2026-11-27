@@ -21,8 +21,10 @@ source = _fixtures.source
 
 def command(arguments, *, admitted=None, interrupt_trigger=None):
     environment = dict(os.environ)
-    package_root = str(Path(transcription.__file__).resolve().parents[1])
-    environment['PYTHONPATH'] = package_root + os.pathsep + environment.get('PYTHONPATH', '')
+    import bootstrap as selected_bootstrap
+    package_roots = dict.fromkeys(str(Path(module.__file__).resolve().parents[1])
+                                 for module in (transcription, selected_bootstrap))
+    environment['PYTHONPATH'] = os.pathsep.join(package_roots)
     environment['PYTHONUTF8'] = '1'
     if admitted is None and interrupt_trigger is None:
         return [sys.executable, '-B', '-m', 'carr_library', *arguments], environment
@@ -41,7 +43,7 @@ def command(arguments, *, admitted=None, interrupt_trigger=None):
 
 def cli(root, *arguments, admitted=None, timeout=15):
     cmd, environment = command(['transcription', '--data-dir', str(root), *map(str, arguments)], admitted=admitted)
-    return subprocess.run(cmd, env=environment, text=True, encoding='utf-8', capture_output=True, timeout=timeout)
+    return subprocess.run(cmd, env=environment, cwd=root.parent, text=True, encoding='utf-8', capture_output=True, timeout=timeout)
 
 
 def payload(result, expected=0):
@@ -164,7 +166,7 @@ def test_cli_pause_continue_and_ctrl_c_retain_resumable_job(tmp_path, source, en
     trigger=tmp_path/'send-python-sigint'
     cmd,environment=command(['transcription','--data-dir',str(root),'run',identity],
                              admitted=spec.worker_sha256,interrupt_trigger=trigger)
-    process=subprocess.Popen(cmd,env=environment,text=True,encoding='utf-8',stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    process=subprocess.Popen(cmd,env=environment,cwd=root.parent,text=True,encoding='utf-8',stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     directory=root/'state/transcription/jobs'/identity
     try:
         deadline=time.monotonic()+10
@@ -184,6 +186,23 @@ def test_cli_pause_continue_and_ctrl_c_retain_resumable_job(tmp_path, source, en
         assert 'Explicitly run the saved job ID' in error
         job=payload(cli(root,'status',identity))
         assert job['state']=='cancelled' and (directory/job['inputs'][0]['path']).read_bytes()==source.read_bytes()
+    except BaseException as error:
+        # A running CLI and a status filename alone cannot prove its worker is
+        # still alive. Keep the actual run outcome and durable error in the
+        # failure report instead of losing them during cleanup.
+        trigger.write_text('stop for failed assertion', encoding='utf-8')
+        try:
+            output, diagnostic = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill(); output, diagnostic = process.communicate(timeout=5)
+        error.add_note('Owned ASR run exit=' + str(process.returncode) + '\nstdout=' + output[-8000:]
+                       + '\nstderr=' + diagnostic[-8000:])
+        try:
+            saved = read_json(directory / 'job.json')
+            error.add_note('Durable ASR state=' + str(saved['state']) + '; error=' + str(saved.get('error')))
+        except (OSError, ValueError) as state_error:
+            error.add_note('Could not read ASR state: ' + str(state_error))
+        raise
     finally:
         trigger.write_text('stop')
         if process.poll() is None:
@@ -225,14 +244,14 @@ def test_valid_failed_terminal_result_is_json_with_exit_one(tmp_path, source, en
     from hashlib import sha256
     spec=engine()
     path=Path(spec.worker_path)
-    script=path.read_text()
+    script=path.read_text(encoding='utf-8')
     marker="if MODE=='wrong-job': value['job_id']='0'*32"
     script=script.replace(marker, """value['state']='failed';value['done']=0;value['failed']=len(records)
 for record in records: record['state']='failed';record['error']='Synthetic engine failure';record['artifacts']=[]
 value['artifacts']=[]
 write('job_result.json',value);status('terminal',0,'failed');sys.exit(1)
 """+marker)
-    path.write_text(script)
+    path.write_text(script,encoding='utf-8')
     spec=replace(spec,worker_sha256=sha256(path.read_bytes()).hexdigest())
     root=tmp_path/'library';payload(configure(root,spec))
     identity=payload(cli(root,'submit',source))['id']

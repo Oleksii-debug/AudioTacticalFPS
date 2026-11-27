@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import threading
 import time
 from uuid import uuid4
 
@@ -82,16 +83,60 @@ class ProductionService:
         self.inputs = self.root / 'inputs'
         self.inputs.mkdir(exist_ok=True)
         self._voices = voices
+        self._owns_voices = voices is None
+        self._closed = threading.Event()
+        self._voice_state = threading.Lock()
+        self._voice_discovery = threading.Lock()
         self.runtime_factory = runtime_factory
         self.input_roots = (local_path(self.inputs, exists=True),
                             *(local_path(x, exists=True) for x in input_roots))
 
     @property
     def voices(self):
-        if self._voices is None:
+        return self.discover_voices()
+
+    def discover_voices(self, *, cancelled=lambda: False):
+        """Discover once on the caller's worker, with cancellable admission."""
+        def stopping():
+            return self._closed.is_set() or bool(cancelled())
+        if stopping():
+            raise InterruptedError('Production voice discovery cancelled or closed.')
+        with self._voice_state:
+            if self._voices is not None:
+                return self._voices
+        while not self._voice_discovery.acquire(timeout=.05):
+            if stopping():
+                raise InterruptedError('Production voice discovery cancelled or closed.')
+        try:
+            if stopping():
+                raise InterruptedError('Production voice discovery cancelled or closed.')
+            with self._voice_state:
+                if self._voices is not None:
+                    return self._voices
             from ..runtime_settings import voice_registry
-            self._voices = voice_registry(self.root.parent)
-        return self._voices
+            found = voice_registry(self.root.parent, cancelled=stopping)
+            try:
+                with self._voice_state:
+                    if not stopping():
+                        self._voices, found = found, None
+                        return self._voices
+            finally:
+                if found is not None:
+                    found.close()
+            raise InterruptedError('Production voice discovery cancelled or closed.')
+        finally:
+            self._voice_discovery.release()
+
+    def close(self):
+        """Close this service's registry only; supplied registries are borrowed."""
+        self._closed.set()
+        with self._voice_state:
+            owned = self._voices if self._owns_voices else None
+        if owned is not None:
+            if owned.close() is not False:
+                with self._voice_state:
+                    if self._voices is owned:
+                        self._voices = None
 
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
@@ -248,7 +293,7 @@ class ProductionService:
             self._save(state)
 
             def stopping():
-                return bool(cancelled()) or control.exists()
+                return self._closed.is_set() or bool(cancelled()) or control.exists()
 
             def check():
                 if stopping():
@@ -304,10 +349,11 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))
 
             roles = {role.id: role for role in project.roles}
-            voices = {voice.id: voice for voice in self.voices.voices()}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
+            clip_timeline, clip_stems = [], {}
             offset = 0.0
             try:
+                voices = {voice.id: voice for voice in self.discover_voices(cancelled=stopping).voices()}
                 for scene_index, scene in enumerate(project.scenes, 1):
                     report(f'Scene {scene_index} of {len(project.scenes)}: {scene.title}')
                     clips, clip_roles, scene_lines, cursor = [], [], [], 0.0
@@ -341,13 +387,38 @@ class ProductionService:
                         clips.append(clip)
                         clip_roles.append((role.id, clip_info.duration))
                         cursor += clip_info.duration
-                    if not clips:
-                        clip, info = silence(max(scene.minimum_duration, 1))
-                        clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     required_duration = scene.minimum_duration
+                    cue_tracks = []
                     for cue in scene.cues:
                         source = self._cue_source(cue)
-                        required_duration = max(required_duration, cue.start + runtime.inspect(source).duration)
+                        info = runtime.inspect(source, cancelled=stopping)
+                        available = info.duration - cue.trim_start
+                        selected = available if cue.duration is None else cue.duration
+                        if available <= 0 or selected > available + 1 / info.sample_rate:
+                            raise ValueError('An edited clip selection is outside its original audio.')
+                        if max(cue.fade_in, cue.fade_out) > selected:
+                            raise ValueError('An edited clip fade exceeds its selected audio.')
+                        selected = round(selected * project.sample_rate) / project.sample_rate
+                        if selected <= 0:
+                            raise ValueError('An edited clip must retain at least one output sample.')
+                        placed = (round(cue.start * project.sample_rate) / project.sample_rate
+                                  if project.schema >= 2 else cue.start)
+                        required_duration = max(required_duration, placed + selected)
+                        track = Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
+                                      cue.trim_start, cue.duration, cue.fade_in, cue.fade_out)
+                        cue_tracks.append(track)
+                        if project.schema >= 2:
+                            clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role, 'title': cue.title,
+                                'source_sha256': digest_file(source), 'source_duration': info.duration,
+                                'trim_start': cue.trim_start, 'duration': selected,
+                                'start': offset + placed, 'end': offset + placed + selected,
+                                'gain_db': cue.gain_db, 'pan': cue.pan,
+                                'fade_in': cue.fade_in, 'fade_out': cue.fade_out})
+                    if not clips:
+                        duration = (max(required_duration, 1 / project.sample_rate)
+                                    if project.schema >= 2 and cue_tracks else max(scene.minimum_duration, 1))
+                        clip, info = silence(duration)
+                        clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     if required_duration > cursor + .5 / project.sample_rate:
                         clip, info = silence(required_duration - cursor)
                         clips.append(clip)
@@ -378,9 +449,7 @@ class ProductionService:
                             lambda target: runtime.concatenate(score_parts, target,
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
-                    for cue in scene.cues:
-                        source = self._cue_source(cue)
-                        tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role))
+                    tracks.extend(cue_tracks)
                     final_scene, final_info = node('scene mix',
                         {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
@@ -398,6 +467,16 @@ class ProductionService:
                         if scene.music is not None:
                             # This is the actual pre-duck score; final scene contains measured sidechain ducking.
                             stem_scenes.setdefault('music', []).append((scene.id, music, final_info.duration))
+                        if project.schema >= 2:
+                            for role in sorted({track.role for track in cue_tracks}):
+                                selected_tracks = tuple(track for track in cue_tracks if track.role == role)
+                                stem, _ = node('scene clip stem',
+                                    {'tracks': [track_identity(track) for track in selected_tracks],
+                                     'duration': final_info.duration, 'sample_rate': project.sample_rate},
+                                    lambda target, selected_tracks=selected_tracks: runtime.mix(
+                                        selected_tracks, target, duration=final_info.duration,
+                                        sample_rate=project.sample_rate, cancelled=stopping))
+                                clip_stems.setdefault(role, {})[scene.id] = stem
                     timeline.extend(scene_lines)
                     chapter_data.append({'id': scene.id, 'title': scene.title, 'start': offset,
                                          'end': offset + final_info.duration})
@@ -476,6 +555,13 @@ class ProductionService:
                         lambda target, paths=paths: runtime.concatenate(paths, target,
                             sample_rate=project.sample_rate, cancelled=stopping))
                     publish(stem, 'stems/' + role_id + '.wav')
+                for role, mapping in clip_stems.items():
+                    paths = [mapping.get(scene.id) or silence(info.duration)[0]
+                             for scene, _, info in scene_results]
+                    stem, _ = node('complete clip stem', [digest_file(path) for path in paths],
+                        lambda target, paths=paths: runtime.concatenate(paths, target,
+                            sample_rate=project.sample_rate, cancelled=stopping))
+                    publish(stem, 'stems/clips/' + role + '.wav')
                 subtitles = ['WEBVTT\n']
                 srt = []
                 for index, line in enumerate(timeline, 1):
@@ -493,6 +579,10 @@ class ProductionService:
                             'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
                                                 'continuous neural composition and perceptually seamless joins are not assumed.',
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
+                if project.schema >= 2:
+                    metadata['clips'] = clip_timeline
+                    metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
+                        'Music stems are before ducking; recorded clips have no inferred transcript.')
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
                                   ('timeline.json', encode(metadata)),

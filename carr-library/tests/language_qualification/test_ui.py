@@ -94,9 +94,9 @@ def test_explicit_refresh_schedules_configured_registry_on_existing_frame_worker
     calls = []
     voices = synthetic_inventory().voices
 
-    def loader(state_root):
+    def loader(state_root, *, cancelled):
         calls.append(state_root)
-        return SimpleNamespace(voices=lambda: voices, notices=["Configured adapter notice"])
+        return SimpleNamespace(voices=lambda: voices, notices=["Configured adapter notice"], close=lambda: None)
 
     monkeypatch.setattr(runtime_settings, "voice_registry", loader)
     jobs = []
@@ -121,10 +121,10 @@ def test_cancelled_enumeration_retains_previous_inventory(tmp_path, monkeypatch)
     cancel = Event()
     calls = []
 
-    def loader(state_root):
+    def loader(state_root, *, cancelled):
         calls.append(state_root)
         cancel.set()
-        return SimpleNamespace(voices=lambda: synthetic_inventory().voices, notices=[])
+        return SimpleNamespace(voices=lambda: synthetic_inventory().voices, notices=[], close=lambda: None)
 
     monkeypatch.setattr(runtime_settings, "voice_registry", loader)
     controller = LanguageMatrixController()

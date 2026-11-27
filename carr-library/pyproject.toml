@@ -90,6 +90,7 @@ packages = [
   "carr_library.studio",
   "carr_library.assistant",
   "carr_library.conversion",
+  "carr_library.integrations",
   "carr_library.academic_integration",
   "carr_library.language_qualification",
   "bootstrap",
@@ -111,3 +112,6 @@ bootstrap = "bootstrap"
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
+markers = [
+  "requires_loopback: actual local HTTP integration; run in a separate normal pytest gate, not socket-blocked ci_check",
+]

@@ -65,6 +65,49 @@ That probe runs the real app's native checks and self-test through the exact EXE
 It requires ready state and never installs or repairs anything. Fresh installation
 and GUI/NVDA acceptance remain separate release checks.
 
+## CI-only actual first installation and desktop lifecycle
+
+Before the existing installed probe, the complete-bundle Windows workflow can run:
+
+```powershell
+& $env:CARR_PYTHON -I -B packaging/native-launcher/probe_fresh_windows.py --bundle-root $bundle --report ci-results/fresh-native-launcher.json
+```
+
+This invocation **replaces the workflow's direct `install_windows.py` invocation**.
+The bundle must be sealed and its `.venv` absent; the staged Python must already
+have the same application version installed, with seed APIs matching the sealed
+wheel. The existing workflow firewall rules must be active first. The probe is
+restricted to native Windows with `GITHUB_ACTIONS=true`; it is not a workstation
+installer or a substitute for owner approval.
+
+It requires `--launcher-check` to report `needs-install` with exit 10 without
+creating an environment. It then runs the exact `ResearchLibrary.exe` **without
+arguments**, allowing that entry to execute the bundled offline installer and
+open the actual desktop. Win32 enumeration must observe a visible `Resonance`
+window belonging to this launcher's process tree. Its actual process image must
+be the bundle's `.venv/Scripts/python.exe` or `runtime/python.exe` redirector.
+The probe checks the completed-install marker, rechecks window ownership and
+sends `WM_CLOSE` only to that matched window, then requires launcher exit 0.
+A second no-argument launch must open and close the same way without changing
+the marker's bytes or file identity/timestamps.
+
+A synthetic library is created using the staged installed `LibraryApp`. The
+actual `preference_file`/`remember_directory` APIs select it; there is no
+`LOCALAPPDATA` redirection assumption. Prior settings bytes are saved and restored
+in `finally` only if the probe's own settings bytes and file identity/timestamps
+are unchanged. A concurrent preference write is preserved and reported as a
+failure. The synthetic source hashes, reopened literal search/quotation, sealed
+manifest and EXE hashes must survive both actual launches. Temporary data is
+owned by the probe; it does not inspect existing libraries or remove environments.
+
+Startup waits and logs are bounded. Failure cleanup targets only the still-owned
+launcher PID and its descendants; it does not kill processes by executable name.
+This proves first-installation and native-window lifecycle **only when that
+exact Windows run succeeds**. It does not prove GUI feature workflows, keyboard
+focus, NVDA, signing, language quality or first-run behavior on an owner's PC.
+Keep `probe_installed_windows.py` and the native feature probes as subsequent
+independent gates. Linux AST/pure-helper checks are not native acceptance.
+
 ## Optional pinned cross build
 
 `toolchain.lock.json` pins the official Zig 0.14.1 archive URLs, lengths and SHA256

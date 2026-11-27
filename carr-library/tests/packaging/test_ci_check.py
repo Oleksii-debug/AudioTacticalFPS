@@ -167,7 +167,9 @@ def test_parallel_barrier():
             previous_subreaper = ctypes.c_int()
             self.assertEqual(libc.prctl(37, ctypes.byref(previous_subreaper), 0, 0, 0), 0)
         with original_temp(prefix='CARR timeout Ž ') as temporary:
-            root = Path(temporary)
+            # Windows TEMP can use an 8.3 spelling; match the runner's resolved
+            # containment root without weakening its out-of-tree guard.
+            root = Path(temporary).resolve()
             marker = root / 'descendant.pid'
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"

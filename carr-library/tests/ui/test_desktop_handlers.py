@@ -161,6 +161,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('translation_dialog', 'install_translation_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
                               ('studio_dialog', 'install_studio_actions'),
+                              ('recording_dialog', 'install_recording_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('document_conversion', 'install_conversion_actions'),
                               ('keyboard_settings', 'install_keyboard_settings'),

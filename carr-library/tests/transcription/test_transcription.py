@@ -9,9 +9,11 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -24,7 +26,10 @@ FIXTURE_WORKER = r'''
 import hashlib, json, os, pathlib, subprocess, sys, time, uuid
 MODE = __MODE__
 root = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
-config = json.loads((root / 'job_config.json').read_text())
+config = json.loads((root / 'job_config.json').read_text(encoding='utf-8'))
+if MODE == 'utf8':
+    assert sys.flags.isolated and sys.dont_write_bytecode and sys.flags.utf8_mode == 1
+    assert config['job_name'] == 'Перевірка Україна — 日本語'
 run_id = uuid.uuid4().hex
 results = pathlib.Path(config['results_root'])
 results.mkdir(parents=True, exist_ok=True)
@@ -40,6 +45,9 @@ def status(phase, done=0, state=None):
 status('starting')
 if MODE == 'flood':
     sys.stdout.write('x' * (3 * 1024 * 1024)); sys.stdout.flush(); time.sleep(30)
+if MODE == 'early-failure':
+    sys.stderr.write('Synthetic startup error: Unicode configuration accepted; worker failed deliberately.\n')
+    sys.stderr.flush(); sys.exit(17)
 if MODE in {'unresponsive','cooperative','pause'}:
     child = None
     if MODE == 'unresponsive':
@@ -129,10 +137,20 @@ def run(service, source, engine):
     return identity, service.run(identity, engine=engine)
 
 
+def patch_worker_popen(monkeypatch, replacement):
+    # The stdlib object must remain a class: filelock lazily imports asyncio,
+    # whose Windows implementation subclasses subprocess.Popen. Patch only the
+    # service's module reference, never the shared subprocess module object.
+    facade = SimpleNamespace(**vars(subprocess))
+    facade.Popen = replacement
+    monkeypatch.setattr(module, 'subprocess', facade)
+
+
 def test_unknown_worker_never_executes(service, source, engine, monkeypatch):
     spec = engine()
     monkeypatch.setattr(module, 'REVIEWED_WORKER_SHA256', frozenset())
-    monkeypatch.setattr(module.subprocess, 'Popen', lambda *a, **k: pytest.fail('unknown worker executed'))
+    patch_worker_popen(monkeypatch, lambda *a, **k: pytest.fail('unknown worker executed'))
+    assert isinstance(subprocess.Popen, type)
     identity = service.submit([source])
     with pytest.raises(ValueError, match='not been admitted'):
         service.run(identity, engine=spec)
@@ -141,8 +159,8 @@ def test_unknown_worker_never_executes(service, source, engine, monkeypatch):
 
 def test_changed_reviewed_worker_fails_before_exec(service, source, engine, monkeypatch):
     spec = engine()
-    Path(spec.worker_path).write_text('raise Exception("different")')
-    monkeypatch.setattr(module.subprocess, 'Popen', lambda *a, **k: pytest.fail('changed worker executed'))
+    Path(spec.worker_path).write_text('raise Exception("different")', encoding='utf-8')
+    patch_worker_popen(monkeypatch, lambda *a, **k: pytest.fail('changed worker executed'))
     with pytest.raises(ValueError, match='SHA-256'):
         service.run(service.submit([source]), engine=spec)
 
@@ -216,6 +234,69 @@ def test_original_removed_after_submission_does_not_change_managed_run(service, 
     assert len(result['receipt']['artifacts']) == 4
 
 
+def test_isolated_worker_explicit_utf8_preserves_unicode_library_and_title(tmp_path, source, engine, monkeypatch):
+    service = TranscriptionService(tmp_path / 'Бібліотека 日本語' / 'state' / 'transcription')
+    identity = service.submit([source], title='Перевірка Україна — 日本語')
+    spec = engine('utf8')
+    # A user's Python environment must neither opt this isolated protocol out
+    # of UTF-8 nor add ambient imports. Validate the actual child flags too.
+    monkeypatch.setenv('PYTHONUTF8', '0')
+    actual_popen = subprocess.Popen
+    calls = []
+    def launch(args, **kwargs):
+        assert args[1:5] == ['-I', '-B', '-X', 'utf8']
+        calls.append(args)
+        return actual_popen(args, **kwargs)
+    patch_worker_popen(monkeypatch, launch)
+    result = service.run(identity, engine=spec)
+    assert calls and result['state'] == 'succeeded'
+    config = read_json(service.jobs / identity / 'job_config.json')
+    assert config['job_name'] == 'Перевірка Україна — 日本語'
+    assert Path(config['files'][0]).is_relative_to(service.directory)
+
+
+def test_live_progress_handle_allows_atomic_replacement(tmp_path):
+    path, pending = tmp_path / 'job_status.json', tmp_path / 'next.json'
+    path.write_bytes(b'{"phase":"starting"}')
+    pending.write_bytes(b'{"phase":"recognizing"}')
+    if os.name == 'nt':
+        # Deterministic Windows regression: a normal CRT reader blocks the
+        # worker's replace. The service's reader must allow that same operation.
+        with path.open('rb'):
+            with pytest.raises(PermissionError):
+                os.replace(pending, path)
+    with module._open_progress(path) as snapshot:
+        os.replace(pending, path)
+        assert json.loads(snapshot.read()) == {'phase': 'starting'}
+    assert module._read_progress(path) == {'phase': 'recognizing'}
+
+
+@pytest.mark.parametrize('raw', [b'{"done":0,"done":1}', b'{"done":NaN}'])
+def test_live_progress_rejects_ambiguous_json(tmp_path, raw):
+    path = tmp_path / 'job_status.json'; path.write_bytes(raw)
+    with pytest.raises(ValueError):
+        module._read_progress(path)
+
+
+def test_live_progress_remains_bounded_and_cannot_follow_links(tmp_path, monkeypatch):
+    path = tmp_path / 'job_status.json'; path.write_bytes(b'{"done":0}')
+    monkeypatch.setattr(module, 'MAX_DIAGNOSTIC_BYTES', 4)
+    with pytest.raises(ValueError, match='bounded'):
+        module._read_progress(path)
+    link = tmp_path / 'linked.json'; os.link(path, link)
+    with pytest.raises(ValueError, match='without links'):
+        module._read_progress(link)
+
+
+def test_early_child_failure_retains_decisive_private_diagnostic(service, source, engine):
+    identity = service.submit([source])
+    with pytest.raises(RuntimeError, match='exit 17.*Synthetic startup error'):
+        service.run(identity, engine=engine('early-failure'))
+    result = service.get(identity, verify=False)
+    assert result['state'] == 'failed' and result['receipt'] is None
+    assert 'Unicode configuration accepted; worker failed deliberately' in result['error']
+
+
 def test_actual_process_receipts_progress_and_text_revision_export(service, source, engine, tmp_path):
     spec = engine()
     original = source.read_bytes()
@@ -233,12 +314,12 @@ def test_actual_process_receipts_progress_and_text_revision_export(service, sour
     assert service.read_transcript(identity, artifact['path']) == raw.decode()
     revision = service.revise(identity, artifact['path'], 'Відредагована похідна версія.')
     target = service.export(identity, artifact['path'], tmp_path / 'new.txt', revision_id=revision['id'])
-    assert target.read_text() == 'Відредагована похідна версія.'
+    assert target.read_text(encoding='utf-8') == 'Відредагована похідна версія.'
     assert (root / artifact['path']).read_bytes() == raw
     assert source.read_bytes() == original
     with pytest.raises(FileExistsError):
         service.export(identity, artifact['path'], target)
-    assert target.read_text() == 'Відредагована похідна версія.'
+    assert target.read_text(encoding='utf-8') == 'Відредагована похідна версія.'
     assert str(root) not in json.dumps(result)
     assert str(Path(spec.worker_path)) not in json.dumps(result)
     assert service.get(identity)['state'] == 'succeeded'
@@ -260,7 +341,7 @@ def test_untrusted_terminal_claim_never_becomes_public_success(service, source, 
 @pytest.mark.parametrize('value', [0, -1, True, float('inf'), float('nan'), 10**400])
 def test_invalid_runtime_budget_never_launches(service, source, engine, monkeypatch, value):
     spec = engine()
-    monkeypatch.setattr(module.subprocess, 'Popen', lambda *a, **k: pytest.fail('invalid budget executed'))
+    patch_worker_popen(monkeypatch, lambda *a, **k: pytest.fail('invalid budget executed'))
     with pytest.raises(ValueError):
         service.run(service.submit([source]), engine=spec, timeout=value)
 
@@ -375,7 +456,7 @@ def test_falsey_settings_are_not_silently_replaced_by_defaults(service, source, 
 def test_falsey_engine_never_falls_back_to_saved_profile(service, source, engine, spec, monkeypatch):
     service.configure_engine(engine())
     identity = service.submit([source])
-    monkeypatch.setattr(module.subprocess, 'Popen', lambda *a, **k: pytest.fail('invalid engine executed'))
+    patch_worker_popen(monkeypatch, lambda *a, **k: pytest.fail('invalid engine executed'))
     with pytest.raises(ValueError, match='explicit reviewed engine'):
         service.run(identity, engine=spec)
 
@@ -391,7 +472,7 @@ def test_runtime_script_is_outside_library_even_during_backup(tmp_path, engine, 
     original_popen = module.subprocess.Popen
     observed = []
     def capture(args, **kwargs):
-        entrypoint = Path(args[3])
+        entrypoint = Path(args[args.index('--job-dir') - 1])
         assert not entrypoint.is_relative_to(app.root)
         assert sha256(entrypoint.read_bytes()).hexdigest() == spec.worker_sha256
         observed.append(entrypoint)
@@ -402,7 +483,7 @@ def test_runtime_script_is_outside_library_even_during_backup(tmp_path, engine, 
         assert any('/inputs/' in name for name in names)
         assert not any(name.endswith('.py') or 'runner' in name for name in names)
         return original_popen(args, **kwargs)
-    monkeypatch.setattr(module.subprocess, 'Popen', capture)
+    patch_worker_popen(monkeypatch, capture)
     assert service.run(identity, engine=spec)['state'] == 'succeeded'
     assert observed and not observed[0].exists()
 
@@ -410,7 +491,7 @@ def test_runtime_script_is_outside_library_even_during_backup(tmp_path, engine, 
 def test_runtime_temp_inside_library_is_rejected_before_execution(service, source, engine, monkeypatch):
     spec = engine()
     monkeypatch.setattr(module.tempfile, 'tempdir', str(service.directory))
-    monkeypatch.setattr(module.subprocess, 'Popen', lambda *a, **k: pytest.fail('private runtime inside library executed'))
+    patch_worker_popen(monkeypatch, lambda *a, **k: pytest.fail('private runtime inside library executed'))
     with pytest.raises(ValueError, match='outside the backed-up library'):
         service.run(service.submit([source]), engine=spec)
     assert not list(service.directory.glob('carr-asr-reviewed-*'))

@@ -26,6 +26,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         progress.register_player(player)
     document = ReadingDocument(text, title=title)
     registry = None
+    owned_registries = set()
     voices = ()
     alive = True
     busy = False
@@ -171,7 +172,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(library_root, voice_id), activated)
+        run(lambda: activate_progress_voice(library_root, voice_id, cancelled=cancel.is_set), activated)
 
     def start_playback(action):
         generation = playback_generation
@@ -184,24 +185,43 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                return voice_registry(Path(library_root) / 'state')
-            return VoiceRegistry.discover()
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
+            else:
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
+            owned_registries.add(found)
+            return found
 
         def loaded(value):
-            nonlocal registry, voices, document, source_loaded
+            nonlocal registry, voices, document, source_loaded, draft_store, recovered, recovery_notice
+            previous = registry
             registry, source = value
+            if previous is not None and previous is not registry:
+                def retire():
+                    previous.close()
+                    owned_registries.discard(previous)
+                executor.submit(retire)
             voices = registry.voices()
             if source is not None:
                 source_guard()
-                if recovered is not None and recovered.document.source_text == source.text:
+                fresh = source.reading_document()
+                if (recovered is not None and recovered.document.source_text == fresh.source_text
+                        and recovered.document.source_anchor == fresh.source_anchor):
                     document = recovered.document
                 else:
-                    document = ReadingDocument(source.text, title=source.title)
+                    if recovered is not None:
+                        # Never attach an unbound or differently bound draft by text equality.
+                        # Keep the prior recovery file unchanged; Save As is still available.
+                        draft_store = None
+                        recovered = None
+                        recovery_notice = ('Previous draft has no matching source lineage and was preserved. '
+                                           'Use Save As for this new copy. ')
+                    document = fresh
                 editor.ChangeValue(document.text)
                 source_loaded = True
                 source_status.ChangeValue(f'{source.title}; {len(source.positions)} source reading positions. '
                     + (' '.join(source.warnings[:3]) if source.warnings else 'Source positions authenticated.')
-                    + ' This is a separate narration copy; it does not approve quotations.')
+                    + ' This is a separate narration copy; it does not approve quotations. '
+                    + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
             if voices:
                 selected = next((i for i, voice in enumerate(voices)
@@ -214,14 +234,18 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             else:
                 report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
-        run(lambda: (discover_configured(),
-                     source_loader(cancel.is_set) if not source_loaded else None), loaded)
+        def load():
+            source = source_loader(cancel.is_set) if not source_loaded else None
+            return discover_configured(), source
+        run(load, loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
+        lineage = ('Retained-source locator recorded; quotation authority not granted. '
+                   if document.source_anchor is not None else 'No retained-library source locator. ')
         source_status.ChangeValue(f'Original text preserved; reading revision {document.revision}; '
-            f'{"unsaved changes" if document.dirty else "saved"}. '
-            'The reading copy is not quotation evidence.')
+            f'{"unsaved changes" if document.dirty else "saved"}. ' + lineage
+            + 'The reading copy is not quotation evidence. ' + recovery_notice)
 
     def save_recovery(event=None, *, force=False):
         nonlocal last_recovery_signature
@@ -396,6 +420,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     raise ValueError('Open one text chapter at a time, up to 8 MB.')
                 loaded = ReadingDocument(source.read_text(encoding='utf-8-sig'), title=source.stem, source_path=source)
                 selected = None
+            if source_loader is not None and (not source_loaded or loaded.source_anchor is None
+                    or loaded.source_anchor != document.source_anchor):
+                raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
             player.stop()
             if progress is not None:
                 progress.refresh_audio_state()
@@ -512,6 +539,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 worker_finished = True
             except (OSError, RuntimeError) as exc:
                 notices.append(f'The reading worker has not confirmed shutdown: {exc}')
+            for owned in tuple(owned_registries):
+                try:
+                    if owned.close() is False:
+                        notices.append('A local voice worker has not confirmed cleanup; its owner is retained for shutdown retry.')
+                    else:
+                        owned_registries.discard(owned)
+                except (OSError, RuntimeError) as exc:
+                    notices.append(f'The local voice worker could not confirm shutdown: {exc}')
             removed = False
             if silence_confirmed and worker_finished:
                 try:

@@ -609,14 +609,10 @@ def _parse_import(data, format):
         rows = _parse_csl(text)
     elif format == 'bibtex':
         from .bibtex_import import parse_bibtex
-        rows = parse_bibtex(text)
-        # The canonical academic service stores every author as one literal
-        # display name. Remove the parser's protective outer marker without
-        # guessing family/given/suffix fields; the original remains in notes.
-        rows = [({**fields, 'authors': tuple(
-            name[1:-1] if name.startswith('{') and name.endswith('}') else name
-            for name in fields.get('authors', ()))}, warnings)
-            for fields, warnings in rows]
+        # This library stores every author as literal display text. Ask the
+        # parser to omit only its own markers instead of guessing whether
+        # decoded outer braces were structural or real source punctuation.
+        rows = parse_bibtex(text, literal_names=True)
     else:
         raise ValueError('Supported import formats are RIS, BibTeX and CSL JSON.')
     if not 1 <= len(rows) <= MAX_IMPORT_RECORDS:

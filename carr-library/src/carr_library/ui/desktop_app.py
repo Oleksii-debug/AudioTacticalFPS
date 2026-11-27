@@ -20,6 +20,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
+from .export_destination import confirm_export_destination
 from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
@@ -590,6 +591,7 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .speech_dialog import install_speech_actions
         from .studio_dialog import install_studio_actions
+        from .recording_dialog import install_recording_actions
         from .assistant_dialog import install_assistant_actions
         from .save_actions import install_save_actions
         from .document_conversion import install_conversion_actions
@@ -602,6 +604,7 @@ class DesktopFrame(WorkspaceFrame):
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
+        install_recording_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)
         install_transcription_actions(self)
@@ -1118,7 +1121,7 @@ class DesktopFrame(WorkspaceFrame):
             extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
             dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
                 wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
@@ -1131,15 +1134,16 @@ class DesktopFrame(WorkspaceFrame):
                 dialog.Destroy()
             if not path.suffix:
                 # Some native save dialogs append the filter's extension and
-                # others do not. Confirm the actual target if we append it.
+                # others do not. Capture and confirm the actual final target.
                 path = path.with_suffix(extension)
-                if path.exists() and wx.MessageBox(
-                    f'Replace the existing export {path.name}?', 'Replace export',
-                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
-                    return
             elif format in ('docx', 'html') and path.suffix.lower() != extension:
                 raise ValueError(f'The selected format needs a {extension} filename. '
                                  'Export again with the matching filename or file type.')
+
+            approval = confirm_export_destination(self, path, private_root=library.root,
+                                                  title='Replace export')
+            if approval is None:
+                return
 
             def selected_scope():
                 if self.library is not library or self.active != (workspace, topic):
@@ -1154,7 +1158,7 @@ class DesktopFrame(WorkspaceFrame):
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
                 writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set)
+                       cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):

@@ -71,18 +71,31 @@ def test_protected_punctuation_inside_person_name_is_not_reinterpreted_as_suffix
     ('Doe, Jr., {}', '{Doe, Jr.,}'),
     ('Doe, {}', '{Doe,}'),
 ])
-def test_incomplete_comma_names_preserve_identity_instead_of_shifting_fields(name, expected):
-    from carr_library.research.academic_library import _parse_import
+def test_incomplete_comma_names_preserve_identity_instead_of_shifting_fields(name, expected, tmp_path):
+    import json
+    from carr_library.application import LibraryApp
+    from carr_library.ui.academic_library_dialog import AcademicController
 
     original = '@book{x,title={Test},author={' + name + '}}'
     values, warnings = one(original)
     assert values['authors'] == (expected,)
     assert original in values['notes']
     assert any('Incomplete comma-separated person name' in warning for warning in warnings)
-    # The accepted academic service stores every author literally. It removes
-    # only the parser marker, without assigning John/Jr. different name roles.
-    records, _ = _parse_import(original.encode('utf-8'), 'bibtex')
-    assert records[0][0]['authors'] == (expected[1:-1],)
+    # Reuse the canonical library's literal-name contract through actual
+    # review, import, reopen and CSL export. No extra formatting engine or
+    # personal-name inference is introduced by the BibTeX adapter.
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('BibTeX name review')
+    controller = AcademicController(app, workspace)
+    preview = controller.preview(original.encode('utf-8'), 'bibtex')
+    assert controller.list() == ()
+    imported = controller.import_selected(preview, (0,))
+    reopened = AcademicController(LibraryApp(app.root), workspace)
+    row = reopened.get(imported.imported_ids[0])
+    assert row.authors == (expected[1:-1],)
+    assert original in row.notes
+    records = json.loads(reopened.export(identity=row.id, format='csl-json'))
+    assert records[0]['author'] == [{'literal': expected[1:-1]}]
 
 
 @pytest.mark.parametrize('name', ['Doe,,John', 'Doe,{},John'])
@@ -98,6 +111,36 @@ def test_complete_comma_and_corporate_names_keep_distinct_semantics():
     assert values['authors'] == ('Doe, Jane', 'Doe, John, Jr.', '{Research, Inc.}',
                                 '{Research, Inc., Alice}')
     assert not any('Incomplete comma-separated' in warning for warning in warnings)
+
+
+@pytest.mark.parametrize(('author', 'expected'), [
+    (r'\{Research Group\}', '{Research Group}'),
+    (r'{\{Research Group\}}', '{Research Group}'),
+    ('{Research Group}', 'Research Group'),
+    (r'Doe, \{Jane\}', 'Doe, {Jane}'),
+    ('{Research, Inc.}', 'Research, Inc.'),
+    (r'{\{Research, Inc.\}}', '{Research, Inc.}'),
+    ('Doe, {John, A.}', 'Doe, John, A.'),
+    (', Jr., John', ', Jr., John'),
+])
+def test_canonical_literal_import_preserves_real_braces_without_guessing_markers(tmp_path, author, expected):
+    import json
+    from carr_library.application import LibraryApp
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    source = '@book{x,title={Literal name},author={' + author + '}}'
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Literal names')
+    controller = AcademicController(app, workspace)
+    preview = controller.preview(source.encode('utf-8'), 'bibtex')
+    assert preview.entries[0].authors == (expected,)
+    imported = controller.import_selected(preview, (0,))
+    reopened = AcademicController(LibraryApp(app.root), workspace)
+    row = reopened.get(imported.imported_ids[0])
+    assert row.authors == (expected,)
+    assert source in row.notes
+    assert json.loads(reopened.export(identity=row.id, format='csl-json'))[0]['author'] == [
+        {'literal': expected}]
 
 
 @pytest.mark.parametrize('name', ['Doe,', 'Doe, Jr.,', ',,'])

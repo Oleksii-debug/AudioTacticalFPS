@@ -7,8 +7,9 @@ A worker's terminal claim becomes public state only after source and output byte
 have been checked. Recognition quality is not inferred from a valid protocol.
 """
 from dataclasses import asdict, dataclass
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from hashlib import sha256
+import json
 import math
 import os
 from pathlib import Path
@@ -20,7 +21,7 @@ import tempfile
 import time
 from uuid import uuid4
 
-from .durable_state import (atomic_bytes, atomic_json, local_path,
+from .durable_state import (_unique, atomic_bytes, atomic_json, local_path,
                             read_json, regular, state_lock, sync_directory)
 from .speech._io import stop_process
 from .state_backup import relative_name
@@ -69,6 +70,64 @@ def _stamp(value):
 def _cancel(cancelled):
     if cancelled():
         raise InterruptedError('Transcription was cancelled.')
+
+
+@contextmanager
+def _open_progress(path):
+    """Read an atomic worker status without preventing its next replacement.
+
+    Ordinary Windows CRT file handles deny delete sharing. Holding one while
+    the worker publishes its next status can make os.replace fail. Share only
+    for this transient progress snapshot; final receipts retain strict reads
+    after the owned worker exits.
+    """
+    path = local_path(path, exists=True)
+    if os.name != 'nt':
+        with path.open('rb') as stream:
+            yield stream
+        return
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+        ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ|WRITE|DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT prevents following a substituted link.
+    handle = kernel.CreateFileW(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        kernel.CloseHandle(handle)
+        raise
+    try:
+        stream = os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+    with stream:
+        yield stream
+
+
+def _read_progress(path):
+    with _open_progress(path) as stream:
+        info = os.fstat(stream.fileno())
+        # A replaced snapshot can already be unlinked while its handle remains
+        # readable. Multiple links or reparse points are never admitted.
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in (0, 1)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or info.st_size > MAX_DIAGNOSTIC_BYTES):
+            raise ValueError('Worker progress must be a bounded regular local file.')
+        raw = stream.read(MAX_DIAGNOSTIC_BYTES + 1)
+    if len(raw) > MAX_DIAGNOSTIC_BYTES:
+        raise ValueError('Worker progress exceeds its byte budget.')
+    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite worker progress.')))
 
 
 def _bounded_bytes(path, maximum):
@@ -565,7 +624,7 @@ class TranscriptionService:
                     options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
                         | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)} if os.name == 'nt'
                         else {'start_new_session': True})
-                    process = subprocess.Popen([engine.python_path, '-I', '-B', str(entrypoint), '--job-dir', str(root)],
+                    process = subprocess.Popen([engine.python_path, '-I', '-B', '-X', 'utf8', str(entrypoint), '--job-dir', str(root)],
                         cwd=root, env=environment, stdin=subprocess.DEVNULL, stdout=outgoing,
                         stderr=errors, shell=False, **options)
                     # Stop owned children before their private runtime directory
@@ -587,23 +646,31 @@ class TranscriptionService:
                         if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_DIAGNOSTIC_BYTES:
                             raise ValueError('The transcription worker exceeded its diagnostic byte budget.')
                         status = root / 'job_status.json'
-                        if status.exists():
+                        update_available = False
+                        try:
                             current_stamp = _stamp(regular(status))
                             if current_stamp != status_stamp:
-                                update = read_json(status)
-                                if (type(update) is not dict or update.get('protocol') != PROTOCOL
-                                        or update.get('job_id') != identity
-                                        or type(update.get('run_id')) is not str or not _ID.fullmatch(update['run_id'])
-                                        or not _integer(update.get('done'), 0, len(job['inputs']))):
-                                    raise ValueError('The worker progress protocol is invalid.')
-                                if observed_run_id is not None and observed_run_id != update['run_id']:
-                                    raise ValueError('The worker execution identity changed during this run.')
-                                observed_run_id = update['run_id']
-                                phase = update.get('phase')
-                                if phase not in {'starting', 'identity', 'recognizing', 'exporting', 'paused', 'terminal'}:
-                                    phase = 'Working locally'
-                                progress(update['done'], len(job['inputs']), phase)
-                                status_stamp = current_stamp
+                                update = _read_progress(status)
+                                update_available = True
+                        except (FileNotFoundError, PermissionError):
+                            # A live atomic replacement may be briefly pending
+                            # deletion on Windows. Progress can wait for the
+                            # next bounded poll; terminal evidence never can.
+                            pass
+                        if update_available:
+                            if (type(update) is not dict or update.get('protocol') != PROTOCOL
+                                    or update.get('job_id') != identity
+                                    or type(update.get('run_id')) is not str or not _ID.fullmatch(update['run_id'])
+                                    or not _integer(update.get('done'), 0, len(job['inputs']))):
+                                raise ValueError('The worker progress protocol is invalid.')
+                            if observed_run_id is not None and observed_run_id != update['run_id']:
+                                raise ValueError('The worker execution identity changed during this run.')
+                            observed_run_id = update['run_id']
+                            phase = update.get('phase')
+                            if phase not in {'starting', 'identity', 'recognizing', 'exporting', 'paused', 'terminal'}:
+                                phase = 'Working locally'
+                            progress(update['done'], len(job['inputs']), phase)
+                            status_stamp = current_stamp
                         time.sleep(.04)
                     process.wait(timeout=5)
                     if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_DIAGNOSTIC_BYTES:
@@ -628,7 +695,13 @@ class TranscriptionService:
                     elif cancelled_run:
                         job['state'], job['error'] = 'cancelled', 'Stopped before a valid terminal receipt; completed files remain on disk.'
                     else:
-                        raise RuntimeError('The reviewed worker exited without a valid terminal result (exit ' + str(process.returncode) + ').')
+                        # Keep a bounded private diagnostic for real failures;
+                        # without it a vanished worker is indistinguishable
+                        # from status-file contention or invalid configuration.
+                        errors.seek(max(0, os.fstat(errors.fileno()).st_size - 4096))
+                        diagnostic = errors.read(4096).decode('utf-8', errors='replace').strip()
+                        raise RuntimeError('The reviewed worker exited without a valid terminal result (exit '
+                            + str(process.returncode) + ').' + (' Worker diagnostic: ' + diagnostic if diagnostic else ''))
                     atomic_json(root / 'job.json', job, replace=True)
                     if job['state'] == 'succeeded':
                         progress(len(job['inputs']), len(job['inputs']), 'Verified every requested transcript output')

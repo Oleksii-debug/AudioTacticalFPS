@@ -8,7 +8,7 @@ import pytest
 
 from carr_library.speech.player import WavePlayer
 from carr_library.ui.operation_progress import (
-    OperationProgress, ProgressPreferences, WindowsProgressSound,
+    OperationProgress, ProgressPreferences, WindowsProgressSound, save_preferences,
 )
 
 
@@ -462,3 +462,127 @@ def test_terminal_speech_still_observes_background_mute_until_playback_finishes(
     eventually(lambda: not media.sound.active, 'Background speech did not stop')
     media.controller._tick()
     assert not voice.heard and not media.controller.timer.IsRunning()
+
+
+@pytest.mark.parametrize('method, label', [
+    ('succeed', 'Completed.'), ('fail', 'Failed.'),
+    ('cancel', 'Cancelled.'), ('pause', 'Paused.'),
+])
+def test_terminal_notice_replaces_in_flight_running_speech_without_losing_final_state(media, method, label):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    token = controller.start('Importing synthetic books', 4)
+    assert voice.entered.wait(1)
+
+    getattr(controller, method)(token=token)
+    assert controller.timer.IsRunning(), 'The final cue must drain after active speech stops'
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert voice.heard == [], 'Stale running speech must be cancelled'
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert len(voice.heard) == 1 and voice.heard[0].startswith(label)
+    controller._tick()  # Observe the completed terminal playback on the GUI timer.
+    assert not controller.timer.IsRunning()
+    controller._tick()
+    assert len(voice.heard) == 1, 'A final cue must not repeat'
+
+
+@pytest.mark.parametrize('finish_first', [False, True])
+def test_new_operation_replaces_old_running_or_deferred_terminal_speech(media, finish_first):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    first = controller.start('First operation', 4)
+    assert voice.entered.wait(1)
+    if finish_first:
+        controller.succeed(token=first)
+    second = controller.start('Second operation', 8)
+    assert second != first
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive() and voice.heard == []
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert len(voice.heard) == 1
+    assert 'Second operation' in voice.heard[0]
+    assert 'First operation' not in voice.heard[0] and 'Completed' not in voice.heard[0]
+
+
+def test_quiet_policy_discards_pending_final_speech_without_late_replay(media):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    controller.start('A completed operation', 4)
+    assert voice.entered.wait(1)
+    controller.succeed()
+    controller.configure(ProgressPreferences(mode='speech', quiet=True))
+    controller._tick()
+    assert not controller.timer.IsRunning()
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive() and voice.heard == []
+    controller.configure(ProgressPreferences(mode='speech'))
+    controller._tick()
+    assert voice.heard == [] and not controller.timer.IsRunning()
+
+
+@pytest.mark.parametrize('mode', ['speech', 'beep'])
+def test_root_change_discards_pending_final_cue_when_new_library_has_sound_enabled(media, tmp_path, mode):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode=mode))
+    if mode == 'beep':
+        media.backend.release.clear()
+    controller.start('Completed in the old library', 4)
+    assert (voice.entered if mode == 'speech' else media.backend.entered).wait(1)
+    controller.succeed()
+    prior_beeps = len(media.backend.calls)
+
+    other = tmp_path / 'another-library-with-sound'
+    other.mkdir()
+    save_preferences(other, ProgressPreferences(mode='beep'))
+    media.frame.library = SimpleNamespace(root=other)
+    controller.reload_preferences()
+    assert controller.preferences.mode == 'beep'
+    assert not media.sound.muted and not media.sound.speech_available
+    voice.release.set()
+    media.backend.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert voice.heard == []
+    assert len(media.backend.calls) == prior_beeps, 'An old cue must not use the new library sound policy'
+    assert not controller.timer.IsRunning()
+
+
+def test_quiet_toggle_between_timer_ticks_discards_pending_final_speech(media):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    controller.start('Completed before quiet was enabled', 4)
+    assert voice.entered.wait(1)
+    controller.succeed()
+
+    # No GUI timer runs while quiet is enabled. Entering the policy must discard
+    # the old cue immediately instead of letting a later unmute revive it.
+    controller.configure(ProgressPreferences(mode='speech', quiet=True))
+    controller.configure(ProgressPreferences(mode='speech'))
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert voice.heard == [], 'Unmuting must not replay a cue discarded by the quiet policy'
+    assert not controller.timer.IsRunning()

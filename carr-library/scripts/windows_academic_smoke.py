@@ -319,11 +319,18 @@ def main():
                           {row.id for row in academic.rows} == first_page)
                     academic.query.SetValue('Selected native import')
                     academic.on_filter()
+                    matching_before_archive = {row.id for row in academic.rows}
+                    check('the archive scenario includes its exact selected reference',
+                          imported_reference.id in matching_before_archive)
                     archived = controller.archive(imported_reference)
                     academic.refresh()
-                    check('archived references leave the default native results', not academic.rows)
+                    # BibTeX provenance notes can legitimately match the same
+                    # search words. Archiving removes only this exact record.
+                    check('archived reference leaves default results without removing other matches',
+                          {row.id for row in academic.rows} == matching_before_archive - {archived.id})
                     academic.include_archived.SetValue(True)
                     academic.on_filter()
+                    academic.refresh(selected_id=archived.id)
                     check('native archive view exposes a restore action for the correct reference',
                           academic.selected().id == archived.id
                           and 'Restore' in academic.actions['archive'].GetLabel())

@@ -523,8 +523,9 @@ class OperationProgress:
         if self.root is not None and root != self.root:
             # A persisted speech preference never authorizes another library's
             # helper or voice. The user selects a local voice again explicitly.
-            self.set_speech_provider(None)
             self._pending_sound = None
+            self.set_speech_provider(None)
+            self._timer_state()
         self.root = root
         try:
             self.preferences = load_preferences(self.root)
@@ -585,6 +586,11 @@ class OperationProgress:
                             or not self.preferences.background and not self.frame.IsActive()
                             or recording or uncertain or self.preferences.mute_during_audio
                             and (self.audio_active or playing or playback_wait))
+        if self.sound.muted:
+            # Policy changes can happen between timer ticks. Discard the old
+            # cue immediately so unmuting cannot revive another operation.
+            self._pending_sound = None
+            self._timer_state()
 
     def set_speech_provider(self, provider, *, root=None):
         """Select an approved local voice for this session; never enable sound."""
@@ -672,7 +678,8 @@ class OperationProgress:
 
     def _timer_state(self):
         if (self.event.state == 'running' or self._players or self._uncertain_players or self._audio_holds
-                or self._pending_sound is not None or getattr(self.sound, 'active', False)):
+                or self._pending_sound is not None
+                or getattr(self.sound, 'active', False) and not self.sound.muted):
             if not self.timer.IsRunning():
                 self.timer.Start(250)
         else:

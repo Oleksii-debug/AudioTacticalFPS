@@ -100,13 +100,30 @@ def atomic_bytes(path, raw, *, replace=False):
             os.fsync(stream.fileno())
         if replace:
             os.replace(temporary, path)
+        elif os.name == 'nt':
+            # Windows rename refuses an existing destination and leaves no
+            # second hard link if the process exits immediately after success.
+            # POSIX rename can overwrite, so it must not use this branch.
+            os.rename(temporary, path)
+            temporary = None
         else:
-            # link is the portable same-filesystem no-replace publication primitive.
-            os.link(temporary, path)
-            temporary.unlink()
+            # The portable create-only fallback is atomic against a competing
+            # destination. Process death between link and unlink can still leave
+            # a residual link; this branch does not claim crash recovery.
+            os.link(temporary, path, follow_symlinks=False)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise OSError('File was published, but its temporary link '
+                                  'could not be removed.') from exc
         sync_directory(path.parent)
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 

@@ -400,7 +400,7 @@ class LibraryApp:
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
                         language=None, edition=None, volume=None, expected_metadata=None,
-                        cancelled=lambda: False):
+                        selected_fields=None, cancelled=lambda: False):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -409,17 +409,39 @@ class LibraryApp:
         new citation snapshots when those fields change. Edition-specific fields
         change only on the selected edition. An optional prior EditionView guards
         interactive edits against overwriting a concurrently changed catalog.
+        Partial imports must supply both selected_fields and expected_metadata.
+        Unselected values are retained exactly from the locked current catalog;
+        only explicitly selected values receive the usual edit validation.
         """
         def check_cancelled():
             if cancelled():
                 raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
 
         check_cancelled()
-        title = _name(title)
-        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
-            raise ValueError('authors must be a list or tuple of at most 100 names.')
-        authors = tuple(_name(name) for name in authors)
-        language, edition, volume = map(_metadata, (language, edition, volume))
+        allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
+        if selected_fields is None:
+            fields = allowed_fields
+        else:
+            if (not isinstance(selected_fields, (tuple, list, set, frozenset))
+                    or not selected_fields
+                    or any(not isinstance(field, str) for field in selected_fields)
+                    or expected_metadata is None):
+                raise ValueError('A partial metadata edit requires selected fields and the reviewed metadata.')
+            fields = frozenset(selected_fields)
+            if not fields <= allowed_fields:
+                raise ValueError('Select only supported metadata fields.')
+        if 'title' in fields:
+            title = _name(title)
+        if 'authors' in fields:
+            if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+                raise ValueError('authors must be a list or tuple of at most 100 names.')
+            authors = tuple(_name(name) for name in authors)
+        if 'language' in fields:
+            language = _metadata(language)
+        if 'edition' in fields:
+            edition = _metadata(edition)
+        if 'volume' in fields:
+            volume = _metadata(volume)
         revision = uuid4().hex
         with exclusive_writer(self.root):
             check_cancelled()
@@ -431,6 +453,12 @@ class LibraryApp:
                     current = get_edition(Catalog(db, workspace), edition_id)
                     if expected_metadata is not None and current != expected_metadata:
                         raise ValueError('Book metadata changed. Refresh the catalog before editing again.')
+                    if selected_fields is not None:
+                        title = title if 'title' in fields else current.title
+                        authors = authors if 'authors' in fields else current.authors
+                        language = language if 'language' in fields else current.language
+                        edition = edition if 'edition' in fields else current.edition
+                        volume = volume if 'volume' in fields else current.volume
                     row = db.execute('SELECT e.work,e.asset,a.revision,r.config FROM catalog_edition e '
                         'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
                         'JOIN revision r ON r.id=a.revision WHERE e.workspace=? AND e.id=?',
@@ -702,18 +730,14 @@ class LibraryApp:
                             ingest.retry(workspace, job)
                     else:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                    was_published = storage.db.execute('SELECT 1 FROM revision WHERE id=?',
+                                                       (job,)).fetchone() is not None
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     if result['state'] in ('complete', 'superseded'):
-                        if cancelled():
-                            raise InterruptedError('Import cancelled before catalog registration.')
-                        # Recovery validates the retained asset/configuration and
-                        # checkpoint/page identity, but does not replay catalog
-                        # registration. Apply the same atomic membership and
-                        # metadata-conflict gate as the DOCX/EPUB replay path.
-                        # A journal's terminal state alone is not proof that its
-                        # source was actually published. Never reactivate an old
-                        # revision when current metadata has superseded it.
+                        # A terminal journal state alone cannot establish a
+                        # published source. Always validate the sealed revision
+                        # and its current authorized identity before returning.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
                             published = storage.db.execute(
@@ -727,10 +751,19 @@ class LibraryApp:
                                 raise ValueError('Completed import is missing its sealed source revision.')
                             if (published[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            register_batch(Catalog(storage.db, workspace), (record,))
-                            storage._check()
-                            if cancelled():
-                                raise InterruptedError('Import registration cancelled before commit.')
+                            if was_published:
+                                if cancelled():
+                                    raise InterruptedError('Import cancelled before catalog registration.')
+                                # Replay can add membership only with matching
+                                # current metadata, without reactivating an old
+                                # source revision. Keep the existing pre-commit
+                                # cancellation check inside this transaction.
+                                register_batch(Catalog(storage.db, workspace), (record,))
+                                storage._check()
+                                if cancelled():
+                                    raise InterruptedError('Import registration cancelled before commit.')
+                            # First publication already registered and checked
+                            # the request atomically with its source revision.
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
