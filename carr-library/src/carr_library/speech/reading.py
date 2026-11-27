@@ -3,6 +3,7 @@
 The offset map is maintained from explicit edits. It never reclassifies a
 rewritten passage as a verified source quotation merely because it looks alike.
 """
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import difflib
@@ -14,7 +15,6 @@ from tempfile import NamedTemporaryFile
 import sys
 
 from ._io import check_cancelled, digest, local_file, new_output, run_process, text_value, _sync_directory
-from .source import NarrationSource, validate_source_anchor
 
 MAX_HISTORY = 500
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
@@ -82,6 +82,96 @@ def _unique(pairs):
     return value
 
 
+def _validated_source_anchor(value, text):
+    """Validate a retained-source locator as data, not as quotation authority.
+
+    The library still must authorize and resolve each ReadingLocation. A portable
+    file may be edited externally; this checks its internal structure and exact
+    snapshot slices, not the truth of its claimed library identity.
+    """
+    from ..reader.reading_state import ReadingLocation
+
+    if (type(value) is not dict or set(value) != {'workspace', 'edition', 'revision',
+            'asset_sha256', 'positions', 'quotation_authority'}
+            or value['quotation_authority'] is not False
+            or type(value['positions']) is not list
+            or not 1 <= len(value['positions']) <= 10000):
+        raise ValueError('Invalid reading-copy source anchor.')
+    previous = None
+    for row in value['positions']:
+        if (type(row) is not dict or set(row) != {'ordinal', 'kind', 'index',
+                'start', 'end', 'text_sha256', 'text_verified_at_capture'}
+                or type(row['ordinal']) is not int or not 1 <= row['ordinal'] <= 10000
+                or type(row['start']) is not int or type(row['end']) is not int
+                or not 0 <= row['start'] <= row['end'] <= len(text)
+                or type(row['text_verified_at_capture']) is not bool):
+            raise ValueError('Invalid reading-copy source position.')
+        ReadingLocation(value['workspace'], value['edition'], value['revision'],
+                        row['kind'], row['index'], row['text_sha256'], value['asset_sha256'])
+        if previous is None:
+            if row['start'] != 0:
+                raise ValueError('The first source position must begin the reading snapshot.')
+        elif (row['ordinal'] != previous['ordinal'] + 1
+              or row['kind'] != previous['kind'] or row['index'] <= previous['index']
+              or row['start'] != previous['end'] + 2
+              or text[previous['end']:row['start']] != '\n\n'):
+            raise ValueError('Invalid source position order or narration separator.')
+        if sha256(text[row['start']:row['end']].encode('utf-8')).hexdigest() != row['text_sha256']:
+            raise ValueError('Reading-copy source position checksum mismatch.')
+        previous = row
+    if previous['end'] != len(text):
+        raise ValueError('Unmapped text follows the last source position.')
+    return deepcopy(value)
+
+
+def _original_runs(text, anchor):
+    if anchor is None:
+        return (MappedRun(text, 0, len(text), True),) if text else ()
+    runs, cursor = [], 0
+    for row in anchor['positions']:
+        start, end = row['start'], row['end']
+        if start > cursor:
+            # The inserted inter-position separator is narration structure only.
+            runs.append(MappedRun(text[cursor:start], None, None, False))
+        if end > start:
+            runs.append(MappedRun(text[start:end], start, end, True))
+        cursor = end
+    return tuple(runs)
+
+
+def _import_pre_release_anchor(value, text):
+    """Read the earlier candidate dialect once; all writes use canonical v2."""
+    text_value(text, 'source text', empty=True)
+    fields = {'schema', 'workspace', 'edition', 'revision', 'asset_sha256',
+              'positions', 'derived_separators', 'quotation_authority'}
+    if (type(value) is not dict or set(value) != fields
+            or value['schema'] != 'carr.narration-source.v1'
+            or type(value['positions']) is not list
+            or not 1 <= len(value['positions']) <= 10000):
+        raise ValueError('Unsupported pre-release reading-copy source format.')
+    positions = []
+    for row in value['positions']:
+        if type(row) is not dict or set(row) != {'ordinal', 'kind', 'index',
+                'start', 'end', 'text_sha256', 'text_verified_at_read'}:
+            raise ValueError('Invalid or mixed pre-release reading-copy source position.')
+        positions.append({**{key: item for key, item in row.items()
+                             if key != 'text_verified_at_read'},
+                          'text_verified_at_capture': row['text_verified_at_read']})
+    anchor = _validated_source_anchor({
+        **{key: value[key] for key in ('workspace', 'edition', 'revision',
+                                      'asset_sha256', 'quotation_authority')},
+        'positions': positions}, text)
+    separators = value['derived_separators']
+    expected = [{'start': first['end'], 'end': second['start']}
+                for first, second in zip(positions, positions[1:])]
+    if (type(separators) is not list or len(separators) != len(expected)
+            or any(type(row) is not dict or set(row) != {'start', 'end'}
+                   or type(row['start']) is not int or type(row['end']) is not int
+                   for row in separators) or separators != expected):
+        raise ValueError('Invalid pre-release narration separators.')
+    return anchor
+
+
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
     def __init__(self, source_text, *, title='Reading copy', source_path=None, source_anchor=None):
@@ -89,29 +179,16 @@ class ReadingDocument:
         self.title = text_value(title, 'reading-copy title', maximum=512)
         self._source_hash = sha256(self._source.encode('utf-8')).hexdigest()
         self._source_path = Path(source_path).absolute() if source_path is not None else None
-        anchor = validate_source_anchor(self._source, source_anchor) if source_anchor is not None else None
-        # An immutable serialized snapshot prevents caller mutations from
-        # changing provenance after its hashes and offsets were checked.
-        self._source_anchor = json.dumps(anchor, sort_keys=True, ensure_ascii=False) if anchor else None
-        initial = []
-        if anchor is None:
-            if self._source:
-                initial.append(MappedRun(self._source, 0, len(self._source), True))
-        else:
-            offset = 0
-            for position in anchor['positions']:
-                start, end = position['start'], position['end']
-                if start > offset:
-                    initial.append(MappedRun(self._source[offset:start], None, None, False))
-                if end > start:
-                    initial.append(MappedRun(self._source[start:end], start, end, True))
-                offset = end
-        self._states = [tuple(initial)]
+        self._source_anchor = (_validated_source_anchor(source_anchor, self._source)
+                               if source_anchor is not None else None)
+        self._anchor_signature = json.dumps(self._source_anchor, sort_keys=True, ensure_ascii=False)
+        self._states = [_original_runs(self._source, self._source_anchor)]
         self._edits = []
         self._position = 0
         self._saved_path = None
         self._saved_digest = None
         self._saved_signature = None
+        self._pre_release_format = False
 
     @property
     def source_text(self):
@@ -123,20 +200,14 @@ class ReadingDocument:
 
     @property
     def source_anchor(self):
-        """Retained lineage only; this object never grants source authorization."""
-        return json.loads(self._source_anchor) if self._source_anchor is not None else None
+        """A copy of the claimed origin, or None for a legacy/standalone copy."""
+        return deepcopy(self._source_anchor)
 
-    @classmethod
-    def from_narration_source(cls, source):
-        if not isinstance(source, NarrationSource):
-            raise ValueError('A library narration source is required.')
-        return cls(source.text, title=source.title, source_anchor=source.anchor())
-
-    def matches_source(self, source):
-        """Compare exact lineage after the caller's fresh authorized source read."""
-        if not isinstance(source, NarrationSource):
-            raise ValueError('A library narration source is required.')
-        return self.source_text == source.text and self.source_anchor == source.anchor()
+    @property
+    def format_notice(self):
+        """Explain an explicit import without changing the original saved file."""
+        return ('Recovered a pre-release reading-project format. The original file is preserved; '
+                'use Save As to write the current format. ' if self._pre_release_format else '')
 
     @property
     def text(self):
@@ -159,13 +230,15 @@ class ReadingDocument:
         return self._signature() != self._saved_signature
 
     def _signature(self):
-        return self.title, self._position, tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits)
+        return (self.title, self._source_hash, self._anchor_signature, self._position,
+                tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
 
     def _range(self, start, end):
         if type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(self.text):
             raise ValueError('Choose an existing character range in the reading copy.')
 
     def source_span(self, start, end):
+        """Map local snapshot offsets only; exact does not mean quotation-approved."""
         self._range(start, end)
         if start == end:
             return SourceSpan(None, None, False)
@@ -274,12 +347,13 @@ class ReadingDocument:
         return self.set_text(clone.text, label='Pronunciation reading layer')
 
     def to_dict(self):
-        value = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
-                 'source_sha256': self._source_hash, 'edits': [dict(edit) for edit in self._edits],
-                 'revision': self._position}
+        data = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
+                'source_sha256': self._source_hash, 'edits': [dict(edit) for edit in self._edits],
+                'revision': self._position}
         if self._source_anchor is not None:
-            value.update(schema='carr.reading-copy.v2', source_anchor=self.source_anchor)
-        return value
+            data['schema'] = 'carr.reading-copy.v2'
+            data['source_anchor'] = self.source_anchor
+        return data
 
     def save(self, path, *, cancelled=lambda: False):
         """Create or update this very project with optimistic concurrency checks."""
@@ -287,6 +361,8 @@ class ReadingDocument:
         target = local_file(path, must_exist=False)
         if target == self._source_path:
             raise ValueError('Save the reading copy separately from the original source.')
+        if self._pre_release_format and target == self._saved_path:
+            raise ValueError('Use Save As to preserve the original pre-release reading project.')
         payload = (json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
         if len(payload) > MAX_PROJECT_BYTES:
             raise ValueError('The reading-project history exceeds its storage budget.')
@@ -316,6 +392,7 @@ class ReadingDocument:
                     temporary.unlink(missing_ok=True)
         self._saved_path, self._saved_digest = target, sha256(payload).hexdigest()
         self._saved_signature = self._signature()
+        self._pre_release_format = False
         return self._saved_digest
 
     @classmethod
@@ -333,17 +410,22 @@ class ReadingDocument:
     @classmethod
     def from_dict(cls, data):
         """Validate an exported reading object without approving its source."""
+        fields = {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}
         if not isinstance(data, dict):
             raise ValueError('Invalid reading-project fields.')
-        fields = {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}
-        schema = data.get('schema')
-        if schema == 'carr.reading-copy.v2':
-            fields.add('source_anchor')
-        elif schema != 'carr.reading-copy.v1':
-            raise ValueError('Unsupported reading-project version.')
-        if set(data) != fields or (schema == 'carr.reading-copy.v2' and data['source_anchor'] is None):
-            raise ValueError('Invalid reading-project fields.')
-        document = cls(data['source_text'], title=data['title'], source_anchor=data.get('source_anchor'))
+        version = data.get('schema')
+        pre_release = False
+        if version == 'carr.reading-copy.v1' and set(data) == fields:
+            anchor = None
+        elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_anchor'}
+                and type(data['source_anchor']) is dict):
+            anchor = data['source_anchor']
+            if 'schema' in anchor:
+                anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                pre_release = True
+        else:
+            raise ValueError('Unsupported reading-project version or fields.')
+        document = cls(data['source_text'], title=data['title'], source_anchor=anchor)
         if document.source_sha256 != data['source_sha256']:
             raise ValueError('Reading-project original-source checksum mismatch.')
         if not isinstance(data['edits'], list) or len(data['edits']) > MAX_HISTORY:
@@ -356,6 +438,7 @@ class ReadingDocument:
         if type(data['revision']) is not int or not 0 <= data['revision'] <= len(data['edits']):
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']
+        document._pre_release_format = pre_release
         return document
 
     def export(self, path, *, original=False, cancelled=lambda: False):

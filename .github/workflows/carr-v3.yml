@@ -73,6 +73,7 @@ jobs:
           import carr_library.application, carr_library.pending_backup, carr_library.library_backup
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.academic_integration.doi
+          import carr_library.speech.session
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -80,6 +81,7 @@ jobs:
                    'carr_library.application', 'carr_library.pending_backup', 'carr_library.library_backup',
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
+                   'carr_library.speech.session',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}

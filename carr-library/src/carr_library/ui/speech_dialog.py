@@ -45,6 +45,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 document = recovered.document
                 text = document.text
                 recovery_notice = 'Recovered your saved reading draft and voice settings. '
+            if recovered is not None and recovered.document.format_notice:
+                recovery_notice += recovered.document.format_notice
+                # The earlier dialect is imported in memory; retain its saved
+                # recovery bytes until the user explicitly writes a new copy.
+                draft_store = None
     except (OSError, ValueError, RuntimeError) as exc:
         recovery_notice = f'Reading-draft recovery is unavailable: {exc}. Save As remains available. '
         draft_store = None
@@ -188,27 +193,30 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return VoiceRegistry.discover()
 
         def loaded(value):
-            nonlocal registry, voices, document, source_loaded, draft_store, recovery_notice
+            nonlocal registry, voices, document, source_loaded, draft_store, recovered, recovery_notice
             registry, source = value
             voices = registry.voices()
             if source is not None:
                 source_guard()
-                if recovered is not None and recovered.document.matches_source(source):
+                fresh = source.reading_document()
+                if (recovered is not None and recovered.document.source_text == fresh.source_text
+                        and recovered.document.source_anchor == fresh.source_anchor):
                     document = recovered.document
                 else:
-                    document = ReadingDocument.from_narration_source(source)
                     if recovered is not None:
-                        # A v1 or foreign draft must not be assigned this
-                        # source identity merely because the text is equal.
-                        # Keep its saved bytes rather than autosaving over it.
+                        # Never attach an unbound or differently bound draft by text equality.
+                        # Keep the prior recovery file unchanged; Save As is still available.
                         draft_store = None
-                        recovery_notice += ('The saved reading draft has no matching source identity '
-                            'and was kept unchanged. This fresh copy will not replace it; use Save As. ')
+                        recovered = None
+                        recovery_notice += ('Previous draft has no matching source lineage and was preserved. '
+                                            'Use Save As for this new copy. ')
+                    document = fresh
                 editor.ChangeValue(document.text)
                 source_loaded = True
                 source_status.ChangeValue(f'{source.title}; {len(source.positions)} source reading positions. '
                     + (' '.join(source.warnings[:3]) if source.warnings else 'Source positions authenticated.')
-                    + ' This is a separate narration copy; it does not approve quotations.')
+                    + ' This is a separate narration copy; it does not approve quotations. '
+                    + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
             if voices:
                 selected = next((i for i, voice in enumerate(voices)
@@ -226,12 +234,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def sync_document():
         document.set_text(editor.GetValue())
-        provenance = ('Retained library source identity; fresh source access is required for source use. '
-                      if document.source_anchor is not None else
-                      'Unbound reading copy; no library source identity. ')
+        lineage = ('Retained-source locator recorded; quotation authority not granted. '
+                   if document.source_anchor is not None else 'No retained-library source locator. ')
         source_status.ChangeValue(f'Original text preserved; reading revision {document.revision}; '
-            f'{"unsaved changes" if document.dirty else "saved"}. '
-            + provenance + 'The reading copy is not quotation evidence.')
+            f'{"unsaved changes" if document.dirty else "saved"}. ' + lineage
+            + 'The reading copy is not quotation evidence. ' + recovery_notice)
 
     def save_recovery(event=None, *, force=False):
         nonlocal last_recovery_signature
@@ -382,7 +389,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path
+        nonlocal document, save_path, draft_store, recovery_notice
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -406,14 +413,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     raise ValueError('Open one text chapter at a time, up to 8 MB.')
                 loaded = ReadingDocument(source.read_text(encoding='utf-8-sig'), title=source.stem, source_path=source)
                 selected = None
+            if source_loader is not None and (not source_loaded or loaded.source_anchor is None
+                    or loaded.source_anchor != document.source_anchor):
+                raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
             player.stop()
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
+            if document.format_notice:
+                draft_store = None
+                save_path = None
+                recovery_notice = document.format_notice
             editor.ChangeValue(document.text)
             sync_document()
             editor.SetFocus()
-            report('Reading copy opened. Original text is retained separately; no quotation was approved.')
+            report(recovery_notice + 'Reading copy opened. Original text is retained separately; no quotation was approved.')
         except Exception as exc:
             report(str(exc), focus=True)
 

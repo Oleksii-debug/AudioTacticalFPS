@@ -103,6 +103,17 @@ authorized selection. A mismatched or legacy draft is kept unchanged, with a
 visible notice, while the fresh copy must use Save As; it is not silently
 rebound or overwritten by recovery autosave.
 
+Canonical version-2 anchors use `text_verified_at_capture` for each source
+position; inter-position joins are inferred from their checked offsets. The
+earlier candidate's `carr.narration-source.v1` anchor is accepted only as an
+explicit import: its hashes, offsets, verification flags and declared separators
+must all validate before normalization. A visible format notice requires Save As
+for an opened project and disables replacement of its existing recovery draft.
+The old file keeps its exact bytes; the new copy uses the canonical version-2
+format and retains the original text, lineage, edits and undo/redo position.
+Unknown or mixed formats are rejected. Recovery and format notices remain visible
+even when no local voice is installed.
+
 Whitespace and optional hyphenation cleanup are deterministic derivative edits.
 Pronunciation dictionaries support literal and bounded regex substitutions,
 optional language and voice scoping, import/export, and undo as one change.
