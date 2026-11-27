@@ -540,3 +540,20 @@ The same view is available through `python -m carr_library operations --data-dir
 `configure-resources <policy.json>` for an explicit policy file. No Run command
 or automatic provider call is added. See [runtime_resources.md](runtime_resources.md)
 for shared admission, policy backup, workspace filtering and qualification limits.
+
+
+## Reviewed book splits and resumable audio items
+
+Select an existing book, then open **Audio Studio → Book audio: split and render**.
+Load its reading inventory, choose an installed local voice, explicit source
+range, split mode and output folder, then Preview the exact source and names.
+**Prepare** saves ordinary Studio items and starts no speech. **Run or resume**
+is a separate confirmation and verifies completed files before reuse.
+
+Supported boundaries include actual EPUB chapters, physical PDF pages,
+text-line paragraphs, punctuation sentences, character counts, blank-line groups
+and bounded regular expressions. The maximum is two million selected characters
+and 256 parts; duration estimates are unavailable. Source text remains literal,
+including strings that resemble Studio directions. Restored plans require a new
+output review through the existing Studio recovery path. See
+[BOOK_AUDIO_BATCH.md](BOOK_AUDIO_BATCH.md) for limits, provenance and cancellation.

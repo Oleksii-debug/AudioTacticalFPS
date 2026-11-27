@@ -24,6 +24,9 @@ def dialog(tmp_path):
     value.closed = value.closing = value.pending = False
     value.library_root = tmp_path
     value._destroy_when_closed = False
+    value._editor_closed = False
+    value._editor_close_lock = threading.RLock()
+    value._unregister_cleanup = Mock()
     value.editor = SimpleNamespace(close=Mock())
     value.player = None
     value.playback_generation = 0
@@ -240,3 +243,145 @@ def test_late_preview_cleanup_error_does_not_trap_a_closing_dialog(dialog, tmp_p
     finish(result)
     assert dialog.closed and not dialog.pending and preview.exists()
     dialog.Hide.assert_called_once()
+
+def test_forced_host_close_cleans_editor_in_worker_when_ui_callback_is_discarded(dialog):
+    started, finish_work, cleaned = threading.Event(), threading.Event(), threading.Event()
+    threads = []
+    def operation():
+        started.set()
+        assert finish_work.wait(5)
+        return 'durable result'
+    def cleanup():
+        threads.append(threading.get_ident())
+        assert finish_work.is_set()
+        cleaned.set()
+    dialog.editor.close = Mock(side_effect=cleanup)
+    assert dialog._run('Owned work', operation, Mock())
+    work, done, failed = dialog.calls.pop(0)
+    errors = []
+    def run():
+        try:
+            work()
+        except BaseException as exc:
+            errors.append(exc)
+    worker = threading.Thread(target=run)
+    worker.start()
+    assert started.wait(5)
+    dialog.frame._closing = True
+    finish_work.set()
+    worker.join(5)
+    assert not worker.is_alive() and not errors and cleaned.is_set()
+    assert threads == [worker.ident] and worker.ident != threading.get_ident()
+    dialog.editor.close.assert_called_once()
+    # Actual DesktopFrame discards done/failed in this state.
+    dialog._close_editor()
+    dialog.editor.close.assert_called_once()
+
+
+def test_effect_review_and_save_bind_original_project_before_both_queued_steps(dialog, monkeypatch):
+    from carr_library.audio import Effect
+    from carr_library.ui import effects_dialog
+    cue = Cue('clip', '/retained.audio')
+    scene = Scene('scene', 'Scene', (), cues=(cue,))
+    project = Project('project', 'Project', (), (scene,))
+    dialog.project = project
+    dialog._scene, dialog._clip = lambda: scene, lambda: cue
+    returned = (Effect('gain', gain_db=-6),)
+    review = Mock(return_value=returned)
+    monkeypatch.setattr(effects_dialog, 'show_effect_chain', review)
+    saved = Mock(return_value=project)
+    runtime = SimpleNamespace(capabilities=lambda: {'effects': ['gain', 'tempo']})
+    dialog.editor = SimpleNamespace(_current=Mock(return_value=project),
+        service=SimpleNamespace(_runtime=lambda: runtime), set_effects=saved, close=Mock())
+    dialog.clip_effects()
+    assert not review.called and len(dialog.calls) == 1
+    dialog.project = None
+    dialog._scene = lambda: (_ for _ in ()).throw(AssertionError('Worker read a changed scene selector'))
+    dialog.finish()
+    assert review.call_args.args == (dialog, dialog.library_root, ())
+    assert review.call_args.kwargs == {'sample_rate': 24000, 'available': ('gain',)}
+    assert not saved.called and len(dialog.calls) == 1
+    dialog.finish()
+    assert saved.call_args.args == (project, 'clip', returned)
+    assert saved.call_args.kwargs['scene_id'] == scene.id
+    assert saved.call_args.kwargs['clip_id'] == cue.id
+    dialog._accept.assert_called_once_with(project)
+
+
+def test_closed_effect_review_never_opens_a_late_modal(dialog, monkeypatch):
+    from carr_library.ui import effects_dialog
+    scene = Scene('scene', 'Scene', (), minimum_duration=1)
+    project = Project('project', 'Project', (), (scene,))
+    dialog.project, dialog._scene = project, lambda: scene
+    review = Mock()
+    monkeypatch.setattr(effects_dialog, 'show_effect_chain', review)
+    dialog.editor = SimpleNamespace(_current=Mock(),
+        service=SimpleNamespace(_runtime=Mock()), close=Mock())
+    dialog.master_effects()
+    dialog.close()
+    dialog.finish()
+    review.assert_not_called()
+    dialog.editor.service._runtime.assert_not_called()
+    assert dialog.closed
+
+
+@pytest.mark.parametrize('active', [False, True])
+def test_registered_clip_owner_survives_forced_executor_close_without_ui_callback(dialog, active):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    order, ordinary = [], []
+    owner_thread = threading.get_ident()
+
+    def operation():
+        entered.set()
+        assert release.wait(5)
+        order.append('operation-complete')
+
+    def cleanup():
+        assert order == ['operation-complete']
+        assert threading.get_ident() != owner_thread
+        order.append('editor-closed')
+
+    dialog.editor.close = Mock(side_effect=cleanup)
+    dialog._unregister_cleanup = executor.register_cleanup(dialog._close_editor)
+    if active:
+        def run_job(title, work, done, failed):
+            dialog.frame.working = True
+            return executor.submit(work)
+        dialog.frame.run_job = run_job
+        dialog._run('Active clip operation', operation, Mock())
+    else:
+        executor.submit(operation)
+    try:
+        assert entered.wait(5)
+        queued = executor.submit(lambda: ordinary.append('unwanted save'))
+        dialog.frame._closing = True
+        dialog.frame.cancel_event.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+        assert queued.cancelled() and order == []
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+        assert order == ['operation-complete', 'editor-closed']
+        assert dialog._editor_closed and not ordinary
+        dialog.editor.close.assert_called_once()
+        # A callback captured before unregister is harmless.
+        dialog._close_editor()
+        dialog.editor.close.assert_called_once()
+    finally:
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_failed_clip_release_keeps_registered_retry_authority(dialog):
+    dialog.editor.close.side_effect = OSError('native owner remains active')
+    with pytest.raises(OSError):
+        dialog._close_editor()
+    assert not dialog._editor_closed
+    dialog._unregister_cleanup.assert_not_called()
+    dialog.editor.close.side_effect = None
+    dialog._close_editor()
+    dialog._close_editor()
+    assert dialog._editor_closed
+    dialog._unregister_cleanup.assert_called_once()
+    assert dialog.editor.close.call_count == 2

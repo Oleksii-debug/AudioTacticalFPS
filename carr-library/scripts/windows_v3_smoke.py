@@ -24,6 +24,9 @@ def main():
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
     from carr_library.ui.translation_dialog import show_translation
+    from carr_library.ui.book_audio_dialog import create_book_audio_dialog
+    from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
+    from carr_library.studio.project import Role
     gui_errors = []
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
@@ -328,6 +331,48 @@ def main():
                     setattr(wx, name, implementation)
 
         exercise_native_render()
+        # Actual local SAPI book items reuse the same canonical Studio owner.
+        book_text = '[Music: suspense]\nThis is literal book text.\n\nThe second reviewed part.'
+        book_source = library.add_text(workspace, 'Native book split source', book_text)
+        assert book_source['state'] == 'complete'
+        books = BookAudioService(library, workspace, production=service)
+        book_output = root / 'explicit native book outputs'
+        book_output.mkdir()
+        try:
+            plan = capture_plan(library, workspace, book_source['edition'],
+                options=SplitOptions('blank-lines'),
+                role=Role('narrator', 'Narrator', voice.id, voice.language))
+            reviewed = books.review(plan, book_output)
+            ready = books.prepare(plan, book_output, approval=reviewed.fingerprint)
+            assert ready.prepared and len(plan.parts) == 2 and not list(book_output.iterdir())
+            assert all(not service.get(plan.job_id(index))['nodes'] for index in (1, 2))
+            completed = books.run(plan.id, book_output, approval=ready.fingerprint)
+            assert all(row['status'] == 'complete' for row in completed)
+            assert ''.join(plan.project(index).original_script for index in (1, 2)) == book_text
+            assert all(scene.music is None and not scene.cues
+                       for index in (1, 2) for scene in plan.project(index).scenes)
+            for index, row in enumerate(completed, 1):
+                assert json.loads(Path(row['destination'], 'book-source.json').read_bytes()) == plan.provenance(index)
+                assert not service.get(row['job'])['result']['loudness']['silent']
+            assert books.run(plan.id, book_output, approval=ready.fingerprint) == completed
+            assert library.assets.resolve(book_source['asset']).read_bytes() == book_text.encode('utf-8')
+            frame._open_workspace(workspace)
+            assert frame.active == (workspace, None)
+            def book_dialog(host):
+                dialog, close = create_book_audio_dialog(host, service=books)
+                try:
+                    dialog.ShowModal()
+                finally:
+                    close()
+                    dialog.Destroy()
+            inspect_dialog(book_dialog, ('Selected library source', 'Split mode',
+                'Installed local voice', 'Part name template', 'Book split preview and saved job status',
+                'Prepare saved items', 'Run or resume saved items'), wx.ID_CANCEL)
+            result['checks'].append('actual installed SAPI source-bound book split, prepared names, verified resume and native controls')
+            result['book_audio'] = {'parts': len(completed), 'voice_id': voice.id,
+                                    'original_preserved': True, 'quotation_approval': False}
+        finally:
+            books.close()
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)

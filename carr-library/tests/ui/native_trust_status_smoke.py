@@ -3,12 +3,14 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import argparse
 import base64
+import faulthandler
 import json
 from pathlib import Path
 import sys
 import threading
 from tempfile import TemporaryDirectory
 import time
+import traceback
 
 
 def main(argv=None):
@@ -37,6 +39,9 @@ def main(argv=None):
     if args.source is None:
         assert not Path(ui.__file__).resolve().is_relative_to(Path(__file__).resolve().parents[2])
         assert not Path(polling.__file__).resolve().is_relative_to(Path(__file__).resolve().parents[2])
+    # Keep native callback failures in the CI console, including failures raised
+    # outside this generator by normal Close/Destroy event dispatch.
+    faulthandler.enable(file=sys.stderr, all_threads=True)
     app = wx.App(False)
     app.SetExitOnFrameDelete(False)
     checks = []
@@ -207,7 +212,9 @@ def main(argv=None):
                     configured_status.Destroy()
                 finally:
                     poll_frame.working = False
+                    print('TRACE: Requesting native polling owner Close.', flush=True)
                     poll_frame.Close()
+                    print('TRACE: Native polling owner Close returned; phase=' + host.status.phase, flush=True)
                     yield (lambda: host.status.phase == 'stopped', 8,
                            lambda: 'Native owner destruction did not stop polling: phase=' + host.status.phase)
                 check('Native owner destruction stops the metadata worker', not host._thread.is_alive())
@@ -235,6 +242,10 @@ def main(argv=None):
             return
         if error is not None and state['error'] is None:
             state['error'] = error
+        if state['error'] is not None:
+            print(json.dumps({'status': 'FAIL', 'stage': 'native event loop',
+                              'reason': repr(state['error'])}), flush=True)
+            traceback.print_exception(state['error'], file=sys.stderr)
         state['finished'] = True
         app.ExitMainLoop()
 
@@ -276,10 +287,24 @@ def main(argv=None):
     def expired():
         complete(AssertionError('Native application event loop exceeded its total 45-second budget.'))
 
+    original_hook = sys.excepthook
+    def native_uncaught(kind, error, trace):
+        # SIP invokes sys.excepthook for exceptions in native event callbacks.
+        # Record them as failures instead of losing them after the frame closes.
+        print(json.dumps({'status': 'FAIL', 'stage': 'native callback',
+                          'reason': repr(error)}), flush=True)
+        traceback.print_exception(kind, error, trace, file=sys.stderr)
+        complete(error)
+    sys.excepthook = native_uncaught
     watchdog = wx.CallLater(45000, expired)
     wx.CallAfter(advance)
-    app.MainLoop()
-    watchdog.Stop()
+    try:
+        app.MainLoop()
+    finally:
+        sys.excepthook = original_hook
+        print(json.dumps({'stage': 'MainLoop returned', 'finished': state['finished'],
+                          'error': repr(state['error']) if state['error'] is not None else None}), flush=True)
+        watchdog.Stop()
     if not state['finished']:
         raise AssertionError('Native application event loop exited before the scenario finished.')
     if state['error'] is not None:

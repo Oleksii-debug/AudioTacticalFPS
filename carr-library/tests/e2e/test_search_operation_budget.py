@@ -1,4 +1,9 @@
-"""The desktop cancellation control covers the complete source search operation."""
+"""The desktop cancellation control covers the complete source search operation.
+
+Busy-lock cases allow two seconds for the operation deadline but independently
+require return within one second. This isolates immediate lock refusal from a
+50 ms deadline racing Windows scheduling; deadline-specific cases remain below.
+"""
 from contextlib import closing
 import sqlite3
 from threading import Event
@@ -164,7 +169,7 @@ def test_busy_search_fails_promptly_and_preserves_previous_selection(research, m
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='library is busy'):
-                app.search(workspace, 'history', mode=mode, timeout=.05)
+                app.search(workspace, 'history', mode=mode, timeout=2)
             assert monotonic() - started < 1.0
             assert app._selections == selections
         finally:
@@ -250,7 +255,7 @@ def test_federated_name_lookup_obeys_busy_search_policy(research):
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='library is busy'):
-                service.search((workspace,), 'history', timeout=.05)
+                service.search((workspace,), 'history', timeout=2)
             assert monotonic() - started < 1.0
             assert service.current is previous
         finally:
@@ -269,7 +274,7 @@ def test_busy_snapshot_fails_promptly_and_preserves_previous_selection(research,
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='busy.*Retry'):
-                app.search(workspace, 'history', mode=mode, timeout=.05)
+                app.search(workspace, 'history', mode=mode, timeout=2)
             assert monotonic() - started < 1.0
             assert app._selections == selections
         finally:
@@ -290,7 +295,7 @@ def test_federated_name_lookup_obeys_budget_and_retains_completed_session(resear
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='busy.*Retry'):
-                service.search((workspace, other), 'railway', timeout=.05)
+                service.search((workspace, other), 'railway', timeout=2)
             assert monotonic() - started < 1.0
             assert service.current is previous
         finally:

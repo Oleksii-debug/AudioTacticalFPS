@@ -152,13 +152,18 @@ def test_actual_catastrophic_regex_is_timed_out_and_child_is_reaped(monkeypatch)
     document = ReadingDocument('a' * 20000 + '!')
     children, original = [], worker_io.subprocess.Popen
     def started(*args, **kwargs):
-        child = original(*args, **kwargs); children.append(child); return child
+        child = original(*args, **kwargs)
+        children.append(child)
+        return child
     monkeypatch.setattr(worker_io.subprocess, 'Popen', started)
     beginning = time.monotonic()
     with pytest.raises(TimeoutError):
         ui.preview_find(snapshot(document), PronunciationRule('(a+)+$', 'x', regex=True), timeout=.08)
     assert time.monotonic() - beginning < 4
-    assert len(children) == 1 and children[0].poll() is not None
+    # Windows may launch the fixed taskkill helper during owned cleanup.
+    # Count the actual regex worker while requiring every observed child to end.
+    workers = [child for child in children if Path(child.args[-1]).name == 'regex_worker.py']
+    assert len(workers) == 1 and all(child.poll() is not None for child in children)
     assert document.revision == 0
 
 
@@ -167,8 +172,10 @@ def test_cancellation_of_actual_regex_child_reaps_it_without_publishing(monkeypa
     document = ReadingDocument('a' * 20000 + '!')
     children, original, stop, timers = [], worker_io.subprocess.Popen, Event(), []
     def started(*args, **kwargs):
-        child = original(*args, **kwargs); children.append(child)
-        timer = Timer(.15, stop.set); timers.append(timer); timer.start()
+        child = original(*args, **kwargs)
+        children.append(child)
+        if Path(child.args[-1]).name == 'regex_worker.py':
+            timer = Timer(.15, stop.set); timers.append(timer); timer.start()
         return child
     monkeypatch.setattr(worker_io.subprocess, 'Popen', started)
     try:
@@ -179,7 +186,10 @@ def test_cancellation_of_actual_regex_child_reaps_it_without_publishing(monkeypa
         stop.set()
         for timer in timers:
             timer.cancel(); timer.join(1)
-    assert len(children) == 1 and children[0].poll() is not None
+    # Windows may launch the fixed taskkill helper during owned cleanup.
+    # Count the actual regex worker while requiring every observed child to end.
+    workers = [child for child in children if Path(child.args[-1]).name == 'regex_worker.py']
+    assert len(workers) == 1 and all(child.poll() is not None for child in children)
     assert document.text == document.source_text and document.revision == 0
 
 

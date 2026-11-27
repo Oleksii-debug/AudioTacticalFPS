@@ -79,6 +79,95 @@ Dynamic loudness normalization is followed by actual output measurement.
 Requested targets and measured values are distinct. Very short, silent or
 strongly constrained signals need not reach a selected integrated target.
 
+## Ordered effects and saved presets in the desktop
+
+Open **Audio Studio → Convert audio and apply effects**, select a local source,
+then set its range and output sample rate, channel count, PCM bit depth and
+encoding bitrate. Opus requires an explicit 48000 Hz selection. Lossy bitrate
+applies to MP3, AAC, Opus and WMA; Ogg Vorbis uses the adapter's existing quality
+setting. A codec can reject an unsupported rate or depth before publication.
+
+**Edit ordered effect chain and presets** checks the installed FFmpeg filters
+in the existing background worker, then opens native keyboard-accessible
+controls. Effects run from top to bottom. Select a row to edit its numeric
+parameters and units, enable or bypass it, remove it, or move it one position.
+Undo/redo retains the last 32 editing changes in this dialog. Reset restores
+the selected effect's default numeric controls at the chosen sample rate.
+The chain has a 32-effect allowance. Unsupported enabled effects and invalid
+numeric values are refused; bypass never hides invalid values.
+
+Applying an ordered chain makes the basic gain/speed/cleanup controls inactive.
+**Use basic effect controls** explicitly returns to those controls. The
+selected source, output settings and immutable chain are captured before the
+conversion is queued. A library-folder change requires reopening the dialog.
+Audio is rendered only after selecting a new output filename; neither opening
+the chain editor nor loading a preset starts playback or changes source audio.
+
+The built-in presets are Dry audio, Narration cleanup and Podcast loudness.
+**Save chain as a new preset** writes a separately named preset; **Load effect
+preset** replaces only the editable chain and can be undone. Saving is an
+explicit persistent action: cancelling the surrounding editor does not delete
+a preset that was already saved. Presets retain ordered controls, bypass
+states, sample rate, identity and revision. Loading at another sample rate
+revalidates every frequency against that rate.
+
+User presets are bounded JSON settings under
+`state/studio/effect-presets/<identity>.json`, with at most 256 presets and
+64 KiB per record. They contain no commands, filter expressions, file inputs,
+plugins or executable locations. A stale reviewed preset cannot overwrite a
+newer version through the store API. Complete library backups include these
+settings even when generated audio is excluded; restored presets are
+revalidated before use.
+
+`tests/audio/test_effect_presets.py` covers actual signal order and bypass
+with FFmpeg, non-overwrite review, invalid saved values and a full library
+backup/restore. `scripts/windows_effect_chain_smoke.py` exercises native
+keyboard actions, numeric/preset dialogs and the existing asynchronous audio
+conversion. These new gates need evidence from the exact candidate revision;
+their presence alone is not a completed Windows/NVDA or listening assessment.
+
+## Saved track, scene and master chains
+
+Open **Audio Studio → Edit scene audio clips**, then choose a saved Studio
+project. **Clip effects**, **Speaking role effects**, **Scene effects** and
+**Master effects** use the same ordered chain editor. Speaking-role effects
+process synthesized PCM before its placement; the accepted raw voice chunk
+stays reusable. Clip effects process the retained selection. Scene effects
+process that scene's mix; master effects process the assembled final mix.
+
+These saved chains use project schema 3. Schemas 1 and 2 keep their exact old
+serialized fields and fingerprints. Editing timing, moving/copying a clip,
+changing a script without removing its attached processing, undo/redo and full
+library backup retain schema-3 settings. Every edit uses the existing project
+revision and fingerprint check. A role or scene carrying effects cannot silently
+disappear when its script structure is changed.
+
+Track stems include their own processing, while scene and master chains apply
+only to their respective mixes. Delivered chapter WAVs are exact selections
+from the processed master when a master chain is active. Text, measured line
+boundaries, subtitles and source references stay unchanged. Timeline chains
+preserve duration: perform a tempo change in **Convert audio and apply effects**
+before adding that audio to a scene.
+
+**Preview saved clip** includes the clip chain. **Preview without clip effects**
+bypasses only that chain, keeping the same trim, gain, position and fades. Both
+are explicit playback actions and use the existing player/quiet-mode owner.
+Stop confirms device closure before an editing operation or preview cleanup.
+Split and join require bypassed clip processing so a stateful filter is not
+silently restarted or merged at the cut; join also requires matching chains.
+
+The same dialog exposes **Master sample rate**. Choose one of the supported
+project rates before rendering; existing filter frequencies are revalidated.
+Opus export requires choosing 48000 Hz explicitly. Original retained audio
+continues to use its own measured source rate.
+
+`tests/studio/test_project_effects.py` checks exact legacy identities, typed
+round trips, stale edits, actual FFmpeg clip/scene/master levels, dry comparison,
+chapter consistency, actual SAPI/Flite synthesis reuse and full backup/restore
+after deleting the original input. The native clip gate exercises the new
+effect controls through real keyboard events. These are candidate checks until
+a named exact-commit execution result records their outcome.
+
 ## Local music and sound effects
 
 The default `procedural` engine produces real PCM using a deterministic note

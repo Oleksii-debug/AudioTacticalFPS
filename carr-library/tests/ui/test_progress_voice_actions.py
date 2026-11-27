@@ -141,14 +141,16 @@ def reader(tmp_path, monkeypatch):
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
     values = dict(parent=parent, progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, owned_registries=set(), run=work, report=report,
-        alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
+        alive=True, playback_generation=0, repeat_scheduled=None, cancel=threading.Event(), player=Mock(),
+        reader_library=parent.library, reader_root=Path(parent.library.root),
         wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
+        dialog=Mock(), autosave_timer=Mock(), playback_timer=Mock(), executor=Mock(), audio_files=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
+        ['reload', 'select_progress_voice', 'playback_scope', 'playback_failed',
+         'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,

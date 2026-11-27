@@ -74,19 +74,20 @@ def main():
             gui.Yield()
             sleep(.01)
     def press(control):
+        name = control.GetName()
         top = wx.GetTopLevelParent(control)
         top.Raise()
         user32.SetForegroundWindow(top.GetHandle())
         control.SetFocus()
         pump(lambda: wx.Window.FindFocus() is control and user32.GetForegroundWindow() == top.GetHandle(),
              'Clip control did not receive foreground keyboard focus', timeout=10)
-        check('keyboard focus: ' + control.GetName(), wx.Window.FindFocus() is control)
-        check('Space key down: ' + control.GetName(), simulator.KeyDown(wx.WXK_SPACE))
+        check('keyboard focus: ' + name, wx.Window.FindFocus() is control)
+        check('Space key down: ' + name, simulator.KeyDown(wx.WXK_SPACE))
         try:
             gui.Yield()
             sleep(.04)
         finally:
-            check('Space key up: ' + control.GetName(), simulator.KeyUp(wx.WXK_SPACE))
+            check('Space key up: ' + name, simulator.KeyUp(wx.WXK_SPACE))
         gui.Yield()
 
 
@@ -116,6 +117,55 @@ def main():
                 errors.append(traceback.format_exc())
                 gui.ExitMainLoop()
         wx.CallLater(20, answer)
+
+
+    def answer_effect_chain(gain):
+        deadline = monotonic() + 20
+        def failed():
+            errors.append(traceback.format_exc())
+            for window in wx.GetTopLevelWindows():
+                if isinstance(window, wx.Dialog) and window.IsModal():
+                    window.EndModal(wx.ID_CANCEL)
+            gui.ExitMainLoop()
+
+        def edit_numeric():
+            try:
+                matching = [window for window in wx.GetTopLevelWindows()
+                            if window.IsShown() and window.GetTitle() == 'Edit gain effect']
+                if not matching:
+                    if monotonic() >= deadline:
+                        raise TimeoutError('Native gain editor did not open.')
+                    wx.CallLater(20, edit_numeric)
+                    return
+                popup, = matching
+                control = wx.Window.FindWindowByName('gain db (dB); -120 to 24', popup)
+                check('actual numeric clip effect control', isinstance(control, wx.TextCtrl))
+                control.ChangeValue(str(gain))
+                press(wx.Window.FindWindowByName('Apply effect', popup))
+            except Exception:
+                failed()
+
+        def answer():
+            try:
+                matching = [window for window in wx.GetTopLevelWindows()
+                            if window.IsShown() and window.GetTitle() == 'Ordered audio effects']
+                if not matching:
+                    if monotonic() >= deadline:
+                        raise TimeoutError('Native ordered effects did not open.')
+                    wx.CallLater(20, answer)
+                    return
+                popup, = matching
+                kind = wx.Window.FindWindowByName('Effect type to add', popup)
+                check('actual supported effect choice', isinstance(kind, wx.Choice)
+                      and kind.SetStringSelection('gain'))
+                press(wx.Window.FindWindowByName('Add effect', popup))
+                wx.CallLater(20, edit_numeric)
+                press(wx.Window.FindWindowByName('Edit selected effect', popup))
+                press(wx.Window.FindWindowByName('Apply effect chain', popup))
+            except Exception:
+                failed()
+        wx.CallLater(20, answer)
+
 
     check('real wx Windows controls', wx.Platform == '__WXMSW__')
     for module in (ui, clips):
@@ -218,6 +268,45 @@ def main():
                     check('native cut keeps original bytes and the remaining clip',
                           dialog.project.scenes[0].cues == (cue,)
                           and sha256(retained.read_bytes()).hexdigest() == original)
+                    answer_effect_chain(-6)
+                    press(dialog.buttons['clip_effects'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Saving native clip effects')
+                    clip = dialog.project.scenes[0].cues[0]
+                    check('native clip effects persist in schema three',
+                          dialog.project.schema == 3 and len(clip.effects) == 1
+                          and clip.effects[0].parameters['gain_db'] == -6)
+                    answer_effect_chain(-6)
+                    press(dialog.buttons['master_effects'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Saving native master effects')
+                    check('native master effects persist independently',
+                          len(dialog.project.effects) == 1
+                          and dialog.project.effects[0].parameters['gain_db'] == -6)
+                    affected = dialog.project
+                    effect_job = editor.service.submit(affected, outputs)
+                    effect_results = []
+                    frame.run_job('Native saved effect render', lambda: editor.service.run(effect_job),
+                                  effect_results.append, lambda error: errors.append(str(error)))
+                    pump(lambda: not frame.working, 'Rendering saved native effect chains')
+                    check('native effect project completes actual rendering',
+                          bool(effect_results) and effect_results[0]['status'] == 'complete')
+                    def pcm(path):
+                        with wave.open(str(path), 'rb') as stream:
+                            data = stream.readframes(stream.getnframes())
+                        return data, struct.unpack('<' + 'h' * (len(data) // 2), data)
+                    baseline = pcm(Path(results[0]['destination']) / 'master.wav')[1]
+                    master = Path(effect_results[0]['destination']) / 'master.wav'
+                    actual = pcm(master)[1]
+                    rms_before = math.sqrt(sum(value * value for value in baseline) / len(baseline))
+                    rms_after = math.sqrt(sum(value * value for value in actual) / len(actual))
+                    check('actual native clip and master effects both apply',
+                          len(actual) == len(baseline) and .245 < rms_after / rms_before < .257)
+                    chapter, = (Path(effect_results[0]['destination']) / 'chapters').glob('*.wav')
+                    check('delivered chapter matches the mastered audio', pcm(chapter)[0] == pcm(master)[0])
+                    dialog.master_rate.ChangeValue('48000')
+                    press(dialog.buttons['sample_rate'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Saving native master sample rate')
+                    check('native master sample rate preserves effect chains',
+                          dialog.project.sample_rate == 48000 and dialog.project.effects == affected.effects)
                     edited = dialog.project
                     newer = editor.scene_duration(edited, edited.scenes[0].id, 2)
                     dialog.fields['pan'].ChangeValue('1')

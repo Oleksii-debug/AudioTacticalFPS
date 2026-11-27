@@ -3,7 +3,6 @@
 The existing scoped panels and wx data-view grid supply the main workflows.
 Long operations run outside the UI thread; focus returns to readable status.
 """
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 import threading
@@ -20,6 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
+from .worker_lifetime import DesktopExecutor
 from .export_destination import confirm_export_destination
 from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
@@ -519,7 +519,7 @@ class DesktopFrame(WorkspaceFrame):
         self.library = library
         self.trust_controller = trust_controller
         self.remember_data_dir = remember_data_dir
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
+        self.executor = DesktopExecutor()
         self.cancel_event = threading.Event()
         self.working = False
         self._closing = False
@@ -594,6 +594,7 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .speech_dialog import install_speech_actions
         from .studio_dialog import install_studio_actions
+        from .book_audio_dialog import install_book_audio_actions
         from .assistant_dialog import install_assistant_actions
         from .save_actions import install_save_actions
         from .document_conversion import install_conversion_actions
@@ -605,6 +606,7 @@ class DesktopFrame(WorkspaceFrame):
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
+        install_book_audio_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)
         install_conversion_actions(self)
@@ -724,6 +726,10 @@ class DesktopFrame(WorkspaceFrame):
     def report(self, text):
         self.status.SetValue(text)
         self.status.SetFocus()
+
+    def register_worker_cleanup(self, callback):
+        """Keep an idempotent owned-resource release on the shared worker."""
+        return self.executor.register_cleanup(callback)
 
     def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
         from concurrent.futures import CancelledError
@@ -1296,6 +1302,8 @@ class DesktopFrame(WorkspaceFrame):
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
+            'Audio Studio, Book audio: split and render reviews exact source parts and output names before saving ordinary Studio jobs.\n'
+            'Book audio Prepare starts no speech. Run or resume is a separate action; restored plans require a new output review.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
