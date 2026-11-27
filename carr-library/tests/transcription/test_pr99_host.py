@@ -395,3 +395,266 @@ def test_live_worker_status_reader_allows_atomic_replacement(tmp_path, monkeypat
         assert transcription_host.read_worker_status(status) == {'state': 'running', 'done': 0}
     assert transcription_host.read_worker_status(status) == {'state': 'finished', 'done': 1}
     assert status.read_bytes() == new and not stage.exists()
+
+
+# The following tests execute the whole installed dialog with small explicit
+# native-control boundaries. Writes use the real retained-source service and
+# the existing DesktopFrame executor/posted-result implementation.
+def _drive_transcript_save_all(prepared, monkeypatch, script):
+    from types import SimpleNamespace
+    from carr_library.ui import transcription_dialog
+    from carr_library.ui.save_all import SaveCoordinator
+    app, workspace, service, original, _ = prepared
+    identity, job = _fixture.completed(prepared)
+    helper = _current_progress_host()
+    frame, callbacks = helper._host_frame()
+    frame.library, frame.active = app, (workspace, 'Synthetic workspace')
+    frame._save_coordinator = SaveCoordinator()
+    monkeypatch.setattr(app, 'transcription', lambda selected: service)
+    named, dialogs = {}, []
+    events = SimpleNamespace(button=object(), text=object(), choice=object(), close=object())
+
+    class Event:
+        vetoed = False
+        def Skip(self): pass
+        def CanVeto(self): return True
+        def Veto(self): self.vetoed = True
+
+    class Control:
+        def __init__(self, parent=None, *, value='', choices=(), label='', **kwargs):
+            self.value, self.items, self.selection = value, list(choices), -1
+            self.enabled, self.handlers, self.focused = True, {}, False
+        def SetName(self, name):
+            assert name not in named
+            named[name] = self
+        def Bind(self, event, handler): self.handlers[event] = handler
+        def Enable(self, value=True): self.enabled = value
+        def IsEnabled(self): return self.enabled
+        def GetValue(self): return self.value
+        def ChangeValue(self, value): self.value = value
+        def SetValue(self, value):
+            self.value = value
+            if events.text in self.handlers:
+                self.handlers[events.text](Event())
+        def SetItems(self, items): self.items, self.selection = list(items), -1
+        def SetSelection(self, value): self.selection = value
+        def GetSelection(self): return self.selection
+        def SetFocus(self): self.focused = True
+
+    class Dialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.ended, self.destroyed = False, False
+            dialogs.append(self)
+        def SetSizer(self, value): pass
+        def EndModal(self, code): self.ended = True
+        def Destroy(self): self.destroyed = True
+        def ShowModal(self):
+            helper._drain(frame, callbacks)  # The actual initial text-read job.
+            editor = named['Текст: редагування зберігається окремою версією']
+            assert editor.IsEnabled()
+            assert self._save_coordinator is frame._save_coordinator
+            assert len(self._save_coordinator.participants) == 1
+            def click(name):
+                event = Event()
+                named[name].handlers[events.button](event)
+                return event
+            script(SimpleNamespace(frame=frame, callbacks=callbacks, dialog=self,
+                coordinator=frame._save_coordinator, editor=editor, controls=named,
+                click=click, drain=lambda: helper._drain(frame, callbacks),
+                service=service, identity=identity, job=job, original=original))
+            return 0
+
+    class Sizer:
+        def __init__(self, *args, **kwargs): pass
+        def Add(self, *args, **kwargs): pass
+
+    fake = SimpleNamespace(Dialog=Dialog, TextCtrl=Control, StaticText=Control,
+        Choice=Control, CheckBox=Control, Button=Control, BoxSizer=Sizer, GridSizer=Sizer,
+        EVT_BUTTON=events.button, EVT_TEXT=events.text, EVT_CHOICE=events.choice, EVT_CLOSE=events.close,
+        DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=4, ALL=8, EXPAND=16,
+        TE_MULTILINE=32, TE_READONLY=64, YES_NO=128, NO_DEFAULT=256, YES=1, NO=0,
+        ID_CLOSE=42, MessageBox=lambda *args: 0,
+        CallAfter=lambda callback, *args: callbacks.append(lambda: callback(*args)))
+    monkeypatch.setitem(sys.modules, 'wx', fake)
+    try:
+        transcription_dialog.show_transcription(frame)
+        assert len(dialogs) == 1 and dialogs[0].destroyed
+        assert frame._save_coordinator.participants == {}
+    finally:
+        frame.cancel_event.set()
+        frame.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def _hold_actual_edit_publication(monkeypatch):
+    from threading import Event
+    from carr_library import transcription
+    committed, release = Event(), Event()
+    publish = transcription.atomic_json
+    def gated(path, value, **kwargs):
+        result = publish(path, value, **kwargs)
+        if Path(path).parent.name == 'edits':
+            committed.set()
+            assert release.wait(10), 'Synthetic save-result gate was not released.'
+        return result
+    monkeypatch.setattr(transcription, 'atomic_json', gated)
+    return committed, release
+
+
+def test_native_transcript_save_all_waits_for_actual_durable_revision(prepared, monkeypatch):
+    def script(h):
+        committed, release = _hold_actual_edit_publication(monkeypatch)
+        expected = h.original.read_bytes()
+        source = h.job['sources'][0]['filename']
+        original_text = h.service.text(h.identity, source)
+        h.editor.SetValue('A separately saved transcript draft.')
+        summaries = []
+        try:
+            assert h.coordinator.save_all(summaries.append)
+            assert committed.wait(10)
+            assert h.coordinator.busy and h.coordinator.has_unsaved() and summaries == []
+            edit, = h.service.edits(h.identity)
+            assert edit['text'] == h.editor.GetValue()
+            assert edit['source_sha256'] == sha256(expected).hexdigest()
+            assert edit['original_text_sha256'] == sha256(original_text.encode('utf-8')).hexdigest()
+        finally:
+            release.set()
+        h.drain()
+        assert len(summaries) == 1 and summaries[0].complete and len(summaries[0].saved) == 1
+        assert not h.coordinator.busy and not h.coordinator.has_unsaved()
+        assert not h.controls['Зберегти правки'].IsEnabled()
+        assert h.original.read_bytes() == expected
+        assert h.service.text(h.identity, source) == original_text
+        assert h.coordinator.save_all(summaries.append)
+        assert summaries[-1].complete and len(h.service.edits(h.identity)) == 1
+    _drive_transcript_save_all(prepared, monkeypatch, script)
+
+
+def test_native_transcript_save_all_keeps_newer_editor_value(prepared, monkeypatch):
+    def script(h):
+        committed, release = _hold_actual_edit_publication(monkeypatch)
+        h.editor.SetValue('Snapshot submitted for saving.')
+        summaries = []
+        try:
+            assert h.coordinator.save_all(summaries.append)
+            assert committed.wait(10)
+            # A queued native edit can arrive before the saved callback even
+            # when user interaction was disabled while the worker ran.
+            h.editor.SetValue('A newer draft that must remain dirty.')
+        finally:
+            release.set()
+        h.drain()
+        assert len(summaries) == 1 and not summaries[0].complete
+        assert h.coordinator.has_unsaved() and h.controls['Зберегти правки'].IsEnabled()
+        assert h.editor.GetValue() == 'A newer draft that must remain dirty.'
+        edit, = h.service.edits(h.identity)
+        assert edit['text'] == 'Snapshot submitted for saving.'
+        assert h.coordinator.save_all(summaries.append)
+        h.drain()
+        assert summaries[-1].complete and not h.coordinator.has_unsaved()
+        assert [item['text'] for item in h.service.edits(h.identity)] == [
+            'Snapshot submitted for saving.', 'A newer draft that must remain dirty.']
+    _drive_transcript_save_all(prepared, monkeypatch, script)
+
+
+@pytest.mark.parametrize('failure', ['held-job-lock', 'changed-recognition'])
+def test_native_transcript_save_all_actual_validation_failure_keeps_draft(prepared, monkeypatch, failure):
+    from contextlib import nullcontext
+    from carr_library.durable_state import state_lock
+    def script(h):
+        h.editor.SetValue('Retain these edits after a real service refusal.')
+        path = h.service._path(h.identity)
+        guard = nullcontext()
+        if failure == 'held-job-lock':
+            guard = state_lock(path, 'transcribe')
+        else:
+            artifact = next(item for item in h.job['artifacts'] if item['format'] == 'txt')
+            (path / 'results' / artifact['path']).write_text('Changed original recognition.', encoding='utf-8')
+        summaries = []
+        with guard:
+            assert h.coordinator.save_all(summaries.append)
+            h.drain()
+        assert len(summaries) == 1 and not summaries[0].complete and summaries[0].remaining
+        assert not h.coordinator.busy and h.coordinator.has_unsaved()
+        assert h.editor.GetValue() == 'Retain these edits after a real service refusal.'
+        assert h.controls['Зберегти правки'].IsEnabled() and h.editor.focused
+        assert h.service.edits(h.identity) == ()
+    _drive_transcript_save_all(prepared, monkeypatch, script)
+
+
+def test_native_transcript_save_all_executor_rejection_settles_once(prepared, monkeypatch):
+    def script(h):
+        h.editor.SetValue('Keep the draft when the real executor is closed.')
+        h.frame.executor.shutdown(wait=True)
+        summaries = []
+        assert h.coordinator.save_all(summaries.append)
+        assert len(summaries) == 1 and not summaries[0].complete
+        assert not h.coordinator.busy and not h.frame.working
+        assert h.coordinator.has_unsaved() and h.controls['Зберегти правки'].IsEnabled()
+        assert h.service.edits(h.identity) == () and not h.callbacks
+    _drive_transcript_save_all(prepared, monkeypatch, script)
+
+
+def test_native_transcript_save_all_busy_host_preserves_draft(prepared, monkeypatch):
+    from threading import Event
+    def script(h):
+        entered, release = Event(), Event()
+        def operation():
+            entered.set()
+            assert release.wait(10)
+            return 'Existing operation complete.'
+        h.editor.SetValue('Save after the existing operation finishes.')
+        summaries = []
+        try:
+            h.frame.run_job('Existing real background operation', operation, done=lambda result: None)
+            assert entered.wait(10)
+            assert h.coordinator.save_all(summaries.append)
+            assert len(summaries) == 1 and not summaries[0].complete
+            assert not h.coordinator.busy and h.coordinator.has_unsaved()
+            assert h.service.edits(h.identity) == ()
+        finally:
+            release.set()
+        h.drain()
+        assert h.coordinator.save_all(summaries.append)
+        h.drain()
+        assert summaries[-1].complete and len(h.service.edits(h.identity)) == 1
+    _drive_transcript_save_all(prepared, monkeypatch, script)
+
+
+def test_native_transcript_save_all_button_defers_close_until_durable_completion(prepared, monkeypatch):
+    def script(h):
+        committed, release = _hold_actual_edit_publication(monkeypatch)
+        h.editor.SetValue('Save All from the modal transcript editor.')
+        try:
+            h.click('Зберегти всі відкриті чернетки')
+            assert committed.wait(10) and h.coordinator.busy
+            event = h.click('Закрити')
+            assert event.vetoed and not h.dialog.ended
+            assert not h.frame.cancel_event.is_set()
+            assert h.dialog._save_close_pending
+        finally:
+            release.set()
+        h.drain()
+        assert h.dialog.ended and not h.dialog._save_close_pending
+        assert not h.coordinator.busy and not h.coordinator.has_unsaved()
+        edit, = h.service.edits(h.identity)
+        assert edit['text'] == 'Save All from the modal transcript editor.'
+    _drive_transcript_save_all(prepared, monkeypatch, script)
+
+
+def test_native_transcript_save_all_failed_pending_close_retains_editor(prepared, monkeypatch):
+    from carr_library.durable_state import state_lock
+    def script(h):
+        h.editor.SetValue('A failed save cannot close this editor.')
+        with state_lock(h.service._path(h.identity), 'transcribe'):
+            h.click('Зберегти всі відкриті чернетки')
+            assert h.coordinator.busy
+            event = h.click('Закрити')
+            assert event.vetoed and h.dialog._save_close_pending
+            h.drain()
+        assert not h.dialog.ended and not h.dialog._save_close_pending
+        assert not h.coordinator.busy and h.coordinator.has_unsaved()
+        assert h.editor.GetValue() == 'A failed save cannot close this editor.'
+        assert h.service.edits(h.identity) == ()
+        assert 'remains open' in h.controls['Стан транскрипції'].GetValue()
+    _drive_transcript_save_all(prepared, monkeypatch, script)

@@ -162,6 +162,26 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 assert original.read_bytes() == original_bytes
                 assert sidecar.read_text(encoding='utf-8') == 'Excluded synthetic nonmedia sidecar.'
                 assert not find('Зберегти правки').IsEnabled()
+                find('Текст: редагування зберігається окремою версією').SetValue(
+                    'Окрема версія через Зберегти все.')
+                state['phase'] = 4
+            elif state['phase'] == 4:
+                assert find('Зберегти правки').IsEnabled()
+                save_all = find('Зберегти всі відкриті чернетки')
+                assert save_all.IsEnabled()
+                click(save_all)
+                assert frame.working and frame._save_coordinator.busy
+                state['phase'] = 5
+            elif state['phase'] == 5 and not frame.working and not frame._save_coordinator.busy:
+                edits = service.edits(state['job'])
+                assert len(edits) == 2
+                assert edits[0]['text'] == 'Виправлена окрема версія.'
+                assert edits[1]['text'] == 'Окрема версія через Зберегти все.'
+                assert not frame._save_coordinator.has_unsaved()
+                assert not find('Зберегти правки').IsEnabled()
+                assert service.text(state['job'], service.get(state['job'])['sources'][0]['filename']).startswith(
+                    'Synthetic transcript.')
+                assert original.read_bytes() == original_bytes
                 state['finished'] = True
                 click(find('Закрити'))
                 return
@@ -185,7 +205,8 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
 print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
     'actual native profile choice and configure action','V5 three-source binding','explicit legacy reconfiguration',
     'actual named folder action','background folder intake','relative source and exclusion count',
-    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
+    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged',
+    'coordinated durable transcript save'],
     'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
     'profile_picker_interaction':'NOT_RUN', 'profile_picker_answer':'controlled selections on an actual wx choice dialog',
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))

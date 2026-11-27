@@ -5,6 +5,7 @@ import threading
 
 def show_transcription(frame):
     import wx
+    from .save_all import SaveCoordinator, SaveResult, coordinator_for, defer_close
     if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
         frame.report('Finish or cancel the current operation before opening transcription.')
         return
@@ -15,6 +16,8 @@ def show_transcription(frame):
     service = frame.library.transcription(active[0])
     dialog = wx.Dialog(frame, title='Транскрипція — локальний Whisper', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    coordinator = coordinator_for(frame) or SaveCoordinator()
+    dialog._save_coordinator = coordinator
     layout = wx.BoxSizer(wx.VERTICAL)
     current, selected_source, alive, busy, dirty = None, None, True, False, False
     selected_ready = False
@@ -58,6 +61,9 @@ def show_transcription(frame):
         buttons[name] = button
         row.Add(button, 0, wx.EXPAND | wx.ALL, 3)
     layout.Add(row, 0, wx.EXPAND)
+    save_all_button = wx.Button(dialog, label='Зберегти всі відкриті чернетки')
+    save_all_button.SetName('Зберегти всі відкриті чернетки')
+    layout.Add(save_all_button, 0, wx.EXPAND | wx.ALL, 3)
     dialog.SetSizer(layout)
     def report(value):
         if alive:
@@ -137,7 +143,7 @@ def show_transcription(frame):
             ids = [item['id'] for item in rows]
             jobs.SetSelection(ids.index(select) if select in ids else 0)
         load_job()
-    def begin(label, operation, complete, *, allow_dirty=False):
+    def begin(label, operation, complete, *, allow_dirty=False, on_failed=None):
         nonlocal busy
         if busy or (not allow_dirty and not can_replace()):
             return
@@ -150,17 +156,27 @@ def show_transcription(frame):
         def done(result):
             nonlocal busy
             busy = False
-            controls()
-            if alive:
-                try:
+            try:
+                controls()
+                if alive:
                     complete(result)
-                except (ValueError, OSError, RuntimeError) as exc:
+                elif on_failed is not None:
+                    on_failed(RuntimeError('The transcription editor closed before save completion.'))
+            except (ValueError, OSError, RuntimeError) as exc:
+                try:
                     report(exc)
+                finally:
+                    if on_failed is not None:
+                        on_failed(exc)
         def failed(error):
             nonlocal busy
             busy = False
-            controls()
-            report(error)
+            try:
+                controls()
+                report(error)
+            finally:
+                if on_failed is not None:
+                    on_failed(error)
         # The desktop runner binds one shared reporter. The service's existing
         # current_progress callback updates it; this dialog creates no second task.
         try:
@@ -266,19 +282,50 @@ def show_transcription(frame):
             from ..transcription_host import require_completed
             return require_completed(service.run(identity, cancelled=cancelled, progress=advanced))
         begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity))
-    def save(event):
-        if current is None or selected_source is None or not selected_ready:
+    def save(event=None, *, completed=None):
+        replied = False
+        def finish(saved, message=''):
+            nonlocal replied
+            if replied:
+                return
+            replied = True
+            if completed is not None:
+                completed(SaveResult(saved, message))
+        if not alive or current is None or selected_source is None or not selected_ready:
+            finish(False, 'The transcript is not ready for saving; the draft is retained.')
+            return
+        if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+            message = 'Finish the current operation before saving transcript edits; the draft is retained.'
+            report(message)
+            finish(False, message)
+            return
+        if not dirty:
+            finish(True)
             return
         identity, source_id, value = current, selected_source, text.GetValue()
         def saved(revision):
             nonlocal dirty
-            dirty = False
-            controls()
-            report('Правки збережено окремою версією: ' + revision +
-                   '. Початкове розпізнавання та аудіо залишилися незмінними.')
-        begin('Збереження правок транскрипції',
+            same_draft = (alive and current == identity and selected_source == source_id
+                          and text.GetValue() == value)
+            if same_draft:
+                dirty = False
+            # A real service revision is durable before this callback. A newer
+            # editor value remains dirty and cannot complete Save All or close.
+            try:
+                controls()
+                report('Правки збережено окремою версією: ' + revision +
+                       '. Початкове розпізнавання та аудіо залишилися незмінними.' +
+                       ('' if same_draft else ' Новіші правки залишаються незбереженими.'))
+            finally:
+                finish(same_draft, '' if same_draft else 'Newer transcript edits are retained.')
+        accepted = begin('Збереження правок транскрипції',
               lambda: service.save_edit(identity, source_id, value, cancelled=cancelled),
-              saved, allow_dirty=True)
+              saved, allow_dirty=True, on_failed=lambda error: finish(False, str(error)))
+        if not accepted:
+            finish(False, 'The transcript save did not start; the draft is retained.')
+    def save_all(event=None):
+        if not coordinator.save_all(lambda summary: report(summary.message())):
+            report('Save All is already waiting for the current saves.')
     def export(event):
         if current is None or not can_replace():
             return
@@ -331,8 +378,11 @@ def show_transcription(frame):
                 refresh(current)
             except (ValueError, OSError, RuntimeError) as exc:
                 report(exc)
-    def close(event):
+    def close(event=None):
         nonlocal alive
+        if defer_close(dialog, coordinator, close=close, report=report,
+                       alive=lambda: alive, post=wx.CallAfter, event=event):
+            return
         if busy:
             cancel.set()
             report('Зупиняю поточне завдання. Після зупинки вікно можна закрити.')
@@ -344,16 +394,22 @@ def show_transcription(frame):
                 event.Veto()
             return
         alive = False
+        unregister_save()
         dialog.EndModal(wx.ID_CLOSE)
     for name, handler in [('configure', configure), ('create', create), ('folder', create_folder),
                           ('run', run), ('save', save),
                           ('export', export), ('refresh', update_jobs), ('close', close)]:
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     buttons['stop'].Bind(wx.EVT_BUTTON, lambda event: cancel.set())
+    save_all_button.Bind(wx.EVT_BUTTON, save_all)
     jobs.Bind(wx.EVT_CHOICE, select_job)
     sources.Bind(wx.EVT_CHOICE, select_source)
     text.Bind(wx.EVT_TEXT, changed)
     dialog.Bind(wx.EVT_CLOSE, close)
+    unregister_save = coordinator.register(
+        'transcription.' + str(id(dialog)), 'Transcript edits',
+        dirty=lambda: alive and dirty, save=lambda completed: save(completed=completed),
+        focus=text.SetFocus)
     try:
         refresh()
         controls()
@@ -361,6 +417,7 @@ def show_transcription(frame):
         dialog.ShowModal()
     finally:
         alive = False
+        unregister_save()
         cancel.set()
         dialog.Destroy()
 

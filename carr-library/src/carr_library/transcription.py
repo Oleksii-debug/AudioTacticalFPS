@@ -300,11 +300,15 @@ def _v5_timing(meta, words_required):
 
 
 def _word_subtitles(words, *, vtt):
-    from .studio.render import _stamp as subtitle_stamp
+    from .audio.production import _timestamp
     lines = ['WEBVTT', ''] if vtt else []
     for index, word in enumerate(words, 1):
+        # Reuse the selected host's existing subtitle formatter. The supplied
+        # profile reports seconds; convert to integer milliseconds for its
+        # frame/rate contract without inventing word timing.
+        start, end = (round(word[key] * 1000) for key in ('start', 'end'))
         lines.extend((str(index),
-            f"{subtitle_stamp(word['start'], comma=not vtt)} --> {subtitle_stamp(word['end'], comma=not vtt)}",
+            f"{_timestamp(start, 1000, srt=not vtt)} --> {_timestamp(end, 1000, srt=not vtt)}",
             word['text'], ''))
     return ('\n'.join(lines) + ('\n' if lines else '')).encode('utf-8')
 

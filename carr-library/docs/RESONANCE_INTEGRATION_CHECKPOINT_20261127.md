@@ -22,8 +22,8 @@ The selected implementation includes:
 - Actual worker/Future results determine completion. Late Stop and presentation
   failures cannot undo or hide a committed result in Desktop or Audio Studio.
 - Existing completion-aware Save All, extended Studio effects and captured
-  export approvals. The transcript editor's Save All participation is tracked
-  separately until its final composition and tests are recorded.
+  export approvals. Transcript edits use that same coordinator: only a durable
+  revision matching the current draft completes saving or a pending close.
 - Import recovery requires an immutable database publication receipt bound to
   the exact request and attempt. A newer watermark from another import is not
   sufficient. Database schema V5 is distinct from retained backup formats 1–5.
@@ -36,9 +36,20 @@ The selected implementation includes:
 
 The final workflow preserves the preceding selectors and currently requires
 227 unique source suites, 79 installed contents selectors plus the original
-14 positional installed suites, the original native gates, the 12-check
+14 positional installed suites, the original native gates, the 13-check
 transcription protocol probe and the 44-check shared-progress probe. These
 are required gates, not counts of completed acceptance tests.
+
+Recovered local execution completed 173 focused cases plus 25 subtests for
+the progress/Studio/CI-helper/OCR-identity composition. The subsequent
+protocol/recovery/OCR selection completed 471 passing cases and exposed 25
+failures/errors with one cause: the ported V5 word-subtitle formatter referenced
+an absent alternative Studio package. Rebinding it to the selected host's
+existing audio formatter, with exact actual-child SRT/VTT byte assertions,
+passed all 79 V5-profile and typed-backup cases. The completed transcript
+Save All/current-draft selection passed 55 cases, including all 35 current-host
+cases. These selections overlap and are not the composed Windows or installed
+acceptance verdict.
 
 ## Exact preceding CBA Windows result
 

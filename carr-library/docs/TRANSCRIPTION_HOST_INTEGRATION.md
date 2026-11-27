@@ -57,6 +57,13 @@ links, changed inputs and exceeded limits before publishing a job.
 - Observer failure, eviction or a detached UI cannot retry or reverse a saved
   service result. Failure to present progress does not suppress its real result
   callback. Cooperative Stop and verified completion remain distinct.
+- The transcript editor participates in the existing Save All coordinator.
+  It confirms success only after the real edit revision is durable and the
+  editor still matches the submitted snapshot. Newer edits and service errors
+  retain the draft; a pending close waits for the actual save result.
+- V5 word subtitles use the current audio production timestamp formatter and
+  validated worker word timings. Exact accepted SRT/VTT bytes are checked by
+  the actual-child profile tests.
 - Windows worker-status reads reuse the exact shared-handle design from
   `881b6f94d995be81310795c8dc31f6593bc6e115`. Read/write/delete sharing allows
   the worker's concurrent atomic replacement. Bounded JSON, duplicate-key,
@@ -97,7 +104,7 @@ Required source and installed cases include:
 | Suite | Required cases |
 |---|---:|
 | `tests/transcription/test_supplied_worker_bridge.py` | 59 |
-| `tests/transcription/test_pr99_host.py` | 27 |
+| `tests/transcription/test_pr99_host.py` | 35 |
 | `tests/transcription/test_v5_worker_profile.py` | 37 |
 | `tests/storage/test_transcription_backup.py` | 42 |
 | `tests/ui/test_progress_view.py` | 25 |
@@ -119,9 +126,10 @@ python -I -B -X utf8 scripts/windows_transcription_smoke.py
 python -I -B -X utf8 scripts/windows_shared_progress_smoke.py
 ```
 
-The transcription probe retains the original six checks and adds native profile
+The transcription probe requires 13 recorded checks. It retains the original six checks and adds native profile
 selection/configuration, the V5 three-source binding, explicit receipt-profile
-reconfiguration and the actual folder action/intake/result counts. Picker
+reconfiguration, the actual folder action/intake/result counts and a second
+edit saved through the shared Save All coordinator. Picker
 answers are controlled synthetic inputs; those picker interactions are not
 claimed as manual keyboard acceptance.
 

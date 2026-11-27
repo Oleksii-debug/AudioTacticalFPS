@@ -236,6 +236,16 @@ def test_v5_actual_child_retains_sources_and_validated_requested_exports(v5, tmp
     formats = {item['format'] for item in result['artifacts']}
     assert {'txt','srt','vtt','json'} <= formats
     assert {'words.srt','words.vtt'} <= formats if word_timestamps else formats == {'txt','srt','vtt','json'}
+    if word_timestamps:
+        expected_srt = ('1\n00:00:00,000 --> 00:00:00,300\nSynthetic\n\n'
+                        '2\n00:00:00,300 --> 00:00:00,600\nV5\n\n'
+                        '3\n00:00:00,600 --> 00:00:01,000\nfixture.\n\n')
+        expected = {'words.srt': expected_srt,
+                    'words.vtt': 'WEBVTT\n\n' + expected_srt.replace(',', '.')}
+        for artifact in result['artifacts']:
+            if artifact['format'] in expected:
+                actual = service._path(identity) / 'results' / artifact['path']
+                assert actual.read_text(encoding='utf-8') == expected[artifact['format']]
     retained = result['sources'][0]['filename']
     assert service.text(identity, retained) == 'Synthetic V5 fixture.\n'
     edit = service.save_edit(identity, retained, 'Separate human correction.')
