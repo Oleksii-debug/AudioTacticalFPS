@@ -1,0 +1,381 @@
+{
+  "schema": 1,
+  "kind": "current-requirement-and-evidence-dimensions",
+  "authoring_source": "87332e38fe6340f0ab9701ded46a7f2feb40e2d4",
+  "authoring_tree": "6d00b5a3e7df3159d2d9c795c8156afcf958259b",
+  "product": "Resonance",
+  "version": "0.2.0.dev2",
+  "full_platform_status": "NOT_QUALIFIED",
+  "integrated_automatic_acceptance": "Exact final source/run/artifact identities must be read from the candidate PR and immutable CI receipts; no result is transferred by this matrix.",
+  "authority": [
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    },
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    },
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V2.md",
+      "blob": "ec82be295ec74658b0715b77367f2e5875f7464d"
+    },
+    {
+      "path": "docs/acceptance.md",
+      "blob": "45752d31899f91bbdc9c71e4b256ac42975beaac"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "V3-01 / A",
+      "title": "Documents and OCR",
+      "declared_implemented_scope": "Existing isolated import/conversion stack, explicit encodings, managed language/model packs and bounded legacy adapters; exact EML metadata, CHM member recovery and strict ODF page-layout handling.",
+      "current_documentation": {
+        "path": "docs/DOCUMENT_CONVERSION.md",
+        "blob": "060ee08cffbdd737c71e1116ff21eb48660c7eb7"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Actual selected-tool runs, precise format/fixture limits and separate language/model acceptance; arbitrary document fidelity and all OCR languages are not inferred."
+    },
+    {
+      "id": "V3-02 / B",
+      "title": "Reading preparation",
+      "declared_implemented_scope": "Immutable originals, editable/versioned narration, source mapping, pronunciation, scoped rules and explicit preparation modes through the existing reader.",
+      "current_documentation": {
+        "path": "docs/READING_PREPARATION.md",
+        "blob": "f769c3eeb3fc36177c278ba0f8fad85850f9115a"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Language-specific pronunciation/stress quality and actual engine prosody need qualified voices and human review."
+    },
+    {
+      "id": "V3-03 / C",
+      "title": "Voices and live reading",
+      "declared_implemented_scope": "One VoiceRegistry with actual native SAPI, explicit reviewed local profiles, the owner-specific worker adapter and the distinct generic helper protocol; live reading and retained playback.",
+      "current_documentation": {
+        "path": "docs/LOCAL_VOICES_AND_MUSIC.md",
+        "blob": "88df1717f14490a6f23dbbd2e7765fa5e1dec1ff"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Exact owner-runtime routes and post-render/process integrity are source-reviewed and awaiting their new regression run; real owner voices, legacy drivers, hardware and acoustic quality remain separately qualified."
+    },
+    {
+      "id": "V3-04 / D",
+      "title": "Audiobooks and scenes",
+      "declared_implemented_scope": "Current narration, role/scene projects, batch jobs, chunk identity, durable publication, output formats, chapters, stems and measured duration through the shared renderer.",
+      "current_documentation": {
+        "path": "docs/AUDIO_STUDIO_V3.md",
+        "blob": "09ee48dcb32d5701f85d11574af803157609f24a"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Each actual voice/model/codec pair and long-form listening quality needs its own evidence; synthetic audio duration is not neural-generation throughput."
+    },
+    {
+      "id": "V3-05 / E",
+      "title": "Studio and player",
+      "declared_implemented_scope": "Native track/clip/time controls, non-destructive editing, effects chains, local playback, recording/monitor interfaces and exact output-frame/media validation.",
+      "current_documentation": {
+        "path": "docs/STUDIO_CLIP_EDITING.md",
+        "blob": "f6909b21eefabe338d392a08fc622f8126057259"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Physical microphone/output/monitoring, real-time device behavior and professional listening/NVDA acceptance remain distinct from automated PCM/effect tests."
+    },
+    {
+      "id": "V3-06 / F",
+      "title": "Save and recovery",
+      "declared_implemented_scope": "One Save All coordinator, current complete/incremental backups, passive canonical history, retained pending inputs and explicit restore/resume review.",
+      "current_documentation": {
+        "path": "docs/COMPLETE_BACKUP.md",
+        "blob": "057fc1ff8b4af4b5e5f7b1d5e1b3a271c983aed1"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Actual device power-loss/manual desktop recovery and declared per-pack redistribution remain separate; old state is not silently activated."
+    },
+    {
+      "id": "V3-07 / G",
+      "title": "Scale",
+      "declared_implemented_scope": "Bounded paging, continuation, streaming originals and current catalog/query optimization; source-bound Windows measurements complete 1k/10k/50k synthetic edition traversal.",
+      "current_documentation": {
+        "path": "docs/LIBRARY_CAPACITY.md",
+        "blob": "f2bb14fa70f9eafba1a6925fd9f2a3d2169d412e"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "The fixture shares one tiny original. Real diverse books, millions of segments, large-file throughput and declared user hardware require additional measured corpora."
+    },
+    {
+      "id": "V3-08 / H",
+      "title": "Research and citations",
+      "declared_implemented_scope": "Scoped scientific search/evidence, bibliographic metadata, CSL, exports, acquisition adapters and Word citation boundaries through existing owners.",
+      "current_documentation": {
+        "path": "docs/V3_BIBLIOGRAPHY.md",
+        "blob": "edeac5a09294dbbbf0331c102de1dd9bf098230a"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Actual licensed Word/Zotero/editor interoperability and lawful real-corpus relevance are separately recorded; controlled COM tests do not qualify installed Office."
+    },
+    {
+      "id": "V3-09 / I",
+      "title": "Local assistant",
+      "declared_implemented_scope": "Deterministic plans, reviewed local-LLM proposals, typed bounded tools, one durable executor, explicit scope/budgets and reapproval after changes.",
+      "current_documentation": {
+        "path": "docs/LOCAL_PLANNING_RECONCILIATION.md",
+        "blob": "2714557df064a636217d1d32cebe9b8c84f1cd03"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "A real approved local model and multilingual tool-selection/hardware benchmarks are needed for model-planning qualification."
+    },
+    {
+      "id": "V3-10 / J",
+      "title": "Native accessibility",
+      "declared_implemented_scope": "Current native wx menus, dialogs, focus handling, command registry, keymap migration, Save and status/progress controls.",
+      "current_documentation": {
+        "path": "docs/KEYBOARD_SETTINGS.md",
+        "blob": "4f0d61538194934e34ded9fb4d7429a3a59ca029"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Automated native controls do not substitute for real Windows 11/NVDA keyboard use or complete Ukrainian/Slovak UI localization."
+    },
+    {
+      "id": "V3-11 / K",
+      "title": "Optional providers",
+      "declared_implemented_scope": "Existing profile store, Windows credential references, allowlisted gateway, transfer/cost approval, budgets and durable request/recovery identity.",
+      "current_documentation": {
+        "path": "docs/PROVIDER_RECOVERY.md",
+        "blob": "37bc7772bd7b00c762d94b895a3a847fbdd1e340"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Real account/model availability and live paid calls require explicit owner configuration/authorization; no service is enabled by this code."
+    },
+    {
+      "id": "V3-12 / L",
+      "title": "Local music",
+      "declared_implemented_scope": "Current selected music adapters, actual MIDI control assertions, licensed-asset/profile boundaries, stems and local generation orchestration.",
+      "current_documentation": {
+        "path": "docs/LOCAL_MUSIC_ADAPTERS.md",
+        "blob": "34778088ee57e55d060bffb50916f7ff28e885f3"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Real approved neural weights, hardware, output quality and per-asset rights remain required; MIDI is not neural music."
+    },
+    {
+      "id": "V3-13 / M",
+      "title": "Production director",
+      "declared_implemented_scope": "Approved typed script/scene plans call existing voice/music/effect/render/publication services and retain completed output identities.",
+      "current_documentation": {
+        "path": "docs/ASSISTANT_WORKFLOW_TEMPLATES.md",
+        "blob": "25e0b243dacc924c8de513da7f07cbc880810fdf"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "End-to-end neural multi-voice/music quality and creative model selection await actual qualified engines; model text never grants arbitrary execution."
+    },
+    {
+      "id": "V3-14 / N",
+      "title": "Long production and profiles",
+      "declared_implemented_scope": "Bounded long-audio assembly, checkpoints, measured frame/duration verification and separate usage/rights profiles.",
+      "current_documentation": {
+        "path": "docs/MEASURED_BOOK_DURATION.md",
+        "blob": "07e5f867c65ba45cb88200c986f2fc1097e8e320"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Hours of original neural generation, sustained GPU/VRAM/load cost and compatible model rights are not established by streaming assembly tests."
+    },
+    {
+      "id": "V3-15 / O",
+      "title": "135-language target",
+      "declared_implemented_scope": "One derived canonical 135-entry catalog and per-feature/per-engine status matrix; no independent replacement catalog.",
+      "current_documentation": {
+        "path": "docs/language_qualification.md",
+        "blob": "0762689c5b844dd7498da2ee70b46f72d29e7e51"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Every relevant voice/model/language pair needs real qualification; a catalog or route entry is not proof of speech, cloning, ASR, translation or OCR quality."
+    },
+    {
+      "id": "V3-16 / P",
+      "title": "Security and privacy",
+      "declared_implemented_scope": "Current trust/admission boundaries, immutable assets, bounded filesystem/process handling, credential isolation and reviewed signed-client primitives.",
+      "current_documentation": {
+        "path": "docs/TRUSTED_CLIENT.md",
+        "blob": "b95acd821aacb6fe2a2e6956d85ecbda04c2ee51"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Private service integration, deployment threat review and actual release profile remain separate; no confidential runtime/keys are published."
+    },
+    {
+      "id": "V3-17 / Q",
+      "title": "Rights and attribution",
+      "declared_implemented_scope": "Exact current dependency/runtime provenance, component notices and independent model/voice/asset rights records.",
+      "current_documentation": {
+        "path": "docs/ABOUT_COMPONENT_NOTICES.md",
+        "blob": "0ddeda6baf5db8f9deb5e187de99c8da5ef33e17"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Per-profile distribution clearance, owner-approved legal terms, signing and publisher configuration are required before a distributable release."
+    },
+    {
+      "id": "V3-18 / R",
+      "title": "Standard install and updates",
+      "declared_implemented_scope": "One ordinary Inno installer and signed managed transaction, protected state, generation leases, rollback/recovery and the distinct original→maintenance→candidate proof.",
+      "current_documentation": {
+        "path": "docs/STANDARD_SIGNED_UPDATES.md",
+        "blob": "7ecb81d973abe1ddf0fdbfb13621be3469597866"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Only exact actual installer/managed/restart/library receipts qualify the cohort. Historical direct-original managed failure remains explicit; production authority is not configured."
+    },
+    {
+      "id": "V3-19 / S",
+      "title": "Audible progress",
+      "declared_implemented_scope": "One measured progress contract, native status and explicit optional voice feedback, quiet/media ownership and durable completion boundaries.",
+      "current_documentation": {
+        "path": "docs/SHARED_NATIVE_PROGRESS.md",
+        "blob": "43d46215ba1b23edb2e4c6d6f6b167455cf28467"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Real NVDA progress announcements and absence of device/audio contamination require physical/manual evidence."
+    },
+    {
+      "id": "V3-20 / T",
+      "title": "Complementary workflows",
+      "declared_implemented_scope": "Supplied ASR host, synchronized publication/reading, translation scopes, typed workflow templates, diagnostics and declared project interchange.",
+      "current_documentation": {
+        "path": "docs/SYNCHRONIZED_PUBLICATION_READING.md",
+        "blob": "9358151f1583a21872da1417a69128ca80b86211"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Actual external readers, EPUBCheck/DAISY/Braille/table packs, optional watchers/plugins, tactile output and ASR-based acoustic QA must retain their own implemented/qualified status; no blanket completion is claimed."
+    },
+    {
+      "id": "V3-21 / U",
+      "title": "Owner voice cloning",
+      "declared_implemented_scope": "Current owner-specific adapter and reviewed engine/profile boundary reuse the supplied engine interface; private samples/models remain external.",
+      "current_documentation": {
+        "path": "docs/LOCAL_ENGINE_PROFILES.md",
+        "blob": "6dbcb3bf47e05808bb719d2cbf2da53c524a8eaa"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "The professional consent/reference/profile and multilingual cloning workflow requires the actual owner-engine contract/assets, authorized samples and real intelligibility/similarity/control evidence; not replaced by a registered SAPI voice."
+    },
+    {
+      "id": "V3-22 / V",
+      "title": "Entitlements and translation",
+      "declared_implemented_scope": "Neutral external contract plus current signed-client/offline-refresh/recovery boundaries, separated from update activation and official Google/local translation adapters.",
+      "current_documentation": {
+        "path": "docs/DELIVERY_INTEGRATION_CONTRACT.md",
+        "blob": "93d2af668f3ebe89a9e6284bf1ded1c51f5d91e1"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Real private authority/account endpoints, policies and authorization; actual selected translation models/providers and independent rights/quality."
+    },
+    {
+      "id": "ASR",
+      "title": "Supplied transcription",
+      "declared_implemented_scope": "Reviewed supplied V4.3/V5 worker profiles, real isolated synthetic protocol interoperability, content-bound originals/cache/receipts, TXT/SRT/VTT/JSON, edits, cancellation/resume and recovery.",
+      "current_documentation": {
+        "path": "docs/TRANSCRIPTION_INTEGRATION_REVIEW.md",
+        "blob": "501fa3d7100d3676bbbe2b77a152f3c0c36c5f5d"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "The supplied source is available and reviewed. Actual installed recognition weights, acoustics/timestamps/language quality, diarization and hardware are separate, not a generic missing-project blocker."
+    },
+    {
+      "id": "G/U",
+      "title": "Retained library contracts",
+      "declared_implemented_scope": "Independent libraries/collections, topics/notes, exact raw source evidence, scoped retrieval, export/no-clobber and verified restoration.",
+      "current_documentation": {
+        "path": "docs/UNIVERSAL_SCOPE_V2.md",
+        "blob": "ec82be295ec74658b0715b77367f2e5875f7464d"
+      },
+      "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
+      "runtime": "SOURCE_AND_RUN_SPECIFIC",
+      "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
+      "distribution": "NOT_CLEARED_BY_THIS_RECORD",
+      "remaining_dependency_or_scope": "Real lawful corpus acceptance, semantic relevance, actual NVDA and declared release artifact/rights gates remain independently required."
+    }
+  ],
+  "independent_dimensions": [
+    "REQUIREMENT",
+    "SOURCE_REVIEWED",
+    "ADAPTER_PRESENT",
+    "INTEGRATED",
+    "EXECUTED",
+    "QUALIFIED",
+    "DISTRIBUTION_CLEARED"
+  ],
+  "limits": [
+    "A requirement title or implemented adapter does not qualify every detailed bullet in the specification.",
+    "An old passing artifact remains tied to its own source/tree/runtime/pack, even when current source is derived from it.",
+    "Real models, physical hardware, human accessibility/quality and production rights/authority cannot be manufactured by synthetic tests.",
+    "No public binary release, private-source publication, paid request or account deployment is authorized by this record."
+  ]
+}

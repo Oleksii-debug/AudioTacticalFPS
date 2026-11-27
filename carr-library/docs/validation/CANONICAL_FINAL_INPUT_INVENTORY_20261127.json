@@ -1,0 +1,1431 @@
+{
+  "schema": 1,
+  "status": "FINITE_RECONCILIATION_INPUT_NOT_A_RUNTIME_VERDICT",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "current_commit": "4e733a4f081c7f7bf0464983e94711604fc93fa1",
+  "source_paths": [
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "canonical_blob": "1a668e92de24009bed30cbd52bca3ceac44e6d86",
+      "current_blob": "df0c144258141fb7768dabf3e9d05e4db9e28974",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "canonical_blob": "b9dc0ffe1c1c8e3b6d465282c3eb45f8e0f41aa0",
+      "current_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/__init__.py",
+      "canonical_blob": "8a72ea3eadbc2c1defdc0ae10a074f37d4d4370b",
+      "current_blob": "6686f8a0eb25f839ac8a1f9b168b942040552cf0",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/backup_receipt.py",
+      "canonical_blob": "cb8060e432351e99c6f28afd45626813e35c308e",
+      "current_blob": "206668f14890376ce2a075b4f950c94ed9dd593f",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/credentials.py",
+      "canonical_blob": "12601a8e6ba34b791b524fa14934144f07dfd493",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/llm.py",
+      "canonical_blob": "ee73d023bc8bb8932239a4e569f6a5e812dcf1a5",
+      "current_blob": "9eeff849727ac88c513c093959b5bca4a18a79e3",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/models.py",
+      "canonical_blob": "1700d0191b4a27b09d18bb6e231b822cf183bd8a",
+      "current_blob": "595630d271011aace3c2642fb9d7a487aaee2bc4",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/planner.py",
+      "canonical_blob": "6d6f6a23a66a3f6bda1f33ec5e90575144cd47e6",
+      "current_blob": "8d48007411cf30c6759dc08dd2f14f2a155dc19a",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "canonical_blob": "68ebee4c87963b6c0728be5dc2e2e82f0c79d7fa",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "canonical_blob": "b46ad52dad1c034ab79c2c333cf33354225abc79",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/service.py",
+      "canonical_blob": "946a1a28ced7de30d97893e7edb8b01333b986c1",
+      "current_blob": "8cb09b7bf4bea6841baea06a91770e381e53baa9",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/state.py",
+      "canonical_blob": "e9463dac5276c18dda007281220501f6dc7a9174",
+      "current_blob": "c1d9ee152ec5b05bc666fd9b4dbd19334d572763",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "canonical_blob": "485da14ea15b3ce10b68217a1b42ac9ee872f330",
+      "current_blob": "28f77b58dc2b9983d4d6d38bcf3031ef38eafe78",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+      "canonical_blob": "eadf1f502df05f3db7ff998c28fcea98f3573423",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/__init__.py",
+      "canonical_blob": "2346d1b0b458b392f0289da2cc692aa5da7ea87e",
+      "current_blob": "fa4f87daacff1691f322fa3f67ea92bf0983dd50",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "canonical_blob": "d33bc8d32751794fa24b7cf2ffa9c7e26b38e351",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/models.py",
+      "canonical_blob": "085587e46381a5b2db17dd75fa8b7b793f4094d1",
+      "current_blob": "7f9f9034ac8dbb985bd3e3eaa95a3e0133283c20",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/music.py",
+      "canonical_blob": "5b2f7982d11adf7be7dca1e481c34a215ec28ff4",
+      "current_blob": "4386441e117db9aa502e7e70bde8a87a54967181",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "canonical_blob": "c05538de93ec0b5a85f2955ca0d2b58670d7a186",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "canonical_blob": "23b08b9f4d50f67c7216156869a4e41b3dde65cb",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_generated.py",
+      "canonical_blob": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "canonical_blob": "ea6c5c8b195ec5e4bce874c051d10d71df61cba4",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "canonical_blob": "e77dca0b919687d9a8e10c1ba86c817ec01662ca",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "canonical_blob": "5a82ac28c21dd11eed47f1d809c522a74a611d74",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/bibliography_cli.py",
+      "canonical_blob": "5bb69732806e588cdb7973be465c42d2cba5dddf",
+      "current_blob": "71bbef780ac92db2dc5b8432b898804021534bdc",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "canonical_blob": "84b9a28698f3b65f69c880fc3a10de11cdb3c864",
+      "current_blob": "741de693f305998afc7180b399bd5bf4c52d5ec6",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+      "canonical_blob": "8fea042e38c4d4de9f7cb1f0a8d085f6a44ccaba",
+      "current_blob": "912ae43318a5268cf9eb922ac511e235b5302ef3",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "canonical_blob": "2c193f6c8778ea82d0bae76c4859e0f635598a08",
+      "current_blob": "7145d04ef689a5b5d12955ceb1482c29c0d14de6",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "canonical_blob": "3bfbcbf14544c81bc17942183726c5c5f17f506c",
+      "current_blob": "a5a33b1bdac9d01906e9a5ae5c6777b0d9da4394",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/__init__.py",
+      "canonical_blob": "1a8682019ba188a87b68f3b695231320ce7e32dd",
+      "current_blob": "50d168925c3f9548ec6b72a234e152301ccea7e6",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/formats.py",
+      "canonical_blob": "2f9a872ea655c7fdadc386ff9fd2a5d66166cf65",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/models.py",
+      "canonical_blob": "8b1a6611082e157f8b864ee004310ad89b473e60",
+      "current_blob": "c65bafb0b229ed840697ce5228eafcdf6c2a93d3",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "canonical_blob": "63c754ef00bb1cd5e0dd56077078e5e1408d623c",
+      "current_blob": "3f283ab3f26430156c1253252d556e6bde6999ac",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/worker.py",
+      "canonical_blob": "db0ef1a4e617f2001e2f78e0d073bb1b15f1baf1",
+      "current_blob": "e12850d3c0d66fe2c2bd11a6a527210b51091aef",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/delivery_contract.py",
+      "canonical_blob": "90163967acd50760bf15e8a98b74e0bd76aa63f2",
+      "current_blob": "dbba328488f5d17daf27ef87aa140411052a375a",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "canonical_blob": "030ecb184c76c17bc0913758d7ac81de284661b2",
+      "current_blob": "5e5d5123c0b7f54a19fae6bef52b92ab15afb8cb",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "canonical_blob": "2b198b0c24414d483c054f2f21c9dd5ebb81b649",
+      "current_blob": "21fd297a9554ab70bac71cc22a86491183a0307e",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/language_manager.py",
+      "canonical_blob": "4cdc67ffb0436e5fd9dd6304b76bfd375ae509ee",
+      "current_blob": "55c8c158c898a948e4930e11ec33359f0f8eec01",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_languages.py",
+      "canonical_blob": "09694edd4654025344e179276eaba8b8cb5c64af",
+      "current_blob": "6ec75fa30d04303da85ffff37d56fa8c29aaf191",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+      "canonical_blob": "9cf184d758c2185aa31eb91d38ae1ab073191b20",
+      "current_blob": "2e50c806140e0ee13b00091709497d31cbc99778",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+      "canonical_blob": "971c58ea5ed36ed2c57cb7840d19e64144f85854",
+      "current_blob": "a77d6d5e3042c0f2ddd2b7b5b8831dc6d5e8a79d",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_orientation_bridge.py",
+      "canonical_blob": "b94e0ae3d70f1221d3f46ca264c20faa2aaadc32",
+      "current_blob": "3ae514b057dfd1ddf080cfda98b429692a8cbdb6",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_process.py",
+      "canonical_blob": "87047f288f626ec161be979043aac431167fb890",
+      "current_blob": "feeab7290f06927bbdf9021eff93ebb5ecd0b2c8",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_runtime.py",
+      "canonical_blob": "6612ca069be280f6d64f3a77633bdc9434da3c4f",
+      "current_blob": "511e571ea2cecdba3882769be6364f2055f14f42",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "canonical_blob": "b57a0c5754045e8a78a025ee7916c83c38bff772",
+      "current_blob": "b4b7876061e665457cb28a004ac7bebe69693356",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "canonical_blob": "1a09f372be59f0921c98c641c884cc7463288179",
+      "current_blob": "0d9d9263ac6fc010f03c07a3db882fdfcbfaca8b",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/asset_copy.py",
+      "canonical_blob": "0e5df593a191b43983ad332a327d33151837709a",
+      "current_blob": "713092fe5235d9398f9f3b7ecaadaf2b09409a45",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "canonical_blob": "c1022c232123bfbd004bebd13d9c67822d771dc7",
+      "current_blob": "6ba1e219ba7502c7ad6f25bffde34c66264f16ab",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "canonical_blob": "f7f9aeb4d71fd88fca35d366da15af863aa83585",
+      "current_blob": "8a1c06ab0828ee4519511d62c2c0ab1e2c7b9f82",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "canonical_blob": "2af8a72cba5ced234664d8cd38549a47f518aeef",
+      "current_blob": "4ff5b16b9dd5c44a0edf4043f0c8a29f4dc782fd",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "canonical_blob": "26a89507b7ba4dcb61a986753b17bd07a3a8591e",
+      "current_blob": "dcffac2c252b445fb187112834dd83ba145732d9",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "canonical_blob": "c0df95c1e062c7ac8891805354e95a1e00f07c57",
+      "current_blob": "4415ae29843a9f3728a4c68d2726efd6138288f5",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "canonical_blob": "74cf8fd6e1554c8cb4f7d5d08c8d97eabbde3de4",
+      "current_blob": "22ea65b3ed5b6c218cd660d15b78e90aa05de338",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/__init__.py",
+      "canonical_blob": "801ffd0a93cf095715c004843bd4dcb07715c2ed",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "canonical_blob": "a52f940d53905ebde76e6b163c900d1fcbb65268",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "canonical_blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "canonical_blob": "13787af35f5fb1363665f7b0986f24771780dd0b",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/supplied_transcription.py",
+      "canonical_blob": "e18a682490a31f962974a8fd31b1e42ad0a2fae9",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/keyboard_preferences.py",
+      "canonical_blob": "ea77248e902f2974bcfcda5912a4a179c623786e",
+      "current_blob": "6d2b28b2a5c9704d0b4ea99ffb107d0937523aa4",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "canonical_blob": "bad9aa5c644573ed18fdb83527733dd99a738ade",
+      "current_blob": "f6c94e01d61b82959209e64b9e78bd59692c74cd",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/library_assistant.py",
+      "canonical_blob": "f96aa939066c16105c3398e507f43ef1e438d571",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "canonical_blob": "b585cf04946caa2db6ec103b5a2eaf6e4d13d7fc",
+      "current_blob": "d89f91ba63904cc052fdd6d7ffd3853f267bc61e",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "canonical_blob": "f852cfb3748f20cb279de98b41d8750093af8e43",
+      "current_blob": "4134e1c8ec1271cf6876e8afea8a56c5a8471117",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/__init__.py",
+      "canonical_blob": "618d53c90f9586156fa7b0d84d11483d16d6d04b",
+      "current_blob": "93c56c0e9a9ed0ce87f9ff8a4a1f46fc1fca05f7",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "canonical_blob": "fcf6872d1b5b8a131bf33edd2e42fd0163b9afd9",
+      "current_blob": "28f87df67da626ea153f44e03b5625d6a6789a77",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "canonical_blob": "6a8854e18316521939848bd1719e9ab0484c0746",
+      "current_blob": "7a472bcc07a8f0de289e0f278fd9f7747728a3da",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/facade.py",
+      "canonical_blob": "4eaf0157b171b4ae4fdd9c2a8e4da06b6700cd48",
+      "current_blob": "0b7df17c0c7ab7ea60b5bf0e9bd0df120a7a0219",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/operations_cli.py",
+      "canonical_blob": "b03cf6a4668e88757193b7a8e94fe6c5557124ea",
+      "current_blob": "0ff177983859a801cf100a9fd8548a7586004f97",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "canonical_blob": "2a15b362f3b25cefeefdfa5f6edcb8527cd35e43",
+      "current_blob": "40dc27d9e22a86ba8a714a981bf2d5048dedc913",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/progress.py",
+      "canonical_blob": "f19da8bd57cb73307359a03db236c5f60ede44b7",
+      "current_blob": "f5443f7591dbc5598aa1d70c9cc26319e81c01d2",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_feedback.py",
+      "canonical_blob": "69a97a9e2fc006d690e120ac38ff5c2e92d56895",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_preferences.py",
+      "canonical_blob": "011930e83ce70c861d6bf59e97fe47e8c09cd551",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/ebook.py",
+      "canonical_blob": "014a056ddaaa2a671d09b169d3b6ea7f6ee59634",
+      "current_blob": "2f6b6ee6003c30ef29e70fe22b93c8a7726fe7b4",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/reading_state.py",
+      "canonical_blob": "1ffa53da163b74e06bf2fcf7f705fbfc479a5ca5",
+      "current_blob": "45264b0e8367a8cd36c0fc5bee0bf6562e26c749",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/source_file.py",
+      "canonical_blob": "1aa43a4360f3284b9c0abf13dd08d1a0a4c448ac",
+      "current_blob": "1483c4ddbb6fde1446639c2e786da2fc86df61ad",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "canonical_blob": "c4608af444fbdb7a1b5c6feb32be82e8b19f3af5",
+      "current_blob": "6ded800099f0a02574c5d45bd1f73265ca6ca409",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/research/topic_tree.py",
+      "canonical_blob": "a0e9fd2837eb31b8c9aa5a97ff1b9c01184586b2",
+      "current_blob": "f3ae5e7189a5512d22d89ed916441a2d18b85c00",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "canonical_blob": "a83e4b5020aa3779b93e6169928607194677769c",
+      "current_blob": "6c75d02505089dea46cd72c1d13bac54914e04e4",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "canonical_blob": "4f97c0bfc61156b090f40306f8590c4da9992cec",
+      "current_blob": "301e096f4405070d63966b37ccf7e45f9e7a6fe4",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "canonical_blob": "810a814174d0daece99aef739911b078e6709710",
+      "current_blob": "0b87be93ecb08cfd5a1fcd182420fe3b9d8f3927",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/search/thematic.py",
+      "canonical_blob": "5a526259eb764b2f2a940d491802c4f903344487",
+      "current_blob": "462ba4f14f8154b7545f1a75a105763eab1e070d",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "canonical_blob": "7e582dbfbbdc1bd6e670503785fcc798989fb70f",
+      "current_blob": "be3fcd9b7751b1af4e24dafa2c047670f76bb219",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/COMTYPES_LICENSE.txt",
+      "canonical_blob": "d7c5350e98f8aa354955441437c3ffdc4fe227af",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/UPSTREAM.json",
+      "canonical_blob": "bd3bc0eb36b705a59342584af18f03728b20716b",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/__init__.py",
+      "canonical_blob": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_io.py",
+      "canonical_blob": "4024e11d9823a3af0da4fce7dfbe89420ff97782",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/player.py",
+      "canonical_blob": "b11dcebec0f6c0be57dc6b141ed272f65b65c821",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "canonical_blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "canonical_blob": "2305d54c34861fc00fed2b66ccb74ba5d36e6b21",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/regex_worker.py",
+      "canonical_blob": "630f6d9a6b5a90355125b932cc469fe4d628f883",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "canonical_blob": "e913c96b3646b17db3d64864e97a3a779307d041",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/sapi_native_worker.py",
+      "canonical_blob": "0faf8b266ff9fa5a0dc5db61243e5d8e5ce99135",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/sapi_worker.ps1",
+      "canonical_blob": "25f11e868d01ae595c34e1739042ae14f55fedf7",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "canonical_blob": "24b1f463ef867d7aa98e4f7d7c54566d3e67773a",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/source.py",
+      "canonical_blob": "bd2afd04c8106689fbb80923748674fe8a75464d",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "canonical_blob": "952d05ec92d50ba8786ce0da514866732148db85",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/__init__.py",
+      "canonical_blob": "7e38d3875a79e43e24321e4a14f613a0bb7b5064",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "canonical_blob": "714af31ab62055f24ecbd04b0c8c95a202195d98",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "canonical_blob": "1acf68727fdaadd14055d357e28f2eb140ab2a52",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "canonical_blob": "0c05eebaa029d43bf83bdd35ec0de36a93edd198",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/__init__.py",
+      "canonical_blob": "61bc62f8984afaffbde4073c49812738321f018b",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/models.py",
+      "canonical_blob": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/runtime.py",
+      "canonical_blob": "99b1a086122b75ae2f7fc48dbe3b4109db059c0a",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/service.py",
+      "canonical_blob": "e12335721580f9e28db3396278dc68861f528252",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription_cli.py",
+      "canonical_blob": "5ba20a26633653e23e658b611a3e61a663d301d3",
+      "current_blob": "833e59093468d9981dc96037edceba623dfc1a7a",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "canonical_blob": "9311eb9f272f11dbd166681b3a34aea6d75c5138",
+      "current_blob": "25b5afbd1d4ab8ad2cea521bcb043e2da748c954",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "canonical_blob": "52b328714a72fb0d650789477c28082e33dc2647",
+      "current_blob": "c64b4abdc9fcc758e2678af576b22823346cebce",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_tools.py",
+      "canonical_blob": "2c0b20c8db64083fd45b35be276a213601045dce",
+      "current_blob": "aac69e501226314d4280ca1d74ac866a79a11614",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "canonical_blob": "930c84fe473a2de22be6386077d197f1ee813720",
+      "current_blob": "cdd05ff077464344f7f2407d17a82691f5d96ab6",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "canonical_blob": "9d15cee9c441cd8127733e4dbec93313ed411ab8",
+      "current_blob": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+      "canonical_blob": "f61007a75fd87111466cbeffb7b8ffe511b97bf9",
+      "current_blob": "ceb98bc67180ce5bedcd25d60fc08c39ebc473e5",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+      "canonical_blob": "2cd9743e3e279c138fb4c655b11d3e1e9e52c973",
+      "current_blob": "b13b457570bcc62e3e44972b8661d31079361ac3",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "canonical_blob": "365f9ce02fea9e05524bdeae06069a27a1c698a3",
+      "current_blob": "3a2962103876a75412bae8a3bbd967c2e45a1fa2",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "canonical_blob": "c264eb3cf2f47d0ade514234cbf3eba13512d9bd",
+      "current_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+      "canonical_blob": "5140395fbc211900a8dd9289877c6de4b3a96d44",
+      "current_blob": "1043da325fb6b7de3c7855dcf468e20f351032aa",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "canonical_blob": "3e6a2feb8ac385ff4cb7ec0ecbbb4e86a71b52ed",
+      "current_blob": "a05b5f7d60df8abb0d03a7bf3bdf920562f5595e",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_reader.py",
+      "canonical_blob": "1091b6359b90f85a094537e4f96f239785f37b92",
+      "current_blob": "d42215174b7c764cda36b6a835bb0f7e7b01c193",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "canonical_blob": "578cc5f39eb0fad693c4ebae6d4c4c62a27a7d83",
+      "current_blob": "21e60b7b48144a7360d0d038a91d4799c381b7f9",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "canonical_blob": "522e5fe297b5b28ced24ae51b981abe66747c4d7",
+      "current_blob": "14ea86babd1426902c6fd2f09982e5b04147c544",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "canonical_blob": "fbb6920a4eae81d9d5fbd4140530f6066681ba4d",
+      "current_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "canonical_blob": "bde66d23bebe46a05a79e27418984bc5d612011c",
+      "current_blob": "064ee4bb6c4db0001d64760910c777237f18596f",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+      "canonical_blob": "cd455654455e872ba0792f14d07c27f65be23121",
+      "current_blob": "58912be85954a059c680783ccda66769757ec491",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "canonical_blob": "ba8a105cad8b021bd35625e005ffc01b1e8c578e",
+      "current_blob": "69429f88081aa5195db6d517727ef188e6431d15",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/library_assistant.py",
+      "canonical_blob": "c8e9e0ca148d929ead1b44f7cef17efbb76f6568",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_model_manager.py",
+      "canonical_blob": "8ef8d43aeddc1d65b745dc58cc8a2d1fcde80463",
+      "current_blob": "d87272c912134074be2254b0fe34a9dd000783af",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_options.py",
+      "canonical_blob": "c172e351ea910fddf9aebd99dc7c7cbf8a202738",
+      "current_blob": "23872c178f45f6e8f5ba6d62dc3e1b0ae2bdc1ec",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_selection.py",
+      "canonical_blob": "d1eaabefb1ea68d7c1bb4c0211e168241fcd8858",
+      "current_blob": "4b284b6991779e7a234926d65db036f78387de5d",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "canonical_blob": "7e687b9480dea4da3e232f561b1bfb919dc43223",
+      "current_blob": "4a4186460bda976e574482a8e4acd3dc8f9e6301",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_media.py",
+      "canonical_blob": "7a12bdb3acc22a29e3a216bf0b8b9381d58676af",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "canonical_blob": "0bb2dec7a8b5a490565a196e281ec30e3ca00e9b",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "canonical_blob": "c15a3930c781743a307302b23fcddc99a616bb8e",
+      "current_blob": "19a0d6fc34a32de00a77e6bf20f98f84250207be",
+      "root_general_review": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/research_actions.py",
+      "canonical_blob": "20348348fadaba3a941031d2508c542e46a29fb9",
+      "current_blob": "b678c3cd0b001b05a309d3b1e82e024967d1ee64",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_actions.py",
+      "canonical_blob": "813bdce720e5fde6570fc867f268b49ea5dfdde0",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_all.py",
+      "canonical_blob": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+      "current_blob": "92aab94e53df97d5aeabe62538ddebc71cfee09d",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "canonical_blob": "41cbc65c773dcc51fee864295ec56906b1c4f50a",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "canonical_blob": "418da4c9bf29098ebfc7fae933c43582beb7b953",
+      "current_blob": null,
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "canonical_blob": "12f4be1fa61fd89ca208ff00663bf9961753e307",
+      "current_blob": "2c44ee1a85d70316b2fa514316b5b0b700abade4",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "canonical_blob": "65292429f2caab7b98d0896d31f0adcebb953fc0",
+      "current_blob": "b7a78f02312da95427f2e32181df88b28fb3fc68",
+      "root_general_review": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/worker_cleanup.py",
+      "canonical_blob": "2f071d9d2762ef15f5f8ee3da2fcf25de165b15a",
+      "current_blob": null,
+      "root_general_review": false
+    }
+  ],
+  "scope": "All canonical product source blobs changed or absent at the current candidate. Root general52 rows have already received direct semantic review; other87 rows require links to existing domain dispositions or an explicit additional review. Current-only source is covered by its implementation/component reviews and runtime gates, not falsely classified as a canonical deletion.",
+  "missing_test_paths": [
+    {
+      "path": "carr-library/tests/assistant/test_local_planning.py",
+      "canonical_blob": "30b1df87da05c412ea645ba06a3f8ef8aa5317a0",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/assistant/test_local_planning_loopback.py",
+      "canonical_blob": "c2eaabc11dedce8a34022456a857271d1ec18a97",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/assistant/test_providers.py",
+      "canonical_blob": "d43a588338f73609bfb4dc63ab7a306e406e7260",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/assistant/test_supplied_transcription.py",
+      "canonical_blob": "16f1896735602c43760e9a07485bf5168540fb33",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_v3.py",
+      "canonical_blob": "b994aafda65f3497878302233e4a9f559aac8622",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_audio_process.py",
+      "canonical_blob": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_bundled_runtime_settings.py",
+      "canonical_blob": "1e48791b33ae256ff5ede4ac7c24dd64afb78beb",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_dsp.py",
+      "canonical_blob": "8522fa552beba8910aa2e749c19369eb4f90e09a",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio_acceptance/__init__.py",
+      "canonical_blob": "0d40b5d7b4211ff87600e42ad634e576f53aa403",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio_acceptance/oracle.py",
+      "canonical_blob": "2b3b7e80a1da81324a21f0895bc344006f0c89cf",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio_acceptance/test_primary_publication_budget.py",
+      "canonical_blob": "405552e3ef7f5494678a7a583b42cf0eb84cf9a4",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/e2e/test_transcription_cli.py",
+      "canonical_blob": "a986c2d36773ac9b031d915268d59f9798a4c59b",
+      "dispositions": [
+        "docs/validation/CANONICAL_GENERAL_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/extract/test_language_manager.py",
+      "canonical_blob": "f9b0c33fa900323ebb5d1eac3402ecdfb59903ad",
+      "dispositions": [
+        "docs/validation/CANONICAL_GENERAL_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/__init__.py",
+      "canonical_blob": "1ca9f3fafe08709103c64426a7c5311eb3f28455",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/dordiai_private_probe.py",
+      "canonical_blob": "025121d5851ce6d1de03967227cd94fc740f9250",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_convergence.py",
+      "canonical_blob": "e18e02267f7a3d3a7fdaed909abff8b1c8e78e92",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_probe_cancellation.py",
+      "canonical_blob": "96ec861256678a75010ca3ec9b1620d13876d866",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_settings.py",
+      "canonical_blob": "31f573c60337fb68f13ab1c19bb1b336442ef465",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_speech.py",
+      "canonical_blob": "1b8191f2a59c9eea4da662423c1b8bd4cd03fb19",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_voices.py",
+      "canonical_blob": "e46257220ef1af5c129669aa9037dafa788077af",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/library_assistant/test_library_workflow.py",
+      "canonical_blob": "2ec34aaf153c525aa3bfb7e1d667728a30b749ba",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/library_assistant/test_library_workflow_ui.py",
+      "canonical_blob": "b29cdb87595b0c5202014df8a50509e70efd78ea",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/operations/test_production_admission.py",
+      "canonical_blob": "ad7403a7e65033c8777a8804988d474a8776c948",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/operations/test_worker_start_cleanup.py",
+      "canonical_blob": "d9b053b955b63c3852fca07ae180702aabfd30d2",
+      "dispositions": [
+        "docs/validation/CANONICAL_GENERAL_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_runtime.py",
+      "canonical_blob": "56d26d123dbe8f1de63dcbee905f884fb20f64eb",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/packaging/test_prepare_windows_audio.py",
+      "canonical_blob": "2e1b1453f3567d65a2db5fe390539e4f301ceb32",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/packaging/test_worker_bytecode.py",
+      "canonical_blob": "795d2d0e3cc9f93b6e84a89e379959af00c6878d",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_contract.py",
+      "canonical_blob": "0323230b0cf633abb25682c5fd6ff6953d8a531d",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_feedback.py",
+      "canonical_blob": "3f39b279b982cc9b6b2c5c6ef04288256508e32d",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_media_integration.py",
+      "canonical_blob": "0748485c98822961f2a39d9d43d75586c0dfc35d",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_preferences.py",
+      "canonical_blob": "4e813a426280cfe9c863b16239da5dd9b3a6a771",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_reporting_failure.py",
+      "canonical_blob": "484760dd05b3833da0ca200f1906a0fe66172261",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_native_sapi_protocol.py",
+      "canonical_blob": "80fa63fb9771a108c1b2c069c8f4652a119f9b4a",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_output_fsync.py",
+      "canonical_blob": "78539a1fe02136241d8a4b84226083dff154c351",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_progress_speech.py",
+      "canonical_blob": "6edc7e29089a5532a7e837a921c6f63a983a9bdd",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading.py",
+      "canonical_blob": "4835f82de7f4926f73d678aa417a6b18950efd0e",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_runtime.py",
+      "canonical_blob": "674afa2a0ab1f1f7ef9930cadd10e8792f3357ff",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_session.py",
+      "canonical_blob": "4106401bd8199b5cf1f3780fcce014a6d67681c1",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_source.py",
+      "canonical_blob": "7f8b7728218da579cab751f23cec20554a62c184",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_system_host.py",
+      "canonical_blob": "3e8f9c8738794941e612b2402fe86a8081408161",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/probe_backup_v4_producer_models.py",
+      "canonical_blob": "249f7a41c3c9fa1e31f6a91b3fe5acf4b46b5ebf",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_generated_audio.py",
+      "canonical_blob": "faed937a5258204d285472c1e667bbca6e4cc443",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_keyboard_drafts.py",
+      "canonical_blob": "76a095db93f7e20f4f9180b154ca53ba655ad254",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "canonical_blob": "2d0bd02e29dbc533a9ef4de298f6eaaa508e1675",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "canonical_blob": "8e98fce992da579cedf4cdef5b89376b0adb0032",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_translation.py",
+      "canonical_blob": "ed2ca50c88f66182c3d3cfaa98735888405800c2",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_v4_sidecars.py",
+      "canonical_blob": "2f669e3c61f2b3c271033688416918a897e69b09",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_engine_settings_backup.py",
+      "canonical_blob": "b7ecfa366738b0428912803266249dd343f96776",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_engine_settings_dordiai_backup.py",
+      "canonical_blob": "de85053124d9cbaad264629d80f365cdda4cf31c",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_progress_preferences_backup.py",
+      "canonical_blob": "d4d344c5c7d121a0aa0e78792cfaf0d2d6720eab",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_backup_portability.py",
+      "canonical_blob": "24500f9a9939048d5672ec1d77c3b84eb9de5a86",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_snapshot_identity.py",
+      "canonical_blob": "e8706c5258741aac52a01270b85290beb01ac594",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_v3_state_backup.py",
+      "canonical_blob": "01d1d3d70345e5719e3c64aed6b01ed103d78d4e",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_music_scheduling.py",
+      "canonical_blob": "f60561a823a3c6757c84aad83b40cfa67b53f3a0",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_production.py",
+      "canonical_blob": "2036c36cab2fe931d72014ad75eabaf8381bcd6c",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_cancellation_outcomes.py",
+      "canonical_blob": "1ce1d7a0852158c3a59f8fa071867930369cbbd1",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_hardening.py",
+      "canonical_blob": "79fda93171f594bb0554a6a48096201c1c734d4d",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_studio_controller.py",
+      "canonical_blob": "5182c9804d169e1a64a77dd8dbd2b96b073616d4",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/conftest.py",
+      "canonical_blob": "4bfaa8631937c0e36f625efe4f569a925175809a",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/fixture_runtime.py",
+      "canonical_blob": "df13b49732e8f0fe60660bc21fb32b9c5a2f7374",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+      "canonical_blob": "f28e80b33bd4856063e306883fd05f7e85cb537a",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "canonical_blob": "94acab74ef2613daabd2fff06f3bab680caaeefa",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_protocol_fixture.py",
+      "canonical_blob": "a49073f894c97d8a2c78c4672752f68d420e122e",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_restore.py",
+      "canonical_blob": "251553b767cca2435f6f4a4424d5cf5268cc026e",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_runtime_admission.py",
+      "canonical_blob": "591e946db0bc8301a30e5114ab2cba9159979e96",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "canonical_blob": "ef7a2f3167dac743cd762a4925b6c3f8c2444771",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "canonical_blob": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/native_progress_smoke.py",
+      "canonical_blob": "ce813fd48b64b9998f561217adcaa38f8fc874a2",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_export_confirmation.py",
+      "canonical_blob": "62ed5adcd81d13a5253f870380ff21f7c6357d7a",
+      "dispositions": [
+        "docs/validation/CANONICAL_GENERAL_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_platform_modal_lifecycle.py",
+      "canonical_blob": "02f28a69643399c92e2f1200b6a94d3f54b95422",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_results.py",
+      "canonical_blob": "c76784303bdae80c922ab37ade1374d2537250c1",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_media_quiet.py",
+      "canonical_blob": "949dc5a10f98efd137e677d5f9ed0def7be870f4",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_panel_state.py",
+      "canonical_blob": "13a1fd87ed8ed86b836b887b3bb964469ff02fe3",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "canonical_blob": "1c61da3cf630c270c1c7c4804461acb124c47510",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_keyboard_registration.py",
+      "canonical_blob": "49a5178e9627b1766eebc7485a3855f87bb443a3",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "canonical_blob": "aa28e07dad812e94e4c5d2f53fb029fd308f3747",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_results.py",
+      "canonical_blob": "54684fa708f027d8e7c5e456186ec2874f27b956",
+      "dispositions": [
+        "docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_dialog.py",
+      "canonical_blob": "b13e4c59a67effc05df1e8332b45f3aff505f157",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_worker_cleanup.py",
+      "canonical_blob": "c049febc50836ec8a827f6d4b3358a8a99aa7672",
+      "dispositions": [
+        "docs/validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/voice_acceptance/README.md",
+      "canonical_blob": "7cc09b31d33d5b09697e5a08030b60da441f6525",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/voice_acceptance/conftest.py",
+      "canonical_blob": "795a206c0b69892821cb874c593e7c375ae744e0",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/voice_acceptance/protocol_actor.py",
+      "canonical_blob": "1e32bba8d213c1e5f43f84e34df2846ed1c175fc",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    },
+    {
+      "path": "carr-library/tests/voice_acceptance/test_dordiai_acceptance.py",
+      "canonical_blob": "e19d44f86f9d75285d02d786cd293cb5c201bedb",
+      "dispositions": [
+        "docs/validation/CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127.json"
+      ]
+    }
+  ],
+  "limits": [
+    "This is an input inventory, not a declaration that every domain is qualified.",
+    "All83 absent canonical test/support paths have exact canonical-blob entries in the existing88-path combined test ledgers; five originally absent paths are now present.",
+    "No old parametric case total, private-runtime result or API equivalence is inferred from a path mapping."
+  ]
+}

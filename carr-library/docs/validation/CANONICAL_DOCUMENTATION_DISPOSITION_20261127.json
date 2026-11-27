@@ -1,0 +1,217 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED_DOCUMENTATION_DISPOSITION",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "current_source": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+  "scope": "All17 canonical documentation/support paths absent before this reconciliation. Public immutable history remains available; supersession notes route readers to actual current owners rather than applying obsolete APIs or scripts.",
+  "entries": [
+    {
+      "canonical_path": "carr-library/docs/AUDIO_RUNTIME.md",
+      "canonical_blob": "0fd717382d8accb908fab966b803cb9510c2d086",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/AUDIO_RUNTIME.md",
+      "current_targets": [
+        "docs/FFMPEG_RUNTIME.md",
+        "docs/LOCAL_AUDIO_SETUP.md",
+        "docs/validation/CANONICAL_AUDIO_PACKAGING_DISPOSITION_20261127.md"
+      ],
+      "disposition": "The current runtime uses its own exact source lock and rights inventory. Historical FFmpeg build hashes and LGPL/GPL profiles must not be relabelled as the current binary.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/DORDIAI_DESKTOP.md",
+      "canonical_blob": "d4d5c65dac8c7c815be06d76f8b6b5d1679efd53",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/DORDIAI_DESKTOP.md",
+      "current_targets": [
+        "docs/LOCAL_ENGINE_PROFILES.md",
+        "docs/LOCAL_VOICES_AND_MUSIC.md",
+        "docs/validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md"
+      ],
+      "disposition": "Select the owner-specific adapter through the existing reviewed engine profiles. Generic JSON helpers are a different protocol. Old saved declarations do not automatically activate an installed runtime.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/DORDIAI_SPEECH_HANDOFF.md",
+      "canonical_blob": "f6fa381b0547db802841e778db20d760e24708e6",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/DORDIAI_SPEECH_HANDOFF.md",
+      "current_targets": [
+        "docs/LOCAL_ENGINE_PROFILES.md",
+        "docs/validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md"
+      ],
+      "disposition": "The old manual speech-registry patch belongs to the historical source layout. The current registry and adapters are already integrated; do not apply that patch to this tree.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/DORDIAI_VOICES_CONTRACT.md",
+      "canonical_blob": "7f50b8bb60a2e0aa4e0be39da9ae0da4025c151a",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/DORDIAI_VOICES_CONTRACT.md",
+      "current_targets": [
+        "docs/LOCAL_ENGINE_PROFILES.md",
+        "docs/LOCAL_VOICES_AND_MUSIC.md",
+        "docs/validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md"
+      ],
+      "disposition": "Keep the historical reviewed owner-worker interface as source evidence. Current manifest admission, adapter routing and process ownership have their own exact implementation and regressions. Neither document certifies private model quality or multilingual cloning.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/LIBRARY_ASSISTANT.md",
+      "canonical_blob": "26adc82890f9171cb4967454990daec5f8bd0b9a",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/LIBRARY_ASSISTANT.md",
+      "current_targets": [
+        "docs/LOCAL_PLANNING_RECONCILIATION.md",
+        "docs/ASSISTANT_WORKFLOW_TEMPLATES.md",
+        "docs/ASSISTANT_DERIVED_TOOLS.md"
+      ],
+      "disposition": "The current deterministic plans, reviewed local-model proposals and typed tools use one assistant job store. Historical command spellings, separate dialogs and old store layouts are not silently treated as current interfaces.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/PRIMARY_STATE_BACKUP.md",
+      "canonical_blob": "5f45fcaeae604dbcce8f9977e26babdfee71862b",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/PRIMARY_STATE_BACKUP.md",
+      "current_targets": [
+        "docs/COMPLETE_BACKUP.md",
+        "docs/CANONICAL_READER_SESSION_RECOVERY.md",
+        "docs/CANONICAL_STUDIO_IMPORT.md",
+        "docs/CANONICAL_TRANSCRIPTION_RECOVERY.md"
+      ],
+      "disposition": "Current complete backups retain declared current work and passive historical recovery state. Restoration is distinct from engine activation, generated-output authority and permission to resume external operations.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/PRIVATE_DELIVERY_READINESS.md",
+      "canonical_blob": "409e4ed6af60cecd8ed64dd2263683631786413f",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/PRIVATE_DELIVERY_READINESS.md",
+      "current_targets": [
+        "docs/DELIVERY_INTEGRATION_CONTRACT.md",
+        "docs/TRUSTED_CLIENT.md",
+        "docs/STANDARD_SIGNED_UPDATES.md"
+      ],
+      "disposition": "Neutral adapter declarations, actual synthetic signed-client checks and production deployment/rights are separate. Historical source-only counts do not qualify the current installer or service.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/PROGRESS.md",
+      "canonical_blob": "e658b496a55f795f548bd82532eb7d53fbb03ae8",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/PROGRESS.md",
+      "current_targets": [
+        "docs/SHARED_NATIVE_PROGRESS.md",
+        "docs/SHARED_PROGRESS.md",
+        "docs/REGISTERED_PROGRESS_VOICES.md"
+      ],
+      "disposition": "The current shared progress owner reports measured units and durable completion, preserves focus and supports explicit voice selection. Native automation and physical audio/manual NVDA remain separate evidence.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
+      "canonical_blob": "56736fe141a0338af03e657111ad0141e6880ba5",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
+      "current_targets": [
+        "docs/SUPPLIED_TRANSCRIPTION_INTEGRATION.md",
+        "docs/TRANSCRIPTION_HOST_INTEGRATION.md",
+        "docs/TRANSCRIPTION_INTEGRATION_REVIEW.md"
+      ],
+      "disposition": "The supplied worker remains the ASR starting point. Current exact worker profiles, content-bound receipts and explicit recovery supersede the older public module placement; synthetic protocol execution is not model inference.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/assistant_runtime.md",
+      "canonical_blob": "8008718f70c71d747a683f5c08e972d94646d7cf",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/assistant_runtime.md",
+      "current_targets": [
+        "docs/LOCAL_PLANNING_RECONCILIATION.md",
+        "docs/ASSISTANT_NATIVE_CONTROLS.md",
+        "docs/ASSISTANT_WORKFLOW_TEMPLATES.md"
+      ],
+      "disposition": "Retain one typed executor, current provider approval and durable jobs. Local-model proposals need separate review and have no direct shell/path/network authority.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/runtime_resources.md",
+      "canonical_blob": "1535d48a97fa7fd4148b1eeeb5d5746b36221236",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/runtime_resources.md",
+      "current_targets": [
+        "docs/TASKS_AND_RESOURCES.md",
+        "docs/OPTIONAL_OPERATION_ADMISSION.md"
+      ],
+      "disposition": "One cooperative broker admits participating work; the operation view reads existing journals and exposes only actual service controls. Journal completion and absence of a live reservation are not output verification or proof of process death.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/speech_runtime.md",
+      "canonical_blob": "78dc3b52f5605c235d7f88b8c686a34ae6a16462",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/speech_runtime.md",
+      "current_targets": [
+        "docs/LOCAL_VOICES_AND_MUSIC.md",
+        "docs/NATIVE_SAPI_CURRENT_ENGINE.md",
+        "docs/LIVE_SOURCE_READING.md",
+        "docs/READING_PREPARATION.md"
+      ],
+      "disposition": "Current speech runs through the single audio VoiceRegistry, native SAPI owner and explicit local engine profiles. The old speech Python namespace is not an API alias; source and edited narration remain separate.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/transcription_runtime.md",
+      "canonical_blob": "1061f777d7edd90bca579315e060214291045a7e",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/transcription_runtime.md",
+      "current_targets": [
+        "docs/TRANSCRIPTION.md",
+        "docs/TRANSCRIPTION_HOST_INTEGRATION.md",
+        "docs/CANONICAL_TRANSCRIPTION_RECOVERY.md"
+      ],
+      "disposition": "Use explicit current worker/profile selection and retained-source jobs. Old history and transcripts can be recovered without granting runtime or output authority; old CLI and state schemas are not transparently reinterpreted.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/translation_workstation.md",
+      "canonical_blob": "b8339ab9a5676f4b483316761b5e40bca5147579",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/translation_workstation.md",
+      "current_targets": [
+        "docs/TRANSLATION.md",
+        "docs/TRANSLATION_ADVANCED.md",
+        "docs/STRUCTURED_TRANSLATION.md",
+        "docs/LOCAL_TRANSLATION_ADAPTER.md"
+      ],
+      "disposition": "Official Google v2/v3 and the separate reviewed local translator retain explicit provider selection, transfer approval, budgets and derived-text provenance. No paid service or model is enabled by a migration document.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/START_V3_UK.txt",
+      "canonical_blob": "5778be0192ca10633d76df704f046dafc4775f1b",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/START_V3_UK.txt",
+      "current_targets": [
+        "docs/START_UK.txt",
+        "docs/V3_RELEASE_READINESS.md"
+      ],
+      "disposition": "The current Ukrainian guide follows the actual version0.2.0.dev2 menus, standard installer and archive compatibility paths. Do not follow obsolete install or shortcut instructions from the historical guide.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "canonical_blob": "69e33ddeebc242cc68469e8520c4e869638c3c4f",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/V3_RELEASE_READINESS.md",
+      "current_targets": [
+        "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+        "docs/acceptance.md",
+        "docs/START_UK.txt"
+      ],
+      "disposition": "Replace the historical readiness snapshot with the finite current requirement matrix and exact-source evidence references; keep full-platform and external-input requirements visible.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/docs/contracts/DORDIAI_SPEECH_REGISTRY.patch",
+      "canonical_blob": "62868cb75d5eb8b29141a8f438f8c8f6db2e615f",
+      "historical_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/contracts/DORDIAI_SPEECH_REGISTRY.patch",
+      "current_targets": [
+        "docs/LOCAL_ENGINE_PROFILES.md",
+        "docs/validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md"
+      ],
+      "disposition": "HISTORICAL_PATCH_NOT_APPLIED: its old speech/runtime.py target is not the current registry. Retain the exact canonical permalink as history, without distributing a patch that cannot safely apply to the current tree.",
+      "execution_claim": "NONE"
+    }
+  ],
+  "limits": [
+    "Documentation routing does not establish whole API/case equivalence, runtime PASS or shipping rights.",
+    "The historical patch remains available at its immutable source; it is not an executable current installation step.",
+    "Actual private engine/model, paid-service and human NVDA qualifications remain independent."
+  ]
+}

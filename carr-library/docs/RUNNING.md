@@ -1,4 +1,20 @@
-# Universal Research Library
+# Resonance — run and install
+
+For current menus, shortcuts and installation choices, start with
+[START_UK.txt](START_UK.txt). The [current requirement/evidence matrix](V3_RELEASE_READINESS.md)
+separates the integrated development build from model, human-accessibility and
+distribution qualification.
+
+If your supplied artifact is `Resonance-Setup-….exe`, run that standard
+installer, follow its named native controls and subsequently launch the Start
+menu entry. Save open work and close the previous application before an ordinary
+manual update. User libraries remain separate from program generations. The
+[standard-update contract](STANDARD_SIGNED_UPDATES.md) describes explicit
+maintenance, managed activation, recovery and their exact qualification limits.
+
+The archive instructions below are the supported compatibility installation
+path for an artifact supplied with `Install.cmd`; they are not instructions to
+unpack or run an Inno setup as an archive.
 
 An offline desktop research library with separate workspaces, books and
 collections, literal and thematic search, source context, saved evidence, notes,
@@ -11,7 +27,7 @@ The prepared Windows bundle is for your private installation. Its Microsoft
 runtime terms are included; publishing or redistributing that binary package
 requires the applicable Microsoft redistribution grant.
 
-## Windows offline package
+## Windows offline archive package
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
 own Python runtime. Extract the complete package into a new folder, then open

@@ -1,5 +1,10 @@
 # Resonance integration checkpoint — 27 November 2026
 
+This file retains the earlier exact-source integration history. Read
+[V3_RELEASE_READINESS.md](V3_RELEASE_READINESS.md) and its requirement/source
+disposition records for the current composition. The historical execution-in-progress
+headings and counts below do not describe a later candidate or transfer PASS to it.
+
 ## Composed acceptance candidate r6 — execution in progress
 
 The current technical contract is `UNIVERSAL_SCOPE_V3_FINALIZATION.md` read from

@@ -1,5 +1,29 @@
 # Large-catalogue measurements and the query-shape fix
 
+## Later observed installed Windows result
+
+The complete installed synthetic capacity gate subsequently **passed** at exact
+source `523aa40f9215569a276f0625d09fcc0fa84bb520`, tree
+`b6416525dd57ddbcc931f119811e4e73faed68f6`, in
+[run 45993629484](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45993629484).
+The [source-bound receipt](evidence/r7-installed-capacity-20261127.json)
+records the installed wheel, module-origin manifest and raw artifact identity.
+It includes all three complete search traversals, cancellation and fresh-process
+recovery required by that gate.
+
+| Synthetic editions | Completed search pages | Search-page p50 / p95, seconds | Whole case, seconds |
+| ---: | ---: | ---: | ---: |
+| 1,000 | 10 | 2.173 / 2.205 | 89.948 |
+| 10,000 | 100 | 2.514 / 2.549 | 360.370 |
+| 50,000 | 500 | 4.364 / 4.444 | 3143.286 |
+
+This is a declared synthetic catalog/service measurement on its recorded
+Windows host, with one shared small original and distinct edition identities.
+It does not certify 50,000 real books, large-book intake throughput, native
+GUI/NVDA, neural models or a later source tree. The earlier Linux interruption
+and its incomplete checkpoint remain historical evidence below; they are not
+silently rewritten as completed.
+
 ## Result and current evidence boundary
 
 The catalogue/search query-shape fix is implemented in candidate commit
@@ -243,9 +267,9 @@ qualification. These synthetic records do not substitute for those scenarios.
 The workflow `../../.github/workflows/carr-capacity.yml` runs on
 `windows-2022` with CPython 3.11 x64. It is available for manual dispatch
 and new `carr/v3-acceptance-*` or `carr/capacity-*` push branches.
-Its preparation does not establish a Windows result: **the new installed mode
-and this workflow remain NOT_RUN until an actual successful run supplies all
-receipts**.
+At original authoring, preparation did not establish a Windows result. The
+later exact installed execution is recorded at the top of this document; it
+qualifies only its recorded source/runtime and declared synthetic fixture.
 
 The gate builds one wheel from the exact checked-out candidate, installs it in
 a fresh environment, and runs the existing harness with isolated installed

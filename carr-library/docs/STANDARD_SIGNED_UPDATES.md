@@ -226,6 +226,8 @@ Native acceptance is a separate disposable-account command:
 
 ```text
 python packaging/probe_standard_update_windows.py --disposable-ci ^
+  --original-build <actual-original-builder-output-O> --original-source <full-O-sha> ^
+  --original-setup-sha256 <exact-O-setup-sha256> --original-manifest-sha256 <exact-O-manifest-sha256> ^
   --previous-build <real-current-builder-output-A> --previous-source <full-A-sha> ^
   --previous-setup-sha256 <exact-A-setup-sha256> --previous-manifest-sha256 <exact-A-manifest-sha256> ^
   --candidate-build <real-current-builder-output-B> --candidate-source <different-full-B-sha> ^
@@ -234,8 +236,9 @@ python packaging/probe_standard_update_windows.py --disposable-ci ^
 ```
 
 The interpreter must be an actual installed application, with the test-only
-TUF fixture available from this exact checkout. Both real compiled setups must
-contain this handoff implementation. An older A without it needs the existing
+TUF fixture available from this exact checkout. The original, maintenance and candidate setups must be independently built
+from their own exact source checkouts. Maintenance A and candidate B must
+contain the reviewed handoff implementation. An older A without it needs the existing
 explicit manual fresh-generation repair first; the bridge never pretends that
 such an installation already has the new protocol.
 
@@ -253,37 +256,73 @@ A→B execution. Passing previous repair/uninstall or portable update tests does
 not transfer such a result. Production trust, signing and accessibility
 qualification remain separate from synthetic test authority.
 
-## Exact two-generation CI integration
+## Exact original, maintenance and candidate CI integration
 
-`scripts/ci_standard_update.ps1` runs after the existing successful standard
-installation/repair/uninstall gate in `.github/workflows/carr-windows.yml`.
-That gate writes a private, hash-bound `CARR_STANDARD_B_HANDOFF` only after its
-native checks pass. The update driver rechecks that proof, the compiled B,
-complete sealed bundle, installed interpreter and compiler; it does not rebuild
-or relabel B as A.
+`scripts/ci_standard_update.ps1` follows the existing successful standard
+installation/repair/uninstall gate. That gate writes the private hash-bound
+`CARR_STANDARD_B_HANDOFF` only after actual B installation checks pass.
+The driver rechecks that proof, B's compiled setup, complete sealed bundle,
+installed interpreter and compiler.
 
-The machine-readable insertion steps are
-`packaging/standard_update_workflow.json`. The additional checkout must run
-before source builds and firewall-protected installed checks. Its exact A
-commit is `f26c7eeef2ad3090ab531d1b8bca72ba68eb5991`; the executing B must be a
-distinct real descendant, checked from the complete public Git graph. The
-existing runtime/model/OCR/native inputs are reused only after A's dependency
-lock, SBOM and native-source validator accept them. No package, compiler,
-runtime, model or publisher configuration is downloaded by this driver.
+The current cohort has three independently built generations:
 
-The driver builds A's actual wheel from its own checkout with offline installed
-build tools, verifies every wheel member against A's committed source, builds
-A's own sealed payload and current standard setup, and checks both source
-identities and different wheel digests. The public A wheel artifact includes
-its source commit, tree recorded in the companion inputs proof, wheel digest,
-size and source inventory receipt. Runtime/model payloads and setups remain
-private on the disposable runner.
+| Generation | Exact source | Purpose |
+| --- | --- | --- |
+| Original O | `91332206578b4d8dc779fec08c8d51a67962b0ff` | Unchanged earlier installation, including its original helper behavior |
+| Maintenance A | `3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f` | A real child of O with the narrow reviewed Windows helper correction |
+| Candidate B | Exact event head, a descendant of A | Current integrated program and managed transaction |
 
-The current probe accepts `--previous-bundle` and `--candidate-bundle` for exact
-separate sealed inputs after verified builder copies have been removed. It
-still checks their complete inventories and exact report/manifest/setup hashes.
-`--report` writes a new native JSON proof only after all 15 checks pass. The
-driver requires the exact check multiset, typed qualification flags and both
-source/setup/manifest identities, then rechecks A, B and the untouched original
-full-bundle seal. The actual native execution is still a separate Windows gate;
-source syntax and fixture tests alone do not qualify either compiled setup.
+Both candidate workflows fetch complete source history and enable Git for
+Windows extended paths before checkout. The driver requires real O→A→B
+ancestry and identical reviewed dependency locks/SBOMs. It builds O and A from
+their own source trees with already installed offline tools, verifies every
+wheel member, and requires three distinct source and wheel identities.
+No setup is relabelled, no old installed source is patched, and no pending or
+prior transaction metadata is removed to make the probe pass.
+
+The earlier direct O→B managed attempt failed. Its exact observed failure and
+artifact limits remain in
+[evidence/standard-update-480f-artifact-diagnostic-20261127.json](evidence/standard-update-480f-artifact-diagnostic-20261127.json).
+The current path does not retroactively qualify it.
+
+### Ordinary maintenance, then managed update
+
+The probe first installs exact O and holds a real running O process and its
+generation lease. It permits the explicit ordinary A installer only when no
+pending/prior transaction exists and sends no `CARRUPDATE` authority argument.
+It verifies a distinct installed A, O's still-running process and sealed
+generation, A's real self-test, and unchanged user data. These are four
+separately recorded maintenance checks, not managed-update acceptance.
+
+The existing fifteen managed A→B checks then remain mandatory: real signed
+target verification with ephemeral test authority, deliberate rejection after
+actual B health verification, exact A rollback, retained rejected B, complete
+library recovery, successful activation, retained older generations/processes,
+protected-anchor state, B self-test and active/quiescent uninstall behavior.
+The separate installed-library gate still requires exactly fifty cases.
+
+`original-maintenance.json` is written after its four checks and retained even
+if a later managed phase fails. A successful final update report contains the
+same maintenance object. Fixed diagnostic Inno logs are attached only to the
+actual owned setups; instrumentation does not change host arguments,
+verification, environment, cancellation or process ownership.
+
+The current machine insertion record is
+[packaging/standard_update_workflow.json](../packaging/standard_update_workflow.json).
+The CI invocation is:
+
+```powershell
+& ./scripts/ci_standard_update.ps1 `
+  -OriginalCheckout <exact-O-checkout> `
+  -OriginalSource '91332206578b4d8dc779fec08c8d51a67962b0ff' `
+  -PreviousCheckout <exact-maintenance-A-checkout> `
+  -PreviousSource '3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f'
+```
+
+Public artifacts contain bounded proof/log files and exact source-verified
+application wheels. Native runtimes, model payloads, compiled setups, synthetic
+private signing material and private handoffs stay on the disposable runner.
+The source review and syntax preflight are not native PASS. Actual acceptance
+belongs to the exact successful Windows run and its setup/manifest/source
+identities. Production trust, Authenticode, deployment rights, physical devices
+and manual NVDA remain separately qualified.

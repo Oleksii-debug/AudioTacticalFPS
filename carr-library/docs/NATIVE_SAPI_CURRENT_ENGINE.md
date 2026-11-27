@@ -1,8 +1,11 @@
 # Native SAPI through the current audio engine
 
-Status: implemented and source reviewed; source/installed/native execution is
-**NOT_RUN** until the exact focused workflow completes. This file is not an
-acoustic, accessibility or whole-product acceptance receipt.
+Status: implemented and source reviewed. Later actual source/installed/native
+execution is recorded with its exact identity in
+[NATIVE_SAPI_OWNED_SHUTDOWN_RESULTS_20261127.md](NATIVE_SAPI_OWNED_SHUTDOWN_RESULTS_20261127.md).
+That result belongs to its recorded source and runtime; this design note does
+not independently qualify a later candidate, acoustic quality, accessibility
+or the whole product.
 
 ## Reconciled canonical behavior
 
