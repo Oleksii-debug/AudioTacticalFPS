@@ -65,6 +65,7 @@ def test_prepare_preserves_exact_seal_and_excludes_user_files(native_bundle, tmp
     assert report["native_install_repair_uninstall"] == "NOT_RUN"
     assert report["authenticode_verified"] is False
     assert report["update_or_entitlement_authority"] is False
+    assert report["managed_update_protocol"] == "resonance-standard-update/1"
     script = (output / "Resonance.iss").read_text(encoding="utf-8-sig")
     assert "@PAYLOAD" not in script and "@SOURCE" not in script
     assert 'Source: "payload\\ocr-corresponding-source.tar"' in script
@@ -75,9 +76,14 @@ def test_prepare_preserves_exact_seal_and_excludes_user_files(native_bundle, tmp
     assert "CloseApplications=no" in script and "PrivilegesRequired=lowest" in script
     assert "UninstallLogMode=append" in script
     assert "EnsureInstallationLease;" in script
+    assert "SetupMutex=Resonance.StandardInstall,Global\\Resonance.StandardInstall" in script
+    assert "--reserve-generation" in script
+    assert "standard-update-pending.ini" in script
+    assert "standard-update-prior.json" in script
     assert "Result := AcquireUninstallLease;" in script
     preparation = script.split("function PrepareToInstall", 1)[1].split("function PlainTree", 1)[0]
     assert "AcquireUninstallLease" not in preparation
+    assert preparation.index("CheckPendingUpdate;") < preparation.index("CreateDir(PayloadDir")
     assert "procedure DeinitializeUninstall" in script
     assert 'Type: filesandordirs; Name: "{code:PayloadDir}\\.venv"' in script
     assert 'Type: filesandordirs; Name: "{app}"' not in script

@@ -32,7 +32,7 @@ class TrustController:
     def __init__(self, *, entitlement=None, refresh=None, updates=None, target=None, terms=None,
                  context=None, automatic_refresh=False, automatic_updates=False,
                  update_repository=None, update_interval=3600.0, update_timeout=20.0,
-                 premium_features=None):
+                 premium_features=None, standard_update=None):
         if (entitlement is not None or updates is not None) and type(context) is not IntegrationContext:
             raise TrustError('Configured clients require an explicit installation context.')
         if type(automatic_refresh) is not bool or (automatic_refresh and refresh is None):
@@ -60,6 +60,12 @@ class TrustController:
             if (type(feature) is not str or feature in PROTECTED
                     or feature not in entitlement.policy.features):
                 raise TrustError('Map new work only to an independently configured premium feature.')
+        if standard_update is not None:
+            from .standard_installation import StandardUpdateTransaction
+            if (type(standard_update) is not StandardUpdateTransaction or updates is None
+                    or standard_update.policy is not updates.policy):
+                raise TrustError('Standard activation must share this exact configured update policy and client.')
+        self.standard_update = standard_update
         self.premium_features = MappingProxyType(mapping)
         self.context, self.automatic_refresh = context, automatic_refresh
         self.entitlement, self.refresh, self.updates, self.target = entitlement, refresh, updates, target
@@ -111,6 +117,11 @@ class TrustController:
                      else 'No signed update source has been configured for this installation.')
         if self.update_poll is not None:
             lines.append(self.update_poll.message)
+        if self.standard_update is not None:
+            lines.append('Reviewed standard upgrades keep the previous version and active work. '
+                         'Activation requires a complete backup and verified installed health checks.')
+        elif self.updates is not None:
+            lines.append('Standard activation is WAITING_INPUT: no installation transaction is configured.')
         lines.append('Updates and renewal never remove access to reading, export, backups, recovery or prior outputs.')
         return '\n\n'.join(lines)
 
@@ -187,6 +198,20 @@ class TrustController:
         if self.updates is None:
             raise TrustError('No independently trusted update repository is configured.')
         return self.updates.download(repository, self.target, reviewed_sha256=release.sha256, cancelled=cancelled)
+
+    def install_review(self, package, *, accepted=False, cancelled=lambda: False):
+        if self.standard_update is None or accepted is not True:
+            raise TrustError('A configured standard installation and explicit activation review are required.')
+        from .updates import require_verified_package
+        require_verified_package(package, policy=self.updates.policy)
+        if package.release.target != self.target:
+            raise TrustError('The reviewed package is not this controller\'s configured update target.')
+        return self.standard_update.apply(package, cancelled=cancelled)
+
+    def recover_update(self):
+        if self.standard_update is None:
+            raise TrustError('Standard recovery is WAITING_INPUT: no installation transaction is configured.')
+        return self.standard_update.recover()
 
 
 def release_text(release):

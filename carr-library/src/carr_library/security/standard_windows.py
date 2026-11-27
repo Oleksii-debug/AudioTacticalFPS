@@ -134,7 +134,7 @@ def validate_snapshot(value, root):
     return value
 
 
-def _drain(process, deadline, cancelled):
+def _drain(process, deadline, cancelled, diagnostics=None):
     job = getattr(process, '_carr_job', None)
     if os.name != 'nt':
         return
@@ -145,6 +145,8 @@ def _drain(process, deadline, cancelled):
                       ctypes.c_uint32, ctypes.c_void_p]
     query.restype = ctypes.c_int
     while True:
+        if diagnostics is not None and os.fstat(diagnostics.fileno()).st_size > 2 * 1024**2:
+            raise TrustError('The standard installer exceeded its diagnostic budget.')
         info = _Accounting()
         if not query(job.handle, 1, ctypes.byref(info), ctypes.sizeof(info), None):
             raise job.api.error()
@@ -170,7 +172,7 @@ def run_owned(arguments, *, cwd, environment, timeout, cancelled=lambda: False):
             if os.fstat(output.fileno()).st_size > 2 * 1024**2:
                 raise TrustError('The standard installer exceeded its diagnostic budget.')
             time.sleep(.02)
-        _drain(process, deadline, cancelled)
+        _drain(process, deadline, cancelled, output)
         if os.fstat(output.fileno()).st_size > 2 * 1024**2:
             raise TrustError('The standard installer exceeded its diagnostic budget.')
         output.seek(0)
@@ -317,12 +319,16 @@ class WindowsStandardHost:
         shortcut = self.shortcut()
         if self._shortcut_target(shortcut, root) != generation / 'ResearchLibrary.exe':
             raise TrustError('The Start-menu target differs from the registered generation.')
-        uninstallers = {}
+        uninstallers, saved_bytes = {}, 0
         for count, path in enumerate(root.iterdir(), 1):
             if count > 4096:
                 raise TrustError('The program root exceeds its activation inventory budget.')
             if _UNINSTALL.fullmatch(path.name):
-                uninstallers[path.name] = _binary(read_bytes(path, MAX_COMPONENT))
+                item = _binary(read_bytes(path, MAX_COMPONENT))
+                saved_bytes += len(item['base64']) + 256
+                if saved_bytes > MAX_STATE - 65536:
+                    raise TrustError('Standard activation components exceed their aggregate byte budget.')
+                uninstallers[path.name] = item
                 if len(uninstallers) > MAX_COMPONENTS:
                     raise TrustError('Too many registered uninstaller components.')
         value = {'schema': PROTOCOL, 'program': str(root), 'generation': relative,
@@ -343,7 +349,7 @@ class WindowsStandardHost:
                                 timeout=self.timeout, cancelled=cancelled)
         return code
 
-    def health(self, root, snapshot, release):
+    def health(self, root, snapshot, release, *, cancelled=lambda: False):
         generation = directory(root.joinpath(*snapshot['generation'].split('/')))
         if os.path.lexists(generation / 'standard-update-rejected.json'):
             return False
@@ -356,7 +362,7 @@ class WindowsStandardHost:
                 ['-m', 'carr_library', '--self-test'],
                 ['-c', "from importlib.metadata import version; import sys; sys.exit(version('universal-research-library') != sys.argv[1])", release.version]):
             code, _ = run_owned([python, '-I', '-B', '-X', 'utf8', *arguments],
-                cwd=generation, environment=self.environment(), timeout=min(180, self.timeout))
+                cwd=generation, environment=self.environment(), timeout=min(180, self.timeout), cancelled=cancelled)
             if code:
                 return False
         return True
@@ -400,7 +406,12 @@ class WindowsStandardHost:
         if current_shortcut not in (previous['shortcut'], observed['shortcut']):
             raise TrustError('A newer Start-menu shortcut prevents automatic rollback.')
         names = set(previous['uninstallers']) | set(observed['uninstallers'])
-        actual = {path.name for path in root.iterdir() if _UNINSTALL.fullmatch(path.name)}
+        actual = set()
+        for count, path in enumerate(root.iterdir(), 1):
+            if count > 4096:
+                raise TrustError('The program root exceeds its recovery inventory budget.')
+            if _UNINSTALL.fullmatch(path.name):
+                actual.add(path.name)
         if actual - names:
             raise TrustError('A newer uninstaller component prevents automatic rollback.')
         for name in names:

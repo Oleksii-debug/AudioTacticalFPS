@@ -99,7 +99,7 @@ def review_installer(staged, release, host):
     installer = report['installer']
     if (type(installer) is not dict or set(installer) != {'path', 'sha256', 'bytes'}
             or installer['path'] != 'dist/' + expected_name
-            or type(installer['bytes']) is not int or not 0 < installer['bytes'] <= release.length
+            or type(installer['bytes']) is not int or not 0 < installer['bytes'] <= 2 * 1024**3
             or type(installer['sha256']) is not str or not _DIGEST.fullmatch(installer['sha256'])):
         raise TrustError('Invalid signed standard setup identity.')
     info = file_info(staged / installer['path'])
@@ -259,6 +259,9 @@ class StandardUpdateTransaction:
             if record['observed'] is None:
                 raise TrustError('The committed update lacks its exact activation snapshot.')
             pending = self._pending_for(record)
+            if record['phase'] != 'complete':
+                from ..library_backup import verify_backup
+                verify_backup(self.work / record['backup'], record['backup_sha256'])
             if self.host.snapshot(self.root) != record['observed'] or not self.host.health(self.root, record['observed'], release):
                 raise TrustError('The committed generation changed or is unhealthy; preserve data for owner recovery.')
             self._write(record, 'complete')
@@ -293,8 +296,8 @@ class StandardUpdateTransaction:
             stack.close()
 
     def apply(self, package, *, cancelled=lambda: False):
-        from ..library_backup import create_backup
-        require_verified_package(package)
+        from ..library_backup import create_backup, verify_backup
+        require_verified_package(package, policy=self.policy)
         release = package.release
         before = self.anchor.load()
         _release(asdict(release), self.policy, before)
@@ -357,11 +360,12 @@ class StandardUpdateTransaction:
             self._require_candidate(observed, candidate, pending)
             record['observed'] = observed
             self._write(record, 'activated')
-            if code or not self.host.health(self.root, observed, release):
+            if code or not self.host.health(self.root, observed, release, cancelled=cancelled):
                 raise TrustError('The new standard installation failed its isolated health checks.')
             _cancel(cancelled)
             if self.host.snapshot(self.root) != observed:
                 raise TrustError('The new activation changed during its health check.')
+            verify_backup(self.work / record['backup'], record['backup_sha256'], cancelled=cancelled)
             self._write(record, 'health-checked')
             replacement = Anchor(release.build, release.sha256, max(before.max_utc, now))
             self.anchor.compare_and_set(before, replacement)
