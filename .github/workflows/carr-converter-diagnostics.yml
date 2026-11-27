@@ -1,0 +1,31 @@
+name: CARR existing converter artifact diagnostics
+on:
+  push:
+    branches: ['carr/converter-diagnostics-*']
+    paths: ['carr-library/scripts/converter_artifact_diagnostics.py', '.github/workflows/carr-converter-diagnostics.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect-existing:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify and inspect existing exact candidate artifacts without execution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -I -B -X utf8 carr-library/scripts/converter_artifact_diagnostics.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
