@@ -560,6 +560,10 @@ class VoicePackageDialog:
         if self.closed:
             return
         self.closed = True
+        # A queued success may have been adopted before deferred native Destroy.
+        # Revoke Python approvals without touching controls in their destructor.
+        self.generation += 1
+        self.review = self.removal_review = None
         self.cancelled.set()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if destroying:

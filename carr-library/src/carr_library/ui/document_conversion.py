@@ -4,14 +4,25 @@ import re
 
 from ..conversion import ConversionService
 from ..conversion.service import IMAGES
+from ..operations import ResourceBroker
 
 
 def convert_selected_documents(frame):
     import wx
+    library = frame.library
+    library_root = Path(library.root)
+    cancel_event = frame.cancel_event
+
+    def current():
+        return (not getattr(frame, '_closing', False) and frame.library is library
+                and Path(library.root) == library_root)
+
+    if not current():
+        return
     dialog = wx.FileDialog(frame, 'Choose documents to convert for reading',
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
     try:
-        if dialog.ShowModal() != wx.ID_OK:
+        if dialog.ShowModal() != wx.ID_OK or not current():
             return
         sources = tuple(Path(value) for value in dialog.GetPaths())
     finally:
@@ -26,26 +37,36 @@ def convert_selected_documents(frame):
         except Exception as exc:
             frame.report(f'Could not choose installed OCR models: {exc}')
             return
-        if config is None:
+        if config is None or not current():
             return
         languages = tuple(config.languages.split('+'))
     destination = wx.DirDialog(frame, 'Choose the folder for new reading text and provenance reports')
     try:
-        if destination.ShowModal() != wx.ID_OK:
+        if destination.ShowModal() != wx.ID_OK or not current():
             return
         root = Path(destination.GetPath())
     finally:
         destination.Destroy()
 
+    if not current():
+        return
+
+    def stopped():
+        return cancel_event.is_set() or not current()
+
     def run():
-        converter = ConversionService(root, input_roots=tuple(dict.fromkeys(source.parent for source in sources)))
+        if stopped():
+            raise InterruptedError('Document conversion selection is no longer active.')
+        converter = ConversionService(root,
+            input_roots=tuple(dict.fromkeys(source.parent for source in sources)),
+            broker=ResourceBroker.for_app(library_root))
         completed = []
         for index, source in enumerate(sources, 1):
-            if frame.cancel_event.is_set():
+            if stopped():
                 raise InterruptedError('Conversion stopped. Completed derivative files remain in the chosen folder.')
             name = re.sub(r'[^\w .-]', '_', source.stem, flags=re.UNICODE).strip(' .')[:100] or 'document'
             result = converter.extract(source, f'{index:04d}-{name}-reading.txt',
-                                       cancelled=frame.cancel_event.is_set, ocr_languages=languages)
+                                       cancelled=stopped, ocr_languages=languages)
             completed.append(f'{source.name}\nReading text: {result.path}\nProvenance: {result.report_path}')
         return '\n\n'.join(completed)
 

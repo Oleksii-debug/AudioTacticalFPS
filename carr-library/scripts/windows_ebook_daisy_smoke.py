@@ -221,8 +221,38 @@ def run_native(source, report, checkpoint):
                     check('recorded cues retain the exact imported source interval count',
                           overlay.session.page == original_page
                           and len(overlay.session.chapter.cues) == len(source_proof['intervals']))
+                    native_events = []
+                    actual_open = overlay.player._mci_open
+                    def observed_open(path):
+                        event = {'operation': 'open', 'api': 'mciSendCommandW',
+                                 'filename_utf16_units': len(str(path).encode('utf-16-le')) // 2,
+                                 'suffix': Path(path).suffix}
+                        try:
+                            result = actual_open(path)
+                        except BaseException as error:
+                            event['error'] = type(error).__name__ + ': ' + str(error)[:512]
+                            if len(native_events) < 24:
+                                native_events.append(event)
+                            raise
+                        event['ok'] = True
+                        if len(native_events) < 24:
+                            native_events.append(event)
+                        return result
+                    overlay.player._mci_open = observed_open
                     press(button(overlay.dialog, 'Play from selected segment'))
-                    pump(lambda: overlay.player.state == 'playing' and overlay.player.position_seconds > .03)
+                    try:
+                        pump(lambda: overlay.player.state == 'playing' and overlay.player.position_seconds > .03)
+                    except BaseException as exc:
+                        diagnostic = {'busy': overlay.busy, 'closed': overlay.closed,
+                            'cancelled': overlay.stopped(), 'mci_open': overlay.player._open,
+                            'status': overlay.status.GetValue()[:2048], 'native_events': native_events}
+                        for name in ('state', 'position_seconds', 'duration_seconds'):
+                            try:
+                                diagnostic[name] = getattr(overlay.player, name)
+                            except BaseException as error:
+                                diagnostic[name] = type(error).__name__ + ': ' + str(error)[:512]
+                        raise RuntimeError('Recorded EPUB playback did not advance: ' +
+                            json.dumps(diagnostic, sort_keys=True)) from exc
                     check('real WinMM/MCI endpoint is playing prepared recorded PCM', overlay.player._open)
                     press(button(overlay.dialog, 'Pause recorded audio'))
                     pump(lambda: overlay.player.state == 'paused')

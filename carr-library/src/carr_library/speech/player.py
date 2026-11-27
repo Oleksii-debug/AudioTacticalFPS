@@ -21,6 +21,18 @@ from .output_devices import OutputDevice, verify_output_device
 from ..audio.process import native_audio_environment
 
 
+class _MciOpenParameters(ctypes.Structure):
+    # mmsystem.h includes mciapi.h under pshpack1.h, including on Windows x64.
+    _pack_ = 1
+    _fields_ = [
+        ('dwCallback', ctypes.c_size_t),
+        ('wDeviceID', ctypes.c_uint),
+        ('lpstrDeviceType', ctypes.c_wchar_p),
+        ('lpstrElementName', ctypes.c_wchar_p),
+        ('lpstrAlias', ctypes.c_wchar_p),
+    ]
+
+
 class WavePlayer:
     def __init__(self, *, clock=time.monotonic):
         self.path = None
@@ -385,6 +397,21 @@ class WavePlayer:
     def skip_forward(self):
         return self.skip(self._skip_intervals[1])
 
+    def _mci_open(self, path):
+        """Open the admitted Unicode filename as a typed MCI element."""
+        parameters = _MciOpenParameters(
+            0, 0, 'waveaudio', str(path), self._alias)
+        send = ctypes.windll.winmm.mciSendCommandW
+        send.argtypes = (ctypes.c_uint, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t)
+        send.restype = ctypes.c_uint
+        # MCI_WAIT | MCI_OPEN_ELEMENT | MCI_OPEN_ALIAS | MCI_OPEN_TYPE.
+        # Keep filenames out of the legacy command-string parser; no device or
+        # pathname fallback is admitted if this exact element cannot be opened.
+        code = send(0, 0x0803, 0x0002 | 0x0200 | 0x0400 | 0x2000,
+                    ctypes.addressof(parameters))
+        if code:
+            raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')
+
     def _mci(self, command):
         buffer = ctypes.create_unicode_buffer(1024)
         library = ctypes.windll.winmm
@@ -495,7 +522,7 @@ class WavePlayer:
                 self.backend = 'Windows waveOut'
             elif os.name == 'nt':
                 selected = self._verify_output_route()
-                self._mci(f'open "{transport}" type waveaudio alias {self._alias}')
+                self._mci_open(transport)
                 self._open = True
                 self._mci(f'set {self._alias} time format milliseconds')
                 if selected is not None:

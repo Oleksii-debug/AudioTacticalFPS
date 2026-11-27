@@ -155,7 +155,7 @@ def _prepared(relative, value):
         fields = {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'}
         if (type(schema) is not int or schema != 1
                 or not fields <= set(value)
-                or set(value) - fields - {'restore_requires_revalidation', 'audio_runtime_manifest_sha256', 'dordiai'}
+                or set(value) - fields - {'restore_requires_revalidation', 'audio_runtime_manifest_sha256', 'dordiai', 'voice_preferences'}
                 or type(value.get('restore_requires_revalidation', False)) is not bool
                 or any(not isinstance(value[key], list) or len(value[key]) > 100
                        for key in ('piper', 'voice_helpers', 'music_models'))):
@@ -164,6 +164,9 @@ def _prepared(relative, value):
         validate_audio_runtime_binding(value)
         if 'dordiai' in value:
             validate_dordiai_configuration(value['dordiai'])
+        if 'voice_preferences' in value:
+            from .runtime_settings import validate_voice_preferences
+            validate_voice_preferences(value['voice_preferences'])
         # Keep original paths/hashes as evidence; do not resolve an executable
         # or model on the previous machine during backup or restoration.
         return {**value, 'restore_requires_revalidation': True}

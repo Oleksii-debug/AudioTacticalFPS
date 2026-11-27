@@ -341,6 +341,22 @@ def run_native(report, phase):
             app.Yield()
             if failures:
                 raise failures[0]
+            # Persist only booleans/counts before the compound assertion. Never
+            # serialize a review, passphrase, reference contents or private paths.
+            report['destroyed_inspection'] = {
+                'inspection_returned': prepared.is_set(),
+                'worker_finished': finished.is_set(),
+                'owner_closed': closing.closed,
+                'native_destroyed': closing.destroyed,
+                'review_retained': closing.review is not None,
+                'removal_review_retained': closing.removal_review is not None,
+                'cancelled': closing.cancelled.is_set(),
+                'ui_busy': closing.busy,
+                'generation': closing.generation,
+                'private_stage_count': len(tuple(base.glob('.voice-protected-import-*'))),
+                'resource_lease_count': len(closing.lifecycle.broker.snapshot()['leases']),
+            }
+            phase('destroyed-inspection-settled')
             check('the completed worker cannot revive a destroyed review or retain plaintext',
                   finished.is_set() and closing.review is None
                   and not list(base.glob('.voice-protected-import-*'))

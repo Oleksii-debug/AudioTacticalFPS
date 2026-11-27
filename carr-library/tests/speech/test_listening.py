@@ -53,6 +53,7 @@ def reader(tmp_path, monkeypatch):
     # their unchanged real child processes against genuine local PCM files.
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
     player._mci = driver
+    player._mci_open = lambda path: driver(f'open "{path}" type waveaudio alias {player._alias}')
     player.play(source)
     player.stop()
     yield SimpleNamespace(player=player, driver=driver, source=source, directory=directory,

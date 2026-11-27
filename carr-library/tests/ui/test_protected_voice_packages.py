@@ -378,3 +378,90 @@ def test_completed_inspection_from_replaced_library_is_not_adopted(view):
     host.finish()
     assert c.review is None and not c.rights.GetValue()
     assert [call[0] for call in host.calls] == ['inspect']
+
+
+@pytest.mark.parametrize('closing', ['close', 'destroy'])
+def test_already_adopted_protected_review_is_revoked_before_owner_cleanup(view, closing):
+    host, c = view, view.controller
+    inspect_ready(host)
+    assert c.review is host.review
+    generation = c.generation
+    if closing == 'close':
+        c.close()
+    else:
+        c.dialog.Destroy()
+    assert c.closed and c.cancelled.is_set()
+    assert c.review is None and c.removal_review is None
+    assert c.generation == generation + 1
+    assert not c._protected_current() and c._protected_cancelled()
+    # These handlers must refuse on Python authority before any deleted control.
+    assert c.inspect_protected() is False
+    assert c.apply_protected() is False
+    assert c.export_protected() is False
+    assert [call[0] for call in host.calls] == ['inspect']
+    c.close(destroying=True)
+    assert c.generation == generation + 1
+
+
+def test_deferred_native_destroy_revokes_a_result_adopted_before_its_event(view, monkeypatch):
+    host, c = view, view.controller
+    assert c.inspect_protected()
+    assert host.queued.wait(5)
+    destroy_now, deferred = c.dialog.Destroy, []
+
+    def request_destroy():
+        # wx may defer the native destructor until its current callback returns.
+        deferred.append(destroy_now)
+        return True
+
+    monkeypatch.setattr(c.dialog, 'Destroy', request_destroy)
+    c.dialog.Destroy()
+    assert not c.destroyed and not c.closed and len(deferred) == 1
+    host.finish()
+    assert c.review is host.review  # Faithfully expose the formerly missed order.
+    generation = c.generation
+    deferred.pop()()
+    assert c.destroyed and c.closed and c.dialog.destroy_count == 1
+    assert c.review is None and c.removal_review is None
+    assert c.generation == generation + 1 and c.cancelled.is_set()
+    assert c.apply_protected() is False
+    assert [call[0] for call in host.calls] == ['inspect']
+
+
+@pytest.mark.parametrize('closing', ['close', 'destroy'])
+def test_completed_removal_approval_is_revoked_on_the_same_owner_close(view, closing):
+    host, c = view, view.controller
+    review = SimpleNamespace(settings_revision=1, summary=lambda: 'Synthetic removal review')
+    main = threading.get_ident()
+
+    def removal(profile, *, delete_files, cancelled):
+        assert threading.get_ident() != main
+        assert profile == 'fixture' and delete_files is False and not cancelled()
+        return review
+
+    host.lifecycle.review_removal = removal
+    c.profile.ChangeValue('fixture')
+    c.removal_mode.SetSelection(0)
+    c.review_removal()
+    host.finish()
+    assert c.removal_review is review
+    generation = c.generation
+    if closing == 'close':
+        c.close()
+    else:
+        c.dialog.Destroy()
+    assert c.closed and c.review is None and c.removal_review is None
+    assert c.generation == generation + 1 and c.cancelled.is_set()
+
+
+def test_child_destroy_event_does_not_revoke_the_live_owner_review(view):
+    host, c = view, view.controller
+    inspect_ready(host)
+    generation = c.generation
+    skipped = []
+    event = SimpleNamespace(GetId=lambda: c.profile.id, Skip=lambda: skipped.append(True),
+        GetEventObject=lambda: pytest.fail('Do not query a dying child wrapper.'))
+    c._destroyed(event)
+    assert skipped == [True]
+    assert not c.closed and not c.destroyed and not c.cancelled.is_set()
+    assert c.generation == generation and c.review is host.review

@@ -7,7 +7,8 @@ It creates no persistent index, changes no search budget, and reads no existing
 user library.
 
 This is a measurement tool. A completed report is **not a performance
-acceptance verdict**. This source change has no recorded execution result yet.
+acceptance verdict**. The [2026-11-27 measured results](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md)
+retain complete Linux samples and explicitly incomplete Windows 50,000-page setup.
 
 ## Run a bounded experiment
 

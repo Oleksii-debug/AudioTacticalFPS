@@ -1,9 +1,10 @@
 """Explicit local engine configuration; no installers, remote fallback or secrets."""
+import json
 import os
 from pathlib import Path, PureWindowsPath
 import re
 
-from .durable_state import atomic_json, read_json, state_lock
+from .durable_state import MAX_JSON_BYTES, atomic_json, read_json, state_lock
 
 
 _FIELDS = {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'}
@@ -13,6 +14,193 @@ _RUNTIME_SEAL = 'audio_runtime_manifest_sha256'
 
 def settings_path(state_root):
     return Path(state_root) / 'audio' / 'engines.json'
+
+
+def _bounded_preference_json(value):
+    # Count bounded encoder chunks before accepting the aggregate. Thousands of
+    # short Unicode IDs must not bypass the existing durable JSON byte ceiling.
+    size = 1  # the existing atomic writer's terminating newline
+    encoder = json.JSONEncoder(ensure_ascii=False, allow_nan=False, separators=(',', ':'))
+    for chunk in encoder.iterencode(value):
+        size += len(chunk.encode('utf-8', errors='strict'))
+        if size > MAX_JSON_BYTES:
+            raise ValueError('Saved voice preferences exceed the existing engine JSON byte budget.')
+
+
+def validate_voice_preferences(value):
+    """Validate inert references to installed voices, without opening an engine.
+
+    Defaults use exact canonical language tags. A saved voice ID is neither an
+    installed model nor proof of a voice's language or acoustic quality.
+    """
+    from .language_qualification.catalog import canonical_language_tag
+
+    if (type(value) is not dict or set(value) != {'favorites', 'defaults', 'profiles'}
+            or type(value['favorites']) is not list or len(value['favorites']) > 10000
+            or type(value['defaults']) is not dict or len(value['defaults']) > 512
+            or type(value['profiles']) is not dict or len(value['profiles']) > 256):
+        raise ValueError('Invalid or excessive saved voice preferences.')
+
+    def text(item, maximum):
+        if (type(item) is not str or not item.strip() or len(item) > maximum
+                or any(ord(character) < 32 or 127 <= ord(character) < 160 for character in item)):
+            raise ValueError('Invalid saved voice preference text.')
+        item.encode('utf-8', errors='strict')
+        return item
+
+    favorites = [text(item, 2048) for item in value['favorites']]
+    if len(favorites) != len(set(favorites)):
+        raise ValueError('A favorite voice must not be listed twice.')
+    defaults = {}
+    for language, identity in value['defaults'].items():
+        language = canonical_language_tag(language)
+        if language in defaults:
+            raise ValueError('A language must have only one default voice.')
+        defaults[language] = text(identity, 2048)
+    profiles, names = {}, set()
+    for name, profile in value['profiles'].items():
+        text(name, 80)
+        if name != name.strip() or name.casefold() in names:
+            raise ValueError('Use distinct, unambiguous voice profile names.')
+        names.add(name.casefold())
+        if type(profile) is not dict or set(profile) != {'voice_id', 'language', 'rate', 'volume'}:
+            raise ValueError('A voice profile needs its exact voice, language, rate and volume.')
+        if (type(profile['rate']) is not int or not -10 <= profile['rate'] <= 10
+                or type(profile['volume']) is not int or not 0 <= profile['volume'] <= 100):
+            raise ValueError('Choose a voice rate from -10 to 10 and volume from 0 to 100.')
+        profiles[name] = {**profile, 'voice_id': text(profile['voice_id'], 2048),
+                         'language': canonical_language_tag(profile['language'])}
+    result = {'favorites': favorites, 'defaults': defaults, 'profiles': profiles}
+    _bounded_preference_json(result)
+    return result
+
+
+def resolve_voice_preference(voices, preferences, *, language, voice_id='', profile=''):
+    """Resolve an explicit choice through the current registry, never a fallback.
+
+    Callers copy this result into their existing immutable reader/book/project
+    settings. Saving preferences cannot rewrite an already reviewed job.
+    """
+    from .language_qualification.catalog import canonical_language_tag
+
+    preferences = validate_voice_preferences(preferences)
+    language = canonical_language_tag(language)
+    if type(voice_id) is not str or type(profile) is not str:
+        raise ValueError('Choose an explicit voice ID or a saved profile name.')
+    if profile:
+        try:
+            selection = dict(preferences['profiles'][profile])
+        except KeyError as exc:
+            raise ValueError('The selected voice profile is unavailable; reload preferences.') from exc
+        if selection['language'] != language or voice_id and voice_id != selection['voice_id']:
+            raise ValueError('The selected profile belongs to a different voice or exact language.')
+    else:
+        identity = voice_id or preferences['defaults'].get(language)
+        if not identity:
+            raise ValueError('No default is saved for this exact language; choose an installed voice.')
+        selection = {'voice_id': identity, 'language': language, 'rate': 0, 'volume': 100}
+    available = {voice.id: voice for voice in voices}
+    voice = available.get(selection['voice_id'])
+    if voice is None:
+        raise ValueError('The saved voice is not installed or available. Choose a voice explicitly; no substitute was used.')
+    try:
+        declared = canonical_language_tag(voice.language, adapter_underscores=True)
+    except ValueError as exc:
+        raise ValueError('This voice has no usable exact language declaration.') from exc
+    if declared != language:
+        raise ValueError('The voice does not declare this exact language, script and region; no language fallback was used.')
+    if (selection['rate'] != 0 and 'rate' not in voice.capabilities
+            or selection['volume'] != 100 and 'volume' not in voice.capabilities):
+        raise ValueError('The installed voice does not support the saved profile controls.')
+    return selection
+
+
+def _voice_preferences(value):
+    return validate_voice_preferences(value.get('voice_preferences',
+        {'favorites': [], 'defaults': {}, 'profiles': {}}))
+
+
+def load_voice_preferences(state_root):
+    """Read inert exact-ID preferences without resolving or starting an engine."""
+    return _voice_preferences(load_settings(state_root))
+
+
+def save_voice_preferences(state_root, value, *, expected, cancelled=None,
+                           guard=lambda: None):
+    """CAS-update only passive preferences under the existing engine-state lock.
+
+    A preference save cannot clear a restore marker, change a runtime seal or
+    authorize an unavailable engine. All other declarations remain untouched.
+    """
+    value = validate_voice_preferences(value)
+    expected = validate_voice_preferences(expected)
+    cancelled = _review_cancellation(cancelled)
+
+    def check():
+        _check_review(cancelled)
+        guard()
+
+    check()
+    path = settings_path(state_root)
+    with state_lock(path.parent, 'engines'):
+        check()
+        current = load_settings(state_root)
+        if _voice_preferences(current) != expected:
+            raise ValueError('Voice preferences changed in another window. Reload them before saving.')
+        candidate = _settings_document({**current, 'voice_preferences': value})
+        _bounded_preference_json(candidate)
+        check()
+        atomic_json(path, candidate, replace=os.path.lexists(path))
+    return value
+
+
+def review_voice_preference(state_root, registry, preferences, *, language,
+                            voice_id='', profile='', cancelled=None,
+                            guard=lambda: None, registry_factory=None):
+    """Review against fresh inventory without replacing the reader's registry.
+
+    The optional factory is an internal dependency, never a saved declaration.
+    The review owns that fresh registry; the reader retains its borrowed one.
+    A changed/missing voice requires an explicit reader reload, never fallback.
+    """
+    from .speech import VoiceRegistry
+
+    if not isinstance(registry, VoiceRegistry):
+        raise ValueError('Use the reader\'s current local voice registry.')
+    cancelled = _review_cancellation(cancelled)
+
+    def check():
+        _check_review(cancelled)
+        guard()
+
+    check()
+    expected = load_settings(state_root)
+    if expected.get(_RESTORE, False):
+        raise ValueError('Restored local engine settings require explicit revalidation before selecting a voice.')
+    _require_supported_voice_declarations(expected)
+    factory = registry_factory or (lambda: voice_registry(state_root))
+    fresh = factory()
+    if fresh is registry:
+        raise ValueError('Voice review requires an independently owned fresh inventory.')
+    if not isinstance(fresh, VoiceRegistry):
+        raise ValueError('Use the existing local voice registry for preference review.')
+    try:
+        check()
+        selection = resolve_voice_preference(fresh.voices(), preferences,
+            language=language, voice_id=voice_id, profile=profile)
+        # A fresh inventory validates today's registration. Do not hand its
+        # selection to a reader still bound to another provider/model snapshot.
+        identity = selection['voice_id']
+        reviewed = fresh.fingerprint(identity)
+        current = registry.fingerprint(identity)
+        if reviewed != current:
+            raise ValueError('The selected voice changed. Reload reader voices before using its preferences.')
+        check()
+        if load_settings(state_root) != expected:
+            raise ValueError('Local engine settings changed during voice review. Reload before selecting.')
+        return selection
+    finally:
+        fresh.close()
 
 
 def validate_dordiai_configuration(value):
@@ -127,13 +315,15 @@ def validate_audio_runtime_binding(value):
 
 
 def _settings_document(value):
-    if (type(value) is not dict or set(value) - _FIELDS - {_RESTORE, _RUNTIME_SEAL, 'dordiai'}
+    if (type(value) is not dict or set(value) - _FIELDS - {_RESTORE, _RUNTIME_SEAL, 'dordiai', 'voice_preferences'}
             or not _FIELDS <= set(value) or type(value['schema']) is not int
             or value['schema'] != 1
             or (_RESTORE in value and type(value[_RESTORE]) is not bool)):
         raise ValueError('Unsupported local engine configuration.')
     if 'dordiai' in value:
         validate_dordiai_configuration(value['dordiai'])
+    if 'voice_preferences' in value:
+        validate_voice_preferences(value['voice_preferences'])
     for key in ('ffmpeg', 'ffprobe'):
         if value[key] is not None:
             _declared_path(value[key])
@@ -308,6 +498,12 @@ def save_settings(state_root, value, *, cancelled=None, expected_settings=None):
     _check_review(cancelled)
     value = _settings_document(value)
     previous = load_settings(state_root) if expected_settings is None else _settings_document(expected_settings)
+    if ('voice_preferences' in value
+            and _voice_preferences(value) != _voice_preferences(previous)):
+        raise ValueError('Voice preferences changed. Reload engine settings before saving; '
+                         'edit preferences in the voice preferences dialog.')
+    if 'voice_preferences' in previous:
+        value = {**value, 'voice_preferences': _voice_preferences(previous)}
     _require_supported_voice_declarations(value)
     from .audio.models import LocalModelConfig
     from .audio.music import validate_model

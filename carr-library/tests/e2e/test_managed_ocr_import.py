@@ -30,6 +30,15 @@ from carr_library.ingest.worker import load_request
 GROUND_TRUTH = 'Managed import evidence'
 
 
+def assert_manual_config(saved, config):
+    """Manual OCR preserves the historical serialized request identity."""
+    expected = asdict(config)
+    assert expected.pop('automatic_languages') is False
+    assert 'automatic_languages' not in saved
+    assert saved == expected
+    assert Config(**saved) == config
+
+
 @pytest.fixture
 def managed_import(tmp_path, monkeypatch):
     runtime = discover_ocr_runtime('eng')
@@ -63,7 +72,7 @@ def managed_import(tmp_path, monkeypatch):
     workspace = app.create_workspace('Managed OCR synthetic acceptance')
     config = Config(languages='eng', model_profile='fast', dpi=200, timeout=60)
     planned = app.plan_import_batch(workspace, [source], config=config)
-    assert planned['config'] == asdict(config)
+    assert_manual_config(planned['config'], config)
     return app, workspace, source, original, selected, config, planned
 
 
@@ -83,7 +92,7 @@ def quarantine(managed_import):
     assert app.browse(workspace) == ()
     request_id = planned['rows'][0]['request_id']
     request = load_request(app.root, request_id)
-    assert request['config'] == asdict(config)
+    assert_manual_config(request['config'], config)
     assert request['state'] == 'quarantined'
     records = checkpoint(app, result['id'])
     assert len(records) == 1
@@ -99,7 +108,7 @@ def quarantine(managed_import):
     assert payload['provenance']['asset_sha256'] == sha256(original).hexdigest()
     with sqlite3.connect(app.root / 'imports.sqlite') as db:
         settings = json.loads(db.execute('SELECT config FROM job WHERE id=?', (result['id'],)).fetchone()[0])
-    assert settings['config'] == asdict(config)
+    assert_manual_config(settings['config'], config)
     assert settings['runtime_identity']['ocr']['managed_models'] == selected.fingerprint()
     assert source.read_bytes() == original
     return request_id, result['id'], records
@@ -111,7 +120,7 @@ def test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_sour
 
     reopened = LibraryApp(app.root)
     restored = reopened.import_batch(workspace, planned['batch_id'])
-    assert restored['config'] == asdict(config)
+    assert_manual_config(restored['config'], config)
     assert restored['counts']['quarantined'] == 1
     assert restored['rows'][0]['request_id'] == request_id
     # Starting a saved batch is not permission to approve a quarantined page.
@@ -129,7 +138,7 @@ def test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_sour
     completed = reopened.run_import_batch(workspace, planned['batch_id'], retry_failed=True, timeout=120)
     assert completed['counts']['complete'] == 1, completed['rows'][0]['result']
     assert completed['counts']['quarantined'] == completed['counts']['failed'] == 0
-    assert completed['config'] == asdict(config)
+    assert_manual_config(completed['config'], config)
     assert completed['rows'][0]['result']['id'] == job
     assert completed['rows'][0]['result']['isolated'] is True
     for key in ('row_id', 'work_id', 'edition_id', 'request_id'):
@@ -168,7 +177,7 @@ def test_tampered_managed_model_blocks_reviewed_resume_without_publication(manag
     assert refused['counts']['failed'] == 1, refused['rows'][0]['result']
     assert refused['counts']['complete'] == 0
     assert refused['rows'][0]['result']['isolated'] is True
-    assert refused['config'] == asdict(config)
+    assert_manual_config(refused['config'], config)
     assert 'fingerprint' in refused['rows'][0]['message'].lower()
     assert reopened.browse(workspace) == () and reopened.search(workspace, 'Managed') == ()
     with reopened.read(workspace) as db:

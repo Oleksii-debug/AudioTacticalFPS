@@ -97,6 +97,26 @@ def main():
                 assert not dialog.cancel.IsEnabled()
                 assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
                 assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+                # Every control remains reachable at the documented minimum size.
+                # Status and Cancel/Close stay outside the scrolling form.
+                dialog.SetSize((800, 650))
+                dialog.Layout()
+                wx.YieldIfNeeded()
+                assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
+                assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+                assert dialog.form.GetVirtualSize().height > dialog.form.GetClientSize().height
+                dialog.details.SetFocus()
+                wx.YieldIfNeeded()
+                assert wx.Window.FindFocus() is dialog.details
+                assert dialog.form.GetViewStart()[1] > 0
+                assert dialog.details.GetScreenRect().Intersects(dialog.form.GetScreenRect())
+                for control in (dialog.status, dialog.cancel, dialog.FindWindow(wx.ID_CANCEL)):
+                    assert control.GetParent() is dialog
+                    assert dialog.GetClientRect().Contains(control.GetRect())
+                dialog.SetSize((920, 760))
+                dialog.Layout()
+                dialog.collection.SetFocus()
+                wx.YieldIfNeeded()
                 dialog.plan((sources,))
                 assert dialog.busy and dialog.cancel.IsEnabled()
                 wx.CallLater(50, poll, planned)

@@ -67,7 +67,7 @@ class WindowsBundleTests(unittest.TestCase):
         for name in ("LOCAL_AUDIO_RUNTIME_SETUP.md", "LARGE_SOURCE_PROFILES.md",
                      "SEARCH_PAGINATION.md", "SOURCE_WINDOW_PAGINATION.md",
                      "PROTECTED_VOICE_PACKAGES.md", "recording.md", "recording_monitoring.md",
-                     "PORTABLE_SNAPSHOTS.md", "SYNC_DEPENDENCIES.md"):
+                     "PORTABLE_SNAPSHOTS.md", "SYNC_DEPENDENCIES.md", "VOICE_PREFERENCES.md"):
             with self.subTest(guide=name):
                 expected = (ROOT / "docs" / name).read_bytes()
                 actual = self.output / "guides" / name

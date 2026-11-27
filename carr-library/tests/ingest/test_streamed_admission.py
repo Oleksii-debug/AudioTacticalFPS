@@ -171,3 +171,271 @@ def test_large_publication_hint_uses_only_its_exact_frozen_text_allowance(tmp_pa
     manifest['mime'] = 'application/pdf'
     with pytest.raises(ValueError):
         worker.validate_publication_candidate_document(request)
+
+
+def prepared_ordinary_document(tmp_path):
+    from docx import Document
+    app = LibraryApp(tmp_path / 'ordinary-library')
+    workspace = app.create_workspace('Selected ordinary document')
+    source = tmp_path / 'Ordinary source.docx'
+    document = Document()
+    document.add_paragraph('Exact ordinary source with retained document bytes.')
+    document.save(source)
+    raw = source.read_bytes()
+    metadata = dict(title='Ordinary source', authors=[], language=None, edition=None,
+                    volume=None, collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
+    request = worker.prepare_request(app.root, workspace, source, metadata, Config())
+    assert request['version'] == 1 and 'source_profile' not in request
+    return app, workspace, source, request, raw
+
+
+@pytest.mark.parametrize('suffix', ['.pdf', '.docx', '.epub'])
+def test_ordinary_parser_refuses_impossible_policy_before_opening_source(
+        tmp_path, monkeypatch, suffix):
+    app = LibraryApp(tmp_path / 'ordinary-admission')
+    workspace = app.create_workspace('Ordinary admission')
+    missing = tmp_path / ('never opened' + suffix)
+    broker = ResourceBroker.for_app(app.root)
+    previous = broker.limits
+    broker.configure(replace(previous, memory_bytes=512 * 1024**2 - 1))
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('Ordinary parser bypassed admission.'))
+    try:
+        with pytest.raises(ResourceUnavailable):
+            app.import_file(workspace, missing)
+    finally:
+        broker.configure(previous)
+    assert not missing.exists() and app.browse(workspace) == ()
+    assert tuple(app.assets_dir.iterdir()) == ()
+    requests = app.import_requests(workspace)
+    assert len(requests) == 1 and requests[0]['state'] == 'pending'
+    request = worker.load_request(app.root, requests[0]['request_id'])
+    assert request['version'] == 1 and 'source_profile' not in request
+    assert broker.snapshot()['leases'] == []
+
+
+def test_real_ordinary_parser_and_publication_share_one_lease_but_replay_needs_none(
+        tmp_path, monkeypatch):
+    from carr_library.catalog.intake import MAX_BYTES
+    app, workspace, source, request, raw = prepared_ordinary_document(tmp_path)
+    broker = ResourceBroker.for_app(app.root)
+    actual_invoke, actual_settle = worker._invoke, worker._settle_request
+    launched, settlements = [], []
+
+    def invoke(message, **kwargs):
+        active = broker.snapshot()['leases']
+        assert len(active) == 1
+        lease = active[0]
+        assert lease['operation_id'] == 'document:' + request['request_id']
+        assert lease['request']['cpu_slots'] == 1
+        assert lease['request']['memory_bytes'] == 512 * 1024**2
+        assert lease['request']['disk_bytes'] == 10 * MAX_BYTES + 128 * 1024**2
+        # Existing ordinary payload/schema is retained; no streamed authority.
+        assert set(message) == {'data_dir', 'request_id', 'timeout'}
+        launched.append(lease['id'])
+        result = actual_invoke(message, **kwargs)
+        assert broker.snapshot()['leases'][0]['id'] == lease['id']
+        return result
+
+    def settle(*args, **kwargs):
+        settlements.append(tuple(row['id'] for row in broker.snapshot()['leases']))
+        return actual_settle(*args, **kwargs)
+
+    monkeypatch.setattr(worker, '_invoke', invoke)
+    monkeypatch.setattr(worker, '_settle_request', settle)
+    result = app.resume_import(workspace, request['request_id'])
+    assert result['state'] == 'complete' and result['isolated'] is True
+    assert len(launched) == 1 and settlements == [(launched[0],)]
+    assert source.read_bytes() == raw and len(app.browse(workspace)) == 1
+    stored = worker.load_request(app.root, request['request_id'])
+    assert stored['version'] == 1 and 'source_profile' not in stored
+    assert broker.snapshot()['leases'] == []
+    with app.read(workspace) as db:
+        assert db.execute('SELECT request_id FROM import_publication WHERE revision=?',
+                          (result['id'],)).fetchone()[0] == request['request_id']
+
+    # Verified terminal replay is read/reconciliation work, with no new parser
+    # and no reservation even when the operator has since lowered capacity.
+    previous = broker.limits
+    broker.configure(replace(previous, memory_bytes=1))
+    try:
+        recovered = app.resume_import(workspace, request['request_id'])
+    finally:
+        broker.configure(previous)
+    assert recovered == result
+    assert len(launched) == 1 and settlements == [(launched[0],), ()]
+    assert broker.snapshot()['leases'] == []
+    assert source.read_bytes() == raw and len(app.browse(workspace)) == 1
+
+
+def test_ordinary_request_change_after_admission_starts_no_parser(tmp_path, monkeypatch):
+    app, workspace, source, request, raw = prepared_ordinary_document(tmp_path)
+    actual = ResourceBroker.reserve
+
+    @contextmanager
+    def changed(self, *args, **kwargs):
+        with actual(self, *args, **kwargs) as lease:
+            record = worker.load_request(app.root, request['request_id'])
+            record['metadata']['title'] = 'Changed after resource admission'
+            worker._store(app.root, request['request_id'], record)
+            yield lease
+
+    monkeypatch.setattr(ResourceBroker, 'reserve', changed)
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('Changed ordinary request reached parsing.'))
+    with pytest.raises(ValueError, match='changed while waiting'):
+        app.resume_import(workspace, request['request_id'])
+    assert source.read_bytes() == raw and app.browse(workspace) == ()
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
+
+
+def test_ordinary_waiting_cancel_never_opens_source_or_releases_another_operation(
+        tmp_path, monkeypatch):
+    from carr_library.operations import ResourceRequest
+    app = LibraryApp(tmp_path / 'ordinary-waiting')
+    workspace = app.create_workspace('Waiting ordinary source')
+    missing = tmp_path / 'not opened.pdf'
+    broker = ResourceBroker.for_app(app.root)
+    previous = broker.limits
+    broker.configure(replace(previous, cpu_slots=1))
+    waiting = []
+    original_reason = ResourceBroker._reason
+
+    def observed_reason(self, request, volumes, active, limits):
+        reason = original_reason(self, request, volumes, active, limits)
+        if reason == 'cpu_slots':
+            waiting.append(True)
+        return reason
+
+    monkeypatch.setattr(ResourceBroker, '_reason', observed_reason)
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('Cancelled ordinary request started parsing.'))
+    try:
+        with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='existing:heavy') as owner:
+            result = app.import_file(workspace, missing, cancelled=lambda: bool(waiting))
+            assert waiting and result['state'] == 'cancelled' and result['isolated'] is True
+            active = broker.snapshot()['leases']
+            assert len(active) == 1 and active[0]['id'] == owner.id
+            assert active[0]['operation_id'] == 'existing:heavy'
+            record = worker.load_request(app.root, result['request_id'])
+            assert record['state'] == 'cancelled' and 'attempt_id' not in record
+    finally:
+        broker.configure(previous)
+    assert not missing.exists() and app.browse(workspace) == ()
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert broker.snapshot()['leases'] == []
+
+
+def test_streamed_cancel_before_admission_revokes_old_candidate_without_republication(tmp_path):
+    app, workspace, source, request, raw = prepared(tmp_path)
+    completed = app.resume_import(workspace, request['request_id'])
+    assert completed['state'] == 'complete'
+    record = worker.load_request(app.root, request['request_id'])
+    assert record['publication_candidate'] is not None
+    old_attempt = record['attempt']
+    record['state'] = 'running'
+    record.pop('result')
+    worker._store(app.root, request['request_id'], record)
+    cancelled = app.resume_import(workspace, request['request_id'], cancelled=lambda: True)
+    current = worker.load_request(app.root, request['request_id'])
+    assert cancelled['state'] == 'cancelled'
+    assert current['attempt'] == current['attempt_id'] != old_attempt
+    assert current['publication_candidate'] is current['publication'] is None
+    assert source.read_bytes() == raw
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('streamed', [False, True], ids=['ordinary', 'streamed'])
+def test_cancelled_admission_does_not_rewrite_a_concurrently_changed_request(
+        tmp_path, monkeypatch, streamed):
+    from carr_library.operations import ResourceRequest
+    factory = prepared if streamed else prepared_ordinary_document
+    app, workspace, source, request, raw = factory(tmp_path)
+    broker = ResourceBroker.for_app(app.root)
+    previous = broker.limits
+    broker.configure(replace(previous, cpu_slots=1))
+    changed = []
+    original_reason = ResourceBroker._reason
+
+    def mutate_when_waiting(self, wanted, volumes, active, limits):
+        reason = original_reason(self, wanted, volumes, active, limits)
+        if reason == 'cpu_slots' and not changed:
+            current = worker.load_request(app.root, request['request_id'])
+            current['metadata']['title'] = 'Concurrent selected request change'
+            worker._store(app.root, request['request_id'], current)
+            changed.append(worker._path(app.root, request['request_id']).read_bytes())
+        return reason
+
+    monkeypatch.setattr(ResourceBroker, '_reason', mutate_when_waiting)
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('Changed cancelled request started a child.'))
+    try:
+        with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='existing:heavy') as owner:
+            with pytest.raises(ValueError, match='changed while waiting'):
+                app.resume_import(workspace, request['request_id'], cancelled=lambda: bool(changed))
+            assert worker._path(app.root, request['request_id']).read_bytes() == changed[0]
+            assert broker.snapshot()['leases'][0]['id'] == owner.id
+    finally:
+        broker.configure(previous)
+    assert source.read_bytes() == raw and app.browse(workspace) == ()
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('streamed', [False, True], ids=['ordinary', 'streamed'])
+def test_cancel_between_lease_polls_preserves_an_actual_committed_publication(
+        tmp_path, monkeypatch, streamed):
+    from threading import Event
+    from carr_library.operations.broker import ResourceLease
+
+    factory = prepared if streamed else prepared_ordinary_document
+    app, workspace, source, request, raw = factory(tmp_path)
+    stopped, committed = Event(), Event()
+    observations, invoked = [], []
+    original_cancelled, original_invoke = ResourceLease.cancelled, worker._invoke
+
+    def cancellation_between_polls(self):
+        result = original_cancelled(self)
+        if committed.is_set() and not result:
+            # The first real lease poll says running. Its following checkpoint
+            # sees the newly set cancellation through the unchanged callback.
+            stopped.set()
+            observations.append(self.id)
+        return result
+
+    def actual_worker_then_late_poll(message, *, timeout, cancelled):
+        invoked.append(message['request_id'])
+        result = original_invoke(message, timeout=timeout, cancelled=cancelled)
+        assert result['state'] == 'complete'
+        current = worker.load_request(app.root, request['request_id'])
+        assert current['publication_candidate'] is not None
+        with app.read(workspace) as db:
+            assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        # The real child has committed and been reaped. Exercise the same live
+        # callback before returning its terminal outcome; no fake SQL receipt
+        # or substitute publication is used to model this cancellation window.
+        committed.set()
+        assert cancelled() is True
+        return {'state': 'cancelled', 'message': 'Stop arrived after the real publication.'}
+
+    monkeypatch.setattr(ResourceLease, 'cancelled', cancellation_between_polls)
+    monkeypatch.setattr(worker, '_invoke', actual_worker_then_late_poll)
+    result = app.resume_import(workspace, request['request_id'], cancelled=stopped.is_set)
+    current = worker.load_request(app.root, request['request_id'])
+    assert stopped.is_set() and len(observations) == 1
+    assert invoked == [request['request_id']]
+    assert result['state'] == current['state'] == 'complete'
+    assert result['worker_terminal_state'] == 'cancelled'
+    assert result['publication_recovered'] is True and result['reconciled'] is True
+    assert current['publication_candidate'] is not None or current['publication'] is not None
+    assert source.read_bytes() == raw
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
+    # A terminal reopen proves the persisted result without another child.
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('A committed request launched twice.'))
+    assert app.resume_import(workspace, request['request_id']) == result
