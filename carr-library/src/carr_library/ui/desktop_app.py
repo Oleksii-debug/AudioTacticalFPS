@@ -13,7 +13,7 @@ from ..application import LibraryApp
 from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export, write_binary_export
+from ..research.export_file import write_export, write_binary_export, export_completion
 from .export_destination import confirm_export_destination
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
@@ -1233,17 +1233,18 @@ class DesktopFrame(WorkspaceFrame):
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
-                writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set, approval=approval)
+                return writer(path,content,private_root=library.root,
+                              cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):
-                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                    message = 'Bibliography exported. Quotations and research notes are not included.'
                 elif format in ('docx', 'html'):
-                    self.report('Research document exported with navigable headings, source citations, '
-                                'and quotations kept separate from research notes.')
+                    message = ('Research document exported with navigable headings, source citations, '
+                               'and quotations kept separate from research notes.')
                 else:
-                    self.report('Topic exported with quotations and research notes kept separate.')
+                    message = 'Topic exported with quotations and research notes kept separate.'
+                self.report(export_completion(message, result))
 
             self.run_job('Exporting verified topic',export,done,
                          lambda error: self.report(f'Export not completed: {error}'))
@@ -1289,7 +1290,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete backup, including unfinished imports')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1302,7 +1303,8 @@ class DesktopFrame(WorkspaceFrame):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
                 'Libraries, retained originals, saved evidence, notes, tags, searches, '
                 'reading state and supported application checkpoints are included. '
-                'Retained pending import inputs and reviews remain pending after restore.\n\n'
+                'Retained pending import inputs and reviews remain pending after restore. '
+                'External engines, model weights, credentials and regenerable audio caches are not copied.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 
@@ -1406,6 +1408,7 @@ class DesktopFrame(WorkspaceFrame):
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Complete backups include retained libraries, supported application checkpoints, pending import inputs, reading positions and bookmarks.\n'
+            'Restoration creates a new folder; external engines and models require a fresh review before transcription resumes.\n'
             'Restored source reviews remain subject to their original authority and receipt checks. Reading menu export/import also supports selective transfer.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 

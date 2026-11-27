@@ -235,6 +235,10 @@ class Dialogs:
             callback, self.during = self.during, None
             callback()
         return self.answer
+    def approve_export(self, parent, path, *, private_root):
+        from carr_library.research.export_file import capture_export_destination
+        return capture_export_destination(path, private_root=private_root)
+
     def path(self, *args, **kwargs):
         if self.during:
             callback, self.during = self.during, None
@@ -365,3 +369,25 @@ def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_pat
     ReadingActions(frame, dialogs=Dialogs(path=target)).import_state()
     assert 'archived' in frame.messages[-1]
     assert state.bookmarks(workspace, book['edition']) == ()
+
+
+def test_reading_state_export_keeps_publication_cleanup_notice(source, tmp_path, monkeypatch):
+    from carr_library.ui import reading_desk as ui
+    from carr_library.research.export_file import ExportReceipt
+    app, workspace, _, desk, _ = source
+    ReadingState(app.root).remember(desk.page(2).location)
+    target = tmp_path / 'completed-reading.json'
+    frame = Frame(app, workspace)
+    actual_writer = ui.write_export
+    notice = 'The export is saved; temporary cleanup needs attention.'
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return ExportReceipt(receipt.path, notice)
+
+    monkeypatch.setattr(ui, 'write_export', completed_with_notice)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_text(encoding='utf-8') == ReadingState(app.root).export_state(workspace)
+    assert len(frame.jobs) == 1
+    assert len(frame.messages) == 1 and notice in frame.messages[0]
+    assert frame.evidence.note == 'Unsaved private note'

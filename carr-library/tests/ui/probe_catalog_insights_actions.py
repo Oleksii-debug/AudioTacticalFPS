@@ -104,6 +104,11 @@ class Dialogs:
             callback()
         return next(self.answers)
 
+    def approve_export(self, parent, path, *, private_root):
+        self._main()
+        from carr_library.research.export_file import capture_export_destination
+        return capture_export_destination(path, private_root=private_root)
+
     def destination(self, parent, format):
         self._main()
         self.destinations.append(format)
@@ -435,6 +440,28 @@ class CatalogInsightsActionsTests(unittest.TestCase):
             actions.export_matrix()
         self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
         self.assertIn('cancelled', self.frame.messages[-1])
+
+    def test_matrix_completion_retains_cleanup_notice_even_after_late_cancel(self):
+        from carr_library.research.export_file import ExportReceipt
+        actual_writer = ui.write_export
+        notice = 'The export is saved; temporary cleanup needs attention.'
+
+        def completed_with_notice(*args, **kwargs):
+            receipt = actual_writer(*args, **kwargs)
+            return ExportReceipt(receipt.path, notice)
+
+        for cancelled in (False, True):
+            with self.subTest(cancelled=cancelled):
+                self.frame.after_worker = self.frame.cancel_event.set if cancelled else None
+                actions, _ = self.actions((0, 0))
+                with patch.object(ui, 'write_export', completed_with_notice):
+                    actions.export_matrix()
+                self.assertEqual(self.frame.errors, [])
+                text = self.destination.read_text(encoding='utf-8')
+                self.assert_private_content_absent(text)
+                self.assertIn(notice, self.frame.messages[-1])
+                self.assertIn('saved before cancellation' if cancelled else 'matrix saved',
+                              self.frame.messages[-1])
 
     def test_matrix_render_cannot_replace_competing_destination_bytes(self):
         from carr_library.research import literature_matrix

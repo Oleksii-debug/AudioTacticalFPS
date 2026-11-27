@@ -410,3 +410,72 @@ def test_model_choice_is_not_applied_after_library_folder_changes(center, monkey
     center.choose_ocr_models()
     assert center.custom_ocr_config is None and center.languages.selection == 3
     assert 'library folder changed' in center.status.value
+
+
+@pytest.mark.parametrize('phase', ['picker', 'confirmation'])
+@pytest.mark.parametrize('change', ['library', 'closing'])
+def test_import_report_rechecks_scope_before_confirmation_and_write(
+        center, tmp_path, monkeypatch, phase, change):
+    from carr_library.ui import import_center as ui, export_destination
+    from carr_library.research.export_file import capture_export_destination
+    target = tmp_path / 'scoped-report.txt'
+    previous = b'Previously selected import report'
+    target.write_bytes(previous)
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+
+    def revoke():
+        if change == 'library':
+            center.frame.library = SimpleNamespace(root=tmp_path / 'another-library')
+        else:
+            center.frame._closing = True
+
+    chooser = SimpleNamespace(ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(target),
+                              Destroy=Mock(side_effect=revoke if phase == 'picker' else None))
+    wx.FileDialog = Mock(return_value=chooser)
+
+    def approve(parent, path, **options):
+        approval = capture_export_destination(path, private_root=options['private_root'])
+        if phase == 'confirmation':
+            revoke()
+        return approval
+
+    confirmation = Mock(side_effect=approve)
+    render = Mock(wraps=ui.batch_report)
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', confirmation)
+    monkeypatch.setattr(ui, 'batch_report', render)
+    center.save_report()
+    assert confirmation.call_count == (0 if phase == 'picker' else 1)
+    render.assert_not_called()
+    assert target.read_bytes() == previous
+    assert 'library folder changed' in center.status.value
+    chooser.Destroy.assert_called_once()
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_import_report_completion_keeps_published_receipt_cleanup_notice(center, tmp_path, monkeypatch):
+    from carr_library.ui import import_center as ui, export_destination
+    from carr_library.research import export_file
+    target = tmp_path / 'completed-report.txt'
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    wx.FileDialog = Mock(return_value=SimpleNamespace(ShowModal=lambda: wx.ID_OK,
+        GetPath=lambda: str(target), Destroy=Mock()))
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', lambda parent, path, **options:
+        export_file.capture_export_destination(path, private_root=options['private_root']))
+    actual_writer = export_file.write_export
+    notice = 'The export is saved; temporary cleanup needs attention.'
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return export_file.ExportReceipt(receipt.path, notice)
+
+    monkeypatch.setattr(export_file, 'write_export', completed_with_notice)
+    center.save_report()
+    assert target.read_text(encoding='utf-8') == ui.batch_report(center.batch)
+    assert 'Import report saved.' in center.status.value and notice in center.status.value
+    assert center.status.focused and center.jobs == []
