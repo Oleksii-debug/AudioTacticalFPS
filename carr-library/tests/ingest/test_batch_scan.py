@@ -90,9 +90,9 @@ def test_nonrecursive_skips_nested_folder_without_opening_file(tmp_path, monkeyp
     real = batch_scan.snapshot
     opened = []
 
-    def capture(root, relative):
+    def capture(root, relative, *, cancelled):
         opened.append(relative)
-        return real(root, relative)
+        return real(root, relative, cancelled=cancelled)
 
     monkeypatch.setattr(batch_scan, 'snapshot', capture)
     rows = batch_scan.scan_paths([tmp_path], recursive=False)
@@ -169,8 +169,8 @@ def test_source_changed_after_intake_is_rejected(tmp_path, monkeypatch, change):
     source = write(tmp_path / 'a.txt')
     real = batch_scan.snapshot
 
-    def changed(root, relative):
-        asset = real(root, relative)
+    def changed(root, relative, *, cancelled):
+        asset = real(root, relative, cancelled=cancelled)
         if change == 'replace':
             replacement = write(tmp_path / 'replacement.txt', b'Changed source bytes.')
             os.replace(replacement, source)
@@ -207,9 +207,9 @@ def test_cancel_after_first_snapshot_never_opens_next_file(tmp_path, monkeypatch
     stopped, opened = [], []
     real = batch_scan.snapshot
 
-    def capture(root, relative):
+    def capture(root, relative, *, cancelled):
         opened.append(relative)
-        asset = real(root, relative)
+        asset = real(root, relative, cancelled=cancelled)
         stopped.append(True)
         return asset
 
@@ -225,9 +225,9 @@ def test_supported_file_bound_stops_before_next_open(tmp_path, monkeypatch):
     monkeypatch.setattr(batch_scan, 'MAX_FILES', 2)
     real, opened = batch_scan.snapshot, []
 
-    def capture(root, relative):
+    def capture(root, relative, *, cancelled):
         opened.append(relative)
-        return real(root, relative)
+        return real(root, relative, cancelled=cancelled)
 
     monkeypatch.setattr(batch_scan, 'snapshot', capture)
     rows = batch_scan.scan_paths([tmp_path])
@@ -323,11 +323,11 @@ def test_explicit_nested_root(tmp_path, monkeypatch, recursive, max_depth):
     for path in (tmp_path / 'a.txt', nested / 'b.txt', deeper / 'c.txt'):
         path.write_text(path.name, encoding='utf-8')
     opened = []
-    def snapshot(root, name):
+    real = batch_scan.snapshot
+    def snapshot(root, name, *, cancelled):
         path = root / name
         opened.append(path)
-        raw = path.read_bytes()
-        return SimpleNamespace(manifest=lambda: {'sha256': sha256(raw).hexdigest(), 'mime': 'text/plain', 'size': len(raw)})
+        return real(root, name, cancelled=cancelled)
     monkeypatch.setattr(batch_scan, 'snapshot', snapshot)
     monkeypatch.setattr(batch_scan, 'MAX_DEPTH', max_depth)
     rows = batch_scan.scan_paths([nested, tmp_path], recursive=recursive)
