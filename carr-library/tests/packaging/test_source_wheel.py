@@ -78,8 +78,10 @@ def wheel(tmp_path, payload, *, record_mutation=None, extra=None):
     csv.writer(output, lineterminator='\n').writerows(rows)
     with ZipFile(path, 'w', ZIP_DEFLATED) as archive:
         for name, data in payload.items():
-            # Keep deliberately unsafe raw names on Windows too; ZipInfo's
-            # constructor otherwise changes backslashes before RECORD checks.
+            # ZipInfo's constructor replaces OS separators on Windows. Keep
+            # deliberately unsafe fixture names in the actual archive bytes,
+            # so path tests exercise the verifier rather than a RECORD mismatch
+            # caused by the fixture writer silently sanitizing the member name.
             info = ZipInfo('fixture-placeholder')
             info.filename = info.orig_filename = name
             info.compress_type = ZIP_DEFLATED
@@ -98,6 +100,8 @@ def test_exact_historical_commit_verified_independently_of_checkout_head(source,
     evidence = verifier.verify_application_wheel(candidate, repo, first)
 
     assert evidence['source_commit'] == first
+    assert evidence['source_tree'] == git(repo, 'rev-parse', first + '^{tree}')
+    assert evidence['source_tree'] != git(repo, 'rev-parse', second + '^{tree}')
     assert evidence['wheel_sha256'] == sha256(candidate.read_bytes()).hexdigest()
     assert evidence['required_runtime_files'] == 2
     assert evidence['payload_files'] == 3
@@ -152,8 +156,12 @@ def test_undeclared_payload_rejected_despite_complete_record(source, tmp_path, e
 def test_path_alias_and_bytecode_rejected(source, tmp_path, extra):
     repo, first, _, payload = source
     payload[extra] = b'not safe payload\n'
+    candidate = wheel(tmp_path, payload)
+    with ZipFile(candidate) as archive:
+        assert extra in {info.orig_filename for info in archive.infolist()}, (
+            'The malicious raw ZIP name must survive fixture construction.')
     with pytest.raises(ValueError, match='path|bytecode'):
-        verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+        verifier.verify_application_wheel(candidate, repo, first)
 
 
 def test_duplicate_zip_member_rejected(source, tmp_path):

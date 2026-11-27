@@ -22,6 +22,8 @@ class ConversionBudget:
     max_xml_nodes: int = 500000
     max_sections: int = 100000
     max_pages: int = 1000
+    max_image_pixels: int = 40000000
+    max_total_image_pixels: int = 200000000
     memory_bytes: int = 768 * 1024 * 1024
     timeout: float = 120
 

@@ -37,10 +37,32 @@ def main():
             if write and not Path(os.fsdecode(args[0])).resolve().is_relative_to(stage):
                 raise PermissionError('Conversion worker may only write private staging files.')
     sys.addaudithook(audit)
-    from .formats import extract_builtin
-    result = extract_builtin(source, budget, encoding=request.get('encoding'))
-    value = result.pop('text')
-    output.write_bytes(value.encode('utf-8'))
+    if request.get('operation', 'extract') == 'inspect_image':
+        # Image metadata is untrusted too. Keep Pillow plugins and every frame
+        # header inside the same bounded worker used for document parsing.
+        from PIL import Image
+        from .models import ConversionError
+        with Image.open(source) as image:
+            if image.format not in ('PNG', 'JPEG', 'BMP', 'TIFF', 'WEBP'):
+                raise ConversionError('Unsupported raster format for document OCR.')
+            frames = getattr(image, 'n_frames', 1)
+            if not 1 <= frames <= budget.max_pages:
+                raise ConversionError('Raster frame count exceeds the OCR budget.')
+            total = 0
+            for index in range(frames):
+                image.seek(index)
+                pixels = image.width * image.height
+                total += pixels
+                if not 0 < pixels <= budget.max_image_pixels or total > budget.max_total_image_pixels:
+                    raise ConversionError('Raster dimensions exceed the OCR pixel budget.')
+            result = {'image_format': image.format, 'image_frames': frames, 'image_pixels': total}
+    elif request.get('operation', 'extract') == 'extract':
+        from .formats import extract_builtin
+        result = extract_builtin(source, budget, encoding=request.get('encoding'))
+        value = result.pop('text')
+        output.write_bytes(value.encode('utf-8'))
+    else:
+        raise ValueError('Unsupported conversion worker operation.')
     report.write_text(json.dumps(result, ensure_ascii=False, allow_nan=False), encoding='utf-8')
 
 

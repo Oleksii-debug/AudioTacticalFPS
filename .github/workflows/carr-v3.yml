@@ -2,7 +2,10 @@ name: CARR V3 local studio and assistant
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-integrated-studio-20261126]
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+  push:
+    branches: [carr/v3-primary103-recovered-composition-20261126]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
@@ -48,6 +51,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require reviewed local voice bridge and saved configuration checks
+        run: |
+          python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         run: |
           $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
@@ -90,7 +97,7 @@ jobs:
           }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         run: |
-          python -m pytest -q tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

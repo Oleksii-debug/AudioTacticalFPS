@@ -27,6 +27,35 @@ from ..durable_state import local_path
 MUSICGEN_REVISION = '896ec7c47f5e5d1e5aa1e4b260c4405328bf009d'
 ACESTEP_REVISION = 'ca1e85fe9430179831e6bc6be790c332190a3866'
 _KEYS = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B')
+_REVIEWED_ENTRYPOINTS = {
+    'musicgen': {
+        'models/musicgen.py': 'c1394ee5a16414bcc6a4a0ca5555259607e0540035ea3d970884a9838b8f374a',
+        'models/loaders.py': '1d81e8860c07571de8a3f218d40bab5e06df0b6c221fb60ab493c30294247946',
+    },
+    'ace-step': {
+        'inference.py': 'f43827def02a1122e2de483961b04f16544e4da9108eed9e42fd529175c15df5',
+        'core/generation/handler/init_service_orchestrator.py': 'df1e3ac43db9018793adae343760b43c56e7e81648cfcd057730162352c49d72',
+        'core/generation/handler/init_service_downloads.py': '02a95f2293dc0cd82ff5046816503668f8339157ba0b18715e061f3142999f8f',
+    },
+}
+
+# -S avoids executable .pth/sitecustomize hooks before our worker audit hook.
+# Add the selected interpreter's package directory explicitly, preserving a
+# virtual environment's original executable path instead of resolving its
+# symlink back to the base interpreter.
+_SITE_BOOTSTRAP = r'''
+import pathlib, sys, sysconfig
+executable = pathlib.Path(sys.executable).absolute()
+prefix = executable.parent.parent if executable.parent.name in ('bin','Scripts') else executable.parent
+if (prefix / 'pyvenv.cfg').is_file():
+    package_path = prefix / ('Lib/site-packages' if sys.platform == 'win32' else 'lib/python%d.%d/site-packages' % sys.version_info[:2])
+    sys.path.insert(0,str(package_path))
+else:
+    for key in ('purelib','platlib'):
+        directory = sysconfig.get_path(key)
+        if directory not in sys.path:
+            sys.path.append(directory)
+'''
 
 
 def music_capabilities(runtime):
@@ -288,10 +317,59 @@ def configure_model(runtime, config, *, cancelled=lambda: False):
         'runtime_probed': False, 'runtime_code_verified': False, 'inference_tested': False}
 
 
+def probe_model(runtime, engine, *, cancelled=lambda: False):
+    """Verify the selected installed SDK source against a reviewed manifest.
+
+    No engine import or model inference happens here. A matching declaration of
+    a Git revision is insufficient: the complete package Python file inventory
+    must match, including hard-pinned upstream adapter entrypoint bytes.
+    """
+    from .dsp import _digest
+    if engine not in runtime.music_models:
+        raise AudioUnavailable('Configure the explicit local music installation first.')
+    config, _ = runtime.music_models[engine]
+    data = validate_model(config, cancelled=cancelled)
+    records = data.get('runtime_code_files')
+    if not isinstance(records, dict) or not records or len(records) > 100000:
+        raise AudioUnavailable('The reviewed model manifest needs a complete runtime_code_files SHA256 inventory before inference.')
+    for name, checksum in _REVIEWED_ENTRYPOINTS[engine].items():
+        if records.get(name) != checksum:
+            raise ValueError('The runtime code manifest differs from the reviewed upstream adapter entrypoints.')
+    package = 'audiocraft' if engine == 'musicgen' else 'acestep'
+    code = _SITE_BOOTSTRAP + '\nimport importlib.util,json\n' + (
+        f'spec=importlib.util.find_spec({package!r})\n'
+        'print(json.dumps({"origin":spec.origin if spec else None}))\n')
+    env = {key: os.environ[key] for key in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG') if key in os.environ}
+    result = run_process([str(config.python), '-I', '-S', '-B', '-c', code],
+                         budget=runtime.budget, env=env, cancelled=cancelled)
+    origin = json.loads(result.stdout).get('origin')
+    if not isinstance(origin, str):
+        raise AudioUnavailable(f'The selected Python does not contain the {package} package.')
+    root = local_path(Path(origin).parent, exists=True)
+    actual = set()
+    for path in root.rglob('*.py'):
+        local_path(path, exists=True)
+        actual.add(path.relative_to(root).as_posix())
+        if len(actual) > 100000:
+            raise ValueError('The installed engine exceeds the reviewed code inventory allowance.')
+    if actual != set(records):
+        raise ValueError('The installed engine Python file inventory differs from the reviewed manifest.')
+    for name, expected_hash in records.items():
+        if (not isinstance(name, str) or Path(name).is_absolute() or '..' in Path(name).parts
+                or '\\' in name or not name.endswith('.py')
+                or not re.fullmatch('[0-9a-f]{64}', str(expected_hash))):
+            raise ValueError('Unsafe installed engine code manifest.')
+        source = local_path(root / name, root=root, exists=True)
+        if _digest(source, cancelled) != expected_hash:
+            raise ValueError('Installed engine code failed its reviewed SHA256 check.')
+    runtime.music_model_status[engine].update(runtime_probed=True, runtime_code_verified=True)
+    return dict(runtime.music_model_status[engine])
+
+
 # Trusted application worker code, never constructed from a user's prompt or
 # provider response. Offline cache flags are combined with Python network audit
 # denial. This is defense in depth, not a claim of an OS sandbox for native code.
-_MODEL_WORKER = r'''
+_MODEL_WORKER = _SITE_BOOTSTRAP + r'''
 import json, os, pathlib, socket, sys, wave
 job = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 stage = pathlib.Path(job['stage']).resolve()
@@ -370,6 +448,7 @@ def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress
         raise AudioUnavailable(f'{spec.engine} is not configured. Install and verify its local runtime and weights explicitly.')
     config, _ = runtime.music_models[spec.engine]
     manifest = validate_model(config, cancelled=cancelled)
+    probe_model(runtime, spec.engine, cancelled=cancelled)
     if spec.duration > config.max_chunk_seconds:
         raise ValueError('This request exceeds the configured neural chunk allowance. Schedule multiple resumable scenes; do not request an unlimited single inference.')
     target = runtime._output(output)
@@ -394,7 +473,7 @@ def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress
                     'TMPDIR': str(stage), 'TEMP': str(stage), 'TMP': str(stage),
                     'ACESTEP_CHECKPOINTS_DIR': str(config.directory / 'checkpoints'),
                     'ACESTEP_DISABLE_TQDM': '1'})
-        run_process([str(config.python.resolve()), '-I', '-B', '-c', _MODEL_WORKER, str(request)],
+        run_process([str(config.python), '-I', '-S', '-B', '-c', _MODEL_WORKER, str(request)],
                     budget=runtime.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage)
         result = runtime.convert(pcm, target, sample_rate=sample_rate, channels=channels,
                                  duration=spec.duration, cancelled=cancelled, progress=progress)

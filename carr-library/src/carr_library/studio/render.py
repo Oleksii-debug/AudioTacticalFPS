@@ -3,12 +3,13 @@
 Every accepted node is content-addressed and checksum-verified before reuse.
 Source text is data. This module never accepts shell commands or provider URLs.
 """
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from hashlib import sha256
 import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import time
 from uuid import uuid4
 
@@ -16,6 +17,43 @@ from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, loca
 from .project import Project, ProjectStore, parse_script, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
+
+
+def music_installation_identity(runtime, engine):
+    """Bind cached scores to the explicitly installed weights and runtime code."""
+    if engine in ('musicgen', 'ace-step'):
+        from ..audio.music import validate_model
+        if engine not in runtime.music_models:
+            raise ValueError(f'Configure the installed {engine} model before rendering this score.')
+        config, _ = runtime.music_models[engine]
+        manifest = validate_model(config)
+        return {'engine': engine, 'manifest': manifest,
+                'python_sha256': digest_file(config.python),
+                'device': config.device, 'max_chunk_seconds': config.max_chunk_seconds}
+    if engine == 'midi':
+        if not runtime.fluidsynth or not runtime.soundfont:
+            raise ValueError('Configure FluidSynth and a reviewed SoundFont first.')
+        return {'engine': engine, 'fluidsynth_sha256': digest_file(runtime.fluidsynth),
+                'soundfont_sha256': digest_file(runtime.soundfont)}
+    return {'engine': engine, 'composer': 'procedural-motif-v1'}
+
+
+def music_segments(spec, sample_rate, maximum_seconds):
+    """Frame-exact independent variations; no claim of model continuation."""
+    total = round(spec.duration * sample_rate)
+    maximum = max(1, int(maximum_seconds * sample_rate))
+    cursor, index = 0, 0
+    while cursor < total:
+        frames = min(maximum, total - cursor)
+        # Keep the last segment within the engine's minimum duration too.
+        minimum = max(1, round(.01 * sample_rate))
+        if 0 < total - cursor - frames < minimum:
+            frames -= minimum - (total - cursor - frames)
+        duration = frames / sample_rate
+        yield replace(spec, duration=duration, seed=(spec.seed + index) % (2 ** 31),
+                      fade_in=min(spec.fade_in, duration), fade_out=min(spec.fade_out, duration))
+        cursor += frames
+        index += 1
 
 
 def _stamp(seconds, *, comma=False):
@@ -34,7 +72,20 @@ def _output_name(title):
 
 
 class ProductionService:
-    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=()):
+    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),
+                 total_disk_bytes=32 * 1024**3):
+        """Bound private state/cache, staging and this job's published copies.
+
+        This logical-byte allowance is independent of each AudioBudget output
+        limit. Shared retained cache counts once, including earlier revisions;
+        verified reuse does not reserve a second copy. Increase the allowance
+        explicitly when resuming work that requires more retained space.
+        """
+        if type(total_disk_bytes) is not int or not 1024**2 <= total_disk_bytes <= 2**63 - 1:
+            raise ValueError('Total production disk budget must be an integer of at least one MiB.')
+        self.total_disk_bytes = total_disk_bytes
+        self._owns_voices = voices is None
+        self._closed = False
         self.root = local_path(directory)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.projects = ProjectStore(self.root / 'projects')
@@ -48,17 +99,35 @@ class ProductionService:
 
     @property
     def voices(self):
+        self._check_open()
         if self._voices is None:
             from ..runtime_settings import voice_registry
             self._voices = voice_registry(self.root.parent)
         return self._voices
 
+    def _check_open(self):
+        if self._closed:
+            raise RuntimeError('The production service is closed.')
+
+    def close(self):
+        """Release a lazily owned registry after the caller's worker finishes."""
+        if self._closed:
+            return
+        self._closed = True
+        voices, self._voices = self._voices, None
+        if self._owns_voices and voices is not None:
+            close = getattr(voices, 'close', None)
+            if callable(close):
+                close()
+
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
+        self._check_open()
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
         self.projects.save(project)
         return project
 
     def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):
+        self._check_open()
         if format not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
             raise ValueError('Choose a supported local audio output format.')
         if type(stems) is not bool or not isinstance(project, Project):
@@ -128,13 +197,14 @@ class ProductionService:
                              input_roots=(self.cache, *self.input_roots))
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
-        from ..audio import Track, MusicSpec
+        self._check_open()
+        from ..audio import Track, MusicSpec, AudioError
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'):
             state = self.get(job_id)
             if state['status'] == 'complete':
-                self._verify_artifacts(state)
+                self._verify_artifacts(state, cancelled=cancelled)
                 return state
             project = Project.from_dict(state['project'])
             runtime = self._runtime()
@@ -143,14 +213,35 @@ class ProductionService:
             # FFmpeg/voice version must not silently reuse incompatible work.
             runtime_identity = sha256(encode(capabilities)).hexdigest()
             state['runtime'] = capabilities
+            state['total_disk_bytes'] = self.total_disk_bytes
             state['status'], state['error'] = 'running', ''
             control = job_root / 'control.json'
             if control.exists():
                 control.unlink()  # explicit Run/Resume authorizes continuing the saved job
             self._save(state)
 
-            def stopping():
+            def requested_stop():
                 return bool(cancelled()) or control.exists()
+
+            last_disk_check, retained = 0.0, 0
+
+            def capacity(additional=0, *, force=False, honor_cancel=True):
+                nonlocal last_disk_check, retained
+                now = time.monotonic()
+                if force or now - last_disk_check >= .2:
+                    retained = _retained_bytes((self.root, Path(state['destination'])),
+                                               requested_stop if honor_cancel else lambda: False)
+                    last_disk_check = now
+                if retained + additional > self.total_disk_bytes:
+                    raise AudioError('The total production disk budget would be exceeded. '
+                                     'Increase total_disk_bytes to resume; completed files are retained.')
+                return self.total_disk_bytes - retained - additional
+
+            def stopping():
+                if requested_stop():
+                    return True
+                capacity()
+                return False
 
             def check():
                 if stopping():
@@ -161,6 +252,23 @@ class ProductionService:
                 self._save(state)
                 if progress is not None:
                     progress(message)
+
+            def generate(path, operation):
+                remaining = capacity(65536, force=True)
+                if remaining < 4096:
+                    raise AudioError('The total production disk budget has no room for another audio step.')
+                previous_budget = runtime.budget
+                runtime.budget = replace(previous_budget,
+                    max_output_bytes=min(previous_budget.max_output_bytes, remaining))
+                try:
+                    operation(path)
+                    capacity(force=True, honor_cancel=False)
+                except AudioError:
+                    # Only the unaccepted UUID attempt belongs to this cleanup.
+                    path.unlink(missing_ok=True)
+                    raise
+                finally:
+                    runtime.budget = previous_budget
 
             def node(kind, identity, operation):
                 check()
@@ -183,7 +291,7 @@ class ProductionService:
                 report(f'{kind}: rendering local audio')
                 # Each attempt gets a fresh path, including recovery from corrupt cache bytes.
                 path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')
-                operation(path)
+                generate(path, operation)
                 # The provider has atomically completed a real output. Verify
                 # and receipt it before honoring cancellation of the next step,
                 # so resume cannot silently repeat accepted expensive work.
@@ -265,9 +373,22 @@ class ProductionService:
                         spec = MusicSpec(duration=voice_info.duration, mood=scene.music.mood,
                                          tempo=scene.music.tempo, seed=scene.music.seed, engine=scene.music.engine,
                                          fade_in=min(.15, voice_info.duration), fade_out=min(.4, voice_info.duration))
-                        music, _ = node('instrumental score', asdict(spec),
-                            lambda target: runtime.render_music(spec, target, sample_rate=project.sample_rate,
-                                                               cancelled=stopping))
+                        identity = music_installation_identity(runtime, spec.engine)
+                        # Chunk scheduling is durable and bounded for optional neural engines.
+                        # Separate variations preserve requested duration, without representing
+                        # independent inference as coherent full-length model continuation.
+                        maximum = (runtime.music_models[spec.engine][0].max_chunk_seconds
+                                   if spec.engine in ('musicgen', 'ace-step') else spec.duration)
+                        score_parts = []
+                        for segment in music_segments(spec, project.sample_rate, maximum):
+                            part, _ = node('instrumental score', {'spec': asdict(segment), 'installation': identity},
+                                lambda target, segment=segment: runtime.render_music(segment, target,
+                                    sample_rate=project.sample_rate, cancelled=stopping))
+                            score_parts.append(part)
+                        music = score_parts[0] if len(score_parts) == 1 else node('score assembly',
+                            [digest_file(path) for path in score_parts],
+                            lambda target: runtime.concatenate(score_parts, target,
+                                sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     for cue in scene.cues:
                         source = local_path(cue.path, exists=True)
@@ -324,11 +445,22 @@ class ProductionService:
                         if digest_file(target) != identity:
                             raise FileExistsError('An output was changed externally; it will not be overwritten.')
                     else:
+                        def reserve_copy(size):
+                            # Publication may use a different volume from the
+                            # render cache. Preserve the same reserve there,
+                            # including bounded filesystem metadata overhead.
+                            required = size + runtime.budget.reserve_disk_bytes + 65536
+                            if shutil.disk_usage(target.parent).free < required:
+                                raise AudioError('Not enough output disk space to publish while preserving the configured reserve.')
+                            capacity(size + 65536, force=True)
+
+                        reserve_copy(artifact['size'])
                         temporary = target.parent / ('.pending-' + uuid4().hex)
                         try:
                             with Path(source).open('rb') as read, temporary.open('xb') as write:
                                 while block := read.read(1024 * 1024):
                                     check()
+                                    reserve_copy(len(block))
                                     write.write(block)
                                 write.flush()
                                 os.fsync(write.fileno())
@@ -358,7 +490,8 @@ class ProductionService:
                     if not (cached and encoded.exists() and digest_file(encoded) == cached.get('sha256')):
                         if encoded.exists():
                             encoded = self.cache / (key + '-' + uuid4().hex[:10] + '.' + state['format'])
-                        runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)
+                        generate(encoded, lambda target: runtime.convert(master, target,
+                            sample_rate=project.sample_rate, cancelled=stopping))
                         atomic_json(receipt, {'sha256': digest_file(encoded), 'file': encoded.name}, replace=receipt.exists())
                     publish(encoded, 'audiobook.' + state['format'])
                 for role_id, paths in stem_scenes.items():
@@ -383,6 +516,8 @@ class ProductionService:
                             'mode': project.mode, 'local_only': True,
                             'loudness': meter.to_dict(),
                             'music_kind': 'procedural/MIDI/local-model as explicitly selected per scene',
+                            'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
+                                                'continuous neural composition and perceptually seamless joins are not assumed.',
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
@@ -393,21 +528,23 @@ class ProductionService:
                     publish(source, name)
                 state['result'] = metadata
                 state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
-                self._verify_artifacts(state)
+                self._verify_artifacts(state, cancelled=stopping)
                 self._save(state)
                 return state
             except BaseException as exc:
                 action = read_json(control).get('action') if control.exists() else None
-                state['status'] = 'cancelled' if action == 'cancel' else ('paused' if stopping() or isinstance(exc, InterruptedError) else 'failed')
+                state['status'] = 'cancelled' if action == 'cancel' else ('paused' if requested_stop() or isinstance(exc, InterruptedError) else 'failed')
                 state['error'] = str(exc)[:2000]
                 self._save(state)
                 raise
 
-    def _verify_artifacts(self, state):
+    def _verify_artifacts(self, state, *, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
         for artifact in state['artifacts']:
             path = local_path(artifact['path'], root=root, exists=True)
-            if path.stat().st_size != artifact['size'] or digest_file(path) != artifact['sha256']:
+            if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
 
     def assistant_callback(self, arguments, output_directory, cancelled, progress):
@@ -424,6 +561,29 @@ class ProductionService:
         result = self.run(job, cancelled=cancelled, progress=progress)
         return {'job_id': job, 'status': result['status'],
                 'artifacts': [item['path'] for item in result['artifacts']]}
+
+
+def _retained_bytes(roots, cancelled):
+    """Count disjoint private/output trees without reading waveforms or links."""
+    pending, total = list(roots), 0
+    while pending:
+        if cancelled():
+            raise InterruptedError('Production disk accounting cancelled.')
+        path = pending.pop()
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('Production disk accounting cannot follow links or reparse points.')
+        if stat.S_ISDIR(info.st_mode):
+            with os.scandir(path) as entries:
+                pending.extend(Path(entry.path) for entry in entries)
+        elif stat.S_ISREG(info.st_mode):
+            total += info.st_size
+        else:
+            raise ValueError('Production state contains an unsupported special file.')
+    return total
 
 
 def json_safe(value):

@@ -194,15 +194,20 @@ def test_federated_name_lookup_obeys_budget_and_retains_completed_session(resear
     assert service.search((other, workspace), 'history').workspaces == (other, workspace)
 
 
+@pytest.mark.parametrize('journal', ['DELETE', 'WAL'])
 @pytest.mark.parametrize('stage', ['schema', 'authorization'])
 @pytest.mark.parametrize('stop', ['cancel', 'deadline'])
-def test_snapshot_setup_is_interruptible_before_result_publication(research, monkeypatch, stage, stop):
+def test_snapshot_setup_is_interruptible_before_result_publication(research, monkeypatch, journal, stage, stop):
     app, workspace = research
     previous, = app.search(workspace, 'history')
     selections = dict(app._selections)
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as db:
+        assert db.execute(f'PRAGMA journal_mode={journal}').fetchone()[0] == journal.lower()
     state = {'inside': False, 'completed': False, 'now': 100.0}
+    captured = []
 
     def exercise_sql(db):
+        captured.append(db)
         state['inside'] = True
         if stop == 'deadline':
             state['now'] = 102.0
@@ -238,6 +243,8 @@ def test_snapshot_setup_is_interruptible_before_result_publication(research, mon
                        cancelled=lambda: stop == 'cancel' and state['inside'])
     assert not state['completed']
     assert app._selections == selections
+    with pytest.raises(sqlite3.ProgrammingError, match='closed'):
+        captured[0].execute('SELECT 1')
     assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'history'
     assert app.search(workspace, 'archives')
 

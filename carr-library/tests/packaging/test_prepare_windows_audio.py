@@ -36,7 +36,15 @@ def fixture(tmp_path, *, extra=(), machine=0x8664):
         for name, raw in data.items():
             archive.writestr('release/' + name, raw)
         for name, raw in extra:
-            archive.writestr(name, raw)
+            if isinstance(name, str):
+                # Preserve deliberately unsafe separators on Windows; the
+                # ZIP constructor otherwise sanitizes the tested input.
+                info = zipfile.ZipInfo('synthetic-placeholder')
+                info.filename = info.orig_filename = name
+                info.compress_type = zipfile.ZIP_DEFLATED
+            else:
+                info = name
+            archive.writestr(info, raw)
     lock = {'schema': 1, 'target': 'win_amd64', 'engine': 'FFmpeg', 'engine_version': 'synthetic',
             'license': 'GPL-3.0-only', 'source': {'revision': 'synthetic'},
             'artifact': {'url': 'https://github.com/GyanD/codexffmpeg/releases/download/test/synthetic.zip',
@@ -91,6 +99,8 @@ def test_archive_and_selected_member_tampering_do_not_publish(tmp_path):
 @pytest.mark.parametrize('bad', ['../outside', '/absolute', 'release/C:/escape', 'release\\escape'])
 def test_archive_paths_cannot_escape_even_with_a_matching_archive_hash(tmp_path, bad):
     path, cache, output, lock = fixture(tmp_path, extra=((bad, b'evil'),))
+    with zipfile.ZipFile(cache / lock['artifact']['filename']) as archive:
+        assert bad in {info.orig_filename for info in archive.infolist()}
     with pytest.raises(ValueError, match='path'):
         audio.prepare(path, cache, output)
     assert not output.exists()
