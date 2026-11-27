@@ -23,6 +23,10 @@ The running indicator counts files reported by the worker; these are not accepte
 
 Jobs belong to their original active library. Every operation rechecks that scope. Retained media, durable receipts, results and edit versions live in application state and are included by the existing complete backup. Large jobs require sufficient backup space; retained inputs are not the optional generated-audio cache.
 
+The canonical format-4 backup validates transcription data through its explicit passive adapter. Retained media uses a separate 32 GiB allowance and is included even when generated audio is excluded. Job settings, input hashes, receipt/output hashes, V5 manifests and separately saved edits must agree before a backup or restore is published. Historical source paths and receipt bytes remain unchanged; external interpreter, wrapper and model references are declarations only. Transient locks and stop/pause/live-setting commands are not restored, and no recognition starts automatically.
+
+Unrecognized worker files, caches or result formats need their own reviewed adapter. They cause a visible backup refusal with the member name; they are not silently dropped or treated as arbitrary trusted JSON. A stopped V5 run with its valid typed result manifest can be retained as unaccepted history without promoting its output counters.
+
 Exports and restored completed jobs verify retained bytes and each current-run receipt again. A receipt must agree with the selected worker/interpreter, exact settings, source hash, all requested outputs and timed JSON hash. A worker exit code or an existing same-name TXT alone cannot mark a job completed. Partial or failed exports remain visibly partial or failed.
 
 A restored engine configuration may point to runtime/model locations that are unavailable on the new computer. Select the installed runtime there before resuming. Completed results and edits can still be read/exported without the old engine. Moving an interrupted job can require recognizing its incomplete inputs again because the worker's cache identity includes its bound source location.
