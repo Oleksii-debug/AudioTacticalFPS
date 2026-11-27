@@ -473,6 +473,8 @@ class StandardUpdateTransaction:
                 raise TrustError('The setup did not activate the reviewed new generation.')
             self._require_candidate(observed, candidate, pending)
             record['observed'] = observed
+            if self._recovery_authority is not None:
+                self._recovery_authority.observe(record, before, guard=lambda: _cancel(cancelled))
             self._write(record, 'activated')
             if code or not self.host.health(self.root, observed, release, cancelled=cancelled):
                 raise TrustError('The new standard installation failed its isolated health checks.')

@@ -1127,7 +1127,7 @@ def test_current_native_vault_optional_read_distinguishes_only_actual_not_found(
         vault.get('url-api-' + '1' * 32, '2' * 64)
 
 
-@pytest.mark.parametrize('native_error', [0, 5, 87])
+@pytest.mark.parametrize('native_error', [0, 5, 87, 1312])
 def test_current_native_vault_optional_read_does_not_turn_native_errors_into_absence(monkeypatch, native_error):
     import carr_library.providers as providers
     vault = providers.WindowsCredentialVault.__new__(providers.WindowsCredentialVault)
@@ -1361,3 +1361,56 @@ def test_settled_journal_replay_without_protected_authority_cannot_restore_nativ
     with pytest.raises(TrustError, match='protected restart authority'):
         setup.transaction.recover(reverified(setup, package))
     assert recovery_state(setup) == before
+
+
+def test_review_protected_restart_refuses_relabelled_newer_same_release_generation(setup, monkeypatch):
+    from carr_library.security.standard_state import pending_bytes
+    protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    record = json.loads(setup.transaction.journal.read_bytes())
+    first_generation = record['observed']['generation']
+    later = setup.root / 'versions' / (B[:12] + '-900')
+    setup.host.install(setup_image(B, 'B')[0], generation=later)
+    observed_later = setup.host.snapshot(setup.root)
+    assert observed_later['generation'] != first_generation
+    # Ordinary journal + pending can both change; the protected credential is untouched.
+    record['observed'] = observed_later
+    record['pending']['candidate_generation'] = observed_later['generation']
+    atomic_write(setup.transaction.journal, json_bytes(record))
+    atomic_write(setup.root / PENDING, pending_bytes(record['pending'], setup.root))
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+
+
+@pytest.mark.parametrize('boundary', ['before-protected-observation', 'after-protected-observation'])
+def test_uncheckpointed_native_activation_refuses_restart_reclassification_and_preserves_data(setup, monkeypatch, boundary):
+    protected_setup(setup)
+    observe = setup.transaction._recovery_authority.observe
+    class ProcessEnded(BaseException):
+        pass
+    def crash(record, before, **options):
+        assert setup.host.snapshot(setup.root) == record['observed']
+        assert record['observed']['source_commit'] == B
+        if boundary == 'after-protected-observation':
+            observe(record, before, **options)
+        raise ProcessEnded
+    with monkeypatch.context() as patch:
+        patch.setattr(setup.transaction._recovery_authority, 'observe', crash)
+        package = verified(setup)
+        with pytest.raises(ProcessEnded):
+            setup.transaction.apply(package)
+    record = json.loads(setup.transaction.journal.read_bytes())
+    assert record['phase'] == 'installing' and record['observed'] is None
+    assert setup.host.snapshot(setup.root)['source_commit'] == B
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+    assert setup.generation.is_dir() and setup.app.search(setup.workspace, 'exact research source')
+    current = setup.root.joinpath(*setup.host.snapshot(setup.root)['generation'].split('/'))
+    with pytest.raises(TrustError, match='pending update'):
+        check_generation_start(setup.root, current / '.venv', [])

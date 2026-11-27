@@ -155,7 +155,9 @@ controller restart. The transaction reuses that anchor's existing vault and
 opaque reference with a distinct, transaction-specific domain binding. A compact
 credential binds the canonical program/data/work roots, policy/bootstrap,
 before-anchor, exact release/setup candidate, complete backup identity and
-bounded prior snapshot bytes. The large prior stays in the existing `PRIOR`
+bounded prior snapshot bytes. After the owned setup returns, a checked transition
+of that same credential seals the exact observed native activation and reserved
+generation before the durable `activated` journal checkpoint. The large prior stays in the existing `PRIOR`
 file; no anchor schema, separate vault, issuer or default authority is added.
 
 After restart, fresh same-scope TUF verification, the exact protected digest,
@@ -168,8 +170,11 @@ prevent native setup or require explicit cleanup review. A generic/in-memory
 anchor has no durable recovery capability and retains the previous refusal
 for restarted pre-commit controllers.
 
-A crash before the complete new activation can be observed may leave
-`recovery-required`. The application does not guess a registry/shortcut
+A crash before the complete new activation and its exact protected observation
+can both be checkpointed may leave `recovery-required`. A crash between the
+protected observation write and its journal checkpoint also refuses automatic
+reclassification. A later repair of the same signed B in a different generation
+cannot substitute for the observed transaction. The application does not guess a registry/shortcut
 rollback. The pending journal and retained components remain available for
 owner inspection, while A remains usable.
 

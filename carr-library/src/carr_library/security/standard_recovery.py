@@ -40,12 +40,16 @@ class StandardRecoveryAuthority:
 
     def value(self, record):
         prior = json_bytes(record['prior'])
+        observed = None if record['observed'] is None else json_bytes(record['observed'])
         identity = {
             **self.scope, 'transaction': record['transaction'],
             'before': record['before'], 'release': record['release'], 'candidate': record['candidate'],
             'stage': record['stage'], 'archive': record['archive'],
             'backup': record['backup'], 'backup_sha256': record['backup_sha256'],
             'prior_sha256': sha256(prior).hexdigest(), 'prior_bytes': len(prior),
+            'candidate_generation': record['pending']['candidate_generation'],
+            'observed_sha256': None if observed is None else sha256(observed).hexdigest(),
+            'observed_bytes': 0 if observed is None else len(observed),
         }
         value = json_bytes({'kind': DOMAIN, 'transaction': record['transaction'],
                             'authority_sha256': sha256(json_bytes(identity)).hexdigest()}).decode('ascii')
@@ -65,6 +69,8 @@ class StandardRecoveryAuthority:
             raise TrustError('Protected standard recovery state is unavailable; program and data are preserved.') from None
 
     def seal(self, record, before, *, guard=lambda: None):
+        if record['observed'] is not None or record['pending']['candidate_generation']:
+            raise TrustError('Initial protected authority must precede native generation selection.')
         if type(before) is not Anchor or self.anchor.load() != before:
             raise TrustError('The protected update anchor changed before recovery authority was saved.')
         expected = self.value(record)
@@ -79,6 +85,26 @@ class StandardRecoveryAuthority:
                 raise TrustError('Protected standard recovery state could not be saved; no installer was started.') from None
         if self._read(record) != expected or self.anchor.load() != before:
             raise TrustError('Protected standard recovery readback or anchor identity changed.')
+        guard()
+
+    def observe(self, record, before, *, guard=lambda: None):
+        """Bind the exact owned activation before its durable activated checkpoint."""
+        if record['observed'] is None or not record['pending']['candidate_generation']:
+            raise TrustError('An exact observed native generation is required.')
+        initial = dict(record, observed=None,
+                       pending=dict(record['pending'], candidate_generation=''))
+        expected_before, expected_after = self.value(initial), self.value(record)
+        current = self._read(record)
+        if current not in (expected_before, expected_after) or self.anchor.load() != before:
+            raise TrustError('The protected prelaunch authority changed before native observation.')
+        guard()
+        if current == expected_before:
+            try:
+                self.anchor.vault.put(self.anchor.reference, self.binding(record), expected_after)
+            except Exception:
+                raise TrustError('The observed activation could not be protected and remains uncommitted.') from None
+        if self._read(record) != expected_after or self.anchor.load() != before:
+            raise TrustError('The exact observed activation did not survive protected readback.')
         guard()
 
     def require(self, record):
