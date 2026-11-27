@@ -677,7 +677,7 @@ def show_studio(frame):
         dialog.Destroy()
 
 
-def show_audio_conversion(frame):
+def show_audio_conversion(frame, *, batch=False):
     """Numeric offline DSP with an optional ordered, saved effect chain."""
     import wx
     from ..audio import Effect
@@ -685,14 +685,18 @@ def show_audio_conversion(frame):
     from ..audio.models import integer
     from ..durable_state import local_path
     library_root = local_path(frame.library.root, exists=True)
-    chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    chooser = wx.FileDialog(frame, 'Choose local audio or video sources' if batch else 'Choose a local audio or video source',
+                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | (wx.FD_MULTIPLE if batch else 0))
     try:
         if chooser.ShowModal() != wx.ID_OK:
             return
-        source = local_path(chooser.GetPath(), exists=True)
+        sources = tuple(Path(value).absolute() for value in chooser.GetPaths()) if batch else ()
+        if batch and not 1 <= len(sources) <= 64:
+            raise ValueError('Choose one to 64 local audio/video files for a batch.')
+        source = sources[0] if batch else local_path(chooser.GetPath(), exists=True)
     finally:
         chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(760, 720),
+    dialog = wx.Dialog(frame, title='Convert audio batch and apply effects' if batch else 'Convert audio and apply effects', size=(760, 720),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     outer = wx.BoxSizer(wx.VERTICAL)
     panel = wx.ScrolledWindow(dialog)
@@ -710,6 +714,17 @@ def show_audio_conversion(frame):
     output_channels = entry('Output channels, 1 or 2', '2')
     output_depth = entry('PCM bit depth, 16, 24 or 32', '16')
     output_bitrate = entry('Encoding bitrate in kbps for MP3, AAC, Opus and WMA', '192')
+    batch_format = batch_resume = None
+    if batch:
+        from ..audio.conversion_batch import FORMATS
+        layout.Add(wx.StaticText(panel, label='Batch output format'), 0, wx.ALL, 5)
+        batch_format = wx.Choice(panel, choices=list(FORMATS))
+        batch_format.SetName('Batch output format')
+        batch_format.SetSelection(0)
+        layout.Add(batch_format, 0, wx.EXPAND | wx.ALL, 5)
+        batch_resume = wx.CheckBox(panel, label='Resume this exact saved batch; keep completed matching files')
+        batch_resume.SetName('Resume matching audio batch')
+        layout.Add(batch_resume, 0, wx.ALL, 5)
     gain = entry('Gain in decibels, -60 to 12', '0')
     tempo = entry('Playback speed without pitch change, 0.5 to 2', '1')
     loudness = entry('Target loudness in LUFS; empty leaves levels unchanged', '-18')
@@ -762,7 +777,8 @@ def show_audio_conversion(frame):
     def controls():
         for control in original_controls:
             control.Enable(not pending and advanced_chain is None)
-        for control in (output_rate, output_channels, output_depth, output_bitrate):
+        for control in (output_rate, output_channels, output_depth, output_bitrate,
+                        *((batch_format, batch_resume) if batch else ())):
             control.Enable(not pending)
         advanced.Enable(not pending)
         basic.Enable(not pending and advanced_chain is not None)
@@ -850,12 +866,24 @@ def show_audio_conversion(frame):
         chain = advanced_chain if advanced_chain is not None else basic_chain()
         rate_value, channels_value, depth_value, bitrate_value = output_values()
         checked_chain(chain, rate_value)
+        selected_format = batch_format.GetStringSelection() if batch else None
+        resume_batch = bool(batch_resume.GetValue()) if batch else False
     except Exception as exc:
         frame.report(str(exc))
         return
     finally:
         alive = False
         dialog.Destroy()
+    if batch:
+        from .audio_conversion_dialog import start_audio_batch
+        try:
+            current_root()
+            start_audio_batch(frame, sources, format=selected_format, resume=resume_batch,
+                start=start_value, duration=duration_value, effects=chain, sample_rate=rate_value,
+                channels=channels_value, bit_depth=depth_value, bitrate=bitrate_value)
+        except Exception as exc:
+            frame.report('Audio batch: ' + str(exc))
+        return
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
                             wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.ogg;*.opus;*.aac;*.aiff;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.ogg;*.opus;*.aac;*.aiff;*.wma',
                             style=wx.FD_SAVE)
@@ -899,6 +927,7 @@ def install_studio_actions(frame):
             ('audio.publish_epub', 'Publish synchronized EPUB3...', '', lambda e: show_publishing(frame)),
             ('audio.publish_daisy', 'Publish DAISY 2.02...', '', lambda e: show_publishing(frame, initial_format='daisy-2.02')),
             ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
+            ('audio.convert_batch', 'Convert a batch of audio files...', '', lambda e: show_audio_conversion(frame, batch=True)),
             ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)

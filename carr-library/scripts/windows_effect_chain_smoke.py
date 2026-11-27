@@ -27,9 +27,9 @@ def main():
     import wx
     from carr_library.application import LibraryApp
     from carr_library.audio import Effect
-    from carr_library.audio import effect_presets
+    from carr_library.audio import effect_presets, conversion_batch
     from carr_library.runtime_settings import audio_runtime
-    from carr_library.ui import effects_dialog, studio_dialog
+    from carr_library.ui import effects_dialog, studio_dialog, audio_conversion_dialog
     from carr_library.ui.desktop_app import DesktopFrame
 
     checks, errors, proof = [], [], {}
@@ -132,10 +132,10 @@ def main():
                 check('sealed ' + name, digest == manifest['files'][entry])
 
     check('actual wx Windows controls', wx.Platform == '__WXMSW__')
-    for module in (effects_dialog, effect_presets, studio_dialog):
+    for module in (effects_dialog, effect_presets, studio_dialog, conversion_batch, audio_conversion_dialog):
         check('installed module: ' + module.__name__,
               'site-packages' in [part.casefold() for part in Path(module.__file__).resolve().parts])
-    original_picker = wx.FileDialog
+    original_picker, original_directory_picker = wx.FileDialog, wx.DirDialog
     frame = None
     try:
         with TemporaryDirectory(prefix='resonance-native-effects-') as temporary:
@@ -148,6 +148,9 @@ def main():
                 stream.setparams((1, 2, 24000, 0, 'NONE', 'uncompressed'))
                 stream.writeframes(data.tobytes())
             original = sha256(source.read_bytes()).hexdigest()
+            second_source = root / 'Another selected original.wav'
+            second_source.write_bytes(source.read_bytes())
+            second_original = sha256(second_source.read_bytes()).hexdigest()
             frame = DesktopFrame(LibraryApp(root / 'library'))
             frame.Show()
             gui.SetTopWindow(frame)
@@ -214,6 +217,84 @@ def main():
                 def GetPath(self): return str(output if self.output else source)
                 def Destroy(self): pass
 
+            class SelectedBatchPaths:
+                def __init__(self, *args, **kwargs):
+                    check('batch picker explicitly allows several existing local files',
+                          kwargs.get('style') == wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
+                def ShowModal(self): return wx.ID_OK
+                def GetPaths(self): return [str(source), str(second_source)]
+                def Destroy(self): pass
+
+            class SelectedBatchParent:
+                def __init__(self, *args, **kwargs):
+                    check('batch parent picker requires an existing directory',
+                          kwargs.get('style') == wx.DD_DIR_MUST_EXIST)
+                def ShowModal(self): return wx.ID_OK
+                def GetPath(self): return str(root)
+                def Destroy(self): pass
+
+            def drive_batch(popup, *, resume):
+                find(popup, 'Output channels, 1 or 2').ChangeValue('1')
+                find(popup, 'Target loudness in LUFS; empty leaves levels unchanged').ChangeValue('')
+                format_choice = find(popup, 'Batch output format')
+                check('native batch format selector', isinstance(format_choice, wx.Choice))
+                format_choice.SetStringSelection('wav')
+                resume_choice = find(popup, 'Resume matching audio batch')
+                check('matching batch resume is opt-in', resume_choice.GetValue() is False)
+                if resume:
+                    press(resume_choice)
+                    check('native explicit resume checked', resume_choice.GetValue() is True)
+                press(wx.Window.FindWindowById(wx.ID_OK, popup))
+
+            def name_batch(popup):
+                check('native batch output naming', isinstance(popup, wx.TextEntryDialog))
+                popup.SetValue('Native reviewed batch')
+                press(wx.Window.FindWindowById(wx.ID_OK, popup))
+
+            def review_batch(popup, *, resume):
+                review = find(popup, 'Selected audio batch review')
+                text = review.GetValue()
+                check('native batch review is read-only', isinstance(review, wx.TextCtrl) and not review.IsEditable())
+                check('review names both originals and exact output settings',
+                      json.dumps(str(source), ensure_ascii=False) in text
+                      and json.dumps(str(second_source), ensure_ascii=False) in text
+                      and '24000 Hz, 1 channel(s)' in text and 'Selected files: 2.' in text)
+                check('review exposes no-clobber and retained completed files',
+                      'Existing output files are never overwritten.' in text
+                      and 'Cancellation keeps completed files.' in text)
+                check('conversion requires explicit native confirmation',
+                      popup.GetDefaultItem() is wx.Window.FindWindowById(wx.ID_CANCEL, popup))
+                if resume:
+                    check('native resume review is distinct', 'Resume only matching saved outputs.' in text)
+                press(find(popup, 'Convert reviewed files'))
+
+            def batch_scenario(*, resume):
+                wx.FileDialog, wx.DirDialog = SelectedBatchPaths, SelectedBatchParent
+                later('Convert audio batch and apply effects', lambda popup: drive_batch(popup, resume=resume))
+                later('Batch output folder', name_batch)
+                later('Review audio conversion batch', lambda popup: review_batch(popup, resume=resume))
+                studio_dialog.show_audio_conversion(frame, batch=True)
+                pump(lambda: not frame.working and 'Audio batch completed: 2 of 2 files saved' in frame.status.GetValue(),
+                     'Actual reviewed batch completion', 90)
+                directory = root / 'Native reviewed batch'
+                receipt = json.loads((directory / 'conversion-manifest.json').read_text(encoding='utf-8'))
+                check('actual batch has two durable completed receipts',
+                      receipt['done'] == 2 and receipt['failed'] == 0
+                      and all(row['status'] == 'completed' for row in receipt['items']))
+                for row in receipt['items']:
+                    path = directory / row['output']
+                    with wave.open(str(path), 'rb') as stream:
+                        check('batch output uses actual measured sample counts',
+                              (stream.getframerate(), stream.getnchannels(), stream.getnframes()) == (24000, 1, 48000))
+                    check('batch receipt matches actual output bytes',
+                          sha256(path.read_bytes()).hexdigest() == row['candidate']['sha256'])
+                check('batch keeps both selected originals unchanged',
+                      sha256(source.read_bytes()).hexdigest() == original
+                      and sha256(second_source.read_bytes()).hexdigest() == second_original)
+                return {row['output']: ((directory / row['output']).read_bytes(),
+                                        (directory / row['output']).stat().st_mtime_ns)
+                        for row in receipt['items']}
+
             def scenario():
                 try:
                     check('actual main event loop', gui.GetMainLoop() is not None)
@@ -243,6 +324,12 @@ def main():
                     # 48 kHz mono conversion, allowing only PCM quantization.
                     check('actual typed chain changes rendered audio', .245 < result_rms / original_rms < .257)
                     check('conversion preserves original bytes', sha256(source.read_bytes()).hexdigest() == original)
+                    batch_before = batch_scenario(resume=False)
+                    # Clear only the presentation text so the second wait cannot
+                    # accidentally observe the first batch's completion message.
+                    frame.status.ChangeValue('Reviewing the same completed batch again.')
+                    batch_after = batch_scenario(resume=True)
+                    check('explicit native resume preserves completed output bytes and timestamps', batch_after == batch_before)
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
@@ -259,7 +346,7 @@ def main():
             frame = None
             gui.Yield()
     finally:
-        wx.FileDialog = original_picker
+        wx.FileDialog, wx.DirDialog = original_picker, original_directory_picker
         if frame is not None:
             frame.cancel_event.set()
             frame._closing = True

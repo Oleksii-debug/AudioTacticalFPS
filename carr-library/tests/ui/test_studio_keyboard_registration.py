@@ -53,13 +53,13 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
     pending = frame._pending_keyboard_commands
     assert [spec.command_id for spec, _ in pending] == [
         'voice.reader', 'voice.clipboard', 'voice.book', 'audio.studio', 'audio.clips', 'audio.pronunciation',
-        'audio.publish_epub', 'audio.publish_daisy', 'audio.convert', 'audio.engines',
+        'audio.publish_epub', 'audio.publish_daisy', 'audio.convert', 'audio.convert_batch', 'audio.engines',
         'audio.record_microphone', 'studio.book_audio',
         'assistant.local', 'assistant.providers', 'library.workflows']
     registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
     assert registry.shortcut('audio.studio', {}) == 'Ctrl+Alt+A'
     for identity in ('voice.clipboard', 'audio.clips', 'audio.pronunciation', 'audio.publish_epub',
-                     'audio.publish_daisy', 'audio.record_microphone', 'studio.book_audio'):
+                     'audio.publish_daisy', 'audio.convert_batch', 'audio.record_microphone', 'studio.book_audio'):
         assert registry.shortcut(identity, {}) == ''
     assert registry.shortcut('voice.reader', {}) == 'Ctrl+Alt+V'
     assert registry.shortcut('voice.book', {}) == 'Ctrl+Alt+R'
@@ -68,6 +68,6 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
     assert registry.shortcut('audio.studio', {'audio.studio': 'Ctrl+Alt+U'}) == 'Ctrl+Alt+U'
     assert [label for _, label in frame.menu_bar.menus] == ['&Voice', 'Audio St&udio', '&Tools']
     assert len(frame.menu_bar.menus[-1][0].items) == 3
-    assert frame.Bind.call_count == 15
+    assert frame.Bind.call_count == 16
     for (_, item), call in zip(pending, frame.Bind.call_args_list):
         assert call.args[2] is item
