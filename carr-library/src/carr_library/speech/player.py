@@ -28,6 +28,7 @@ class WavePlayer:
         self._process = None
         self._alias = 'carr_' + uuid4().hex
         self._open = False
+        self._output_device = None
         self.backend = 'Windows MCI' if os.name == 'nt' else 'ffplay'
         self.position_is_approximate = os.name != 'nt'
         self._executable = shutil.which('ffplay') if os.name != 'nt' else None
@@ -35,6 +36,25 @@ class WavePlayer:
     @property
     def available(self):
         return os.name == 'nt' or bool(self._executable)
+
+    @property
+    def output_device(self):
+        return self._output_device
+
+    def output_devices(self):
+        from .playback_devices import output_devices
+        return output_devices()
+
+    def select_output(self, device):
+        """Explicit session-only routing; never stop/restart audio implicitly."""
+        if self.state in ('playing', 'paused'):
+            raise ValueError('Stop playback before selecting a different output.')
+        if device is not None:
+            from .playback_devices import resolve_output
+            device = resolve_output(device)
+        # Release an existing stopped MCI handle before changing its next route.
+        self.close()
+        self._output_device = device
 
     def _mci(self, command):
         buffer = ctypes.create_unicode_buffer(1024)
@@ -83,6 +103,10 @@ class WavePlayer:
             raise ValueError('Choose a playback position within the recording.')
         if not self.available:
             raise RuntimeError('No local playback engine is installed. Install ffplay or use Windows audio.')
+        output = None
+        if self._output_device is not None:
+            from .playback_devices import resolve_output
+            output = resolve_output(self._output_device)
         self.close()
         self.path, self.duration_seconds = target, duration
         self._offset = float(start_seconds)
@@ -90,6 +114,13 @@ class WavePlayer:
             self._mci(f'open "{target}" type waveaudio alias {self._alias}')
             self._open = True
             try:
+                if output is not None:
+                    self._mci(f'set {self._alias} output {output.index}')
+                    if self._mci(f'status {self._alias} output').strip() != str(output.index):
+                        raise RuntimeError('Windows did not confirm the selected playback output.')
+                    from .playback_devices import resolve_output
+                    if resolve_output(output).index != output.index:
+                        raise RuntimeError('The selected output moved during playback admission. Retry explicitly.')
                 self._mci(f'set {self._alias} time format milliseconds')
                 self._mci(f'play {self._alias} from {round(start_seconds * 1000)}')
             except Exception:

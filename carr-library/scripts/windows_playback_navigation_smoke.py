@@ -1,17 +1,20 @@
 """Installed native W21 UI/protocol probe with an explicit synthetic transport.
 
 The real reader, voice-registry PCM publication, navigation host, wx timers and
-native keyboard are exercised. The clocked transport below emits no sound and
-does not qualify Windows MCI, an output device, a voice or NVDA. Actual WavePlayer
-audio tests remain independent required gates.
+native keyboard are exercised. The clocked UI transport emits no sound. A
+separate actual WinMM inventory optionally exercises a real selected MCI route
+with synthetic silence when the runner has an identifiable output. No-device
+runners report routing NOT_RUN. Listening, voice quality and NVDA remain open.
 """
 from hashlib import sha256
+import faulthandler
 import json
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic
 import traceback
+import threading
 import wave
 
 
@@ -21,13 +24,24 @@ def main():
                           'native_ui': 'NOT_RUN', 'mci': 'NOT_RUN', 'audio_device': 'NOT_RUN',
                           'nvda': 'NOT_RUN'}))
         return 77
-    from carr_library.native_runtime import activate_bundled_runtime
-    native_handle = activate_bundled_runtime()
+    # Bound activation and real driver calls as well as the later GUI phase.
+    # A blocked WinMM/MCI call must still produce a traceback and terminate.
+    native_handle = None
+    hard_watchdog = threading.Timer(120, lambda: os._exit(124))
+    hard_watchdog.daemon = True
+    faulthandler.dump_traceback_later(105, repeat=False)
     try:
+        hard_watchdog.start()
+        from carr_library.native_runtime import activate_bundled_runtime
+        native_handle = activate_bundled_runtime()
         return _run_native()
     finally:
-        if native_handle is not None:
-            native_handle.close()
+        try:
+            if native_handle is not None:
+                native_handle.close()
+        finally:
+            hard_watchdog.cancel()
+            faulthandler.cancel_dump_traceback_later()
 
 
 def _run_native():
@@ -41,6 +55,8 @@ def _run_native():
     import carr_library.speech.runtime as runtime_module
     import carr_library.ui.speech_dialog as reader_module
     import carr_library.ui.playback_navigation as navigation_module
+    import carr_library.speech.playback_devices as device_module
+    import carr_library.speech.player as player_module
 
     checks, errors, observed = [], [], {}
     def check(label, condition):
@@ -53,7 +69,7 @@ def _run_native():
     bundle = Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR') else None
     check('installed package origin', origin.is_relative_to(bundle) if bundle else 'site-packages' in origin.parts)
     checkout, identities = Path(__file__).resolve().parents[1], {}
-    for module in (runtime_module, reader_module, navigation_module):
+    for module in (runtime_module, reader_module, navigation_module, device_module, player_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -65,6 +81,7 @@ def _run_native():
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc()); fail(); return False
     gui = ProbeApp(False)
+    gui.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
     simulator, held = wx.UIActionSimulator(), [None]
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     user32.SetForegroundWindow.argtypes = [wintypes.HWND]
@@ -75,22 +92,53 @@ def _run_native():
     user32.GetWindowThreadProcessId.restype = wintypes.DWORD
 
     def release():
-        key, held[0] = held[0], None
+        key = held[0]
         if key is not None:
             check('native key and modifiers released', simulator.KeyUp(*key))
+            held[0] = None
 
     def fail():
+        if observed.get('aborting'):
+            return
+        observed['aborting'] = True
         try:
             release()
         except Exception:
             errors.append(traceback.format_exc())
-        for window in tuple(wx.GetTopLevelWindows()):
+        host = observed.get('host')
+        view = host.view if host is not None else None
+        try:
+            if view is not None and view.IsModal() and view.IsShown():
+                view.EndModal(wx.ID_CANCEL)
+        except Exception:
+            errors.append(traceback.format_exc())
+        deadline = monotonic() + 5
+        def exit_outer():
+            loop = observed.get('outer_loop')
             try:
-                if isinstance(window, wx.Dialog) and window.IsModal():
-                    window.EndModal(wx.ID_CANCEL)
-            except RuntimeError:
-                pass
-        gui.ExitMainLoop()
+                if loop is not None:
+                    loop.ScheduleExit(1)
+            except Exception:
+                errors.append(traceback.format_exc())
+            gui.ExitMainLoop()
+        def unwind():
+            # EndModal returns before the inner ShowModal/finally unwinds on
+            # MSW. The reader is still an inactive parent until view is cleared.
+            if host is not None and host.view is not None:
+                if monotonic() >= deadline:
+                    errors.append('The owned navigation modal did not unwind during failure cleanup.')
+                    exit_outer()
+                else:
+                    observed['abort_timer'] = wx.CallLater(25, unwind)
+                return
+            reader = observed.get('reader')
+            try:
+                if reader is not None and reader.IsModal() and reader.IsShown():
+                    reader.EndModal(wx.ID_CANCEL)
+            except Exception:
+                errors.append(traceback.format_exc())
+            observed['abort_timer'] = wx.CallLater(25, exit_outer)
+        observed['abort_timer'] = wx.CallLater(25, unwind)
 
     def later(callback, delay=30):
         def invoke():
@@ -165,6 +213,18 @@ def _run_native():
             self.path, self.duration_seconds, self._state = None, 0.0, 'stopped'
             self._offset, self._started, self.closed = 0.0, None, False
             self.seeks = []; observed['player'] = self
+            self.output_device = None
+            self.outputs = (device_module.PlaybackDevice(0, 'Explicit fixture output A', 'fixture-interface-a', 1, 1, 1, 2),
+                            device_module.PlaybackDevice(1, 'Explicit fixture output B', 'fixture-interface-b', 1, 2, 1, 2))
+            self.output_choices = []
+        def output_devices(self):
+            return self.outputs
+        def select_output(self, device):
+            check('fixture output changes only after explicit reader Stop', self.state == 'stopped')
+            if device is not None and device not in self.outputs:
+                raise RuntimeError('Selected fixture output is unavailable; no fallback was used.')
+            self.output_device = device
+            self.output_choices.append(device)
         @property
         def state(self):
             if self._state == 'playing' and self.position_seconds >= self.duration_seconds:
@@ -194,6 +254,29 @@ def _run_native():
         def close(self): self.stop(); self.closed = True
 
     with TemporaryDirectory(prefix='resonance-native-playback-navigation-') as temporary:
+        # The real OS inventory is separate from the explicitly synthetic UI
+        # transport below. No-device runners must not claim hardware routing.
+        actual_devices = device_module.output_devices()
+        observed['native_inventory_count'] = len(actual_devices)
+        observed['actual_mci_route'] = 'NOT_RUN_NO_IDENTIFIED_OUTPUT'
+        check('actual Windows output inventory is bounded and enumerated', len(actual_devices) <= device_module.MAX_DEVICES)
+        selectable = [device for device in actual_devices if device.selectable]
+        if selectable:
+            route_pcm = Path(temporary) / 'actual-native-route.wav'
+            with wave.open(str(route_pcm), 'wb') as stream:
+                stream.setparams((1, 2, 8000, 0, 'NONE', 'PCM')); stream.writeframes(b'\0\0' * 40000)
+            real_player = player_module.WavePlayer()
+            try:
+                real_player.select_output(selectable[0])
+                check('real selected output does not start audio', real_player.state == 'stopped')
+                real_player.play(route_pcm)
+                check('real MCI route accepted the exact selected interface', real_player.output_device.identity == selectable[0].identity
+                      and real_player.state == 'playing')
+                real_player.stop()
+                check('real selected MCI route stops explicitly', real_player.state == 'stopped')
+                observed['actual_mci_route'] = 'EXECUTED_WITH_SYNTHETIC_SILENCE'
+            finally:
+                real_player.close()
         library = LibraryApp(Path(temporary) / 'library')
         frame = wx.Frame(None, title='Resonance native playback navigation UI acceptance', size=(600, 350))
         frame.library, frame.report = library, lambda message: observed.setdefault('reports', []).append(str(message))
@@ -232,6 +315,26 @@ def _run_native():
         def initial_tabbed():
             check('native Tab moved focus without playback', wx.Window.FindFocus() is not observed['host'].view.skip
                   and observed.get('renders', 0) == 0)
+            view = observed['host'].view
+            check('native output controls are explicitly named', view.output.GetName()
+                  and view.reload_outputs.GetName() and view.apply_output.GetName())
+            press(view.reload_outputs, outputs_loaded)
+        def outputs_loaded():
+            view = observed['host'].view
+            check('reloading fixture outputs never renders or starts audio', len(view.outputs) == 3
+                  and observed.get('renders', 0) == 0 and observed['player'].state == 'stopped')
+            key(view.output, wx.WXK_HOME,
+                lambda: key(view.output, wx.WXK_DOWN, lambda: key(view.output, wx.WXK_DOWN, output_selected)))
+        def output_selected():
+            view = observed['host'].view
+            check('native keys select the second output without applying it', view.output.GetSelection() == 2
+                  and observed['player'].output_device is None and observed.get('renders', 0) == 0)
+            press(view.apply_output, output_applied)
+        def output_applied():
+            player = observed['player']
+            check('explicit native output action retains the selected fixture without automatic speech',
+                  player.output_device == player.outputs[1] and len(player.output_choices) == 1
+                  and player.state == 'stopped' and observed.get('renders', 0) == 0)
             close_panel(start_first)
         def start_first():
             key(reader_button('Read &selection / all (F6)'), wx.WXK_F6,
@@ -312,9 +415,37 @@ def _run_native():
             controller = observed['host'].controller
             check('native F8 revokes the timer and current binding', observed['player'].state == 'stopped'
                   and controller.audio is None and controller.sleep_deadline is None)
+            open_panel(missing_output_loaded)
+        def missing_output_loaded():
+            view = observed['host'].view
+            press(view.reload_outputs, remove_selected_output)
+        def remove_selected_output():
+            view, player = observed['host'].view, observed['player']
+            check('reopened controls retain the explicit second fixture selection', view.output.GetSelection() == 2)
+            observed['missing_output'] = player.output_device
+            player.outputs = player.outputs[:1]
+            press(view.apply_output, unavailable_output)
+        def unavailable_output():
+            view, player = observed['host'].view, observed['player']
+            check('missing output remains visible without fallback or automatic rendering',
+                  player.output_device == observed['missing_output'] and len(player.output_choices) == 1
+                  and 'no fallback' in view.status.GetValue() and player.state == 'stopped'
+                  and observed['renders'] == 2)
+            press(view.reload_outputs, choose_automatic_output)
+        def choose_automatic_output():
+            view = observed['host'].view
+            check('reload leaves a missing saved output unselected', view.output.GetSelection() == wx.NOT_FOUND)
+            key(view.output, wx.WXK_HOME, lambda: press(view.apply_output, automatic_output_applied))
+        def automatic_output_applied():
+            player = observed['player']
+            check('automatic routing requires a distinct explicit native action', player.output_device is None
+                  and len(player.output_choices) == 2 and player.state == 'stopped' and observed['renders'] == 2)
+            close_panel(finish_reader)
+        def finish_reader():
             observed['workflow_complete'] = True
             press(reader_button('C&lose'), lambda: None)
         def launch():
+            observed['outer_loop'] = wx.EventLoop.GetActive()
             frame.Show(); until(loaded, initial)
             reader_module.show_speech_reader(frame, text='Synthetic playback navigation fixture',
                 recovery_slot='navigation-native')
@@ -336,6 +467,8 @@ def _run_native():
             finally:
                 try:
                     watchdog.Stop()
+                    abort_timer = observed.get('abort_timer')
+                    if abort_timer is not None: abort_timer.Stop()
                 finally:
                     runtime_settings.voice_registry, reader_module.WavePlayer = original_registry, original_player
                     reader_module.PlaybackNavigationHost, wx.MessageBox = original_host, original_message
@@ -347,7 +480,11 @@ def _run_native():
         print(json.dumps({'result': 'PASS', 'checks': len(checks), 'package_origin': str(origin),
             'source_identity': identities, 'native_ui': 'PASS', 'native_keyboard_automation': 'PASS',
             'transport': 'explicit synthetic PCM clock fixture; no audio output',
-            'mci': 'NOT_RUN', 'audio_device': 'NOT_RUN', 'voice_quality': 'NOT_RUN',
+            'output_controls': 'EXPLICIT_SYNTHETIC_INTERFACE_FIXTURES',
+            'native_inventory': 'EXECUTED', 'native_inventory_count': observed['native_inventory_count'],
+            'selected_mci_route': observed['actual_mci_route'],
+            'mci': 'EXECUTED_SELECTED_ROUTE' if selectable else 'NOT_RUN',
+            'audio_device': 'SYNTHETIC_SILENCE_ONLY' if selectable else 'NOT_RUN', 'voice_quality': 'NOT_RUN',
             'manual_keyboard': 'NOT_RUN', 'confirmation_dialog': 'NOT_RUN', 'nvda': 'NOT_RUN'}, ensure_ascii=False))
     return 0
 

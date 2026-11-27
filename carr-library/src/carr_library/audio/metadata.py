@@ -2,9 +2,9 @@
 
 This profile copies one encoded audio stream into the same container family.
 It does not modify a Studio project, its completed output, or its fingerprint.
-FFmpeg's streamhash, explicit stream mapping and attached_pic contracts:
+FFmpeg's hash muxer, explicit stream mapping and attached_pic contracts:
 https://ffmpeg.org/ffmpeg.html
-https://ffmpeg.org/ffmpeg-formats.html#streamhash
+https://ffmpeg.org/ffmpeg-formats.html#hash
 """
 from dataclasses import asdict, dataclass, replace
 from fractions import Fraction
@@ -359,11 +359,14 @@ def review_metadata(runtime, source, output, changes, *, cancelled=lambda: False
 
 
 def _stream_hash(runtime, path, cancelled):
+    # Exactly one mapped stream is copied, so hash and legacy streamhash digest
+    # the same encoded packet bytes. streamhash defaults changed to a headered
+    # version 2 in FFmpeg 9.1; hash retains its single SHA256=... receipt.
     result = run_process([*runtime._base_args(), *runtime._input_args(path), '-map', '0:a:0',
-        '-c:a', 'copy', '-f', 'streamhash', '-hash', 'sha256', 'pipe:1'],
+        '-c:a', 'copy', '-f', 'hash', '-hash', 'sha256', 'pipe:1'],
         budget=runtime.budget, cancelled=cancelled)
     value = result.stdout.decode('ascii', 'strict').strip()
-    prefix = '0,a,SHA256='
+    prefix = 'SHA256='
     if not value.startswith(prefix) or not _DIGEST.fullmatch(value[len(prefix):]):
         raise AudioError('FFmpeg did not attest the encoded audio stream.')
     return value[len(prefix):]

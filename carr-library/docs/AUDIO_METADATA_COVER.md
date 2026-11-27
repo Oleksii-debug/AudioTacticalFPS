@@ -60,7 +60,7 @@ Before publication, real ffprobe/FFmpeg readback verifies:
 - audio codec, sample rate, channels and duration;
 - chapter titles, count and measured boundaries, with at most 1 ms container
   timestamp rounding;
-- the SHA-256 of the encoded audio packets using streamhash with stream copy.
+- the SHA-256 of the encoded audio packets using the single-stream hash muxer with explicit stream copy.
 
 The new audio and its adjacent .metadata.json receipt use no-clobber
 publication. The receipt records source/output names and hashes, image identity,
@@ -109,5 +109,21 @@ artifact. Those require their own exact artifact evidence.
 
 Format references: [FFmpeg explicit stream mapping and attached pictures](https://ffmpeg.org/ffmpeg.html),
 [FLAC muxer](https://ffmpeg.org/ffmpeg-formats.html#flac),
-[streamhash](https://ffmpeg.org/ffmpeg-formats.html#streamhash).
+[hash muxer](https://ffmpeg.org/ffmpeg-formats.html#hash).
 
+
+### Encoded-packet receipts across FFmpeg versions
+
+The actual Windows gate on public `9f8d9ae` stopped before opening the metadata
+form because the pinned FFmpeg 9.1 now emits streamhash version 2 by default.
+The correction uses the stable `hash` muxer with the unchanged explicit
+`0:a:0` mapping, `-c:a copy` and SHA256. It still rejects missing, malformed or
+multiple records. This preserves the identity contract instead of accepting an
+unverified output format. The exact locked upstream implementation is
+[hashenc.c at 74e4393595](https://github.com/FFmpeg/FFmpeg/blob/74e4393595cf2b5857f0da925c4e0dd74ea306e5/libavformat/hashenc.c).
+
+Local source `265d20f` passed all 50 metadata cases with actual FFmpeg 7.1.5 and
+zero failures/skips. Four independent checks copy encoded packets through the
+data muxer and compare their Python SHA256 with the production receipt, separately
+from decoded PCM. Existing tag/cover/chapter/no-clobber/cancellation checks remain
+required. This is source evidence; the exact composed Windows 9.1 replay is pending.

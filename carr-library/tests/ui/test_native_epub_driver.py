@@ -14,6 +14,35 @@ probe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(probe)
 
 
+@pytest.mark.parametrize('stage', range(1, 9))
+def test_native_probe_exposes_original_audio_failure_before_its_deadline(stage):
+    original = 'Synthetic native playback rejection (MCI 277).'
+    overlay = SimpleNamespace(busy=False, closed=False,
+        timer=SimpleNamespace(IsRunning=lambda: False),
+        status=SimpleNamespace(GetValue=lambda: original),
+        player=SimpleNamespace(state='stopped'))
+    with pytest.raises(RuntimeError, match='MCI 277') as caught:
+        probe._check_audio_progress(overlay, stage)
+    assert 'stage ' + str(stage) in str(caught.value)
+    assert "player='stopped'" in str(caught.value)
+    assert original in str(caught.value)
+
+
+def test_native_probe_preserves_async_load_and_expected_archive_failure():
+    overlay = SimpleNamespace(busy=True, closed=False,
+        timer=SimpleNamespace(IsRunning=lambda: False),
+        status=SimpleNamespace(GetValue=lambda: 'The workspace is archived.'), player=None)
+    probe._check_audio_progress(overlay, 1)
+    overlay.busy = False
+    probe._check_audio_progress(overlay, 9)
+    overlay.closed = True
+    probe._check_audio_progress(overlay, 2)
+    probe._check_audio_progress(None, 1)
+    overlay.closed = False
+    overlay.timer.IsRunning = lambda: True
+    probe._check_audio_progress(overlay, 2)
+
+
 class Loop:
     def __init__(self): self.exits = []
     def ScheduleExit(self, code=0): self.exits.append(code)
@@ -226,16 +255,36 @@ def test_native_key_release_attempts_every_held_key_after_failure(failure):
     assert len(errors) == 1 and 'Releasing native key 32' in errors[0]
 
 
-def callbacks(namespace):
+def callbacks(namespace, **state):
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
     functions = {node.name: node for node in ast.walk(tree)
                  if isinstance(node, ast.FunctionDef) and node.name in ('drive', 'guarded')}
     factory = ast.parse('def factory(stage=0, overlay=None, in_drive=False, owner_loop=None):\n    pass').body[0]
     factory.body = [functions['drive'], functions['guarded'],
         *ast.parse('return drive, guarded, lambda: (in_drive, owner_loop)').body]
+    namespace['_check_audio_progress'] = probe._check_audio_progress
     exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
                  str(SOURCE), 'exec'), namespace)
-    return namespace['factory']()
+    return namespace['factory'](**state)
+
+
+def test_actual_drive_reports_audio_failure_before_timeout_and_discards_late_tick():
+    main, scheduled, errors = Loop(), [], []
+    namespace = {'errors': errors, 'finished': False, 'key_pending': False, 'deadline': 10,
+        'monotonic': lambda: 0, 'traceback': probe.traceback, 'abort': errors.append,
+        'gui': SimpleNamespace(GetMainLoop=lambda: main),
+        'wx': SimpleNamespace(CallLater=lambda delay, callback: scheduled.append(callback))}
+    overlay = SimpleNamespace(busy=False, closed=False,
+        timer=SimpleNamespace(IsRunning=lambda: False),
+        status=SimpleNamespace(GetValue=lambda: 'Synthetic native rejection (MCI 277).'),
+        player=SimpleNamespace(state='stopped'))
+    drive, guarded, state = callbacks(namespace, stage=2, overlay=overlay)
+    guarded(drive)()
+    assert len(errors) == 1 and 'MCI 277' in errors[0] and 'TimeoutError' not in errors[0]
+    assert state() == (False, main) and len(scheduled) == 1
+    namespace.pop('monotonic')
+    scheduled.pop()()
+    assert len(errors) == 1 and scheduled == []
 
 
 def test_actual_drive_ignores_reentrant_native_delivery_and_captures_owner_once():

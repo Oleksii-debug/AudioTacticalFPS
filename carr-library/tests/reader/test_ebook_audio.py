@@ -2,9 +2,11 @@
 from hashlib import sha256
 from io import BytesIO
 import ast
+from concurrent.futures import ThreadPoolExecutor
 import inspect
 import math
 from pathlib import Path
+from queue import Queue
 import shutil
 import struct
 import textwrap
@@ -313,6 +315,62 @@ class TrackedPlayer:
         self.state='playing'; return True
     def close(self):
         self.state='stopped'
+
+
+@pytest.mark.parametrize('failure', ['device', 'source'])
+def test_native_start_failure_remains_visible_after_owned_generation_cleanup(imported, failure):
+    """Real worker/PCM and dialog dispatch; the device is an explicit boundary double."""
+    app, workspace, _, _, desk = imported
+    session = EbookAudioSession(desk, 1)
+    callbacks, clips = Queue(), []
+    player = TrackedPlayer()
+    if failure == 'device':
+        def failed_play(path):
+            assert Path(path).is_file()
+            raise RuntimeError('Synthetic native playback rejection (MCI 277).')
+        player.play = failed_play
+    view = EbookAudioDialog.__new__(EbookAudioDialog)
+    view.session, view.player = session, player
+    view.transport = OverlayPlayback(session, player)
+    view.closed = view.busy = False
+    view.cancelled, view._pending = Event(), None
+    view.progress, view.guard = None, lambda: None
+    view.wx = SimpleNamespace(CallAfter=callbacks.put,
+        CallLater=lambda *args: pytest.fail('A ready quiet gate must dispatch without a timer.'))
+    view.executor = ThreadPoolExecutor(max_workers=1)
+    view._enable, view._highlight = Mock(), Mock()
+    view.timer, view.status = Mock(), Mock()
+    messages = []
+    view.status.ChangeValue.side_effect = messages.append
+    prepare = session.prepare
+    def capture(index, **kwargs):
+        prepared = prepare(index, **kwargs)
+        clips.append(prepared)
+        return prepared
+    session.prepare = capture
+    try:
+        view.play()
+        callback = callbacks.get(timeout=15)
+        assert view.busy and len(clips) == 1 and clips[0].path.is_file()
+        ticket = view.transport.ticket
+        if failure == 'source':
+            # Admission must still reject a source archived after worker completion.
+            app.archive_workspace(workspace)
+        callback()
+        expected = 'Synthetic native playback rejection' if failure == 'device' else 'archived'
+        assert expected in messages[-1], messages
+        assert view.transport.ticket != ticket
+        assert not view.busy and not view.transport.active and player.state == 'stopped'
+        assert view.transport.prepared is None and view._pending is None
+        assert not clips[0].path.exists()
+        view.timer.Stop.assert_called_once_with()
+        view.status.SetFocus.assert_called_once_with()
+        view._highlight.assert_not_called()
+        view._enable.assert_called_with(True)
+    finally:
+        view.cancelled.set()
+        view.executor.shutdown(wait=True, cancel_futures=True)
+        view.transport.close()
 
 
 def test_selection_and_close_discard_late_actual_preparations(imported):

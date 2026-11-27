@@ -274,12 +274,20 @@ class EbookAudioDialog:
                     prepared.close(); return
                 self._pending = prepared
                 def start():
-                    self.guard()
-                    if self.transport.start(prepared, ticket):
-                        self._pending = None
-                        self._highlight()
-                        self.timer.Start(100)
-                        self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')
+                    try:
+                        self.guard()
+                        if self.transport.start(prepared, ticket):
+                            self._pending = None
+                            self._highlight()
+                            self.timer.Start(100)
+                            self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')
+                    except Exception as exc:
+                        # Failed native admission closes the prepared transport
+                        # and advances its generation. The quiet gate therefore
+                        # sees an expired ticket and cannot report this failure
+                        # through its stale-callback guard. This admitted action
+                        # still owns the error and must expose it before return.
+                        self._error(exc)
                 play_when_quiet((self.progress,), start, schedule=self.wx.CallLater,
                     alive=lambda: not self.closed and ticket == self.transport.ticket and not self.cancelled.is_set(),
                     on_error=self._error)

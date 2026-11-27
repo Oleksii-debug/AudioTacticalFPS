@@ -341,6 +341,60 @@ def test_unreadable_runtime_subtree_invalidates_music_inference(tmp_path, monkey
     assert not any(status[key] for key in ('runtime_probed', 'runtime_code_verified', 'inference_tested'))
 
 
+@requires_ffmpeg
+@pytest.mark.parametrize('cancel', [False, True])
+def test_neural_worker_cache_is_owned_bounded_and_removed_on_exit(tmp_path, monkeypatch, cancel):
+    """Real child/FFmpeg at a synthetic model boundary; no inference claim."""
+    from carr_library.audio import AudioBudget, music
+
+    config, _ = model_fixture(tmp_path)
+    model_before = {path.name: path.read_bytes() for path in config.directory.iterdir()}
+    inherited = tmp_path / 'unowned-cache'
+    inherited.mkdir()
+    (inherited / 'owner.txt').write_bytes(b'Owner cache must remain unchanged.')
+    monkeypatch.setenv('NUMBA_CACHE_DIR', str(inherited))
+    runtime = AudioRuntime(tmp_path / 'outputs', budget=AudioBudget(timeout=10))
+    runtime.configure_music_model(config)
+    # Only the optional inference implementation is a fixture. Production
+    # admission, process execution, staging cleanup and WAV conversion run.
+    monkeypatch.setattr(music, 'probe_model', lambda *args, **kwargs: None)
+    monkeypatch.setattr(music, '_MODEL_WORKER', '''
+import json, os, pathlib, sys, time, wave
+job = json.loads(pathlib.Path(sys.argv[1]).read_bytes())
+stage = pathlib.Path(job['stage']).resolve()
+cache = pathlib.Path(os.environ['NUMBA_CACHE_DIR'])
+assert cache.parent == stage and cache.name == 'numba-cache'
+cache.mkdir(mode=0o700)
+(cache / 'compiled.fixture').write_bytes(b'synthetic JIT cache')
+if job['prompt'] == 'cancel-cache-fixture':
+    time.sleep(30)
+with wave.open(job['output'], 'wb') as output:
+    output.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
+    output.writeframes(b'\\x00\\x10' * round(job['duration'] * 24000))
+''')
+    seen = []
+    def cancelled():
+        for path in runtime.root.glob('.music-worker-*/numba-cache/compiled.fixture'):
+            assert path.read_bytes() == b'synthetic JIT cache'
+            seen.append(path)
+        return bool(cancel and seen)
+
+    spec = MusicSpec(duration=1, engine='musicgen',
+                     prompt='cancel-cache-fixture' if cancel else 'cache-fixture')
+    target = runtime.root / 'result.wav'
+    if cancel:
+        with pytest.raises(AudioCancelled):
+            runtime.render_music(spec, target, channels=1, cancelled=cancelled)
+        assert not target.exists()
+    else:
+        result = runtime.render_music(spec, target, channels=1, cancelled=cancelled)
+        assert result.frames == 24000 and result.channels == 1
+    assert seen and not tuple(runtime.root.glob('.music-worker-*'))
+    assert {path.name: path.read_bytes() for path in config.directory.iterdir()} == model_before
+    assert tuple(inherited.iterdir()) == (inherited / 'owner.txt',)
+    assert (inherited / 'owner.txt').read_bytes() == b'Owner cache must remain unchanged.'
+
+
 def test_runtime_inventory_counts_non_python_and_detects_case_variant(tmp_path, monkeypatch):
     from carr_library.audio import music
 

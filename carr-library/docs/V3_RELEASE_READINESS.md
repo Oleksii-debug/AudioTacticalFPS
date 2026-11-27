@@ -539,3 +539,57 @@ preparation. Native clip/conversion/recording/publishing, Tasks and voice
 preferences passed, while metadata/cover, synchronized EPUB reading and the
 not-yet-corrected batch-menu probe failed. These exact failures still need their
 own diagnosis/replay; the helper/menu fixes do not claim to resolve all three.
+
+## Reader units, retained appearance and explicit playback outputs
+
+Local source `b109d51` passed 279 composed cases with zero failures, errors or
+skips across fifteen reader, native-driver cleanup and backup suites. It adds
+current/previous/next word, sentence and paragraph selection and exact-unit
+reading through the existing worker; a reviewed per-library font/color/zoom
+profile with source/history/cursor preservation; and explicit session output
+selection with stable WinMM identity and MCI route readback. The source-only
+report is [retained separately](evidence/reader-backup-source-b109d51-20261127.json).
+
+Assistant backup reuse now verifies the complete artifact tree. Approved whole
+backup byte/file limits include retained inputs, pending imports, reading state
+and the final manifest before destination creation. This selectively adapts the
+useful canonical receipt without replacing the current backup format or journals.
+
+Required source and installed gates retain all previous selectors and add ten
+suites. The composed installed selection collects 3,853 cases across 157
+selectors (155 distinct files), including all 201 required named cases. Collection
+is not execution. New native reading-unit and appearance probes run on both
+installed wheels and the sealed bundle; playback probing explicitly distinguishes
+real device inventory/routing from synthetic UI transport and absent devices.
+Human NVDA, physical listening and picker interaction remain unqualified.
+
+Exact public `fb59209` successfully built the pinned Hunspell source, exercised
+its actual Windows C API and completed the registered document-batch native
+workflow. Its metadata and recorded-EPUB probes still failed, so this is not a
+full Windows PASS and does not establish qualification for the newer reader source.
+
+## Exact composed follow-up after native compiler/menu recovery
+
+The completed V3 run for public `fb59209` passed 579 strict installed recovery
+cases with zero failures/skips, actual native SAPI/Studio/restart acceptance and
+the strict progress gate. Its broader service run reported 1,870 passes, 24
+disclosed skips and 20 failures, all in the metadata packet-receipt path or its
+UI consumers. The actual log is
+[run 45961605038](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45961605038).
+These results remain attached to that source; the broader run did not pass.
+
+Subsequent functional source `7635dda` combines the stable encoded-packet hash,
+recorded-EPUB admitted-start error reporting, the reader additions, complete
+backup receipts with Windows path/handle permission compatibility, and owned
+NUMBA worker cache staging. It passed 495 distinct cases across twenty suites
+with zero failures/errors/skips. Tests include actual local FFmpeg/EPUB workers;
+device rejection and optional neural inference remain explicit boundary doubles.
+See the [exact source and JUnit identity](evidence/composed-reader-7635dda-20261127.json).
+The real Windows playback failure code is still unknown until the next probe;
+reporting a previously swallowed error is not proof of successful MCI playback.
+
+The strict source gate now retains 250 suites. The complete installed gate
+retains all previous selectors, adds the music staging boundary and requires the
+new independent packet, EPUB-start, backup-handle and cache cases. Native unit
+reading, appearance and output controls remain required for both the installed
+package and sealed bundle, with their real versus synthetic evidence explicit.

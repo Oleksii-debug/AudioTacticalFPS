@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import struct
 from threading import Event
+from types import SimpleNamespace
 import wave
 import zlib
 
@@ -51,6 +52,42 @@ def encoded(actual, suffix='.flac'):
     else:
         runtime.convert(wave_source, source)
     return source
+
+
+@pytest.mark.parametrize('suffix', ['.mp3', '.flac', '.m4a', '.m4b'])
+def test_actual_packet_hash_uses_stable_receipt_and_matches_independent_copied_payload(actual, monkeypatch, suffix):
+    runtime, pcm, _, _ = actual
+    source = encoded(actual, suffix)
+    packets = run_process([*runtime._base_args(), *runtime._input_args(source),
+        '-map', '0:a:0', '-c:a', 'copy', '-f', 'data', 'pipe:1'], budget=runtime.budget).stdout
+    assert packets
+    expected = sha256(packets).hexdigest()
+    with wave.open(str(pcm), 'rb') as decoded:
+        assert expected != sha256(decoded.readframes(decoded.getnframes())).hexdigest()
+    observed = []
+    def capture(args, **kwargs):
+        result = run_process(args, **kwargs)
+        observed.append(result.stdout)
+        return result
+    monkeypatch.setattr(metadata, 'run_process', capture)
+    assert metadata._stream_hash(runtime, source, lambda: False) == expected
+    # The published 9.1 streamhash default is headered version 2; the hash
+    # muxer's single-record protocol remains the same on older local FFmpeg.
+    assert len(observed) == 1
+    assert observed[0].decode('ascii').splitlines() == ['SHA256=' + expected]
+
+
+@pytest.mark.parametrize('output', [
+    b'', b'SHA1=' + b'0' * 64, b'SHA256=' + b'0' * 63,
+    b'SHA256=' + b'g' * 64, b'SHA256=' + b'0' * 64 + b'\nSHA256=' + b'1' * 64,
+    b'0,a,SHA256=' + b'0' * 64,
+    b'#format: stream checksums\n#version: 2\n#hash: SHA256\n0, 123, ' + b'0' * 64,
+])
+def test_packet_hash_rejects_missing_ambiguous_or_changed_receipt_protocol(actual, monkeypatch, output):
+    runtime, source, _, _ = actual
+    monkeypatch.setattr(metadata, 'run_process', lambda *args, **kwargs: SimpleNamespace(stdout=output))
+    with pytest.raises(AudioError, match='did not attest'):
+        metadata._stream_hash(runtime, source, lambda: False)
 
 
 @pytest.mark.parametrize('suffix', ['.mp3', '.flac', '.m4a', '.m4b'])

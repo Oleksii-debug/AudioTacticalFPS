@@ -39,6 +39,19 @@ def _release_native_keys(simulator, pressed, errors):
             pressed.discard(key)
 
 
+def _check_audio_progress(overlay, stage):
+    """Expose the real dialog's terminal error instead of polling to deadline."""
+    # Stage 9 deliberately archives the source and expects the normal guard to
+    # stop playback. Earlier stages require a live transport timer after load.
+    if overlay is None or not 1 <= stage <= 8 or overlay.busy or overlay.closed:
+        return
+    if not overlay.timer.IsRunning():
+        status = overlay.status.GetValue()[:2048]
+        state = None if overlay.player is None else overlay.player.state
+        raise RuntimeError(f'Recorded EPUB preparation/playback failed at stage {stage}; '
+                           f'player={state!r}; status={status!r}')
+
+
 def _abort_native_probe(wx, application, owner_loop, frame, owners, release, errors, detail):
     """Close the active child and wait for its ShowModal to return first."""
     errors.append(detail)
@@ -312,6 +325,7 @@ def _run_native():
                 try:
                     if monotonic() >= deadline:
                         raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
+                    _check_audio_progress(overlay, stage)
                     if key_pending:
                         return
                     if stage == 0 and reader.controller.current is not None and not reader.busy:
@@ -320,6 +334,7 @@ def _run_native():
                         press(named(reader.dialog, 'EPUB synchronized recorded audio...'))
                     elif stage == 1 and reader._audio_dialog is not None:
                         overlay = reader._audio_dialog
+                        _check_audio_progress(overlay, stage)
                         if overlay.busy or overlay.transport is None:
                             return
                         check('opening recorded audio does not start playback', overlay.player.state == 'stopped'

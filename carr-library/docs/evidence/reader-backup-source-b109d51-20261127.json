@@ -1,0 +1,29 @@
+{
+  "source_commit": "b109d51f9d26c5267154aea4333e912d73ba5e03",
+  "source_tree": "544435e2abf9903f28d218d2d949fee9856d2738",
+  "validation": "POSIX source composition with installed editable package; no native Windows claim",
+  "passed": 279,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "suites": {
+    "tests.speech.test_reading_units": 34,
+    "tests.speech.test_reading_unit_handlers": 28,
+    "tests.speech.test_reading_presentation": 32,
+    "tests.speech.test_reading_presentation_handlers": 20,
+    "tests.speech.test_reading_presentation_reader_hook": 9,
+    "tests.speech.test_playback_devices": 24,
+    "tests.speech.test_playback_reader_hook": 7,
+    "tests.ui.test_playback_navigation": 41,
+    "tests.ui.test_native_playback_driver": 6,
+    "tests.ui.test_native_reading_presentation_driver": 9,
+    "tests.ui.test_native_reading_units_driver": 8,
+    "tests.speech.test_pronunciation_reader_hook": 8,
+    "tests.speech.test_find_replace_reader_hook": 10,
+    "tests.speech.test_spelling_reader_hook": 7,
+    "tests.assistant.test_backup_receipt": 36
+  },
+  "junit_sha256": "0ec6ebafa79cb4e46717d7a4d92d4b2ea6b85f719cc42e037999dc700621b307",
+  "native_windows": "NOT_RUN",
+  "nvda": "NOT_RUN"
+}

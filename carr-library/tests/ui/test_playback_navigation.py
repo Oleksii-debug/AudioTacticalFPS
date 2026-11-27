@@ -226,6 +226,8 @@ class Widget:
     def __init__(self, parent=None, *args, label='', value='', **kwargs):
         self.parent, self.label, self.value = parent, label, value
         self.name, self.enabled, self.bindings, self.modal = '', True, {}, False
+        self.choices, self.selection = kwargs.get('choices', []), -1
+    def GetId(self): return id(self)
     def SetName(self, value): self.name = value
     def GetName(self): return self.name
     def GetValue(self): return self.value
@@ -236,6 +238,11 @@ class Widget:
     def Bind(self, event, callback, source=None): self.bindings[event] = callback
     def Enable(self, value=True): self.enabled = value
     def SetSizer(self, value): pass
+    def SetScrollRate(self, horizontal, vertical): self.scroll_rate = horizontal, vertical
+    def FitInside(self): self.fitted = True
+    def Set(self, values): self.choices = values
+    def SetSelection(self, value): self.selection = value
+    def GetSelection(self): return self.selection
     def SetEscapeId(self, value): pass
     def IsModal(self): return self.modal
     def ShowModal(self): self.modal = True; return 0
@@ -258,6 +265,7 @@ class Timer:
 @pytest.fixture
 def wx():
     return SimpleNamespace(Dialog=Widget, StaticText=Widget, TextCtrl=Widget, Button=Widget,
+        ScrolledWindow=Widget, Choice=Widget, TAB_TRAVERSAL=128, VSCROLL=256,
         CheckBox=Widget, Timer=Timer, BoxSizer=Sizer, CallLater=lambda delay, callback: callback(),
         DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8,
         ALIGN_RIGHT=16, TE_READONLY=32, TE_MULTILINE=64, ID_CANCEL=99,
@@ -287,11 +295,129 @@ def test_host_owns_only_its_timer_and_ignores_child_destruction(transport, wx):
     host.bind(); host.controller.set_sleep(20)
     assert host.timer.running and host.timer.interval == 200
     skipped = []
-    host._destroyed(SimpleNamespace(GetEventObject=lambda: Widget(owner), Skip=lambda: skipped.append(True)))
+    child = Widget(owner)
+    host._destroyed(SimpleNamespace(GetId=child.GetId, Skip=lambda: skipped.append(True)))
     assert not host.closed and host.timer.running
-    host._destroyed(SimpleNamespace(GetEventObject=lambda: owner, Skip=lambda: skipped.append(True)))
+    host._destroyed(SimpleNamespace(GetId=lambda: host.owner_id, Skip=lambda: skipped.append(True)))
     assert host.closed and not host.timer.running and host.controller.sleep_deadline is None
     assert t.player.calls == [] and skipped == [True, True]
+
+
+def test_native_destroy_uses_captured_id_when_original_wrapper_is_detached(transport, wx):
+    t, owner = transport, Widget()
+    host = PlaybackNavigationHost(owner, t.player, generation=lambda: t.generation[0],
+        alive=lambda: t.alive[0], stop_current=t.player.stop, wx_module=wx)
+    host.bind(); host.controller.set_sleep(1)
+    pending = host.controller.dispatch = Pending()
+    host.controller.seek_percent(50)
+    def detached(): raise RuntimeError('wrapped C++ object was deleted')
+    owner.GetId = detached
+    host._destroyed(SimpleNamespace(GetId=lambda: host.owner_id, GetEventObject=detached, Skip=lambda: None))
+    pending.flush(); t.clock[0] += 2; host._tick()
+    assert host.closed and not host.timer.running and host.controller.closed
+    assert t.player.calls == [] and host.controller.sleep_deadline is None
+
+
+@pytest.fixture
+def output_transport(transport):
+    from carr_library.speech.playback_devices import PlaybackDevice
+    t = transport
+    t.devices = [PlaybackDevice(2, 'Навушники 😀', 'fixture-opaque-interface', 1, 2, 3, 2)]
+    t.player.output_device = None
+    t.enumerations = []
+    def enumerate_devices():
+        t.enumerations.append(True)
+        return tuple(t.devices)
+    def select(device):
+        if device is not None and device not in t.devices:
+            raise RuntimeError('Selected output unavailable; no fallback was used.')
+        assert t.player.state == 'stopped'
+        t.player.calls.append(('output', device))
+        t.player.output_device = device
+    t.player.output_devices, t.player.select_output = enumerate_devices, select
+    return t
+
+
+def test_output_dialog_explicit_reload_and_selection_do_not_start_or_stop_audio(output_transport, wx):
+    t = output_transport
+    view = create_navigation_dialog(Widget(), t.controller, wx_module=wx)
+    assert t.enumerations == [] and t.player.calls == []
+    assert view.output.parent.scroll_rate == (0, 12) and view.output.parent.fitted
+    view.reload_outputs.bindings['button'](None)
+    view.output.SetSelection(1)
+    assert t.enumerations == [True] and t.player.calls == []
+    assert t.player.output_device is None and 'no sound was played' in view.status.GetValue()
+    assert view.output.GetName() and view.apply_output.GetName() and view.reload_outputs.GetName()
+
+
+def test_apply_output_stops_once_and_revokes_repeat_sleep_and_pending_seek(output_transport, wx):
+    t = output_transport; t.controller.bind()
+    t.controller.set_range(1, 2); t.controller.enable_repeat(True); t.controller.set_sleep(1)
+    pending = t.controller.dispatch = Pending()
+    t.controller.seek_percent(50)
+    view = create_navigation_dialog(Widget(), t.controller, wx_module=wx)
+    view.load_outputs(); view.output.SetSelection(1)
+    view.apply_output.bindings['button'](None)
+    pending.flush(); t.clock[0] += 2; t.controller.tick()
+    assert t.player.calls == [('stop',), ('output', t.devices[0])]
+    assert t.generation == [2] and t.controller.audio is None
+    assert t.controller.sleep_deadline is None and not t.controller.repeat
+    assert t.player.state == 'stopped' and t.player.output_device == t.devices[0]
+    assert 'Start audio explicitly' in view.status.GetValue()
+
+
+def test_stale_output_choice_stops_but_does_not_substitute_or_restart(output_transport, wx):
+    t = output_transport; t.controller.bind()
+    view = create_navigation_dialog(Widget(), t.controller, wx_module=wx)
+    view.load_outputs(); view.output.SetSelection(1)
+    t.devices.clear()
+    view.apply_output.bindings['button'](None)
+    assert t.player.calls == [('stop',)] and t.player.output_device is None
+    assert t.controller.audio is None and 'no fallback' in view.status.GetValue()
+
+
+def test_failed_stop_during_output_change_revokes_old_automation_without_applying(output_transport, wx):
+    t = output_transport; t.controller.bind()
+    t.controller.set_range(1, 2); t.controller.enable_repeat(True); t.controller.set_sleep(1)
+    pending = t.controller.dispatch = Pending()
+    t.controller.seek_percent(50)
+    attempts = []
+    def fail():
+        attempts.append(True)
+        raise RuntimeError('Native stop failed')
+    t.controller.stop_current = fail
+    view = create_navigation_dialog(Widget(), t.controller, wx_module=wx)
+    view.load_outputs(); view.output.SetSelection(1)
+    view.apply_output.bindings['button'](None)
+    pending.flush(); t.clock[0] += 2; t.controller.tick()
+    assert attempts == [True] and t.player.calls == [] and t.player.output_device is None
+    assert t.controller.audio is None and t.controller.sleep_deadline is None and not t.controller.repeat
+    assert 'Native stop failed' in view.status.GetValue()
+
+
+def test_reload_does_not_turn_missing_explicit_output_into_automatic(output_transport, wx):
+    t = output_transport
+    t.player.output_device = t.devices[0]
+    view = create_navigation_dialog(Widget(), t.controller, wx_module=wx)
+    assert view.output.GetSelection() == -1
+    t.devices.clear(); view.load_outputs()
+    assert view.output.GetSelection() == -1 and 'unavailable' in view.status.GetValue()
+    view.apply_output.bindings['button'](None)
+    assert t.player.calls == [] and t.player.output_device is not None
+    view.output.SetSelection(0); view.apply_output.bindings['button'](None)
+    assert t.player.calls == [('stop',), ('output', None)] and t.player.output_device is None
+
+
+def test_output_without_identity_and_dead_reader_never_touches_transport(output_transport, wx):
+    from dataclasses import replace
+    t = output_transport; t.devices[0] = replace(t.devices[0], interface='')
+    view = create_navigation_dialog(Widget(), t.controller, wx_module=wx)
+    view.load_outputs(); view.output.SetSelection(1)
+    view.apply_output.bindings['button'](None)
+    assert t.player.calls == [] and 'stable interface' in view.status.GetValue()
+    view.output.SetSelection(0); t.alive[0] = False
+    view.apply_output.bindings['button'](None)
+    assert t.player.calls == [] and 'reader closed' in view.status.GetValue()
 
 
 def test_closing_controls_view_keeps_reader_timer_but_host_close_cancels_it(transport, wx):

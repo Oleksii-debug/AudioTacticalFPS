@@ -38,6 +38,19 @@ def _restore_character_cursor(control, text, offset):
     control.SetInsertionPoint(native_position(control, displayed, len(prefix)))
 
 
+def _selection_character_offsets(control, text):
+    """Verify the complete native selection before using character offsets."""
+    first, last = control.GetSelection()
+    end = control.GetLastPosition()
+    if (type(first) is not int or type(last) is not int or not 0 <= first <= last <= end
+            or control.GetValue() != text):
+        raise ValueError('The reading selection changed. Select the current copy again.')
+    prefix, selected, suffix = control.GetRange(0, first), control.GetRange(first, last), control.GetRange(last, end)
+    if prefix + selected + suffix != text or control.GetStringSelection() != selected:
+        raise ValueError('The native selection does not identify an exact reading-copy range.')
+    return len(prefix), len(prefix) + len(selected)
+
+
 def _read_clipboard_text(wx):
     """Take one explicit Unicode snapshot without modifying the clipboard."""
     from ..speech._io import text_value
@@ -142,6 +155,25 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(controls, 0, wx.EXPAND)
     editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    from .reading_presentation import load_reading_presentation
+    presentation_library = getattr(parent, 'library', None)
+    presentation, presentation_store, presentation_notice = load_reading_presentation(
+        editor, getattr(presentation_library, 'root', None), wx)
+    recovery_notice += presentation_notice
+    dialog.reading_presentation = presentation
+    unit_row = wx.BoxSizer(wx.HORIZONTAL)
+    unit_kind = wx.Choice(dialog, choices=['Word (letter-based)', 'Sentence (punctuation)', 'Paragraph (stored line)'])
+    unit_kind.SetName('Text unit: word, sentence or paragraph'); unit_kind.SetSelection(1)
+    unit_previous = wx.Button(dialog, label='Previous unit')
+    unit_current = wx.Button(dialog, label='Select current unit')
+    unit_next = wx.Button(dialog, label='Next unit')
+    unit_read = wx.Button(dialog, label='Read current unit')
+    for control, name in ((unit_previous, 'Select previous text unit'), (unit_current, 'Select current text unit'),
+                          (unit_next, 'Select next text unit'), (unit_read, 'Read current text unit')):
+        control.SetName(name)
+    for control in (unit_kind, unit_previous, unit_current, unit_next, unit_read):
+        unit_row.Add(control, 0, wx.ALL, 4)
+    layout.Add(unit_row, 0, wx.EXPAND)
     status = labelled('Speech and save status', wx.TextCtrl, style=wx.TE_READONLY | wx.TE_MULTILINE,
                       value='Finding installed local voices. No speech starts automatically.', size=(-1, 90))
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -176,12 +208,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     find_button.SetName('Find and replace')
     spelling_button = wx.Button(dialog, label='Spelling review...')
     spelling_button.SetName('Spelling review with Hunspell')
+    appearance_button = wx.Button(dialog, label='Text appearance...')
+    appearance_button.SetName('Reading appearance: font, colors and zoom')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
     for control in (seek, navigation_button, voice_preferences_button, cleanup):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     row = wx.BoxSizer(wx.HORIZONTAL)
-    for control in (pronunciation, find_button, spelling_button, close):
+    for control in (pronunciation, find_button, spelling_button, appearance_button, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -208,11 +242,35 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
         spelling_button.Enable(source_loaded and not busy)
+        appearance_button.Enable(source_loaded and not busy and presentation_store is not None)
         voice_preferences_button.Enable(registry is not None and not busy
             and getattr(getattr(parent, 'library', None), 'root', None) is not None)
+        for control in (unit_kind, unit_previous, unit_current, unit_next):
+            control.Enable(source_loaded and not busy)
+        unit_read.Enable(source_loaded and bool(current) and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
+
+    def choose_reading_appearance(event=None):
+        from .reading_presentation import show_reading_presentation
+        def guard():
+            if (not alive or busy or not source_loaded or getattr(parent, '_closing', False)
+                    or presentation_store is None or getattr(parent, 'library', None) is not presentation_library
+                    or Path(presentation_library.root).absolute() != presentation_store.root):
+                raise ValueError('The reader or library changed. Reopen reading appearance.')
+            presentation_store.guard()
+            source_guard()
+        try:
+            guard()
+            applied = show_reading_presentation(dialog, library_root=presentation_store.root,
+                presenter=presentation, guard=guard)
+            guard()
+            if applied:
+                report('Reading appearance saved for this library. Text, source and editing history are unchanged.')
+            editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def choose_voice_preferences(event=None):
         from .voice_preferences import show_voice_preferences
@@ -400,6 +458,85 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = editor.GetStringSelection()
         return selected or editor.GetValue()
 
+    def navigate_text_unit(event=None, *, step=0, read_unit=False):
+        """Plan on the existing worker; only apply an unchanged exact scope."""
+        try:
+            if not alive or busy or not source_loaded or getattr(parent, '_closing', False):
+                raise ValueError('Wait for the current reader operation before navigating text units.')
+            from ..durable_state import local_path, regular
+            from ..speech.units import KINDS, choose_unit, plan_units
+            from .ebook_model import native_position
+            from .pronunciation_dialog import ReadingSnapshot
+            library = getattr(parent, 'library', None)
+            root = getattr(library, 'root', None)
+            identity = None
+            if root is not None:
+                root = local_path(root, exists=True)
+                info = regular(root, directory=True)
+                identity = info.st_dev, info.st_ino
+
+            def guard():
+                if (not alive or not source_loaded or getattr(parent, '_closing', False)
+                        or getattr(parent, 'library', None) is not library):
+                    raise ValueError('The reader or library changed. Choose the text unit again.')
+                if root is not None:
+                    current_root = local_path(library.root, exists=True)
+                    info = regular(current_root, directory=True)
+                    if current_root != root or (info.st_dev, info.st_ino) != identity:
+                        raise ValueError('The library directory changed. Choose the text unit again.')
+                source_guard()
+
+            def capture():
+                guard(); sync_document()
+                kind_index = unit_kind.GetSelection()
+                if not 0 <= kind_index < len(KINDS):
+                    raise ValueError('Choose word, sentence or paragraph explicitly.')
+                voice_index = voice_choice.GetSelection()
+                voice = voices[voice_index] if 0 <= voice_index < len(voices) else None
+                if read_unit and (registry is None or voice is None):
+                    raise ValueError('Choose an installed local voice before reading this unit.')
+                snapshot = ReadingSnapshot.capture(document, _selection_character_offsets(editor, document.text),
+                    language=voice.language if read_unit else '', voice_id=voice.id if read_unit else '')
+                settings = (rate.GetValue(), volume.GetValue()) if read_unit else None
+                return snapshot, _cursor_character_offset(editor, document.text), kind_index, settings
+
+            captured = capture()
+            snapshot, caret, kind_index, _ = captured
+            kind = KINDS[kind_index]
+
+            def planned():
+                plan = plan_units(snapshot.text, kind, cancelled=cancel.is_set)
+                return choose_unit(plan, snapshot.text, caret, snapshot.selection, step=step)
+
+            def selected(value):
+                if cancel.is_set():
+                    raise InterruptedError('Text navigation was cancelled.')
+                if capture() != captured:
+                    raise ValueError('The reading copy, cursor, selection or voice changed. Choose the text unit again.')
+                first = native_position(editor, snapshot.text, value.start)
+                last = native_position(editor, snapshot.text, value.end)
+                if editor.GetRange(first, last) != value.text:
+                    raise ValueError('The native text range differs from the planned unit.')
+                previous = editor.GetSelection()
+                editor.SetSelection(first, last)
+                if editor.GetStringSelection() != value.text:
+                    editor.SetSelection(*previous)
+                    raise ValueError('The native text unit could not be selected exactly.')
+                editor.ShowPosition(first); editor.SetFocus()
+                warning = ''
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    warning = f' Cursor recovery could not be saved: {exc}'
+                report(f'{kind.title()} {value.index} of {value.total} selected. {value.notice}' + warning)
+                if read_unit:
+                    accepted = speak(bounded_text=(snapshot, value))
+                    if accepted and warning:
+                        report('Rendering the selected unit.' + warning)
+            run(planned, selected)
+        except Exception as exc:
+            report(str(exc), focus=True)
+
     def pronunciations(event=None):
         try:
             if busy or not source_loaded:
@@ -563,14 +700,28 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
-    def speak(event=None, *, from_cursor=False, destination=None):
+    def speak(event=None, *, from_cursor=False, destination=None, bounded_text=None):
         nonlocal last_audio, playback_generation
         try:
             if registry is None or not voices:
                 raise ValueError('Choose an installed local voice first.')
             source_guard()
-            content = selected_text(from_cursor)
-            voice = voices[voice_choice.GetSelection()]
+            voice_index = voice_choice.GetSelection()
+            if not 0 <= voice_index < len(voices):
+                raise ValueError('Choose an installed local voice explicitly.')
+            voice = voices[voice_index]
+            if bounded_text is None:
+                content = selected_text(from_cursor)
+            else:
+                snapshot, unit = bounded_text
+                sync_document()
+                if (id(document) != snapshot.identity or document._signature() != snapshot.signature
+                        or document.text != snapshot.text or voice.id != snapshot.voice_id
+                        or voice.language != snapshot.language
+                        or _selection_character_offsets(editor, document.text) != (unit.start, unit.end)
+                        or editor.GetStringSelection() != unit.text or not unit.text.strip()):
+                    raise ValueError('The selected reading unit changed. Choose it again; no wider text was read.')
+                content = unit.text
             settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
             playback_generation += 1
             if navigation_host is not None:
@@ -597,8 +748,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     report(f'WAV saved: {result.path}. Duration {result.duration_seconds:.1f} seconds; '
                            f'{result.sample_rate} Hz; {result.channels} channels.', focus=True)
             report('Rendering locally. F8 cancels. Original text is unchanged.')
-            run(lambda: registry.synthesize(content, voice.id, output,
-                                            settings=settings, cancelled=cancel.is_set), rendered)
+            return run(lambda: registry.synthesize(content, voice.id, output,
+                                                   settings=settings, cancelled=cancel.is_set), rendered)
         except Exception as exc:
             report(str(exc), focus=True)
 
@@ -789,13 +940,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice),
         (voice_preferences_button, choose_voice_preferences), (read, speak),
+        (unit_previous, lambda event: navigate_text_unit(step=-1)), (unit_current, navigate_text_unit),
+        (unit_next, lambda event: navigate_text_unit(step=1)),
+        (unit_read, lambda event: navigate_text_unit(read_unit=True)),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (navigation_button, playback_navigation),
         (cleanup, clean), (pronunciation, pronunciations),
-        (find_button, find_replace), (spelling_button, lambda event: find_replace(event, spelling=True)), (close, closing)):
+        (find_button, find_replace), (spelling_button, lambda event: find_replace(event, spelling=True)),
+        (appearance_button, choose_reading_appearance), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)

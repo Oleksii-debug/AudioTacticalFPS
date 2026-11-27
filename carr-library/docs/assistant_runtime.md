@@ -87,6 +87,17 @@ outputs are not overwritten or silently re-rendered. If a crash leaves a
 complete backup before the assistant records its receipt, the job requests
 review instead of creating another backup or claiming unverified success.
 
+Completed assistant backups also retain a compact SHA256 receipt for every file
+and directory in the published backup. Resume rechecks the complete tree twice,
+including the database and retained originals; an unchanged manifest alone is
+insufficient. Changed contents, added or removed paths, and older completed
+results without this receipt require review and are never silently recreated.
+The selected byte and file budgets cover the entire backup, including private
+state, pending imports, retained Studio inputs, reading locations and its final
+manifest. These limits are checked while staging, before creating the output
+directory. Component staging keeps its existing independent resource limits.
+Cancellation and the plan deadline propagate to the backup and receipt checks.
+
 Original bytes, source revisions and quotation approval remain managed by the
 existing library services. User edits to a reading copy do not change them.
 Symbolic links, Windows reparse points, network paths and output traversal are

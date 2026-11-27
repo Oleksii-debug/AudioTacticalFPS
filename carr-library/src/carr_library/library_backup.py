@@ -119,15 +119,32 @@ def _reading_snapshot(root, db, expected=None):
     return raw
 
 
-def create_backup(app, destination, *, include_generated=False, cancelled=lambda: False):
+def create_backup(app, destination, *, include_generated=False, max_bytes=None,
+                  max_files=None, cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
+    Optional whole-backup budgets include every staged component and the final
+    manifest, and are checked before the destination is created. Component
+    producers retain their own limits while preparing the private staging tree.
     """
     if type(include_generated) is not bool or not callable(cancelled):
         raise ValueError('Invalid backup options.')
+    if any(value is not None and (type(value) is not int or value < 1)
+           for value in (max_bytes, max_files)):
+        raise ValueError('Complete backup budgets must be positive integers.')
+    total_bytes = total_files = 0
+
+    def account(size, files=1):
+        nonlocal total_bytes, total_files
+        total_bytes += size
+        total_files += files
+        if ((max_bytes is not None and total_bytes > max_bytes)
+                or (max_files is not None and total_files > max_files)):
+            raise ValueError('The complete backup exceeds the approved byte or file budget.')
+
     if cancelled():
         raise InterruptedError('Backup cancelled.')
     destination = _destination(destination, app.root)
@@ -143,13 +160,16 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
+            account(size)
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 reading = _reading_snapshot(app.root, snapshot_storage.db)
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
+            account(sum(entry.size for entry in entries), len(entries))
             reading_manifest = None
             if reading is not None:
+                account(len(reading))
                 _sync_file(stage / READING_STATE, reading)
                 reading_manifest = dict(filename=READING_STATE, size_bytes=len(reading),
                                         sha256=sha256(reading).hexdigest())
@@ -162,12 +182,15 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 (stage / 'state').mkdir()
                 state = snapshot_state(app.root / 'state', stage / 'state',
                                        include_generated=include_generated, cancelled=cancelled)
+                account(sum(entry['size_bytes'] for entry in state), len(state))
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
             from .pending_backup import pending_roots, snapshot_pending
             roots = pending_roots(app.root)
             if roots:
                 manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending',
                     cancelled=cancelled, expected_roots=roots))
+                pending_files = manifest['pending']['files']
+                account(sum(entry['size_bytes'] for entry in pending_files), len(pending_files))
                 if 'state' not in manifest:
                     (stage / 'state').mkdir()
                     manifest.update(state=[], generated_audio_included=include_generated)
@@ -183,6 +206,7 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
                 raise RestoreError('manifest size limit')
+            account(len(raw))
             _sync_file(stage / MANIFEST, raw)
             if cancelled():
                 raise InterruptedError('Backup cancelled.')

@@ -1,7 +1,7 @@
 """Bounded navigation over one borrowed WavePlayer and reader generation.
 
-No audio backend, output-device selection or live speed conversion is added.
-The native host supplies its existing quiet-start and Stop lifecycle.
+The native host supplies its existing quiet-start and Stop lifecycle. Explicit
+output selection delegates to that same player; live speed conversion is absent.
 """
 from dataclasses import dataclass
 import math
@@ -119,6 +119,19 @@ class PlaybackNavigation:
 
     def set_skip(self, seconds):
         self.skip_seconds = _number(seconds, 'Skip interval in seconds', 1, MAX_SKIP_SECONDS)
+        self._changed()
+
+    def select_output(self, device):
+        """The named action explicitly stops audio and revokes queued navigation."""
+        if self.closed or not self.alive():
+            raise ValueError('The reader closed. Reopen playback controls.')
+        select = getattr(self.player, 'select_output', None)
+        if not callable(select):
+            raise ValueError('This playback transport does not support selecting an output.')
+        self.invalidate()
+        self.stop_current()
+        select(device)
+        self._notice('Playback stopped. The selected output applies to the next explicit Play or Read; audio was not restarted.')
         self._changed()
 
     def skip(self, direction):
@@ -290,6 +303,9 @@ class PlaybackNavigationHost:
             import wx as wx_module
         from ..speech.progress_speech import play_when_quiet
         self.owner, self.wx, self.closed, self.view = owner, wx_module, False, None
+        # MSW may detach the original Python wrapper before delivering Destroy.
+        # Capture the native identity while alive; never query a dying wrapper.
+        self.owner_id = owner.GetId()
         def dispatch(action, *, alive, on_error):
             play_when_quiet(progress, action, schedule=self.wx.CallLater, alive=alive, on_error=on_error)
         self.controller = PlaybackNavigation(player, generation=generation, alive=alive,
@@ -304,7 +320,7 @@ class PlaybackNavigationHost:
             self.controller.tick()
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.owner:
+        if event.GetId() == self.owner_id:
             self.close()
         event.Skip()
 
@@ -346,22 +362,43 @@ def create_navigation_dialog(owner, controller, *, wx_module=None):
 
     class NavigationDialog(wx.Dialog):
         def __init__(self):
-            super().__init__(owner, title='Playback navigation', size=(660, 700),
+            super().__init__(owner, title='Playback navigation', size=(720, 700),
                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            outer = wx.BoxSizer(wx.VERTICAL)
+            panel = wx.ScrolledWindow(self, style=wx.TAB_TRAVERSAL | wx.VSCROLL)
+            panel.SetScrollRate(0, 12)
             layout = wx.BoxSizer(wx.VERTICAL)
-            self.position = wx.StaticText(self, label='No active recording')
+            self.position = wx.StaticText(panel, label='No active recording')
             self.position.SetName('Current playback position and backend accuracy')
             layout.Add(self.position, 0, wx.ALL | wx.EXPAND, 8)
+            self.output = None
+            self.outputs = (None,)
+            if callable(getattr(controller.player, 'output_devices', None)):
+                layout.Add(wx.StaticText(panel, label='Playback output for this reader session'), 0, wx.ALL, 4)
+                self.output = wx.Choice(panel, choices=['Automatic output chosen by the playback backend'])
+                self.output.SetName('Requested playback output; apply explicitly after selection')
+                self.output.SetSelection(0 if controller.player.output_device is None else -1)
+                layout.Add(self.output, 0, wx.ALL | wx.EXPAND, 4)
+                box = wx.BoxSizer(wx.HORIZONTAL)
+                self.reload_outputs = wx.Button(panel, label='Reload available outputs')
+                self.reload_outputs.SetName('Reload available playback outputs without playing audio')
+                self.reload_outputs.Bind(wx.EVT_BUTTON, lambda event: self.perform(self.load_outputs))
+                box.Add(self.reload_outputs, 0, wx.ALL, 4)
+                self.apply_output = wx.Button(panel, label='Stop audio and use selected output')
+                self.apply_output.SetName('Stop audio and use selected playback output')
+                self.apply_output.Bind(wx.EVT_BUTTON, lambda event: self.perform(self.use_output))
+                box.Add(self.apply_output, 0, wx.ALL, 4)
+                layout.Add(box, 0, wx.EXPAND)
             self.buttons = {}
             def field(label, value):
-                layout.Add(wx.StaticText(self, label=label), 0, wx.ALL, 4)
-                result = wx.TextCtrl(self, value=str(value)); result.SetName(label.replace('&', ''))
+                layout.Add(wx.StaticText(panel, label=label), 0, wx.ALL, 4)
+                result = wx.TextCtrl(panel, value=str(value)); result.SetName(label.replace('&', ''))
                 layout.Add(result, 0, wx.ALL | wx.EXPAND, 4)
                 return result
             def row(items):
                 box = wx.BoxSizer(wx.HORIZONTAL)
                 for key, label, callback in items:
-                    button = wx.Button(self, label=label); button.SetName(label.replace('&', ''))
+                    button = wx.Button(panel, label=label); button.SetName(label.replace('&', ''))
                     button.Bind(wx.EVT_BUTTON, lambda event, action=callback: self.perform(action))
                     self.buttons[key] = button; box.Add(button, 0, wx.ALL, 4)
                 layout.Add(box, 0, wx.EXPAND)
@@ -371,27 +408,56 @@ def create_navigation_dialog(owner, controller, *, wx_module=None):
             row((('back', 'Back&ward', lambda: move(-1)), ('forward', '&Forward', lambda: move(1))))
             self.percent = field('Seek &percentage, 0 to 100', '0')
             row((('seek', 'Seek to percentage', lambda: controller.seek_percent(float(self.percent.GetValue()))),))
-            self.range = wx.StaticText(self, label='A and B are not set')
+            self.range = wx.StaticText(panel, label='A and B are not set')
             self.range.SetName('Repeat range A and B'); layout.Add(self.range, 0, wx.ALL, 4)
             row((('a', 'Mark &A here', controller.mark_a), ('b', 'Mark &B here', controller.mark_b),
                  ('clear', 'Clear &repeat', controller.clear_repeat)))
-            self.repeat = wx.CheckBox(self, label='&Enable A–B repeat')
+            self.repeat = wx.CheckBox(panel, label='&Enable A–B repeat')
             self.repeat.SetName('Enable A–B repeat')
             self.repeat.Bind(wx.EVT_CHECKBOX, lambda event: self.perform(lambda: controller.enable_repeat(self.repeat.GetValue())))
             layout.Add(self.repeat, 0, wx.ALL, 4)
             self.minutes = field('S&leep after minutes; up to 1440; includes paused time', '30')
             row((('sleep', 'Set sleep timer', lambda: controller.set_sleep(float(self.minutes.GetValue()) * 60)),
                  ('cancel_sleep', 'Cancel sleep &timer', controller.cancel_sleep)))
-            self.status = wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 70))
+            self.status = wx.TextCtrl(panel, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 70))
             self.status.SetName('Playback navigation status')
             self.status.ChangeValue('Start audio in the reader first. Repeat uses a 200 ms control timer and the backend seek precision. '
                 'Closing this window keeps enabled repeat/sleep active; Stop or closing the reader clears them.')
             layout.Add(self.status, 1, wx.ALL | wx.EXPAND, 6)
+            panel.SetSizer(layout); panel.FitInside()
+            outer.Add(panel, 1, wx.EXPAND)
             close = wx.Button(self, wx.ID_CANCEL, '&Close'); close.SetName('Close playback navigation controls')
-            layout.Add(close, 0, wx.ALL | wx.ALIGN_RIGHT, 6)
-            self.SetSizer(layout); self.SetEscapeId(wx.ID_CANCEL)
+            outer.Add(close, 0, wx.ALL | wx.ALIGN_RIGHT, 6)
+            self.SetSizer(outer); self.SetEscapeId(wx.ID_CANCEL)
             controller.listeners.add(self.refresh)
             self.refresh()
+
+        def load_outputs(self):
+            if controller.closed or not controller.alive():
+                raise ValueError('The reader closed. Reopen playback controls.')
+            values = controller.player.output_devices()
+            selected = controller.player.output_device
+            self.outputs = (None, *values)
+            self.output.Set(['Automatic output chosen by the playback backend',
+                *(f'{row.name}; device {row.index + 1}' + ('' if row.selectable else '; no stable identity, unavailable')
+                  for row in values)])
+            index = 0 if selected is None else next((index for index, row in enumerate(self.outputs)
+                if row is not None and row.identity == selected.identity), -1)
+            self.output.SetSelection(index)
+            self.status.ChangeValue(f'{len(values)} Windows playback output(s) listed. '
+                'Selection is for this reader session only; no sound was played.'
+                + (' The previously selected output is unavailable; choose explicitly.' if index < 0 else ''))
+
+        def use_output(self):
+            index = self.output.GetSelection()
+            if not 0 <= index < len(self.outputs):
+                raise ValueError('Choose an enumerated output or automatic output explicitly.')
+            selected = self.outputs[index]
+            if selected is not None and not selected.selectable:
+                raise ValueError('This output has no stable interface identity. Choose a different output or automatic output.')
+            controller.select_output(selected)
+            self.status.ChangeValue('Playback stopped. Start audio explicitly to use '
+                + (selected.name if selected is not None else 'automatic output') + '.')
 
         def perform(self, action):
             try:

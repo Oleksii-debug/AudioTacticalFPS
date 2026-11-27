@@ -101,6 +101,12 @@ jobs:
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.academic_integration.doi
           import carr_library.speech.session
+          import carr_library.speech.units
+          import carr_library.speech.presentation
+          import carr_library.speech.playback_devices
+          import carr_library.speech.player
+          import carr_library.ui.reading_presentation
+          import carr_library.assistant.backup_receipt
           import carr_library.extract.ocr_runtime
           import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.assistant.translation, carr_library.assistant.translation_cli
@@ -115,6 +121,12 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
+                   'carr_library.speech.units',
+                   'carr_library.speech.presentation',
+                   'carr_library.speech.playback_devices',
+                   'carr_library.speech.player',
+                   'carr_library.ui.reading_presentation',
+                   'carr_library.assistant.backup_receipt',
                    'carr_library.extract.ocr_runtime',
                    'carr_library.durable_state', 'carr_library.ui.save_actions',
                    'carr_library.assistant.translation', 'carr_library.assistant.translation_cli',
@@ -161,6 +173,16 @@ jobs:
                     'tests/e2e/test_import_worker_publication.py',
                     'tests/ingest/test_import_replay_identity.py',
                     'tests/speech/test_reading.py',
+                    'tests/speech/test_reading_units.py',
+                    'tests/speech/test_reading_unit_handlers.py',
+                    'tests/speech/test_reading_presentation.py',
+                    'tests/speech/test_reading_presentation_handlers.py',
+                    'tests/speech/test_reading_presentation_reader_hook.py',
+                    'tests/speech/test_playback_devices.py',
+                    'tests/assistant/test_backup_receipt.py',
+                    'tests/ui/test_native_reading_units_driver.py',
+                    'tests/ui/test_native_reading_presentation_driver.py',
+                    'tests/ui/test_native_playback_driver.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
                     'tests/packaging/test_worker_bytecode.py']
@@ -199,6 +221,8 @@ jobs:
               'test_stale_apply_does_not_mutate_reading_copy[dictionary]',
               'test_cancellation_during_flush_does_not_publish',
               'test_cancellation_after_link_does_not_reclassify_committed_output'}
+          required_source_tools |= {'test_player_selection_never_starts_audio_and_next_play_confirms_exact_route', 'test_actual_assistant_replay_rejects_changed_backup_with_unchanged_manifest[database]', 'test_interface_rebinds_changed_index_but_never_name_or_driver', 'test_late_scope_loss_before_synthesis_never_falls_back_to_all_text[selection]', 'test_actual_complete_budget_includes_manifest_reading_pending_and_retained_cues[0-files]', 'test_actual_assistant_unchanged_backup_reuses_exact_tree_without_republication', 'test_font_change_restores_native_selection_and_caret_without_character_conversion[True]', 'test_actual_navigation_changes_only_exact_selection_and_recovery_cursor[0-Only]', 'test_actual_existing_sapi_or_flite_worker_speaks_only_the_bound_unit[2-Only this sentence.]', 'test_watchdogs_cover_runtime_activation_and_native_driver_calls[activate]', 'test_real_reader_hook_retains_library_source_and_focus_authority[apply]'}
+          required_source_tools |= {'test_supported_cmd_sidecar_keeps_identity_when_windows_handle_mode_differs[True]', 'test_supported_cmd_sidecar_keeps_identity_when_windows_handle_mode_differs[False]'}
           source_tools_complete = required_source_tools <= {c.get('name') for c in cases}
           ok = (status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen
                 and ocr_exact and json_timer_complete and source_tools_complete)

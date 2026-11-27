@@ -12,6 +12,7 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 from .models import JobReport, Plan, Scope, canonical, local_path, text
 from .planner import preview
 from .state import JobStore, now, regular
+from .backup_receipt import capture_backup_receipt, verify_backup_receipt
 
 
 _KEYS = {
@@ -236,6 +237,15 @@ class AssistantService:
         current = self._artifacts(result, scope, cancelled)
         if current != before:
             raise ValueError('A completed artifact changed; the job was not silently re-rendered.')
+        if 'manifest_sha256' in result and 'directory' in result:
+            directory = local_path(result['directory'])
+            if (scope.output_root is None
+                    or not directory.is_relative_to(local_path(scope.output_root))):
+                raise PermissionError('Backup is outside the selected output folder.')
+            if 'backup_receipt' not in result:
+                raise ValueError('This older backup result needs full verification before reuse.')
+            verify_backup_receipt(directory, result['backup_receipt'],
+                max_bytes=scope.max_bytes, max_files=scope.max_files, cancelled=cancelled)
 
     def run(self, identity, *, cancelled=lambda: False, progress=None):
         with self.store.lock(identity):
@@ -428,8 +438,12 @@ class AssistantService:
             target = scope.output(args['name'])
             if target.exists():
                 raise FileExistsError('Backup output already exists. Review its manifest before submitting a new backup.')
-            checksum = self.app.backup(target)
+            checksum = self.app.backup(target, max_bytes=scope.max_bytes,
+                                       max_files=scope.max_files, cancelled=cancelled)
+            receipt = capture_backup_receipt(target, checksum, max_bytes=scope.max_bytes,
+                max_files=scope.max_files, cancelled=cancelled)
             return {'directory': str(target), 'manifest_sha256': checksum,
+                    'backup_receipt': receipt.to_dict(),
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}
         if step.tool == 'audio.produce':
             if self.production is None:
