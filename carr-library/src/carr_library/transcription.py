@@ -605,6 +605,7 @@ class TranscriptionService:
                      'kind': 'user-edited derivative; source and timed recognition remain unchanged'}
             if cancelled():
                 raise AudioCancelled('Saving the transcript edit was cancelled.')
+            self._authorize()
             atomic_json(path / 'edits' / (revision + '.json'), value)
             return revision
 
@@ -654,9 +655,9 @@ class TranscriptionService:
                     'settings': job['settings'], 'artifacts': exported,
                     'edits': edits,
                     'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})
-                self._authorize()
                 if cancelled():
                     raise AudioCancelled('Transcription export was cancelled.')
+                self._authorize()
                 os.rename(temporary, destination)
                 sync_directory(destination.parent)
             finally:

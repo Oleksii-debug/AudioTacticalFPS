@@ -544,3 +544,77 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     assert all(event.percent < 100 for event in events)
     assert tracker.snapshot().percent == 99
     assert tracker.succeed(durable=True, message='Host accepted all results').percent == 100
+
+
+@pytest.mark.parametrize('operation', ['edit', 'export'])
+def test_final_callback_archive_blocks_transcription_publication(prepared, tmp_path, monkeypatch, operation):
+    import carr_library.transcription as transcription_module
+
+    app, workspace, service, original, _ = prepared
+    identity, job = completed(prepared)
+    source = job['sources'][0]['filename']
+    service.save_edit(identity, source, 'Saved edit before the final archive boundary.')
+    job_root = service._path(identity)
+    original_bytes = original.read_bytes()
+
+    def retained_bytes():
+        return {
+            path.relative_to(job_root).as_posix(): path.read_bytes()
+            for path in job_root.rglob('*')
+            if path.is_file() and path.name != '.transcribe.lock'}
+
+    before = retained_bytes()
+    assert job['receipts'] and len(job['artifacts']) == 6
+    export_parent = tmp_path / 'exports'
+    export_parent.mkdir()
+    destination = export_parent / 'published'
+    boundary = {'armed': False, 'archived': 0, 'staged_manifest': None}
+    if operation == 'edit':
+        real_verify = service.verify
+
+        def after_verified(*args, **kwargs):
+            result = real_verify(*args, **kwargs)
+            boundary['armed'] = True
+            return result
+
+        monkeypatch.setattr(service, 'verify', after_verified)
+    else:
+        real_atomic_json = transcription_module.atomic_json
+
+        def after_staged(path, value, **kwargs):
+            result = real_atomic_json(path, value, **kwargs)
+            path = Path(path)
+            if path.name == 'transcription-manifest.json':
+                assert path.parent.parent == export_parent
+                assert path.parent.name.startswith('.pending-')
+                assert read_json(path)['job'] == identity
+                boundary['staged_manifest'] = path
+                boundary['armed'] = True
+            return result
+
+        monkeypatch.setattr(transcription_module, 'atomic_json', after_staged)
+
+    def cancelled():
+        if boundary['armed']:
+            boundary['armed'] = False
+            if operation == 'export':
+                assert boundary['staged_manifest'].is_file()
+            app.archive_workspace(workspace)
+            boundary['archived'] += 1
+        return False
+
+    with pytest.raises(ValueError, match='archived'):
+        if operation == 'edit':
+            service.save_edit(identity, source, 'This late edit must not publish.', cancelled=cancelled)
+        else:
+            service.export(identity, destination, cancelled=cancelled)
+
+    assert boundary['archived'] == 1 and not boundary['armed']
+    if operation == 'export':
+        assert boundary['staged_manifest'] is not None
+        assert not boundary['staged_manifest'].parent.exists()
+    assert not destination.exists() and list(export_parent.iterdir()) == []
+    assert original.read_bytes() == original_bytes
+    assert retained_bytes() == before
+    with pytest.raises(ValueError, match='archived'):
+        service.get(identity)
