@@ -61,9 +61,61 @@ For an actual **already offline-installed** private bundle, run separately:
 python carr-library\packaging\native-launcher\probe_installed_windows.py --bundle-root C:\PrivateBuild\ResearchLibrary --report C:\PrivateBuild\installed-launcher-probe.json
 ```
 
-That probe runs the real app's native checks and self-test through the exact EXE.
-It requires ready state and never installs or repairs anything. Fresh installation
-and GUI/NVDA acceptance remain separate release checks.
+That probe verifies the complete bundle seal before and after the real app's
+native checks and self-test through the exact EXE. It records the source commit,
+application wheel digest and launcher digest. Pass `--source-commit` with the
+independently recorded full commit to bind that expectation; otherwise it records
+the manifest's source identity. It requires ready state and never installs or
+repairs anything. Fresh installation and GUI/NVDA acceptance remain separate checks.
+
+## CI-only actual first installation and desktop lifecycle
+
+Before the existing installed probe, the complete-bundle Windows workflow can run:
+
+```powershell
+& $env:CARR_PYTHON -I -B packaging/native-launcher/probe_fresh_windows.py --bundle-root $bundle --source-proof ci-results/source-wheel-before-native.json --source-commit $sourceCommit --report ci-results/fresh-native-launcher.json --timeout 600
+```
+
+This invocation **replaces the workflow's direct `install_windows.py` invocation**.
+The bundle must be sealed and its `.venv` absent; the staged Python must already
+have the same application version installed. Every `carr_library` and `bootstrap`
+payload file is compared with the sealed wheel before importing the seed API.
+The source proof is the existing `source_wheel.verify_application_wheel` result;
+the probe repeats that exact-commit verification and requires the same result.
+The existing workflow firewall rules must be active first, including the seed
+interpreter and its base executable. The probe is
+restricted to native Windows with `GITHUB_ACTIONS=true`; it is not a workstation
+installer or a substitute for owner approval.
+
+It requires `--launcher-check` to report `needs-install` with exit 10 without
+creating an environment. It then runs the exact `ResearchLibrary.exe` **without
+arguments**, allowing that entry to execute the bundled offline installer and
+open the actual desktop. Win32 enumeration must observe a visible `Resonance`
+window belonging to this launcher's process tree. Its actual process image must
+be the bundle's `.venv/Scripts/python.exe` or `runtime/python.exe` redirector.
+The probe checks the completed-install marker, rechecks window ownership and
+sends `WM_CLOSE` only to that matched window, then requires launcher exit 0.
+A second no-argument launch must open and close the same way without changing
+the marker's bytes or file identity/timestamps.
+
+A synthetic library is created using the staged installed `LibraryApp`. The
+actual `preference_file`/`remember_directory` APIs select it; there is no
+`LOCALAPPDATA` redirection assumption. Prior settings bytes are saved and restored
+in `finally` only if the probe's own settings bytes and file identity/timestamps
+are unchanged. A concurrent preference write is preserved and reported as a
+failure. The synthetic source hashes and reopened literal search/quotation must
+survive both actual launches. The trusted existing bundle verifier checks every
+sealed file before installation and after each launch, retaining the same manifest
+and EXE identity. Temporary data is
+owned by the probe; it does not inspect existing libraries or remove environments.
+
+Startup waits and logs are bounded. Failure cleanup targets only the still-owned
+launcher PID and its descendants; it does not kill processes by executable name.
+This proves first-installation and native-window lifecycle **only when that
+exact Windows run succeeds**. It does not prove GUI feature workflows, keyboard
+focus, NVDA, signing, language quality or first-run behavior on an owner's PC.
+Keep `probe_installed_windows.py` and the native feature probes as subsequent
+independent gates. Linux AST/pure-helper checks are not native acceptance.
 
 ## Optional pinned cross build
 
@@ -82,12 +134,29 @@ C compiler using `-std=c11 -Wall -Wextra -Werror test_launcher_core.c`.
 
 ## Minimal private bundle hook
 
-The assembler may copy **only** the verified `ResearchLibrary.exe` into the bundle
-root before generating the bundle checksum manifest. Keep the existing offline
-installer, runtime, wheelhouse and data locations. Never include `windows_child_probe.exe`,
-test outputs, compiler files or caches in the product. No shared bundle-builder
-changes are required by this source addition. A Start-menu shortcut may target the
-same fixed root entry when the existing installer gains that separate feature.
+The current assembler keeps its existing `--native-launcher` and
+`--native-launcher-sha256` inputs. It captures bounded bytes, inspects the staged
+unsigned PE, and checks that digest again before the normal checksum seal.
+Only `ResearchLibrary.exe` enters the product; no probe executable, compiler,
+cache or test report is copied. The installer and manifest format are unchanged.
+
+Before invoking that builder, the integrated gate also runs
+`verify_launcher.py --launcher ... --build-evidence ... --native-probe ...
+--source-commit ...`. This preflight binds the owner-supplied reports to the
+same captured PE and the exact committed C/resource/build inputs. Dirty source,
+mixed reports, unsupported schemas/targets and mismatched digests are rejected.
+The reports prove consistency with the selected local candidate; they are not
+signatures or independent publisher attestations. The check itself never executes
+the candidate. Its matching digest is then supplied to the existing builder.
+
+The integrated Windows gate uses installed MSVC and the existing actual native
+process probe. It then exercises EXE first installation/window restart and the
+installed diagnostics under the workflow's explicit outbound firewall rules.
+These combined gates require their own successful run; the earlier standalone
+launcher result is component evidence only. Wheel-only bundles still require
+`Install.cmd` first; direct EXE first installation needs bundled Python.
+A Start-menu shortcut may target the same root entry when the existing installer
+gains that separate feature.
 
 Do not commit or attach the native binary to the public repository or public CI
 artifacts. The current build is an **unsigned private candidate**. A real owner-held
