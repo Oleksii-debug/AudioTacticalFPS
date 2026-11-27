@@ -221,7 +221,27 @@ def main():
         report['installed'] = run_population('installed', checkout, output, expected_functions)
         if installed_identity(args.wheel) != report['installed_identity']:
             raise ValueError('Installed source changed during native qualification.')
-        if any(inventory(root) != report['runtime_files'][name] for name, root in roots.items()):
+        runtime_changes = {}
+        for name, root in roots.items():
+            before, after = report['runtime_files'][name], inventory(root)
+            if before != after:
+                added = sorted(set(after) - set(before))
+                removed = sorted(set(before) - set(after))
+                changed = sorted(key for key in set(before) & set(after)
+                                 if before[key] != after[key])
+                def details(names):
+                    return [dict(path=key, before=before.get(key), after=after.get(key))
+                            for key in names[:64]]
+                runtime_changes[name] = dict(
+                    before_files=len(before), after_files=len(after),
+                    after_inventory_sha256=sha256(json.dumps(after, sort_keys=True,
+                        separators=(',', ':')).encode('utf-8')).hexdigest(),
+                    added_count=len(added), removed_count=len(removed), changed_count=len(changed),
+                    added=details(added), removed=details(removed), changed=details(changed),
+                    diagnostic_rows_per_kind_limit=64)
+        report['runtime_inventory_changes'] = runtime_changes
+        if runtime_changes:
+            print('RUNTIME_INVENTORY_CHANGE ' + json.dumps(runtime_changes, sort_keys=True), flush=True)
             raise ValueError('Selected runtime bytes changed during native qualification.')
         if {name: digest(checkout / name) for name in fixture_files} != report['selected_test_sha256']:
             raise ValueError('Native fixture source changed during qualification.')

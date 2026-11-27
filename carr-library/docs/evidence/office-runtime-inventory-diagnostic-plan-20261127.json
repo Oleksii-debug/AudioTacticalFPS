@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "status": "DIAGNOSTIC_SOURCE_PREPARED_NOT_RUN",
+  "source": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+  "observed_run": 46057627707,
+  "observed_job": 140703873789,
+  "observed_error": "Selected runtime bytes changed during native qualification.",
+  "artifact": {
+    "id": 15227835614,
+    "bytes": 5700223,
+    "sha256": "7e5fe61009b85b7886872a8addf20aa0a344d866669fa2cf01953011a4c6bb43"
+  },
+  "purpose": "Capture exact added/removed/changed relative runtime entries with before/after size and SHA after the current native populations, retaining the unchanged final integrity refusal.",
+  "bounds": {
+    "existing_inventory_files": 50000,
+    "existing_inventory_bytes": 3221225472,
+    "diagnostic_rows_per_change_kind": 64
+  },
+  "unchanged": [
+    "All selected6/Office7 native cases in each source/installed population",
+    "Complete existing runtime comparison; every difference still fails",
+    "Exact installed wheel/source binding",
+    "Product Office/ODF code and fixed publisher assets",
+    "No skipped/filtered runtime files or cache exceptions"
+  ],
+  "runtime_result": "NOT_RUN"
+}
