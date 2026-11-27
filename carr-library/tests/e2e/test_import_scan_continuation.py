@@ -65,7 +65,7 @@ def test_lost_next_page_reply_reuses_the_already_durable_batch(selected, monkeyp
             app.continue_import_scan(workspace, first['batch_id'])
     committed = app.import_batch(workspace, expected_next)
     monkeypatch.setattr(batch_scan, 'planned_snapshot',
-                        lambda *_: pytest.fail('A committed scan page was read a second time.'))
+                        lambda *_, **_options: pytest.fail('A committed scan page was read a second time.'))
     replay = LibraryApp(app.root).continue_import_scan(workspace, first['batch_id'])
     assert replay == committed
     assert len(list((app.root / 'import-batches').glob('*.json'))) == 2
@@ -95,7 +95,7 @@ def test_denied_continuation_does_not_publish_another_batch(selected, monkeypatc
         info = folder.stat()
         os.utime(folder, ns=(info.st_atime_ns, info.st_mtime_ns + 2_000_000_000))
     monkeypatch.setattr(batch_scan, 'planned_snapshot',
-                        lambda *_: pytest.fail('A rejected continuation reached a source.'))
+                        lambda *_, **_options: pytest.fail('A rejected continuation reached a source.'))
     with pytest.raises((ValueError, InterruptedError)):
         app.continue_import_scan(workspace, first['batch_id'], cancelled=lambda: kind == 'cancel')
     assert {path.name: path.read_bytes() for path in (app.root / 'import-batches').glob('*.json')} == before
@@ -117,7 +117,7 @@ def test_backup_restores_scanned_bytes_but_never_reacquires_external_scan_scope(
     assert Path(saved['rows'][0]['source']).read_bytes() == expected
     with monkeypatch.context() as patch:
         patch.setattr(batch_scan, 'planned_snapshot',
-                      lambda *_: pytest.fail('Restoration followed an unscanned external root.'))
+                      lambda *_, **_options: pytest.fail('Restoration followed an unscanned external root.'))
         with pytest.raises(ValueError, match='not copied'):
             restored.continue_import_scan(workspace, first['batch_id'])
     complete = restored.run_import_batch(workspace, first['batch_id'])

@@ -51,9 +51,9 @@ def test_actual_20001_directory_entries_continue_in_bounded_pages(tmp_path, monk
     calls = []
     real = scan.planned_snapshot
 
-    def capture(path):
+    def capture(path, **options):
         calls.append(Path(path))
-        return real(path)
+        return real(path, **options)
 
     monkeypatch.setattr(scan, 'planned_snapshot', capture)
     result = tuple(pages([folder], timeout=600))
@@ -89,10 +89,10 @@ def test_continuation_does_not_reopen_previously_admitted_source_bytes(tmp_path,
     real = scan.planned_snapshot
     opened = []
 
-    def capture(path):
+    def capture(path, **options):
         assert str(path) != first_source
         opened.append(str(path))
-        return real(path)
+        return real(path, **options)
 
     monkeypatch.setattr(scan, 'planned_snapshot', capture)
     following = scan.scan_paths_page([folder], cursor=first.cursor)
@@ -117,7 +117,7 @@ def test_stale_or_foreign_cursor_fails_before_another_source_read(tmp_path, monk
         info = folder.stat()
         os.utime(folder, ns=(info.st_atime_ns, info.st_mtime_ns + 2_000_000_000))
     monkeypatch.setattr(scan, 'planned_snapshot',
-                        lambda *_: pytest.fail('An invalid cursor reached another source.'))
+                        lambda *_, **_options: pytest.fail('An invalid cursor reached another source.'))
     with pytest.raises(ValueError, match='scan|cursor|directory|root'):
         scan.scan_paths_page(roots, cursor=cursor)
 
@@ -128,7 +128,7 @@ def test_cancel_before_continuation_does_not_open_a_directory(tmp_path, monkeypa
     text(folder / 'b.txt')
     first = scan.scan_paths_page([folder], max_files=1)
     monkeypatch.setattr(scan.os, 'scandir',
-                        lambda *_: pytest.fail('A pre-cancelled scan opened a directory.'))
+                        lambda *_, **_options: pytest.fail('A pre-cancelled scan opened a directory.'))
     with pytest.raises(InterruptedError):
         scan.scan_paths_page([folder], cursor=first.cursor, cancelled=lambda: True)
 
@@ -147,7 +147,7 @@ def test_cancellation_inside_prefix_replay_keeps_the_saved_cursor_unchanged(tmp_
         return count >= 5
 
     monkeypatch.setattr(scan, 'planned_snapshot',
-                        lambda *_: pytest.fail('Cancellation did not stop before a new source.'))
+                        lambda *_, **_options: pytest.fail('Cancellation did not stop before a new source.'))
     with pytest.raises(InterruptedError):
         scan.scan_paths_page([folder], cursor=first.cursor, cancelled=cancelled)
     assert first.cursor == saved
@@ -180,7 +180,7 @@ def test_reparse_source_is_rejected_without_snapshot(tmp_path, monkeypatch):
 
     monkeypatch.setattr(Path, 'lstat', lstat)
     monkeypatch.setattr(scan, 'planned_snapshot',
-                        lambda *_: pytest.fail('A reparse source reached intake.'))
+                        lambda *_, **_options: pytest.fail('A reparse source reached intake.'))
     page = scan.scan_paths_page([folder])
     assert page.rows[0]['state'] == 'rejected' and page.cursor is None
 
