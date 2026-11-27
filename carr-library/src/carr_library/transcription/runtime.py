@@ -16,6 +16,9 @@ MAX_MODEL_ENTRIES = 16384
 MAX_MODEL_BYTES = 64 * 1024**3
 MAX_RUNTIME_FILES = 262144
 MAX_RUNTIME_BYTES = 64 * 1024**3
+MAX_RUNTIME_SCAN_ENTRIES = 262144
+MAX_RUNTIME_BYTECODE_FILES = 65536
+MAX_RUNTIME_BYTECODE_BYTES = 4 * 1024**3
 MAX_PYTHON_SUPPORT_FILES = 256
 MAX_PYTHON_SUPPORT_BYTES = 512 * 1024**2
 RUNTIME_DISTRIBUTIONS = ('faster-whisper', 'ctranslate2', 'av', 'onnxruntime',
@@ -163,6 +166,54 @@ def _record_labels(record_path, *, cancel=None):
     return labels, identity
 
 
+
+def _bytecode_inventory(directories, *, cancel=None):
+    """Pin executable bytecode that RECORD commonly omits.
+
+    Python -I -B prevents writes, not reading existing __pycache__ files,
+    including unrecorded or legacy sourceless modules. Bind those actual
+    bytes to the already existing runtime_auxiliary identity and profile
+    fingerprint; do not silently treat source hashes as bytecode hashes.
+    """
+    discovered = {}
+    seen = set()
+    scanned = total_bytes = 0
+    for root in directories:
+        pending = [root]
+        while pending:
+            stopped(cancel)
+            directory = pending.pop()
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    stopped(cancel)
+                    scanned += 1
+                    if scanned > MAX_RUNTIME_SCAN_ENTRIES:
+                        raise ValueError('The selected runtime exceeds its bytecode-scan entry budget.')
+                    suffix = entry.name.casefold().endswith(('.pyc', '.pyo'))
+                    if entry.is_symlink():
+                        # Never traverse a linked package tree or accept a
+                        # linked bytecode payload outside its reviewed root.
+                        if entry.is_dir() or suffix:
+                            raise ValueError('The selected runtime has linked bytecode or a linked package directory.')
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        pending.append(local_path(entry.path, root=root, exists=True))
+                        continue
+                    if not suffix:
+                        continue
+                    path = local_path(entry.path, root=root, exists=True)
+                    if path in seen:
+                        raise ValueError('Duplicate installed bytecode identity.')
+                    if len(seen) >= MAX_RUNTIME_BYTECODE_FILES:
+                        raise ValueError('The selected runtime exceeds its bytecode file budget.')
+                    seen.add(path)
+                    identity = file_identity(path, cancel=cancel,
+                                             maximum=MAX_RUNTIME_BYTECODE_BYTES - total_bytes)
+                    total_bytes += identity['size']
+                    discovered[str(path)] = identity
+    return discovered
+
+
 def _runtime_inventory(roots, *, cancel=None, progress=None):
     """Read all recorded distributions in the selected environment without importing them."""
     auxiliary = {}
@@ -254,6 +305,7 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
         result[name] = {'version': distribution.version, 'file_count': len(files),
             'installed_files_sha256': sha256(json.dumps(files, ensure_ascii=False,
                 sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()}
+    auxiliary.update(_bytecode_inventory(search, cancel=cancel))
     return result, auxiliary
 
 
