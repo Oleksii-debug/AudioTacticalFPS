@@ -1,0 +1,447 @@
+{
+  "schema": "carr-canonical-composition-recovery/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "canonical_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+  "canonical_tree": "682b267cb237804c7a15e6ac0285b9b6861b847c",
+  "status": "DRAFT_RECOVERY_ONLY_NOT_AN_INTEGRATED_RELEASE",
+  "source_execution": "NOT_RUN: execution environment unavailable; root V8 bridge smoke is separately scoped.",
+  "files": [
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "72aeb98d73e90b5af3051b9a04e843c1d32e02c1",
+      "new_blob": "f6230a7b4bdd84115e86e1e4699601b18ece3d53",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/packaging/build_windows_bundle.py"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_bundle.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "54c69f8e2d08b604aba273fda996dbc960fb67b1",
+      "new_blob": "c2f28e2ee684dd9dfa490a1eedc15fdb7db4c35e",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_windows_bundle.py"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_launcher_bundle.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "b0c167a53e5c8d3ad91e8bc30134a63c3cb4b049",
+      "new_blob": "47eacba217ee8d87d012372679d4ec79d85ddf3e",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_native_launcher_bundle.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "2c193f6c8778ea82d0bae76c4859e0f635598a08",
+      "new_blob": "a85e32f74d62ce8fb7b29799be7585367952660a",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/citations/csl.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/formatting.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "ec4e18eadadb16e42abbf88b6ef0f09941ce3681",
+      "new_blob": "fc37b24ed692c3ea24e14ba003fe18e7e0034299",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/academic_integration/formatting.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/UPSTREAM.json",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "d98edb62ec84f3f1c1358a7ca6920eeaf688a183",
+      "new_blob": "3926f41e285c87cc092959fdbbc4d65aa94cb6f6",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/academic_integration/UPSTREAM.json"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_formatting.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "5e6720c4d4c02438788fe63bd677a6af8ce7408a",
+      "new_blob": "8445300cff246c01897e983dd1cfe4d645e125be",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/academic_integration/test_formatting.py"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "b21898c05a16050180334219f543dedaf3285805",
+      "new_blob": "67e42f01e73ef7bfcd3686ff34f646aab26c74f3",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/scripts/ci_check.py"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "6d5adb9063d36647d4b7678809c73cbc88d402d0",
+      "new_blob": "4cf1b76caf583fbe059680110d19ca38f9477ad7",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_ci_check.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "cce28f61c8ea1f66f693c646b680e7d8a44612aa",
+      "new_blob": "9db85cc398e44a1e3e6bbb6c4afb65352eb091c8",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/native_checks.py"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_checks.py",
+      "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "base_blob": "e40b6ddb793385d53b35faf2dee609c6fbe11319",
+      "new_blob": "c68daf7a7621eaec9ade63ab448e745a42f9a7d1",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_native_checks.py"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_checks_manifest.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "05e2c92925d9df1002bd6cbd4786d887b34af5b7",
+      "new_blob": "9b3b45a799a50f9d57aab6ee0ff7b6e407d73879",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "root",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_native_checks_manifest.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/transcription.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "7a01a4f9bf21c16884a8fe13bd653118e277c718",
+      "new_blob": "7ffb194c93cfa615b3da5e92f3fb6b903cdf744a",
+      "sha256": "2a951bc9c0832afa287a2a853c308aeb2de9cff400e83fe7b57a5dbe2ef4d4ad",
+      "status": "SOURCE_PROPOSAL_NOT_EXECUTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/audio/transcription.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/supplied_transcription.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "new_blob": "705620ed7a4c8c990ace224c640df4cd5979c4a8",
+      "sha256": "0b4e7ed82a600f6a8b9fa3e7bcb91f439a7a28f4e6d145f4c7a4ca84cf712e0e",
+      "status": "SOURCE_PROPOSAL_NOT_EXECUTED",
+      "readback": true,
+      "base_blob": "e18a682490a31f962974a8fd31b1e42ad0a2fae9",
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/integrations/supplied_transcription.py"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_supplied_transcription.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "16f1896735602c43760e9a07485bf5168540fb33",
+      "new_blob": "67c771d5f8552b96adad6987a3cd31facd73e807",
+      "sha256": "2243aa4045e0fa1ad6951672daea78b27b10eb771beac775470c0eb636a4fff9",
+      "status": "SOURCE_PROPOSAL_NOT_EXECUTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/assistant/test_supplied_transcription.py"
+    },
+    {
+      "path": "carr-library/scripts/verify_supplied_transcription_protocol.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "33509bf80758eaebba7f5cbfe6e355f89ea311ba",
+      "new_blob": "330eeafc64565dc2f5fd56402331cbffdb77bc04",
+      "sha256": "de83e8cd0e6bb474681133d572c2472ecfd39c9dea067213c640caf602d4cbf1",
+      "status": "SOURCE_PROPOSAL_NOT_EXECUTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/scripts/verify_supplied_transcription_protocol.py"
+    },
+    {
+      "path": "carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "56736fe141a0338af03e657111ad0141e6880ba5",
+      "new_blob": "8e3748594ee4afa686f72264a6bb154d16cea722",
+      "sha256": "a265245376cb75360ec2708dea81d5314e7c8da367333e756bf73675de8f89d7",
+      "status": "SOURCE_PROPOSAL_NOT_EXECUTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_translation.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "4dccd355f5f347db628bdfad159bcfded34a1573",
+      "new_blob": "07bb0505e80be709cc2a3fafdd33b19cbd36c78a",
+      "sha256": "959a69b7d7401f7ab5ce8dd0e9eb7feedc30031f39dde0db9f982df1057f41ef",
+      "status": "SOURCE_PROPOSAL_NOT_EXECUTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_translation.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "6de32c5932af83201f4824dc61390eb4fbd66a9f",
+      "new_blob": "0fa1ec46d1ecf7f039185e69af7b94a5a9b6adc1",
+      "exact_patch_replay": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "scope": "replay_pending_union",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/pending_backup.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "65a90957d98fce756bc501fa669fed59278d9f25",
+      "new_blob": "c06f07e724741a5eaf4eb97a9f0c57e5d6a74ab4",
+      "exact_patch_replay": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "scope": "replay_worker_union",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ingest/worker.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "e5c5fe3a4ccffda2dcf8436e5ecb6e58986a909b",
+      "new_blob": "3295c4ba6ad6fa32aaf71034f7ea1fdf39067c6a",
+      "exact_patch_replay": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "scope": "replay_state_union",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/state_backup.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "7322153d8b2fe44548c76c610207659fd79f7ac6",
+      "new_blob": "2817f62129673c118d14d2733ed608c13eed27a4",
+      "exact_patch_replay": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "scope": "replay_export_union",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/research/export_file.py"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_change_time.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "bc2c0117a47d5bb73521fc4777c32888ada08179",
+      "new_blob": "c013124a7c75c617016142d38ae48cdf410c9a05",
+      "exact_patch_replay": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "scope": "replay_export_change_time_tests",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/reader/test_export_change_time.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "af17bc1c169de119d0eb6226694e4b0bdbe55907",
+      "new_blob": "cfe581e54b5138a02fc244762a9bc0d0a9efb326",
+      "exact_patch_replay": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "scope": "replay_backup_sidecars_union",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/backup_sidecars.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "new_blob": "609c97733ac8c1b2c6f8610b2c019b224a917085",
+      "exact_patch_replay": true,
+      "status": "INCOMPLETE_DRAFT_NOT_READY_FOR_INTEGRATION",
+      "scope": "replay_extensions_root_sidecars_partial",
+      "remaining": "Root-sidecars v4 + budgets, static only. Primary state validators and final inventory byte reattestation tests pending.",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/incomplete/carr-library/src/carr_library/backup_extensions.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "6ed518d0d4ced9ed6261fa5b2ac0b5a18094c618",
+      "new_blob": "40ba46b078b75ae0ee39a43ee954643376b4656d",
+      "exact_patch_replay": true,
+      "status": "INCOMPLETE_DRAFT_NOT_READY_FOR_INTEGRATION",
+      "scope": "replay_library_compat_partial",
+      "remaining": "Budget + validated compatibility readers/verify_backup. Canonical new root-sidecars producer + full-tree final attestation still pending; do not qualify as final.",
+      "readback": true,
+      "owner": "durable",
+      "saved_path": "recovery/canonical-composition-20261127/incomplete/carr-library/src/carr_library/library_backup.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/evidence_drafts.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "345789646032ad8b61f2ec4a7eb601f1d6bf6b39",
+      "new_blob": "86515b0f7c23e42e68ce7a14367b7bd1697164c4",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/evidence_drafts.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "5140395fbc211900a8dd9289877c6de4b3a96d44",
+      "new_blob": "e1def18f6dc0ab2a1616fbf827ed7912770e6c18",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/desktop_evidence_panel.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_actions.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "813bdce720e5fde6570fc867f268b49ea5dfdde0",
+      "new_blob": "ce5f7425b4f8f8072307faeaf3458da2d879a8b0",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/save_actions.py"
+    },
+    {
+      "path": "carr-library/tests/storage/test_legacy_research_note.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": null,
+      "new_blob": "af9d1c07acd794e1c8613e8d9cd5fbdbe1ac790e",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_legacy_research_note.py"
+    },
+    {
+      "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+      "new_blob": "9845d98fb75498bde5a4e4e33f4739d0c3c06e5f",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/ui/test_evidence_draft_recovery.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "9d15cee9c441cd8127733e4dbec93313ed411ab8",
+      "new_blob": "db5d6d647b945d9d708873ef11a27ea84f30a2c5",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/builtin_keyboard_commands.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_shortcuts.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "93ae6d9bfa88c1faef6740b72aa357041b143be1",
+      "new_blob": "2571b7ab897abd256752ce561ed1ff5164c51bc3",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/reading_shortcuts.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_media.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "7a12bdb3acc22a29e3a216bf0b8b9381d58676af",
+      "new_blob": "de99df886b845f383da465726df9e57cd7171a7e",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/progress_media.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "0bb2dec7a8b5a490565a196e281ec30e3ca00e9b",
+      "new_blob": "bd56c306905c318ebcfbcbabe68805aa063039fc",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/ui/progress_panel.py"
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_media_integration.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "0748485c98822961f2a39d9d43d75586c0dfc35d",
+      "new_blob": "83ca207fff27b3d61e0a606aacdb3b89665b5ba0",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "ui",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/progress/test_progress_media_integration.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "23b08b9f4d50f67c7216156869a4e41b3dde65cb",
+      "new_blob": "dc6f11c08f0a4d5751a155edc8646be2b46a9105",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/audio_runtime.py"
+    },
+    {
+      "path": "carr-library/src/carr_library/bundled_engines.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "1c1f5d8c841e079448b85aca305604484a11727d",
+      "new_blob": "cb5f86e223e8bf15be6ba7e677b05d30a52abf94",
+      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "readback": true,
+      "owner": "asr",
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/bundled_engines.py"
+    }
+  ],
+  "notes": [
+    "Application sources in this checkpoint branch remain the unchanged canonical base; candidate sources are stored under recovery/.",
+    "Do not overwrite the local in-progress merge or assume a candidate reconstructs local c04/d64 work.",
+    "Apply each candidate only after matching its base and reconciling newer shared-head changes.",
+    "Assistant control handoff and passive backup validator patch sets are retained in asr-manifest.json; durable owns the combined backup producer implementation.",
+    "Library/extension files under incomplete/ are not ready for integration.",
+    "Canonical call-site ports, remaining tests/workflows, installed wheel and full Windows qualification remain outstanding.",
+    "Existing private runtime/model bytes, credentials, production trust authority and human NVDA evidence are absent."
+  ],
+  "root_notes": {
+    "builder": {
+      "base": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+      "canonical": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "source_verifier_identical": true,
+      "runtime_validation": "NOT_RUN",
+      "requirements": [
+        "canonical source-only audio setup files must accompany this builder",
+        "current source-sealed launcher admission remains authoritative",
+        "historical omitted digest only selects pinned old bytes; no inherited native PASS"
+      ],
+      "test_adaptation": "Canonical mutable-copy rejection becomes stronger capture-once guarantee already covered by current substitution test; all other historical intent retained, source-tree real Git test copied unchanged."
+    },
+    "citations": {
+      "requires": [
+        "canonical QuickJS dependency/locks/SBOMs and citations package resources",
+        "retained exact academic_integration document-v1 resources/tests",
+        "remove obsolete Node .cjs worker and _node_binary installed gate bindings"
+      ],
+      "evidence": "No AST or runtime proof during outage. Existing seven-style goldens, native QuickJS limits and custom style suites required on composed tree."
+    },
+    "native": "One verified audio report and exact version token checks; QuickJS native extension; sealed legacy Node inventory is verified without execution.",
+    "ci": "Preserve actual Windows descendant handle/interpreter checks, add canonical bounded cleanup retry and report PASS only after cleanup."
+  }
+}

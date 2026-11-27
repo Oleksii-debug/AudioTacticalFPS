@@ -1,0 +1,93 @@
+{
+  "scope": "V8 bridge smoke only; NOT Python/QuickJS/installed artifact qualification",
+  "processor_blob": "31b4f533c4bb4816d91dd61f79b4aa54ff520ac2",
+  "results": [
+    {
+      "style": "apa",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "Doe, J. (2020). The Book of Science (pp. 1–400). Example Press.",
+      "citation": "(Doe, 2020, p. 12)",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ]
+    },
+    {
+      "style": "chicago-author-date",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "Doe, Jane. 2020. The Book of Science. Example Press.",
+      "citation": "(Doe 2020, 12)",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ]
+    },
+    {
+      "style": "chicago-notes",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "Doe, Jane. The Book of Science. Example Press, 2020.",
+      "citation": "Jane Doe, The Book of Science (Example Press, 2020), 12.",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ]
+    },
+    {
+      "style": "mla",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "Doe, Jane. The Book of Science. Example Press, 2020, pp. 1–400.",
+      "citation": "(Doe 12)",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ]
+    },
+    {
+      "style": "harvard",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "Doe, J. (2020) The Book of Science. Example Press, pp. 1–400.",
+      "citation": "(Doe, 2020, p. 12)",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ]
+    },
+    {
+      "style": "vancouver",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "1. Doe J. The Book of Science. Example Press; 2020.",
+      "citation": "(1)",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ],
+      "observed_markup": "  <div class=\"csl-entry\">\n    <div class=\"csl-left-margin\">1.</div><div class=\"csl-right-inline\">Doe J. The Book of Science. Example Press; 2020.</div>\n  </div>\n"
+    },
+    {
+      "style": "ieee",
+      "match": true,
+      "version": "1.4.61",
+      "bibliography": "[1] J. Doe, The Book of Science. Example Press, 2020, pp. 1–400.",
+      "citation": "[1, p. 12]",
+      "entry_ids": [
+        [
+          "book-doe"
+        ]
+      ],
+      "observed_markup": "  <div class=\"csl-entry\">\n    <div class=\"csl-left-margin\">[1]</div><div class=\"csl-right-inline\">J. Doe, <i>The Book of Science</i>. Example Press, 2020, pp. 1–400.</div>\n  </div>\n"
+    }
+  ],
+  "observer_note": "The initial V8-only text observer omitted the unchanged Python formatter's csl-right-inline separator. Two numeric styles were rerendered with that separator; Python/QuickJS qualification remains NOT_RUN."
+}
