@@ -6,6 +6,7 @@ repository can only supply metadata and signed targets beneath its own folders.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import hashlib
 import os
@@ -184,12 +185,51 @@ def _metadata_cache(root):
         raise TrustError('Unbound TUF root alias.')
 
 
-def _local_fetcher(repository, cancelled, *, max_target_bytes=2 * 1024**3):
+def _local_fetcher(repository, cancelled, *, max_target_bytes=2 * 1024**3, transfer=None):
     # Lazy optional import preserves the existing private installation.
     from tuf.api.exceptions import DownloadHTTPError
     from tuf.ngclient.fetcher import FetcherInterface
 
     class LocalOnlyFetcher(FetcherInterface):
+        @contextmanager
+        def download_file(self, url, max_length):
+            if transfer is not None and transfer.release is not None:
+                with transfer.target_file(url, max_length, self._target_chunks) as stream:
+                    yield stream
+            else:
+                with super().download_file(url, max_length) as stream:
+                    yield stream
+
+        def _target_chunks(self, url, offset, total, owner):
+            from ..durable_state import _open_json_file
+            from .download_state import _stamp, _regular
+            parsed = urlsplit(url)
+            if (parsed.scheme != 'file' or parsed.netloc or parsed.query or parsed.fragment
+                    or not parsed.path.startswith('/targets/')):
+                raise TrustError('A resumed target must remain in the selected offline repository.')
+            parts = relative_path(unquote(parsed.path, errors='strict')[1:])
+            source = repository.joinpath(*parts)
+            before = file_info(source)
+            if before.st_size != total:
+                raise TrustError('The offline target differs from its signed length.')
+            with _open_json_file(source) as stream:
+                opened = os.fstat(stream.fileno())
+                _regular(opened)
+                if _stamp(opened) != _stamp(before):
+                    raise TrustError('The offline target changed before resuming.')
+                stream.seek(offset)
+                used = offset
+                while used < total:
+                    owner.check()
+                    block = stream.read(min(65536, total - used))
+                    if not block:
+                        raise TrustError('The offline target was truncated.')
+                    used += len(block)
+                    yield block
+                if (_stamp(os.fstat(stream.fileno())) != _stamp(before)
+                        or _stamp(file_info(source)) != _stamp(before)):
+                    raise TrustError('The offline target changed while resuming.')
+
         def _fetch(self, url):
             parsed = urlsplit(url)
             if parsed.scheme != 'file' or parsed.netloc or parsed.query or parsed.fragment:
@@ -233,8 +273,9 @@ class LocalRepositoryClient:
         self.cache, self.policy = directory(cache, create=True), policy
         self.metadata = directory(self.cache / 'metadata', create=True)
         self.downloads = directory(self.cache / 'downloads', create=True)
+        self.download_notice = ''
 
-    def _updater(self, repository, cancelled):
+    def _updater(self, repository, cancelled, *, transfer=None):
         from tuf.ngclient import Updater
         from tuf.ngclient.config import UpdaterConfig
         repository = directory(repository)
@@ -244,7 +285,7 @@ class LocalRepositoryClient:
             raise TrustError('Update cache and offline repository must be separate.')
         _metadata_cache(self.metadata)
         return Updater(str(self.metadata), 'file:///metadata/', str(self.downloads), 'file:///targets/',
-                       fetcher=_local_fetcher(repository, cancelled, max_target_bytes=self.policy.max_package_bytes),
+                       fetcher=_local_fetcher(repository, cancelled, max_target_bytes=self.policy.max_package_bytes, transfer=transfer),
                        config=UpdaterConfig(max_root_rotations=32, max_delegations=0,
                                             snapshot_max_length=2_000_000, targets_max_length=5_000_000),
                        bootstrap=self.policy.bootstrap)
@@ -259,10 +300,56 @@ class LocalRepositoryClient:
                 raise TrustError('No trusted release exists at the requested target.')
             return _release(info, self.policy)
 
-    def download(self, repository, target, *, reviewed_sha256, cancelled=lambda: False):
+    def _download_binding(self, repository, target):
+        root = directory(repository)
+        info = root.stat()
+        return {'source': {'kind': 'local', 'path': str(root), 'directory': [info.st_dev, info.st_ino]},
+                'target': target, 'bootstrap_sha256': self.policy.bootstrap_sha256,
+                'product': self.policy.product, 'channel': self.policy.channel,
+                'current_build': self.policy.current_build, 'data_schema': self.policy.data_schema}
+
+    def _transfer(self, repository, target, *, cancelled, paused, resume, progress):
+        from .download_state import TargetDownload
+        return TargetDownload(self.downloads, self._download_binding(repository, target),
+                              cancelled=cancelled, paused=paused, resume=resume, progress=progress)
+
+    def paused_download(self, repository, release, *, cancelled=lambda: False):
+        """Inspect only matching inert cache bytes; this cannot approve a package."""
+        from .download_state import download_lock
+        if type(release) is not Release:
+            raise TrustError('Review the signed release before inspecting its retained download.')
+        with download_lock(self.cache):
+            transfer = self._transfer(repository, release.target, cancelled=cancelled,
+                                      paused=lambda: False, resume=True, progress=None).bind(release)
+            return transfer.inspect()
+
+    def cancel_download(self, repository, release):
+        """Explicitly discard the matching fragment without checking the network."""
+        from .download_state import download_lock
+        if type(release) is not Release:
+            raise TrustError('Choose the reviewed release whose retained download is being cancelled.')
+        with download_lock(self.cache):
+            transfer = self._transfer(repository, release.target, cancelled=lambda: False,
+                                      paused=lambda: False, resume=True, progress=None).bind(release)
+            return transfer.discard()
+
+    def download(self, repository, target, *, reviewed_sha256, cancelled=lambda: False,
+                 paused=None, resume=False, progress=None):
         relative_path(target)
-        with locked(self.cache):
-            updater = self._updater(repository, cancelled)
+        self.download_notice = ''
+        if (type(resume) is not bool or paused is not None and not callable(paused)
+                or progress is not None and not callable(progress)):
+            raise TrustError('Invalid explicit download controls.')
+        transfer = None
+        guard = locked(self.cache)
+        if paused is not None or resume or progress is not None:
+            from .download_state import download_lock
+            transfer = self._transfer(repository, target, cancelled=cancelled,
+                                      paused=paused or (lambda: False), resume=resume, progress=progress)
+            guard = download_lock(self.cache)
+        with guard:
+            updater = (self._updater(repository, cancelled, transfer=transfer) if transfer is not None
+                       else self._updater(repository, cancelled))
             updater.refresh()
             info = updater.get_targetinfo(target)
             if info is None:
@@ -271,6 +358,8 @@ class LocalRepositoryClient:
             if release.sha256 != reviewed_sha256:
                 raise TrustError('The release changed after review. Review the new signed target first.')
             _cancel(cancelled)
+            if transfer is not None:
+                transfer.bind(release)
             destination = self.downloads / (release.sha256 + '.zip')
             if os.path.lexists(destination):
                 file_info(destination)
@@ -279,13 +368,57 @@ class LocalRepositoryClient:
                 raise TrustError('Cached package is corrupt. Remove it explicitly before retrying.')
             if shutil.disk_usage(self.cache).free < release.length + 16 * 1024**2:
                 raise TrustError('Not enough free space to prepare the update.')
-            with tempfile.TemporaryDirectory(prefix='.download-', dir=self.downloads) as tmp:
-                candidate = Path(tmp) / 'package.zip'
-                updater.download_target(info, str(candidate))
-                _cancel(cancelled)
-                with candidate.open('r+b') as stream:
-                    info.verify_length_and_hashes(stream)
-                    os.fsync(stream.fileno())
-                os.link(candidate, destination)
-                sync_directory(self.downloads)
-            return _verified_package(release, destination)
+            try:
+                with tempfile.TemporaryDirectory(prefix='.download-', dir=self.downloads) as tmp:
+                    candidate = Path(tmp) / 'package.zip'
+                    updater.download_target(info, str(candidate))
+                    _cancel(cancelled)
+                    with candidate.open('r+b') as stream:
+                        info.verify_length_and_hashes(stream)
+                        os.fsync(stream.fileno())
+                        prepared = os.fstat(stream.fileno())
+                    parent_key = (self.downloads.stat().st_dev, self.downloads.stat().st_ino)
+                    os.link(candidate, destination)
+                    sync_directory(self.downloads)
+                if transfer is not None:
+                    try:
+                        transfer.discard()
+                    except (Exception, KeyboardInterrupt):
+                        # A fragment-cleanup error is not evidence that the
+                        # published package disappeared. Reauthenticate the
+                        # exact retained inode and every signed hash before
+                        # exposing the existing package capability.
+                        from ..durable_state import _open_json_file
+                        from .download_state import _CheckedReader, _regular, _stamp
+                        before = file_info(destination)
+                        expected = (prepared.st_dev, prepared.st_ino, prepared.st_size, prepared.st_mtime_ns)
+                        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != expected:
+                            raise TrustError('The saved update package changed during fragment cleanup.') from None
+                        with _open_json_file(destination) as stream:
+                            class Recheck:
+                                def check(owner):
+                                    opened = os.fstat(stream.fileno())
+                                    _regular(opened)
+                                    if (_stamp(opened) != _stamp(before)
+                                            or _stamp(file_info(destination)) != _stamp(before)
+                                            or (directory(self.downloads).stat().st_dev,
+                                                self.downloads.stat().st_ino) != parent_key):
+                                        raise TrustError('The saved update package changed during cleanup verification.')
+                            owner = Recheck()
+                            owner.stream = stream
+                            owner.check()
+                            info.verify_length_and_hashes(_CheckedReader(owner))
+                            owner.check()
+                        self.download_notice = ('The exact verified package is present. Retained download cleanup '
+                                                'was not confirmed; review the download cache before removing its fragment.')
+                return _verified_package(release, destination)
+            except UpdateCancelled:
+                if transfer is not None:
+                    transfer.discard()
+                raise
+            except Exception as error:
+                if transfer is not None:
+                    from .download_state import DownloadStopped
+                    if isinstance(error, DownloadStopped):
+                        return error.status
+                raise

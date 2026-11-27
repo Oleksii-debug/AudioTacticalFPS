@@ -18,6 +18,23 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE_TIMEOUT_SECONDS = 600
+MAX_SUITE_TIMEOUT_SECONDS = 1800
+
+
+def _checked_timeout(seconds: int) -> int:
+    if type(seconds) is not int or not 1 <= seconds <= MAX_SUITE_TIMEOUT_SECONDS:
+        raise ValueError(f'An explicit suite timeout must be an integer from 1 to {MAX_SUITE_TIMEOUT_SECONDS} seconds.')
+    return seconds
+
+
+def _suite_timeout(value: str) -> tuple[str, int]:
+    selector, separator, seconds = value.rpartition('=')
+    if not separator or not selector or not seconds.isascii() or not seconds.isdecimal():
+        raise argparse.ArgumentTypeError('Use an exact selected SUITE=SECONDS timeout.')
+    try:
+        return selector, _checked_timeout(int(seconds))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 class _WindowsDescendants:
@@ -171,7 +188,8 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
         raise OSError('Required-suite process-tree cleanup failed.') from cleanup_error
 
 
-def _run_test_process(command, *, env) -> int:
+def _run_test_process(command, *, env, timeout_seconds: int | None = None) -> int:
+    budget = SUITE_TIMEOUT_SECONDS if timeout_seconds is None else _checked_timeout(timeout_seconds)
     command, env = list(command), dict(env)
     base_executable = getattr(sys, '_base_executable', None)
     if (os.name == 'nt' and sys.prefix != sys.base_prefix and base_executable
@@ -187,7 +205,7 @@ def _run_test_process(command, *, env) -> int:
                  if os.name == 'nt' else {'start_new_session': True})
     process = subprocess.Popen(command, cwd=ROOT, env=env, **isolation)
     try:
-        return process.wait(timeout=SUITE_TIMEOUT_SECONDS)
+        return process.wait(timeout=budget)
     except BaseException:
         _terminate_process_tree(process)
         raise
@@ -267,7 +285,7 @@ def _report_directory(suite):
                   f'directory={directory.name}', flush=True)
 
 
-def run_suite(suite: str, *, diagnostics: bool = False) -> bool:
+def run_suite(suite: str, *, diagnostics: bool = False, timeout_seconds: int | None = None) -> bool:
     relative, separator, node_id = suite.partition('::')
     path = (ROOT / relative).resolve()
     if (not relative or not path.is_relative_to(ROOT) or not path.exists()
@@ -295,7 +313,7 @@ def run_suite(suite: str, *, diagnostics: bool = False) -> bool:
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path) + (separator + node_id if separator else ''),
-            ], env=env)
+            ], env=env, **({} if timeout_seconds is None else {'timeout_seconds': timeout_seconds}))
             cases = list(ET.parse(report).iter('testcase'))
             failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
             skipped = sum(c.find('skipped') is not None for c in cases)
@@ -319,10 +337,24 @@ def main() -> int:
                         help='Run up to four isolated required suites concurrently; default: one')
     parser.add_argument('--diagnostics', action='store_true',
                         help='Print each case and thread stacks after 60 seconds; the same suite deadline and verdict apply')
+    parser.add_argument('--suite-timeout', action='append', default=[], type=_suite_timeout,
+                        metavar='SUITE=SECONDS',
+                        help='Override one exact selected suite deadline (1..1800 seconds); repeat for different suites')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths or pytest node IDs relative to carr-library')
     args = parser.parse_args()
-    from functools import partial
-    runner = partial(run_suite, diagnostics=True) if args.diagnostics else run_suite
+    timeouts = {}
+    for selector, seconds in args.suite_timeout:
+        if selector not in args.suites:
+            parser.error(f'A timeout must name an exact selected suite: {selector}')
+        if selector in timeouts:
+            parser.error(f'A suite timeout was supplied more than once: {selector}')
+        timeouts[selector] = seconds
+
+    def runner(suite):
+        options = {'diagnostics': True} if args.diagnostics else {}
+        if suite in timeouts:
+            options['timeout_seconds'] = timeouts[suite]
+        return run_suite(suite, **options)
     if args.jobs == 1:
         results = [runner(suite) for suite in args.suites]
     else:

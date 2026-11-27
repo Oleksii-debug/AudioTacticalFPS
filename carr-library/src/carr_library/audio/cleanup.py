@@ -24,6 +24,7 @@ class CleanupOwner:
         if not callable(attempt):
             raise TypeError('Cleanup requires a callable owned-resource attempt.')
         self._attempt = attempt
+        self._native_complete = False
         self._attempt_lock = threading.Lock()
         self._callback_lock = threading.Lock()
         self._callbacks = []
@@ -53,31 +54,42 @@ class CleanupOwner:
             self._notify(callback)
 
     def close(self):
-        """Attempt once, without overlapping native waits; return confirmed status."""
+        """Attempt once; publish completion after retained callbacks finish."""
         if self.quiescent:
             return True
         if not self._attempt_lock.acquire(blocking=False):
             return self.quiescent
-        callbacks = ()
         try:
             if self.quiescent:
                 return True
-            try:
-                if self._attempt() is False:
+            if not self._native_complete:
+                try:
+                    if self._attempt() is False:
+                        return False
+                except Exception as exc:
+                    self.last_error = exc
                     return False
-            except Exception as exc:
-                self.last_error = exc
-                return False
-            with self._callback_lock:
-                self.quiescent_event.set()
-                callbacks, self._callbacks = tuple(self._callbacks), []
-            with _RETAINED_LOCK:
-                _RETAINED.discard(self)
+                self._native_complete = True
+            while True:
+                with self._callback_lock:
+                    if not self._callbacks:
+                        # A pending owner may hold a FileLock or staging lease
+                        # through these callbacks. Do not expose completion to a
+                        # competing caller until that drain has actually finished.
+                        with _RETAINED_LOCK:
+                            _RETAINED.discard(self)
+                        self.quiescent_event.set()
+                        return True
+                    callback = self._callbacks[0]
+                # Invoke outside the registration lock: callbacks may register
+                # more cleanup, and concurrent registrations join this same drain.
+                # Keep this entry until it returns so BaseException can be retried
+                # without re-running already confirmed native cleanup.
+                self._notify(callback)
+                with self._callback_lock:
+                    del self._callbacks[0]
         finally:
             self._attempt_lock.release()
-        for callback in callbacks:
-            self._notify(callback)
-        return True
 
     def _retry(self):
         while not self.close():

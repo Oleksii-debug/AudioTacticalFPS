@@ -239,3 +239,111 @@ def test_reader_thread_admission_failure_still_reaps_actual_child(monkeypatch, b
         execute("import time;time.sleep(30)")
     assert len(children) == 1 and children[0].poll() is not None
     assert children[0].stdout.closed and children[0].stderr.closed
+
+
+def test_completion_waits_for_real_retained_leases_and_callbacks_registered_during_drain(tmp_path):
+    from filelock import FileLock, Timeout
+    from carr_library.audio import cleanup
+    from carr_library.audio.cleanup import pending_cleanup, retained_temporary_directory
+
+    native_ready = threading.Event()
+    callback_entered = threading.Event()
+    release_callback = threading.Event()
+    confirmed = []
+
+    def attempt():
+        if not native_ready.is_set():
+            return False
+        confirmed.append('native completed')
+        return True
+
+    error = pending_cleanup(attempt, message='Authored pending native owner.')
+    owner = error.cleanup_owner
+
+    def held_callback():
+        callback_entered.set()
+        if not release_callback.wait(5):
+            raise TimeoutError('The authored callback was not released.')
+
+    owner.add_quiescent_callback(held_callback)
+    competitor = FileLock(tmp_path / '.drain.lock', timeout=0)
+    late = []
+    try:
+        with pytest.raises(AudioCleanupPending):
+            with retained_state_lock(tmp_path, 'drain'):
+                with retained_temporary_directory(prefix='retained-', dir=tmp_path) as temporary:
+                    staged = Path(temporary)
+                    (staged / 'owned.bin').write_bytes(b'owned until the callback completes')
+                    raise error
+        native_ready.set()
+        assert callback_entered.wait(3)
+        assert not owner.quiescent_event.is_set()
+        assert owner.close() is False
+        assert staged.is_dir()
+        with cleanup._RETAINED_LOCK:
+            assert owner in cleanup._RETAINED
+        with pytest.raises(Timeout):
+            competitor.acquire()
+
+        def registered_during_drain():
+            with competitor:
+                late.append((staged.exists(), owner.quiescent))
+
+        owner.add_quiescent_callback(registered_during_drain)
+        release_callback.set()
+        assert owner.quiescent_event.wait(3)
+        assert owner.close() is True
+        assert confirmed == ['native completed']
+        assert late == [(False, False)]
+        assert not staged.exists()
+        with competitor:
+            pass
+        with cleanup._RETAINED_LOCK:
+            assert owner not in cleanup._RETAINED
+    finally:
+        native_ready.set()
+        release_callback.set()
+        if not owner.quiescent_event.wait(5):
+            owner.close()
+        assert owner.quiescent
+
+
+@pytest.mark.parametrize('interruption', [KeyboardInterrupt, SystemExit])
+def test_interrupted_callback_drain_retries_without_repeating_native_cleanup(tmp_path, interruption):
+    from filelock import FileLock, Timeout
+
+    native, notifications, interrupted = [], [], []
+    owner = CleanupOwner(lambda: native.append('confirmed'))
+    owner.add_quiescent_callback(lambda: notifications.append('before'))
+
+    def interrupt_once():
+        interrupted.append('called')
+        if len(interrupted) == 1:
+            raise interruption('Authored retained-callback interruption.')
+        notifications.append('retried')
+
+    owner.add_quiescent_callback(interrupt_once)
+    owner.add_quiescent_callback(lambda: notifications.append('after'))
+    competitor = FileLock(tmp_path / '.interrupted-drain.lock', timeout=0)
+    error = AudioCleanupPending('Authored pending native owner.', cleanup_owner=owner)
+    try:
+        with pytest.raises(AudioCleanupPending):
+            with retained_state_lock(tmp_path, 'interrupted-drain'):
+                raise error
+        with pytest.raises(interruption):
+            owner.close()
+        assert not owner.quiescent and not owner.quiescent_event.is_set()
+        assert native == ['confirmed']
+        assert notifications == ['before']
+        with pytest.raises(Timeout):
+            competitor.acquire()
+        owner.add_quiescent_callback(lambda: notifications.append('new'))
+        assert owner.close() is True
+        assert native == ['confirmed']
+        assert interrupted == ['called', 'called']
+        assert notifications == ['before', 'retried', 'after', 'new']
+        with competitor:
+            pass
+        assert owner.close() is True and native == ['confirmed']
+    finally:
+        owner.close()

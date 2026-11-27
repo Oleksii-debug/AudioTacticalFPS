@@ -365,8 +365,13 @@ def run_native():
                 return original_run(title, observed_operation, done=done, failed=failed)
 
             host.run_job = observe_job
+            # A modeless dialog owns a real visible native parent, as in the desktop.
+            host.Show()
+            check('profile lifetime host is shown: ' + destruction, host.IsShown())
             owner = build_transcription_dialog(host, TranscriptionController(library.root, service=held))
             page = owner.profile_view
+            retained_timer = page.timer
+            assert retained_timer.IsRunning() and retained_timer.GetOwner().GetId() == page.GetId()
             page.profiles = tuple(held.profiles)
             page.runtime.SetItems([held.profiles[0]['name']])
             page.runtime.SetSelection(0)
@@ -410,10 +415,13 @@ def run_native():
                                   and page.closed and not frame.cancel_event.is_set())
                             check('profile native host deletion settles before the next case: ' + destruction,
                                   host_seen == [host_identity])
+                            check('profile retained timer remains stopped and detached: ' + destruction,
+                                  not retained_timer.IsRunning() and retained_timer.GetOwner() is None)
                             result.setdefault('profile_lifetimes', []).append({
                                 'destruction': destruction, 'native_events': len(seen),
                                 'original_wrapper': seen[0][1], 'actual_worker_finished': True,
                                 'actual_callback_replayed_after_deletion': True,
+                                'retained_timer_stopped_and_detached_before_worker_release': True,
                                 'native_host_destroyed_before_next_case': True})
                             if destruction == 'direct':
                                 wx.CallAfter(lambda: start_lifetime('parent'))
@@ -438,7 +446,9 @@ def run_native():
                     if phase[0] == 'start':
                         print('CHECK: ASR native lifetime ' + destruction + ': start', flush=True)
                         owner.Show()
+                        print('CHECK: ASR native lifetime ' + destruction + ': owner shown', flush=True)
                         click(owner.start_button)
+                        print('CHECK: ASR native lifetime ' + destruction + ': start returned', flush=True)
                         phase[0] = 'running'
                     elif phase[0] == 'running' and held.running.is_set():
                         assert page.pending and not frame.cancel_event.is_set()
@@ -453,6 +463,9 @@ def run_native():
                         assert len(seen) == 1 and seen[0][0] == identity
                         assert page.closed and page.cancel_event.is_set()
                         assert owner.controller.closed and not frame.cancel_event.is_set()
+                        check('profile native timer is detached before held worker release: ' + destruction,
+                              page.pending and not worker_finished.is_set()
+                              and not retained_timer.IsRunning() and retained_timer.GetOwner() is None)
                         release.set()
                         phase[0] = 'finished'
                     elif phase[0] == 'finished' and worker_finished.is_set() and not frame.working:

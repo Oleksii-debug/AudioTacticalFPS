@@ -388,12 +388,22 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
                 raise AudioError('Audio worker output is not a regular file.')
             if stat.S_ISDIR(info.st_mode):
-                with os.scandir(path) as entries:
-                    for entry in entries:
-                        count += 1
-                        if count > budget.max_staging_files:
-                            raise AudioError('Audio worker exceeded its staging file budget.')
-                        pending.append(Path(entry.path))
+                try:
+                    with os.scandir(path) as entries:
+                        for entry in entries:
+                            count += 1
+                            if count > budget.max_staging_files:
+                                raise AudioError('Audio worker exceeded its staging file budget.')
+                            pending.append(Path(entry.path))
+                except FileNotFoundError:
+                    # Native converters may remove their private scratch
+                    # directory after lstat. Only confirmed absence is benign;
+                    # replacement, permission and other read errors still fail.
+                    try:
+                        path.lstat()
+                    except FileNotFoundError:
+                        continue
+                    raise AudioError('Audio worker staging directory changed while being inspected.') from None
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')
