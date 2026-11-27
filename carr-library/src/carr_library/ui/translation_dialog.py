@@ -1,4 +1,4 @@
-"""Native review/approval workspace for plain-text Google Basic v2 derivatives."""
+"""Native review/approval workspace for Basic v2 and Advanced v3 derivatives."""
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -20,25 +20,27 @@ class TranslationController:
         self.reviewed = None
 
     @staticmethod
-    def selection(profile, value, source, target, budget, title, rate):
-        return (profile.fingerprint, value, source, target, parse_budget(budget), title, rate)
+    def selection(profile, value, source, target, budget, title, rate, glossary=''):
+        return (profile.fingerprint, value, source, target, parse_budget(budget), title, rate, glossary)
 
-    def preview(self, profile, value, source, target, budget, *, title='Translation', rate=''):
+    def preview(self, profile, value, source, target, budget, *, title='Translation', rate='', glossary=''):
         self.reviewed = None
-        chosen = self.selection(profile, value, source, target, budget, title, rate)
-        result = self.service.preview(profile, value, source, target, rate_per_million=rate or None)
+        chosen = self.selection(profile, value, source, target, budget, title, rate, glossary)
+        options = {'glossary': glossary} if glossary or profile.provider == 'google-translation-v3' else {}
+        result = self.service.preview(profile, value, source, target, rate_per_million=rate or None, **options)
         if result['estimated_cost'] is not None and Decimal(result['estimated_cost']) * 1000000 > chosen[4]:
             raise ValueError('The entered price estimate exceeds the chosen reservation budget.')
         self.reviewed = chosen
         return {**result, 'budget_micros': chosen[4], 'currency': 'USD',
                 'provider_name': profile.name, 'endpoint': profile.endpoint, 'model': profile.model}
 
-    def submit(self, profile, value, source, target, budget, *, approved=False, title='Translation', rate=''):
-        chosen = self.selection(profile, value, source, target, budget, title, rate)
+    def submit(self, profile, value, source, target, budget, *, approved=False, title='Translation', rate='', glossary=''):
+        chosen = self.selection(profile, value, source, target, budget, title, rate, glossary)
         if approved is not True or chosen != self.reviewed:
             raise PermissionError('Preview and explicitly approve this exact account, text, pair and budget.')
-        approval = translation_approval(profile, value, source, target, chosen[4])
-        identity = self.service.submit(profile, value, source, target, approval=approval, title=title)
+        approval = translation_approval(profile, value, source, target, chosen[4], glossary=glossary)
+        options = {'glossary': glossary} if glossary or profile.provider == 'google-translation-v3' else {}
+        identity = self.service.submit(profile, value, source, target, approval=approval, title=title, **options)
         self.reviewed = None
         return identity
 
@@ -50,11 +52,13 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         raise ValueError('Choose bounded selected text and a translation title.')
     controller = TranslationController(frame.library.root, service=service)
     service = controller.service
+    scoped_library = frame.library
     profiles, source_codes, target_codes = [], [], []
     alive, busy, current_job = True, False, None
     cancel = threading.Event()
     dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(900, 900),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    dialog.SetName('Translation workspace')
     layout = wx.BoxSizer(wx.VERTICAL)
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
@@ -64,10 +68,12 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google Basic v2 &account', wx.Choice, choices=[])
+    provider = field('Google Translation &account; Basic v2 or Advanced v3', wx.Choice, choices=[])
     job_title = field('Translation &title', value=title)
     source = field('&Source language', wx.Choice, choices=[])
     target = field('Target &language', wx.Choice, choices=[])
+    glossary = field('Advanced v3 &glossary resource; blank for none', value='')
+    glossary.SetMaxLength(512)
     selected = field('Selected te&xt; originals remain unchanged', proportion=1,
                      value=initial_text, style=wx.TE_MULTILINE)
     selected.SetMaxLength(MAX_SOURCE_CHARACTERS)
@@ -86,6 +92,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         row = wx.BoxSizer(wx.HORIZONTAL)
         for name, label in entries:
             button = wx.Button(dialog, id=wx.ID_CLOSE if name == 'close' else wx.ID_ANY, label=label)
+            button.SetName(label.replace('&', ''))
             buttons[name] = button
             row.Add(button, 0, wx.ALL, 3)
         layout.Add(row, 0, wx.EXPAND)
@@ -97,9 +104,11 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             status.ChangeValue(str(value))
 
     def profile():
+        if frame.library is not scoped_library or Path(frame.library.root).absolute() != service.root:
+            raise ValueError('The selected library changed. Reopen translation before reviewing a request.')
         index = provider.GetSelection()
         if not 0 <= index < len(profiles):
-            raise ValueError('Create a connected Google Basic v2 profile in AI/API connections.')
+            raise ValueError('Create a connected Google Basic v2 or Advanced v3 profile in AI/API connections.')
         return profiles[index]
 
     def pair():
@@ -114,6 +123,8 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         editable = not busy and current_job is None
         for control in (provider, job_title, source, target, selected, rate, budget):
             control.Enable(editable)
+        index = provider.GetSelection()
+        glossary.Enable(editable and 0 <= index < len(profiles) and profiles[index].provider == 'google-translation-v3')
         for name in ('settings', 'languages', 'preview'):
             buttons[name].Enable(editable)
         for name in ('new', 'jobs', 'run'):
@@ -130,20 +141,26 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                 rows = service.languages(profile())
             except Exception as exc:
                 report(str(exc))
-        source_codes = ['auto'] + [row['language'] for row in rows]
-        target_codes = [row['language'] for row in rows]
-        labels = [row['language'] + ' — ' + row['name'] for row in rows]
-        source.SetItems(['auto — detect source language'] + labels)
+        source_rows = [row for row in rows if row.get('source', True)]
+        target_rows = [row for row in rows if row.get('target', True)]
+        source_codes = ['auto'] + [row['language'] for row in source_rows]
+        target_codes = [row['language'] for row in target_rows]
+        source.SetItems(['auto — detect source language'] +
+                        [row['language'] + ' — ' + row['name'] for row in source_rows])
         source.SetSelection(0)
-        target.SetItems(labels)
+        target.SetItems([row['language'] + ' — ' + row['name'] for row in target_rows])
         if target_codes:
             target.SetSelection(target_codes.index('uk') if 'uk' in target_codes else 0)
         controller.reviewed = None
+        index = provider.GetSelection()
+        if not (0 <= index < len(profiles) and profiles[index].provider == 'google-translation-v3'):
+            glossary.ChangeValue('')
+        controls()
 
     def load_profiles():
         nonlocal profiles
         profiles = list(service.available_profiles())
-        provider.SetItems([p.name + (' — key not connected' if not p.credential_ref else '') for p in profiles])
+        provider.SetItems([p.name + ' — ' + p.provider + (' — credential not connected' if not p.credential_ref else '') for p in profiles])
         if profiles:
             provider.SetSelection(0)
         load_languages()
@@ -180,7 +197,8 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         return True
 
     def stopped():
-        return cancel.is_set() or frame.cancel_event.is_set()
+        return (cancel.is_set() or frame.cancel_event.is_set() or frame.library is not scoped_library
+                or Path(frame.library.root).absolute() != service.root)
 
     def settings(event):
         try:
@@ -196,7 +214,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             chosen = profile()
             if wx.MessageBox(
                     'Contact Google Translation to fetch its NMT supported-language list for this account? '
-                    'No selected text is sent. The API key stays in its HTTPS header.',
+                    'No selected text is sent. The account credential stays in its HTTPS header.',
                     'Approve supported-language discovery', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
                     dialog) != wx.YES:
                 return
@@ -216,7 +234,8 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
 
     def preview(event=None):
         try:
-            result = controller.preview(*values(), title=job_title.GetValue(), rate=rate.GetValue().strip())
+            result = controller.preview(*values(), title=job_title.GetValue(), rate=rate.GetValue().strip(),
+                                        glossary=glossary.GetValue().strip())
             result_view.ChangeValue('')
             report(json.dumps(result, ensure_ascii=False, indent=2) +
                    '\n\nNo text sent. Translate asks permission for these exact data. '
@@ -237,11 +256,12 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         try:
             if current_job is None:
                 chosen = values()
-                exact = controller.selection(*chosen, job_title.GetValue(), rate.GetValue().strip())
+                exact = controller.selection(*chosen, job_title.GetValue(), rate.GetValue().strip(), glossary.GetValue().strip())
                 if exact != controller.reviewed:
                     raise ValueError('Preview the current exact account, text, language pair and budget first.')
                 if wx.MessageBox(
-                        f'Account: {chosen[0].name}\nEndpoint: {chosen[0].endpoint}\nModel: nmt\n'
+                        f'Account: {chosen[0].name}\nEndpoint: {chosen[0].endpoint}\nModel: {chosen[0].model}\n'
+                        f'Glossary: {exact[7] or "none"}\n'
                         f'Characters: {len(chosen[1])}\nLanguage pair: {chosen[2]} → {chosen[3]}\n'
                         f'Approved total reservation: USD {Decimal(exact[4]) / 1000000}\n'
                         'Send only this selected text? The provider may charge your account. '
@@ -249,8 +269,12 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                         'Approve exact text transfer', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
                         dialog) != wx.YES:
                     return
+                if controller.selection(*values(), job_title.GetValue(), rate.GetValue().strip(),
+                                        glossary.GetValue().strip()) != exact:
+                    controller.reviewed = None
+                    raise ValueError('The selected text, account or glossary changed during approval. Preview it again.')
                 current_job = controller.submit(*chosen, approved=True,
-                    title=job_title.GetValue(), rate=rate.GetValue().strip())
+                    title=job_title.GetValue(), rate=rate.GetValue().strip(), glossary=glossary.GetValue().strip())
                 controls()
             identity = current_job
             def translate():
@@ -271,6 +295,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         current_job = None
         controller.reviewed = None
         budget.ChangeValue('')
+        glossary.ChangeValue('')
         result_view.ChangeValue('')
         load_profiles()
         controls()
@@ -299,6 +324,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                 provider.SetSelection(next((i for i, p in enumerate(profiles)
                                             if p.fingerprint == job['approval']['profile_fingerprint']), wx.NOT_FOUND))
                 job_title.ChangeValue(job['title'])
+                glossary.ChangeValue(job.get('glossary', ''))
                 selected.ChangeValue(job['source_text'])
                 result_view.ChangeValue(''.join(row['text'] for row in job['receipts']))
                 budget.ChangeValue(str(Decimal(job['approval']['budget_micros']) / 1000000))
@@ -350,9 +376,10 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
     provider.Bind(wx.EVT_CHOICE, load_languages)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
-        report('LOCAL ONLY until an exact task is explicitly approved. Google Basic v2 NMT uses the existing '
-               'Windows Credential Manager profile. Advanced v3/IAM, local translation models, formatted '
-               'documents and glossaries are separate capabilities and are not selected by this adapter.')
+        report('LOCAL ONLY until an exact task is explicitly approved. Basic v2 uses an API key; Advanced v3 '
+               'uses an explicitly supplied IAM/ADC OAuth token and expiry in Windows Credential Manager. '
+               'Advanced v3 verifies its project, location, general/nmt model and optional existing regional glossary. '
+               'This workspace produces plain-text derivatives, without layout or independent language-quality guarantees.')
         load_profiles()
         controls()
         dialog.ShowModal()

@@ -192,14 +192,22 @@ def main():
                             wx.CallLater(25, completed)
                     except Exception as exc:
                         fail(exc)
+                def previewed():
+                    try:
+                        if controls['run'].IsEnabled():
+                            assert 'LOCAL ONLY' in controls['review'].GetValue()
+                            press(controls['run'])
+                            wx.CallLater(25, completed)
+                        else:
+                            assert monotonic() < deadline, 'Native assistant preview did not finish: ' + controls['review'].GetValue()
+                            wx.CallLater(25, previewed)
+                    except Exception as exc:
+                        fail(exc)
                 try:
                     assert controls['budget'].GetName() == 'Per-operation output and audio working-disk budget (MiB)'
                     controls['instruction'].SetValue('List libraries')
                     press(controls['preview'])
-                    assert controls['run'].IsEnabled()
-                    assert 'LOCAL ONLY' in controls['review'].GetValue()
-                    press(controls['run'])
-                    wx.CallLater(25, completed)
+                    wx.CallLater(25, previewed)
                 except Exception as exc:
                     fail(exc)
             show_assistant(frame, production=producer, on_ready=ready)
