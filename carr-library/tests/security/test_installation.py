@@ -286,3 +286,87 @@ def test_failed_preupdate_backup_never_activates_candidate(setup_update, monkeyp
     assert adapter.activated_path is None
     assert anchor.load().sequence == 1
     assert_preserved(setup_update)
+
+
+def _managed_slot(tmp_path, layout, *, existing=None):
+    root = tmp_path / 'Managed installation'
+    if layout == 'app':
+        slot, marker = root / 'app', root / 'managed-install.ini'
+        marker_bytes = b'[installation]\nschema=1\nproduct=Resonance\n'
+    else:
+        slot = root / 'versions' / 'reviewed-generation'
+        marker = root / 'install-layout-v1.txt'
+        marker_bytes = b'Resonance.StandardInstall/1\r\n'
+    slot.parent.mkdir(parents=True)
+    if existing is None:
+        slot.mkdir()
+    else:
+        existing.rename(slot)
+    marker.write_bytes(marker_bytes)
+    return slot, marker, marker_bytes
+
+
+@pytest.mark.parametrize('layout', ['app', 'versions'])
+@pytest.mark.parametrize('operation', ['verify', 'prepare', 'activate', 'health'])
+def test_portable_adapter_refuses_managed_slots_before_verifier_or_process(
+        tmp_path, layout, operation, monkeypatch):
+    from carr_library.security import installation
+    slot, marker, marker_bytes = _managed_slot(tmp_path, layout)
+    sentinel = slot / 'retained-program'
+    sentinel.write_bytes(b'Original installation bytes.')
+    def forbidden(*args, **kwargs):
+        pytest.fail('Managed ownership cannot enter the portable verifier or process.')
+    adapter = installation.WindowsBundleAdapter(forbidden)
+    monkeypatch.setattr(installation, '_owned_process', forbidden)
+    with pytest.raises(TrustError, match='installer ownership receipts'):
+        if operation == 'verify':
+            adapter.verify(slot)
+        else:
+            getattr(adapter, operation)(slot, None)
+    assert marker.read_bytes() == marker_bytes
+    assert sentinel.read_bytes() == b'Original installation bytes.'
+    assert tuple(slot.iterdir()) == (sentinel,)
+
+
+@pytest.mark.parametrize('layout', ['app', 'versions'])
+@pytest.mark.parametrize('operation', ['apply', 'recover'])
+def test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation(
+        setup_update, tmp_path, monkeypatch, layout, operation):
+    from carr_library import library_backup
+    from carr_library.security import installation
+    app, _, _, _, _, _, package, previous, anchor, adapter = setup_update
+    slot, marker, marker_bytes = _managed_slot(tmp_path, layout, existing=previous.installed)
+    transaction = UpdateTransaction(app, slot, previous.work, previous.policy,
+                                    anchor, adapter, idle_lease=idle, clock=previous.clock)
+    original_anchor = anchor.load()
+    original_bundle = {p.relative_to(slot).as_posix(): p.read_bytes()
+                       for p in slot.rglob('*') if p.is_file()}
+    def forbidden(*args, **kwargs):
+        pytest.fail('Managed ownership cannot stage, back up or activate a portable update.')
+    monkeypatch.setattr(installation, 'unpack', forbidden)
+    monkeypatch.setattr(library_backup, 'create_backup', forbidden)
+    monkeypatch.setattr(adapter, 'verify', forbidden)
+    monkeypatch.setattr(adapter, 'activate', forbidden)
+    with pytest.raises(TrustError, match='installer ownership receipts'):
+        transaction.apply(package) if operation == 'apply' else transaction.recover()
+    assert marker.read_bytes() == marker_bytes
+    assert {p.relative_to(slot).as_posix(): p.read_bytes()
+            for p in slot.rglob('*') if p.is_file()} == original_bundle
+    assert not tuple(transaction.work.iterdir())
+    assert anchor.load() == original_anchor
+    assert_preserved(setup_update)
+
+
+@pytest.mark.parametrize('layout', ['app', 'versions'])
+def test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier(
+        tmp_path, layout):
+    from carr_library.security import installation
+    from .test_publication_integrity import release_fixture
+    from .conftest import installer_verify
+    existing, _, _ = release_fixture(tmp_path)
+    slot = (tmp_path / 'portable' / 'app' if layout == 'app'
+            else tmp_path / 'portable' / 'versions' / 'reviewed-generation')
+    slot.parent.mkdir(parents=True)
+    existing.rename(slot)
+    installation.WindowsBundleAdapter(installer_verify()).verify(slot)
+    assert (slot / 'version.txt').read_bytes() == b'B'

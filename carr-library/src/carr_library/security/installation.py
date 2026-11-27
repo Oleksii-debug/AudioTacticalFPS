@@ -219,10 +219,23 @@ class WindowsBundleAdapter:
         self.bootstrap_python = Path(bootstrap_python) if bootstrap_python is not None else None
         self.timeout = timeout
 
+    @staticmethod
+    def _require_portable(root):
+        root = Path(root).absolute()
+        legacy = (root.name.casefold() == 'app'
+                  and os.path.lexists(root.parent / 'managed-install.ini'))
+        versioned = (root.parent.name.casefold() == 'versions'
+                     and os.path.lexists(root.parent.parent / 'install-layout-v1.txt'))
+        if legacy or versioned:
+            raise TrustError('This managed installation requires its reviewed setup/maintenance procedure. '
+                             'A program-only update cannot replace installer ownership receipts.')
+
     def verify(self, root):
+        self._require_portable(root)
         self.verify_bundle(root)
 
     def _verify_release(self, root, release):
+        self._require_portable(root)
         # Bind the trusted verifier to the same bounded manifest snapshot whose
         # source identity we compare with the authenticated TUF target metadata.
         raw = read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
@@ -256,6 +269,7 @@ class WindowsBundleAdapter:
         return env
 
     def prepare(self, root, release):
+        self._require_portable(root)
         if os.name != 'nt':
             raise TrustError('The production bundle installer requires native Windows.')
         self._verify_release(root, release)
@@ -283,6 +297,7 @@ class WindowsBundleAdapter:
             raise TrustError('The offline installer did not complete. The installed application is unchanged.')
 
     def health(self, root, release):
+        self._require_portable(root)
         python = root / '.venv' / 'Scripts' / 'python.exe'
         file_info(python)
         self._verify_release(root, release)
@@ -379,6 +394,7 @@ class UpdateTransaction:
 
     def recover(self):
         """After restart, finish a committed healthy update or roll back to A."""
+        WindowsBundleAdapter._require_portable(self.installed)
         if not os.path.lexists(self.journal):
             return 'nothing-to-recover'
         with locked(self.work, '.update.lock'), self.idle_lease():
@@ -399,6 +415,7 @@ class UpdateTransaction:
             return 'rolled-back'
 
     def apply(self, package: VerifiedPackage, *, cancelled=lambda: False):
+        WindowsBundleAdapter._require_portable(self.installed)
         from ..library_backup import create_backup
         from ..ingest.writer_guard import exclusive_writer
         require_verified_package(package)
