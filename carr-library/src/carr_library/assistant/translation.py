@@ -199,6 +199,10 @@ class TranslationService:
                     raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
         return job
 
+    def get(self, identity):
+        """Return the validated durable scope for a saved-job selection."""
+        return self._load(identity)
+
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
         with self.jobs.lock(identity):
             job = self._load(identity)
