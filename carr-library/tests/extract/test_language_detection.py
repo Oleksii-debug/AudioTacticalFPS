@@ -82,15 +82,57 @@ def test_descriptor_and_path_replacement_cannot_pass_pin_verification(tmp_path, 
     source = tmp_path / 'model'; original = b'reviewed model bytes'
     source.write_bytes(original)
     real_open = lid._open_json_file
-    opened = []
+    opened, replaced, blocked = [], [], []
     def replace_while_descriptor_is_held(path):
         stream = real_open(path)
         opened.append(stream)
         replacement = tmp_path / 'replacement-model'
         replacement.write_bytes(original)
-        replacement.replace(source)
+        try:
+            replacement.replace(source)
+        except PermissionError:
+            # Windows' actual shared-read opener prevents replacing a live file.
+            # In that case the original remains valid; no replacement was read.
+            if __import__('os').name != 'nt':
+                stream.close()
+                raise
+            blocked.append(True)
+        except BaseException:
+            stream.close()
+            raise
+        else:
+            replaced.append(True)
         return stream
     monkeypatch.setattr(lid, '_open_json_file', replace_while_descriptor_is_held)
+    try:
+        value = lid._read_pin(source, len(original), sha256(original).hexdigest(), lambda: None)
+    except lid.DetectorUnavailable:
+        assert replaced == [True] and not blocked
+    else:
+        assert blocked == [True] and not replaced and value == original
+        assert (tmp_path / 'replacement-model').is_file()
+    assert opened and all(stream.closed for stream in opened)
+
+
+def test_actual_replacement_before_open_is_refused_before_reading_its_bytes(tmp_path, monkeypatch):
+    source = tmp_path / 'model'; original = b'reviewed model bytes'
+    source.write_bytes(original)
+    real_open = lid._open_json_file
+    opened = []
+    class NoRead:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): return self
+        def __exit__(self, *args): self.stream.close()
+        def fileno(self): return self.stream.fileno()
+        def read(self, *args): pytest.fail('A replaced model must fail before its first byte is read.')
+    def replace_before_open(path):
+        replacement = tmp_path / 'replacement-model'
+        replacement.write_bytes(original)
+        replacement.replace(source)
+        stream = real_open(path)
+        opened.append(stream)
+        return NoRead(stream)
+    monkeypatch.setattr(lid, '_open_json_file', replace_before_open)
     with pytest.raises(lid.DetectorUnavailable):
         lid._read_pin(source, len(original), sha256(original).hexdigest(), lambda: None)
     assert opened and all(stream.closed for stream in opened)
