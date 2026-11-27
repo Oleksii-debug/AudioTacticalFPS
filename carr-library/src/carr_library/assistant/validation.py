@@ -9,6 +9,8 @@ from uuid import NAMESPACE_URL, uuid5
 
 from .models import Step, canonical, text
 from .backup_receipt import BackupReceipt
+from .local_tools import LOCAL_TOOLS, INDEPENDENT_TOOLS, validate_arguments as validate_local_arguments
+from .schedule_model import validate_schedule
 
 
 _KEYS = {
@@ -22,9 +24,12 @@ _KEYS = {
     'library.backup': ({'name'}, set()),
     'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems', 'language', 'input_kind'}),
 }
+_KEYS['audio.plan'] = _KEYS['audio.produce']
 
 
 def validate_arguments(step):
+    if step.tool in LOCAL_TOOLS and step.tool != 'audio.plan':
+        return validate_local_arguments(step.tool, step.arguments)
     required, optional = _KEYS[step.tool]
     if set(step.arguments) - required - optional or not required <= set(step.arguments):
         raise ValueError(f'Invalid arguments for {step.tool}.')
@@ -45,7 +50,7 @@ def validate_arguments(step):
                 raise ValueError('Invalid result page size.')
         else:
             text(value, key, maximum=4 * 1024 * 1024 if key == 'text' else 32768)
-    if step.tool == 'audio.produce' and (('text' in step.arguments) == ('script' in step.arguments)):
+    if step.tool in ('audio.produce', 'audio.plan') and (('text' in step.arguments) == ('script' in step.arguments)):
         raise ValueError('Provide either script text or a structured audio script.')
     if 'input_kind' in step.arguments and step.arguments['input_kind'] not in ('narration', 'script'):
         raise ValueError('Choose literal narration or an explicit structured script.')
@@ -129,7 +134,7 @@ def validate_job(value, *, identity=None):
     required = {'schema', 'id', 'data_dir', 'plan', 'plan_sha256', 'created', 'updated',
                 'status', 'message', 'workspace', 'steps'}
     if (type(value) is not dict or not required <= set(value)
-            or set(value) - required - {'requires_reapproval'} or value['schema'] != 'carr-assistant-job/1'):
+            or set(value) - required - {'requires_reapproval', 'schedule'} or value['schema'] != 'carr-assistant-job/1'):
         raise ValueError('Invalid assistant checkpoint fields.')
     job_id = value['id']
     if not isinstance(job_id, str) or re.fullmatch('[0-9a-f]{32}', job_id) is None or (identity is not None and job_id != identity):
@@ -189,18 +194,18 @@ def validate_job(value, *, identity=None):
                 raise ValueError('Invalid saved create-library permission.')
         if validated.tool == 'library.backup' and not scope['allow_full_backup']:
             raise ValueError('A saved backup plan lacks its explicit permission.')
-        if validated.tool.startswith('library.import'):
+        if validated.tool.startswith('library.import') or validated.tool in ('document.convert', 'player.inspect'):
             target = _path(validated.arguments['path'])
             if not any(type(target) is type(_path(root)) and target.is_relative_to(_path(root))
                        for root in scope['input_roots']):
                 raise ValueError('Checkpoint import is outside its approved input scope.')
-        if validated.tool in ('library.extract', 'library.backup', 'audio.produce'):
+        if validated.tool in ('library.extract', 'library.backup', 'audio.produce', 'document.convert'):
             if scope['output_root'] is None:
                 raise ValueError('Checkpoint operation has no approved output scope.')
-        if validated.tool in ('library.extract', 'library.backup'):
+        if validated.tool in ('library.extract', 'library.backup', 'document.convert'):
             _output_name(validated.arguments['name'])
         if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce')
-                and workspace is None and creates == 0):
+                and validated.tool not in INDEPENDENT_TOOLS and workspace is None and creates == 0):
             raise ValueError('Checkpoint operation has no approved library scope.')
         if (type(checkpoint) is not dict or set(checkpoint) != {'status', 'intent', 'result', 'message'}
                 or checkpoint['status'] not in ('pending', 'running', 'complete', 'failed')
@@ -258,6 +263,8 @@ def validate_job(value, *, identity=None):
         expected = uuid5(NAMESPACE_URL, 'carr-assistant:' + job_id + ':library').hex
         if not creates or actual_workspace != expected:
             raise ValueError('Checkpoint selected an unapproved workspace.')
+    if 'schedule' in value:
+        validate_schedule(value['schedule'], value)
     try:
         encoded_size = len(canonical(value).encode('utf-8'))
     except (ValueError, TypeError, UnicodeError, RecursionError) as exc:

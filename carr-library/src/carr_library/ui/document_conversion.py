@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from ..conversion import ConversionBudget, ConversionService, capabilities
-from ..conversion.capabilities import IMAGES, OFFICE_SUFFIXES
+from ..conversion.capabilities import CALIBRE_SUFFIXES, IMAGES, OFFICE_SUFFIXES
 from ..extract.document_formats import file_dialog_wildcard
 
 
@@ -28,6 +28,7 @@ def formats_text():
         'PDFs and images use the existing local OCR model chooser. Image OCR requires explicit selection and preserves image-frame boundaries. Unreadable or mixed native/image PDF pages require the reviewed import workflow.',
         'RTF requires explicit selection of an installed Pandoc executable. The worker checks its exact bytes and uses fixed --sandbox RTF-to-plain-text options.',
         'DOC/PPT/XLS, supported WordPerfect and PalmDoc PDB require selection of the actual installed LibreOffice program/soffice executable. Each worker uses a new profile with macros, active content and untrusted links disabled; converted ODF passes the existing reader checks.',
+        'AZW/AZW3/CHM/DjVu/LIT/MOBI/PRC/TCR require an explicitly selected self-contained Calibre ebook-convert installation. A fresh private configuration excludes user plugins and recipes. Only unprotected documents are admitted; DjVu needs an existing text layer, with no new OCR.',
         'A batch keeps already completed file/report pairs if a later input fails or is cancelled.',
         'A report is the completion marker. A publication error is reported even if a moved file remains for inspection.',
     ))
@@ -65,6 +66,19 @@ def choose_office(frame):
         dialog.Destroy()
 
 
+def choose_calibre(frame):
+    import wx
+    dialog = wx.FileDialog(frame, 'Select installed Calibre ebook-convert executable',
+        wildcard='Calibre book converter|ebook-convert.exe;ebook-convert|All files|*',
+        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return None
+        return Path(dialog.GetPath())
+    finally:
+        dialog.Destroy()
+
+
 def convert_documents(frame):
     import wx
     from .desktop_app import show_text
@@ -76,7 +90,7 @@ def convert_documents(frame):
         frame.report('An operation is already running. Wait or choose Cancel current operation.')
         return
     dialog = wx.FileDialog(frame, 'Choose documents for new reading text',
-                           wildcard=('Selected legacy documents and raster images|*.doc;*.ppt;*.xls;*.wpd;*.pdb;*.rtf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|'
+                           wildcard=('Selected legacy documents and raster images|*.azw;*.azw3;*.chm;*.djvu;*.lit;*.mobi;*.prc;*.tcr;*.doc;*.ppt;*.xls;*.wpd;*.pdb;*.rtf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|'
                                      + file_dialog_wildcard()),
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
     try:
@@ -116,8 +130,13 @@ def convert_documents(frame):
             office = choose_office(frame)
             if office is None:
                 return
+        calibre = None
+        if any(path.suffix.casefold() in CALIBRE_SUFFIXES for path in sources):
+            calibre = choose_calibre(frame)
+            if calibre is None:
+                return
         converter = ConversionService(destination, input_roots=sources, ocr_config=config,
-                                      pandoc=pandoc, image_ocr=image_ocr, office=office)
+                                      pandoc=pandoc, image_ocr=image_ocr, office=office, calibre=calibre)
     except Exception as error:
         frame.report('Document conversion could not start. ' + str(error))
         return

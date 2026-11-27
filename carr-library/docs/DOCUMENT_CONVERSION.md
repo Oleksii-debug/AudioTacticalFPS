@@ -42,11 +42,16 @@ result through the current guarded ODF reader. Other PDB families are refused.
 This implemented path does not qualify every selected LibreOffice build: the
 per-filter host evidence, including the outstanding XLS failure, is below.
 
-AZW/AZW3, CHM, DjVu, LIT, MOBI, PRC and TCR remain unintegrated. The inspected
-host did not provide `ebook-convert`, `djvutxt`, `ddjvu` or a CHM extraction
-tool. Pandoc is not a substitute for unsupported input filters. No converter,
-model, remote service, decryption or DRM bypass is downloaded or supplied by
-this action.
+AZW/AZW3, CHM, text-layer DjVu, LIT, MOBI, PRC and TCR have explicitly selected
+Calibre adapters. The user selects the self-contained ebook-convert
+installation with its launcher, frozen Python core and Python runtime files.
+Conversion uses fixed UTF-8 plain-text options and a new private config,
+cache and temporary directory. The original is copied before execution.
+No converter, model, remote recipe, custom plugin or DRM removal is downloaded
+or supplied. DjVu without embedded text fails explicitly; this adapter does not
+invent OCR. PRC admits only the Mobipocket and PalmDoc header families. Native
+qualification for these eight adapters is still **NOT_RUN** at this source
+checkpoint because no compatible selected Calibre installation was available.
 
 Reading separators join ordered extracted records. The report preserves each
 record's exact output character interval and text hash, its logical locator,
@@ -244,3 +249,99 @@ rejections, copy cancellation, original mutation, no-overwrite races, receipt
 publication failures, batch retention and isolated dispatch validation. Mocked
 UI lifecycle and filesystem-failure cases are narrow boundary tests, not
 physical desktop or OCR language acceptance.
+
+
+## Selected Calibre book readers
+
+The existing service accepts one additional optional selection:
+
+~~~python
+service = ConversionService(
+    destination,
+    input_roots=(source,),
+    calibre=Path("/explicit/calibre/ebook-convert"),
+)
+result = service.extract(source, "reading-copy.txt")
+~~~
+
+On Windows select the actual installation's ebook-convert.exe, including the
+one inside the official portable installation. On Linux select the root
+ebook-convert of the official self-contained installation, not a PATH alias or
+a distribution wrapper. The checked layout has its fixed launcher, frozen
+Python archive and local Python shared library. Missing or changed components
+are an error. Installer/build/package dependency locks are unchanged.
+
+Selection captures these core file identities without running a program.
+Hashes are computed on the worker thread. The parent service then keeps the
+same existing immutable file readers open through the entire _invoke
+operation. That supervisor confirms its whole Windows Job/POSIX family stopped
+before these readers, the private source or resource admission can unwind.
+The adapter's child inherits that owner; it does not make another POSIX
+session. Core fingerprints are repeated inside the worker before and after
+conversion. This is an explicitly selected installation, not a new complete
+system-library seal or an operating-system sandbox.
+
+The child receives a fresh private Calibre configuration and cache, private
+home/temp paths, a fixed search path and fixed plain UTF-8 output arguments.
+User Calibre libraries/plugins, inherited Python hooks, remote recipes,
+credential/proxy environment and arbitrary converter options are not passed.
+Self-contained Calibre carries its built-in format plugins. The
+CALIBRE_IGNORE_CUSTOM_PLUGINS environment switch is also set for releases
+that implement it; this switch is **not** assumed to exist in 9.19.0, where the
+fresh private configuration and the self-contained runtime layout are the
+relevant controls. No optional external or decryption plugin is installed.
+
+Native output, diagnostics and all private intermediate files retain the
+existing byte, entry, depth, process and time allowances. In particular the
+64 MiB source, 32 MiB text, 120-second default worker and 3 GiB POSIX address
+limit are unchanged. A selected converter that cannot finish within these
+limits fails before publication. The current app broker still owns admission.
+One file/report pair is published through the same independent source-hash
+reading-derivative boundary; a batch keeps earlier completed pairs if a later
+input fails. Converted logical text does not become printed pagination or a
+verified quotation.
+
+Upstream interfaces inspected for this adapter:
+
+- [Calibre supported formats and the text-layer-only DjVu limitation](https://manual.calibre-ebook.com/faq.html#what-formats-does-calibre-support-conversion-to-from)
+- [The fixed ebook-convert command-line interface](https://manual.calibre-ebook.com/generated/en/ebook-convert.html)
+- [Calibre 9.19.0 TXT output implementation](https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ebooks/conversion/plugins/txt_output.py)
+- [Calibre 9.19.0 Windows core layout](https://github.com/kovidgoyal/calibre/blob/v9.19.0/bypy/windows/__main__.py)
+- [Calibre 9.19.0 Linux core layout](https://github.com/kovidgoyal/calibre/blob/v9.19.0/bypy/linux/__main__.py)
+- [Calibre built-in DjVu reader](https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ebooks/conversion/plugins/djvu_input.py)
+
+No Calibre source, executable, third-party book or modified dependency package
+is copied into the application by the adapter.
+
+### Qualification gates and present evidence
+
+The new selected-core, fixed-argument, header, bounded-stage, cancellation and
+UI tests are source-only **NOT_RUN** at this checkpoint. Synthetic components
+in the admission tests are never called a qualified engine.
+
+Required portable/installed source suites include
+tests/conversion/test_calibre_selection.py,
+tests/conversion/test_calibre_process_ownership.py,
+the current conversion/UI/selected-adapter suites and the existing ingest
+ownership/cancellation suites. The real-process test uses Python child
+fixtures to verify owner inheritance and descendant cleanup; it does not
+claim successful Calibre format conversion.
+
+Actual format qualification has a separate mandatory all-eight script:
+
+~~~text
+python -I scripts/calibre_conversion_acceptance.py --calibre <selected executable> --fixtures <public-fixture-inventory.json>
+~~~
+
+Run it against an installed wheel. The inventory has exact schema
+carr-calibre-fixtures/1 and one files row for each of .azw, .azw3, .chm,
+.djvu, .lit, .mobi, .prc, .tcr. Every row has exactly format, a
+relative local path, the fixture's lowercase sha256, and a nonempty list
+contains of exact expected text strings. Use only unprotected public
+synthetic fixtures, including Unicode assertions where the source format
+supports them. The script refuses missing formats, missing tools, mismatched
+bytes or failed expected text; it has no optional skip or simulated success.
+It preserves original bytes and records all eight output hashes plus the
+selected core hash. No inputs, books or runtime packages are uploaded by it.
+An all-eight PASS qualifies those exact supplied fixtures/runtime, not every
+document in a format. Scanned DjVu OCR remains separate and unqualified here.

@@ -434,7 +434,7 @@ def _production_music_manifest(root, reference, engine_name, *, resolver, cancel
 
 def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False,
                    on_status=lambda message: None, music_manifest_resolver=None,
-                   broker=None, operation_id=None):
+                   broker=None, operation_id=None, source_guard=None):
     """Render actual local audio and checkpoints; successful chunks survive errors.
 
     The desktop supplies its shared library broker. Standalone callers can pass
@@ -444,12 +444,18 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
         raise ValueError('Expected a validated production plan.')
     if not callable(getattr(engine, 'synthesize', None)):
         raise ValueError('Choose a configured local speech engine.')
+    if source_guard is not None and not callable(source_guard):
+        raise ValueError('Use an explicit callable source guard.')
+    source_guard = source_guard or (lambda: None)
+    check_cancelled(cancelled)
+    source_guard()
     root = checked_directory(project_dir, create=True)
     check_cancelled(cancelled)
     with project_lock(root):
         if broker is None:
             return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg, cancelled=cancelled,
-                                  on_status=on_status, music_manifest_resolver=music_manifest_resolver)
+                                  on_status=on_status, music_manifest_resolver=music_manifest_resolver,
+                                  source_guard=source_guard)
         from ..operations import ResourceBroker, ResourceCancelled, ResourceConflict
         from ..operations.admission import production_request
         if not isinstance(broker, ResourceBroker):
@@ -490,12 +496,15 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
                         raise ResourceConflict('A selected sound changed while waiting for resources.')
                 return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg,
                     cancelled=lease.cancelled, on_status=on_status,
-                    music_manifest_resolver=admitted_music)
+                    music_manifest_resolver=admitted_music, source_guard=source_guard)
         except ResourceCancelled as exc:
             raise InterruptedError('Audio production stopped while waiting for shared resources.') from exc
 
 
-def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None):
+def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None,
+                   source_guard=lambda: None):
+    check_cancelled(cancelled)
+    source_guard()
     cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
                        budget_root=root)
     cache.reserve(0)
@@ -572,6 +581,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
             raise ValueError('The output destination is not a directory.')
         previous = _verified_output(output_dir, run_key, cancelled)
         if previous:
+            source_guard()
+            check_cancelled(cancelled)
             # The run key above was recomputed from this exact typed plan,
             # current input identities and engines before accepting old audio.
             # Only that successful resume may bind a legacy completion marker.
@@ -987,7 +998,12 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
             atomic_json(staged_output / 'complete.json', result)
             check_cancelled(cancelled)
             cache.reserve(0)
-            publish_noreplace(staged_output, output_dir, cancelled=cancelled)
+            def publication_guard():
+                if cancelled():
+                    return True
+                source_guard()
+                return bool(cancelled())
+            publish_noreplace(staged_output, output_dir, cancelled=publication_guard)
             state.update(state='complete', output=str(output_dir / output_name), duration_seconds=result['duration_seconds'])
             atomic_json(journal, state)
             on_status(f"Audio production complete: {result['duration_seconds']:.2f} seconds.")

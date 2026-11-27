@@ -80,6 +80,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'transcription':
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments and arguments[0] == 'translation':
+        from .translation_cli import main as translation_main
+        return translation_main(arguments[1:])
     if arguments and arguments[0] == 'assistant':
         from .assistant.cli import main as assistant_main
         return assistant_main(arguments[1:])

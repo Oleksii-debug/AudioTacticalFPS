@@ -232,6 +232,10 @@ class StudioController:
     def plan(self):
         if not self.script.strip():
             raise ValueError('Enter or import a script before previewing or rendering.')
+        if isinstance(self.source_reference, dict) and self.source_reference.get('kind') == 'book-audio-part':
+            from ..audio.book_store import part_plan
+            plan, index = part_plan(self.private_root, self.to_dict(), current=True)
+            return plan.project(index)
         parser = self.parser
         if parser is None:
             from ..audio.production import parse_script, plan_narration
@@ -386,6 +390,9 @@ class StudioController:
             from ..audio.legacy_project import KIND as CANONICAL_STUDIO, validate_reference
             if reference.get('kind') == CANONICAL_STUDIO:
                 validate_reference(reference, values['draft'])
+            if reference.get('kind') == 'book-audio-part':
+                from ..audio.book_plan import validate_reference as validate_book_reference
+                validate_book_reference(reference, values['draft'])
             if reference.get('kind') == READING_REFERENCE_KIND:
                 validate_reading_project_reference(reference, original_text=values['draft'].source_text,
                                                    source_id=values['draft'].source_id)
@@ -562,6 +569,15 @@ class StudioController:
                 options['music_manifest_resolver'] = music_profile
                 options['broker'] = self._resource_broker(cancelled=cancelled)
                 options['operation_id'] = 'studio:' + self.project_id
+            if isinstance(self.source_reference, dict) and self.source_reference.get('kind') == 'book-audio-part':
+                from ..audio.book_store import part_plan
+                from ..audio.models import digest
+                expected = digest(plan.to_dict())
+                def book_source_guard():
+                    current, index = part_plan(self.private_root, self.to_dict(), current=True, cancelled=cancelled)
+                    if digest(current.project(index).to_dict()) != expected:
+                        raise ValueError('The immutable book part changed during production.')
+                options['source_guard'] = book_source_guard
             result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
                               cancelled=cancelled, on_status=on_status, **options)
             if not isinstance(result, dict) or result.get('status') != 'complete':

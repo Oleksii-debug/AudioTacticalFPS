@@ -1333,3 +1333,40 @@ class LibraryApp:
         from .library_backup import create_backup
         return create_backup(self, destination, cancelled=cancelled)
 
+
+
+def open_existing_library(data_dir, *, cancelled=lambda: False, timeout=60):
+    """Bind the current reader services without creating or migrating a library.
+
+    Construction performs only local path and read-only schema checks. Explicit
+    mutation methods on the returned application retain their ordinary writer
+    guards; this helper does not grant permission to mutate anything.
+    """
+    from .audio.jobs import checked_directory, regular_file
+    from .backup_files import optional_present
+    budget = _SearchBudget(timeout, cancelled)
+    budget.check()
+    root = checked_directory(guard_data_directory(data_dir))
+    root_identity = (root.stat().st_dev, root.stat().st_ino)
+    if optional_present(root / '.restore-incomplete'):
+        raise ValueError('This restore is incomplete. Restore again to a new directory.')
+    database = root / 'library.sqlite'
+    original = regular_file(database)
+    if original.st_nlink != 1:
+        raise ValueError('The existing research database cannot be an alias.')
+    assets_dir = checked_directory(root / 'originals')
+    app = LibraryApp.__new__(LibraryApp)
+    app.root, app.database, app.assets_dir = root, database, assets_dir
+    app.assets = RetainedAssets(assets_dir)
+    app.semantic_ranker = app.semantic_cache = None
+    app._selections = {}
+    app._check_database_paths()
+    with app.read(budget=budget):
+        budget.check()
+    current = regular_file(database)
+    if (current.st_nlink != 1 or (current.st_dev, current.st_ino) !=
+            (original.st_dev, original.st_ino)
+            or (root.stat().st_dev, root.stat().st_ino) != root_identity):
+        raise ValueError('The existing library changed while opening. Select it again.')
+    budget.check()
+    return app

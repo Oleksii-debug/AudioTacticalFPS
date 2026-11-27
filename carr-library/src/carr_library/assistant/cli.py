@@ -28,6 +28,10 @@ from ..installation_lease import installed_entrypoint
 
 @installed_entrypoint
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['schedule']:
+        from .schedule_cli import main as schedule_main
+        return schedule_main(arguments[1:])
     parser = argparse.ArgumentParser(description='Scoped local assistant: preview first; explicit --run executes')
     parser.add_argument('--data-dir', type=Path)
     source = parser.add_mutually_exclusive_group(required=True)
@@ -47,8 +51,13 @@ def main(argv=None):
     parser.add_argument('--max-files', type=int)
     parser.add_argument('--max-steps', type=int)
     parser.add_argument('--max-seconds', type=float)
-    parser.add_argument('--run', action='store_true')
-    args = parser.parse_args(argv)
+    execution = parser.add_mutually_exclusive_group()
+    execution.add_argument('--run', action='store_true')
+    execution.add_argument('--queue', action='store_true',
+        help='Approve and save this exact local plan without running it; a later explicit schedule or Run is separate')
+    args = parser.parse_args(arguments)
+    if args.queue and (args.instructions is None or args.local_profile is not None):
+        parser.error('--queue requires reviewed instructions and cannot queue an unreviewed local-model proposal.')
     if args.local_profile is not None and (args.instructions is None or args.run):
         parser.error('--local-profile requires --instructions and cannot combine with --run. '
                      'Review the proposal in a separate invocation before execution.')
@@ -111,7 +120,14 @@ def main(argv=None):
             else:
                 plan = service.preview(instruction, scope)
             result = plan.to_dict()
-            if args.run:
+            if args.queue:
+                if stopped.is_set():
+                    raise InterruptedError('Assistant stopped before saving its reviewed plan.')
+                identity = service.submit(plan)
+                from .schedule_model import fingerprint
+                result = {'status': 'queued', 'id': identity, 'plan': plan.to_dict(),
+                          'plan_sha256': fingerprint(plan.to_dict()), 'execution_started': False}
+            elif args.run:
                 if stopped.is_set():
                     raise InterruptedError('Assistant stopped before submitting its reviewed plan.')
                 identity = service.submit(plan)

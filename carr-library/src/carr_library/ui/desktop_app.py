@@ -41,6 +41,7 @@ from .media_overlay_dialog import install_media_overlay_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
 from .audio_studio import install_audio_studio_actions
+from .book_batch_dialog import install_book_batch_actions
 from .recording_dialog import install_recording_actions
 from .api_connections import install_api_connection_actions
 from .acquisition_dialog import show_acquisition_dialog
@@ -652,6 +653,7 @@ class DesktopFrame(WorkspaceFrame):
         install_federated_search_actions(self)
         install_query_manager_actions(self)
         install_audio_studio_actions(self)
+        install_book_batch_actions(self)
         install_recording_actions(self)
         install_language_actions(self)
         install_api_connection_actions(self)

@@ -1,4 +1,5 @@
 """Selected local documents to new reading text, using the current worker."""
+from contextlib import ExitStack
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -17,7 +18,7 @@ from ..audio.paths import filename_component
 from ..data_paths import guard_data_directory
 from ..extract.page_ocr import Config
 from ..ingest.worker import _invoke
-from .capabilities import CONVERSION_SUFFIXES, IMAGES, capabilities
+from .capabilities import CALIBRE_SUFFIXES, CONVERSION_SUFFIXES, IMAGES, capabilities
 from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable, MAX_REPORT_BYTES
 
 
@@ -38,7 +39,7 @@ def _hash(path, cancelled, expected=None):
 
 class ConversionService:
     def __init__(self, root, *, input_roots=(), budget=None, ocr_config=None,
-                 pandoc=None, image_ocr=False, office=None):
+                 pandoc=None, image_ocr=False, office=None, calibre=None):
         self.root = checked_directory(guard_data_directory(root, purpose='reading derivative output'))
         info = self.root.stat()
         self._root_identity = (info.st_dev, info.st_ino)
@@ -53,6 +54,8 @@ class ConversionService:
         self.image_ocr = image_ocr
         from .office import OfficeSelection
         self.office = None if office is None else OfficeSelection.capture(office)
+        from .calibre import CalibreSelection
+        self.calibre = None if calibre is None else CalibreSelection.capture(calibre)
         self.pandoc = None
         self._pandoc_identity = None
         self._pandoc_parent_identity = None
@@ -85,7 +88,7 @@ class ConversionService:
 
     def capabilities(self):
         return capabilities(pandoc_selected=self.pandoc is not None, image_ocr_selected=self.image_ocr,
-                            office_selected=self.office is not None)
+                            office_selected=self.office is not None, calibre_selected=self.calibre is not None)
 
     def _input(self, value):
         path = Path(value).absolute()
@@ -154,6 +157,8 @@ class ConversionService:
         from .office import OFFICE_SUFFIXES
         if suffix in OFFICE_SUFFIXES and self.office is None:
             raise ConversionUnavailable('Select the installed LibreOffice program executable for this format explicitly.')
+        if suffix in CALIBRE_SUFFIXES and self.calibre is None:
+            raise ConversionUnavailable('Select a complete installed Calibre ebook-convert executable explicitly.')
         if suffix in IMAGES and not self.image_ocr:
             raise ConversionUnavailable('Select OCR and its language/model configuration for raster images explicitly.')
         if source == target or source == report_path:
@@ -162,7 +167,8 @@ class ConversionService:
         if not capability['available']:
             raise ConversionUnavailable('The existing reader dependencies are unavailable: ' +
                                         ', '.join(capability['missing']))
-        native_bytes = self.budget.max_source_bytes + 64 * 1024**2 if suffix in OFFICE_SUFFIXES else 16 * 1024**2
+        native_bytes = (self.budget.max_source_bytes + 64 * 1024**2
+                        if suffix in OFFICE_SUFFIXES or suffix in CALIBRE_SUFFIXES else 16 * 1024**2)
         if shutil.disk_usage(target.parent).free < (
                 before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + native_bytes):
             raise ConversionError('Not enough free disk for the bounded source, reading text and provenance.')
@@ -204,8 +210,15 @@ class ConversionService:
                 message['adapter'] = dict(kind='raster-ocr')
             elif suffix in OFFICE_SUFFIXES:
                 message['adapter'] = dict(kind='libreoffice', runtime=self.office.snapshot(cancelled=cancelled))
-            result = _invoke(message,
-                timeout=self.budget.timeout, cancelled=cancelled)
+            elif suffix in CALIBRE_SUFFIXES:
+                message['adapter'] = dict(kind='calibre-book', runtime=self.calibre.snapshot(cancelled=cancelled))
+            with ExitStack() as readers:
+                if suffix in CALIBRE_SUFFIXES:
+                    # The current outer process owner settles the entire family
+                    # before these immutable source/core leases can be released.
+                    readers.enter_context(self.calibre.lease(message['adapter']['runtime'], cancelled=cancelled))
+                    readers.enter_context(verified_reader(snapshot, expected_identity=file_identity(regular_file(snapshot))))
+                result = _invoke(message, timeout=self.budget.timeout, cancelled=cancelled)
             _check(cancelled)
             if not isinstance(result, dict) or result.get('state') != 'complete':
                 state = result.get('state') if isinstance(result, dict) else None

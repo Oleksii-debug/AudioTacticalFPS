@@ -72,6 +72,17 @@ def show_assistant(frame, *, production=None, on_ready=None):
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
     layout.Add(row)
+    schedule_row = wx.BoxSizer(wx.HORIZONTAL)
+    for identity, label in (('schedule', 'Schedule reviewed plan...'),
+                            ('schedules', 'Local schedules...'),
+                            ('disarm', 'Disarm this window')):
+        button = wx.Button(dialog, label=label)
+        button.SetName(label)
+        buttons[identity] = button
+        schedule_row.Add(button, 0, wx.ALL, 4)
+    layout.Add(schedule_row)
+    buttons['schedule'].Disable()
+    buttons['disarm'].Disable()
     dialog.SetSizer(layout)
     buttons['run'].Disable()
     buttons['pause'].Disable()
@@ -94,6 +105,10 @@ def show_assistant(frame, *, production=None, on_ready=None):
 
     production = production or LocalProduction(bound_root, cancelled=stopped)
     service = AssistantService(bound_library, production=production)
+    from ..assistant.scheduling import ScheduleManager, ScheduleSession
+    schedule_manager = ScheduleManager(service)
+    schedule_session = ScheduleSession(schedule_manager)
+    schedule_timer = None
 
     def input_identity():
         return (scope_choice.GetSelection(), input_folder.GetValue(), output_folder.GetValue(),
@@ -107,15 +122,18 @@ def show_assistant(frame, *, production=None, on_ready=None):
         if busy_kind in ('preview', 'model'):
             cancel.set()
         buttons['run'].Disable()
+        buttons['schedule'].Disable()
         if event is not None:
             event.Skip()
 
     def change_busy(kind):
         nonlocal busy, busy_kind
         busy_kind, busy = kind, kind is not None
-        for key in ('preview', 'model', 'jobs'):
+        for key in ('preview', 'model', 'jobs', 'schedules'):
             buttons[key].Enable(not busy)
         buttons['run'].Enable(not busy and (plan is not None or job_id is not None))
+        buttons['schedule'].Enable(not busy and (plan is not None or job_id is not None))
+        buttons['disarm'].Enable(bool(schedule_session.armed) or kind == 'scheduled')
         buttons['pause'].Enable(busy)
         label = ('Cancel &proposal' if kind == 'model' else
                  'Cancel &preview' if kind == 'preview' else '&Pause')
@@ -334,21 +352,24 @@ def show_assistant(frame, *, production=None, on_ready=None):
             post(apply)
         future.add_done_callback(finish)
 
-    def run(event=None):
+    def run(event=None, *, scheduled=False):
         nonlocal busy, job_id, progress_token
-        if busy or (plan is None and job_id is None):
+        if busy or (not scheduled and plan is None and job_id is None):
             return
         try:
             if not library_current():
                 invalidate()
                 raise ValueError('The library location changed. Reopen the assistant before running.')
-            if plan is not None and approved_inputs != (input_identity(), revision):
+            if not scheduled and plan is not None and approved_inputs != (input_identity(), revision):
                 invalidate()
                 raise ValueError('The reviewed goal or scope changed. Preview the current inputs again.')
             selected_plan, selected_identity = plan, job_id
             cancel.clear()
-            change_busy('run')
-            token = progress.start('Running reviewed local plan', unit='operations').token if progress is not None else None
+            if not scheduled and selected_identity is not None:
+                schedule_session.disarm((selected_identity,))
+            change_busy('scheduled' if scheduled else 'run')
+            label = 'Running one explicitly armed local schedule' if scheduled else 'Running reviewed local plan'
+            token = progress.start(label, unit='operations').token if progress is not None else None
             progress_token = token
             def advanced(completed, total, message):
                 if progress is not None:
@@ -361,6 +382,11 @@ def show_assistant(frame, *, production=None, on_ready=None):
                 nonlocal job_id
                 if stopped():
                     raise InterruptedError('Assistant stopped before submitting its reviewed plan.')
+                if scheduled:
+                    result = schedule_session.tick(cancelled=stopped, progress=advanced)
+                    if result is None:
+                        raise InterruptedError('No armed schedule is due. Nothing was dispatched.')
+                    return result
                 identity = selected_identity
                 if identity is None:
                     # submit revalidates the captured plan and may touch local
@@ -404,6 +430,169 @@ def show_assistant(frame, *, production=None, on_ready=None):
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
+    def schedule_work(label, action, complete):
+        """Small metadata operations use the already-owned assistant executor."""
+        if busy or not alive:
+            return False
+        if not library_current():
+            report('The library changed. Reopen the assistant to review schedules.')
+            return False
+        cancel.clear()
+        change_busy('schedule-review')
+        report(label)
+        def work():
+            if stopped():
+                raise InterruptedError('Schedule action cancelled before publication.')
+            return action()
+        try:
+            future = executor.submit(work)
+        except Exception as error:
+            change_busy(None)
+            report(error)
+            return False
+        def finish(done):
+            def apply():
+                if not alive:
+                    return
+                change_busy(None)
+                if not library_current():
+                    schedule_session.disarm()
+                    change_busy(None)
+                    report('The library changed. Saved schedules remain unarmed.')
+                    return
+                try:
+                    result = done.result()
+                    if stopped():
+                        schedule_session.disarm()
+                        if schedule_timer is not None:
+                            schedule_timer.Stop()
+                        change_busy(None)
+                        report('Schedule action stopped. Inspect the retained job before another action.')
+                        return
+                    complete(result)
+                except Exception as error:
+                    schedule_session.disarm()
+                    if schedule_timer is not None:
+                        schedule_timer.Stop()
+                    change_busy(None)
+                    report(error)
+                review.SetFocus()
+            post(apply)
+        future.add_done_callback(finish)
+        return True
+
+    def schedule_current(event=None):
+        nonlocal job_id
+        if busy or (plan is None and job_id is None):
+            return
+        selected_plan, selected_id = plan, job_id
+        selected_inputs, selected_revision = input_identity(), revision
+        if selected_plan is not None and approved_inputs != (selected_inputs, selected_revision):
+            invalidate()
+            report('Preview the current exact goal and scope before saving a time.')
+            return
+        def read_review():
+            if selected_id is None:
+                from ..assistant.schedule_model import fingerprint
+                value = selected_plan.to_dict()
+                return value, fingerprint(value), None
+            record = service.store.load(selected_id)
+            from ..assistant.schedule_model import fingerprint
+            return record['plan'], record['plan_sha256'], (
+                None if 'schedule' not in record else fingerprint(record['schedule']))
+        def reviewed(captured):
+            if (selected_revision != revision or selected_inputs != input_identity()
+                    or selected_id != job_id or selected_plan is not plan):
+                report('The selected job or plan changed. Review its time again.')
+                return
+            from .assistant_schedule import choose_time
+            value, plan_sha, previous_sha = captured
+            selected_time = choose_time(dialog, value, plan_sha)
+            if selected_time is None:
+                return
+            if (not alive or not library_current() or selected_revision != revision
+                    or selected_inputs != input_identity()
+                    or selected_id != job_id or selected_plan is not plan):
+                report('The selected job or scope changed during review. Nothing was scheduled.')
+                return
+            due, lateness = selected_time
+            def save():
+                nonlocal job_id
+                identity = selected_id
+                if identity is None:
+                    identity = service.submit(selected_plan)
+                    # Preserve a real committed job even if schedule publication
+                    # or a later read fails. It remains available in Saved jobs.
+                    job_id = identity
+                if stopped():
+                    raise InterruptedError('The queued job is retained; schedule saving was cancelled.')
+                return schedule_manager.create(identity, due, expected_plan_sha256=plan_sha,
+                    expected_schedule_sha256=previous_sha, lateness_seconds=lateness)
+            def saved(view):
+                report(f'Job {view.id}: saved UTC time {view.due}; expires {view.expires}.\n'
+                       'Nothing ran or was armed. Open Local schedules, review the exact plan and explicitly arm it '
+                       'for this assistant window. Closing this window disarms it.')
+            schedule_work('Saving the reviewed concrete UTC window; no execution.', save, saved)
+        schedule_work('Reading the exact saved plan for schedule review.', read_review, reviewed)
+
+    def scheduled_due(event=None):
+        if (not alive or busy or getattr(frame, 'working', False)
+                or getattr(frame, 'busy', False)):
+            return
+        if not library_current():
+            schedule_session.disarm()
+            if schedule_timer is not None:
+                schedule_timer.Stop()
+            change_busy(None)
+            report('The library changed. All foreground schedules were disarmed.')
+            return
+        try:
+            if schedule_session.has_due():
+                run(scheduled=True)
+        except (OSError, ValueError, RuntimeError) as error:
+            schedule_session.disarm()
+            change_busy(None)
+            report(error)
+
+    def schedules(event=None):
+        def reviewed(rows):
+            from .assistant_schedule import choose_schedule
+            chosen = choose_schedule(dialog, rows, schedule_session.armed)
+            if chosen is None or not alive or not library_current():
+                return
+            action, identity, pin = chosen
+            def apply_action():
+                if action == 'arm':
+                    return schedule_session.arm({identity: pin})
+                if action == 'disable':
+                    schedule_session.disarm((identity,))
+                    return schedule_manager.disable(identity, expected_schedule_sha256=pin)
+                raise ValueError('Unknown local schedule action.')
+            def applied(value):
+                nonlocal schedule_timer
+                if action == 'arm':
+                    if schedule_timer is None:
+                        schedule_timer = wx.Timer(dialog)
+                        dialog.Bind(wx.EVT_TIMER, scheduled_due, source=schedule_timer)
+                    schedule_timer.Start(1000)
+                    report('Armed for one attempt in this window: ' + ', '.join(value)
+                           + '. Closing or Disarm removes this foreground permission.')
+                else:
+                    report(f'Job {identity}: saved time disabled. No operation was started.')
+                change_busy(None)
+            schedule_work('Applying the explicitly selected local schedule action.', apply_action, applied)
+        schedule_work('Reading saved local schedules and their exact approved plans.', lambda: schedule_manager.review(cancelled=stopped), reviewed)
+
+    def disarm(event=None):
+        schedule_session.disarm()
+        if schedule_timer is not None:
+            schedule_timer.Stop()
+        if busy_kind == 'scheduled':
+            cancel.set()
+        buttons['disarm'].Disable()
+        report('This window is disarmed. Any active scheduled operation is stopping through its existing owner; '
+               'inspect its saved checkpoint before ordinary Resume.')
+
     def jobs(event=None):
         nonlocal job_id, plan, approved_inputs
         if busy:
@@ -415,6 +604,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
         except (ValueError, OSError) as exc:
             job_id, plan = None, None
             buttons['run'].Disable()
+            buttons['schedule'].Disable()
             report(str(exc)[:1000])
             review.SetFocus()
             return
@@ -441,13 +631,21 @@ def show_assistant(frame, *, production=None, on_ready=None):
                            'if necessary, then choose Preview and Run to approve a new job. '
                            'The saved job and its original permissions remain unchanged.')
                     buttons['run'].Disable()
+                    buttons['schedule'].Disable()
                     review.SetFocus()
                     return
                 job_id, plan, approved_inputs = row.id, None, None
                 report(f'{row.status}: {row.completed}/{row.total}. {row.message}\nResume uses the original reviewed scope.')
-                buttons['run'].Enable()
+                change_busy(None)
         finally:
             choice.Destroy()
+
+    def pause(event=None):
+        cancel.set()
+        if busy_kind in ('schedule-review', 'scheduled'):
+            schedule_session.disarm()
+            if schedule_timer is not None:
+                schedule_timer.Stop()
 
     def close(event=None):
         nonlocal alive
@@ -455,6 +653,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
             return
         alive = False
         cancel.set()
+        schedule_session.close()
+        if schedule_timer is not None:
+            schedule_timer.Stop()
         if progress is not None and progress_token is not None:
             progress.request_cancel()
         # The worker persists its paused checkpoint after releasing snapshot
@@ -470,8 +671,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
         from .desktop_app import show_text
         show_text(dialog, 'Local assistant commands', HELP)
 
-    for identity, callback in {'preview': preview, 'model': propose, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+    for identity, callback in {'preview': preview, 'model': propose, 'run': run, 'pause': pause,
+                               'jobs': jobs, 'help': help_text, 'close': close,
+                               'schedule': schedule_current, 'schedules': schedules, 'disarm': disarm}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction, budget, file_budget, deadline):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -485,7 +687,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
                 'run': buttons['run'], 'model': buttons['model'], 'close': buttons['close'], 'output': output_folder,
                 'scope': scope_choice, 'input': input_folder, 'full_backup': full_backup,
                 'file_budget': file_budget, 'pause': buttons['pause'], 'jobs': buttons['jobs'],
-                'folder_buttons': tuple(folder_buttons)})
+                'folder_buttons': tuple(folder_buttons),
+                'schedule': buttons['schedule'], 'schedules': buttons['schedules'],
+                'disarm': buttons['disarm']})
         dialog.ShowModal()
     finally:
         if alive:

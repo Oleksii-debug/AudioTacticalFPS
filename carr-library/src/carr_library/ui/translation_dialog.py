@@ -8,6 +8,7 @@ from uuid import uuid4
 from ..assistant.translation import (
     TranslationService, language_approval, translation_approval)
 from ..assistant.translation_state import MAX_SOURCE_CHARACTERS
+from ..assistant.translation_structure import capture_text, source_text, structure_hash
 from .api_connections import parse_budget
 
 
@@ -20,13 +21,16 @@ class TranslationController:
         self.reviewed = None
 
     @staticmethod
-    def selection(profile, value, source, target, budget, title, rate, glossary=''):
-        return (profile.fingerprint, value, source, target, parse_budget(budget), title, rate, glossary)
+    def selection(profile, value, source, target, budget, title, rate, glossary='', structure=None):
+        return (profile.fingerprint, value, source, target, parse_budget(budget), title, rate, glossary,
+                None if structure is None else structure_hash(structure))
 
-    def preview(self, profile, value, source, target, budget, *, title='Translation', rate='', glossary=''):
+    def preview(self, profile, value, source, target, budget, *, title='Translation', rate='', glossary='', structure=None):
         self.reviewed = None
-        chosen = self.selection(profile, value, source, target, budget, title, rate, glossary)
+        chosen = self.selection(profile, value, source, target, budget, title, rate, glossary, structure)
         options = {'glossary': glossary} if glossary or profile.provider == 'google-translation-v3' else {}
+        if structure is not None:
+            options['structure'] = structure
         result = self.service.preview(profile, value, source, target, rate_per_million=rate or None, **options)
         if result['estimated_cost'] is not None and Decimal(result['estimated_cost']) * 1000000 > chosen[4]:
             raise ValueError('The entered price estimate exceeds the chosen reservation budget.')
@@ -34,12 +38,17 @@ class TranslationController:
         return {**result, 'budget_micros': chosen[4], 'currency': 'USD',
                 'provider_name': profile.name, 'endpoint': profile.endpoint, 'model': profile.model}
 
-    def submit(self, profile, value, source, target, budget, *, approved=False, title='Translation', rate='', glossary=''):
-        chosen = self.selection(profile, value, source, target, budget, title, rate, glossary)
+    def submit(self, profile, value, source, target, budget, *, approved=False, title='Translation', rate='',
+               glossary='', structure=None, cancelled=None):
+        chosen = self.selection(profile, value, source, target, budget, title, rate, glossary, structure)
         if approved is not True or chosen != self.reviewed:
             raise PermissionError('Preview and explicitly approve this exact account, text, pair and budget.')
-        approval = translation_approval(profile, value, source, target, chosen[4], glossary=glossary)
+        approval = translation_approval(profile, value, source, target, chosen[4], glossary=glossary, structure=structure)
         options = {'glossary': glossary} if glossary or profile.provider == 'google-translation-v3' else {}
+        if structure is not None:
+            options['structure'] = structure
+        if cancelled is not None:
+            options['cancelled'] = cancelled
         identity = self.service.submit(profile, value, source, target, approval=approval, title=title, **options)
         self.reviewed = None
         return identity
@@ -55,6 +64,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
     scoped_library = frame.library
     profiles, source_codes, target_codes = [], [], []
     alive, busy, current_job = True, False, None
+    structured_source = None
     cancel = threading.Event()
     dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(900, 900),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -77,6 +87,16 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
     selected = field('Selected te&xt; originals remain unchanged', proportion=1,
                      value=initial_text, style=wx.TE_MULTILINE)
     selected.SetMaxLength(MAX_SOURCE_CHARACTERS)
+    source_buttons = {}
+    source_row = wx.WrapSizer(wx.HORIZONTAL)
+    for key, label in (('documents', 'Choose documents or chapters...'),
+                       ('structure', 'Preserve paragraph or Markdown structure...'),
+                       ('editable', 'Use editable selected text')):
+        button = wx.Button(dialog, label=label)
+        button.SetName(label.replace('&', ''))
+        source_row.Add(button, 0, wx.ALL, 3)
+        source_buttons[key] = button
+    layout.Add(source_row, 0, wx.EXPAND)
     rate = field('Optional current contract price per million characters in USD', value='')
     budget = field('Maximum approved reservation in USD; no default price', value='')
     result_view = field('Accepted translation derivative; not a source quotation', proportion=1,
@@ -123,6 +143,9 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         editable = not busy and current_job is None
         for control in (provider, job_title, source, target, selected, rate, budget):
             control.Enable(editable)
+        for control in source_buttons.values():
+            control.Enable(editable)
+        selected.SetEditable(editable and structured_source is None)
         index = provider.GetSelection()
         glossary.Enable(editable and 0 <= index < len(profiles) and profiles[index].provider == 'google-translation-v3')
         for name in ('settings', 'languages', 'preview'):
@@ -165,7 +188,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             provider.SetSelection(0)
         load_languages()
 
-    def begin(label, operation, complete):
+    def begin(label, operation, complete, on_error=None):
         nonlocal busy
         if busy or not alive:
             return False
@@ -181,14 +204,23 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                 return
             busy = False
             controls()
-            complete(result)
+            try:
+                complete(result)
+            except Exception as error:
+                if on_error is not None:
+                    on_error(error)
+                else:
+                    report(str(error))
         def failed(error):
             nonlocal busy
             if not alive:
                 return
             busy = False
             controls()
-            report(str(error))
+            if on_error is not None:
+                on_error(error)
+            else:
+                report(str(error))
         started = frame.run_job(label, operation, done=finish, failed=failed)
         if started is False or (not getattr(frame, 'working', False) and busy):
             busy = False
@@ -228,6 +260,53 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         except Exception as exc:
             report(str(exc))
 
+    def captured(document):
+        nonlocal structured_source
+        structured_source = document
+        controller.reviewed = None
+        selected.ChangeValue(source_text(document))
+        selected.SetEditable(False)
+        report(f"Prepared {len(document['documents'])} ordered document selection(s). "
+               'Original sections and source identity are retained. Preview before approving transfer.')
+        controls()
+
+    def choose_documents(event=None):
+        if busy or current_job is not None:
+            return
+        try:
+            from .translation_sources import choose_translation_sources
+            document = choose_translation_sources(frame, dialog)
+            if document is not None:
+                captured(document)
+        except Exception as exc:
+            report(str(exc))
+
+    def preserve_structure(event=None):
+        if busy or current_job is not None:
+            return
+        choice = wx.SingleChoiceDialog(dialog,
+            'Choose a tested text structure profile. Other layout is not reconstructed.',
+            'Translation structure', ['Paragraph boundaries', 'Markdown ATX headings, paragraphs and literal fenced code'])
+        try:
+            if choice.ShowModal() != wx.ID_OK:
+                return
+            markdown = choice.GetSelection() == 1
+        finally:
+            choice.Destroy()
+        value, source_title = selected.GetValue(), job_title.GetValue()
+        begin('Capturing exact translation text structure',
+              lambda: capture_text(value, title=source_title, markdown=markdown, cancelled=stopped), captured)
+
+    def use_editable_text(event=None):
+        nonlocal structured_source
+        if busy or current_job is not None:
+            return
+        structured_source = None
+        controller.reviewed = None
+        selected.SetEditable(True)
+        report('Editable selected text. A new preview is required; retained document links are no longer attached.')
+        controls()
+
     def values():
         first, last = pair()
         return (profile(), selected.GetValue(), first, last, budget.GetValue().strip())
@@ -235,7 +314,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
     def preview(event=None):
         try:
             result = controller.preview(*values(), title=job_title.GetValue(), rate=rate.GetValue().strip(),
-                                        glossary=glossary.GetValue().strip())
+                                        glossary=glossary.GetValue().strip(), structure=structured_source)
             result_view.ChangeValue('')
             report(json.dumps(result, ensure_ascii=False, indent=2) +
                    '\n\nNo text sent. Translate asks permission for these exact data. '
@@ -254,9 +333,11 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
     def run(event):
         nonlocal current_job
         try:
+            chosen = exact = document = None
             if current_job is None:
                 chosen = values()
-                exact = controller.selection(*chosen, job_title.GetValue(), rate.GetValue().strip(), glossary.GetValue().strip())
+                exact = controller.selection(*chosen, job_title.GetValue(), rate.GetValue().strip(),
+                    glossary.GetValue().strip(), structured_source)
                 if exact != controller.reviewed:
                     raise ValueError('Preview the current exact account, text, language pair and budget first.')
                 if wx.MessageBox(
@@ -270,22 +351,34 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                         dialog) != wx.YES:
                     return
                 if controller.selection(*values(), job_title.GetValue(), rate.GetValue().strip(),
-                                        glossary.GetValue().strip()) != exact:
+                                        glossary.GetValue().strip(), structured_source) != exact:
                     controller.reviewed = None
                     raise ValueError('The selected text, account or glossary changed during approval. Preview it again.')
-                current_job = controller.submit(*chosen, approved=True,
-                    title=job_title.GetValue(), rate=rate.GetValue().strip(), glossary=glossary.GetValue().strip())
-                controls()
+                # Capture the approved immutable values before entering the
+                # shared worker. Source validation can hash a large original.
+                document = structured_source
             identity = current_job
             def translate():
+                nonlocal current_job
+                selected_identity = identity
+                if selected_identity is None:
+                    selected_identity = controller.submit(*chosen, approved=True,
+                        title=exact[5], rate=exact[6], glossary=exact[7], structure=document,
+                        cancelled=stopped)
+                    # Commit ownership before resume or later inspection can
+                    # fail. Only UI-thread completion callbacks touch widgets.
+                    current_job = selected_identity
                 progress = getattr(frame, 'operation_progress', None)
                 token = progress.event.token if progress is not None else None
                 def advanced(done, total, phase):
                     if progress is not None:
                         progress.update(done, total, phase, token=token)
                     wx.CallAfter(report, f'{done}/{total}: {phase}')
-                return service.resume(identity, cancelled=stopped, progress=advanced)
-            begin('Translating explicitly approved text', translate, completed)
+                return service.resume(selected_identity, cancelled=stopped, progress=advanced)
+            def run_failed(error):
+                prefix = '' if current_job is None else f'Saved translation {current_job}: '
+                report(prefix + str(error))
+            begin('Translating explicitly approved text', translate, completed, on_error=run_failed)
         except Exception as exc:
             controls()
             report(str(exc))
@@ -302,7 +395,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         report('New translation: review the text, supported pair and budget before approving any request.')
 
     def jobs(event):
-        nonlocal current_job, source_codes, target_codes
+        nonlocal current_job, source_codes, target_codes, structured_source
         try:
             rows = service.list()
             if not rows:
@@ -316,6 +409,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                 result = rows[chooser.GetSelection()]
                 current_job = result['id']
                 job = service.jobs.load(current_job)
+                structured_source = job.get('structure')
                 source_codes, target_codes = [job['source_language']], [job['target_language']]
                 source.SetItems(source_codes)
                 source.SetSelection(0)
@@ -373,13 +467,16 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                 'charges': charges, 'export': export, 'close': close}
     for name, handler in handlers.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)
+    source_buttons['documents'].Bind(wx.EVT_BUTTON, choose_documents)
+    source_buttons['structure'].Bind(wx.EVT_BUTTON, preserve_structure)
+    source_buttons['editable'].Bind(wx.EVT_BUTTON, use_editable_text)
     provider.Bind(wx.EVT_CHOICE, load_languages)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
         report('LOCAL ONLY until an exact task is explicitly approved. Basic v2 uses an API key; Advanced v3 '
                'uses an explicitly supplied IAM/ADC OAuth token and expiry in Windows Credential Manager. '
                'Advanced v3 verifies its project, location, general/nmt model and optional existing regional glossary. '
-               'This workspace produces plain-text derivatives, without layout or independent language-quality guarantees.')
+               'Choose selected text, retained documents or chapter ranges. Tested structure profiles retain paragraph boundaries and ATX heading levels; other layout and independent language quality are not guaranteed.')
         load_profiles()
         controls()
         dialog.ShowModal()

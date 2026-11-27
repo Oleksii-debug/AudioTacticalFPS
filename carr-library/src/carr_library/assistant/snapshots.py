@@ -143,6 +143,53 @@ def validate_sources(db, record):
                 raise ValueError('Assistant import result disagrees with its saved intent.')
             for edition in editions:
                 _edition(db, workspace, edition)
+        elif tool == 'reader.page':
+            from ..citations.anchors import digest
+            from ..reader.reading_state import ReadingLocation
+            page = result.get('page')
+            if (type(page) is not dict or result.get('quotation_authority') is not False
+                    or type(page.get('location')) is not dict):
+                raise ValueError('Invalid assistant reading result.')
+            try:
+                location = ReadingLocation(**page['location'])
+            except (ValueError, TypeError) as error:
+                raise ValueError('Invalid assistant reading location.') from error
+            args = step['arguments']
+            if (location.workspace != workspace or location.edition != args['edition']
+                    or location.revision != args['revision'] or page.get('ordinal') != args['page']
+                    or type(page.get('raw_text')) is not str or type(page.get('verified')) is not bool):
+                raise ValueError('Assistant reading result changed its approved source.')
+            _edition(db, workspace, location.edition, revision=location.revision,
+                     asset=location.asset_sha256)
+            row = db.execute('SELECT ordinal,physical,digest,raw FROM page WHERE revision=? AND ordinal=?',
+                             (location.revision, page['ordinal'])).fetchone()
+            metadata = db.execute('SELECT author,title,volume,edition_label FROM source_metadata '
+                'WHERE workspace=? AND edition=? AND revision=?',
+                (workspace, location.edition, location.revision)).fetchone()
+            expected_metadata = None if metadata is None else dict(zip(
+                ('author', 'title', 'volume', 'edition'), metadata))
+            if (row is None or row[2] != location.text_sha256 or row[3] != page['raw_text']
+                    or digest(page['raw_text']) != location.text_sha256
+                    or location.kind != ('physical_page' if row[1] is not None else 'logical_segment')
+                    or location.index != (row[1] if row[1] is not None else row[0])
+                    or page.get('metadata') != expected_metadata):
+                raise ValueError('Assistant reading bytes differ from their sealed historical source.')
+        elif tool == 'evidence.search':
+            if result.get('quotation_authority') is not False:
+                raise ValueError('Assistant evidence discovery cannot grant quotation authority.')
+            for hit in _rows(result, 'hits'):
+                source = hit.get('source')
+                if (type(source) is not dict or source.get('workspace') != workspace
+                        or not isinstance(source.get('revision'), str)
+                        or not isinstance(source.get('asset_sha256'), str)):
+                    raise ValueError('Assistant evidence result is outside its approved source scope.')
+                _edition(db, workspace, source.get('edition_id'), revision=source.get('revision'),
+                         asset=source.get('asset_sha256'))
+                saved = db.execute('SELECT checksum FROM research_evidence '
+                    'WHERE workspace=? AND topic=? AND id=?',
+                    (workspace, hit.get('topic'), hit.get('evidence'))).fetchone()
+                if saved is None or saved[0] != hit.get('checksum'):
+                    raise ValueError('Assistant evidence identity differs from its authenticated saved notebook entry.')
         elif tool == 'library.extract':
             if result.get('reading_copy') is not True or not isinstance(result.get('source_revision'), str):
                 raise ValueError('Invalid assistant reading-copy source result.')

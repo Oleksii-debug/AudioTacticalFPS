@@ -48,6 +48,7 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - name: Install pinned desktop and separately verified test audio runtime
+        id: runtime
         run: |
           New-Item -ItemType Directory -Force audio-ci-results | Out-Null
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
@@ -109,10 +110,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require recording state and native-control contracts without skips
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: |
-          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py tests/ui/test_audio_native_probe_policy.py tests/audio/test_publication_fsync.py tests/audio/test_clips.py tests/audio/test_effect_editing.py tests/ui/test_audio_effect_editing.py tests/audio/test_master_effects.py tests/reader/test_live_speech.py tests/ui/test_live_reading.py tests/storage/test_live_reading_backup.py tests/storage/test_optional_backup_roots.py tests/reader/test_media_overlay.py tests/reader/test_publication_state.py tests/ui/test_media_overlay.py tests/reader/test_appearance.py tests/ui/test_reader_appearance.py tests/reader/test_pacing.py tests/ui/test_paced_reading.py tests/ui/test_paced_reader_hooks.py tests/audio/test_media_conversion.py tests/storage/test_media_conversion_backup.py tests/ui/test_media_conversion.py tests/audio/test_clip_input_ownership.py tests/audio/test_clip_consolidation.py tests/audio/test_playback_processing.py tests/audio/test_playback_configuration.py tests/ui/test_playback_controls.py tests/reader/test_live_playback_controls.py tests/reader/test_recorded_playback_controls.py tests/ui/test_reader_playback_controls.py tests/reader/test_speech_normalization.py tests/ui/test_speech_preparation.py tests/ui/test_speech_preparation_hooks.py tests/audio/test_recording_controls.py tests/audio/test_recording_monitor.py tests/audio/test_playback_devices.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
+          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py tests/ui/test_audio_native_probe_policy.py tests/audio/test_publication_fsync.py tests/audio/test_clips.py tests/audio/test_effect_editing.py tests/ui/test_audio_effect_editing.py tests/audio/test_master_effects.py tests/reader/test_live_speech.py tests/ui/test_live_reading.py tests/storage/test_live_reading_backup.py tests/storage/test_optional_backup_roots.py tests/reader/test_media_overlay.py tests/reader/test_publication_state.py tests/ui/test_media_overlay.py tests/reader/test_appearance.py tests/ui/test_reader_appearance.py tests/reader/test_pacing.py tests/ui/test_paced_reading.py tests/ui/test_paced_reader_hooks.py tests/audio/test_media_conversion.py tests/storage/test_media_conversion_backup.py tests/ui/test_media_conversion.py tests/audio/test_clip_input_ownership.py tests/audio/test_clip_consolidation.py tests/audio/test_playback_processing.py tests/audio/test_playback_configuration.py tests/ui/test_playback_controls.py tests/reader/test_live_playback_controls.py tests/reader/test_recorded_playback_controls.py tests/ui/test_reader_playback_controls.py tests/reader/test_speech_normalization.py tests/ui/test_speech_preparation.py tests/ui/test_speech_preparation_hooks.py tests/audio/test_recording_controls.py tests/audio/test_recording_monitor.py tests/audio/test_playback_devices.py tests/audio/test_book_plans.py tests/storage/test_book_audio_backup.py tests/ui/test_book_batch_dialog.py tests/conversion/test_calibre_selection.py tests/conversion/test_calibre_process_ownership.py tests/assistant/test_typed_local_tools.py tests/assistant/test_scheduling.py tests/assistant/test_scheduling_cli.py tests/assistant/test_scheduling_handlers.py tests/storage/test_scoped_locator_capacity.py tests/packaging/test_library_corpus_benchmark.py tests/audio/test_book_batch.py tests/assistant/test_translation_structure.py tests/ui/test_translation_structure.py tests/test_translation_cli.py tests/storage/test_translation_structure_backup.py tests/test_open_existing_library.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed book, structured translation and schedule windows
+        if: ${{ !cancelled() && steps.runtime.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $probeFailures = 0
+          python -I -B scripts/windows_book_batch_smoke.py --native 2>&1 | Tee-Object audio-ci-results/native-book-batch.txt
+          if ($LASTEXITCODE -ne 0) { $probeFailures += 1 }
+          python -I -B scripts/windows_assistant_schedule_smoke.py --output audio-ci-results/native-schedule.json 2>&1 | Tee-Object audio-ci-results/native-schedule.txt
+          if ($LASTEXITCODE -ne 0) { $probeFailures += 1 }
+          python -I -B scripts/windows_translation_smoke.py --output audio-ci-results/native-translation.json 2>&1 | Tee-Object audio-ci-results/native-translation.txt
+          if ($LASTEXITCODE -ne 0) { $probeFailures += 1 }
+          if ($probeFailures -ne 0) { throw "$probeFailures required installed native probes failed." }
 
       - name: Run provider safety, source integrity and audio recovery regressions
         run: |

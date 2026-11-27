@@ -3,11 +3,12 @@ from importlib.metadata import PackageNotFoundError, version
 
 from ..extract.document_formats import FORMAT_BY_SUFFIX, SUPPORTED_SUFFIXES
 from .office import OFFICE_SUFFIXES
+from .calibre import CALIBRE_SUFFIXES
 
 LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb',
           '.prc', '.ppt', '.tcr', '.wpd', '.xls')
 IMAGES = ('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp')
-CONVERSION_SUFFIXES = frozenset((*SUPPORTED_SUFFIXES, '.rtf', *IMAGES, *OFFICE_SUFFIXES))
+CONVERSION_SUFFIXES = frozenset((*SUPPORTED_SUFFIXES, '.rtf', *IMAGES, *OFFICE_SUFFIXES, *CALIBRE_SUFFIXES))
 
 
 def _dependencies(suffix):
@@ -20,7 +21,8 @@ def _dependencies(suffix):
     return ()
 
 
-def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_selected=False):
+def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_selected=False,
+                 calibre_selected=False):
     """Installed dependencies are not per-file fidelity or language qualification."""
     result = []
     reviewed_versions = {'python-docx': '1.2.0', 'defusedxml': '0.7.1'}
@@ -59,6 +61,14 @@ def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_sele
             qualification='selected_runtime_requires_check' if image_ocr_selected else 'explicit_selection_required',
             limitation='Explicit OCR language/profile or verified model-pack selection is required. Every bounded image/TIFF frame becomes unverified reading text; printed pagination and exact layout are not invented.'))
     for suffix in LEGACY:
+        if suffix in CALIBRE_SUFFIXES:
+            result.append(dict(extension=suffix, available=bool(calibre_selected),
+                adapter='explicitly selected self-contained Calibre book reader', installed={}, missing=[],
+                qualification='selected_runtime_requires_check' if calibre_selected else 'explicit_selection_required',
+                limitation=('Unprotected books only, fixed plain UTF-8 output and a private configuration. '
+                    'DjVu requires an existing text layer; PRC requires Mobipocket or PalmDoc. '
+                    'No recipes, custom plugins, DRM removal, new OCR, exact layout or printed pagination are supplied.')))
+            continue
         if suffix in OFFICE_SUFFIXES:
             result.append(dict(extension=suffix, available=bool(office_selected),
                 adapter='explicitly selected LibreOffice with private inactive-content profile',

@@ -32,6 +32,7 @@ MAX_OUTPUT_CHARACTERS = 8_000_000
 SCHEMA = 'carr-translation-job/1'
 CACHE_SCHEMA = 'carr-translation-languages/1'
 ADVANCED_SCHEMA = 'carr-translation-job/2'
+STRUCTURED_SCHEMA = 'carr-translation-job/3'
 ADVANCED_CACHE_SCHEMA = 'carr-translation-languages/2'
 _JOB = re.compile(r'([0-9a-f]{32})\.json')
 _CACHE = re.compile(r'languages-([a-zA-Z0-9_-]{1,100})\.json')
@@ -65,19 +66,36 @@ def split_text(value, limit=4500):
     return tuple(parts)
 
 
-def allocations(parts, budget_micros):
-    calls = sum(bool(part.strip()) for part in parts)
+def allocations(parts, budget_micros, *, mask=None):
+    mask = tuple(bool(part.strip()) for part in parts) if mask is None else tuple(mask)
+    if len(mask) != len(parts) or any(type(item) is not bool for item in mask):
+        raise ValueError('Invalid exact translation request inventory.')
+    calls = sum(mask)
     if type(budget_micros) is not int or not 0 <= budget_micros <= 10**12 or not calls:
         raise ValueError('An explicit bounded translation budget is required.')
     each, extra = divmod(budget_micros, calls)
     result, index = [], 0
-    for part in parts:
-        if part.strip():
+    for remote in mask:
+        if remote:
             result.append(each + (1 if index < extra else 0))
             index += 1
         else:
             result.append(None)
     return result
+
+
+def is_advanced_job(value):
+    return (value.get('schema') == ADVANCED_SCHEMA
+            or value.get('schema') == STRUCTURED_SCHEMA
+            and type(value.get('profile')) is dict
+            and value['profile'].get('provider') == 'google-translation-v3')
+
+
+def job_parts(value):
+    from .translation_structure import parts_and_mask
+    return parts_and_mask(value['source_text'], value.get('structure'))
+
+
 
 
 def _hash(value):
@@ -109,14 +127,17 @@ def approval_from_dict(value):
 def validate_translation_job(value, *, identity=None):
     if type(value) is not dict:
         raise ValueError('Invalid typed translation checkpoint.')
-    advanced = value.get('schema') == ADVANCED_SCHEMA
+    advanced = is_advanced_job(value)
+    structured = value.get('schema') == STRUCTURED_SCHEMA
     keys = {'schema', 'id', 'library_root', 'ledger_identity', 'created', 'updated', 'status',
             'profile', 'title', 'source_text', 'source_sha256', 'source_language',
             'target_language', 'language_catalog_sha256', 'approval', 'allocations',
             'receipts', 'pending'}
-    if advanced:
+    if advanced or structured:
         keys.add('glossary')
-    if (set(value) != keys or value['schema'] not in (SCHEMA, ADVANCED_SCHEMA)
+    if structured:
+        keys.add('structure')
+    if (set(value) != keys or value['schema'] not in (SCHEMA, ADVANCED_SCHEMA, STRUCTURED_SCHEMA)
             or not isinstance(value['id'], str) or not re.fullmatch('[0-9a-f]{32}', value['id'])
             or (identity is not None and value['id'] != identity)):
         raise ValueError('Invalid typed translation checkpoint.')
@@ -132,7 +153,10 @@ def validate_translation_job(value, *, identity=None):
     if value['status'] not in ('queued', 'running', 'paused', 'attention', 'complete'):
         raise ValueError('Invalid translation checkpoint status.')
     text(value['title'], 'translation title', maximum=512)
-    parts = split_text(value['source_text'])
+    if structured:
+        from .translation_structure import validate_structure
+        validate_structure(value['structure'], value['source_text'])
+    parts, mask = job_parts(value)
     if value['source_sha256'] != text_hash(value['source_text']):
         raise ValueError('The immutable translation source failed its hash check.')
     _hash(value['language_catalog_sha256'])
@@ -144,8 +168,10 @@ def validate_translation_job(value, *, identity=None):
     if profile.provider != expected_provider or not profile.credential_ref:
         raise ValueError('Translation must bind the connected provider declared by its checkpoint version.')
     glossary = value['glossary'] if advanced else ''
+    if structured and not advanced and value['glossary'] != '':
+        raise ValueError('Basic v2 does not support an Advanced glossary.')
     requests = [translation_request(profile, part, value['source_language'], value['target_language'], glossary=glossary)
-                for part in parts if part.strip()]
+                for part, remote in zip(parts, mask) if remote]
     approval = approval_from_dict(value['approval'])
     if (approval.job_id != value['id'] or approval.profile_fingerprint != profile.fingerprint
             or approval.request_hashes != tuple(request.fingerprint(profile) for request in requests)
@@ -154,7 +180,7 @@ def validate_translation_job(value, *, identity=None):
         raise ValueError('Translation approval does not match the exact profile, source, languages and call count.')
     if (type(value['allocations']) is not list
             or any(item is not None and type(item) is not int for item in value['allocations'])
-            or value['allocations'] != allocations(parts, approval.budget_micros)):
+            or value['allocations'] != allocations(parts, approval.budget_micros, mask=mask)):
         raise ValueError('Translation reservations do not match the approved integer budget.')
     receipts = value['receipts']
     if type(receipts) is not list or len(receipts) > len(parts):
@@ -174,7 +200,7 @@ def validate_translation_job(value, *, identity=None):
         output_size += len(translated)
         if output_size > MAX_OUTPUT_CHARACTERS:
             raise ValueError('Translation output exceeds its storage budget.')
-        if parts[index].strip():
+        if mask[index]:
             expected = translation_request(profile, parts[index], value['source_language'],
                                            value['target_language'], glossary=glossary)
             if (not translated.strip() or row['operation_id'] != value['id'] + '_' + str(index)
@@ -190,14 +216,14 @@ def validate_translation_job(value, *, identity=None):
                 raise ValueError('The saved Advanced v3 result does not match its selected model and glossary.')
         elif (translated != parts[index] or any(row[key] is not None for key in (
                 'detected_source', 'operation_id', 'request_hash', 'response_sha256'))):
-            raise ValueError('Whitespace must be preserved without a provider request.')
+            raise ValueError('Whitespace and literal structure must be preserved without a provider request.')
         elif advanced and (row['reported_model'] is not None or row['glossary'] is not None):
             raise ValueError('Whitespace cannot claim an Advanced v3 provider result.')
     pending = value['pending']
     if pending is not None:
         if (type(pending) is not dict or set(pending) != {'index', 'operation_id'}
                 or type(pending['index']) is not int or pending['index'] != len(receipts)
-                or len(receipts) >= len(parts) or not parts[len(receipts)].strip()
+                or len(receipts) >= len(parts) or not mask[len(receipts)]
                 or pending['operation_id'] != value['id'] + '_' + str(len(receipts))):
             raise ValueError('Invalid translation request intent.')
     if value['status'] == 'complete' and (len(receipts) != len(parts) or pending is not None):
@@ -320,10 +346,13 @@ def snapshot_guard(root):
 
 
 def validate_state_tree(db, root, *, cancelled=lambda: False):
-    """Translation sources are explicit selected text, not database quotations."""
+    """Validate plain selected text and exact historical structured lineage."""
+    from .translation_structure import validate_historical_sources
     for path in state_paths(root, cancelled=cancelled):
         relative = path.relative_to(root).as_posix()
-        validate_state_document(path.name, read_bytes(path, maximum=state_limit(relative)))
+        value = validate_state_document(path.name, read_bytes(path, maximum=state_limit(relative)))
+        if value.get('schema') == STRUCTURED_SCHEMA:
+            validate_historical_sources(db, value['structure'], cancelled=cancelled)
 
 
 class TranslationStore:

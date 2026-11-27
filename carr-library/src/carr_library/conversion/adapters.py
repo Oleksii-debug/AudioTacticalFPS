@@ -205,6 +205,12 @@ def _image_records(source, data, suffix, config, budget, deadline):
 
 def selected_records(source, data, suffix, config, budget, deadline, selection):
     from .office import OFFICE_SUFFIXES, office_records
+    from .calibre import CALIBRE_SUFFIXES, calibre_records
+    if suffix in CALIBRE_SUFFIXES:
+        if (type(selection) is not dict or set(selection) != {'kind', 'runtime'}
+                or selection['kind'] != 'calibre-book'):
+            raise ConversionUnavailable('This book requires the explicitly selected Calibre core identity.')
+        return calibre_records(source, data, suffix, budget, deadline, selection['runtime'])
     if suffix in OFFICE_SUFFIXES:
         if (type(selection) is not dict or set(selection) != {'kind', 'runtime'}
                 or selection['kind'] != 'libreoffice'):

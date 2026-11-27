@@ -24,6 +24,8 @@ def main():
         raise SystemExit('Native Windows execution is required; no simulated native PASS is produced.')
     import wx
     from carr_library import providers
+    from carr_library.application import LibraryApp
+    from carr_library.ui import translation_sources
     from carr_library.assistant.translation import TranslationService
     from carr_library.providers import (
         BudgetLedger, ProfileStore, ProviderGateway, ProviderProfile, GOOGLE_TRANSLATION_ENDPOINT)
@@ -64,6 +66,11 @@ def main():
         root, exports = Path(folder).resolve() / 'library', Path(folder).resolve() / 'exports'
         root.mkdir()
         exports.mkdir()
+        source_app = LibraryApp(root)
+        workspace = source_app.create_workspace('Native retained source selection')
+        book = source_app.add_text(workspace, 'Synthetic public source', original)
+        source_file = source_app.assets.resolve(book['asset'])
+        source_digest = sha256(source_file.read_bytes()).hexdigest()
         vault = Vault()
         profiles = ProfileStore(root / 'api-connections.json', vault)
         profiles.save(ProviderProfile('native-google', 'Synthetic NMT account',
@@ -75,7 +82,9 @@ def main():
         class Frame(wx.Frame):
             def __init__(self):
                 super().__init__(None, title='Translation native probe host')
-                self.library = SimpleNamespace(root=root)
+                self.library = source_app
+                self.active = (workspace, None)
+                self.busy = False
                 self.working, self._closing = False, False
                 self.cancel_event = Event()
                 self.executor = ThreadPoolExecutor(max_workers=1)
@@ -118,9 +127,11 @@ def main():
             def Destroy(self):
                 pass
         wx.MessageBox, wx.DirDialog = approve, ExportSelection
-        deadline = monotonic() + 45
+        deadline = monotonic() + 90
         phase, final = [0], {}
         timer = None
+        source_timers, source_views = [], []
+        native_source_selector = translation_sources.choose_translation_sources
         active, reported_phase = [True], [None]
 
         def child(dialog, name):
@@ -139,6 +150,42 @@ def main():
             event = wx.CommandEvent(wx.EVT_BUTTON.typeId, found.GetId())
             event.SetEventObject(found)
             found.GetEventHandler().ProcessEvent(event)
+
+        def selected_sources(frame, parent):
+            def ready(view):
+                source_views.append(view)
+                submitted = [False]
+                def choose():
+                    if not view.alive:
+                        return
+                    try:
+                        if monotonic() >= deadline:
+                            raise TimeoutError('Native source selection exceeded its deadline.')
+                        if view.busy or frame.working:
+                            source_timers.append(wx.CallLater(25, choose))
+                            return
+                        if submitted[0]:
+                            raise AssertionError('Native source capture returned without a completed selection.')
+                        assert len(view.rows) == 1 and view.rows[0].edition_id == book['edition']
+                        assert isinstance(view.books, wx.ListBox) and view.books.GetName()
+                        view.books.SetSelection(0)
+                        view.kind.SetSelection(0)
+                        for key in ('add', 'prepare'):
+                            action = view.buttons[key]
+                            assert isinstance(action, wx.Button) and action.IsEnabled()
+                            event = wx.CommandEvent(wx.EVT_BUTTON.typeId, action.GetId())
+                            event.SetEventObject(action)
+                            assert action.GetEventHandler().ProcessEvent(event)
+                        assert view.busy
+                        submitted[0] = True
+                        source_timers.append(wx.CallLater(25, choose))
+                    except BaseException as exc:
+                        failures.append(type(exc).__name__ + ': ' + str(exc))
+                        view.close()
+                source_timers.append(wx.CallLater(25, choose))
+            return native_source_selector(frame, parent, on_ready=ready)
+
+        translation_sources.choose_translation_sources = selected_sources
 
         def drive(event=None):
             nonlocal timer
@@ -162,6 +209,10 @@ def main():
                 if phase[0] == 0:
                     assert not requests
                     assert child(dialog, 'Selected text; originals remain unchanged').GetValue() == original
+                    button(dialog, 'Choose documents or chapters...')
+                    assert len(source_views) == 1 and source_views[0].result is not None
+                    assert source_views[0].result['documents'][0]['context']['source_anchor']['edition'] == book['edition']
+                    assert not child(dialog, 'Selected text; originals remain unchanged').IsEditable()
                     button(dialog, 'Fetch languages')
                     phase[0] = 1
                 elif phase[0] == 1 and not frame.working:
@@ -190,6 +241,10 @@ def main():
                     output = outputs[0]
                     report = json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))
                     assert report['quotation_authority'] is False
+                    assert report['schema'] == 'carr-translation-export/3'
+                    assert (output / 'structured-bilingual.html').is_file()
+                    assert (output / 'structured-translation.json').is_file()
+                    assert sha256(source_file.read_bytes()).hexdigest() == source_digest
                     assert (output / 'original.txt').read_bytes() == original.encode()
                     draft = NarrationDraft.from_dict(json.loads(
                         (output / 'translation.narration.json').read_text(encoding='utf-8')), source_text=original)
@@ -200,6 +255,7 @@ def main():
                     assert [row[0] for row in requests] == ['languages', 'text']
                     final.update(schema='carr-native-translation-smoke/1', status='PASS',
                         installed_module=str(Path(providers.__file__).resolve()), native_controls=True,
+                        native_retained_document_selection=True, structured_export=True,
                         synthetic_provider_requests=2, exact_reviewed_pair='en->uk', source_immutable=True,
                         quotation_authority=False, derivative_hashes=report['files'],
                         approval_and_folder_picker='injected explicit synthetic decisions',
@@ -238,7 +294,7 @@ def main():
                 wx.CallAfter(app.ExitMainLoop)
         wx.CallAfter(open_workspace)
         import faulthandler
-        faulthandler.dump_traceback_later(60)
+        faulthandler.dump_traceback_later(100)
         try:
             app.MainLoop()
         finally:
@@ -249,6 +305,9 @@ def main():
             frame.cancel_event.set()
             frame.executor.shutdown(wait=True, cancel_futures=True)
             wx.MessageBox, wx.DirDialog = native_message_box, native_dir_dialog
+            translation_sources.choose_translation_sources = native_source_selector
+            for source_timer in source_timers:
+                source_timer.Stop()
             frame.Destroy()
         if failures or phase[0] != 5:
             raise RuntimeError('Native translation probe failed: ' + '; '.join(failures or ['incomplete flow']))

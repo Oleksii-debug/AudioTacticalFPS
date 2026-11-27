@@ -181,3 +181,63 @@ def test_office_choice_and_shared_application_broker_reach_existing_worker(tmp_p
     ui.convert_documents(frame)
     assert captured['office'] == selected and captured['broker'] is broker
     assert captured['input_roots'] == captured['executed_sources'] == (source,)
+
+
+def test_book_converter_picker_cancel_starts_no_worker_or_output(tmp_path, monkeypatch):
+    source, destination = tmp_path / 'selected.azw3', tmp_path / 'output'
+    source.write_bytes(b'explicitly selected document, not yet parsed')
+    destination.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=None, cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    monkeypatch.setattr(ui, 'choose_calibre', lambda frame: None)
+    frame.run_job = lambda *a, **k: (_ for _ in ()).throw(AssertionError('Cancelled book tool choice started a job.'))
+    ui.convert_documents(frame)
+    assert list(destination.iterdir()) == []
+
+
+def test_selected_book_tool_reaches_existing_service_and_shared_application_broker(tmp_path, monkeypatch):
+    from carr_library.operations import ResourceBroker
+    source, destination, library = tmp_path / 'selected.djvu', tmp_path / 'output', tmp_path / 'library'
+    source.write_bytes(b'explicitly selected document, not yet parsed')
+    destination.mkdir()
+    library.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=SimpleNamespace(root=library),
+                            cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    selected = tmp_path / 'calibre/ebook-convert.exe'
+    monkeypatch.setattr(ui, 'choose_calibre', lambda frame: selected)
+    broker = object()
+    monkeypatch.setattr(ResourceBroker, 'for_app', lambda *a, **k: broker)
+    captured = {}
+    class Service:
+        def __init__(self, root, **options):
+            captured.update(root=root, **options)
+        def extract_many(self, selected_sources, **options):
+            captured.update(executed_sources=selected_sources, **options)
+            return ()
+    monkeypatch.setattr(ui, 'ConversionService', Service)
+    frame.run_job = lambda title, operation, **callbacks: operation()
+    ui.convert_documents(frame)
+    assert captured['calibre'] == selected and captured['broker'] is broker
+    assert captured['input_roots'] == (source,) and captured['executed_sources'] == (source,)
+    assert captured['office'] is None and captured['pandoc'] is None and captured['image_ocr'] is False
+
+
+def test_book_tool_is_never_requested_for_existing_text_reader(tmp_path, monkeypatch):
+    source, destination = tmp_path / 'selected.txt', tmp_path / 'output'
+    source.write_text('Current supported reader.', encoding='utf-8')
+    destination.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=None, cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    monkeypatch.setattr(ui, 'choose_calibre', lambda *a: (_ for _ in ()).throw(
+        AssertionError('An ordinary text file requested an optional runtime.')))
+    captured = {}
+    class Service:
+        def __init__(self, root, **options):
+            captured.update(options)
+        def extract_many(self, selected_sources, **options):
+            return ()
+    monkeypatch.setattr(ui, 'ConversionService', Service)
+    frame.run_job = lambda title, operation, **callbacks: operation()
+    ui.convert_documents(frame)
+    assert captured['calibre'] is None

@@ -14,6 +14,9 @@ List libraries / Покажи бібліотеки
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Produce audio: [script text] / Озвуч: [текст сценарію]
+Additional typed JSON tools: reader.page (edition/revision/page), evidence.search (query),
+document.convert (path/new .txt name), voice.list, audio.plan, audio.effects (isolated script
+proposal), player.inspect (scoped PCM metadata only; never starts an audio device).
 Audio prose is literal narration. Only an explicit JSON audio.produce step with input_kind="script"
 or a typed script object interprets role/music/pause directions.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''

@@ -15,7 +15,7 @@ def test_close_signals_worker_without_competing_write_and_ignores_late_callbacks
     finish = next(node for node in helpers['run'].body if isinstance(node, ast.FunctionDef)
                   and node.name == 'finish')
     factory = ast.parse('''
-def callbacks(cancel, executor, dialog, wx, service, review, progress, frame):
+def callbacks(cancel, executor, dialog, wx, service, review, progress, frame, schedule_session, schedule_timer):
     alive, busy, job_id = True, True, 'active-backup'
     token = progress_token = 'synthetic-progress-token'
     bound_library = frame.library
@@ -36,8 +36,9 @@ def callbacks(cancel, executor, dialog, wx, service, review, progress, frame):
         finish_result=lambda result, **kwargs: finish_result(reporter, result,
             cancelled=kwargs.get('cancelled', False)))
     frame = SimpleNamespace(library=object())
+    schedule_session, schedule_timer = Mock(), Mock()
     close, report, finish = namespace['callbacks'](
-        cancel, executor, dialog, wx, service, review, progress, frame)
+        cancel, executor, dialog, wx, service, review, progress, frame, schedule_session, schedule_timer)
 
     # A completion callback may already be queued before the user closes.
     completed = Mock()
@@ -46,6 +47,8 @@ def callbacks(cancel, executor, dialog, wx, service, review, progress, frame):
     close()
     close()
     assert cancel.is_set()
+    schedule_session.close.assert_called_once()
+    schedule_timer.Stop.assert_called_once()
     service.pause.assert_not_called()
     executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     dialog.EndModal.assert_called_once_with(wx.ID_CLOSE)

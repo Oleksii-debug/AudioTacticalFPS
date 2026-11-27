@@ -39,13 +39,13 @@ def test_ocr_flag_requires_an_explicit_typed_model_choice(tmp_path):
         ConversionService(tmp_path, image_ocr=1, ocr_config=Config())
 
 
-def test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy():
+def test_inventory_requires_explicit_selection_for_optional_native_adapters():
     rows = {row['extension']: row for row in capabilities()}
     for suffix in ('.rtf', '.png', '.tiff'):
         assert rows[suffix]['qualification'] == 'explicit_selection_required'
         assert rows[suffix]['available'] is False
     assert rows['.doc']['qualification'] == 'explicit_selection_required'
-    assert rows['.mobi']['qualification'] == 'not_integrated'
+    assert rows['.mobi']['qualification'] == 'explicit_selection_required'
 
 
 @pytest.mark.parametrize('changes', [

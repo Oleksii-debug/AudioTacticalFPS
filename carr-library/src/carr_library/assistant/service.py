@@ -16,6 +16,7 @@ from .backup_receipt import capture_backup_receipt, verify_backup_receipt
 
 
 from .validation import validate_arguments as _check_arguments
+from .local_tools import LOCAL_TOOLS, INDEPENDENT_TOOLS, validate_admission, execute as execute_local
 
 
 def _hash_file(path, cancelled=lambda: False):
@@ -69,8 +70,11 @@ class AssistantService:
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce') and not workspace:
+            if (step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce')
+                    and step.tool not in INDEPENDENT_TOOLS and not workspace):
                 raise PermissionError('Choose a library before this operation.')
+            if step.tool in LOCAL_TOOLS:
+                validate_admission(self, step, plan.scope)
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
                 if step.tool.endswith('_folder') != path.is_dir():
@@ -216,9 +220,11 @@ class AssistantService:
             verify_backup_receipt(directory, result['backup_receipt'], max_bytes=scope.max_bytes,
                                   max_files=scope.max_files, cancelled=cancelled)
 
-    def run(self, identity, *, cancelled=lambda: False, progress=None):
+    def run(self, identity, *, cancelled=lambda: False, progress=None, _schedule_ticket=None):
         with self.store.lock(identity):
             record, plan = self._load(identity)
+            from .scheduling import prepare_run, settle_run
+            prepare_run(self, record, _schedule_ticket)
             # Integer high-resolution time avoids a same-tick admission on
             # Windows and float rounding of very small explicit budgets. Round
             # down: a sub-nanosecond allowance cannot authorize a new step.
@@ -275,6 +281,7 @@ class AssistantService:
                     if checkpoint['status'] == 'running':
                         checkpoint['status'] = 'failed'
                         checkpoint['message'] = record['message']
+            settle_run(record, _schedule_ticket)
             persist()
             if progress:
                 progress(sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
@@ -325,6 +332,8 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool in LOCAL_TOOLS:
+            return execute_local(self, step, scope, workspace=workspace, cancelled=cancelled)
         if step.tool == 'library.create':
             from ..application import _name
             from ..catalog.membership import _metadata

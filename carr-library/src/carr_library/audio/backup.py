@@ -113,6 +113,10 @@ def _studio(payload):
     draft = NarrationDraft.from_dict(payload['draft'])
     reference = payload['source_reference']
     if reference is not None:
+        if type(reference) is dict and reference.get('kind') == 'book-audio-part':
+            from .book_plan import validate_reference as validate_book_reference
+            validate_book_reference(reference, draft)
+            return payload
         from .legacy_project import KIND as CANONICAL_STUDIO, validate_reference
         if type(reference) is dict and reference.get('kind') == CANONICAL_STUDIO:
             validate_reference(reference, draft)
@@ -327,6 +331,9 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
     with _snapshot_lock(root):
         check_cancelled(cancelled)
         project = _studio(_read_json(source))
+        if (isinstance(project.get('source_reference'), dict)
+                and project['source_reference'].get('kind') == 'book-audio-part'):
+            raise ValueError('Use complete library backup for a source-bound book batch; its retained plan and original belong together.')
         paths = _inventory(source, root, include_cache=include_cache, include_audio=include_audio,
                            file_budget=file_budget, cancelled=cancelled)
         if len(paths) > file_budget:
