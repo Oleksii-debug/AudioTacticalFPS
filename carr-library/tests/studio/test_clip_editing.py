@@ -269,7 +269,7 @@ def rms(values):
     return math.sqrt(sum(value * value for value in values) / max(1, len(values)))
 
 
-def test_actual_trim_position_pan_fades_and_complete_clip_stems(editor, tmp_path):
+def test_actual_trim_position_pan_fades_and_complete_clip_stems(editor, tmp_path, monkeypatch):
     selected = audio(tmp_path / 'selected.wav')
     original = selected.read_bytes()
     project = editor.create()
@@ -306,6 +306,32 @@ def test_actual_trim_position_pan_fades_and_complete_clip_stems(editor, tmp_path
     preview = editor.preview(project, project.scenes[0].id, project.scenes[0].cues[0].id)
     channels, rate = pcm(preview)
     assert len(channels[0]) == round(.75 * rate) and max(map(abs, channels[1])) == 0
+
+    # A completed edited production must retain each separately rendered clip
+    # stem in its receipt. A shortened receipt cannot turn replay into success.
+    from copy import deepcopy
+    from carr_library.durable_state import atomic_json, read_json
+    receipt = editor.service.jobs_root / result['id'] / 'job.json'
+    identities = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+                  for row in result['artifacts']}
+
+    def no_render():
+        pytest.fail('Committed clip replay must not invoke the audio runtime.')
+
+    monkeypatch.setattr(editor.service, '_runtime', no_render)
+    assert editor.service.run(result['id']) == result
+    for role in ('sfx', 'microphone'):
+        damaged = deepcopy(result)
+        missing = str(directory / 'stems/clips' / (role + '.wav'))
+        damaged['artifacts'] = [row for row in damaged['artifacts'] if row['path'] != missing]
+        assert len(damaged['artifacts']) == len(result['artifacts']) - 1
+        atomic_json(receipt, damaged, replace=True)
+        with pytest.raises(ValueError, match='missing required artifacts'):
+            editor.service.run(result['id'])
+        assert read_json(receipt) == damaged
+    atomic_json(receipt, result, replace=True)
+    assert editor.service.run(result['id']) == result
+    assert {path: sha256(Path(path).read_bytes()).hexdigest() for path in identities} == identities
 
 
 def test_edited_clip_backup_survives_deletion_and_same_job_resume(editor, tmp_path):
