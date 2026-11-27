@@ -1,6 +1,7 @@
 """Real selected-file and inert installed-inventory boundaries; no ASR execution."""
 from hashlib import sha256
 from importlib import metadata
+import csv
 import json
 import os
 import shutil
@@ -532,3 +533,19 @@ def test_all_recorded_packages_share_one_installed_byte_bound(root, monkeypatch)
     with pytest.raises(ValueError, match='byte budget'):
         module._runtime_inventory([base])
     assert actual and actual[0][1] == 8
+
+
+@pytest.mark.parametrize('absolute', [False, True])
+def test_recorded_file_cannot_escape_the_selected_environment(root, tmp_path, absolute):
+    base, site = root
+    _, info = install(site, 'tqdm')
+    outside = tmp_path / 'outside-selected-runtime.py'
+    outside.write_bytes(b'# Authored outside file; never imported.\n')
+    assert not outside.is_relative_to(base)
+    label = outside.as_posix() if absolute else os.path.relpath(outside, site)
+    with (info / 'RECORD').open('a', encoding='utf-8', newline='') as stream:
+        csv.writer(stream).writerow([label, '', ''])
+    before = outside.read_bytes()
+    with pytest.raises(ValueError, match='escapes the explicitly selected Python environment'):
+        module._runtime_inventory([base])
+    assert outside.read_bytes() == before
