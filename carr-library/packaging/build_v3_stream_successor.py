@@ -203,10 +203,11 @@ def runtime_contracts(archive, manifest, packaging, historical, historical_path,
         delivery._name(name)
         if set(record) != {'size', 'sha256'} or infos['ocr/' + name].file_size != record['size']:
             raise ValueError('OCR payload size or identity changed.')
+    # Older receipts predate the separate TAR. Bind its bytes and size to the
+    # current outer manifest and the production-verified companion instead.
     corresponding = ocr.get('provenance', {}).get('corresponding_source', {})
     if (corresponding.get('filename') != delivery.SOURCES
             or corresponding.get('sha256') != files[delivery.SOURCES]
-            or corresponding.get('size') != old[delivery.SOURCES]['size']
             or corresponding.get('size') != source_payload_size):
         raise ValueError('OCR corresponding-source binding changed.')
 
@@ -513,6 +514,7 @@ def build(args):
     verified['sources'].update(path=str(companion), reused=True)
     report = {'schema': 1, 'kind': 'private-streamed-successor-delivery', 'status': 'PASS',
         'source_commit': commit, 'source_tree': tree, 'source_checkout': str(source),
+        'assembler_sha256': digest(Path(__file__)),
         'output': str(output), 'manifest_sha256': hashlib.sha256(manifest_raw).hexdigest(),
         'manifest_payload_files': len(files), 'archive_prefix': PREFIX, 'archives': verified,
         'application_wheel': source_identity, 'dependency_wheels': dependency_records,
