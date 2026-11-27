@@ -12,25 +12,11 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 45992503530,
-    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
-    "id": 15194279779,
-    "sha256": "a677aad0a042786d01468d3e6c3a5bda8396d370c88f4d1f540cd72f5e847103",
-    "kind": "selected"
-  },
-  {
-    "run": 45992503530,
-    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
-    "id": 15196092117,
-    "sha256": "942daaa852b2cd4394fa9217fd1bdfa49cfaa512729d6dc819ff4ca78f4461e2",
-    "kind": "office"
-  },
-  {
-    "run": 46000394557,
-    "commit": "a68fb643bc968020a11e1625e4e59b2d8a9865df",
-    "id": 15200390892,
-    "sha256": "d6b1132c2549a10e6ab46b9bcadc4a1ef4152b606a30a3d07dc6e644d0a6a091",
-    "kind": "translation"
+    "run": 46004355718,
+    "commit": "d8c0e409137ddaff9eaf28e09c5a6312d5eefb1a",
+    "id": 15201806434,
+    "sha256": "4692ce5a1647161cf2b9d6ad8395c226d9544845330d594e56bfa3dd7de9681a",
+    "kind": "assistant"
   }
 ]
 
@@ -65,12 +51,21 @@ def brief(value):
     return value
 
 wanted = {
-    'converter-gate.json', 'publisher-identities.json', 'source-provenance.json',
-    'source-origins.json', 'installed-origins.json', 'translation-scope-gate.json',
-    'native-selected-advanced.txt', 'native-selected-advanced.json',
-    'native-document.txt', 'native-document.json', 'native-chapter.txt',
-    'native-chapter.json', 'native-batch.txt', 'native-batch.json',
-    'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
+    'assistant-source-execute.stdout.txt',
+    'assistant-source-execute.stderr.txt',
+    'assistant-installed-execute.stdout.txt',
+    'assistant-installed-execute.stderr.txt',
+    'assistant-source.xml',
+    'assistant-installed.xml',
+    'installed.xml',
+    'assistant-summary.json',
+    'firewall.json',
+    'assistant-executed-oracle.json',
+    'assistant-source-collect-collection.json',
+    'assistant-installed-collect-collection.json',
+    'assistant-native.json',
+    'assistant-native.stdout.txt',
+    'assistant-native.stderr.txt'}
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
@@ -97,7 +92,7 @@ for pin in ARTIFACTS:
             content = archive.read(name)
             print('MEMBER', json.dumps({'name': name, 'bytes': len(content),
                   'sha256': hashlib.sha256(content).hexdigest()}), flush=True)
-            if name.endswith('-junit.xml'):
+            if name.endswith('.xml'):
                 root = ET.fromstring(content)
                 cases = root.findall('.//testcase')
                 functions = Counter(case.get('classname', '') + '::' +
