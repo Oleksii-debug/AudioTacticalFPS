@@ -525,3 +525,87 @@ the reviewed 2ea assembly and ae678 correction as parents. Its sole workflow
 change replaces the old unparametrized installed-test requirement with both
 exact newline variants. Reversing that one replacement reproduces the complete
 reviewed Windows workflow byte for byte, including both typed SBOM validations.
+
+
+## Reviewed 64a execution and subsequent exact corrections
+
+The [14c predecessor checkpoint](acceptance/20261127-14c823-completed-gates-and-diagnostics.json)
+and [64a checkpoint](acceptance/20261127-64aadb-completed-gates-and-diagnostics.json)
+retain their exact source identities, completed gates and explicit failures.
+All three broad 64a source selections passed, as did the independent reading,
+template, bibliography, OCR, keyboard, portable-lifetime and compiled-launcher
+jobs. The V3 installed-recovery selection passed 809 cases and closed all five
+previous pure-model import-fixture failures. These overlapping selections are
+not a count of unique platform tests and are not transferred to a successor.
+
+### Actual diagnostic evidence
+
+The saved integrated-Windows phase artifacts were recovered by a separate
+read-only workflow bound to exact artifact ID, source run/head, byte length
+and archive SHA256. The reader executes no application, extracts no archive
+and prints only bounded public diagnostic text. Root verified 59 of 60 text
+members in each readback. The local-transport.xml log member lost 19 characters
+through log transport and is excluded from byte-exact evidence. The three
+native failure logs match their independently recorded member hashes.
+The diagnostic workflows are excluded from this product composition.
+
+Actual 64a metadata failure is the assertion that child destruction preserves
+the live owner. The corrected watchdog now exposes the original exception
+and unwinds at its 120-second limit. Source review found that the old native
+driver could select an earlier closed metadata dialog while deletion was
+pending. The live-modal correction still requires its own native execution;
+the trace does not itself identify which wrapper the old selector chose.
+
+The isolated ASR diagnostic on406170b49822b138e3764cae63130c244707ad2d
+passed 14 real profile/label regressions and completed the functional native
+scenario. Close returned true without a veto. The actual destruction event
+ID equalled the frame's captured native ID and the original wrapper was
+already dead, but Python object identity differed. That trace establishes a
+probe-observer defect; it does not support changing production Close or
+claiming that ordinary wx Yield cannot process deferred deletion.
+
+The V3 canonical phase produced 100 of 139 final suite reports before its
+12-minute timeout: 2245 passes and three failures. Those failures cover source
+bytes changed after the first hash, a test-owned open SQLite observer and
+recording bytes changed after verification. The later always-run progress
+selection completed 274 passes and six fixture failures. No 600-second
+per-suite hang is established by this trace. The revised scheduling retains
+all selectors and every timing/failure boundary.
+
+The corrected isolated component `e6e7ee59189330896f13a1414c65e77ad40d3c05`
+then completed [run46068567199/job140739732047](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46068567199/job/140739732047)
+successfully at 21:19:16 UTC. All 14 profile and 49 dialog cases passed with zero
+failures/skips; native ASR reported 15 passing checks and installed incremental
+backup reported 31, including four exact installed origins. Both the matching
+native destruction event and dead-wrapper assertion passed. Root and two
+independent reviewers read the complete log. This component evidence retains
+its own source identity and does not qualify the later full assembled tree.
+
+### Reviewed correction components
+
+| Exact source component | Problem | Resulting behavior |
+| --- | --- | --- |
+| `543d74ed7cb0546e09b0a5a22002f58917a579f4` | ASR folder-relative labels | Carry the exact scanner file labels through the existing validated submit path; retain source copying, hash, cancellation and publication rules. |
+| `fe7527ac261e08e8f0f98f7bbdf7f343c0359174 / c9761d1905b3c2f5c26eeaf9f086be63053cb795` | Actual native close observation | Preserve normal Close and its 120-second/5-second limits; require the matching captured native frame ID and an independently dead original wrapper. Keep all 70 original assertions and add five real observer controls. |
+| `49ef322e98464f3abd7441ae1cedc4fa2181c674` | Import Center layout | Use a scrollable content body with fixed Cancel/Close actions and actual small-window/focus/overflow checks; retain worker and import behavior. |
+| `bef60a58c0565d3595cdd1646b4d861d137e300a` | Native Book review contract | Compare actual prepared canonical destinations while keeping explicit volume 55, selected-parent, destination, focus and no-output-before-Run checks. |
+| `17cfe7ed832284ed6c7dbf612022db0c156ed43c` | Current metadata modal | Select exactly one live modal with the exact parent/title and open controller; reject stale, closing, child and ambiguous candidates. |
+| `5195d00187960428bf90d8d292f7430e46057c17` | Streaming source integrity and fixture lifetime | Verify a new FileSnapshot with a genuine second bounded read; retain existing file identity and cancellation checks. Close the test's SQLite observer before deleting its original journal. |
+| `03b36e65d86031657499ea75aedec6371a919e5b` | Recording segment integrity | Copy each bounded segment into a same-volume private temporary file, verify exact captured size/hash and PCM parameters, then assemble from that same descriptor. Retain cancellation, reserve and range-hash checks. |
+| `7f2a07746793c78f20ed06eca844b48de4a5ce85` | Durable progress and reader fixtures | Cancel only after the actual durable import-job binding so the retained source can resume after original deletion; initialize the reader's existing owned-listening collection. |
+| `ea6b81294e698d9e54ff3cb8e85c62b8dc7e02f3` | V3 scheduling | Run the same 139 canonical selectors in the same order with three existing isolated workers instead of two. Keep 12-minute phase, 600-second per-suite, 45-minute job limits and strict failure/skip handling. |
+
+Every changed source body has root and independent review. The final source
+composition is based on 64a and retains the earlier canonical ancestry;
+unchanged files are checked by complete recursive tree comparison. The ASR
+observer is transplanted as c9761d19 onto the reviewed fe7527 source parent,
+so the isolated diagnostic workflow and its ancestry are not imported.
+Readback and execution of the assembled successor are recorded in PR152.
+Source approval by itself is never an execution result.
+
+The current qualification limits remain explicit: synthetic ASR/translation
+protocols do not qualify private acoustic or language models; language
+inventory is not per-feature language quality; bounded fixtures are not
+large-corpus capacity; hosted Windows native controls are not human
+Windows11/NVDA or device/listening acceptance; checksums are not publisher
+signing or distribution approval.
