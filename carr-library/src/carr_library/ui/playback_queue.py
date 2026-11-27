@@ -185,16 +185,19 @@ class PlaybackQueueDialog:
     def _work(self, action, done, *, dispose=None, control=False, failed=None, committed=False):
         if self.closed or self.future is not None:
             return False
+        submitted, admitted = Event(), [False]
         def authorized():
+            # ThreadPoolExecutor can enqueue before starting its first thread.
+            # A failed submit must never leave a later unowned action runnable.
+            submitted.wait()
+            if not admitted[0]:
+                raise RuntimeError('The playback queue operation was not admitted after submission.')
             if control:
                 return action()  # Cleanup must remain available after authority is revoked.
             with operation_context(self.trust_controller):
                 self.guard()
                 admit_new_operation(self.trust_controller, 'data.read')
                 return action()
-        future = self.executor.submit(authorized)
-        self.future = future
-        self._enable()
         def receive(completed):
             def apply():
                 if self.future is not completed:
@@ -223,7 +226,21 @@ class PlaybackQueueDialog:
                     elif self.stopping and not self.settling and self.future is None:
                         self._begin_stop()
             self.wx.CallAfter(apply)
-        future.add_done_callback(receive)
+        future = None
+        try:
+            future = self.executor.submit(authorized)
+            self.future = future
+            future.add_done_callback(receive)
+            admitted[0] = True
+        except BaseException:
+            if self.future is future:
+                self.future = None
+            if future is not None:
+                future.cancel()
+            raise
+        finally:
+            submitted.set()
+        self._enable()
         return True
 
     def _cancel_media(self):

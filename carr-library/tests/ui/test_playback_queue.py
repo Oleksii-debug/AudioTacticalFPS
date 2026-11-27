@@ -459,3 +459,26 @@ def test_delayed_play_rechecks_current_trust_and_disposes_refused_admission(wind
     delayed[0]()
     assert prepared.readers is None and value.session.admission is None
     assert not any(call[0] == 'play' for call in value.player.calls)
+
+
+def test_real_first_thread_start_failure_cannot_leave_an_unowned_stale_action(window, monkeypatch):
+    from threading import Thread
+    value, callbacks, _, root = window
+    original = Thread.start
+    calls = 0
+    def fail_first(thread):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError('Actual first thread start refused.')
+        return original(thread)
+    monkeypatch.setattr(Thread, 'start', fail_first)
+    stale_output = root / 'unowned-stale-result.txt'
+    with pytest.raises(RuntimeError, match='first thread start refused'):
+        value._work(lambda: stale_output.write_text('This stale action must never run.', encoding='utf-8'),
+                    lambda _: pytest.fail('A failed submission delivered a stale success.'))
+    assert value.future is None and not stale_output.exists()
+    received = []
+    assert value._work(lambda: 'later explicitly admitted action', received.append)
+    drain(value, callbacks)
+    assert received == ['later explicitly admitted action'] and not stale_output.exists()
