@@ -1707,3 +1707,31 @@ def test_translation_atomic_commit_preserves_a_competing_empty_destination(tmp_p
     assert target.is_dir() and list(target.iterdir()) == []
     assert not list(tmp_path.glob('.pending-translation-export-*'))
     assert service.jobs.load(identity)['status'] == 'complete'
+
+
+@pytest.mark.parametrize('error', [InterruptedError, TimeoutError, RuntimeError])
+@pytest.mark.parametrize('source_bound', [False, True])
+def test_final_progress_failure_preserves_translation_completion(tmp_path, connection, error, source_bound):
+    if source_bound:
+        case = bound_ready(tmp_path, connection, first=3, last=3)
+        service = case.service
+        identity, _ = submit_bound(case)
+    else:
+        service, p, _ = ready(tmp_path, connection)
+        value = 'Synthetic source.'
+        approval, cost = translation_approval(p, value, 'en', 'uk', '1')
+        identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    observed = []
+
+    def failed_observer(done, total, phase):
+        observed.append((done, total, service.jobs.load(identity)['status']))
+        raise error('Synthetic final observer failure')
+
+    result = service.resume(identity, progress=failed_observer)
+    assert result['status'] == 'complete'
+    assert observed == [(1, 1, 'complete')]
+    assert service.jobs.load(identity)['status'] == 'complete'
+    calls = len(connection['calls'])
+    assert service.resume(identity)['status'] == 'complete'
+    assert service.export(identity, tmp_path / 'completed-export')['status'] == 'complete'
+    assert len(connection['calls']) == calls
