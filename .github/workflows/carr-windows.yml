@@ -299,10 +299,50 @@ jobs:
           "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Locate the installed native launcher compiler
+        id: launcher_toolchain
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
+        run: |
+          $vswhere = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }
+          "CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build the native bundle launcher outside the worktree
+        id: launcher_build
+        if: ${{ !cancelled() && steps.launcher_toolchain.conclusion == 'success' }}
+        shell: cmd
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "packaging\native-launcher\build_msvc.ps1" -OutputDirectory "%RUNNER_TEMP%\carr-bundle-launcher-private"
+          if errorlevel 1 exit /b %errorlevel%
+
+      - name: Verify the exact native launcher before sealing it into the bundle
+        if: ${{ !cancelled() && steps.launcher_build.conclusion == 'success' }}
+        timeout-minutes: 3
+        run: |
+          $private = Join-Path $env:RUNNER_TEMP 'carr-bundle-launcher-private'
+          $launcher = Join-Path $private 'ResearchLibrary.exe'
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_windows.py --launcher $launcher --child (Join-Path $private 'windows_child_probe.exe') --report 'ci-results/native-launcher-process.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $build = Get-Content -LiteralPath (Join-Path $private 'build-evidence.json') -Raw | ConvertFrom-Json
+          $probe = Get-Content -LiteralPath 'ci-results/native-launcher-process.json' -Raw | ConvertFrom-Json
+          $digest = (Get-FileHash -LiteralPath $launcher -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($probe.status -ne 'passed' -or $probe.check_count -ne 9 -or $probe.launcher_sha256 -ne $digest -or $build.pe.sha256 -ne $digest) { throw 'Native process acceptance must identify the exact bundle launcher.' }
+          $nativeSourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/verify_launcher.py --launcher $launcher --build-evidence (Join-Path $private 'build-evidence.json') --native-probe 'ci-results/native-launcher-process.json' --source-commit $nativeSourceCommit | Tee-Object 'ci-results/native-launcher-source.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath (Join-Path $private 'build-evidence.json') -Destination 'ci-results/native-launcher-build.json'
+          "CARR_NATIVE_LAUNCHER=$launcher" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_NATIVE_LAUNCHER_SHA256=$digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         timeout-minutes: 20
         run: |
+          if (-not $env:CARR_NATIVE_LAUNCHER -or -not $env:CARR_NATIVE_LAUNCHER_SHA256) { throw 'The native launcher must pass its exact process acceptance before bundle assembly.' }
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
           $applicationWheels = Join-Path $bundleWork 'application'
@@ -334,7 +374,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          $sourceProofScript = @'
+          import importlib.util, json, pathlib, sys
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('native_source_wheel', project / 'packaging/source_wheel.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          proof = module.verify_application_wheel(pathlib.Path(sys.argv[1]), project.parent, sys.argv[2])
+          print(json.dumps(dict(status='PASS', **proof)))
+          '@
+          $sourceProofScript | & $env:CARR_PYTHON -I -B - $applicationWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-before-native.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_NATIVE_LAUNCHER --native-launcher-sha256 $env:CARR_NATIVE_LAUNCHER_SHA256 --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -346,6 +397,10 @@ jobs:
           $sbomManifest = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json
           if ($actualSbom -ne $expectedSbom -or $sbomManifest.files.'runtime-sbom.cdx.json' -ne $expectedSbom) { throw 'SBOM seal mismatch' }
           @{ status='PASS'; sha256=$actualSbom } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
+          $sealedLauncher = Join-Path $bundle 'ResearchLibrary.exe'
+          $launcherHash = (Get-FileHash -LiteralPath $sealedLauncher -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($launcherHash -ne $env:CARR_NATIVE_LAUNCHER_SHA256 -or $sbomManifest.files.'ResearchLibrary.exe' -ne $launcherHash) { throw 'Native launcher seal differs from its process acceptance.' }
+          @{ status='PASS'; sha256=$launcherHash; authenticode_signed=$false } | ConvertTo-Json | Set-Content 'ci-results/sealed-native-launcher.json'
           $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
           $bundledPython = Join-Path $bundle 'runtime/python.exe'
           $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
@@ -361,7 +416,9 @@ jobs:
           $citationNodeVersion = (& $citationNode --version).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           @{ role='external CSL test runtime'; path=$citationNode; version=$citationNodeVersion; sha256=(Get-FileHash -LiteralPath $citationNode -Algorithm SHA256).Hash.ToLowerInvariant(); bundled=$false } | ConvertTo-Json | Set-Content 'ci-results/citation-node-runtime.json'
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $citationNode) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $seedBasePython = (& $env:CARR_PYTHON -I -B -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $seedBasePython) { throw 'The existing test Python base executable is unavailable.' }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $citationNode, $sealedLauncher, $env:CARR_PYTHON, $seedBasePython) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -381,7 +438,7 @@ jobs:
           $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
           if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
           @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
-          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_fresh_windows.py --bundle-root $bundle --source-proof 'ci-results/source-wheel-before-native.json' --source-commit $sourceCommit --report 'ci-results/fresh-native-launcher.json' --timeout 600 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import json,sys; from pathlib import Path; from carr_library.academic_integration.formatting import _node_binary; actual=Path(_node_binary(None)); assert actual.samefile(sys.argv[1]), 'CSL runtime differs from the blocked Node executable'; print(json.dumps(dict(status='PASS',node=str(actual),bundled=False)))" $citationNode | Tee-Object 'ci-results/installed-citation-node-binding.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -391,6 +448,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --source-commit $sourceCommit --report 'ci-results/installed-native-launcher.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installedLauncher = Get-Content -LiteralPath 'ci-results/installed-native-launcher.json' -Raw | ConvertFrom-Json
+          if ($installedLauncher.status -ne 'passed' -or $installedLauncher.launcher_sha256 -ne $env:CARR_NATIVE_LAUNCHER_SHA256 -or -not $installedLauncher.actual_installed_app_self_test_verified) { throw 'Installed native launcher acceptance must match the sealed executable.' }
           # This probe imports wx first: hold the application's verified DLL
           # directory handle before loading that native extension.
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
@@ -673,6 +734,7 @@ jobs:
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_delivery_archive.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_native_launcher_acceptance.py',
             'tests/packaging/test_refresh_private_bundle_review.py',
             'tests/reader/test_context.py',
             'tests/reader/test_topic_tree.py',

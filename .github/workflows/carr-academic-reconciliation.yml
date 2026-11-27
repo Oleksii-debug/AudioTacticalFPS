@@ -1,7 +1,7 @@
 name: CARR academic reconciliation acceptance
 on:
   push:
-    branches: [carr/academic-search-20261126]
+    branches: [carr/academic-search-20261126, carr/verified-platform-union-5900]
     paths:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml

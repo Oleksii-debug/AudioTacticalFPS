@@ -36,6 +36,9 @@ def main():
         failures, checks, cases, callbacks = [], [], [], []
         active = [True]
 
+        def trace(phase, **details):
+            print(json.dumps({'native_timer_phase': phase, **details}, ensure_ascii=False), flush=True)
+
         class ProbeApp(wx.App):
             def OnExceptionInMainLoop(self):
                 failures.append(traceback.format_exc())
@@ -47,6 +50,7 @@ def main():
         app.SetExitOnFrameDelete(False)
 
         def failed(message):
+            trace('failure', message=message)
             failures.append(message)
             app.ExitMainLoop()
 
@@ -70,7 +74,7 @@ def main():
                 for label in ('Close', 'Destroy'):
                     library = LibraryApp(Path(temporary) / label)
                     frame = DesktopFrame(library)
-                    case = {'label': label, 'frame': frame,
+                    case = {'label': label, 'frame': frame, 'owner_id': frame.GetId(),
                             'timer': frame._draft_save_timer, 'ticks': 0,
                             'destroyed': False, 'executor': frame.executor,
                             'cancel': frame.cancel_event}
@@ -86,8 +90,9 @@ def main():
                         event.Skip()
 
                     def destroyed(event, state=case):
-                        if event.GetEventObject() is state['frame']:
+                        if event.GetId() == state['owner_id']:
                             state['destroyed'] = True
+                            trace('owner-destroyed', owner=state['label'], owner_id=state['owner_id'])
                         event.Skip()
 
                     frame._dirty = dirty
@@ -97,12 +102,14 @@ def main():
                     assert case['timer'].IsRunning()
                     assert case['timer'].GetInterval() == 3000
                     wx.Panel(frame).Destroy()
+                    trace('live-owner', owner=label, owner_id=case['owner_id'], interval=case['timer'].GetInterval())
 
                 def finish():
                     assert all(case['destroyed'] for case in cases)
                     assert all(not case['timer'].IsRunning() for case in cases)
                     assert all(case['ticks'] == case['stopped_ticks'] for case in cases)
                     checks.append('MainLoop remained usable without new ticks beyond the original timer period')
+                    trace('post-period-verified', ticks={case['label']: case['ticks'] for case in cases})
                     app.ExitMainLoop()
 
                 def after_destroy():
@@ -113,6 +120,7 @@ def main():
                     for case in cases:
                         case['stopped_ticks'] = case['ticks']
                     checks.append('Close and direct Destroy stopped their native draft timers')
+                    trace('both-timers-stopped')
                     later(3400, finish)
 
                 def wait_for_live_tick():
@@ -121,6 +129,7 @@ def main():
                         later(50, wait_for_live_tick)
                         return
                     checks.append('Child destruction preserved actual live 3000 ms timer delivery')
+                    trace('actual-live-ticks', ticks={case['label']: case['ticks'] for case in cases})
                     assert cases[0]['frame'].Close()
                     cases[1]['frame'].Destroy()
                     later(50, after_destroy)

@@ -204,6 +204,8 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-operations.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed shared-resource and canonical operation acceptance failed.' }
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
             & $python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'

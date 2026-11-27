@@ -135,18 +135,22 @@ def _reply_test_source(tmp_path, kind):
     return source
 
 
-def _intercept_worker_reply(monkeypatch, *, fail=False):
+def _intercept_worker_reply(monkeypatch, *, fail=False, ready=None):
     """Keep actual parsing/publication; stop only the post-commit reply."""
     from carr_library.ingest import worker
     actual_popen = subprocess.Popen
     after = "raise RuntimeError('synthetic post-publication failure')" if fail else 'time.sleep(30)'
+    marker = (f"Path({str(ready)!r}).write_bytes(b'publication-returned')"
+              if ready is not None else 'pass')
     inject = f'''
 import time
+from pathlib import Path
 from carr_library.application import LibraryApp
 original_import = LibraryApp._import_file
 def held_reply(self, *args, **kwargs):
     result = original_import(self, *args, **kwargs)
     if result.get('state') == 'complete':
+        {marker}
         {after}
     return result
 LibraryApp._import_file = held_reply
@@ -164,19 +168,49 @@ LibraryApp._import_file = held_reply
     monkeypatch.setattr(worker.subprocess, 'Popen', child)
 
 
+def _expire_after_reply(monkeypatch, ready, timeout):
+    """Use the existing supervisor-clock barrier pattern with a real watchdog."""
+    from types import SimpleNamespace
+    from carr_library.ingest import worker
+    real_time = worker.time
+    first = True
+
+    def clock():
+        nonlocal first
+        now = real_time.monotonic()
+        if first:
+            first = False
+            return now
+        return now + timeout if ready() else now
+
+    # Only this parent's supervisor advances. Child, reap and receipt clocks
+    # remain real; a missing reply marker still expires after the real timeout.
+    monkeypatch.setattr(worker, 'time', SimpleNamespace(monotonic=clock, sleep=real_time.sleep))
+
+
 @pytest.mark.parametrize('kind', ['pdf', 'docx', 'epub', 'txt'])
 @pytest.mark.parametrize('stop', ['cancelled', 'timed_out'])
 def test_stop_after_actual_child_commit_reports_durable_completion(app, tmp_path, monkeypatch, kind, stop):
     source = _reply_test_source(tmp_path, kind)
     workspace = app.create_workspace('Actual committed reply boundary')
-    _intercept_worker_reply(monkeypatch)
+    ready = tmp_path / 'publication-reply-ready'
+    _intercept_worker_reply(monkeypatch, ready=ready)
 
     def committed():
+        # A visible DB commit can precede writer/session cleanup. Stop only at
+        # the actual post-return reply interception, after that cleanup finished.
+        try:
+            if ready.read_bytes() != b'publication-returned':
+                return False
+        except FileNotFoundError:
+            return False
         with app.read(workspace) as db:
             return bool(db.execute('SELECT count(*) FROM revision').fetchone()[0])
 
+    if stop == 'timed_out':
+        _expire_after_reply(monkeypatch, committed, 30.0)
     arguments = dict(cancelled=committed if stop == 'cancelled' else lambda: False,
-                     timeout=5 if stop == 'timed_out' else 20)
+                     timeout=30.0 if stop == 'timed_out' else 20)
     if kind == 'txt':
         # TXT in a batch goes through the same prepared worker request.
         from carr_library.extract.page_ocr import Config
@@ -188,6 +222,7 @@ def test_stop_after_actual_child_commit_reports_durable_completion(app, tmp_path
     else:
         result = app.import_file(workspace, source, **arguments)
     assert result['state'] == 'complete', result
+    assert ready.read_bytes() == b'publication-returned'
     assert result['verified'] is (kind == 'txt')
     assert result['publication_recovered'] is True
     assert type(result) is dict

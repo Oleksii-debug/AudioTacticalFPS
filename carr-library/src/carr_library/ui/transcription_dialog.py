@@ -3,7 +3,7 @@ from pathlib import Path
 import threading
 
 
-def show_transcription(frame):
+def show_transcription(frame, *, job_id=None):
     import wx
     if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
         frame.report('Finish or cancel the current operation before opening transcription.')
@@ -13,6 +13,8 @@ def show_transcription(frame):
         frame.report('Select an active library before opening transcription.')
         return
     service = frame.library.transcription(active[0])
+    if job_id is not None:
+        service.get(job_id)  # Handoff is scoped to this active library, without running it.
     dialog = wx.Dialog(frame, title='Транскрипція — локальний Whisper', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
@@ -127,7 +129,8 @@ def show_transcription(frame):
                 for item in job.get('effective_runs', ()))
             report(f"{job['title']}: {job['status']}; {job['done']}/{len(job['sources'])}.\n" +
                    f"Профіль: {job['protocol']}; межа спроб: {job['settings']['max_attempts']}.\n" +
-                   job.get('last_error', '') + ('\nФактичні параметри:\n' + actual if actual else '') +
+                   job.get('last_error', '') + ('\n' + job['resource_cleanup_notice'] if job.get('resource_cleanup_notice') else '') +
+                   ('\nФактичні параметри:\n' + actual if actual else '') +
                    '\nПравки тексту не змінюють аудіо та початкові часові мітки.')
     def refresh(select=None):
         nonlocal rows
@@ -248,7 +251,9 @@ def show_transcription(frame):
             def advanced(done, total, phase):
                 if progress is not None:
                     progress.update(done, total, phase, token=token)
-                if total is None:
+                if phase == 'Waiting for shared local transcription resources.':
+                    wx.CallAfter(report, 'Очікування спільного дозволу на ресурси. Рушій ще не запущено; можна зупинити очікування.')
+                elif total is None:
                     message = ('Зупинено; проміжну кількість не визначено. Збережені результати '
                                'буде перевірено після явного продовження.' if phase == 'stopped' else
                                'Триває локальна транскрипція; прогрес поки невизначений. '
@@ -348,7 +353,7 @@ def show_transcription(frame):
     text.Bind(wx.EVT_TEXT, changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
-        refresh()
+        refresh(job_id)
         controls()
         jobs.SetFocus()
         dialog.ShowModal()

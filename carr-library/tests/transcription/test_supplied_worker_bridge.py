@@ -683,6 +683,9 @@ def test_progress_observer_failure_during_actual_child_does_not_kill_recognition
     notices = []
 
     def broken(done, total, phase):
+        if phase == 'Waiting for shared local transcription resources.':
+            assert (done, total) == (None, None)
+            return  # Keep this regression's failure inside the actual child lifetime.
         notices.append((done, total, phase))
         (service._path(identity) / 'progress-observed').write_text('release synthetic worker')
         raise RuntimeError('Synthetic detached progress observer')
@@ -775,7 +778,7 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
             raise
 
     def cancelled():
-        progress_seen = (any(done is None and total is None for done, total, _ in calls)
+        progress_seen = (any(done is None and total is None and phase == 'running' for done, total, phase in calls)
                          if os.name == 'nt' else any(done == 1 for done, _, _ in calls))
         return progress_seen and any((path / 'receipts').glob('*.result.json'))
 
@@ -791,11 +794,13 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     measured = [done for done, total, _ in calls if total is not None]
     assert measured and max(measured) == 1
     assert all(total == 2 for _, total, _ in calls if total is not None)
+    assert calls[0] == (None, None, 'Waiting for shared local transcription resources.')
+    worker_calls = calls[1:]
     if os.name == 'nt':
-        assert calls[0] == (None, None, 'running')
-        assert all(done is None and total is None for done, total, _ in calls[:-1])
+        assert worker_calls[0] == (None, None, 'running')
+        assert all(done is None and total is None for done, total, _ in worker_calls[:-1])
     else:
-        assert all(total == 2 for _, total, _ in calls)
+        assert all(total == 2 for _, total, _ in worker_calls)
     assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
     assert calls[-1] == (1, 2, 'stopped')
     assert observer_errors == []

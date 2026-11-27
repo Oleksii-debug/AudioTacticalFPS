@@ -3,6 +3,7 @@ from dataclasses import asdict
 from pathlib import Path
 import json
 import os
+import runpy
 import sys
 import struct
 import wave
@@ -119,6 +120,9 @@ def main():
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
         inspect_dialog(show_translation, ('Google Basic v2 account', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
+        operations_probe = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tests' / 'ui' / 'native_operations_smoke.py'))
+        result['operations'] = operations_probe['run_native_operations'](frame, root / 'native-operations')
+        result['checks'].append('native Tasks policy save, responsive close and safe destruction')
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'
