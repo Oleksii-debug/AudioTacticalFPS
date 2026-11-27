@@ -4,6 +4,7 @@ import ast
 import gc
 from tempfile import TemporaryDirectory
 import weakref
+import wave
 from concurrent.futures import Future
 from contextlib import contextmanager
 from pathlib import Path
@@ -706,7 +707,12 @@ def test_reader_pending_close_keeps_actual_pcm_after_parent_and_callbacks_are_co
     player, parent = Player(), Parent()
     temporary = TemporaryDirectory(prefix='reader-owner-', dir=tmp_path)
     path = Path(temporary.name) / 'still-playing.wav'
-    path.write_bytes(b'retained native playback bytes')
+    with wave.open(str(path), 'wb') as recording:
+        recording.setnchannels(1)
+        recording.setsampwidth(2)
+        recording.setframerate(8000)
+        recording.writeframes(b'\x00\x00' * 80)
+    original_pcm = path.read_bytes()
     player_ref, parent_ref = weakref.ref(player), weakref.ref(parent)
     queue = CleanupQueue()
     values = dict(alive=True, playback_generation=0, cancel=threading.Event(),
@@ -724,7 +730,7 @@ def test_reader_pending_close_keeps_actual_pcm_after_parent_and_callbacks_are_co
     del owners, future, handlers, values, queue, parent, player, temporary
     gc.collect()
     assert parent_ref() is None
-    assert player_ref() is not None and path.read_bytes() == b'retained native playback bytes'
+    assert player_ref() is not None and path.read_bytes() == original_pcm
     owner, = set(native_cleanup._RETAINED) - before
     try:
         assert owner.close() is False
