@@ -2,7 +2,7 @@ name: CARR exact standard native diagnostic
 
 on:
   push:
-    branches: ['carr/v3-acceptance-*', 'carr/v3-repair-r8-*']
+    branches: ['carr/v3-acceptance-*', 'carr/v3-repair-r8-*', 'carr/standard-native-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-standard-native.yml
@@ -44,7 +44,7 @@ jobs:
       - name: Check out the distinct reviewed previous standard generation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: f26c7eeef2ad3090ab531d1b8bca72ba68eb5991
+          ref: 91332206578b4d8dc779fec08c8d51a67962b0ff
           path: carr-standard-source-a
           fetch-depth: 0
           persist-credentials: false
@@ -344,7 +344,7 @@ jobs:
       - name: Verify two distinct signed standard generations and native rollback
         timeout-minutes: 120
         run: |
-          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource 'f26c7eeef2ad3090ab531d1b8bca72ba68eb5991'
+          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '91332206578b4d8dc779fec08c8d51a67962b0ff'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
@@ -361,7 +361,7 @@ jobs:
           upgrade=json.loads((root/'standard-update/proof.json').read_text(encoding='utf-8'))
           assert install['status']=='passed' and install['source_commit']==source and install['check_count']==6
           assert upgrade['status']=='passed' and upgrade['candidate_source']==source and upgrade['check_count']==15
-          assert upgrade['previous_source']=='f26c7eeef2ad3090ab531d1b8bca72ba68eb5991' and upgrade['previous_source']!=source
+          assert upgrade['previous_source']=='91332206578b4d8dc779fec08c8d51a67962b0ff' and upgrade['previous_source']!=source
           report={'schema':1,'status':'PASS','scope':'actual-standard-install-repair-uninstall-and-distinct-A-to-B',
               'source_commit':source,'source_tree':tree,'standard_native_checks':6,'upgrade_native_checks':15,
               'full_source_regression_replay':'NOT_RUN','full_installed_regression_replay':'NOT_RUN',
