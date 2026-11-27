@@ -48,3 +48,50 @@ def test_snapshot_refuses_unrestorable_portable_names(tmp_path, names):
     with pytest.raises(ValueError, match='Duplicate|collide'):
         snapshot_state(source, target)
     assert all((source / name).read_bytes() == b'x' for name in names)
+
+
+@pytest.mark.parametrize('name', [
+    '.', 'draft?.json', 'draft*.json', 'draft".json',
+    'draft<.json', 'draft>.json', 'folder/part|one.json',
+    'COM\u00b9.json', 'folder/LPT\u00b2.json', 'com\u00b3.txt',
+    'CONIN$', 'conout$.json', 'AUX .json',
+])
+def test_portable_manifest_rejects_non_windows_names(name):
+    with pytest.raises(ValueError, match='Invalid'):
+        validate_state([entry(name)])
+
+
+def test_portable_manifest_keeps_ordinary_unicode_names():
+    validate_state([entry('knihy/\u0413\u043e\u043b\u043e\u0441.json'),
+                    entry('folder/COM10.json'), entry('folder/.draft.json')])
+
+
+def test_snapshot_rejects_nonportable_real_source(tmp_path):
+    import os
+
+    if os.name == 'nt':
+        pytest.skip('POSIX-only filename fixture')
+    root = tmp_path / 'source'
+    root.mkdir()
+    (root / 'draft?.json').write_bytes(b'x')
+    with pytest.raises(ValueError, match='Invalid'):
+        snapshot_state(root, tmp_path / 'stage')
+    assert not (tmp_path / 'stage').exists()
+
+
+def test_portable_snapshot_roundtrip_unicode(tmp_path):
+    from carr_library.state_backup import restore_state
+
+    root = tmp_path / 'source'
+    names = ('knihy/\u0413\u043e\u043b\u043e\u0441.json', 'folder/COM10.json',
+             'folder/.draft.json')
+    for name in names:
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(name.encode('utf-8'))
+    stage, restored = tmp_path / 'stage', tmp_path / 'restored'
+    entries = snapshot_state(root, stage)
+    restore_state(stage, restored, entries)
+    assert {item['filename'] for item in entries} == set(names)
+    for name in names:
+        assert (restored / name).read_bytes() == (root / name).read_bytes()
