@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURES_FIXED_SYNTHETIC_REPRODUCTION_NOT_RUN",
+  "office": {
+    "commit": "72a99872847e5fadf73e1a95265e7f78f899ecfc",
+    "run_id": 46013818808,
+    "job_id": 140555755183,
+    "source_native": {
+      "passed": 1,
+      "failed": 6,
+      "total": 7
+    },
+    "installed_native": "NOT_RUN",
+    "last_observed_phase": "native-conversion-complete",
+    "failure": "The selected console launch now returns instead of timing out, but no single declared intermediate is found.",
+    "artifact": {
+      "id": 15207427711,
+      "bytes": 4577271,
+      "sha256": "865de9aa34e170a719fc1c1d0998849db9857304bdf87ac023bbbf291fd9d75e"
+    }
+  },
+  "calibre": {
+    "commit": "65ddc03deacc28a03001e8bf4ad9ebe84acefbf8",
+    "run_id": 46010230070,
+    "job_id": 140543561805,
+    "source_native": {
+      "passed": 2,
+      "failed": 7,
+      "total": 9
+    },
+    "installed_native": "NOT_RUN",
+    "failure": "All six reading formats and cancellation fixture reach selected native operation exit1; prior code handle and TCR fixture failures are no longer reported.",
+    "artifact": {
+      "id": 15207187115,
+      "bytes": 2318948,
+      "sha256": "4ebd55421b5321992408543175761eef76147e7728b18292248fea6fe7bacf4c"
+    }
+  },
+  "selected": {
+    "commit": "72a99872847e5fadf73e1a95265e7f78f899ecfc",
+    "run_id": 46013818808,
+    "job_id": 140555754547,
+    "source_cases": 6,
+    "installed_cases": 6,
+    "status": "PASS",
+    "artifact": {
+      "id": 15207575618,
+      "bytes": 436290,
+      "sha256": "d2281fb2c8b5c7e9f50d1b1f9d21ee72e7f58595c11c39f8a387fc3831cbdd6e"
+    }
+  },
+  "diagnostic": {
+    "scope": "Only failed synthetic DOC and TCR fixtures, same exact selected adapter and runtime. Bounded stdout/stderr capture uses existing owned process runner and waits for retained cleanup before releasing runtime readers and private stage.",
+    "qualification": "Not a product correction and never converts failure to pass. Original exception is reraised. Existing source/installed/native population requirements unchanged.",
+    "environment": "Same product whitelist, PATH construction and per-operation variables; no extra host settings or authority."
+  }
+}

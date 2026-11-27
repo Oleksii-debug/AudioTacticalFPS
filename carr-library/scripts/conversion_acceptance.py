@@ -140,6 +140,18 @@ pathlib.Path(__OUTPUT__).write_text(json.dumps({'isolated': bool(sys.flags.isola
         # Preserve the full raw file, and make a bounded actionable failure
         # visible in the job log without a second artifact-reader job.
         path = output / (mode + '-pytest.txt')
+        # Surface fixed synthetic diagnostics even if several later tracebacks
+        # displace them from the ordinary bounded failure tail.
+        with path.open('rb') as stream:
+            remaining, emitted = 8 * 1024**2, 0
+            while remaining > 0 and emitted < 128 * 1024:
+                line = stream.readline(min(32768, remaining))
+                if not line:
+                    break
+                remaining -= len(line)
+                if line.startswith(b'NATIVE_DIAGNOSTIC '):
+                    print(line.decode('utf-8', 'replace').rstrip(), flush=True)
+                    emitted += len(line)
         with path.open('rb') as stream:
             stream.seek(max(0, path.stat().st_size - 24000))
             print(stream.read(24000).decode('utf-8', errors='replace'), flush=True)
@@ -191,7 +203,8 @@ def main():
         if tree != args.source_tree:
             raise ValueError('The declared source tree differs from its actual commit.')
         report['installed_identity'] = installed_identity(args.wheel)
-        report['selected_test_sha256'] = {name: digest(checkout / name) for name in selectors}
+        fixture_files = (*selectors, 'tests/conversion/native_diagnostics.py')
+        report['selected_test_sha256'] = {name: digest(checkout / name) for name in fixture_files}
         report['harness_sha256'] = digest(Path(__file__))
         if args.family == 'selected':
             from carr_library.extract.ocr_runtime import verify_ocr_bundle
@@ -210,7 +223,7 @@ def main():
             raise ValueError('Installed source changed during native qualification.')
         if any(inventory(root) != report['runtime_files'][name] for name, root in roots.items()):
             raise ValueError('Selected runtime bytes changed during native qualification.')
-        if {name: digest(checkout / name) for name in selectors} != report['selected_test_sha256']:
+        if {name: digest(checkout / name) for name in fixture_files} != report['selected_test_sha256']:
             raise ValueError('Native fixture source changed during qualification.')
         report.update(status='PASS', source_cases=count, installed_cases=count,
                       qualifiers=['synthetic_fixture_reading_copy', 'original_retained',

@@ -6,6 +6,7 @@ third-party book, macro payload or proprietary fixture is embedded in git.
 from hashlib import sha256
 import os
 from pathlib import Path
+import runpy
 import struct
 import subprocess
 from xml.sax.saxutils import escape
@@ -89,7 +90,13 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
     original = source.read_bytes()
     destination = tmp_path / 'Читальна копія'
     destination.mkdir()
-    result = ConversionService(destination, input_roots=(source,), office=office()).extract(source, 'reading.txt')
+    try:
+        result = ConversionService(destination, input_roots=(source,), office=office()).extract(source, 'reading.txt')
+    except ConversionError:
+        if kind == 'doc':
+            diagnose = runpy.run_path(str(Path(__file__).with_name('native_diagnostics.py')))['diagnose_selected_fixture']
+            diagnose('office', source, office(), destination)
+        raise
     assert text in result.path.read_text(encoding='utf-8')
     assert source.read_bytes() == original
     assert result.report['source_sha256'] == sha256(original).hexdigest()

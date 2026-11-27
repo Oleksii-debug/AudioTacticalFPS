@@ -54,7 +54,8 @@ def main():
         report['installed_identity'] = base.installed_identity(args.wheel)
         report['runtime_files'] = base.inventory(root)
         helpers = [Path(__file__), HERE / 'conversion_acceptance.py', oracle_path,
-                   checkout / 'tests/conversion/legacy_fixtures.py']
+                   checkout / 'tests/conversion/legacy_fixtures.py',
+                   checkout / 'tests/conversion/native_diagnostics.py']
         tests = {checkout / (name.replace('.', '/') + '.py') for name in plan['portable']}
         tests.update(checkout / (name.replace('.', '/') + '.py') for name in native)
         report['source_files'] = {str(path.relative_to(checkout)): base.digest(path)

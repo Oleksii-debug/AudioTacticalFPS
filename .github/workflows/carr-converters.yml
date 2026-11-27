@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        family: [selected, office]
+        family: ${{ fromJSON(contains(github.ref_name, 'office-native-diagnostics') && '["office"]' || '["selected","office"]') }}
     defaults:
       run:
         shell: pwsh

@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        family: ${{ fromJSON(contains(github.ref_name, 'djvu-framing') && '["djvu"]' || '["calibre","djvu","chm"]') }}
+        family: ${{ fromJSON(contains(github.ref_name, 'calibre-native-diagnostics') && '["calibre"]' || (contains(github.ref_name, 'djvu-framing') && '["djvu"]' || '["calibre","djvu","chm"]')) }}
     defaults:
       run:
         shell: pwsh
