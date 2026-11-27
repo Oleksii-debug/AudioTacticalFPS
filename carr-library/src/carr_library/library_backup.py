@@ -1157,7 +1157,9 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
     legacy_state = _legacy_state_layout(manifest)
     if legacy_state:
         layout = _historical_layout(manifest)
-        fields.update(('sidecars' if layout == 'root' else 'state', 'generated_audio_included'))
+        fields.add('sidecars' if layout == 'root' else 'state')
+        if 'generated_audio_included' in manifest:
+            fields.add('generated_audio_included')
         if 'pending' in manifest:
             fields.add('pending')
         if layout == 'state-reading':

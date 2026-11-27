@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "AUTHORED_NOT_RUN",
+  "base": "7641c0fb23497778e4887c298a5d64f5d5d75a9f",
+  "base_tree": "7cf0d263fbcdc832a20eeb38ffc21b3cf22256e3",
+  "canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_tree": "3cc479898b1430b49774fc0226630a667d94d2d2",
+  "canonical_sources": {
+    "carr-library/src/carr_library/backup_sidecars.py": "e77dca0b919687d9a8e10c1ba86c817ec01662ca",
+    "carr-library/src/carr_library/backup_transcription.py": "5a82ac28c21dd11eed47f1d809c522a74a611d74",
+    "carr-library/tests/storage/test_transcription_backup.py": "730c2b0c4f784957fd41c579f69708a1ba936fcc"
+  },
+  "current_product_paths": [
+    "carr-library/src/carr_library/legacy_transcription_schema.py",
+    "carr-library/src/carr_library/backup_historical.py",
+    "carr-library/src/carr_library/library_backup.py"
+  ],
+  "shared_library_backup": {
+    "before_blob": "d1358c6222359c4b2d22e5d6bf9b63d6f3ff5059",
+    "location": "_read_manifest historical envelope fields",
+    "old": "fields.update(('sidecars' if layout == 'root' else 'state', 'generated_audio_included'))",
+    "new": "fields.add('sidecars' if layout == 'root' else 'state'); if 'generated_audio_included' in manifest: fields.add('generated_audio_included')"
+  },
+  "source_cases": 422,
+  "installed_cases": 422,
+  "native_checks": 53,
+  "new_test_cases": 154,
+  "canonical_policy_cases": 129,
+  "preserved": [
+    "All prior268 cases/native53",
+    "Generic32GiB default",
+    "Historical4096-character/2048-component bounds",
+    "Current active ASR namespaces and protocols",
+    "Current TrustController/ResourceBroker/worker ownership",
+    "Rehashed manifest still requires explicit optional cache inclusion"
+  ],
+  "large_fixture_execution": "NOT_RUN",
+  "large_throughput": "NOT_QUALIFIED",
+  "private_inference": "NOT_RUN"
+}

@@ -3,7 +3,7 @@
   "feature": "Canonical earlier ASR recovery through current V43 preparation",
   "owner_provenance": "f8d5f85619b61fb52df24c7eb2f5dd4d1febc18f",
   "base": "99405f10d88768534f7d0ff1df3da86cea3f77ce",
-  "total_cases": 268,
+  "total_cases": 422,
   "fixture_multipliers": 1,
   "tests": {
     "tests/storage/test_legacy_transcription_recovery.py": {
@@ -184,6 +184,15 @@
       "test_observer_failure_cannot_suppress_verified_supplied_result": 2,
       "test_failed_supplied_service_never_becomes_a_verified_host_result": 2,
       "test_stop_keeps_owned_cancellation_when_progress_observer_has_closed": 1
+    },
+    "tests/storage/test_historical_asr_cache_policy.py": {
+      "test_manifest_requires_explicit_optional_asr_cache_inclusion": 128,
+      "test_restore_rejects_cache_contradicting_rehashed_manifest_inclusion": 1,
+      "test_all_noncache_historical_shapes_restore_accepted_results_and_rebackup": 4,
+      "test_canonical_input_declarations_keep_32gib_per_source_64gib_aggregate": 16,
+      "test_typed_asr_allowance_does_not_increase_generic_historical_limit_or_depth": 3,
+      "test_explicit_whole_archive_budget_still_bounds_typed_streaming_declarations": 1,
+      "test_implicit_v3_dispatch_remains_disjoint_from_current_reader_and_scoped_asr": 1
     }
   },
   "native": {
@@ -228,5 +237,13 @@
     "observed_passed_per_lane": 267,
     "observed_failed_per_lane": 1,
     "reason": "The range(3) profile-selector parametrization was incorrectly declared as zero; all three cases were actually executed."
+  },
+  "canonical_policy_reconciliation": {
+    "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+    "prior_actual_cases": 268,
+    "new_cases": 154,
+    "canonical_cache_matrix": 128,
+    "canonical_rehashed_restore": 1,
+    "declared_large_byte_boundaries": "No large fixture bytes or measured throughput claimed"
   }
 }

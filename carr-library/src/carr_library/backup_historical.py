@@ -39,6 +39,17 @@ def manifest_layout(value):
     if not _BASE <= set(value):
         return None
     version = value['version']
+    if version == 3 and extra == {'sidecars'}:
+        # This older implicit-cache shape overlaps the current reader-only v3
+        # envelope. Select it only when the exact canonical ASR namespace is
+        # present; ordinary current reader sidecars retain their own dispatcher.
+        entries = value['sidecars']
+        if type(entries) is list and any(
+                type(row) is dict and isinstance(row.get('filename'), str)
+                and row['filename'].startswith(('state/transcription/jobs/',
+                                                'state/transcription/profiles/'))
+                for row in entries):
+            return 'root'
     if (version == 3 and extra == {'state', 'generated_audio_included'}
             or version == 4 and extra == {'state', 'generated_audio_included', 'pending'}):
         return 'state'
@@ -76,10 +87,10 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPE
     layout = manifest_layout(manifest)
     if (layout is None or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
-            or type(manifest['generated_audio_included']) is not bool):
+            or type(manifest.get('generated_audio_included', False)) is not bool):
         raise ValueError('Unsupported historical state manifest.')
     if layout in ('state', 'state-reading'):
-        validate_state(manifest['state'])
+        validate_state(manifest['state'], max_files=max_files, max_bytes=max_bytes)
     if layout == 'state-reading':
         reading = manifest['reading_state']
         if (not isinstance(reading, dict) or reading.get('filename') != 'reading-state.json'
@@ -88,8 +99,23 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPE
     entries = root_entries(manifest)
     validate_state(manifest['state'] if layout == 'state' else entries,
                    max_files=max_files, max_bytes=max_bytes)
+    from . import legacy_transcription_schema as transcription
+    generated = manifest.get('generated_audio_included', False)
+    for item in entries:
+        if transcription.is_cache_file(item['filename']) and not generated:
+            raise ValueError('Transcription cache requires explicit manifest inclusion.')
+    if layout in ('state', 'state-reading'):
+        # Preserve the generic historical 32-GiB/default-depth contract. Only
+        # the exact canonical ASR producer receives its separate 32-GiB source
+        # and 64-GiB aggregate streaming allowance, including in state lists.
+        from .legacy_transcription import validate_entries
+        typed = [row for row in entries if transcription.canonical_path(row['filename'])]
+        generic = [row for row in manifest['state']
+                   if not transcription.canonical_path('state/' + row['filename'])]
+        validate_state(generic)
+        if typed:
+            validate_entries(typed)
     if layout == 'root':
-        from . import legacy_transcription_schema as transcription
         metadata_bytes = media_bytes = input_bytes = 0
         for item in entries:
             name = item['filename']
@@ -104,7 +130,7 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPE
                     or item['size_bytes'] == 0 and not (asr and transcription.allows_empty(name))
                     or not (name in _ROOT_FILES or len(parts) > 1 and parts[0] in _ROOT_DIRECTORIES)):
                 raise ValueError('Unsupported historical root-sidecar namespace.')
-            if name.startswith('state/studio/cache/') and not manifest['generated_audio_included']:
+            if name.startswith('state/studio/cache/') and not generated:
                 raise ValueError('Historical generated audio requires explicit manifest inclusion.')
             if asr and transcription.is_input(name):
                 input_bytes += item['size_bytes']
