@@ -39,6 +39,14 @@ import pytest
 class RejectExpectedFailures:
     seen = False
 
+    def pytest_sessionstart(self, session):
+        self.reporter = session.config.pluginmanager.get_plugin('terminalreporter')
+
+    def pytest_runtest_logstart(self, nodeid, location):
+        # Windows can reject huge parameter IDs in environment variables;
+        # diagnostics also need a bounded label when a native call stalls.
+        self.reporter.write_line('CASE_START ' + nodeid.partition('[')[0][:240])
+
     def pytest_runtest_logreport(self, report):
         if hasattr(report, 'wasxfail'):
             self.seen = True
@@ -75,13 +83,15 @@ def run_suite(suite: str) -> bool:
         try:
             proc = subprocess.run([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '--junitxml', str(report),
+                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=90',
+                '--durations=15', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
             ], cwd=ROOT, env=env, timeout=600, check=False)
             cases = list(ET.parse(report).iter('testcase'))
         except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
-            print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+            print(f'FAIL: {suite}: required suite did not produce a valid report: '
+                  f'{type(exc).__name__}', flush=True)
             return False
         failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
         skipped = sum(c.find('skipped') is not None for c in cases)

@@ -204,6 +204,7 @@ class ImportCenterActions:
 
     def choose_languages(self, event=None):
         from .ocr_options import choose_model_config, config_summary
+        from ..extract.page_ocr import Config
         try:
             self._bound()
             if self.busy or self.frame.working:
@@ -211,7 +212,11 @@ class ImportCenterActions:
             config = choose_model_config(self, self.ocr_config, preset_root=self.library.root)
             if config is None:
                 return
+            if not isinstance(config, Config):
+                raise ValueError('The OCR model selection did not return valid import settings.')
             self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('An import operation started. Change recognition settings when it finishes.')
             self.ocr_config = config
             self.languages.SetValue(config_summary(config))
             self.report('New plans will use ' + config_summary(config) +

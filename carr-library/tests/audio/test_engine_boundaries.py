@@ -204,7 +204,7 @@ def test_engine_publication_moves_private_stage_without_hardlink_alias(tmp_path)
     assert not stage.exists()
 
 
-@pytest.mark.skipif(os.name == 'nt', reason='POSIX owned process-group cleanup; Windows uses taskkill.')
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX owned process-group cleanup; Windows uses an owned Job Object.')
 def test_cancellation_stops_descendant_after_its_process_group_leader_exits(tmp_path):
     record = tmp_path / 'child.json'
     code = '''
@@ -225,7 +225,12 @@ Path(sys.argv[1]).write_text(json.dumps([child.pid, os.getpgrp()]), encoding='ut
             return False
         status = Path('/proc') / str(pid) / 'stat'
         if status.exists():
-            return status.read_text().split(')', 1)[1].split()[0] != 'Z'
+            try:
+                return status.read_text().split(')', 1)[1].split()[0] != 'Z'
+            except (FileNotFoundError, ProcessLookupError):
+                # A successfully terminated child can disappear after exists()
+                # or after opening its proc entry but before reading it.
+                return False
         return True
     try:
         with pytest.raises(InterruptedError):

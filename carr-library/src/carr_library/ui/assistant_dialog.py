@@ -164,18 +164,38 @@ def show_assistant(frame, *, production=None, on_ready=None):
 
     def jobs(event=None):
         nonlocal job_id, plan
-        rows = service.jobs()
+        try:
+            rows = service.jobs()
+        except (ValueError, OSError) as exc:
+            job_id, plan = None, None
+            buttons['run'].Disable()
+            report(str(exc)[:1000])
+            review.SetFocus()
+            return
         choice = wx.SingleChoiceDialog(dialog, 'Choose a saved local plan.', 'Assistant jobs',
             [f'{row.id}; {row.status}; {row.completed}/{row.total}' for row in rows])
         try:
             if choice.ShowModal() == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
                 row = rows[choice.GetSelection()]
-                record = service.store.load(row.id)
+                try:
+                    record = service.store.load(row.id)
+                except (ValueError, OSError) as exc:
+                    job_id, plan = None, None
+                    buttons['run'].Disable()
+                    report(row.message + '\n' + str(exc)[:1000])
+                    review.SetFocus()
+                    return
                 if record.get('requires_reapproval') or record.get('data_dir') != str(frame.library.root):
                     job_id, plan = None, None
+                    instruction.ChangeValue(service.review_instruction(row.id))
                     report(row.message + '\nOriginal approved scope and steps:\n' +
-                           json.dumps(record['plan'], ensure_ascii=False, indent=2))
+                           json.dumps(record['plan'], ensure_ascii=False, indent=2) +
+                           '\n\nThe goal field contains an unapproved copy of the original steps. '
+                           'Choose the current library and input/output folders, edit path arguments '
+                           'if necessary, then choose Preview and Run to approve a new job. '
+                           'The saved job and its original permissions remain unchanged.')
                     buttons['run'].Disable()
+                    review.SetFocus()
                     return
                 job_id, plan = row.id, None
                 report(f'{row.status}: {row.completed}/{row.total}. {row.message}\nResume uses the original reviewed scope.')

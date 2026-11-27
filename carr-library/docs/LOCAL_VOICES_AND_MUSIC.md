@@ -102,8 +102,9 @@ synthesis, envelopes, mixing and PCM encoding; this is a basic synthesized
 instrumental score, not neural music, a recording, sampled orchestral instruments
 or a claim of professional composition quality. Motifs and chord patterns recur;
 recorded audio is not looped. A standard MIDI file preserves the note events for
-later use in a compatible tool. An optional FluidSynth/SoundFont renderer is
-listed as pending rather than silently assumed to exist.
+later use in a compatible tool. An optional verified FluidSynth/SoundFont renderer now reuses that exact MIDI.
+See [local music adapters](LOCAL_MUSIC_ADAPTERS.md) for its installation contract
+and actual short native-library evidence.
 
 Four-bar chunks are independently rendered and hash-checked. A stable JSON
 journal is saved after every accepted chunk. Cancellation preserves completed
@@ -143,8 +144,10 @@ musical coherence over hours.
 
 No AudioCraft weights or runtime are present in the validation environment, and
 no real MusicGen inference has been run. The adapter's existence and fail-closed
-manifest tests do not establish successful neural generation. ACE-Step remains
-an explicit unavailable capability until a verified local adapter is completed.
+manifest tests do not establish successful neural generation. ACE-Step has an optional adapter for the pinned 1.5 interface, with reviewed
+local manifests and auto-download/code-sync disabled. Its synthetic worker
+contract tests do not establish model inference; see
+[local music adapters](LOCAL_MUSIC_ADAPTERS.md).
 
 ## Reproducible evidence
 

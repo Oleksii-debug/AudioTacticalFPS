@@ -254,6 +254,19 @@ def test_copy_holds_draft_narration_and_renderer_locks(with_sidecars, tmp_path, 
     assert attempts
 
 
+def test_initial_invalid_audio_draft_keeps_validation_diagnostic(with_sidecars, tmp_path):
+    app, project, *_ = with_sidecars
+    saved = project / 'studio' / 'project.json'
+    _json(saved, {'plan': ''})
+    original = saved.read_bytes()
+    destination = tmp_path / 'backup'
+    with pytest.raises(ValueError, match='A saved local Audio Studio project is required'):
+        create_backup(app, destination)
+    assert saved.read_bytes() == original
+    assert not destination.exists()
+    assert not tuple(tmp_path.glob('.carr-library-backup-*'))
+
+
 @pytest.mark.parametrize('change', ['replace', 'new_file', 'new_project'])
 def test_noncooperating_changes_abort_before_publication(with_sidecars, tmp_path, monkeypatch, change):
     from carr_library import library_backup

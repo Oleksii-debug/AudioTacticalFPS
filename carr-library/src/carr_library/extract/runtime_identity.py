@@ -11,6 +11,7 @@ import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
 from . import ocr_languages, ocr_runtime
+from .ocr_process import run_ocr
 
 
 class IdentityError(ValueError):
@@ -37,11 +38,12 @@ def _source_hashes():
     from . import language_manager
     root = Path(__file__).parent
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
-             'pinned_tessdata.py', 'runtime_identity.py')
+             'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py',
+             'model_catalog.py', 'ocr_model_store.py', 'managed_ocr.py',
+             'ocr_model_catalog.py', 'ocr-model-catalog.json', 'ocr_process.py')
     return {**{name: _hash(root / name) for name in names},
             'ocr_runtime.py': _hash(ocr_runtime.__file__),
-            'language_manager.py': _hash(language_manager.__file__),
-            'ocr_languages.py': _hash(ocr_languages.__file__)}
+            'language_manager.py': _hash(language_manager.__file__)}
 
 
 def runtime_identity(config):
@@ -66,10 +68,13 @@ def runtime_identity(config):
         return seconds
 
     try:
+        ocr_languages.model_ids(config.languages)
         pack_path = getattr(config, 'model_pack_path', None)
+        profile = getattr(config, 'model_profile', 'installed')
+        profile_options = {'model_profile': profile} if profile != 'installed' else {}
         runtime = ocr_runtime.discover_ocr_runtime('eng' if pack_path else config.languages,
                                                   orientation=False if pack_path else config.orientation,
-                                                  remaining=remaining)
+                                                  remaining=remaining, **profile_options)
         runtime = ocr_runtime.bind_model_pack(runtime, pack_path, getattr(config, 'model_pack_sha256', None),
                                               languages=config.languages, orientation=config.orientation,
                                               remaining=remaining)
@@ -79,9 +84,7 @@ def runtime_identity(config):
         exe = runtime.executable
 
         def run(arg):
-            return subprocess.run(runtime.command([exe, arg]), check=True, capture_output=True,
-                                  timeout=remaining(), cwd=runtime.root,
-                                  creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout.decode('utf-8')
+            return run_ocr(runtime, [exe, arg], remaining=remaining).stdout.decode('utf-8')
 
         before = _hash(exe, remaining=remaining)
         version = run('--version').splitlines()[0]
@@ -118,4 +121,6 @@ def runtime_identity(config):
         identity['ocr']['portable'] = runtime.fingerprint()
     if pack_path:
         identity['ocr']['model_pack'] = runtime.pack.fingerprint()
+    if getattr(runtime, 'managed', False):
+        identity['ocr']['managed_models'] = runtime.selection.fingerprint()
     return identity

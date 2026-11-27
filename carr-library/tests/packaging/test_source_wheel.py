@@ -209,7 +209,7 @@ def test_metadata_identity_and_entry_points_are_bound_to_committed_project(sourc
         verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
 
 
-def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_path):
+def test_actual_sdist_builds_verified_wheel_and_keeps_ci_helpers_without_private_payloads(tmp_path):
     # Copy only tracked public sources. Never build alongside a user's models,
     # books, recordings or a previous egg-info manifest in their checkout.
     tracked = subprocess.check_output(
@@ -217,8 +217,9 @@ def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_
     ).decode('utf-8').split('\0')[:-1]
     assert 0 < len(tracked) < 10000
     with TemporaryDirectory(prefix='carr-sdist-', dir=tmp_path) as directory:
-        project = Path(directory) / 'source'
-        project.mkdir()
+        repository = Path(directory) / 'source'
+        project = repository / 'carr-library'
+        project.mkdir(parents=True)
         total = 0
         for name in tracked:
             relative = Path(name)
@@ -231,6 +232,13 @@ def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_
             destination = project / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_path, destination)
+
+        # Bind the build to this exact public source snapshot, including local
+        # recipe changes under test, without committing synthetic exclusions.
+        git(repository, 'init', '-q')
+        git(repository, 'add', 'carr-library')
+        git(repository, 'commit', '-qm', 'Synthetic application build source')
+        source_commit = git(repository, 'rev-parse', 'HEAD')
 
         configuration = tomllib.loads((project / 'pyproject.toml').read_text('utf-8'))
         admitted, _ = verifier._inventory(
@@ -248,6 +256,8 @@ def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_
             'scripts/windows_v3_reading_smoke.py',
             'bootstrap/semantic_compat/test_probe.py',
             'bootstrap/semantic_compat/probe.py',
+            'bootstrap/semantic_compat/README.md',
+            'bootstrap/semantic_compat/requirements-upstream.txt',
             'src/carr_library/extract/ocr-model-catalog.json',
         })
         required.update(name for name in tracked
@@ -294,3 +304,26 @@ def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_
                 name = member.name.partition('/')[2]
                 if name in required:
                     assert archive.extractfile(member).read() == (project / name).read_bytes(), name
+            roots = {member.name.split('/')[0] for member in members}
+            assert len(roots) == 1
+            extracted = Path(directory) / 'extracted'
+            archive.extractall(extracted, filter='data')
+
+        # Build from the published source archive, not the checkout. This must
+        # keep every explicitly declared resource while preventing MANIFEST.in
+        # helper files from leaking into otherwise undeclared wheel packages.
+        unpacked_project = extracted / roots.pop()
+        with (unpacked_project / 'wheel-build.log').open('wb+') as log:
+            result = subprocess.run(
+                [sys.executable, '-I', '-c',
+                 'from setuptools.build_meta import build_wheel; build_wheel("wheel-dist")'],
+                cwd=unpacked_project, env=environment, stdout=log, stderr=subprocess.STDOUT,
+                timeout=90, check=False,
+            )
+            log.seek(max(0, log.tell() - 8000))
+            assert result.returncode == 0, log.read().decode('utf-8', errors='replace')
+        wheels = list((unpacked_project / 'wheel-dist').glob('*.whl'))
+        assert len(wheels) == 1
+        evidence = verifier.verify_application_wheel(wheels[0], repository, source_commit)
+        assert evidence['source_commit'] == source_commit
+        assert evidence['payload_files'] == len(admitted)

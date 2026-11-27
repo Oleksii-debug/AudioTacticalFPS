@@ -1,7 +1,6 @@
 """Atomic JSON checkpoints; OS locks release on crash and are not backup data."""
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import json
 import os
 from pathlib import Path
 import re
@@ -10,7 +9,10 @@ from uuid import uuid4
 
 from filelock import FileLock, Timeout
 from .models import canonical, local_path
-from .validation import validate_job, validate_control
+from .validation import decode_state_json, validate_job, validate_control
+from ..ingest.writer_guard import exclusive_writer
+
+MAX_JOBS = 1000
 
 
 def now():
@@ -55,24 +57,45 @@ def atomic_json(path, value):
         temporary.unlink(missing_ok=True)
 
 
-def read_json(path, *, maximum=64 * 1024 * 1024):
+def _identity(info):
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns,
+            info.st_mode, info.st_nlink, getattr(info, 'st_file_attributes', 0))
+
+
+def read_bytes(path, *, maximum=64 * 1024 * 1024):
+    """Read one bounded private checkpoint, rejecting replacement during the read."""
     path = Path(path)
     local_path(path.parent)
     info = regular(path)
     if not 0 < info.st_size <= maximum:
         raise ValueError('Invalid assistant checkpoint size.')
-    with path.open('rb') as stream:
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    with os.fdopen(os.open(path, flags), 'rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != _identity(info):
+            raise ValueError('Assistant checkpoint changed while opening.')
         raw = stream.read(maximum + 1)
-    if len(raw) > maximum:
-        raise ValueError('Assistant checkpoint exceeds its budget.')
-    return json.loads(raw)
+        opened = os.fstat(stream.fileno())
+    if (len(raw) != info.st_size or _identity(opened) != _identity(info)
+            or _identity(regular(path)) != _identity(info)):
+        raise ValueError('Assistant checkpoint changed while reading.')
+    return raw
+
+
+def read_json(path, *, maximum=64 * 1024 * 1024):
+    return decode_state_json(read_bytes(path, maximum=maximum))
 
 
 class JobStore:
-    def __init__(self, directory):
+    def __init__(self, directory, *, writer_root=None):
         self.directory = local_path(directory, must_exist=False)
-        self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-        local_path(self.directory)
+        self.writer_root = local_path(writer_root) if writer_root is not None else self.directory
+        if not self.directory.is_relative_to(self.writer_root):
+            raise ValueError('Assistant state must remain inside its writer root.')
+        if writer_root is None:
+            self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        with exclusive_writer(self.writer_root):
+            self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            local_path(self.directory)
 
     def path(self, identity):
         if not isinstance(identity, str) or not re.fullmatch('[0-9a-f]{32}', identity):
@@ -86,8 +109,12 @@ class JobStore:
         return validate_job(value, identity=identity)
 
     def save(self, value):
-        value['updated'] = now()
-        atomic_json(self.path(value['id']), value)
+        # Only publication uses the application guard. Holding it while running
+        # tools would deadlock the assistant's own complete-library backup step.
+        validate_job(value)
+        with exclusive_writer(self.writer_root):
+            value['updated'] = now()
+            atomic_json(self.path(value['id']), value)
 
     @contextmanager
     def lock(self, identity):
@@ -104,12 +131,24 @@ class JobStore:
         if command is not None:
             if command not in ('run', 'pause', 'cancel'):
                 raise ValueError('Invalid assistant control.')
-            atomic_json(path, {'command': command})
+            with exclusive_writer(self.writer_root):
+                # A control is never allowed to outlive a missing/invalid job.
+                self.load(identity)
+                atomic_json(path, {'command': command})
         if not path.exists():
             return 'run'
         value = read_json(path, maximum=1024)
         return validate_control(value)['command']
 
     def identities(self):
-        return tuple(sorted(p.stem for p in self.directory.glob('*.json')
-                            if re.fullmatch('[0-9a-f]{32}', p.stem)))
+        identities = []
+        with os.scandir(self.directory) as entries:
+            for count, entry in enumerate(entries, 1):
+                if count > MAX_JOBS * 4 + 16:
+                    raise ValueError('Assistant checkpoint directory exceeds its entry budget.')
+                match = re.fullmatch(r'([0-9a-f]{32})\.json', entry.name)
+                if match:
+                    identities.append(match[1])
+                    if len(identities) > MAX_JOBS:
+                        raise ValueError('Too many saved assistant jobs; review the checkpoint directory.')
+        return tuple(sorted(identities))

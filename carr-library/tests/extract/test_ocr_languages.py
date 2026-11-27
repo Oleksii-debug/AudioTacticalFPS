@@ -101,7 +101,11 @@ def test_script_selection_does_not_bypass_pinned_profile_or_installed_inventory(
     'List of available languages in "x" (2):\neng\neng',
     'List of available languages in "x" (1):\n../eng',
     'List of available languages in "x" (1):\neng --psm 1',
-    'x' * (models.MAX_REPORT_BYTES + 1)])
+    'x' * (models.MAX_REPORT_BYTES + 1)],
+    # Pytest exposes node IDs through PYTEST_CURRENT_TEST on Windows; keep
+    # hostile oversized input in the test value, not in that environment value.
+    ids=('missing-header', 'count-mismatch', 'duplicate-model', 'path-traversal',
+         'option-injection', 'oversized-report'))
 def test_invalid_native_inventory_is_not_silently_filtered_into_a_valid_choice(text):
     with pytest.raises(ValueError):
         models.parse_language_report(text)
@@ -135,6 +139,41 @@ def test_capture_uses_bound_native_arguments_and_file_backed_output(monkeypatch)
     native = SimpleNamespace(executable='selected local engine', root='/bound/runtime',
         command=lambda args: [args[0], '--tessdata-dir', '/bound/models', *args[1:]])
     assert models._capture(native, '--list-langs', lambda: 3) == report('eng')
+
+
+@pytest.mark.parametrize('reported_directory', ['.', '../different-models'])
+def test_capture_preserves_unicode_model_binding_in_the_single_inventory(
+        monkeypatch, tmp_path, reported_directory):
+    from carr_library.extract import ocr_process
+    directory = tmp_path / 'Моделі OCR'
+    directory.mkdir()
+    (tmp_path / 'different-models').mkdir()
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+
+    class Process:
+        def __init__(self, argv, **kwargs):
+            assert argv == ['selected local engine', '--tessdata-dir', '.', '--list-langs']
+            assert kwargs['cwd'] == directory
+            assert kwargs.get('shell', False) is False
+            assert kwargs['stdout'].fileno() >= 0 and kwargs['stderr'].fileno() >= 0
+            kwargs['stdout'].write(
+                f'List of available languages in "{reported_directory}" (1):\neng\n'.encode())
+            kwargs['stdout'].flush()
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def wait(self, timeout=None):
+            assert timeout is None or timeout <= .05
+            return 0
+        def poll(self): return 0
+
+    monkeypatch.setattr(subprocess, 'Popen', Process)
+    native = ocr_runtime.OcrRuntime('selected local engine', root=tmp_path, tessdata=directory)
+    if reported_directory == '.':
+        assert models._capture(native, '--list-langs', lambda: 3) == (
+            f'List of available languages in "{directory}" (1):\neng\n')
+    else:
+        with pytest.raises(ocr_runtime.OcrRuntimeError, match='different model directory'):
+            models._capture(native, '--list-langs', lambda: 3)
 
 
 @pytest.mark.parametrize('stream', ['stdout', 'stderr'])
@@ -240,7 +279,9 @@ def test_linked_preset_file_is_not_read_or_overwritten(tmp_path):
 
 @pytest.mark.parametrize('raw', [b'{}', b'{"version":true,"presets":[]}',
     b'{"version":1,"version":1,"presets":[]}', b'{"version":1,"presets":[],"path":"outside"}',
-    b'\xff', b'x' * (models.MAX_PRESET_BYTES + 1)])
+    b'\xff', b'x' * (models.MAX_PRESET_BYTES + 1)],
+    ids=('missing-fields', 'boolean-version', 'duplicate-version',
+         'unknown-field', 'invalid-utf8', 'oversized-presets'))
 def test_invalid_or_unbounded_saved_preferences_fail_closed(raw):
     with pytest.raises(ValueError):
         models.validate_presets_bytes(raw)

@@ -46,6 +46,8 @@ language, pan (-1 to 1, left/center/right), rate (-10 to 10), pitch (-10 to
 [output format=wav sample_rate=48000 stems=true disk_budget_mb=32768]
 Effects: highpass, lowpass, equalizer, gate, compressor, delay, denoise.
 Optional MusicGen: [music engine=musicgen model_manifest=musicgen/manifest.json]
+Optional SoundFont: [music engine=fluidsynth model_manifest=fluidsynth/manifest.json]
+Optional ACE-Step: [music engine=ace-step model_manifest=ace-step/manifest.json]
 The manifest and its reviewed assets must be installed under project/models.
 This is a guided local script parser. It does not interpret arbitrary prose
 as editing instructions and never executes shell commands or document code.

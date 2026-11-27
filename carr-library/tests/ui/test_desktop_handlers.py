@@ -127,7 +127,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
-        'install_academic_comparison_actions', 'install_assistant_actions')}
+        'install_academic_comparison_actions', 'install_assistant_actions',
+        'install_portable_sync_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.api_connections import install_api_connection_actions
@@ -265,7 +266,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         for module_name, action_name in (
                 ('audio_studio', 'install_audio_studio_actions'),
                 ('api_connections', 'install_api_connection_actions'),
-                ('assistant_dialog', 'install_assistant_actions')):
+                ('assistant_dialog', 'install_assistant_actions'),
+                ('portable_sync', 'install_portable_sync_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -295,6 +297,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         }
         assert all(bindings.get(name) == shortcut for name, shortcut in required.items())
         assert 'File/Open saved reading copy' in bindings
+        assert 'library.portable_snapshots' in keyboard.bindings
         assert 'Options/Keyboard shortcuts' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
         shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]
@@ -564,8 +567,9 @@ def test_copy_cancelled_after_verification_keeps_clipboard_unchanged(classes):
     assert 'Nothing copied' in p.status.ChangeValue.call_args.args[0]
 
 
-@pytest.mark.parametrize('choice,languages',[(0,'eng'),(1,'ukr'),(2,'slk'),(3,'eng+ukr+slk')])
-def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,choice,languages):
+@pytest.mark.parametrize('profile,languages', [('installed','eng'),('installed','ukr'),
+    ('fast','eng+script/Latin'),('best','ukr+slk')])
+def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypatch,profile,languages):
     from carr_library.extract.page_ocr import Config
     from carr_library.ui import ocr_options
     f = frame(classes)
@@ -576,12 +580,14 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     monkeypatch.setitem(sys.modules,'wx',wx)
     chooser = Mock(wraps=ocr_options.choose_ocr_config)
     monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
+    selected = Config(languages=languages, model_profile=profile)
+    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent, **kwargs: selected)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     file_dialog = Mock()
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
-    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=Config(languages=languages)))
+
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -590,7 +596,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     call = f.library.import_files.call_args
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     config = call.kwargs['config']
-    assert config == Config(languages=languages)
+    assert config is selected
     complete(({'file':'Scanned.PDF','state':'quarantined','message':'Page 2 needs independent review'},))
     assert 'Page 2 needs independent review' in f.report.call_args.args[0]
     assert 'Review pending imported page' in f.report.call_args.args[0]

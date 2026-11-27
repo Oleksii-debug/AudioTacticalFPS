@@ -71,6 +71,39 @@ def test_filter_does_not_drop_hidden_selected_models_and_order_reaches_real_conf
     dialog.EndModal.assert_called_once_with(1)
 
 
+@pytest.mark.parametrize('index,profile', [(2, 'fast'), (3, 'best')])
+def test_managed_profile_reuses_ordered_choice_and_resource_budgets(dialog, index, profile):
+    dialog.profile.SetSelection(index)
+    dialog.active_profile = profile
+    dialog.selected_codes = ['script/Latin', 'ukr']
+    config = dialog.current_config()
+    assert config.model_profile == profile
+    assert config.languages == 'script/Latin+ukr'
+    assert config.dpi == 200 and config.timeout == 45
+    assert config.model_pack_path is None
+
+
+def test_managed_fast_pinned_policy_survives_reopening(dialog):
+    from carr_library.ui.ocr_language_dialog import profile_index
+    from carr_library.extract.pinned_tessdata import POLICY
+    dialog.initial = Config(languages='eng', model_profile='fast', model_policy=POLICY)
+    dialog.profile.SetSelection(profile_index('fast', POLICY))
+    assert dialog.current_config() == dialog.initial
+
+
+def test_changing_to_managed_profile_rechecks_models_off_ui_thread(dialog, monkeypatch):
+    probe = Mock(return_value=dialog.catalog)
+    monkeypatch.setattr('carr_library.ui.ocr_language_dialog.discover_languages', probe)
+    dialog.profile.SetSelection(2)
+    dialog.change_profile()
+    probe.assert_not_called()
+    operation, = dialog.executor.submit.call_args.args
+    assert operation is probe
+    assert dialog.executor.submit.call_args.kwargs['model_profile'] == 'fast'
+    assert dialog.busy and not dialog.profile.enabled
+    dialog.EndModal.assert_not_called()
+
+
 def test_unavailable_model_does_not_silently_fall_back_to_english(dialog):
     dialog.selected_codes = ['deu']
     dialog.accept()

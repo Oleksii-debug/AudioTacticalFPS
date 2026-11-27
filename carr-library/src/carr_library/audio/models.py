@@ -194,17 +194,17 @@ class MusicCue:
         number(self.tempo, 30, 240, 'Music tempo')
         number(self.seed, 0, 2147483647, 'Music seed')
         number(self.gain, 0, 0.8, 'Music gain')
-        if self.engine not in ('procedural', 'musicgen'):
-            raise ValueError('Choose procedural or an explicitly installed MusicGen engine. ACE-Step is not yet implemented.')
+        if self.engine not in ('procedural', 'musicgen', 'fluidsynth', 'ace-step'):
+            raise ValueError('Choose procedural, or an explicitly reviewed MusicGen, ACE-Step or FluidSynth installation.')
         if self.model_manifest is not None:
             text(self.model_manifest, 'Model manifest', 1024)
             path = PurePosixPath(self.model_manifest)
             if path.is_absolute() or any(c in self.model_manifest for c in '\\:\n\r') or any(p in ('', '.', '..') for p in self.model_manifest.split('/')):
                 raise ValueError('Model manifest must be a relative path under the project models directory.')
-        if self.engine == 'musicgen' and self.model_manifest is None:
-            raise ValueError('MusicGen needs an explicitly reviewed local model manifest.')
+        if self.engine != 'procedural' and self.model_manifest is None:
+            raise ValueError('The selected music engine needs an explicitly reviewed local asset manifest.')
         if self.engine == 'procedural' and self.model_manifest is not None:
-            raise ValueError('Procedural music does not use a neural model manifest.')
+            raise ValueError('Procedural music does not use an installed asset manifest.')
 
 
 @dataclass(frozen=True)

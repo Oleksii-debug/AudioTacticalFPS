@@ -142,10 +142,28 @@ def main():
             assert controller.script == script, 'Native preview changed the original script.'
             assert studio.playback_position.GetName() == 'Playback position and state'
             assert studio.seek_seconds.GetName() == 'Seek to seconds'
+            assert 'Playback' in [studio.notebook.GetPageText(i) for i in range(studio.notebook.GetPageCount())]
+            assert studio.playlist_choice.GetName() == 'Local playback playlist'
+            assert studio.segment_choice.GetName() == 'Playback chapters and segments'
+            assert studio.loop_start.GetName() == 'A–B repeat start, seconds'
+            assert studio.sleep_minutes.GetName() == 'Sleep timer minutes; zero turns it off'
+            studio.playback.enqueue([Path(output['output'])])
+            studio._refresh_playback_choices()
+            assert studio.playlist_choice.GetCount() == 1
+            assert studio.playback.state == 'stopped', 'Queue setup must not start an audio device.'
+            studio.sleep_minutes.ChangeValue('1')
+            studio.apply_sleep()
+            assert 0 < studio.playback.sleep_remaining_seconds <= 60
+            studio.sleep_minutes.ChangeValue('0')
+            studio.apply_sleep()
+            assert studio.playback.sleep_remaining_seconds is None
+            studio.clear_playlist()
+            assert not studio.playback.playlist and studio.playlist_choice.GetCount() == 0
             studio.read_playback_position()
             assert 'Stopped' in studio.status.GetValue()
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
-                           'native plan preview', 'project save and readback', 'native playback time and seek controls'])
+                           'native plan preview', 'project save and readback', 'native playback time and seek controls',
+                           'native playlist, A–B, segment and sleep controls; setup without device playback'])
             studio.dialog.Hide()
 
             native_result = {'complete': False, 'errors': []}

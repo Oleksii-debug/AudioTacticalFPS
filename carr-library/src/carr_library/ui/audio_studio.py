@@ -277,6 +277,7 @@ class StudioController:
 
     def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
         selected = _local_path(path or self.project_path or '', 'project file')
+        _filename(selected.name)
         self._protect_original(selected)
         same = self.project_path is not None and selected == self.project_path
         expected = None
@@ -467,6 +468,7 @@ class StudioController:
 
     def export_reading_copy(self, path, *, overwrite=False):
         selected = _local_path(path, 'reading-copy filename')
+        _filename(selected.name)
         self._protect_original(selected)
         if selected.exists() and not overwrite:
             raise FileExistsError('Choose a new reading-copy filename or confirm replacement.')
@@ -522,9 +524,10 @@ class AudioStudioDialog:
         self._loading = True
         outer = wx.BoxSizer(wx.VERTICAL)
         self.notebook = wx.Notebook(self.dialog)
-        self.notebook.SetName('Audio Studio pages: Script, Preparation, Production')
-        script_page, preparation_page, production_page = (wx.Panel(self.notebook) for _ in range(3))
-        for page, title in ((script_page, 'Script'), (preparation_page, 'Preparation'), (production_page, 'Production')):
+        self.notebook.SetName('Audio Studio pages: Script, Preparation, Production, Playback')
+        script_page, preparation_page, production_page, playback_page = (wx.Panel(self.notebook) for _ in range(4))
+        for page, title in ((script_page, 'Script'), (preparation_page, 'Preparation'),
+                            (production_page, 'Production'), (playback_page, 'Playback')):
             self.notebook.AddPage(page, title)
         outer.Add(self.notebook, 1, wx.EXPAND | wx.ALL, 8)
 
@@ -606,6 +609,41 @@ class AudioStudioDialog:
         self._button(production_page, seek_row, 'Read playback position', self.read_playback_position, busy_safe=True)
         prod_layout.Add(seek_row, 0, wx.ALL, 5)
         production_page.SetSizer(prod_layout)
+
+        playback_layout = wx.BoxSizer(wx.VERTICAL)
+        playback_layout.Add(wx.StaticText(playback_page, label='Local WAV playlist — up to 256 recordings'), 0, wx.ALL, 5)
+        self.playlist_choice = wx.Choice(playback_page)
+        self.playlist_choice.SetName('Local playback playlist')
+        self.controls.append(self.playlist_choice)
+        playback_layout.Add(self.playlist_choice, 0, wx.EXPAND | wx.ALL, 5)
+        queue_buttons = wx.WrapSizer(wx.HORIZONTAL)
+        for label, handler in (('Add WAV recordings', self.add_recordings), ('Clear playlist', self.clear_playlist),
+                               ('Play selected recording', self.play_selected), ('Previous recording', self.previous_recording),
+                               ('Next recording', self.next_recording)):
+            self._button(playback_page, queue_buttons, label, handler)
+        playback_layout.Add(queue_buttons, 0, wx.ALL, 5)
+        self.loop_start = self._text(playback_page, playback_layout, 'A–B repeat start, seconds', '0')
+        self.loop_end = self._text(playback_page, playback_layout, 'A–B repeat end, seconds', '1')
+        loop_buttons = wx.WrapSizer(wx.HORIZONTAL)
+        self._button(playback_page, loop_buttons, 'Repeat A–B range', self.apply_loop)
+        self._button(playback_page, loop_buttons, 'Clear A–B repeat', self.clear_loop)
+        playback_layout.Add(loop_buttons, 0, wx.ALL, 5)
+        self.sleep_minutes = self._text(playback_page, playback_layout, 'Sleep timer minutes; zero turns it off', '0')
+        sleep_buttons = wx.WrapSizer(wx.HORIZONTAL)
+        self._button(playback_page, sleep_buttons, 'Apply sleep timer', self.apply_sleep)
+        self._button(playback_page, sleep_buttons, 'Read playback controls', self.read_playback_position, busy_safe=True)
+        playback_layout.Add(sleep_buttons, 0, wx.ALL, 5)
+        playback_layout.Add(wx.StaticText(playback_page, label='Rendered chapter navigation'), 0, wx.ALL, 5)
+        self.segment_choice = wx.Choice(playback_page)
+        self.segment_choice.SetName('Playback chapters and segments')
+        self.controls.append(self.segment_choice)
+        playback_layout.Add(self.segment_choice, 0, wx.EXPAND | wx.ALL, 5)
+        segment_buttons = wx.WrapSizer(wx.HORIZONTAL)
+        for label, handler in (('Go to selected segment', self.selected_segment),
+                               ('Previous segment', self.previous_segment), ('Next segment', self.next_segment)):
+            self._button(playback_page, segment_buttons, label, handler)
+        playback_layout.Add(segment_buttons, 0, wx.ALL, 5)
+        playback_page.SetSizer(playback_layout)
 
         self.status = wx.TextCtrl(self.dialog, value='Local only. Enter a script, choose a local voice and output folder, then preview or render.',
                                   style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -1146,6 +1184,11 @@ class AudioStudioDialog:
                 raise ValueError('The script has unsaved edits. Preview and render it before playing a current result.')
             result_file = Path(self.controller.result['output'])
             self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file)
+            from ..audio.ffmpeg import wav_info
+            rate = wav_info(self.playback.path).rate
+            self.playback.set_segments([(row['start_frame'] / rate, row['title'])
+                                       for row in self.controller.result.get('chapters', ())])
+            self._refresh_playback_choices()
             self.update_playback_position()
             self._message('Playing the rendered master. Pause / resume and Seek affect this Studio preview.', focus=True)
         except Exception as exc:
@@ -1163,11 +1206,21 @@ class AudioStudioDialog:
         if self.closed:
             return
         try:
+            action = self.playback.poll()
+            if action == 'next':
+                self._refresh_playback_choices()
             state = self.playback.state
             position = self.playback.position_seconds
             approximate = ' Approximate elapsed position.' if self.playback.position_is_approximate else ''
             self.playback_position.ChangeValue(
-                f'{state.capitalize()}: {position:.1f} of {self.playback.duration_seconds:.1f} seconds.' + approximate)
+                f'{state.capitalize()}: {position:.1f} of {self.playback.duration_seconds:.1f} seconds.' + approximate +
+                (f' Playlist {self.playback.playlist_index + 1} of {len(self.playback.playlist)}.'
+                 if self.playback.playlist_index is not None else '') +
+                (f' Repeating {self.playback.ab_loop[0]:.2f} to {self.playback.ab_loop[1]:.2f} seconds.'
+                 if self.playback.ab_loop else '') +
+                (f' Sleep in {self.playback.sleep_remaining_seconds:.0f} seconds.'
+                 if self.playback.sleep_remaining_seconds is not None else '') +
+                (' Sleep timer stopped playback.' if action == 'sleep' else ''))
         except Exception as exc:
             self.playback_position.ChangeValue('Playback device error: ' + str(exc))
 
@@ -1193,6 +1246,73 @@ class AudioStudioDialog:
     def read_playback_position(self, event=None):
         self.update_playback_position()
         self._message(self.playback_position.GetValue(), focus=True)
+
+    def _refresh_playback_choices(self):
+        self.playlist_choice.SetItems([f'{index + 1}. {path.name}' for index, path in enumerate(self.playback.playlist)])
+        if self.playback.playlist_index is not None:
+            self.playlist_choice.SetSelection(self.playback.playlist_index)
+        elif self.playback.playlist:
+            self.playlist_choice.SetSelection(0)
+        self.segment_choice.SetItems([f'{seconds:.2f} seconds — {title}' for seconds, title in self.playback.segments])
+        if self.playback.segments:
+            self.segment_choice.SetSelection(0)
+
+    def add_recordings(self, event=None):
+        wx = self.wx
+        dialog = wx.FileDialog(self.dialog, 'Add local WAV recordings to the playlist',
+                               wildcard='PCM WAV (*.wav)|*.wav', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
+        try:
+            if dialog.ShowModal() == wx.ID_OK:
+                self.playback.enqueue([Path(path) for path in dialog.GetPaths()])
+                self._refresh_playback_choices()
+                self._message(f'Playlist contains {len(self.playback.playlist)} recordings. Choose Play selected recording.', focus=True)
+        except Exception as exc:
+            self._error(exc)
+        finally:
+            dialog.Destroy()
+
+    def _playback_action(self, action):
+        try:
+            result = action()
+            self._refresh_playback_choices()
+            self.read_playback_position()
+            if result is False or result is None and action in (self.playback.next_segment, self.playback.previous_segment):
+                self._message('No further recording or segment in that direction.', focus=True)
+        except Exception as exc:
+            self._error(exc)
+
+    def clear_playlist(self, event=None):
+        self._playback_action(lambda: self.playback.set_playlist([]))
+
+    def play_selected(self, event=None):
+        self._playback_action(lambda: self.playback.play_index(self.playlist_choice.GetSelection()))
+
+    def previous_recording(self, event=None):
+        self._playback_action(self.playback.previous_track)
+
+    def next_recording(self, event=None):
+        self._playback_action(self.playback.next_track)
+
+    def apply_loop(self, event=None):
+        self._playback_action(lambda: self.playback.set_ab_loop(float(self.loop_start.GetValue()), float(self.loop_end.GetValue())))
+
+    def clear_loop(self, event=None):
+        self._playback_action(self.playback.clear_ab_loop)
+
+    def apply_sleep(self, event=None):
+        def apply():
+            minutes = float(self.sleep_minutes.GetValue())
+            self.playback.set_sleep_timer(None if minutes == 0 else minutes * 60)
+        self._playback_action(apply)
+
+    def selected_segment(self, event=None):
+        self._playback_action(lambda: self.playback.seek_segment(self.segment_choice.GetSelection()))
+
+    def previous_segment(self, event=None):
+        self._playback_action(self.playback.previous_segment)
+
+    def next_segment(self, event=None):
+        self._playback_action(self.playback.next_segment)
 
     def close(self, event=None):
         if self.closed:

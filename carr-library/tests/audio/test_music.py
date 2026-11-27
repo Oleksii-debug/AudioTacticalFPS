@@ -141,7 +141,7 @@ def test_untrusted_scene_settings_cannot_become_filters(tmp_path, ffmpeg, parame
 def test_models_and_disk_budgets_fail_before_generation(tmp_path, ffmpeg):
     with pytest.raises(EngineUnavailable, match='manifest'):
         render_music(tmp_path/'neural.wav', duration=1, engine='musicgen', ffmpeg=ffmpeg)
-    with pytest.raises(EngineUnavailable, match='not implemented'):
+    with pytest.raises(EngineUnavailable, match='manifest'):
         render_music(tmp_path/'ace.wav', duration=1, engine='ace-step', ffmpeg=ffmpeg)
     with pytest.raises(ValueError, match='disk budget'):
         render_music(tmp_path/'large.wav', duration=100, ffmpeg=ffmpeg, max_output_bytes=10)

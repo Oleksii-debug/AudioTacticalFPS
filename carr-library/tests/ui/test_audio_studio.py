@@ -423,9 +423,18 @@ def test_final_new_destination_publication_never_overwrites_a_late_writer(
 
 
 @pytest.mark.parametrize('name', ['CON.json', 'project.json:stream', 'project.json.'])
-def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, name):
+@pytest.mark.parametrize('operation', ['save', 'export_reading_copy'])
+def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, monkeypatch, name, operation):
     controller.new('Source')
+    selected = tmp_path / name
+    before = set(tmp_path.iterdir())
+    original_exists = Path.exists
+    def no_destination_probe(path):
+        assert path != selected, 'Reject device aliases before probing or reading the destination.'
+        return original_exists(path)
+    monkeypatch.setattr(Path, 'exists', no_destination_probe)
     with pytest.raises(ValueError, match='filename'):
-        controller.save(tmp_path / name)
+        getattr(controller, operation)(selected)
     assert controller.project_path is None
-    assert not (tmp_path / name).exists()
+    # CON exists as a device alias on Windows even when no file was created.
+    assert set(tmp_path.iterdir()) == before

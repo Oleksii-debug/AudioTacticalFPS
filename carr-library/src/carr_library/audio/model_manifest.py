@@ -183,7 +183,7 @@ class LocalModelManifest:
         if set(raw) - known:
             raise ModelManifestError('Unsupported model manifest fields.')
         actual_engine = _text(raw.get('engine'), 'engine')
-        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step'}:
+        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step', 'fluidsynth'}:
             raise ModelManifestError('Unsupported local model engine.')
         if engine is not None and actual_engine != engine:
             raise ModelManifestError('The model manifest belongs to another engine.')
@@ -218,6 +218,15 @@ class LocalModelManifest:
     def asset(self, name: str) -> Path:
         return self._asset(name, dict(self.files))
 
+    def directory(self, name: str) -> Path:
+        """Select an installed package directory covered by this inventory."""
+        relative = _relative(name)
+        path = local_path(self.root.joinpath(*relative.parts))
+        if (not path.is_dir() or not path.is_relative_to(self.root)
+                or not any(asset.startswith(name + '/') for asset, _ in self.files)):
+            raise ModelManifestError('The package directory is not covered by the reviewed manifest.')
+        return path
+
     def _asset(self, name: str, inventory: dict[str, str]) -> Path:
         _relative(name)
         if name not in inventory:
@@ -231,6 +240,8 @@ class LocalModelManifest:
                require_complete=False):
         if not self.license_accepted:
             raise ModelManifestError('Review and accept this local model license before use.')
+        if self.engine == 'ace-step' and not self.trusted_weights:
+            raise ModelManifestError('Review the exact ACE-Step checkpoints and installed code before execution.')
         if self.engine == 'musicgen':
             if self.license != 'CC-BY-NC-4.0' or not self.personal_noncommercial:
                 raise ModelManifestError('MusicGen weights require the personal noncommercial profile.')
