@@ -25,7 +25,7 @@ from carr_library.installation_lease import application_lease, installation_leas
 from carr_library.security._files import TrustError, atomic_write, json_bytes, json_value, locked, read_bytes
 from carr_library.security.anchors import Anchor
 from carr_library.security.standard_installation import (
-    StandardUpdateTransaction, reserve_generation,
+    RecoveryReviewRequired, StandardUpdateTransaction, reserve_generation,
 )
 from carr_library.security.standard_state import (
     PENDING, PRIOR, PROTOCOL, REJECTED, check_generation_start, read_pending,
@@ -237,6 +237,14 @@ def verified(value, *, source=B, label='B', mutation=None):
                            reviewed_sha256=sha256(raw).hexdigest())
 
 
+def reverified(value, original):
+    client = LocalRepositoryClient(value.transaction.work / 'fresh-recovery-tuf', value.policy)
+    result = client.download(value.repository.root, value.repository.target_path,
+        reviewed_sha256=original.release.sha256)
+    assert result is not original and result.release == original.release
+    return result
+
+
 def test_actual_tuf_and_backup_activate_distinct_b_without_moving_or_deleting_a(setup):
     prior = setup.host.snapshot(setup.root)
     package = verified(setup)
@@ -304,11 +312,12 @@ def test_interrupted_observed_uncommitted_b_recovers_exact_a(setup, monkeypatch,
             raise ProcessEnded
     prior = setup.host.snapshot(setup.root)
     monkeypatch.setattr(setup.transaction, '_write', crash)
+    package = verified(setup)
     with pytest.raises(ProcessEnded):
-        setup.transaction.apply(verified(setup))
+        setup.transaction.apply(package)
     assert (setup.root / PENDING).is_file()
     monkeypatch.setattr(setup.transaction, '_write', write)
-    assert setup.transaction.recover() == 'rolled-back'
+    assert setup.transaction.recover(reverified(setup, package)) == 'rolled-back'
     assert setup.host.snapshot(setup.root) == prior and setup.anchor.load() == Anchor()
 
 
@@ -554,8 +563,9 @@ def test_pending_child_cleanup_retains_actual_lease_and_work_lock_until_quiescen
         raise error
     monkeypatch.setattr(setup.host, 'launch', pending)
     prior = setup.host.snapshot(setup.root)
+    package = verified(setup)
     with pytest.raises(AudioCleanupPending) as caught:
-        setup.transaction.apply(verified(setup))
+        setup.transaction.apply(package)
     assert caught.value is error and len(owner.callbacks) == 1
     assert setup.host.snapshot(setup.root) == prior and (setup.root / PENDING).exists()
     with pytest.raises(RuntimeError, match='Close'):
@@ -567,16 +577,16 @@ def test_pending_child_cleanup_retains_actual_lease_and_work_lock_until_quiescen
     owner.finish()
     with installation_lease(setup.root, exclusive=True):
         pass
-    assert setup.transaction.recover() == 'rolled-back'
+    assert setup.transaction.recover(reverified(setup, package)) == 'rolled-back'
 
 
-def configured_controller(value):
+def configured_controller(value, **options):
     from carr_library.delivery_contract import IntegrationContext
     from carr_library.security.controller import TrustController
     client = LocalRepositoryClient(value.transaction.work / 'controller-cache', value.policy)
     return TrustController(updates=client, target=value.repository.target_path,
         context=IntegrationContext('carr-test', 'build-A', 'stable'),
-        standard_update=value.transaction)
+        standard_update=value.transaction, **options)
 
 
 def test_one_controller_requires_review_and_same_policy_then_commits_actual_transaction(setup):
@@ -785,3 +795,233 @@ def test_retry_after_verified_rollback_retains_failed_b_and_uses_a_fresh_generat
     assert (failed / REJECTED).read_bytes() == before
     assert setup.generation.is_dir() and setup.host.launches == 2
     assert setup.anchor.load().sequence == 2
+
+
+def interrupted_update(value, monkeypatch, phase='activated'):
+    class ProcessEnded(BaseException):
+        pass
+    original = value.transaction._write
+    def crash(record, current):
+        original(record, current)
+        if current == phase:
+            raise ProcessEnded
+    package = verified(value)
+    with monkeypatch.context() as patch:
+        patch.setattr(value.transaction, '_write', crash)
+        with pytest.raises(ProcessEnded):
+            value.transaction.apply(package)
+    assert value.transaction.journal.is_file()
+    return package
+
+
+def recovery_state(value):
+    paths = (value.transaction.journal, value.root / PENDING, value.root / PRIOR)
+    return (value.host.snapshot(value.root), value.anchor.load(),
+        tuple(path.read_bytes() if path.exists() else None for path in paths),
+        tuple(sorted(path.relative_to(value.root).as_posix()
+                     for path in (value.root / 'versions').rglob(REJECTED))),
+        value.original.read_bytes(), value.host.health_calls)
+
+
+@pytest.mark.parametrize('phase', ['installing', 'activated', 'health-checked'])
+def test_precommit_crash_without_fresh_proof_keeps_every_recovery_component(setup, monkeypatch, phase):
+    interrupted_update(setup, monkeypatch, phase)
+    before = recovery_state(setup)
+    with pytest.raises(RecoveryReviewRequired, match='Reverify'):
+        setup.transaction.recover()
+    assert recovery_state(setup) == before
+    assert setup.app.search(setup.workspace, 'exact research source')
+
+
+@pytest.mark.parametrize('authority', ['other-root', 'other-release'])
+def test_precommit_recovery_refuses_fresh_but_different_authority_or_release(setup, monkeypatch, tmp_path, authority):
+    from .conftest import Repository
+    original = interrupted_update(setup, monkeypatch)
+    if authority == 'other-root':
+        other = Repository(tmp_path / 'foreign-recovery-root')
+        raw = original.path.read_bytes()
+        other.publish(raw, custom={'source_commit': B, 'version': original.release.version})
+        client = LocalRepositoryClient(tmp_path / 'foreign-recovery-cache', other.policy())
+        package = client.download(other.root, other.target_path, reviewed_sha256=original.release.sha256)
+    else:
+        setup.repository.advance()
+        package = verified(setup, source=C, label='C')
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='different trusted publisher|differs from the pending recovery'):
+        setup.transaction.recover(package)
+    assert recovery_state(setup) == before
+
+
+@pytest.mark.parametrize('mode', ['no-repository', 'explicit', 'configured', 'cancelled'])
+def test_controller_recovery_reverifies_only_explicit_or_configured_repository(setup, monkeypatch, mode):
+    from carr_library.security.updates import UpdateCancelled
+    prior = setup.host.snapshot(setup.root)
+    interrupted_update(setup, monkeypatch)
+    options = {'update_repository': setup.repository.root} if mode == 'configured' else {}
+    controller = configured_controller(setup, **options)
+    download, calls = controller.updates.download, []
+    def observed(repository, target, **kwargs):
+        calls.append((repository, target))
+        return download(repository, target, **kwargs)
+    monkeypatch.setattr(controller.updates, 'download', observed)
+    before = recovery_state(setup)
+    if mode == 'no-repository':
+        with pytest.raises(RecoveryReviewRequired):
+            controller.recover_update()
+        assert not calls and recovery_state(setup) == before
+    elif mode == 'cancelled':
+        with pytest.raises(UpdateCancelled):
+            controller.recover_update(setup.repository.root, cancelled=lambda: True)
+        assert not calls and recovery_state(setup) == before
+    else:
+        selected = setup.repository.root if mode == 'explicit' else None
+        assert controller.recover_update(selected) == 'rolled-back'
+        assert len(calls) == 1 and calls[0] == (setup.repository.root, setup.repository.target_path)
+        assert setup.host.snapshot(setup.root) == prior
+        assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+
+
+def test_cli_recovery_requires_repository_reverification_before_rollback(setup, monkeypatch, capsys):
+    from carr_library.security.__main__ import main
+    prior = setup.host.snapshot(setup.root)
+    interrupted_update(setup, monkeypatch)
+    controller = configured_controller(setup)
+    before = recovery_state(setup)
+    assert main(['recover-standard-update'], controller=controller) == 2
+    assert recovery_state(setup) == before
+    capsys.readouterr()
+    assert main(['recover-standard-update', '--repository', str(setup.repository.root)],
+                controller=controller) == 0
+    assert json.loads(capsys.readouterr().out) == {'status': 'rolled-back'}
+    assert setup.host.snapshot(setup.root) == prior
+
+
+@pytest.mark.parametrize('damage', ['missing', 'modified'])
+def test_committed_recovery_requires_retained_target_bytes_before_health_or_clear(setup, monkeypatch, damage):
+    interrupted_update(setup, monkeypatch, 'committed')
+    record = json.loads(setup.transaction.journal.read_bytes())
+    archive = setup.transaction.work / record['archive']
+    if damage == 'missing':
+        archive.unlink()
+    else:
+        archive.write_bytes(b'Untrusted replacement archive')
+    before = recovery_state(setup)
+    with pytest.raises((TrustError, OSError)):
+        setup.transaction.recover()
+    assert recovery_state(setup) == before
+
+
+def relabel_journal_as_c(value, *, replace_archive=False):
+    """Keep protected build/digest but coherently relabel every mutable field."""
+    from carr_library.security.standard_installation import review_installer
+    record = json.loads(value.transaction.journal.read_bytes())
+    raw_c = package_bytes(C, 'B')
+    stage = value.transaction.work / 'synthetic-untrusted-c'
+    stage.mkdir()
+    with zipfile.ZipFile(io.BytesIO(raw_c)) as archive:
+        archive.extractall(stage)
+    from dataclasses import replace
+    release = replace(value.transaction.pending_release(), source_commit=C)
+    candidate = review_installer(stage, release, value.host)
+    value.host.install(setup_image(C, 'B')[0])
+    observed = value.host.snapshot(value.root)
+    record['release']['source_commit'] = C
+    record['candidate'] = candidate
+    record['observed'] = observed
+    record['pending'].update(candidate_source=C,
+        candidate_manifest=candidate['manifest_sha256'], candidate_setup=candidate['setup_sha256'],
+        candidate_generation=observed['generation'])
+    atomic_write(value.transaction.journal, json_bytes(record))
+    from carr_library.security.standard_state import pending_bytes
+    atomic_write(value.root / PENDING, pending_bytes(record['pending'], value.root))
+    if replace_archive:
+        (value.transaction.work / record['archive']).write_bytes(raw_c)
+    # This is deliberately a valid old parser input, not a syntax-only refusal.
+    checked, _, _ = value.transaction._read()
+    assert checked['observed'] == observed and checked['candidate']['source_commit'] == C
+
+
+@pytest.mark.parametrize('replace_archive', [False, True], ids=['rewritten-journal', 'rewritten-journal-and-archive'])
+def test_committed_recovery_cannot_promote_coherent_c_metadata_under_b_anchor(setup, monkeypatch, replace_archive):
+    package = interrupted_update(setup, monkeypatch, 'committed')
+    relabel_journal_as_c(setup, replace_archive=replace_archive)
+    assert setup.anchor.load().digest == package.release.sha256
+    before = recovery_state(setup)
+    with pytest.raises(TrustError):
+        setup.transaction.recover()
+    assert recovery_state(setup) == before
+    assert setup.host.snapshot(setup.root)['source_commit'] == C
+
+
+def test_precommit_recovery_does_not_relabel_newer_c_using_reverified_b(setup, monkeypatch):
+    package = interrupted_update(setup, monkeypatch)
+    relabel_journal_as_c(setup, replace_archive=True)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='differs from the pending recovery'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+
+
+def test_streamed_setup_digest_observes_cancellation_after_first_chunk(tmp_path, monkeypatch):
+    import carr_library.security.standard_windows as module
+    from carr_library.security.updates import UpdateCancelled
+    path = tmp_path / 'large-setup.exe'
+    path.write_bytes(b'x' * (3 * 1024**2))
+    original, reads = module.verified_reader, []
+    @contextmanager
+    def tracked(selected):
+        with original(selected) as source:
+            class Reader:
+                def read(self, count):
+                    raw = source.read(count)
+                    reads.append(len(raw))
+                    return raw
+            yield Reader()
+    monkeypatch.setattr(module, 'verified_reader', tracked)
+    with pytest.raises(UpdateCancelled):
+        module._file_digest(path, cancelled=lambda: bool(reads))
+    assert reads == [1024**2]
+
+
+@pytest.mark.parametrize('accept', [False, True])
+def test_recovery_ui_reverifies_chosen_repository_without_restarting_install(setup, monkeypatch, accept):
+    import ast
+    interrupted_update(setup, monkeypatch)
+    before = recovery_state(setup)
+    source = Path(importlib.util.find_spec('carr_library.ui.trust_status').origin).read_text(encoding='utf-8')
+    functions = [node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef)
+                 and node.name in ('recover_standard_update', '_same_update_library')]
+    assert len(functions) == 2
+    prompts, reports, calls = [], [], []
+    class Chooser:
+        def __init__(self, parent, title):
+            prompts.append(title)
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def ShowModal(self):
+            return 1 if accept else 2
+        def GetPath(self):
+            return str(setup.repository.root)
+    namespace = {'__package__': 'carr_library.ui', 'wx': SimpleNamespace(DirDialog=Chooser, ID_OK=1)}
+    exec(compile(ast.Module(body=functions, type_ignores=[]), 'real_standard_recovery_ui', 'exec'), namespace)
+    def run_job(label, operation, *, done, failed):
+        calls.append(label)
+        try:
+            result = operation()
+        except Exception as error:
+            failed(error)
+        else:
+            done(result)
+    frame = SimpleNamespace(library=setup.app, report=reports.append, run_job=run_job,
+                            cancel_event=threading.Event())
+    namespace['recover_standard_update'](frame, configured_controller(setup))
+    assert len(prompts) == 1 and len(calls) == (2 if accept else 1)
+    assert setup.host.launches == 1
+    if accept:
+        assert setup.host.snapshot(setup.root)['source_commit'] == A
+        assert any('rolled-back' in report for report in reports)
+    else:
+        assert recovery_state(setup) == before
+        assert any('not started' in report for report in reports)

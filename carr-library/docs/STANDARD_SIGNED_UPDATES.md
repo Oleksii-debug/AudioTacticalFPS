@@ -94,7 +94,8 @@ The transaction proceeds through these guarded boundaries:
 1. Recheck the current registered A against its exact manifest and native
    metadata. Retain a shared installation lifetime lease.
 2. Verify and extract the TUF-authenticated target into a new bounded stage.
-   Review the current standard report and complete manifest.
+   Review the current standard report and complete manifest, and retain the
+   exact verified target archive under the fixed transaction identity.
 3. Create a complete library backup using the existing typed backup framework.
    Recheck A's registration, Start-menu shortcut and uninstaller bytes.
 4. Persist the previous activation snapshot and pending handoff, then release
@@ -135,20 +136,37 @@ newer installation or unknown component is preserved and causes explicit
 recovery refusal. B's files and failed environment remain; A's program
 generation and research data are not moved or deleted.
 
+The journal is mutable recovery evidence, not publisher approval. A live apply
+failure still holds its original verified package and may perform the guarded
+rollback. After a crash, pre-commit recovery requires a freshly verified
+`VerifiedPackage` with the same pinned publisher root, product, channel, schema
+and exact release. The existing controller obtains it only from an explicitly
+selected or already configured signed repository. With no fresh proof,
+`recover(package=None)` refuses without changing activation, pending receipts
+or research data. Different roots, different releases and rewritten journal
+metadata cannot authorize rollback.
+
 A crash before the complete new activation can be observed may leave
 `recovery-required`. The application does not guess a registry/shortcut
 rollback. The pending journal and retained components remain available for
 owner inspection, while A remains usable.
 
 After the protected B anchor has committed, a final journal/cleanup failure
-cannot silently roll back to A. Explicit recovery verifies the committed B
-and completes the journal. A changed protected anchor refuses automatic
-rollback. A recovery receipt with changed bytes also fails closed.
+cannot silently roll back to A. Explicit recovery first streams the retained
+target archive against the protected accepted digest, extracts a fresh checked
+snapshot, and derives the candidate source, manifest and setup identity again
+from those exact bytes. Only then may it verify committed B and complete the
+journal. Simultaneously rewriting the journal and retained archive does not
+replace the protected digest. Missing or changed archives and changed protected
+anchors leave pending evidence intact for explicit recovery.
 
 The existing Help → License and signed updates dialog offers a second,
 explicit “Back up and activate this verified update” review when a standard
 transaction is configured. “Recover reviewed standard update” uses that same
-transaction. The existing security CLI exposes the same operations only via
+transaction and asks for the signed repository when an uncommitted recovery
+needs re-verification. The existing security CLI accepts an explicit
+`recover-standard-update --repository <folder>` for that same boundary, and
+exposes these operations only via
 an explicitly injected `TrustController`; ordinary invocation without one
 stays `WAITING_INPUT`. Repository/root flags for offline verification alone
 do not configure activation.
@@ -194,6 +212,8 @@ refusal and quiescent uninstall that preserves data. It uses ephemeral
 synthetic test authority and a synthetic protected anchor. It does not qualify
 production keys, a production service, Authenticode, NVDA or physical devices.
 
-At source preparation time, execution of this new suite and the two-build
-native probe is **NOT_RUN**. Passing previous repair/uninstall or portable
-update tests does not transfer a native A→B result.
+The source suite and related security/packaging suites run independently of the
+two-build native probe. Only an actual Windows probe result establishes native
+A→B execution. Passing previous repair/uninstall or portable update tests does
+not transfer such a result. Production trust, signing and accessibility
+qualification remain separate from synthetic test authority.

@@ -208,10 +208,24 @@ class TrustController:
             raise TrustError('The reviewed package is not this controller\'s configured update target.')
         return self.standard_update.apply(package, cancelled=cancelled)
 
-    def recover_update(self):
+    def recover_update(self, repository=None, *, cancelled=lambda: False):
         if self.standard_update is None:
             raise TrustError('Standard recovery is WAITING_INPUT: no installation transaction is configured.')
-        return self.standard_update.recover()
+        from .standard_installation import RecoveryReviewRequired
+        try:
+            return self.standard_update.recover(cancelled=cancelled)
+        except RecoveryReviewRequired:
+            selected = repository
+            if selected is None and self.update_poll is not None:
+                selected = self.update_poll.repository
+            if selected is None:
+                raise
+            # The journal supplies only an untrusted review hint. The same
+            # configured TUF client must authenticate this exact release again.
+            hint = self.standard_update.pending_release()
+            package = self.updates.download(selected, self.target,
+                reviewed_sha256=hint.sha256, cancelled=cancelled)
+            return self.standard_update.recover(package, cancelled=cancelled)
 
 
 def release_text(release):

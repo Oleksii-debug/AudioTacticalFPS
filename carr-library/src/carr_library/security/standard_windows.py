@@ -35,17 +35,21 @@ _SOURCE = re.compile(r'[0-9a-f]{40}\Z')
 _UNINSTALL = re.compile(r'unins[0-9]{3}\.(exe|dat|msg)\Z', re.I)
 
 
-def _file_digest(path, maximum=16 * 1024**3):
+def _file_digest(path, maximum=16 * 1024**3, *, cancelled=lambda: False):
+    from .updates import _cancel
+    _cancel(cancelled)
     info = file_info(path)
     if info.st_size > maximum:
         raise TrustError('Standard installation file exceeds its byte budget.')
     digest, total = sha256(), 0
     with verified_reader(path) as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b''):
+            _cancel(cancelled)
             total += len(block)
             if total > maximum:
                 raise TrustError('Standard installation file grew beyond its budget.')
             digest.update(block)
+    _cancel(cancelled)
     return digest.hexdigest()
 
 

@@ -103,12 +103,33 @@ class TrustStatusDialog(wx.Dialog):
     def on_recover_update(self, event=None):
         _same_update_library(self.frame, self.controller)
         self.EndModal(wx.ID_OK)
-        self.frame.run_job('Recover reviewed standard update',
-            self.controller.recover_update,
-            done=lambda state: self.frame.report('Standard update recovery: ' + state
-                + '. Existing research and retained program generations remain available.'),
-            failed=lambda error: self.frame.report('Recovery needs attention. The pending journal, '
-                'previous program and research backup have been preserved.'))
+        recover_standard_update(self.frame, self.controller)
+
+
+def recover_standard_update(frame, controller, repository=None):
+    _same_update_library(frame, controller)
+    def failed(error):
+        from ..security.standard_installation import RecoveryReviewRequired
+        if isinstance(error, RecoveryReviewRequired) and repository is None:
+            try:
+                _same_update_library(frame, controller)
+            except ValueError:
+                frame.report('Reopen the configured library before recovering this standard update.')
+                return
+            with wx.DirDialog(frame, 'Reverify the pending update from its signed offline repository') as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    frame.report('Recovery was not started. The previous program, research data and pending evidence are retained.')
+                    return
+                selected = chooser.GetPath()
+            recover_standard_update(frame, controller, selected)
+            return
+        frame.report('Recovery needs attention. The pending journal, previous program '
+                     'and research backup have been preserved.')
+    frame.run_job('Recover reviewed standard update',
+        lambda: controller.recover_update(repository, cancelled=frame.cancel_event.is_set),
+        done=lambda state: frame.report('Standard update recovery: ' + state
+            + '. Existing research and retained program generations remain available.'),
+        failed=failed)
 
 
 def _same_update_library(frame, controller):

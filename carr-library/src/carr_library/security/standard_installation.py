@@ -15,17 +15,18 @@ import os
 from pathlib import Path
 import re
 import time
+import tempfile
 from uuid import uuid4
 
 from ..audio.cleanup import AudioCleanupPending
 from ._files import (TrustError, atomic_write, directory, file_info, json_bytes,
                      json_value, locked, read_bytes)
 from .anchors import Anchor
-from .installation import unpack
+from .installation import unpack, _verified_snapshot
 from .standard_state import (MAX_STATE, PENDING, PRIOR, REJECTED, PROTOCOL, begin_pending,
     clear_pending, generation_name, prior_bytes, publish_new, read_pending, replace_pending)
 from .standard_windows import WindowsStandardHost, _file_digest, validate_snapshot
-from .updates import Release, UpdatePolicy, _cancel, require_verified_package
+from .updates import Release, UpdatePolicy, _cancel, require_verified_package, _verified_package
 
 MAX_JOURNAL = 2 * MAX_STATE + 65536
 _TERMINAL = {'complete', 'rolled-back'}
@@ -56,7 +57,11 @@ def _release(value, policy, before):
     return result
 
 
-def review_installer(staged, release, host):
+class RecoveryReviewRequired(TrustError):
+    """A pending pre-commit recovery needs a newly verified publisher receipt."""
+
+
+def review_installer(staged, release, host, *, cancelled=lambda: False):
     """Bind the current builder report, full manifest and setup to verified TUF bytes."""
     staged = directory(staged)
     expected_name = 'Resonance-Setup-' + release.source_commit[:12] + '.exe'
@@ -103,7 +108,8 @@ def review_installer(staged, release, host):
             or type(installer['sha256']) is not str or not _DIGEST.fullmatch(installer['sha256'])):
         raise TrustError('Invalid signed standard setup identity.')
     info = file_info(staged / installer['path'])
-    if info.st_size != installer['bytes'] or _file_digest(staged / installer['path']) != installer['sha256']:
+    if (info.st_size != installer['bytes']
+            or _file_digest(staged / installer['path'], cancelled=cancelled) != installer['sha256']):
         raise TrustError('The compiled setup changed after its signed package was verified.')
     return {'source_commit': release.source_commit, 'manifest_sha256': report['manifest_sha256'],
             'setup_sha256': installer['sha256'], 'installer': installer['path'],
@@ -140,6 +146,62 @@ class StandardUpdateTransaction:
                 raise TrustError('Program, signed-update staging and research data must be separate.')
         self.journal = self.work / 'standard-activation.json'
 
+    def _retain_target(self, package, destination, cancelled):
+        """Retain exact verified bytes, with no overwrite or hard-link window."""
+        from ..audio.jobs import publish_noreplace
+        with _verified_snapshot(package, self.work, cancelled) as source:
+            descriptor, name = tempfile.mkstemp(prefix='.standard-target-', dir=self.work)
+            try:
+                with os.fdopen(descriptor, 'wb') as target:
+                    total = 0
+                    for block in iter(lambda: source.read(1024 * 1024), b''):
+                        _cancel(cancelled)
+                        total += len(block)
+                        if total > package.release.length:
+                            raise TrustError('The verified target exceeded its recorded length.')
+                        target.write(block)
+                    if total != package.release.length:
+                        raise TrustError('The verified target snapshot is incomplete.')
+                    target.flush()
+                    os.fsync(target.fileno())
+                _cancel(cancelled)
+                publish_noreplace(Path(name), destination)
+            finally:
+                if os.path.lexists(name):
+                    Path(name).unlink()
+
+    def _review_recovery_target(self, record, release, package, *, committed, cancelled):
+        """Journal fields never recreate publisher approval for a fresh action."""
+        if committed:
+            anchor = self.anchor.load()
+            archive = self.work / record['archive']
+            if (anchor.sequence != release.build or anchor.digest != release.sha256
+                    or _file_digest(archive, self.policy.max_package_bytes, cancelled=cancelled) != anchor.digest):
+                raise TrustError('The retained update target does not match protected committed state.')
+            # A protected accepted digest is authority only for these exact
+            # retained bytes. Existing unpack still checks length and digest.
+            package = _verified_package(release, archive, self.policy)
+        else:
+            if package is None:
+                raise RecoveryReviewRequired('Reverify the exact pending release from an explicitly selected '
+                    'signed repository before rollback. The prior program and pending state are unchanged.')
+            require_verified_package(package, policy=self.policy)
+            if package.release != release:
+                raise TrustError('The newly verified release differs from the pending recovery.')
+        with tempfile.TemporaryDirectory(prefix='.standard-recovery-', dir=self.work) as temporary:
+            target = Path(temporary) / 'target'
+            unpack(package, target, self.policy, cancelled=cancelled)
+            candidate = review_installer(target, release, self.host, cancelled=cancelled)
+        if candidate != record['candidate']:
+            raise TrustError('Recovery candidate metadata differs from the authenticated target bytes.')
+        if record['observed'] is not None:
+            self._require_candidate(record['observed'], candidate, record['pending'])
+
+    def pending_release(self):
+        """Untrusted review hint; only the existing TUF client can approve it."""
+        _record, _before, release = self._read()
+        return release
+
     def _write(self, record, phase):
         if phase not in _PHASES:
             raise TrustError('Unsupported standard update phase.')
@@ -151,7 +213,7 @@ class StandardUpdateTransaction:
 
     def _read(self):
         value = json_value(read_bytes(self.journal, MAX_JOURNAL), maximum=MAX_JOURNAL)
-        fields = {'schema', 'program', 'data', 'transaction', 'phase', 'stage', 'backup',
+        fields = {'schema', 'program', 'data', 'transaction', 'phase', 'stage', 'archive', 'backup',
                   'backup_sha256', 'before', 'release', 'prior', 'observed', 'candidate', 'pending'}
         if (type(value) is not dict or set(value) != fields or value['schema'] != PROTOCOL
                 or value['program'] != str(self.root) or value['data'] != str(self.app.root)
@@ -159,7 +221,8 @@ class StandardUpdateTransaction:
                 or not _TOKEN.fullmatch(value['transaction'])):
             raise TrustError('Invalid standard update recovery journal.')
         token = value['transaction']
-        if value['stage'] != 'standard-stage-' + token or value['backup'] != 'standard-backup-' + token:
+        if (value['stage'] != 'standard-stage-' + token or value['backup'] != 'standard-backup-' + token
+                or value['archive'] != 'standard-target-' + token + '.zip'):
             raise TrustError('Standard recovery paths do not match the transaction.')
         if type(value['backup_sha256']) is not str or not _DIGEST.fullmatch(value['backup_sha256']):
             raise TrustError('The complete research backup identity is unavailable.')
@@ -251,18 +314,21 @@ class StandardUpdateTransaction:
         clear_pending(self.root, record['pending'])
         return 'rolled-back'
 
-    def _recover_locked(self):
+    def _recover_locked(self, package=None, *, cancelled=lambda: False):
+        _cancel(cancelled)
         record, before, release = self._read()
         current = self.anchor.load()
         accepted = current.sequence == release.build and current.digest == release.sha256
         if accepted:
             if record['observed'] is None:
                 raise TrustError('The committed update lacks its exact activation snapshot.')
+            self._review_recovery_target(record, release, None, committed=True, cancelled=cancelled)
             pending = self._pending_for(record)
             if record['phase'] != 'complete':
                 from ..library_backup import verify_backup
-                verify_backup(self.work / record['backup'], record['backup_sha256'])
-            if self.host.snapshot(self.root) != record['observed'] or not self.host.health(self.root, record['observed'], release):
+                verify_backup(self.work / record['backup'], record['backup_sha256'], cancelled=cancelled)
+            if (self.host.snapshot(self.root) != record['observed']
+                    or not self.host.health(self.root, record['observed'], release, cancelled=cancelled)):
                 raise TrustError('The committed generation changed or is unhealthy; preserve data for owner recovery.')
             self._write(record, 'complete')
             clear_pending(self.root, pending or record['pending'])
@@ -274,11 +340,14 @@ class StandardUpdateTransaction:
         if record['phase'] == 'rolled-back':
             if self.host.snapshot(self.root) != record['prior']:
                 raise TrustError('A newer installation changed the completed rollback.')
-            clear_pending(self.root, record['pending'])
-            return 'rolled-back'
+            if not os.path.lexists(self.root / PENDING) and not os.path.lexists(self.root / PRIOR):
+                return 'rolled-back'
+        self._review_recovery_target(record, release, package, committed=False, cancelled=cancelled)
+        _cancel(cancelled)
         return self._rollback(record)
 
-    def recover(self):
+    def recover(self, package=None, *, cancelled=lambda: False):
+        _cancel(cancelled)
         if not os.path.lexists(self.journal):
             if os.path.lexists(self.root / PENDING) or os.path.lexists(self.root / PRIOR):
                 raise TrustError('Pending standard update metadata has no configured recovery journal.')
@@ -288,7 +357,7 @@ class StandardUpdateTransaction:
             stack.enter_context(locked(self.work, '.standard-update.lock'))
             stack.enter_context(self.host.lifetime(self.root))
             stack.enter_context(self.host.setup_guard())
-            return self._recover_locked()
+            return self._recover_locked(package, cancelled=cancelled)
         except AudioCleanupPending as error:
             error.cleanup_owner.add_quiescent_callback(stack.pop_all().close)
             raise
@@ -331,7 +400,9 @@ class StandardUpdateTransaction:
             token = uuid4().hex
             stage = self.work / ('standard-stage-' + token)
             unpack(package, stage, self.policy, cancelled=cancelled)
-            candidate = review_installer(stage, release, self.host)
+            candidate = review_installer(stage, release, self.host, cancelled=cancelled)
+            archive_name = 'standard-target-' + token + '.zip'
+            self._retain_target(package, self.work / archive_name, cancelled)
             _cancel(cancelled)
             backup_name = 'standard-backup-' + token
             backup_sha = create_backup(self.app, self.work / backup_name, cancelled=cancelled)
@@ -339,7 +410,7 @@ class StandardUpdateTransaction:
                 raise TrustError('The current activation changed during backup.')
             _cancel(cancelled)
             record = {'schema': PROTOCOL, 'program': str(self.root), 'data': str(self.app.root),
-                'transaction': token, 'phase': 'prepared', 'stage': stage.name, 'backup': backup_name,
+                'transaction': token, 'phase': 'prepared', 'stage': stage.name, 'archive': archive_name, 'backup': backup_name,
                 'backup_sha256': backup_sha, 'before': json_value(before.encode()), 'release': asdict(release),
                 'prior': prior, 'observed': None, 'candidate': candidate,
                 'pending': self._pending(token, prior, candidate)}

@@ -18,7 +18,7 @@ from ..installation_lease import installed_entrypoint
 
 
 @installed_entrypoint
-def main(argv=None, *, controller=None):
+def main(argv=None, *, controller=None, cancelled=lambda: False):
     parser = argparse.ArgumentParser(description='Private status and independently trusted offline verification.')
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('status', help='Show the default private perpetual status.')
@@ -47,7 +47,9 @@ def main(argv=None, *, controller=None):
     activate.add_argument('--repository', type=Path, required=True)
     activate.add_argument('--reviewed-sha256', required=True)
     activate.add_argument('--accept-reviewed', action='store_true', required=True)
-    commands.add_parser('recover-standard-update', help='Recover the explicitly configured standard transaction.')
+    recover = commands.add_parser('recover-standard-update', help='Recover the explicitly configured standard transaction.')
+    recover.add_argument('--repository', type=Path,
+        help='Reverify an uncommitted release with the already configured publisher before rollback.')
     args = parser.parse_args(argv)
     try:
         if controller is not None and type(controller) is not TrustController:
@@ -57,7 +59,7 @@ def main(argv=None, *, controller=None):
             print(selected.status_text())
             return 0
         if args.command == 'recover-standard-update':
-            print(json.dumps({'status': selected.recover_update()}, sort_keys=True))
+            print(json.dumps({'status': selected.recover_update(args.repository, cancelled=cancelled)}, sort_keys=True))
             return 0
         if args.command == 'install-standard-update':
             if selected.standard_update is None:
