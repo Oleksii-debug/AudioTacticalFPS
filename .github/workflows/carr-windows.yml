@@ -52,6 +52,13 @@ jobs:
           python-version: '3.11'
           architecture: x64
 
+      - name: Verify native Windows state replacement semantics
+        timeout-minutes: 3
+        run: |
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          python -I -B scripts/windows_json_replace_diagnostic.py 2>&1 | Tee-Object 'ci-results/native-json-replacement.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Native state replacement diagnostic failed.' }
+
       - name: Install the actual desktop package in a fresh environment
         id: desktop_runtime
         run: |
