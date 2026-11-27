@@ -1,0 +1,432 @@
+{
+  "schema": 1,
+  "status": "MIXED_ACTUAL_RESULTS_OFFICE_INTEGRITY_FAILURE",
+  "source": {
+    "commit": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+    "tree": "a8422c9e0bedb8b0761783f05ff412b9f687c3df"
+  },
+  "execution_run_id": 46057627707,
+  "independent_reader": {
+    "commit": "e35bfe0922694036962c8498aee4e3327af9475c",
+    "run_id": 46058506078,
+    "job_id": 140706769058,
+    "status": "SUCCESS",
+    "archive_code_executed": false
+  },
+  "artifacts": [
+    {
+      "run": 46057627707,
+      "commit": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+      "id": 15227835614,
+      "sha256": "7e5fe61009b85b7886872a8addf20aa0a344d866669fa2cf01953011a4c6bb43",
+      "bytes": 5700223,
+      "kind": "office-after-reviewed-print-layout-runtime-inventory-failure",
+      "name": "carr-converters-office-7166d0c8d488cfcd42118fc4dcfd22eba6401f2b"
+    },
+    {
+      "run": 46057627707,
+      "commit": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+      "id": 15227387836,
+      "sha256": "e5301f55c6c46afb00b9376375f6aee998dc257ec57294bad72ca92af8f33280",
+      "bytes": 437460,
+      "kind": "selected-native-six-source-and-installed",
+      "name": "carr-converters-selected-7166d0c8d488cfcd42118fc4dcfd22eba6401f2b"
+    }
+  ],
+  "raw_members": [
+    {
+      "artifact": 15227835614,
+      "name": "converter-gate.json",
+      "bytes": 3546890,
+      "sha256": "8e12ecde2a93fc108e815eb693ca757999ed0627bbea1e4846efea49aa7a983d"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "before-execution.json",
+      "bytes": 2879603,
+      "sha256": "b056244425bc6095643f487b05332a4b5d1262265462b8e9e5d043bf1dcc6da0"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "installed-junit.xml",
+      "bytes": 1333,
+      "sha256": "eae760cebb022b3f0e3673ccba087c35bae93495e835e149bb02090c4b9188cb"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "installed-origins.json",
+      "bytes": 464,
+      "sha256": "f44f8b8ded5e354ef99f0ebcbef8ee8e247081335de7fbb7c0c43bdacc4c8320"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "installed-pytest.txt",
+      "bytes": 2758,
+      "sha256": "f4bc661654e68bfba25f7ae2650e07f913aeed7fc1e0af78f73afa8a0ca505b1"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "publisher-identities.json",
+      "bytes": 874,
+      "sha256": "1cb0054a40bf2e72b256229e6d3565e514ccdb5ba50a62cfd0d23304aedea160"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "source-junit.xml",
+      "bytes": 1332,
+      "sha256": "d919b7ae03bced487e3dfa36e996e80221f4e76af44c4677d10ecc14f876adc1"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "source-provenance.json",
+      "bytes": 456,
+      "sha256": "81ded780bad1931de260f56ef8568f3a547d3134f8267131c60c590393243248"
+    },
+    {
+      "artifact": 15227835614,
+      "name": "source-pytest.txt",
+      "bytes": 2754,
+      "sha256": "c69af4c3ffb87d5fd0b8007a5cc64274c5aa0e4d5de33ae963cb1b90b48bb8b6"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "before-execution.json",
+      "bytes": 69700,
+      "sha256": "a1db2389adc4da4efa7244ffec272af6ee6be17d463c1806d5aa4fa1f6187bde"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "converter-gate.json",
+      "bytes": 82012,
+      "sha256": "f9a72ae6db670104837d54509347e7e7d511db279b38fa33c0ffe9d59ddb9fb3"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "installed-junit.xml",
+      "bytes": 1211,
+      "sha256": "1a5538d763f6bf9434fff588ba4304906608af7bfec1352a42742b8f0afb1536"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "installed-origins.json",
+      "bytes": 468,
+      "sha256": "ec05f992b0d69528805750f1826b0665e598afbd1b0813671bb3eb137494386e"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "installed-pytest.txt",
+      "bytes": 2592,
+      "sha256": "55f10dc627edfdb03b71a27f0a16893d79dcf3985b12aba2d4b552b015349084"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "publisher-identities.json",
+      "bytes": 798,
+      "sha256": "e98f4ffc61551cbba6491ef4a90f5dba72375fa9e5812ace481c026d9ce1733b"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "source-junit.xml",
+      "bytes": 1211,
+      "sha256": "ee4fbb492dbba430ab8b4e1a1292739a027cf0cf50b892bbb6e932b9e2a8a685"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "source-provenance.json",
+      "bytes": 458,
+      "sha256": "d331a772d34f1b323c85605a39335a4fa01fa478b81c55e85e851301ec06ff5c"
+    },
+    {
+      "artifact": 15227387836,
+      "name": "source-pytest.txt",
+      "bytes": 2589,
+      "sha256": "b3207e6d7948fa7edb9027cfff202c5be23b4cb2dd22f89b2ec81082bc91ca1e"
+    }
+  ],
+  "junit": [
+    {
+      "artifact": 15227835614,
+      "file": "installed-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    },
+    {
+      "artifact": 15227835614,
+      "file": "source-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    },
+    {
+      "artifact": 15227387836,
+      "file": "installed-junit.xml",
+      "cases": 6,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_selected_adapters_native::test_cancel_settles_existing_ocr_family_before_removing_its_private_files": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_existing_ocr_bridge_reads_every_selected_image_frame": 2,
+        "tests.conversion.test_selected_adapters_native::test_real_pandoc_output_limit_publishes_no_partial_copy": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_rtf_external_field_cannot_supply_unselected_local_content": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_selected_pandoc_rtf_keeps_original_and_bound_receipt": 1
+      }
+    },
+    {
+      "artifact": 15227387836,
+      "file": "source-junit.xml",
+      "cases": 6,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_selected_adapters_native::test_cancel_settles_existing_ocr_family_before_removing_its_private_files": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_existing_ocr_bridge_reads_every_selected_image_frame": 2,
+        "tests.conversion.test_selected_adapters_native::test_real_pandoc_output_limit_publishes_no_partial_copy": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_rtf_external_field_cannot_supply_unselected_local_content": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_selected_pandoc_rtf_keeps_original_and_bound_receipt": 1
+      }
+    }
+  ],
+  "verification": [
+    {
+      "family": "office",
+      "artifact": 15227835614,
+      "raw_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      },
+      "source_cases": 7,
+      "installed_cases": 7,
+      "final_gate": "FAIL",
+      "error": "Selected runtime bytes changed during native qualification.",
+      "harness_sha256": "7e4e7cd40005ef7d00a4d685ade8b40e66e03fad96254927a6cc05c647ff7f3b",
+      "installed_identity": {
+        "files": {
+          "canonical_sha256": "0cb59729d91c05a96f40a8875046cdedcde0c703185f7baaa8b2ca2f600bfd6b",
+          "entries": 371
+        },
+        "isolated": true,
+        "module_origins": {
+          "bootstrap": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "carr_library": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+        },
+        "prefix": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\installed",
+        "wheel_sha256": "7f613ae85f36bf7cba17a437ab10ea97a88d565c390ffc34cdeb3188b08eda0a"
+      },
+      "wheel_source": {
+        "payload_files": 440,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 371,
+        "source_commit": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+        "source_tree": "a8422c9e0bedb8b0761783f05ff412b9f687c3df",
+        "wheel_sha256": "7f613ae85f36bf7cba17a437ab10ea97a88d565c390ffc34cdeb3188b08eda0a"
+      },
+      "origins": {
+        "source-origins.json": {
+          "isolated": false,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        },
+        "installed-origins.json": {
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        }
+      },
+      "selected_test_sha256": {
+        "tests/conversion/native_diagnostics.py": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2",
+        "tests/conversion/test_office_native.py": "0b102d94b83ff3a3d56fa384ae6dd0ed590f152548c7bf9651bb5bdfb12aeb18"
+      },
+      "publisher": {
+        "artifacts": {
+          "libreoffice": {
+            "bytes": 373121024,
+            "path": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\optional\\LibreOffice_26.2.7_Win_x86-64.msi",
+            "publisher_identity": "PASS",
+            "publisher_metadata_sha256": "9ba0c30e8f28ee29ad0733529c83df3da9d3f73fbe534cc11e8f3a9aa07c77eb",
+            "publisher_url": "https://download.documentfoundation.org/libreoffice/stable/26.2.7/win/x86_64/LibreOffice_26.2.7_Win_x86-64.msi.meta4",
+            "sha256": "480fecf759fc6393bd614fbf43753eb95a8198fc1a065d41b727e3b664cd1e59",
+            "version": "26.2.7"
+          }
+        },
+        "libreoffice_msi": "D:\\a\\_temp\\carr-converters-46057627707-1-office\\optional\\LibreOffice_26.2.7_Win_x86-64.msi",
+        "lock_sha256": "8d0beef0e02dfbcfb5f270b122d42895ed46355ab5c7fb48ef5effee3d292cf2",
+        "native_execution": "NOT_RUN",
+        "schema": 1,
+        "status": "PASS"
+      },
+      "runtime_before": {
+        "libreoffice": {
+          "canonical_sha256": "182e396a0af207b03dfa3cb6eda61109bc341c8dfc3158bcf51ca63df3bcb425",
+          "entries": 19487
+        }
+      }
+    },
+    {
+      "family": "selected",
+      "artifact": 15227387836,
+      "raw_counter": {
+        "tests.conversion.test_selected_adapters_native::test_real_selected_pandoc_rtf_keeps_original_and_bound_receipt": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_rtf_external_field_cannot_supply_unselected_local_content": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_pandoc_output_limit_publishes_no_partial_copy": 1,
+        "tests.conversion.test_selected_adapters_native::test_real_existing_ocr_bridge_reads_every_selected_image_frame": 2,
+        "tests.conversion.test_selected_adapters_native::test_cancel_settles_existing_ocr_family_before_removing_its_private_files": 1
+      },
+      "source_cases": 6,
+      "installed_cases": 6,
+      "final_gate": "PASS",
+      "error": null,
+      "harness_sha256": "7e4e7cd40005ef7d00a4d685ade8b40e66e03fad96254927a6cc05c647ff7f3b",
+      "installed_identity": {
+        "files": {
+          "canonical_sha256": "0cb59729d91c05a96f40a8875046cdedcde0c703185f7baaa8b2ca2f600bfd6b",
+          "entries": 371
+        },
+        "isolated": true,
+        "module_origins": {
+          "bootstrap": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "carr_library": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+        },
+        "prefix": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\installed",
+        "wheel_sha256": "2fd50fbd4ec486a3fb8efceeb914d6c6dc50a0b4a790090dba876bd8048cbff3"
+      },
+      "wheel_source": {
+        "payload_files": 440,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 371,
+        "source_commit": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+        "source_tree": "a8422c9e0bedb8b0761783f05ff412b9f687c3df",
+        "wheel_sha256": "2fd50fbd4ec486a3fb8efceeb914d6c6dc50a0b4a790090dba876bd8048cbff3"
+      },
+      "origins": {
+        "source-origins.json": {
+          "isolated": false,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        },
+        "installed-origins.json": {
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        }
+      },
+      "selected_test_sha256": {
+        "tests/conversion/native_diagnostics.py": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2",
+        "tests/conversion/test_selected_adapters_native.py": "b1f44bd73cd8970a6d17ee5043b614ecb324b0fc01af3e8a454be3dd1ad417de"
+      },
+      "publisher": {
+        "artifacts": {
+          "pandoc": {
+            "bytes": 43614099,
+            "path": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\optional\\pandoc-3.14-windows-x86_64.zip",
+            "publisher_identity": "PASS",
+            "publisher_metadata_sha256": "00ba9a762c8178f7555341bbd5f1ce297369c1a35dc46f5c11c0380a84051ca9",
+            "publisher_url": "https://api.github.com/repos/jgm/pandoc/releases/tags/3.14",
+            "sha256": "0144b96e8c7b023fd382ec5ef5bdc475e873f1019d6fa72502492df2c9a94a3b",
+            "version": "3.14"
+          }
+        },
+        "lock_sha256": "8d0beef0e02dfbcfb5f270b122d42895ed46355ab5c7fb48ef5effee3d292cf2",
+        "native_execution": "NOT_RUN",
+        "pandoc": "D:\\a\\_temp\\carr-converters-46057627707-1-selected\\optional\\pandoc\\pandoc-3.14\\pandoc.exe",
+        "schema": 1,
+        "status": "PASS"
+      },
+      "runtime_before": {
+        "ocr": {
+          "canonical_sha256": "2d266f3625e3f6d3d7bcce644ebb751245542aaca580b24162c6911cc3b69b83",
+          "entries": 206
+        },
+        "pandoc": {
+          "pandoc-3.14/COPYING.rtf": {
+            "bytes": 20757,
+            "sha256": "b2e44b72220d84e7ec7d5c7ed2b76e42b2c239ae1f179a2a2a9a34d1e40f315e"
+          },
+          "pandoc-3.14/COPYRIGHT.txt": {
+            "bytes": 9823,
+            "sha256": "43575d901fd50cc06f49042b82f114667a82c17d63b429e99635ae9430c977c4"
+          },
+          "pandoc-3.14/MANUAL.html": {
+            "bytes": 434654,
+            "sha256": "6b9df18b08173fda03aa3552f85141f1bd725438bcf5ed0af71750427a649f66"
+          },
+          "pandoc-3.14/pandoc.exe": {
+            "bytes": 240978696,
+            "sha256": "81b551129ae36faa420e07223390252547af92e00e2cc570bc57fee61ccbc623"
+          }
+        }
+      }
+    }
+  ],
+  "disposition": {
+    "selected": "PASS: all6 source and6 installed native cases, final wheel/runtime/test identity checks passed.",
+    "office": "FAIL: all7 source and7 installed cases passed, including actual XLS output, but final full selected-runtime byte inventory changed. This is not a complete Office qualification.",
+    "next_diagnostic": "98af749764d0e6f124b6619cac372d621428c733 records bounded runtime file differences before the same refusal; product/pins/test population remain unchanged."
+  },
+  "limits": [
+    "No historical PASS is transferred to a different source tree.",
+    "Office final runtime identity has not passed and is not waived by the successful raw native cases.",
+    "No arbitrary corpus, exact typography/printed pagination, quotation or manual screen-reader qualification."
+  ]
+}
