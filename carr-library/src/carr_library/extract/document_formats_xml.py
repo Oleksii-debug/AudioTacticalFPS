@@ -301,6 +301,26 @@ def _odf_text(element, budget):
 
 def _odf_blocks(element, budget, locator, path=()):
     budget.check()
+    if element.tag == OFFICE + 'forms':
+        # LibreOffice writes this empty container for ordinary binary Word
+        # imports. Populated controls and event listeners remain unsupported.
+        form = '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}'
+        if (len(element) or (element.text or '').strip()
+                or set(element.attrib) - {form + 'automatic-focus', form + 'apply-design-mode'}
+                or any(value not in ('true', 'false') for value in element.attrib.values())):
+            raise ValueError('Active or populated document forms require review.')
+        return
+    if element.tag == DRAW + 'enhanced-geometry':
+        # Geometry equations describe vector shapes; they are not reading
+        # text. Accept only this documented inert subtree, never arbitrary
+        # descendants that could silently hide an unsupported text object.
+        if ((element.text or '').strip()
+                or any(child.tag not in (DRAW + 'equation', DRAW + 'handle')
+                       or len(child) or (child.text or '').strip()
+                       or (child.tail or '').strip() for child in element)):
+            raise ValueError('Unsupported vector shape content requires review.')
+        budget.warnings.add('vector_geometry_not_read')
+        return
     if element.tag in (TEXT + 'p', TEXT + 'h'):
         budget.add(_odf_text(element, budget), {**locator, 'path': list(path)})
         return

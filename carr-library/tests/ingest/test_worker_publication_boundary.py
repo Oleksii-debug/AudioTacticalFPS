@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.audio import engines
 from carr_library.ingest import worker
 
 
@@ -37,7 +38,7 @@ def source_file(tmp_path, kind):
 
 def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
     """Only instrument the trusted child bootstrap around its real DB commit."""
-    popen = worker.subprocess.Popen
+    popen = engines._start_process
     processes = []
 
     def launch(command, *args, **kwargs):
@@ -75,7 +76,7 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
                 return process
         return popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(engines, '_start_process', launch)
     return processes
 
 
@@ -141,7 +142,7 @@ def test_prelaunch_cancellation_never_starts_or_recovers_a_worker(tmp_path, monk
     source = source_file(tmp_path, 'docx')
     def forbidden(*args, **kwargs):
         raise AssertionError('A pre-cancelled import must not launch a process.')
-    monkeypatch.setattr(worker.subprocess, 'Popen', forbidden)
+    monkeypatch.setattr(engines, '_start_process', forbidden)
     result = app.import_file(workspace, source, cancelled=lambda: True)
     assert result['state'] == 'cancelled'
     assert 'recovered_publication' not in result
@@ -228,7 +229,7 @@ def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path,
     work_id, edition_id = uuid4().hex, uuid4().hex
     marker = tmp_path / 'replay-before-commit'
     processes = publication_barrier(monkeypatch, marker, before=True)
-    launch = worker.subprocess.Popen
+    launch = engines._start_process
     published = []
 
     def intervening_import(command, *args, **kwargs):
@@ -240,7 +241,7 @@ def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path,
                 work_id=work_id, edition_id=edition_id))
         return launch(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
+    monkeypatch.setattr(engines, '_start_process', intervening_import)
     result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
                             cancelled=marker.exists, timeout=30)
     assert published[0]['state'] == 'complete'
