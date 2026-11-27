@@ -549,3 +549,127 @@ def test_invalid_page_budget_never_starts_source_review(center, control, value):
     center.frame.run_job.assert_not_called()
     center.library.plan_import_page.assert_not_called()
     center.library.run_import_batch.assert_not_called()
+
+
+
+def _document_format_native_handlers():
+    """Load the real probe lookup and planned callback without importing wx."""
+    import ast
+    from pathlib import Path
+
+    path = Path(__file__).with_name('native_document_formats_smoke.py')
+    source = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    lookup = next(node for node in source.body
+                  if isinstance(node, ast.FunctionDef) and node.name == '_owned_button')
+    native = next(node for node in source.body
+                  if isinstance(node, ast.FunctionDef) and node.name == 'run_native')
+    planned = next(node for node in ast.walk(native)
+                   if isinstance(node, ast.FunctionDef) and node.name == 'planned')
+
+    class Window:
+        def __init__(self, children=()):
+            self.children = list(children)
+
+        def GetChildren(self):
+            return tuple(self.children)
+
+    class Button(Window):
+        def __init__(self, label='&Start queued files', identity=71):
+            super().__init__()
+            self.label, self.identity = label, identity
+            self.handler = Mock()
+
+        def GetLabel(self):
+            return self.label
+
+        def GetId(self):
+            return self.identity
+
+        def GetEventHandler(self):
+            return self.handler
+
+    class CommandEvent:
+        def __init__(self, kind, identity):
+            self.kind, self.identity, self.owner = kind, identity, None
+
+        def SetEventObject(self, owner):
+            self.owner = owner
+
+    checks, scheduled = [], []
+    def check(name, condition):
+        assert condition, name
+        checks.append(name)
+
+    env = {
+        'state': {}, 'check': check,
+        'wx': SimpleNamespace(Button=Button, CommandEvent=CommandEvent,
+                              EVT_BUTTON=SimpleNamespace(typeId=991),
+                              CallLater=lambda *values: scheduled.append(values)),
+        'poll': Mock(), 'imported': Mock(),
+    }
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[lookup, planned], type_ignores=[])),
+                 str(path), 'exec'), env)
+    return SimpleNamespace(env=env, Window=Window, Button=Button,
+                           checks=checks, scheduled=scheduled)
+
+
+@pytest.mark.parametrize('depth', [0, 1, 3])
+def test_document_format_probe_finds_exact_button_in_owned_flat_or_scrolled_tree(depth):
+    probe = _document_format_native_handlers()
+    selected = probe.Button()
+    nested = selected
+    for _ in range(depth):
+        nested = probe.Window((nested,))
+    dialog = probe.Window((probe.Window(), nested))
+    foreign = probe.Window((probe.Button(),))
+    assert probe.env['_owned_button'](dialog, '&Start queued files', probe.Button) is selected
+    assert foreign.GetChildren()[0] is not selected
+    selected.handler.ProcessEvent.assert_not_called()
+    assert probe.scheduled == []
+
+
+@pytest.mark.parametrize('fault', ['missing', 'different-label', 'non-button', 'duplicate'])
+def test_document_format_probe_refuses_missing_wrong_type_or_ambiguous_button(fault):
+    probe = _document_format_native_handlers()
+    foreign = probe.Window((probe.Button(),))
+    children = []
+    if fault == 'different-label':
+        children = [probe.Button('Start queued files')]
+    elif fault == 'non-button':
+        control = probe.Window()
+        control.GetLabel = lambda: '&Start queued files'
+        children = [control]
+    elif fault == 'duplicate':
+        children = [probe.Button(), probe.Window((probe.Button(identity=72),))]
+    dialog = probe.Window((probe.Window(children),))
+    with pytest.raises(AssertionError, match='Expected one owned native button'):
+        probe.env['_owned_button'](dialog, '&Start queued files', probe.Button)
+    foreign.GetChildren()[0].handler.ProcessEvent.assert_not_called()
+    assert probe.scheduled == []
+
+
+def test_document_format_actual_planned_callback_dispatches_the_unique_nested_button():
+    probe = _document_format_native_handlers()
+    selected = probe.Button()
+    dialog = probe.Window((probe.Window((probe.Window((selected,)),)),))
+    dialog.batch = {'counts': {'queued': 2}}
+    dialog.rows = SimpleNamespace(GetCount=lambda: 2)
+    dialog.busy = False
+    probe.env['state']['import'] = dialog
+
+    def dispatch(event):
+        assert event.kind == 991 and event.identity == selected.GetId()
+        assert event.owner is selected
+        dialog.busy = True
+        return True
+
+    selected.handler.ProcessEvent.side_effect = dispatch
+    probe.env['planned']()
+    selected.handler.ProcessEvent.assert_called_once()
+    assert dialog.busy
+    assert probe.checks == [
+        'native queue recognizes HTML and Markdown as two documents',
+        'native Start queued files button event launches work',
+    ]
+    assert probe.scheduled == [(50, probe.env['poll'], probe.env['imported'])]
+    probe.env['imported'].assert_not_called()
