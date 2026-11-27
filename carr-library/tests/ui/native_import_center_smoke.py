@@ -60,7 +60,7 @@ def main():
                 virtual, position = body.GetVirtualSize(), body.GetViewStart()
                 report.update(body=bounds(body, client=True),
                               virtual=[virtual.width, virtual.height],
-                              scroll=[position.x, position.y])
+                              scroll=list(position))
             geometry.append(report)
             print('Import Center geometry: ' + json.dumps(report), flush=True)
 
@@ -136,7 +136,7 @@ def main():
                 if wx.Window.FindFocus() is state['lower_action']:
                     state['phase'] = 'lower action reached by native Tab after resize'
                     measure(state['phase'])
-                    assert state['tabs'] > 0 and dialog.body.GetViewStart().y > 0
+                    assert state['tabs'] > 0 and dialog.body.GetViewStart()[1] > 0
                     assert_visible(state['lower_action'], dialog.body)
                     assert_footer()
                     state['keyboard_scrolling'] = True
