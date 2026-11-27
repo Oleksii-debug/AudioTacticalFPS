@@ -4,6 +4,7 @@ Requires the separate lxml validation tool. Does not download/install anything,
 resolve arbitrary entities or certify full DAISY rules/reader interoperability.
 """
 import argparse
+import importlib.util
 import os
 from hashlib import sha256
 import json
@@ -79,7 +80,11 @@ def parser_for_html(resolver, etree):
 def acceptance(schemas, *, require_installed=False):
     """Actual current producer fixtures; the reused DTD checker stays offline."""
     from carr_library.native_runtime import activate_bundled_runtime
-    from publication_acceptance_support import produce, runtime
+    specification = importlib.util.spec_from_file_location('current_daisy_acceptance_support',
+        Path(__file__).with_name('publication_acceptance_support.py'))
+    fixture = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(fixture)
+    produce, runtime = fixture.produce, fixture.runtime
     native_handle = activate_bundled_runtime()
     try:
         ffmpeg, runtime_evidence, unchanged = runtime(require_installed=require_installed)

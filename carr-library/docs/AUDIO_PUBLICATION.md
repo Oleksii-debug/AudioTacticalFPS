@@ -139,7 +139,24 @@ invalid package. The DAISY check validates all four XML documents against
 the pinned DTDs and must reject invalid XHTML. These validators do not prove
 full DAISY rules, reader interoperability, spoken quality, WCAG or NVDA.
 
-Current adapted external-validator and installed native-menu execution results
-remain NOT_RUN until their exact source checkpoint completes its gates.
-Historical PR152 reports are component-reuse evidence, not results for this
-adapter.
+At b5a5d47c9052e82e4a6ffd3fbdfd8f5f1743a5dd, Actions 45953559624,
+job 140354734331 passed all six source suites: 109 tests, zero failed or skipped.
+The actual installed application then produced all four EPUB cases. Pinned
+EPUBCheck 5.3.0 reported zero fatal errors, errors and warnings for each, and
+rejected the invalid MIME control with one error. The four installed DAISY
+cases passed all 16 pinned-DTD document checks and rejected all four invalid
+XHTML controls. OpenJDK 17.0.21.1 and the selected real FFmpeg/ffprobe 6.1.1 ran
+on Linux. Exact JSON reports are retained in docs/evidence.
+
+The installed Windows native-menu probe is separate:
+
+    .venv/Scripts/python.exe -I -B scripts/windows_publication_smoke.py --bundle BUNDLE --output NEW_NATIVE_REPORT.json
+
+It requires the selected installed package and exact source bytes, preserves
+the sealed manifest, drives the actual Audio menu and verifies both real
+exports, both receipt-verification actions, the native Cancel button, source
+immutability and completed/cancelled progress. Only chooser answers and public
+synthetic PCM are controlled. Its Windows result remains NOT_RUN until the
+exact installed gate executes. Physical keyboard, pickers, microphone, speaker,
+third-party reading systems, speech quality and NVDA remain manual NOT_RUN
+items. Historical PR152 reports remain separate component-reuse evidence.

@@ -51,6 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m compileall -q src/carr_library/audio src/carr_library/ui/audio_publication.py tests/audio/test_publication.py tests/ui/test_audio_publication.py
+          python -m py_compile scripts/publication_acceptance_support.py scripts/prepare_publication_tools.py scripts/epubcheck_acceptance.py scripts/daisy_schema_acceptance.py scripts/windows_publication_smoke.py
           python scripts/ci_check.py --jobs 2 \
             tests/audio/test_publication.py \
             tests/ui/test_audio_publication.py \
@@ -61,13 +62,13 @@ jobs:
       - name: Acquire exact reviewed external validators
         run: |
           set -euo pipefail
-          python scripts/prepare_publication_tools.py --output "$RUNNER_TEMP/carr-publication-tools" --download
+          python -I -B scripts/prepare_publication_tools.py --output "$RUNNER_TEMP/carr-publication-tools" --download
           java -version
       - name: Validate actual installed EPUB publications and negative control
         timeout-minutes: 8
         run: |
           set -euo pipefail
-          python scripts/epubcheck_acceptance.py \
+          python -I -B scripts/epubcheck_acceptance.py \
             --archive "$RUNNER_TEMP/carr-publication-tools/epubcheck-5.3.0.zip" \
             --java "$(command -v java)" \
             --report "$RUNNER_TEMP/current-studio-epubcheck.json" --require-installed
@@ -75,6 +76,6 @@ jobs:
         timeout-minutes: 5
         run: |
           set -euo pipefail
-          python scripts/daisy_schema_acceptance.py \
+          python -I -B scripts/daisy_schema_acceptance.py \
             --schemas "$RUNNER_TEMP/carr-publication-tools/daisy-schemas" \
             --report "$RUNNER_TEMP/current-studio-daisy.json" --require-installed

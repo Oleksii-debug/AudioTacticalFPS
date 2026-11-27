@@ -1,0 +1,237 @@
+{
+  "source_commit": "b5a5d47c9052e82e4a6ffd3fbdfd8f5f1743a5dd",
+  "workflow_run": 45953559624,
+  "workflow_job": 140354734331,
+  "source_tests": {
+    "passed": 109,
+    "failed": 0,
+    "skipped": 0
+  },
+  "actual_report": {
+    "schema": 1,
+    "status": "PASS",
+    "installed_required": true,
+    "module_sha256": {
+      "carr_library.audio.daisy": "70c5e2173bc79c9c780527e601efaab44cbc92f7688f37e46da41848d59f26a0",
+      "carr_library.audio.publishing": "c586c2fbce3befbf80c8fbcbad3804a6beac86aba27238f880f9306f6bbecec7",
+      "carr_library.audio.publication_io": "d569934729ea9951d5d65fd83b61fa759812556bb43df4c8d182a060b72a7958",
+      "carr_library.audio.publication_source": "f2473a5bf2302ea964420055293cb21f6913b5047c96b28711a94f51d59258a3",
+      "carr_library.audio.production": "75eb23642b05e757915b2fffed9c6167b0d668906bb1b2e3fa5a0c4effd89266"
+    },
+    "audio_binaries": {
+      "ffmpeg": {
+        "path": "/usr/bin/ffmpeg",
+        "sha256": "ed16af623947494a72e284b6eb8ff225f2da22b38b5d5069c2fd4b4ba3384e41"
+      },
+      "ffprobe": {
+        "path": "/usr/bin/ffprobe",
+        "sha256": "272f6ebc634a63d9c8b4ca68e964119d980f25154e5aa2c35e5487da48e9a58f"
+      }
+    },
+    "sealed_manifest_sha256": null,
+    "publications": [
+      {
+        "schema": 1,
+        "status": "PASS",
+        "publication_sha256": "79e3c303fe4ccf4ca7b2b3718671d14f145ce5eae7ac01ed1951b09b9457a058",
+        "publisher_module_sha256": "c586c2fbce3befbf80c8fbcbad3804a6beac86aba27238f880f9306f6bbecec7",
+        "daisy_module_sha256": "70c5e2173bc79c9c780527e601efaab44cbc92f7688f37e46da41848d59f26a0",
+        "lxml_version": [
+          6,
+          1,
+          3,
+          0
+        ],
+        "libxml_version": [
+          2,
+          14,
+          6
+        ],
+        "schema_sha256": {
+          "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+          "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+          "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+          "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+          "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+        },
+        "documents": [
+          {
+            "file": "ncc.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "content.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "source.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "book.smil",
+            "dtd_valid": true
+          }
+        ],
+        "invalid_xhtml_rejected": true,
+        "original_script_sha256": "54ba410bd47b54a73253adb1ee90e8f3291600bff29352ee381491a30ebd9fef",
+        "full_daisy_rule_conformance": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "case": "narrated-from-wav"
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "publication_sha256": "c5167735b874577c8a647d9273d4696ad01a832117e1ce1e32a57d6fc2fc87f6",
+        "publisher_module_sha256": "c586c2fbce3befbf80c8fbcbad3804a6beac86aba27238f880f9306f6bbecec7",
+        "daisy_module_sha256": "70c5e2173bc79c9c780527e601efaab44cbc92f7688f37e46da41848d59f26a0",
+        "lxml_version": [
+          6,
+          1,
+          3,
+          0
+        ],
+        "libxml_version": [
+          2,
+          14,
+          6
+        ],
+        "schema_sha256": {
+          "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+          "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+          "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+          "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+          "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+        },
+        "documents": [
+          {
+            "file": "ncc.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "content.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "source.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "book.smil",
+            "dtd_valid": true
+          }
+        ],
+        "invalid_xhtml_rejected": true,
+        "original_script_sha256": "54ba410bd47b54a73253adb1ee90e8f3291600bff29352ee381491a30ebd9fef",
+        "full_daisy_rule_conformance": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "case": "reused-job-mp3"
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "publication_sha256": "ce926e72c90a8d36933936d9a3ece5cf607f627cbd0b59c80db97d91b5f6d240",
+        "publisher_module_sha256": "c586c2fbce3befbf80c8fbcbad3804a6beac86aba27238f880f9306f6bbecec7",
+        "daisy_module_sha256": "70c5e2173bc79c9c780527e601efaab44cbc92f7688f37e46da41848d59f26a0",
+        "lxml_version": [
+          6,
+          1,
+          3,
+          0
+        ],
+        "libxml_version": [
+          2,
+          14,
+          6
+        ],
+        "schema_sha256": {
+          "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+          "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+          "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+          "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+          "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+        },
+        "documents": [
+          {
+            "file": "ncc.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "content.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "source.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "book.smil",
+            "dtd_valid": true
+          }
+        ],
+        "invalid_xhtml_rejected": true,
+        "original_script_sha256": "7158af5cd2878e5ffe0ccb80962e698e53c22703f4725803fbd7c7ed0aa35762",
+        "full_daisy_rule_conformance": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "case": "literal-source-pages"
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "publication_sha256": "950df3d894bcbde2c7451e620c376bfb52d4d255778382c666098b53d9764666",
+        "publisher_module_sha256": "c586c2fbce3befbf80c8fbcbad3804a6beac86aba27238f880f9306f6bbecec7",
+        "daisy_module_sha256": "70c5e2173bc79c9c780527e601efaab44cbc92f7688f37e46da41848d59f26a0",
+        "lxml_version": [
+          6,
+          1,
+          3,
+          0
+        ],
+        "libxml_version": [
+          2,
+          14,
+          6
+        ],
+        "schema_sha256": {
+          "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+          "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+          "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+          "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+          "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+        },
+        "documents": [
+          {
+            "file": "ncc.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "content.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "source.html",
+            "dtd_valid": true
+          },
+          {
+            "file": "book.smil",
+            "dtd_valid": true
+          }
+        ],
+        "invalid_xhtml_rejected": true,
+        "original_script_sha256": "97c5fd0cc4cd48cc424f400b9e38026d68ebb6fa0aec74943642b54444daa155",
+        "full_daisy_rule_conformance": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "case": "audio-only"
+      }
+    ],
+    "audio_fixture": "Public synthetic PCM through actual current Audio Studio and FFmpeg",
+    "full_daisy_rule_conformance": "NOT_RUN",
+    "reader_interoperability": "NOT_RUN",
+    "speech_quality": "NOT_RUN",
+    "native_menu": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  }
+}

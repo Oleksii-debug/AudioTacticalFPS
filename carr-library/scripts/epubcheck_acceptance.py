@@ -5,13 +5,18 @@ Java installation occur here. All fixture audio is public synthetic PCM.
 """
 import argparse
 import json
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-from publication_acceptance_support import digest, produce, runtime
+_spec = importlib.util.spec_from_file_location('current_publication_acceptance_support',
+    Path(__file__).with_name('publication_acceptance_support.py'))
+_support = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_support)
+digest, produce, runtime = _support.digest, _support.produce, _support.runtime
 
 
 def validate(java, jar, publication, report, *, expected_valid=True):
