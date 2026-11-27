@@ -86,6 +86,9 @@ def synthetic(setup, tmp_path, monkeypatch):
                   for name, raw in sources.items()})
     lock = {'schema': 1, 'package_id': audio_runtime.PACKAGE_ID, 'target': 'Windows x64',
             'version': 'synthetic-only', 'executables': audio_runtime.TOOLS,
+            'use_scope': 'private-owner-local-installation',
+            'review': {'public_distribution_clearance': False,
+                       'third_party_complete_source_bundle': False},
             'archive': dict(records[0], root='fixture'), 'source_packages': records[1:],
             'archive_files': {name: {'size': len(raw), 'sha256': _digest(raw)}
                               for name, raw in payload.items()}, 'extra_files': extra}
@@ -127,7 +130,10 @@ def test_default_real_pinned_plan_has_no_network_or_writes(setup, tmp_path, monk
     assert setup.main([]) == 0
     assert sys.path == path_before
     assert not base.exists()
-    assert 'Лише план' in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert 'Лише план' in out
+    assert 'Право на публічне розповсюдження пакета не підтверджено' in out
+    assert 'комплект вихідних кодів сторонніх залежностей неповний' in out
 
 
 @pytest.mark.parametrize('mode', ['download', 'interactive'])
@@ -142,6 +148,9 @@ def test_real_helpers_prepare_and_verify_external_runtime_without_mutating_insta
     assert setup.main(args) == 0
     report = audio_runtime.verify_audio_runtime(synthetic.output / 'runtime')
     assert report['native_execution'] == 'NOT_RUN'
+    assert report['use_scope'] == 'private-owner-local-installation'
+    assert report['public_distribution_clearance'] is False
+    assert report['third_party_complete_source_bundle'] is False
     assert [url for url, _ in synthetic.calls] == [r['url'] for r in synthetic.records]
     assert all(timeout == 45 for _, timeout in synthetic.calls)
     assert (synthetic.output / 'runtime' / 'README.txt').read_bytes() == synthetic.notice
@@ -154,6 +163,9 @@ def test_real_helpers_prepare_and_verify_external_runtime_without_mutating_insta
         assert report['tools'][name] in out
     assert 'Choose FFmpeg executable' in out
     assert 'Choose FFprobe executable' in out
+    # Rights limitations are explicit both before consent and after preparation.
+    assert out.count('Право на публічне розповсюдження пакета не підтверджено') == 2
+    assert out.count('комплект вихідних кодів сторонніх залежностей неповний') == 2
 
 
 @pytest.mark.parametrize('answer', [None, '', 'NO', 'yes'])

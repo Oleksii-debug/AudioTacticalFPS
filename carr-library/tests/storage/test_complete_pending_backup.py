@@ -1,5 +1,9 @@
 """Enclosing manifest and publication integration for resumable import backups."""
 from uuid import uuid4
+from pathlib import Path
+import os
+
+import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.catalog.intake import snapshot
@@ -61,3 +65,32 @@ def test_complete_backup_preserves_prepared_request_before_first_worker_launch(t
     assert completed['state'] == 'complete'
     assert completed['edition'] == metadata['edition_id']
     assert restored.search(workspace, 'relocation')[0].quote == 'relocation'
+
+
+@pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
+def test_complete_backup_never_omits_pending_root(tmp_path, monkeypatch, failure):
+    app = LibraryApp(tmp_path / 'source')
+    app.create_workspace('Pending root')
+    root = app.root / 'import-batches'
+    root.mkdir(exist_ok=True)
+    destination = tmp_path / 'backup'
+    original = Path.lstat
+    probes = 0
+
+    def probe(path, *args, **kwargs):
+        nonlocal probes
+        if path == root:
+            probes += 1
+            if failure is PermissionError or probes >= 2:
+                raise failure('pending root lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == root else lexists(path))
+    monkeypatch.setattr(Path, 'lstat', probe)
+    expected = PermissionError if failure is PermissionError else ValueError
+    with pytest.raises(expected, match='pending root lookup failed|Pending import roots changed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert probes >= (1 if failure is PermissionError else 2)
