@@ -1,4 +1,4 @@
-"""Installed wx/FFmpeg EPUB publishing acceptance; synthetic tones, no reader/NVDA claim."""
+"""Installed wx/FFmpeg EPUB, DAISY and chaptered M4B acceptance; synthetic PCM only."""
 import argparse
 from pathlib import Path
 from hashlib import file_digest
@@ -33,6 +33,8 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library.studio.render import ProductionService
     from carr_library.studio.publishing import inspect_epub
+    from carr_library.studio.daisy import inspect_daisy
+    from carr_library.audio.audiobook import inspect_chapters, line_lrc
     from carr_library.ui import publishing_dialog as ui
     from carr_library.ui.desktop_app import DesktopFrame
     errors, checks, audio_proof = [], [], {}
@@ -98,6 +100,17 @@ def main():
         try:
             check('publication UI comes from installed package',
                   'site-packages' in {part.casefold() for part in Path(ui.__file__).resolve().parts})
+            from carr_library.audio import audiobook, dsp
+            from carr_library.studio import daisy, publishing, render
+            source_root = Path(__file__).resolve().parents[1] / 'src' / 'carr_library'
+            for module, relative in ((ui, 'ui/publishing_dialog.py'), (audiobook, 'audio/audiobook.py'),
+                                     (dsp, 'audio/dsp.py'), (daisy, 'studio/daisy.py'),
+                                     (publishing, 'studio/publishing.py'), (render, 'studio/render.py')):
+                actual = Path(module.__file__).resolve(strict=True)
+                check('installed module origin: ' + relative,
+                      'site-packages' in {part.casefold() for part in actual.parts})
+                check('exact installed source bytes: ' + relative,
+                      actual.read_bytes() == (source_root / relative).read_bytes())
             check('real native Windows widgets', wx.Platform == '__WXMSW__')
             library = LibraryApp(root/'library')
             from carr_library.runtime_settings import load_settings, save_settings
@@ -109,9 +122,24 @@ def main():
             verify_audio(service._runtime())
             script = '[Scene: Original]\nNarrator: Preserve <source> & exact text.\n[Pause: 0.2]\nReader: The second line.'
             project = service.create(script, title='Native EPUB fixture', voice_ids=('synthetic-tone',))
-            source_id = service.submit(project, root, stems=False)
+            source_id = service.submit(project, root, format='m4b', stems=False)
             completed = service.run(source_id)
             check('actual FFmpeg produced a completed Studio fixture', completed['status'] == 'complete')
+            from carr_library.audio import AudioRuntime
+            destination = Path(completed['destination'])
+            encoded_runtime = AudioRuntime(destination,
+                ffmpeg=selected_audio / 'bin' / 'ffmpeg.exe', ffprobe=selected_audio / 'bin' / 'ffprobe.exe')
+            chapters = inspect_chapters(encoded_runtime, destination / 'audiobook.m4b')
+            measured = completed['result']['chapters']
+            check('M4B carries actual measured chapter names and bounds',
+                  len(chapters['chapters']) == len(measured)
+                  and all(actual['tags']['title'] == expected['title']
+                          and abs(float(actual['start_time']) - expected['start']) <= .001
+                          and abs(float(actual['end_time']) - expected['end']) <= .001
+                          for actual, expected in zip(chapters['chapters'], measured)))
+            check('LRC retains measured line starts without inferred word timestamps',
+                  (destination / 'script.lrc').read_text(encoding='utf-8') == line_lrc(completed['result']['lines'])
+                  and project.original_script == script)
             frame = DesktopFrame(library); frame.Show(); gui.SetTopWindow(frame)
             dialog = ui.create_publishing_dialog(frame); dialog.Show()
             def scenario():
@@ -139,6 +167,29 @@ def main():
                     original = target.read_bytes(); press(dialog.buttons['export']); until(lambda: not dialog.busy)
                     check('native duplicate export cannot overwrite completed bytes',target.read_bytes()==original
                           and 'not be overwritten' in dialog.status.GetValue())
+                    daisy_target = root/'talking-book.zip'
+                    check('publication format and publisher are native named controls',
+                          isinstance(dialog.format_choice, wx.Choice) and isinstance(dialog.publisher, wx.TextCtrl)
+                          and dialog.format_choice.GetName() == 'Publication format'
+                          and 'Publisher' in dialog.publisher.GetName())
+                    dialog.format_choice.SetSelection(1)
+                    dialog.output.ChangeValue(str(daisy_target))
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('DAISY requires explicitly supplied publisher metadata',
+                          not daisy_target.exists() and 'publisher metadata' in dialog.status.GetValue())
+                    dialog.publisher.ChangeValue('Synthetic native acceptance publisher')
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('native DAISY export commits the second durable receipt',
+                          daisy_target.exists() and len(dialog.receipts) == 2
+                          and dialog.receipts[-1]['format'] == 'daisy-2.02')
+                    daisy_provenance = inspect_daisy(daisy_target)
+                    check('DAISY preserves exact script, measured audio and explicit publisher',
+                          daisy_provenance['original_script'] == script and daisy_provenance['audio']['codec'] == 'mp3'
+                          and daisy_provenance['publisher'] == 'Synthetic native acceptance publisher')
+                    dialog.format_choice.SetSelection(0)
+                    press(dialog.buttons['verify']); until(lambda: not dialog.busy)
+                    check('native DAISY verification follows the selected receipt',
+                          'Verified exact saved DAISY bytes' in dialog.status.GetValue())
                     press(dialog.buttons['close'])
                     check('native keyboard close completes', not dialog.alive)
                 except Exception:
@@ -166,7 +217,9 @@ def main():
         if errors: raise RuntimeError('\n'.join(errors))
     print(json.dumps({'result':'PASS','checks':checks,'audio':'Synthetic PCM tones through actual FFmpeg',
         'audio_runtime':audio_proof,'native_keyboard':'PASS','epubcheck':'NOT_RUN',
-        'reader_interoperability':'NOT_RUN','manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
+        'daisy_2_02_interchange':'PASS','measured_m4b_chapters':'PASS','line_lrc':'PASS',
+        'independent_daisy_validation':'NOT_RUN','reader_interoperability':'NOT_RUN',
+        'speech_quality':'NOT_RUN','manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
     return 0
 
 

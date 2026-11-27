@@ -49,7 +49,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
-          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -90,6 +90,9 @@ jobs:
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.acquisition.providers, carr_library.academic_integration.doi
           import carr_library.speech.session
+          import carr_library.speech.navigation, carr_library.ui.pronunciation_dialog, carr_library.ui.reading_shortcuts
+          import carr_library.audio_runtime, carr_library.research.export_file
+          import carr_library.incremental_backup, carr_library.incremental_backup_cli, carr_library.sync.vault, carr_library.file_publication, carr_library.ui.incremental_backup_dialog
           import carr_library.extract.ocr_runtime
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import carr_library.assistant.translation, carr_library.assistant.providers
@@ -106,6 +109,9 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.acquisition.providers', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
+                   'carr_library.speech.navigation', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts',
+                   'carr_library.audio_runtime', 'carr_library.research.export_file',
+                   'carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog',
                    'carr_library.extract.ocr_runtime',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
                    'carr_library.assistant.translation', 'carr_library.assistant.providers',
@@ -158,7 +164,18 @@ jobs:
                     'tests/assistant/test_translation_advanced_source.py',
                     'tests/assistant/test_translation_advanced_union.py',
                     'tests/assistant/test_local_planning.py',
-                    'tests/assistant/test_planning_handlers.py']
+                    'tests/assistant/test_planning_handlers.py',
+                    'tests/speech/test_reader_usability.py',
+                    'tests/speech/test_navigation.py',
+                    'tests/packaging/test_audio_runtime.py',
+                    'tests/packaging/test_audio_bundle.py',
+                    'tests/reader/test_export_reconciliation.py',
+                    'tests/ui/test_keyboard_manager.py',
+                    'tests/ui/test_progress_voice_actions.py',
+                    'tests/storage/test_incremental_backup.py',
+                    'tests/storage/test_incremental_backup_cli.py',
+                    'tests/sync/test_vault.py',
+                    'tests/ui/test_incremental_backup_dialog.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -177,11 +194,22 @@ jobs:
           clip_backup_exact = len(clip_backup_cases) == len(set(clip_backup_cases)) == 17
           recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 19}
           recovery_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recovery_expected}
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and state_inventory_exact and clip_backup_exact and recovery_counts == recovery_expected
+          reader_expected = {'test_reader_usability': 31, 'test_navigation': 27, 'test_progress_voice_actions': 22}
+          reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in reader_expected}
+          reader_required = {"test_one_thousand_matching_pronunciation_rules_commit_one_undo_step", "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic", "test_regex_backreference_expansion_is_bounded_inside_the_real_child", "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged", "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets", "test_completed_synthesis_rechecks_current_source_before_late_playback", "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply"}
+          reader_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
+          reader_complete = reader_counts == reader_expected and reader_required <= reader_seen
+          integrity_modules = ('test_audio_runtime', 'test_audio_bundle', 'test_export_reconciliation')
+          integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in integrity_modules}
+          incremental_expected = ('test_incremental_backup', 'test_incremental_backup_cli', 'test_vault', 'test_incremental_backup_dialog')
+          incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in incremental_expected}
+          ok = all(incremental_counts.values()) and status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and state_inventory_exact and clip_backup_exact and recovery_counts == recovery_expected and reader_complete and all(integrity_counts.values())
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), portable_complete=portable_complete, portable_cases=len(portable),
-                        recovery_counts=recovery_counts,
+                        recovery_counts=recovery_counts, reader_complete=reader_complete,
+                        reader_counts=reader_counts, reader_required=sorted(reader_required),
+                        audio_export_integrity_counts=integrity_counts, incremental_counts=incremental_counts,
                         ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, state_inventory_exact=state_inventory_exact,
                         clip_backup_exact=clip_backup_exact, clip_backup_cases=clip_backup_cases,
@@ -286,13 +314,23 @@ jobs:
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
-      - name: Require publication, recording and portable clip source contracts
+      - name: Require publication, recording, portable clip and reader source contracts
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
+          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $speechVerdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
           if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
+          $readerExpected = @{
+            'tests/speech/test_reader_usability.py' = 31
+            'tests/speech/test_navigation.py' = 27
+            'tests/ui/test_progress_voice_actions.py' = 22
+          }
+          foreach ($entry in $readerExpected.GetEnumerator()) {
+            $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+            $verdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern $pattern)
+            if ($verdict.Count -ne 1) { throw ("Required reader coverage differs: " + $entry.Key) }
+          }
       - name: Verify installed publication, recording, clips and EPUB3.3 without egress
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.publication-audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
         timeout-minutes: 10

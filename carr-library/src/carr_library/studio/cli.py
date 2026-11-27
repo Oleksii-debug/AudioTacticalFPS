@@ -45,6 +45,10 @@ def _clip_settings(args):
     return settings
 
 
+from ..installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
@@ -79,19 +83,24 @@ def main(argv=None):
             operation.add_argument('target_scene_id')
         if name == 'clip-duration':
             operation.add_argument('seconds', type=float)
-    operations.add_parser('publications', help='List saved EPUB publication receipts; explicit verification checks bytes')
-    publish = operations.add_parser('publish-epub', help='Publish a completed Studio job with measured line synchronization')
-    publish.add_argument('job_id')
-    publish.add_argument('--output', type=Path, required=True)
-    publish.add_argument('--language', default='und')
-    publish.add_argument('--creator', default='')
-    publish.add_argument('--max-bytes', type=int, default=32 * 1024**3)
-    publish.add_argument('--timeout', type=float, default=3600)
-    verify_publication = operations.add_parser('verify-publication', help='Verify an existing EPUB against its exact receipt')
-    verify_publication.add_argument('publication_id')
-    verify_publication.add_argument('--file', type=Path, help='Explicit existing EPUB after relocation')
-    verify_publication.add_argument('--max-bytes', type=int, default=32 * 1024**3)
-    verify_publication.add_argument('--timeout', type=float, default=3600)
+    operations.add_parser('publications', help='List saved publication receipts; use verify-publication to check actual bytes')
+    for operation, extension, description in (
+            ('publish-epub', '.epub', 'Local EPUB3 with measured line overlays'),
+            ('publish-daisy', '.zip', 'DAISY 2.02 file-set ZIP with measured line synchronization')):
+        publish = operations.add_parser(operation, help=description + ' from a completed Studio job')
+        publish.add_argument('job_id')
+        publish.add_argument('--output', type=Path, required=True, help=f'New {extension} file in an existing directory; never overwritten')
+        publish.add_argument('--language', default='und', help='Publication language, such as uk, en or und')
+        publish.add_argument('--creator', default='')
+        publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+        publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+        if operation == 'publish-daisy':
+            publish.add_argument('--publisher', required=True, help='Publisher metadata explicitly supplied for this publication')
+    verify = operations.add_parser('verify-publication', help='Verify a saved receipt or recover completed publication after interruption')
+    verify.add_argument('publication_id')
+    verify.add_argument('--file', type=Path, help='Explicit existing publication after relocation; must match the exact saved receipt')
+    verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify.add_argument('--timeout', type=float, default=3600)
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
@@ -155,7 +164,7 @@ def main(argv=None):
                               'path': str(output), 'playback': 'not-started'}
                 if args.operation != 'clip-preview':
                     result = project.to_dict()
-        elif args.operation in ('publications', 'publish-epub', 'verify-publication'):
+        elif args.operation in ('publications', 'publish-epub', 'publish-daisy', 'verify-publication'):
             from ..audio.models import AudioBudget
             from .publishing import PublicationService
             if args.operation == 'publications':
@@ -166,6 +175,10 @@ def main(argv=None):
                 if args.operation == 'publish-epub':
                     result = publisher.export_epub(args.job_id, args.output, language=args.language,
                         creator=args.creator, progress=lambda text: print(text, file=sys.stderr, flush=True))
+                elif args.operation == 'publish-daisy':
+                    result = publisher.export_daisy(args.job_id, args.output, language=args.language,
+                        creator=args.creator, publisher=args.publisher,
+                        progress=lambda text: print(text, file=sys.stderr, flush=True))
                 else:
                     result = publisher.verify(args.publication_id, output=args.file)
         elif args.operation == 'capabilities':
@@ -202,6 +215,7 @@ def main(argv=None):
         return 1
 
 
+@installed_entrypoint
 def assistant_main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
     parser.add_argument('--data-dir', type=Path)

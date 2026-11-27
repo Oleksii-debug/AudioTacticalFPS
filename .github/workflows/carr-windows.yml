@@ -7,12 +7,14 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
       - .github/workflows/carr-flite.yml
+      - .github/workflows/carr-sync.yml
   push:
     branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
       - .github/workflows/carr-flite.yml
+      - .github/workflows/carr-sync.yml
   workflow_dispatch:
 
 permissions:
@@ -27,6 +29,11 @@ jobs:
   flite-runtime:
     name: Required Linux Flite speech
     uses: ./.github/workflows/carr-flite.yml
+
+  # The same-head Windows and Linux transfer gates are required for this workflow.
+  portable-sync:
+    name: Required portable encrypted backup
+    uses: ./.github/workflows/carr-sync.yml
 
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
@@ -71,7 +78,7 @@ jobs:
           New-Item -ItemType Directory -Force 'ci-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -312,7 +319,66 @@ jobs:
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         timeout-minutes: 3
         run: |
-          & $env:CARR_PYTHON -I tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
+          & $env:CARR_PYTHON -I -B tests/ui/native_reading_desk_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $checkReader = @'
+          import json, pathlib
+          text = pathlib.Path('ci-results/native-reading-desk.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for line in text.splitlines():
+              try:
+                  value = json.loads(line)
+              except (ValueError, TypeError):
+                  continue
+              if isinstance(value, dict) and 'voice_reader' in value:
+                  reports.append(value)
+          assert len(reports) == 1, 'The actual native reader report is missing or ambiguous.'
+          report = reports[0]
+          assert report['status'] == 'PASS' and report['platform'] == 'Windows'
+          assert report['source_override'] is None and report['nvda'] == 'NOT_RUN'
+          expected = {"controls":"native wx","keyboard":"native UIActionSimulator F6/F8","clipboard":"one explicit native read","voice_provider":"synthetic PCM fixture","playback":"synthetic sink; no device opened","file_pickers":"controlled answers; NOT_RUN","unsaved_close_confirmation":"controlled answer; NOT_RUN","sapi":"NOT_RUN in this synthetic control probe","acoustics":"NOT_RUN","nvda":"NOT_RUN"}
+          assert report['voice_reader'] == expected, report['voice_reader']
+          phases = ["logical-line action uses exact native caret text","paragraph action uses the blank-line boundary","explicit clipboard speech does not replace or bind the reading copy","native dictionary export uses the existing validated format","dictionary completion has a readable focused native status","dictionary application is one undoable source-bound edit","native Stop cancels the actual worker without starting late playback","all native reader usability phases completed","closing the native reader releases its owned synthetic voice","all voice-reader actions preserve the retained source bytes"]
+          assert all('PASS: ' + phase in text.splitlines() for phase in phases), phases
+          origins = report['origins']
+          required = {'carr_library.speech.reading', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts'}
+          assert required <= origins.keys() and all(not pathlib.Path(origins[name]).is_relative_to(pathlib.Path.cwd().resolve()) for name in required), origins
+          evidence = dict(status='PASS', voice_reader=report['voice_reader'], required_phases=phases, origins=origins, nvda='NOT_RUN')
+          pathlib.Path('ci-results/native-reader-usability.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+          print(json.dumps(evidence), flush=True)
+          '@
+          $checkReader | & $env:CARR_PYTHON -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native incremental backup over the shared Vault
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_incremental_backup_smoke.py 2>&1 | Tee-Object 'ci-results/native-incremental-backup.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $checkIncremental = @'
+          import json, pathlib, re
+          text = pathlib.Path('ci-results/native-incremental-backup.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for start in re.finditer(r'(?m)^\{', text):
+              try:
+                  value, _ = json.JSONDecoder().raw_decode(text[start.start():])
+              except ValueError:
+                  continue
+              if isinstance(value, dict) and 'folder_picker' in value:
+                  reports.append(value)
+          assert len(reports) == 1, 'The installed native incremental report is missing or ambiguous.'
+          report = reports[0]
+          expected = ["shared command registry and real native menu dispatch","actual action and checksum/name dialogs; readable result focus","two canonical snapshots with reused chunks and explicit parent token","native complete verification, ordinary full export and new-root restore","actual original quotations survive restored data","native action/hash cancellation has no new publication","restoration leaves the existing library active"]
+          assert report['status'] == 'PASS' and report['checks'] == expected, report
+          assert all(report[name] == 'NOT_RUN' for name in ('manual_nvda', 'physical_media', 'power_loss'))
+          assert report['folder_picker'] == 'fixture selection; system picker not automated'
+          modules = ["carr_library.incremental_backup","carr_library.incremental_backup_cli","carr_library.sync.vault","carr_library.file_publication","carr_library.ui.incremental_backup_dialog"]
+          assert set(report['origins']) == set(modules) and all(re.fullmatch('[0-9a-f]{64}', value) for value in report['origins'].values()), report['origins']
+          pathlib.Path('ci-results/native-incremental-backup.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $checkIncremental | & $env:CARR_PYTHON -I -B -
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native catalog reports and source comparison export
@@ -599,10 +665,13 @@ jobs:
           publication_modules = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog', 'carr_library.ui.studio_dialog')
           recording_modules = ('carr_library.audio.models', 'carr_library.audio.process', 'carr_library.audio.windows_job', 'carr_library.audio.cleanup', 'carr_library.audio.recording', 'carr_library.speech.runtime', 'carr_library.ui.recording_dialog', 'carr_library.ui.desktop_app')
           clip_modules = ('carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup', 'carr_library.backup_transcription', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.durable_state')
-          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules):
+          reader_modules = ('carr_library.speech.reading', 'carr_library.speech.navigation', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts')
+          integrity_modules = ('carr_library.audio_runtime', 'carr_library.research.export_file')
+          incremental_modules = ('carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog')
+          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules):
               importlib.import_module(module_name)
           def installed_assistant_origins():
-              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules)}
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules)}
               assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in origins.values()), origins
               return origins
           print(json.dumps({'assistant_installed_origins': installed_assistant_origins()}), flush=True)
@@ -716,6 +785,16 @@ jobs:
               'tests/storage/test_durable_state_publication.py',
               'tests/ui/test_profile_project_exports.py',
               'tests/ui/test_academic_actions.py',
+              'tests/speech/test_reader_usability.py',
+              'tests/speech/test_navigation.py',
+              'tests/packaging/test_audio_runtime.py',
+              'tests/packaging/test_audio_bundle.py',
+              'tests/reader/test_export_reconciliation.py',
+              'tests/ui/test_keyboard_manager.py',
+              'tests/storage/test_incremental_backup.py',
+              'tests/storage/test_incremental_backup_cli.py',
+              'tests/sync/test_vault.py',
+              'tests/ui/test_incremental_backup_dialog.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -739,6 +818,19 @@ jobs:
           assert all(recording_counts.values()) and recording_counts['test_windows_audio_ownership'] == 5, recording_counts
           assert recording_counts['test_runtime'] == 13, recording_counts
           assert recording_required <= {case.get('name') for case in publication_cases}, recording_counts
+          reader_expected = {'test_reader_usability': 31, 'test_navigation': 27, 'test_progress_voice_actions': 22}
+          reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in reader_expected}
+          reader_required = {"test_one_thousand_matching_pronunciation_rules_commit_one_undo_step", "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic", "test_regex_backreference_expansion_is_bounded_inside_the_real_child", "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged", "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets", "test_completed_synthesis_rechecks_current_source_before_late_playback", "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply"}
+          reader_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
+          assert reader_counts == reader_expected and reader_required <= reader_seen, (reader_counts, sorted(reader_required - reader_seen))
+          integrity_expected_modules = ('test_audio_runtime', 'test_audio_bundle', 'test_export_reconciliation')
+          integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in integrity_expected_modules}
+          assert all(integrity_counts.values()), integrity_counts
+          print(json.dumps({'status': 'PASS', 'reader_counts': reader_counts, 'reader_required': sorted(reader_required), 'audio_export_integrity_counts': integrity_counts, 'reader_acoustics': 'NOT_RUN', 'reader_nvda': 'NOT_RUN'}), flush=True)
+          incremental_expected = ('test_incremental_backup', 'test_incremental_backup_cli', 'test_vault', 'test_incremental_backup_dialog')
+          incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in incremental_expected}
+          assert all(incremental_counts.values()), incremental_counts
+          print(json.dumps({'status': 'PASS', 'incremental_installed_counts': incremental_counts, 'canonical_format': 4}), flush=True)
           installed_assistant_origins()
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
           kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
@@ -1120,7 +1212,16 @@ jobs:
             'tests/ingest/test_initial_publication_completion.py',
             'tests/ui/test_export_destination.py',
             'tests/storage/test_durable_state_publication.py',
-            'tests/ui/test_profile_project_exports.py'
+            'tests/ui/test_profile_project_exports.py',
+            'tests/speech/test_reader_usability.py',
+            'tests/speech/test_navigation.py',
+            'tests/packaging/test_audio_runtime.py',
+            'tests/packaging/test_audio_bundle.py',
+            'tests/reader/test_export_reconciliation.py',
+            'tests/storage/test_incremental_backup.py',
+            'tests/storage/test_incremental_backup_cli.py',
+            'tests/sync/test_vault.py',
+            'tests/ui/test_incremental_backup_dialog.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -1147,6 +1248,16 @@ jobs:
             if ($academicExit -ne 0 -or $parallelExit -ne 0) { exit 1 }
             $speechVerdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
             if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
+            $readerExpected = @{
+              'tests/speech/test_reader_usability.py' = 31
+              'tests/speech/test_navigation.py' = 27
+              'tests/ui/test_progress_voice_actions.py' = 22
+            }
+            foreach ($entry in $readerExpected.GetEnumerator()) {
+              $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+              $verdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern)
+              if ($verdict.Count -ne 1) { throw ("Required reader coverage differs: " + $entry.Key) }
+            }
           } finally {
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr

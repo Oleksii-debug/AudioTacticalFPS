@@ -30,6 +30,25 @@ def verify(root, *, manifest_bytes=None):
                 "CheckInstallation.cmd", "README.txt"}
     if not expected.issubset(files) or not any(p.startswith("wheelhouse/") for p in files):
         raise ValueError("incomplete installation bundle")
+    # Older independently pinned portable bundles have no build receipt or
+    # launcher flag. Their existing verification path remains available.
+    if ("bundled_launcher" in manifest or "native-launcher-build.json" in files
+            or os.path.lexists(root / "native-launcher-build.json")):
+        launcher_files = {"ResearchLibrary.exe", "native-launcher-build.json"}
+        launcher = manifest.get("bundled_launcher", False)
+        if type(launcher) is not bool:
+            raise ValueError("invalid native launcher installation flag")
+        if launcher:
+            commit = manifest.get("source_commit")
+            if (not manifest.get("bundled_python") or not launcher_files.issubset(files)
+                    or not isinstance(commit, str) or len(commit) != 40
+                    or any(character not in "0123456789abcdef" for character in commit)):
+                raise ValueError("incomplete native launcher installation inventory")
+        elif launcher_files.intersection(files) or any(os.path.lexists(root / name) for name in launcher_files):
+            raise ValueError("unannounced native launcher files")
+        if any(path.name.casefold() in {name.casefold() for name in launcher_files}
+               and path.name not in launcher_files for path in root.iterdir()):
+            raise ValueError("ambiguous native launcher paths")
     for name, digest in files.items():
         relative = PurePosixPath(name)
         if (relative.is_absolute() or ".." in relative.parts or "\\" in name

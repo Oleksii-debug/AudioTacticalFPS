@@ -68,7 +68,8 @@ def show_recording(frame, *, on_selected=None):
     progress = NativeProgressPanel(dialog)
     if parent_progress is not None:
         progress.hub = parent_progress.hub
-    progress.gauge.SetName('Recording operation progress')
+    dialog.progress_panel = progress
+    progress.set_context_name('Recording operation progress')
     progress.text.SetName('Recording current progress and phase')
     progress.query_button.SetName('Query recording progress')
     controllers = tuple(item for item in (progress, parent_progress) if item is not None)

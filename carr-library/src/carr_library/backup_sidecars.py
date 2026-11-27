@@ -591,7 +591,7 @@ def _primary_media(name):
 
 def _allows_empty(name):
     return (backup_transcription.allows_empty(name)
-            or bool(backup_producers.SUBTITLE.fullmatch(name)) and name.endswith('.srt'))
+            or bool(backup_producers.SUBTITLE.fullmatch(name)) and name.endswith(('.srt', '.lrc')))
 
 
 def _validate_collections(db, root, entries, records, *, cancelled):

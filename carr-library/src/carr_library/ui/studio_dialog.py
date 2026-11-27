@@ -173,7 +173,7 @@ def show_studio(frame):
         progress.hub = parent_progress.hub
     layout.Detach(progress.panel)
     layout.Insert(layout.GetItemCount() - 2, progress.panel, 0, wx.EXPAND | wx.ALL, 6)
-    progress.gauge.SetName('Audio Studio operation progress')
+    progress.set_context_name('Audio Studio operation progress')
     progress.text.SetName('Audio Studio current progress and phase')
     progress.query_button.SetName('Query Audio Studio progress')
 
@@ -806,7 +806,7 @@ def install_studio_actions(frame):
     for identity, title, shortcut, handler in [
             ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
             ('audio.clips', 'Scene audio clips...', '', lambda e: show_clip_editor(frame)),
-            ('audio.publishing', 'Publish synchronized EPUB3...', '', lambda e: show_publishing(frame)),
+            ('audio.publishing', 'Publish synchronized EPUB3 or DAISY...', '', lambda e: show_publishing(frame)),
             ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
             ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)

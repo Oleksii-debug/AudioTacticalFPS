@@ -40,6 +40,7 @@ class NativeProgressPanel:
         self.wx, self.frame = wx, frame
         self.hub = ProgressHub()
         self.active_task = None
+        self.gauge_label = 'Current operation progress'
         self.closed = False
         self._last_revision = None
         self._reporting_failure = None
@@ -173,6 +174,13 @@ class NativeProgressPanel:
     def refresh_audio_state(self):
         self.media.refresh()
 
+    def set_context_name(self, name):
+        """Keep the host's accessible context when state updates rename the gauge."""
+        if not isinstance(name, str) or not name.strip() or len(name) > 200:
+            raise ValueError('Use a bounded accessible progress name.')
+        self.gauge_label = name
+        self.refresh()
+
     def begin(self, title, *, total=None, unit='units'):
         task = self.hub.start(title, total=total, unit=unit)
         self.active_task = task
@@ -261,7 +269,7 @@ class NativeProgressPanel:
         elif self._gauge_indeterminate or self._gauge_value != percent:
             self.gauge.SetValue(percent)
         self._gauge_indeterminate, self._gauge_value = indeterminate, percent
-        gauge_name = ('Current operation progress: ' +
+        gauge_name = (getattr(self, 'gauge_label', 'Current operation progress') + ': ' +
                       ('indeterminate; ' if indeterminate else '') + state)
         if gauge_name != self._gauge_name:
             self.gauge.SetName(gauge_name)

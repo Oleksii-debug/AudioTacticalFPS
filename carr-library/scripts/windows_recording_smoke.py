@@ -204,8 +204,11 @@ def main():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
                 check('standalone recording does not expose an unused selection action',
                       not control('Use selected recording').IsShown())
+                gauge = dialog.progress_panel.gauge
                 check('recording progress has a native accessible gauge',
-                      isinstance(control('Recording operation progress'), wx.Gauge))
+                      isinstance(gauge, wx.Gauge)
+                      and gauge.GetName().startswith('Recording operation progress: ')
+                      and gauge.GetRange() == 100)
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():

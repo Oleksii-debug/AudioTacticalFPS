@@ -206,7 +206,7 @@ def main():
                     glossary_input.SetFocus()
                     pump(lambda: wx.Window.FindFocus() is glossary_input, 'Glossary edit focus')
                     glossary_input.SetInsertionPointEnd()
-                    check('native glossary edit', simulator.Text('-changed-after-review'))
+                    check('native glossary edit', simulator.Text(b'-changed-after-review'))
                     pump(lambda: glossary_input.GetValue() == glossary + '-changed-after-review', 'Glossary keyboard edit')
                     press(find('Translate / resume'))
                     check('changed glossary requires fresh review without transfer or approval',

@@ -7,6 +7,8 @@ import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
+from .installation_lease import installed_entrypoint
+
 
 def self_test():
     """Exercise real SQLite and retained originals without touching user data."""
@@ -62,6 +64,7 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
@@ -70,6 +73,12 @@ def main(argv=None):
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
+    if arguments and arguments[0] == 'sync':
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
+    if arguments and arguments[0] == 'backup-repository':
+        from .incremental_backup_cli import main as backup_repository_main
+        return backup_repository_main(arguments[1:])
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])

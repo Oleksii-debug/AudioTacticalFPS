@@ -85,3 +85,55 @@ def test_failed_unmute_keeps_sound_muted_and_saved_preferences_unchanged(tmp_pat
         failure.assert_called_once()
     finally:
         panel.feedback.close()
+
+
+
+def test_context_name_survives_real_task_state_and_timer_updates():
+    """The host label is independent of live native progress state."""
+    from types import SimpleNamespace
+
+    class Gauge:
+        def __init__(self):
+            self.name, self.value, self.pulses = '', 0, 0
+        def SetName(self, name): self.name = name
+        def SetValue(self, value): self.value = value
+        def Pulse(self): self.pulses += 1
+
+    class Text:
+        value = ''
+        def GetValue(self): return self.value
+        def ChangeValue(self, value): self.value = value
+
+    for context in ('Current operation progress', 'Recording operation progress',
+                    'Audio Studio operation progress'):
+        panel = object.__new__(NativeProgressPanel)
+        panel.closed = False
+        panel.hub = ProgressHub()
+        panel.active_task = None
+        panel.frame = SimpleNamespace(IsActive=lambda: True)
+        panel.media = SimpleNamespace(flags=lambda: (False, False))
+        panel.feedback = Mock(last_error='')
+        panel.gauge, panel.text = Gauge(), Text()
+        panel._gauge_name, panel._gauge_value = '', 0
+        panel._gauge_indeterminate = False
+        panel._last_revision = panel._reporting_failure = None
+        panel.notice = ''
+        panel.set_context_name(context)
+        assert panel.gauge.name == context + ': idle'
+        task = panel.begin('Actual recording task', total=100)
+        task.update(completed=25)
+        panel.refresh()  # Same method used by the native timer.
+        assert panel.gauge.name == context + ': running'
+        assert panel.gauge.value == 25
+        panel.request_cancel()
+        assert panel.gauge.name == context + ': cancelling'
+        panel.finish(task, 'cancelled')
+        assert panel.gauge.name == context + ': cancelled'
+        unknown = panel.begin('Measured duration not known')
+        panel.refresh()
+        assert panel.gauge.name == context + ': indeterminate; running'
+        assert panel.gauge.pulses > 0
+        panel.finish(unknown, 'succeeded')
+        panel.refresh()
+        assert panel.gauge.name == context + ': succeeded'
+        assert panel.gauge.value == 100

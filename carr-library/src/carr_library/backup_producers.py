@@ -19,7 +19,7 @@ TRANSLATION = re.compile(r'state/translation/jobs/([0-9a-f]{32})(\.control)?\.js
 LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
 STUDIO = re.compile(r'state/studio/jobs/(' + ID + r')/(job|control|project|timeline)\.json\Z')
-SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
+SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z')
 RECORDING = re.compile(r'state/studio/recordings/([0-9a-f]{32})\.(json|wav)\Z')
 MANAGED_INPUT = re.compile(r'state/studio/inputs/(' + HEX + r')\.audio\Z')
 PUBLICATION = re.compile(r'state/studio/publications/([0-9a-f]{32})\.json\Z')
@@ -258,7 +258,7 @@ def _origin(value):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'lrc_notice'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -274,6 +274,8 @@ def _timeline(value):
         text(value[name], 8192)
     if 'music_continuity' in value:
         text(value['music_continuity'], 8192)
+    if 'lrc_notice' in value:
+        text(value['lrc_notice'], 8192)
     if ('clips' in value) != ('clip_stems_notice' in value):
         raise ValueError('Incomplete clip timeline declaration.')
     if 'clips' in value:

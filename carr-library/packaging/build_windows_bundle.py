@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import subprocess
 import tempfile
 import tarfile
 import sys
@@ -26,7 +27,9 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
-# Exact unsigned candidate independently built and executed on Windows; no override.
+# Legacy unsigned candidate independently built and executed on Windows.
+# Source-built candidates instead require their exact committed-source receipt
+# and a separate successful native acceptance gate.
 NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
 USER_GUIDES = (
@@ -142,14 +145,75 @@ def verify_dependency_closure(selected):
                 raise ValueError(f"unsatisfied Windows dependency: {req}")
 
 
+def verify_native_launcher(directory, source_commit, *, receipt_name="build-evidence.json"):
+    """Bind a private candidate's PE and build receipt to committed C sources.
+
+    This verifies the source and build inventory, not Authenticode signatures or
+    Windows/NVDA execution. Those remain separate native acceptance gates.
+    """
+    directory = Path(directory)
+    if (directory.is_symlink() or not directory.is_dir()
+            or not isinstance(source_commit, str)
+            or not re.fullmatch(r"[0-9a-f]{40}", source_commit)):
+        raise ValueError("native launcher requires a plain build folder and exact source commit")
+    executable = regular(directory / "ResearchLibrary.exe")
+    if receipt_name not in {"build-evidence.json", "native-launcher-build.json"}:
+        raise ValueError("unsupported native launcher receipt name")
+    evidence = regular(directory / receipt_name)
+    if executable.stat().st_size > 2 * 1024 * 1024 or evidence.stat().st_size > 1024 * 1024:
+        raise ValueError("native launcher build inputs exceed their bounds")
+    binary, receipt = executable.read_bytes(), evidence.read_bytes()
+    if len(binary) > 2 * 1024 * 1024 or len(receipt) > 1024 * 1024:
+        raise ValueError("native launcher build inputs changed or exceed their bounds")
+    report = json.loads(receipt.decode("utf-8-sig"))
+    if (not isinstance(report, dict) or type(report.get("schema")) is not int or report["schema"] != 1
+            or report.get("release_status") != "unsigned-private-candidate"):
+        raise ValueError("unsupported native launcher build receipt")
+    identities = report.get("source_sha256")
+    required = {"launcher.c", "launcher_core.h", "launcher.rc", "launcher.manifest"}
+    allowed = required | {"windows_child_probe.c", "build_msvc.ps1", "probe_pe.py",
+                          "build_launcher.py", "toolchain.lock.json"}
+    if (not isinstance(identities, dict) or not required <= identities.keys()
+            or not identities.keys() <= allowed):
+        raise ValueError("incomplete or unexpected native launcher source inventory")
+    for name, expected in identities.items():
+        try:
+            source = subprocess.check_output([
+                "git", "--no-replace-objects", "-C", str(HERE.parent.parent), "show",
+                f"{source_commit}:carr-library/packaging/native-launcher/{name}"],
+                stderr=subprocess.PIPE, timeout=30)
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            raise ValueError("native launcher source commit cannot be verified locally") from None
+        if hashlib.sha256(source).hexdigest() != expected:
+            raise ValueError("native launcher source differs from the selected commit")
+    spec = importlib.util.spec_from_file_location(
+        "carr_launcher_pe", HERE / "native-launcher" / "probe_pe.py")
+    verifier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    pe = verifier.inspect_pe(executable)
+    expected = hashlib.sha256(binary).hexdigest()
+    recorded_pe = report.get("pe")
+    if (pe["sha256"] != expected or not isinstance(recorded_pe, dict)
+            or recorded_pe.get("sha256") != expected):
+        raise ValueError("native launcher differs from its build receipt")
+    return binary, receipt
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, native_launcher=None):
+                 ocr_source_archive=None, native_launcher=None, launcher_dir=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
+    if native_launcher is not None and launcher_dir is not None:
+        raise ValueError("Choose one native launcher source.")
+    launcher_snapshot = None
+    if launcher_dir is not None:
+        if python_archive is None:
+            raise ValueError("native launcher requires the complete bundled Python runtime")
+        launcher_snapshot = verify_native_launcher(launcher_dir, source_commit)
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
     if native_launcher is not None:
@@ -346,6 +410,9 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(native_launcher), destination)
             if sha256(destination) != NATIVE_LAUNCHER_SHA256:
                 raise ValueError("Native launcher changed during bundle assembly")
+        if launcher_snapshot is not None:
+            (staged / "ResearchLibrary.exe").write_bytes(launcher_snapshot[0])
+            (staged / "native-launcher-build.json").write_bytes(launcher_snapshot[1])
         if source_evidence is not None:
             # Retain the verifier's exact commit/tree/wheel binding inside the
             # sealed payload, so installed acceptance can attest those same
@@ -358,6 +425,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
                     "files": files}
+        if launcher_snapshot is not None:
+            manifest["bundled_launcher"] = True
         if source_commit is not None:
             manifest["source_commit"] = source_commit
             manifest["source_tree"] = source_evidence["source_tree"]
@@ -390,11 +459,13 @@ def main():
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
     parser.add_argument("--native-launcher", type=Path,
                         help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
+    parser.add_argument("--launcher-dir", type=Path,
+                        help="Source-bound private native build folder; requires its build receipt and exact source commit")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.native_launcher)))
+                                  args.native_launcher, args.launcher_dir)))
 
 
 if __name__ == "__main__":

@@ -157,6 +157,93 @@ mimetype. The checker is not an application dependency and is not included in
 delivery. Package conformance and source/import tests do not qualify a particular
 external reader, NVDA, listening quality, WCAG conformance, DAISY or Braille.
 
+## DAISY 2.02, chaptered M4B and measured LRC
+
+Use **Audio Studio → Publish synchronized EPUB3 or DAISY...** after a Studio
+job completes. In the existing publication dialog, load jobs, explicitly select
+one completed job, then select **DAISY 2.02 file set (.zip)**. Enter the language
+and the publisher; publisher metadata is required and is never invented from
+the current account or device. Choose a new ZIP outside the private library and
+the completed production folder. **Export publication** uses the same shared
+background operation, Cancel, time/disk budgets and no-overwrite destination
+check as EPUB. The folder/file selection captured before queued work must still
+refer to the same destination when publication starts and commits.
+
+The equivalent existing Studio commands are:
+
+```text
+python -B -m carr_library studio --data-dir LIBRARY publish-daisy JOB_ID --output NEW_BOOK.zip --language uk --publisher "Chosen publisher"
+python -B -m carr_library studio --data-dir LIBRARY publications
+python -B -m carr_library studio --data-dir LIBRARY verify-publication RECEIPT_ID --file EXISTING_BOOK.zip
+```
+
+The ZIP carries a DAISY 2.02 NCC/XHTML/SMIL/MP3 file set. Extract the entire file
+set before opening it in a compatible external reader. It retains the original
+script, measured narration-line intervals, non-transcribed audio intervals and
+a provenance record bound to the completed job and its exact audio bytes. The
+first title reference has zero duration: it is navigation, not invented title
+speech. The supported profile rejects external resources, extra archive members,
+entities, active document content and changed text/audio references. The
+application never downloads DTDs while exporting or verifying a book.
+
+A DAISY receipt is included in a normal library backup, together with its typed
+Studio checkpoints. Its separately exported ZIP is not copied into that backup
+implicitly. After restore, **Verify receipt** requires explicit selection of the
+existing publication and checks exact bytes; it does not open an old output
+path, run an engine or grant quotation/source verification. An explicitly
+renamed publication is recognized by the receipt format and bytes, not its new
+filename extension. Historical EPUB receipts without a format field remain
+EPUB receipts.
+
+For a new chaptered audiobook, choose **M4B** in the existing production format
+control, or use:
+
+```text
+python -B -m carr_library studio --data-dir LIBRARY render --project-id PROJECT_ID --format m4b --output NEW_PARENT
+```
+
+M4B contains the measured scene/chapter titles and time bounds. FFmpeg first
+encodes audio, then copies that audio stream while embedding chapter metadata;
+FFprobe reads the resulting container and compares every title and boundary
+before publication. The cache identity includes those approved chapter values
+and the book title. An already completed historical job remains unchanged;
+create a new job to produce the new format features.
+
+New Studio renders also publish **script.lrc** and retain it with the existing
+SRT/VTT and timeline checkpoints. LRC uses measured line starts rounded to
+centiseconds. Each visual row of a multiline utterance has the same measured
+start; this does not infer internal paragraph or word timing. Literal text
+beginning with a bracket receives a U+2060 text boundary in the LRC derivative
+so an LRC parser cannot mistake the source text for an extra timestamp. The
+original script and timeline text stay unchanged. Audio-only projects have an
+empty LRC, which the canonical backup/restore service explicitly preserves.
+
+### Format acceptance and limits
+
+The independent development validator `scripts/daisy_schema_acceptance.py`
+uses only explicitly supplied DTD files whose sizes and SHA-256 values match
+`packaging/daisy-validation-schemas.json`, plus a separately installed lxml
+test tool. It validates NCC/content/source XHTML and SMIL with offline resource
+resolution and includes a deliberately invalid XHTML negative control. Its
+three cases cover narration encoded from WAV, reuse of a verified MP3, and a
+retained clip with no transcript. It does not fetch or install tools itself.
+
+For installed Windows acceptance, pass the same explicitly selected pinned
+audio directory and lock used by the other publication probes:
+
+```text
+python -I -B scripts/daisy_schema_acceptance.py --schemas VALIDATION_SCHEMAS --report NEW_REPORT.json --require-installed --audio-directory PINNED_AUDIO_DIRECTORY --audio-lock packaging/windows-audio.lock.json
+```
+
+DTD validation is a structural check, not complete DAISY semantic conformance.
+The native probe separately exercises actual wx controls, the shared progress
+lifecycle, exact installed modules, pinned FFmpeg/FFprobe, DAISY receipts, M4B
+chapters and LRC. Source tests, DTD validation and native acceptance must run
+against the composed candidate before it is qualified. No historical donor
+result is transferred to this composition. External-reader interoperability,
+physical devices, manual NVDA/keyboard use, acoustic quality, DAISY 3 and Braille
+remain separate requirements; this implementation does not claim those results.
+
 ## Effects and precise limitations
 
 `effect_controls()` returns parameter defaults, numeric ranges and units for
