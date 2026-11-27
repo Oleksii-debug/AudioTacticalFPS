@@ -10,6 +10,7 @@ from pathlib import PurePosixPath
 import re
 
 from .backup_producers import fields, text, number, digest, path
+from .integrations import transcription_backup as _canonical
 
 PREFIX = 'state/transcription/'
 _JOB = re.compile(r'state/transcription/([0-9a-f]{64})/jobs/([0-9a-f]{32})/(.+)\Z')
@@ -43,15 +44,19 @@ def _streamed_tail(tail):
 
 
 def is_media(name):
+    if _canonical.is_input(name):
+        return True
     match = member(name)
     return bool(match and _streamed_tail(match[3]))
 
 
 def allows_empty(name):
-    return is_media(name)
+    return is_media(name) or _canonical.allows_empty(name)
 
 
 def limit(name):
+    if maximum := _canonical.limit(name):
+        return maximum
     if name == PREFIX + 'engine.json':
         return 32768
     match = member(name)
@@ -69,6 +74,8 @@ def limit(name):
 
 
 def ignored(name):
+    if is_local_origin(name) or name == PREFIX + '.origin.lock' or _canonical.ignored(name):
+        return True
     match = member(name)
     if match:
         tail = PurePosixPath(match[3])
@@ -82,7 +89,8 @@ def _engine(value):
     from .transcription import _protocol, RECEIPTS_PROTOCOL, V5_PROTOCOL, V5_SOURCES
     fields(value, {'version', 'python', 'worker', 'models_dir', 'python_sha256',
                    'worker_sha256', 'network', 'inference_qualified'},
-           {'protocol', 'wrapper_sources_sha256', 'retry_policy'})
+           {'protocol', 'wrapper_sources_sha256', 'retry_policy', 'runtime_profile_id',
+            'runtime_profile_fingerprint', 'review_required', 'restored'})
     if type(value['version']) is not int or value['version'] != 1 or value['inference_qualified'] is not False:
         raise ValueError('Invalid transcription engine declaration.')
     protocol = _protocol(value.get('protocol', RECEIPTS_PROTOCOL))
@@ -90,6 +98,16 @@ def _engine(value):
         path(value[key])
     for key in ('python_sha256', 'worker_sha256'):
         digest(value[key])
+    profile_fields = {'runtime_profile_id', 'runtime_profile_fingerprint'}
+    if set(value) & profile_fields:
+        if not profile_fields <= value.keys():
+            raise ValueError('Incomplete full runtime admission binding.')
+        if type(value['runtime_profile_id']) is not str or not re.fullmatch('[0-9a-f]{32}', value['runtime_profile_id']):
+            raise ValueError('Invalid full runtime profile identity.')
+        digest(value['runtime_profile_fingerprint'])
+    if 'review_required' in value or 'restored' in value:
+        if value.get('review_required') is not True or value.get('restored') is not True:
+            raise ValueError('Restored legacy execution must remain explicitly unreviewed.')
     if value['network'] != 'local-files-only; Python network calls denied':
         raise ValueError('Invalid transcription isolation declaration.')
     if protocol == V5_PROTOCOL:
@@ -176,6 +194,9 @@ def _job(db, value, workspace_key, identity):
 
 
 def validate(db, name, value):
+    if _canonical.owned(name):
+        from .durable_state import encode
+        return validate_raw(db, name, encode(value))
     from .transcription import _identity
     if name == PREFIX + 'engine.json':
         return _engine(value)
@@ -223,6 +244,17 @@ def validate(db, name, value):
 
 def validate_collection(root, entries, records, *, cancelled):
     from .transcription import TranscriptionService, RECEIPTS_PROTOCOL, V5_PROTOCOL
+    canonical_records = {name: value for name, value in records.items() if _canonical.owned(name)}
+    _canonical.validate_collection([row for row in entries if _canonical.owned(row['filename'])],
+                                   canonical_records)
+    engine = records.get(PREFIX + 'engine.json')
+    if engine and 'runtime_profile_id' in engine:
+        profile = canonical_records.get(PREFIX + 'profiles/' + engine['runtime_profile_id'] + '.json')
+        if (profile is None or profile['fingerprint'] != engine['runtime_profile_fingerprint']
+                or profile['protocol'] != engine.get('protocol', RECEIPTS_PROTOCOL)
+                or profile['worker_identity']['sha256'] != engine['worker_sha256']
+                or profile['python_identity']['sha256'] != engine['python_sha256']):
+            raise ValueError('A legacy full runtime binding has no exact retained profile.')
     by_name = {row['filename']: row for row in entries}
     groups = {}
     for name in by_name:
@@ -257,3 +289,83 @@ def validate_collection(root, entries, records, *, cancelled):
                 raise ValueError('Saved transcription results differ from their verified receipts.')
             if job['status'] == 'completed' and len(receipts) != len(sources):
                 raise ValueError('A completed transcription is missing accepted sources.')
+
+
+def canonical_member(name):
+    return _canonical.owned(name)
+
+
+def is_local_origin(name):
+    parts = PurePosixPath(name).parts
+    return (len(parts) == 3 and parts[0].rstrip(' .').casefold() == 'state'
+            and parts[1].rstrip(' .').casefold() == 'transcription'
+            and parts[2].rstrip(' .').casefold() == '.local-origin.json')
+
+
+def is_cache_directory(name):
+    return _canonical.is_cache_directory(name)
+
+
+def validate_raw(db, name, raw):
+    """Schema-dispatch only; external runtime paths remain inert references."""
+    if _canonical.owned(name):
+        value = _canonical.validate(name, raw)
+        if _canonical.BINDING.fullmatch(name):
+            if db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?',
+                          (value['workspace'],)).fetchone() is None:
+                raise ValueError('The transcription binding belongs to a missing saved workspace.')
+        return value
+    from .backup_sidecars import _json
+    value = _json(raw)
+    validate(db, name, value)
+    return value
+
+
+def prepare_restored_inventory(stage, destination, entries, *, cancelled):
+    """Revoke external execution after byte verification, before publication.
+
+    Accepted source/result bytes and original receipt provenance do not change.
+    The new local-origin nonce is never copied or created during restoration.
+    """
+    from hashlib import sha256
+    from . import backup_sidecars
+    from .durable_state import atomic_json, read_json
+    from .integrations.transcription_protocol import prepare_restored_state
+    backup_sidecars._check_cancelled(cancelled)
+    originals = {entry['filename']: entry for entry in entries}
+    if not any(name.startswith(PREFIX) for name in originals):
+        return tuple(entries)
+    root = stage / PREFIX
+    prepare_restored_state(stage / 'state', destination, cancelled=cancelled)
+    names = set(originals)
+    names.update(path.relative_to(stage).as_posix() for path in root.glob('jobs/*/control.json'))
+    output, records = [], {}
+    for name in sorted(names):
+        backup_sidecars._check_cancelled(cancelled)
+        if not name.startswith(PREFIX):
+            output.append(originals[name])
+            continue
+        target = stage / name
+        if not target.exists():
+            # Only scrubbed canonical worker control files may disappear.
+            match = _canonical.WORKER.fullmatch(name)
+            if not match or match[3] not in _canonical._CONTROL:
+                raise ValueError('An unexpected transcription file disappeared during restoration.')
+            continue
+        if is_media(name):
+            output.append(originals[name])
+            continue
+        raw = backup_sidecars.read_regular(target, limit(name), allow_empty=allows_empty(name))
+        if _canonical.owned(name):
+            value = _canonical.validate(name, raw)
+        else:
+            from .backup_sidecars import _json
+            value = _json(raw)
+            if name == PREFIX + 'engine.json':
+                _engine(value)
+        if value is not None:
+            records[name] = value
+        output.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
+    validate_collection(stage, output, records, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
+    return tuple(output)

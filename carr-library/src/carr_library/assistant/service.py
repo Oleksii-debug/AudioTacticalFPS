@@ -100,6 +100,17 @@ class AssistantService:
         self.validate(plan)
         return plan
 
+    def workflow_templates(self):
+        """Return the inert settings store; loading never submits a job."""
+        from .templates import WorkflowTemplateStore
+        return WorkflowTemplateStore(self.app.root)
+
+    def review_instruction(self, identity):
+        """Copy saved steps into a fresh draft without old Scope or approval."""
+        from .templates import draft_from_plan
+        draft = draft_from_plan(self.store.load(identity)['plan'])
+        return json.dumps(draft, ensure_ascii=False, indent=2, allow_nan=False)
+
     def local_planner_profiles(self):
         """List eligible choices without selecting or contacting a provider."""
         from .llm import is_local_planner

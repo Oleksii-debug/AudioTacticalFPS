@@ -291,7 +291,7 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
 
     review = Control('complete: 3/3. All selected operations completed.\n'
                      'Resume uses the original reviewed scope.')
-    buttons = {name: Control() for name in ('preview', 'run', 'jobs', 'pause')}
+    buttons = {name: Control() for name in ('preview', 'run', 'jobs', 'templates', 'pause')}
     callbacks, entered, release = Queue(), Event(), Event()
 
     def resume(*args, **kwargs):

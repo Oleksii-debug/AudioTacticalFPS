@@ -129,9 +129,18 @@ jobs:
                    'carr_library.assistant.translation_cli', 'carr_library.assistant.llm', 'carr_library.assistant.service',
                    'carr_library.studio.cli', 'carr_library.ui.assistant_dialog',
                    'carr_library.studio.project', 'carr_library.studio.managed_inputs')
+          import importlib
+          completion_names = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.backup_book_audio"]
+          for name in completion_names:
+              importlib.import_module(name)
+          names += tuple(completion_names)
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
+              from hashlib import sha256
+              for name in completion_names:
+                  source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+                  assert sha256(pathlib.Path(origins[name]).read_bytes()).digest() == sha256(source.read_bytes()).digest(), name
               return origins
           installed_origins()
           class RejectExpectedFailures:
@@ -177,6 +186,9 @@ jobs:
                     'tests/assistant/test_translation_advanced_union.py',
                     'tests/assistant/test_local_planning.py',
                     'tests/assistant/test_planning_handlers.py',
+                    'tests/assistant/test_workflow_templates.py',
+                    'tests/assistant/test_workflow_template_handlers.py',
+                    'tests/storage/test_backup_studio_draft.py',
                     'tests/speech/test_reader_usability.py',
                     'tests/speech/test_navigation.py',
                     'tests/speech/test_player_controls.py',
@@ -213,7 +225,7 @@ jobs:
           state_inventory_exact = required_state <= {c.get('name') for c in cases}
           clip_backup_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_state_clip_inputs']
           clip_backup_exact = len(clip_backup_cases) == len(set(clip_backup_cases)) == 17
-          recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 19}
+          recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 27}
           recovery_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recovery_expected}
           reader_expected = {'test_reader_usability': 31, 'test_navigation': 27, 'test_progress_voice_actions': 22, 'test_player_controls': 37, 'test_player_transport': 11, 'test_reader_playback': 15, 'test_reader_playback_actions': 22}
           reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in reader_expected}
@@ -226,11 +238,18 @@ jobs:
           integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in integrity_modules}
           incremental_expected = ('test_incremental_backup', 'test_incremental_backup_cli', 'test_vault', 'test_incremental_backup_dialog')
           incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in incremental_expected}
+          completion_suites = ["tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_studio_draft.py"]
+          completion_counts = {}
+          for suite in completion_suites:
+              module = suite[:-3].replace('/', '.')
+              selected = [case for case in cases if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
+              assert selected and all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
+              completion_counts[suite] = len(selected)
           ok = all(incremental_counts.values()) and status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and state_inventory_exact and clip_backup_exact and recovery_counts == recovery_expected and reader_complete and all(integrity_counts.values())
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), portable_complete=portable_complete, portable_cases=len(portable),
-                        recovery_counts=recovery_counts, reader_complete=reader_complete,
+                        recovery_counts=recovery_counts, completion_counts=completion_counts, reader_complete=reader_complete,
                         reader_counts=reader_counts, reader_required=sorted(reader_required), find_counts=find_counts,
                         audio_export_integrity_counts=integrity_counts, incremental_counts=incremental_counts,
                         ocr_inventory_cases=sorted(ocr_cases),
@@ -363,7 +382,7 @@ jobs:
       - name: Require publication, recording, portable clip and reader source contracts
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py tests/reader/test_ebook_audio.py tests/ui/test_ebook_audio_lifetime.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
+          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py tests/reader/test_ebook_audio.py tests/ui/test_ebook_audio_lifetime.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_backup_book_audio.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $speechVerdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
           if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
@@ -441,6 +460,8 @@ jobs:
                    'carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup',
                     'carr_library.audio.audiobook', 'carr_library.audio.dsp', 'carr_library.studio.daisy', 'carr_library.backup_producers', 'carr_library.backup_sidecars',
                    'carr_library.reader.ebook_audio', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.reading_desk', 'carr_library.runtime_settings', 'carr_library.speech.player', 'carr_library.audio.process', 'carr_library.audio.cleanup')
+          completion_names = ["carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio"]
+          names += tuple(completion_names)
           for name in names:
               importlib.import_module(name)
           def installed_origins():
@@ -448,6 +469,10 @@ jobs:
               assert all(not pathlib.Path(path).is_relative_to(checkout)
                          and 'site-packages' in {part.casefold() for part in pathlib.Path(path).parts}
                          for path in origins.values()), origins
+              from hashlib import sha256
+              for name in completion_names:
+                  source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+                  assert sha256(pathlib.Path(origins[name]).read_bytes()).digest() == sha256(source.read_bytes()).digest(), name
               return origins
           installed_origins()
           class RejectExpectedFailures:
@@ -469,6 +494,10 @@ jobs:
                     'tests/storage/test_backup_publication_formats.py',
                     'tests/reader/test_ebook_audio.py',
                     'tests/ui/test_ebook_audio_lifetime.py',
+                    'tests/studio/test_book_audio.py',
+                    'tests/ui/test_book_audio_dialog.py',
+                    'tests/ui/test_worker_lifetime.py',
+                    'tests/storage/test_backup_book_audio.py',
                     ]
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
                                '--import-mode=importlib', '--junitxml=' + str(report), *suites],
@@ -498,19 +527,26 @@ jobs:
           ebook_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
           assert all(ebook_counts.values()) and ebook_counts['test_ebook_audio_lifetime'] == 14, ebook_counts
           assert ebook_required <= ebook_seen, sorted(ebook_required - ebook_seen)
+          completion_suites = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/storage/test_backup_book_audio.py"]
+          completion_counts = {}
+          for suite in completion_suites:
+              module = suite[:-3].replace('/', '.')
+              selected = [case for case in cases if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
+              assert selected and all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
+              completion_counts[suite] = len(selected)
           ok = (status == 0 and failed == skipped == 0 and not policy.seen
                 and counts == expected and all(recording_counts.values())
-                and recording_counts['test_windows_audio_ownership'] == 5
+                and recording_counts['test_windows_audio_ownership'] == 7
                 and recording_counts['test_runtime'] == 13
                 and clip_counts == clip_expected
                 and clip_required <= {case.get('name') for case in cases}
-                and len(cases) == sum(expected.values()) + sum(recording_counts.values()) + sum(clip_expected.values()) + sum(ebook_counts.values())
+                and len(cases) == sum(expected.values()) + sum(recording_counts.values()) + sum(clip_expected.values()) + sum(ebook_counts.values()) + sum(completion_counts.values())
                 and recording_required <= {case.get('name') for case in cases}
                 and required <= {case.get('name') for case in cases})
           result = dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
                         failed=failed, skipped=skipped, expected_failures=policy.seen,
                         suite_counts=counts, recording_suite_counts=recording_counts,
-                        clip_suite_counts=clip_counts, recorded_epub_counts=ebook_counts,
+                        clip_suite_counts=clip_counts, recorded_epub_counts=ebook_counts, completion_counts=completion_counts,
                         origins=installed_origins(), microphone='NOT_RUN', nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-publication.json').write_text(
               json.dumps(result, indent=2), encoding='utf-8')
@@ -523,6 +559,36 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native synthetic recording failed.' }
             & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-clips.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native portable clip editing failed.' }
+            & $python -I -B scripts/windows_book_audio_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-book-audio.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual installed native book narration failed.' }
+            $verifyBookAudio = @'
+          import json, pathlib, re, sys
+          raw = pathlib.Path('ci-v3-results/native-book-audio.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'native_sapi_render' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native book narration report is missing or ambiguous.'
+          report = reports[0]
+          assert report['status'] == report['native_keyboard'] == report['native_sapi_render'] == 'PASS'
+          required = set(["real native Windows controls","actual retained EPUB import completes","existing shared worker owns finalizers","Book audio command is registered in the existing keyboard registry","current Books and Collections exposes the selected retained edition","installed native SAPI voice is actually enumerated","native preview names both real EPUB chapters and original revision","preview and voice discovery do not synthesize","default-No cancellation prepares no jobs or output","Prepare stores one immutable plan and two ordinary schema2 jobs","Prepare still starts no speech or output","native explicit Run completes both source-bound Studio jobs","actual selected SAPI renders the literal source without cues","measured complete chapter PCM: 1","measured complete chapter PCM: 2","published exact non-authorizing source receipt: 1","published exact non-authorizing source receipt: 2","archived source blocks completed-job reuse visibly","source denial preserves every previously committed artifact","original EPUB and retained asset remain byte-identical","book narration never creates quotation approval","native Escape closes the book dialog","native host shutdown has no retained cleanup failure","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          assert all(report[key] == 'NOT_RUN' for key in ('manual_keyboard', 'nvda', 'listening_quality', 'private_model_inference'))
+          selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, evidence in report['audio_runtime'].items():
+              assert evidence['sha256'] == pin['output_files']['bin/' + name + '.exe']['sha256']
+              assert pathlib.Path(evidence['path']).resolve(strict=True) == selected / 'bin' / (name + '.exe')
+          pathlib.Path('ci-v3-results/native-book-audio.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+            $verifyBookAudio | & $python -I -B - $env:CARR_V3_PUBLICATION_AUDIO
+            if ($LASTEXITCODE -ne 0) { throw 'Book narration native evidence is incomplete.' }
             & $python -I -B scripts/windows_epub_reading_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recorded-epub.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed recorded EPUB playback failed.' }
             $verifyRecordedEpub = @'
@@ -651,7 +717,7 @@ jobs:
       - name: Require local proposal scope and review regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py 2>&1 | Tee-Object 'ci-v3-results/strict-local-planning.txt'
+          python scripts/ci_check.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/storage/test_backup_studio_draft.py 2>&1 | Tee-Object 'ci-v3-results/strict-local-planning.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Native local proposal and actual loopback HTTP with external egress blocked
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}

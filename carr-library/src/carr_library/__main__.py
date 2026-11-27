@@ -82,7 +82,7 @@ def main(argv=None):
     if arguments and arguments[0] == 'backup-repository':
         from .incremental_backup_cli import main as backup_repository_main
         return backup_repository_main(arguments[1:])
-    if arguments and arguments[0] == 'transcribe':
+    if arguments and arguments[0] in ('transcribe', 'transcription'):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
     if arguments and arguments[0] == 'translation':

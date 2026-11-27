@@ -19,8 +19,8 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated, backup_transcription
-from .state_backup import _local_studio_origin
+from . import backup_producers, backup_generated, backup_transcription, backup_book_audio
+from .state_backup import _local_studio_origin, _local_transcription_origin
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
@@ -46,13 +46,16 @@ def portable_name(value):
     path = PurePosixPath(value)
     reserved = {'con', 'prn', 'aux', 'nul', *(f'com{i}' for i in range(1, 10)),
                 *(f'lpt{i}' for i in range(1, 10))}
-    maximum_depth = 16 if backup_transcription.member(value) is not None else 8
+    maximum_depth = 16 if (backup_transcription.member(value) is not None
+                           or backup_transcription.canonical_member(value)) else 8
     if (path.is_absolute() or str(path) != value or len(path.parts) > maximum_depth
             or any(p in ('.', '..') or p.endswith((' ', '.'))
                    or p.split('.')[0].casefold() in reserved for p in path.parts)):
         raise RestoreError('invalid portable sidecar filename')
     if path.parts and path.parts[0].casefold() == 'state' and _local_studio_origin(PurePosixPath(*path.parts[1:])):
         raise RestoreError('Local Studio origin authority must not be restored from a backup.')
+    if path.parts and path.parts[0].casefold() == 'state' and _local_transcription_origin(PurePosixPath(*path.parts[1:])):
+        raise RestoreError('Local transcription origin authority must not be restored from a backup.')
     return path
 
 
@@ -309,7 +312,7 @@ def validate_sidecar(db, name, raw):
         elif backup_producers.limit(name) is not None:
             backup_producers.validate(db, name, _json(raw))
         elif backup_transcription.limit(name) is not None:
-            backup_transcription.validate(db, name, _json(raw))
+            backup_transcription.validate_raw(db, name, raw)
         elif name.startswith('narration-projects/'):
             project = _model('reader.narration').validate_narration_payload(name, raw)
             _validate_original_text(db, project.source_location, project.original_text)
@@ -339,6 +342,15 @@ class Inventory:
 
 
 def _collection_budgets(entries):
+    entries = tuple(entries)
+    from .assistant.templates import validate_template_collection
+    try:
+        validate_template_collection({'filename': name, 'size_bytes': size}
+                                     for name, size in entries)
+        backup_book_audio.collection_budgets({'filename': name, 'size_bytes': size}
+                                             for name, size in entries)
+    except ValueError as exc:
+        raise RestoreError(str(exc)) from exc
     narration = [(name, size) for name, size in entries if name.startswith('narration-projects/')]
     if narration:
         model = _model('reader.narration')
@@ -479,7 +491,11 @@ def _ignored(name):
     if name.startswith('state/studio/'):
         return (path.name in ('.state.lock', '.render.lock', '.origin.lock', '.recording.lock', '.selected-clip.lock')
                 or name.startswith('state/studio/publications/') and bool(re.fullmatch(r'\.[0-9a-f]{32}\.lock', path.name))
+                or bool(re.fullmatch(r'state/studio/book-plans/[0-9a-f]{64}/\.book-[0-9a-f]{32}\.lock', name))
                 or path.name.startswith('.pending-'))
+    if path.parent.as_posix() == 'state/assistant/templates':
+        return (path.name == '.workflow-templates.lock'
+                or bool(re.fullmatch(r'\.pending-[A-Za-z0-9_]{8}', path.name)))
     if path.parent.as_posix() == 'state/trusted-client':
         return path.name == '.trust.lock' or bool(re.fullmatch(r'\.trust-[a-z0-9_]{8}', path.name))
     if path.parent.as_posix() == 'state/speech':
@@ -526,7 +542,8 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
             info = path.lstat()
             if stat.S_ISDIR(info.st_mode):
                 _plain(path, directory=True)
-                if not _ignored(relative) and (relative != 'state/studio/cache' or include_generated):
+                if (not _ignored(relative) and (relative != 'state/studio/cache' or include_generated)
+                        and (not backup_transcription.is_cache_directory(relative) or include_generated)):
                     pending.append(relative)
             else:
                 _regular(path)
@@ -602,6 +619,9 @@ def _validate_collections(db, root, entries, records, *, cancelled):
                                                        if name.startswith(backup_generated.PREFIX)})
         backup_producers.validate_primary_collection(root, entries, records, cancelled=cancelled)
         backup_producers.validate_translation_collection(db, records, cancelled=cancelled)
+        backup_book_audio.validate_collection(db, root / 'state',
+            ({**entry, 'filename': entry['filename'][6:]}
+             for entry in entries if entry['filename'].startswith('state/')), cancelled=cancelled)
         backup_transcription.validate_collection(root, entries, records, cancelled=cancelled)
     except InterruptedError:
         raise
@@ -617,6 +637,11 @@ def _deny_existing_origin(root):
             continue
         _plain(state, directory=True)
         for studio in state.iterdir():
+            if studio.name.casefold() == 'transcription':
+                _plain(studio, directory=True)
+                for item in studio.iterdir():
+                    if _local_transcription_origin(PurePosixPath('transcription', item.name)):
+                        raise RestoreError('Choose a restore target without existing local transcription origin authority.')
             if studio.name.casefold() == 'studio':
                 _plain(studio, directory=True)
                 for item in studio.iterdir():
@@ -655,7 +680,8 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
             size, checksum = len(raw), sha256(raw).hexdigest()
             if (name.startswith(backup_generated.PREFIX) or backup_producers.RECORDING.fullmatch(name)
                     or backup_producers.TRANSLATION.fullmatch(name) or backup_producers.USAGE.fullmatch(name)
-                    or name.startswith(backup_transcription.PREFIX)):
+                    or name == 'state/studio/draft.json'
+                    or name.startswith(backup_transcription.PREFIX) and name.endswith('.json')):
                 receipts[name] = _json(raw)
         entries.append(dict(filename=name, size_bytes=size, sha256=checksum))
     _validate_collections(db, stage, entries, receipts, cancelled=cancelled)
@@ -721,7 +747,8 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
             _write(stage, name, raw)
             if (name.startswith(backup_generated.PREFIX) or backup_producers.RECORDING.fullmatch(name)
                     or backup_producers.TRANSLATION.fullmatch(name) or backup_producers.USAGE.fullmatch(name)
-                    or name.startswith(backup_transcription.PREFIX)):
+                    or name == 'state/studio/draft.json'
+                    or name.startswith(backup_transcription.PREFIX) and name.endswith('.json')):
                 receipts[name] = _json(raw)
     _validate_collections(db, stage, inventory.entries, receipts, cancelled=cancelled)
     _check_cancelled(cancelled)

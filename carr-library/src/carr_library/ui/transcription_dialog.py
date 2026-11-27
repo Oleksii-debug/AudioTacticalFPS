@@ -1,6 +1,9 @@
 """Keyboard-accessible native workspace for the supplied local Whisper worker."""
 from pathlib import Path
+import json
 import threading
+
+from ..integrations.transcription_exports import TranscriptionExportedError
 
 
 def show_transcription(frame, *, selected_job=None):
@@ -50,23 +53,30 @@ def show_transcription(frame, *, selected_job=None):
               'часові мітки слів — за вибором. Моделі не завантажуються автоматично. '
               'Після зупинки завершені файли повторно використовуються, незавершений файл обробляється спочатку.')
     buttons = {}
-    row = wx.GridSizer(rows=3, cols=3, vgap=3, hgap=3)
+    row = wx.GridSizer(rows=4, cols=3, vgap=3, hgap=3)
     for name, label in [('configure', 'Підключити &Whisper'), ('create', '&Додати записи'),
                         ('folder', 'Додати папку з п&ідпапками'),
                         ('run', 'Запустити / &продовжити'), ('stop', 'З&упинити'),
                         ('save', 'Зберегти &правки'), ('export', '&Експорт'),
-                        ('refresh', '&Оновити'), ('close', '&Закрити')]:
+                        ('refresh', '&Оновити'), ('review', 'Перевірений runtime та &відновлення'),
+                        ('close', '&Закрити')]:
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
         buttons[name] = button
         row.Add(button, 0, wx.EXPAND | wx.ALL, 3)
     layout.Add(row, 0, wx.EXPAND)
     dialog.SetSizer(layout)
+    def scope_current():
+        current_active = getattr(frame, 'active', None)
+        return (frame.library is library and Path(library.root) == library_root
+                and current_active is not None and current_active[0] == active[0]
+                and not getattr(frame, '_closing', False))
+
     def report(value):
-        if alive:
+        if alive and scope_current():
             status.ChangeValue(str(value))
     def controls():
-        if not alive:
+        if not alive or not scope_current():
             return
         for control in (jobs, title, model, language, device, words, mixed, sources, text):
             control.Enable(not busy)
@@ -148,8 +158,7 @@ def show_transcription(frame, *, selected_job=None):
         nonlocal busy
         if busy or (not allow_dirty and not can_replace()):
             return
-        if (getattr(frame, 'working', False) or getattr(frame, '_closing', False)
-                or frame.library is not library or Path(library.root) != library_root):
+        if getattr(frame, 'working', False) or not scope_current():
             report('Спочатку завершіть поточну операцію або знову відкрийте поточну бібліотеку.')
             return
         busy = True
@@ -159,7 +168,7 @@ def show_transcription(frame, *, selected_job=None):
             nonlocal busy
             busy = False
             controls()
-            if alive and frame.library is library and Path(library.root) == library_root:
+            if alive and scope_current():
                 try:
                     complete(result)
                 except (ValueError, OSError, RuntimeError) as exc:
@@ -168,14 +177,30 @@ def show_transcription(frame, *, selected_job=None):
             nonlocal busy
             busy = False
             controls()
-            report(error)
-        if frame.run_job(label, operation, done=done, failed=failed) is False:
+            if isinstance(error, TranscriptionExportedError):
+                report(str(error) + '\n' + json.dumps(error.receipt, ensure_ascii=False, indent=2))
+            else:
+                report(error)
+        def work():
+            if cancelled():
+                from ..audio.models import AudioCancelled
+                raise AudioCancelled('The queued transcription view or workspace is no longer current.')
+            service._authorize()
+            return operation()
+        if frame.run_job(label, work, done=done, failed=failed) is False:
             busy = False
             controls()
     def cancelled():
         return (not alive or cancel.is_set() or frame.cancel_event.is_set()
-                or getattr(frame, '_closing', False) or frame.library is not library
-                or Path(library.root) != library_root)
+                or not scope_current())
+    def review_runtime(event):
+        if busy or not can_replace() or not scope_current() or getattr(frame, 'working', False):
+            return
+        from .transcription_runtime_dialog import show_runtime_transcription_dialog
+        show_runtime_transcription_dialog(frame)
+        if alive and scope_current():
+            refresh(current)
+
     def configure(event):
         try:
             from ..transcription import PROTOCOLS
@@ -201,7 +226,7 @@ def show_transcription(frame, *, selected_job=None):
                 if chooser.ShowModal() != wx.ID_OK:
                     return
                 models_dir = chooser.GetPath()
-            begin('Підключення локального Whisper', lambda: service.configure(python, worker, models_dir, protocol=protocol),
+            begin('Підключення локального Whisper', lambda: service.configure(python, worker, models_dir, protocol=protocol, cancelled=cancelled),
                   lambda value: report('Профіль підключено: ' + value['protocol'] + '. ' + value.get('retry_policy', '') +
                       ' Якість моделі ще не підтверджена фактичним розпізнаванням.'))
         except (ValueError, OSError, RuntimeError) as exc:
@@ -350,7 +375,7 @@ def show_transcription(frame, *, selected_job=None):
         dialog.EndModal(wx.ID_CLOSE)
     for name, handler in [('configure', configure), ('create', create), ('folder', create_folder),
                           ('run', run), ('save', save),
-                          ('export', export), ('refresh', update_jobs), ('close', close)]:
+                          ('export', export), ('refresh', update_jobs), ('review', review_runtime), ('close', close)]:
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     buttons['stop'].Bind(wx.EVT_BUTTON, lambda event: cancel.set())
     jobs.Bind(wx.EVT_CHOICE, select_job)
@@ -373,6 +398,11 @@ def install_transcription_actions(frame):
     menu = frame.menu_bar.GetMenu(0)
     item = menu.Append(wx.ID_ANY, 'Transcription: local audio and video...')
     def open_dialog(event):
+        if getattr(frame, '_closing', False):
+            return
+        if getattr(frame, 'working', False) or getattr(frame, 'busy', False):
+            frame.report('Wait for the current operation or cancel it before opening transcription.')
+            return
         try:
             show_transcription(frame)
         except (ValueError, OSError, RuntimeError) as exc:
@@ -381,3 +411,34 @@ def install_transcription_actions(frame):
     from .command_registry import CommandSpec
     from .keyboard_settings import register_menu_command
     register_menu_command(frame, CommandSpec('library.transcription', 'Transcription: local audio and video'), item)
+
+
+# Preserve canonical action/controller imports while retaining the established
+# V5/receipt entrypoint and its explicit workspace controls.
+from .transcription_runtime_dialog import (
+    TranscriptionActions, TranscriptionController, build_transcription_dialog,
+    show_runtime_transcription_dialog,
+)
+
+
+def install_transcription_menu(frame, menu):
+    """Compatibility hook for hosts using the canonical menu contract.
+
+    The current desktop installs its existing library.transcription entry once;
+    an external host choosing this hook reaches the same combined dialog.
+    """
+    import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    item = menu.Append(wx.ID_ANY, 'Local transcription…')
+    def open_dialog(event):
+        try:
+            show_transcription(frame)
+        except (ValueError, OSError, RuntimeError) as exc:
+            frame.report(str(exc))
+    frame.Bind(wx.EVT_MENU, open_dialog, item)
+    register_menu_command(frame, CommandSpec('tools.transcription', 'Local transcription'), item)
+    return open_dialog
+
+
+show_transcription_dialog = show_runtime_transcription_dialog

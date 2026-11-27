@@ -163,6 +163,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 assert original.read_bytes().startswith(b'Synthetic protocol')
                 assert sidecar.read_text(encoding='utf-8') == 'Excluded synthetic nonmedia sidecar.'
                 assert not find('Зберегти правки').IsEnabled()
+                assert find('Перевірений runtime та відновлення').IsEnabled()
                 state['finished'] = True
                 click(find('Закрити'))
                 return
@@ -178,6 +179,11 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         if failures:
             raise AssertionError('\n'.join(failures))
         assert state['finished'], 'Native dialog exited before acceptance.'
+        profiles_spec = importlib.util.spec_from_file_location('transcription_profiles_native',
+            source_root / 'scripts/windows_transcription_profiles_smoke.py')
+        profiles_probe = importlib.util.module_from_spec(profiles_spec)
+        profiles_spec.loader.exec_module(profiles_probe)
+        profile_report = profiles_probe.verify_runtime_profiles(frame, root, source_root)
     finally:
         frame.cancel_event.set()
         frame.executor.shutdown(wait=True, cancel_futures=True)
@@ -190,4 +196,5 @@ print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared 
     'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
     'profile_picker_interaction':'programmatic native selection and OK; manual interaction NOT_RUN',
     'profile_picker_answer':'controlled selections on an actual wx choice dialog',
+    'runtime_profiles': profile_report,
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))

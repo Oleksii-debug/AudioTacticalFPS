@@ -268,3 +268,54 @@ def test_assistant_close_cancels_work_then_releases_owned_production_once(native
     assert closed == ['provider closed'] and not e.executor.pending
     assert e.controls['review'].GetValue() == before
     assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
+
+
+def test_loaded_template_is_an_unapproved_guided_draft_until_fresh_preview(native_handlers, monkeypatch):
+    from carr_library.ui import assistant_templates
+    e = native_handlers
+    e.handlers['preview']()
+    assert e.controls['buttons']['run'].IsEnabled()
+    captured = {}
+    draft = json.dumps({'schema': 'carr-assistant-plan/1', 'summary': 'Saved settings',
+                        'steps': [{'tool': 'library.list', 'arguments': {}}]})
+    class Picker(Widget):
+        template_result = draft
+        template_handlers = {'close': lambda: None}
+        def ShowModal(self): return e.wx.ID_OK
+    def create(*args, **kwargs):
+        captured.update(kwargs)
+        return Picker()
+    monkeypatch.setattr(assistant_templates, 'create_templates_dialog', create)
+    e.handlers['templates']()
+    assert captured['executor'] is e.executor and captured['current_plan'] is not None
+    assert e.controls['instruction'].GetValue() == draft
+    assert e.controls['planning_source'].GetSelection() == 0
+    assert not e.controls['buttons']['run'].IsEnabled()
+    assert e.dialog.assistant_service.jobs() == () and not e.executor.pending
+    e.handlers['preview']()
+    assert e.controls['buttons']['run'].IsEnabled()
+    assert e.dialog.assistant_service.jobs() == ()
+
+
+@pytest.mark.parametrize('change', ['same_root_app', 'closing', 'goal_without_event'])
+def test_template_modal_return_cannot_overwrite_changed_parent(native_handlers, monkeypatch, change):
+    from carr_library.ui import assistant_templates
+    e = native_handlers
+    original = e.controls['instruction'].GetValue()
+    class Picker(Widget):
+        template_result = '{"schema":"carr-assistant-plan/1","steps":[],"summary":"discard"}'
+        template_handlers = {'close': lambda: None}
+        def ShowModal(self):
+            if change == 'same_root_app':
+                e.frame.library = LibraryApp(e.app.root)
+            elif change == 'closing':
+                e.frame._closing = True
+            else:
+                e.controls['instruction'].ChangeValue('New native goal without a text event')
+            return e.wx.ID_OK
+    monkeypatch.setattr(assistant_templates, 'create_templates_dialog',
+                        lambda *args, **kwargs: Picker())
+    e.handlers['templates']()
+    expected = 'New native goal without a text event' if change == 'goal_without_event' else original
+    assert e.controls['instruction'].GetValue() == expected
+    assert e.dialog.assistant_service.jobs() == () and not e.executor.pending

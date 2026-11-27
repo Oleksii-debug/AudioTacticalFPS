@@ -103,13 +103,17 @@ def _open_json_file(path):
 
 
 
-def read_json(path):
+def read_json(path, *, maximum=None):
+    if maximum is None:
+        maximum = MAX_JSON_BYTES
+    if type(maximum) is not int or not 1 <= maximum <= MAX_JSON_BYTES:
+        raise ValueError('Invalid state JSON byte budget.')
     # An atomic writer can win between lstat and open. Retry that race only;
     # linked paths and invalid opened objects still fail before reading bytes.
     for _ in range(8):
         path = local_path(path, exists=True)
         before = regular(path)
-        if before.st_size > MAX_JSON_BYTES:
+        if before.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
         with _open_json_file(path) as stream:
             opened = os.fstat(stream.fileno())
@@ -123,13 +127,13 @@ def read_json(path):
                 continue
             # Recheck ancestors after opening, before consuming the bound handle.
             local_path(path, exists=True)
-            if opened.st_size > MAX_JSON_BYTES:
+            if opened.st_size > maximum:
                 raise ValueError('State exceeds its configured JSON budget.')
-            raw = stream.read(MAX_JSON_BYTES + 1)
+            raw = stream.read(maximum + 1)
         break
     else:
         raise ValueError('State changed repeatedly while opening; retry the operation.')
-    if len(raw) > MAX_JSON_BYTES:
+    if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))

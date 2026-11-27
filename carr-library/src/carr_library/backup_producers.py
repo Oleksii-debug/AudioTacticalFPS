@@ -10,6 +10,8 @@ from pathlib import PurePosixPath, PureWindowsPath
 import re
 from uuid import NAMESPACE_URL, uuid5
 
+from . import backup_book_audio
+
 ID = r'[A-Za-z0-9_-]{1,80}'
 HEX = r'[0-9a-f]{64}'
 READER = re.compile(r'state/speech/(' + HEX + r')\.reader\.json\Z')
@@ -18,6 +20,7 @@ USAGE = re.compile(r'state/(?:providers/usage|translation/provider/usage)/(' + I
 TRANSLATION = re.compile(r'state/translation/jobs/([0-9a-f]{32})(\.control)?\.json\Z')
 LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
+TEMPLATE = re.compile(r'state/assistant/templates/([0-9a-f]{32})\.json\Z')
 STUDIO = re.compile(r'state/studio/jobs/(' + ID + r')/(job|control|project|timeline)\.json\Z')
 SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z')
 RECORDING = re.compile(r'state/studio/recordings/([0-9a-f]{32})\.(json|wav)\Z')
@@ -29,6 +32,13 @@ TRUSTED_CLIENT = frozenset({'state/trusted-client/entitlement.json',
 
 
 def limit(name):
+    if maximum := backup_book_audio.limit(name):
+        return maximum
+    if name == 'state/studio/draft.json':
+        return 32 * 1024 * 1024
+    if TEMPLATE.fullmatch(name):
+        from .assistant.templates import MAX_TEMPLATE_BYTES
+        return MAX_TEMPLATE_BYTES
     if name in TRUSTED_CLIENT:
         return 65536
     if name == 'state/operations/resources.json':
@@ -57,6 +67,8 @@ def is_media(name):
 
 def validate_primary_collection(root, entries, records, *, cancelled):
     """Validate retained originals on copied paths; never open old outputs."""
+    from .assistant.templates import validate_template_collection
+    validate_template_collection(entries)
     from .speech.runtime import _wave_info
     from .state_backup import _validate_managed_clip_inputs
     by_name = {entry['filename']: entry for entry in entries}
@@ -84,6 +96,25 @@ def validate_primary_collection(root, entries, records, *, cancelled):
     state_entries = [{**entry, 'filename': entry['filename'][6:]}
                      for entry in entries if entry['filename'].startswith('state/')]
     _validate_managed_clip_inputs(root / 'state', state_entries, cancelled=cancelled)
+    draft_name = 'state/studio/draft.json'
+    if draft_name in by_name:
+        draft = records.get(draft_name)
+        _studio_draft(draft)
+        identity = draft['project_id']
+        if identity is not None:
+            if cancelled():
+                raise InterruptedError('Studio draft backup validation cancelled.')
+            from .backup_sidecars import _json, read_regular
+            from .durable_state import local_path
+            from .studio.project import Project
+            name = 'state/studio/projects/' + identity + '/project.json'
+            entry = by_name.get(name)
+            if entry is None:
+                raise ValueError('Studio draft has no matching copied saved project.')
+            raw = read_regular(local_path(root / name, root=root, exists=True), 32 * 1024 * 1024)
+            if (len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']
+                    or Project.from_dict(_json(raw)).id != identity):
+                raise ValueError('Studio draft project differs from the copied inventory.')
 
 
 def validate_translation_collection(db, records, *, cancelled):
@@ -187,6 +218,24 @@ def artifacts(values):
         seen.add(row['path'])
 
 
+def _studio_draft(value):
+    """Retain even an invalid editable script; never parse it or select a voice."""
+    from .durable_state import encode
+    from .studio.project import _id
+    fields(value, {'schema', 'text', 'title', 'voice_ids', 'project_id'})
+    if (type(value['schema']) is not int or value['schema'] != 1
+            or type(value['text']) is not str or type(value['title']) is not str
+            or type(value['voice_ids']) is not list
+            or any(type(voice) is not str for voice in value['voice_ids'])):
+        raise ValueError('Invalid editable Studio draft fields.')
+    if value['project_id'] is not None:
+        _id(value['project_id'])
+    # Autosave deliberately precedes script validation. Empty/incomplete fields
+    # and text exceeding parsed-project limits remain inert recovery data.
+    if len(encode(value)) > 32 * 1024 * 1024:
+        raise ValueError('Studio draft exceeds the existing JSON recovery budget.')
+
+
 def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
@@ -286,7 +335,7 @@ def _origin(value):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'lrc_notice'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'lrc_notice', 'book_source_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -304,6 +353,8 @@ def _timeline(value):
         text(value['music_continuity'], 8192)
     if 'lrc_notice' in value:
         text(value['lrc_notice'], 8192)
+    if 'book_source_sha256' in value:
+        digest(value['book_source_sha256'])
     if ('clips' in value) != ('clip_stems_notice' in value):
         raise ValueError('Incomplete clip timeline declaration.')
     if 'clips' in value:
@@ -623,7 +674,11 @@ def _public_entitlement(value):
 
 
 def validate(db, name, value):
-    if name in TRUSTED_CLIENT:
+    if backup_book_audio.limit(name) is not None:
+        backup_book_audio.validate_record(name, value)
+    elif name == 'state/studio/draft.json':
+        _studio_draft(value)
+    elif name in TRUSTED_CLIENT:
         _public_entitlement(value)
     elif name == 'state/operations/resources.json':
         from .operations.models import ResourceLimits
@@ -665,6 +720,9 @@ def validate(db, name, value):
                 raise ValueError('Invalid translation control.')
         else:
             _translation_job(value, match[1])
+    elif TEMPLATE.fullmatch(name):
+        from .assistant.templates import validate_saved_template
+        validate_saved_template(name, value)
     elif match := ASSISTANT.fullmatch(name):
         if match[2]:
             fields(value, {'command'})

@@ -1,8 +1,8 @@
-# Local transcription with the supplied Whisper worker
+# Local transcription with explicit worker protocols
 
 This workspace connects the owner's existing local Whisper worker to the current library application. It does not introduce a second recognizer, download models, or send recordings to an online service.
 
-## Native workflow
+## Native workflow: receipts-v1 and supplied V5
 
 Open a library, then **Library → Transcription: local audio and video...**.
 
@@ -25,7 +25,7 @@ Jobs belong to their original active library. Every operation rechecks that scop
 
 Exports and restored completed jobs verify retained bytes and each current-run receipt again. A receipt must agree with the selected worker/interpreter, exact settings, source hash, all requested outputs and timed JSON hash. A worker exit code or an existing same-name TXT alone cannot mark a job completed. Partial or failed exports remain visibly partial or failed.
 
-A restored engine configuration may point to runtime/model locations that are unavailable on the new computer. Select the installed runtime there before resuming. Completed results and edits can still be read/exported without the old engine. Moving an interrupted job can require recognizing its incomplete inputs again because the worker's cache identity includes its bound source location.
+A restored engine configuration is marked for explicit review even when restored to the same path. Its old runtime/model locations may also be unavailable. Use Configure again to select and review the installed runtime before resuming. Completed results and edits can still be read/exported without the old engine. Moving an interrupted job can require recognizing its incomplete inputs again because the worker's cache identity includes its bound source location.
 
 ## Shared command line
 
@@ -71,3 +71,112 @@ The public regression worker is deliberately synthetic. Its actual subprocess te
 The unchanged supplied repaired V5 worker and both helpers were also executed through this service with a controlled backend and dummy model files, outside public Git. That check covers protocol interoperability, actual wrapper exports, same-language retry and cache-preserving Stop/resume. It does not exercise Whisper acoustic inference. Runtime configuration and these protocol tests do not mean that model quality, mixed-language alignment, diarization, owner cloning or Windows11/NVDA acceptance has passed. Recognition requires a compatible offline faster-whisper/CTranslate2 installation and complete local models. No automatic replacement recognizer or remote fallback is selected.
 
 The launch uses isolated Python startup, the existing site-path bootstrap, a minimal environment, offline library settings, blocked Python network/child-command events and Python writes confined to the job. This is not an operating-system sandbox for arbitrary native libraries. Only a reviewed explicitly selected local runtime should be configured.
+
+
+## Fully inventoried local-file-job/1 profiles and historical recovery
+
+The existing **Library → Transcription** window also provides
+**Перевірений runtime та відновлення**. This opens the canonical runtime,
+Pause/Resume and saved-result controls through the same
+`LibraryApp.transcription(workspace)` service. It does not add a recognizer or
+reinterpret V5 manifests as a different protocol.
+
+Three explicit contracts coexist as data schemas:
+
+| Protocol | Creation and retained data | Execution admission |
+|---|---|---|
+| `receipts-v1` | Existing workspace jobs and receipt verification | Existing explicit worker/interpreter source pins; optional full runtime profile |
+| `whisper-v5-manifest-v1` | Existing workspace jobs, three supplied helper identities, fresh per-run manifest and unchanged cache | Existing V5 rules remain; optional complete runtime/model inventory |
+| `local-file-job/1` | Canonical `profiles/` and `jobs/<id>/` history, immutable host receipts and four derived formats | Mandatory complete inventory, explicit fingerprint trust, current workspace binding and local execution origin |
+
+In the runtime view, choose the existing Python executable, reviewed worker,
+and exact installed model directory. **Inspect files** reads their bounded
+identities without executing them. Review that fingerprint and explicitly
+select the trust confirmation before **Register trusted runtime**.
+**New transcription** accepts files or folders with explicit recursion,
+512-source / 32-GiB-per-source / 64-GiB-per-job limits inherited from that
+protocol. The V5/receipt intake limits above remain unchanged.
+
+**Pause at checkpoint** stops the worker cooperatively, then uses the existing
+owned process cleanup if needed. **Start / resume** restarts only unfinished
+sources and preserves previously accepted receipts. The service uses the same
+host resource broker and keeps its reservation until any retained native
+cleanup owner reports quiescence. An optional UI observer failure does not
+change a producer's completed or cancelled result.
+
+Historical root-level canonical jobs are shown separately from workspace V5
+jobs. An unbound job can be inspected and its accepted results read, but
+execution and editing require **Bind to current workspace…** after explicit
+source review. A job already bound to another workspace is not adopted
+implicitly. Binding is separate from runtime trust and never starts inference.
+
+The binding records the exact saved-plan fingerprint and a local origin nonce.
+The nonce is excluded from portable state. Both complete-library and standalone
+state restore revoke profile trust, copied workspace bindings and legacy
+engine execution approval before publication, including same-path restore.
+A copied job or rewritten valid plan therefore cannot reuse the old approval.
+Use the separate worker-stopped review for an unclean interruption, then review
+the installed runtime and rebind compatible unfinished work. The same worker
+and model content must remain; selecting a different recognizer or model
+requires a new job.
+
+Completed results and saved edits remain readable, verifiable and exportable
+without the former interpreter or model files. Rebinding does not rewrite their
+original provenance or give transcription text quotation authority.
+
+The shared CLI still requires the explicit active `--workspace` ID:
+
+```text
+python -m carr_library transcribe --data-dir DATA --workspace ID inspect-runtime --python PYTHON --worker WORKER --model MODEL
+python -m carr_library transcribe --data-dir DATA --workspace ID register-runtime --name NAME --python PYTHON --worker WORKER --model MODEL --trust-runtime --fingerprint EXACT_SHA256
+python -m carr_library transcribe --data-dir DATA --workspace ID submit recording.wav --profile PROFILE_ID --language uk
+python -m carr_library transcribe --data-dir DATA --workspace ID jobs --canonical
+python -m carr_library transcribe --data-dir DATA --workspace ID bind-workspace JOB_ID --reviewed
+python -m carr_library transcribe --data-dir DATA --workspace ID resume JOB_ID
+```
+
+`inspect-runtime` and `register-runtime` accept an explicit `--protocol`.
+For an optional complete V5/receipt profile, select its matching protocol and
+pass `configure --runtime-profile PROFILE_ID` with the same exact files.
+Ordinary legacy configuration remains source-pin-only; it is not silently
+relabeled as a complete dependency inspection. The selected model in the
+legacy job must match the optional profile.
+
+See [Runtime and recovery details](transcription_runtime.md) for the exact
+inventory boundary. This reconciliation's new synthetic, CLI, restore and
+native-control cases require execution on the final assembled source; prior
+canonical or V5 results are not qualification of the union. Real inference,
+model accuracy, 135-language coverage and manual NVDA remain separate.
+
+
+## Export publication and Windows status policy
+
+Export verifies the exact immutable bytes before they leave the private library.
+Saved receipt JSON and edited text are decoded from those same authenticated
+bytes; a later edit cannot silently replace the revision selected for export.
+Historical receipt verification observes Pause/Cancel without discarding
+accepted results or changing an already completed recognition job.
+
+The existing V5/receipt export publishes one new directory with the shared
+atomic no-replace operation. A concurrent empty folder is still a conflict.
+The canonical `local-file-job/1` API retains its flat, explicitly selected
+directory and refuses every occupied output filename. If a later file,
+cancellation, verification or durability step fails after publication, already
+published files remain. The CLI prints a structured publication receipt and
+returns 2; the native view shows that same receipt. Its `published`,
+`partial` or `uncertain` state describes the export, not the recognition job.
+Inspect the listed paths before choosing another export directory. A late
+stop does not imply that published files were rolled back.
+
+All three profiles use the existing native process-family owner on Windows.
+The resource reservation stays held until retained cleanup finishes. While a
+Windows worker is alive the host does not open its mutable `job_status.json`.
+The public synthetic protocol peer has bounded replace retries; that alone
+does not establish the selected external worker's retry policy. Canonical
+progress still counts independently verified immutable checkpoints. Mutable
+terminal status is read only after process cleanup and keeps its strict
+256-KiB bound and count validation. Unknown progress remains indeterminate.
+
+These new filesystem publication and native descendant cases are pending
+execution on the composed candidate. They do not establish acoustic or model
+qualification.

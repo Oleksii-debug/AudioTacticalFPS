@@ -220,20 +220,47 @@ class ProductionService:
             self._voices = voice_registry(self.root.parent)
         return self._voices
 
+    def discover_voices(self, *, cancelled=lambda: False):
+        """Discover on the caller's worker through the existing registry."""
+        self._check_open()
+        def stopping():
+            return self._closed or bool(cancelled())
+        if stopping():
+            raise InterruptedError('Local voice discovery was cancelled.')
+        if self._voices is None:
+            from ..runtime_settings import voice_registry
+            registry = voice_registry(self.root.parent, cancelled=stopping)
+            self._voices = registry
+            if stopping():
+                try:
+                    registry.close()
+                except BaseException:
+                    # Refuse new use but retain this owner for a close retry.
+                    self._closed = True
+                    raise
+                self._voices = None
+                raise InterruptedError('Local voice discovery was cancelled.')
+        if stopping():
+            raise InterruptedError('Local voice discovery was cancelled.')
+        return self._voices
+
     def _check_open(self):
         if self._closed:
             raise RuntimeError('The production service is closed.')
 
     def close(self):
         """Release a lazily owned registry after the caller's worker finishes."""
-        if self._closed:
+        if self._closed and self._voices is None:
             return
         self._closed = True
-        voices, self._voices = self._voices, None
+        voices = self._voices
         if self._owns_voices and voices is not None:
             close = getattr(voices, 'close', None)
             if callable(close):
+                # Keep the exact owner available to its worker finalizer if
+                # native release fails. New production stays closed meanwhile.
                 close()
+        self._voices = None
 
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
         self._check_open()
@@ -407,7 +434,7 @@ class ProductionService:
             raise ValueError('A cue is outside the explicitly selected input directories.')
         return source
 
-    def run(self, job_id, *, cancelled=lambda: False, progress=None):
+    def run(self, job_id, *, cancelled=lambda: False, progress=None, source_guard=None):
         self._check_open()
         from ..audio import Track, MusicSpec, AudioError, AudioCancelled
         from ..speech import SpeechSettings
@@ -415,10 +442,39 @@ class ProductionService:
         with state_lock(job_root, 'render'), ExitStack() as reservations:
             state = self.get(job_id)
             self._require_origin(state)
+            project = Project.from_dict(state['project'])
+            bound_source = any(line.source_ref.startswith('carr-book-audio:')
+                               for scene in project.scenes for line in scene.lines)
+            if source_guard is not None and not callable(source_guard):
+                raise ValueError('The source guard must be callable.')
+            if bound_source and source_guard is None:
+                raise ValueError('Open this source-bound job from Book audio to recheck its original source.')
+            source_provenance = None
+
+            def check_source():
+                nonlocal source_provenance
+                if source_guard is None:
+                    return
+                if self._closed or cancelled():
+                    raise InterruptedError('Production stopped before source publication.')
+                value = source_guard()
+                if bound_source:
+                    from .book_audio import validate_provenance
+                    validate_provenance(project, value)
+                    raw = encode(value)
+                    if source_provenance is not None and raw != source_provenance:
+                        raise ValueError('The reviewed book source provenance changed.')
+                    source_provenance = raw
+                if self._closed or cancelled():
+                    raise InterruptedError('Production stopped during source verification.')
+
+            check_source()
             if state['status'] == 'complete':
                 self._verify_artifacts(state, cancelled=cancelled)
+                if bound_source and encode(read_json(Path(state['destination']) / 'book-source.json')) != source_provenance:
+                    raise ValueError('The published book source provenance differs from its reviewed plan.')
+                check_source()
                 return state
-            project = Project.from_dict(state['project'])
             control = job_root / 'control.json'
             if control.exists():
                 control.unlink()  # Explicit Run/Resume continues the saved job.
@@ -467,6 +523,7 @@ class ProductionService:
                        ('project', 'fingerprint', 'destination', 'format', 'stems', 'origin')):
                     raise ValueError('The production plan or output destination changed while waiting.')
                 self._admission_broker(admission_cancelled)
+                check_source()
                 local_path(Path(state['destination']).parent, exists=True)
                 for scene in project.scenes:
                     for cue in scene.cues:
@@ -524,12 +581,14 @@ class ProductionService:
             def check():
                 if stopping():
                     raise InterruptedError('Production paused or cancelled; completed chunks are retained.')
+                check_source()
 
             def report(message):
+                check_source()
                 state['progress'] = message
                 self._save(state)
-                if progress is not None:
-                    progress(message)
+                notify_admission(message)
+                check_source()
 
             def generate(path, operation):
                 remaining = capacity(65536, force=True)
@@ -730,6 +789,7 @@ class ProductionService:
                         sample_rate=project.sample_rate, cancelled=stopping))
                 # Revalidate local admission and retained originals before any
                 # external output path is resolved or created.
+                check_source()
                 self._require_origin(state)
                 for relative in project_managed_inputs(project):
                     resolve_managed_input(self.root, relative, cancelled=stopping)
@@ -858,6 +918,8 @@ class ProductionService:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
+                if source_provenance is not None:
+                    metadata['book_source_sha256'] = sha256(source_provenance).hexdigest()
                 from ..audio.audiobook import line_lrc
                 for name, raw in [('script.lrc', line_lrc(timeline).encode('utf-8')),
                                   ('script.vtt', '\n'.join(subtitles).encode('utf-8')),
@@ -867,9 +929,15 @@ class ProductionService:
                     source = job_root / name
                     atomic_bytes(source, raw, replace=source.exists())
                     publish(source, name)
+                if source_provenance is not None:
+                    source = job_root / 'book-source.json'
+                    atomic_bytes(source, source_provenance, replace=source.exists())
+                    publish(source, 'book-source.json')
+                check_source()
                 state['result'] = metadata
                 state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
                 self._verify_artifacts(state, cancelled=stopping)
+                check_source()
                 self._save(state)
                 return state
             except BaseException as exc:

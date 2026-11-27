@@ -2,10 +2,20 @@
 import argparse
 import json
 from pathlib import Path
+from .integrations.transcription_exports import TranscriptionExportedError
 import sys
 
 from .studio.cli import data_directory
-from .transcription import PROTOCOLS, RECEIPTS_PROTOCOL
+from .transcription import PROTOCOLS, RECEIPTS_PROTOCOL, LOCAL_FILE_PROTOCOL
+from .integrations.transcription_runtime import RUNTIME_PROTOCOLS
+
+
+def _runtime_arguments(parser):
+    parser.add_argument('--python', type=Path, required=True)
+    parser.add_argument('--worker', type=Path, required=True)
+    parser.add_argument('--model', type=Path, required=True,
+                        help='Exact existing model directory; no download')
+    parser.add_argument('--protocol', choices=RUNTIME_PROTOCOLS, default=LOCAL_FILE_PROTOCOL)
 
 
 def main(argv=None):
@@ -19,7 +29,9 @@ def main(argv=None):
     configure.add_argument('--models-dir', type=Path, required=True)
     configure.add_argument('--protocol', choices=PROTOCOLS, default=RECEIPTS_PROTOCOL,
         help='Explicit worker contract; use whisper-v5-manifest-v1 for the supplied repaired V5 worker and its two helpers')
-    commands.add_parser('jobs', help='List saved library transcription jobs')
+    jobs = commands.add_parser('jobs', help='List saved library transcription jobs')
+    jobs.add_argument('--canonical', action='store_true', help='Inspect local-file-job/1 history separately from V5 jobs')
+    configure.add_argument('--runtime-profile', help='Optional exact fully inspected legacy runtime profile ID')
     create = commands.add_parser('create', help='Retain original media and save a transcription job')
     create.add_argument('files', type=Path, nargs='+')
     folder = commands.add_parser('create-folder', help='Retain supported media from a local folder and its subfolders')
@@ -50,8 +62,65 @@ def main(argv=None):
     edit.add_argument('--text-file', type=Path, required=True)
     export = commands.add_parser('export', help='Export verified formats and separately labelled edits')
     export.add_argument('job')
-    export.add_argument('destination', type=Path, help='New directory outside library data')
+    export.add_argument('destination', type=Path, nargs='?', help='New legacy directory or existing canonical export parent, outside library data')
+    export.add_argument('--output', type=Path, help='Canonical explicit existing export directory')
+    export.add_argument('--format', action='append', choices=('txt', 'srt', 'vtt', 'json'), dest='formats')
+    export.add_argument('--without-edits', action='store_true')
+    inspect = commands.add_parser('inspect-runtime', help='Inspect installed file identities without execution')
+    _runtime_arguments(inspect)
+    register = commands.add_parser('register-runtime', help='Register an explicitly reviewed complete local runtime')
+    _runtime_arguments(register)
+    register.add_argument('--name', required=True)
+    register.add_argument('--trust-runtime', action='store_true')
+    register.add_argument('--fingerprint')
+    commands.add_parser('runtimes', help='List fully inventoried profiles; legacy source pins remain distinct')
+    submit = commands.add_parser('submit', help='Create an explicit local-file-job/1 retained job')
+    submit.add_argument('inputs', nargs='+', type=Path)
+    submit.add_argument('--profile', required=True)
+    submit.add_argument('--title', default='Transcription')
+    submit.add_argument('--recursive', action='store_true')
+    submit.add_argument('--language', default='auto')
+    submit.add_argument('--task', choices=('transcribe', 'translate'), default='transcribe')
+    submit.add_argument('--device', choices=('cpu', 'cuda'), default='cpu')
+    submit.add_argument('--compute-type', choices=('int8', 'int8_float16', 'int8_float32', 'float16', 'float32'), default='int8')
+    submit.add_argument('--beam-size', type=int, default=1)
+    submit.add_argument('--parallel-files', type=int, default=1)
+    submit.add_argument('--multilingual', action='store_true')
+    submit.add_argument('--no-vad', action='store_true')
+    submit.add_argument('--format', action='append', choices=('txt', 'srt', 'vtt', 'json'), dest='formats')
+    submit.add_argument('--run', action='store_true')
+    for name in ('status', 'resume', 'pause', 'cancel', 'continue'):
+        commands.add_parser(name).add_argument('job')
+    rebind = commands.add_parser('rebind-runtime', help='Rebind only the same worker/model content after explicit review')
+    rebind.add_argument('job')
+    rebind.add_argument('--profile', required=True)
+    bind = commands.add_parser('bind-workspace', help='Explicitly bind historical data; does not trust or run an engine')
+    bind.add_argument('job')
+    bind.add_argument('--reviewed', action='store_true')
+    bind.add_argument('--worker-stopped', action='store_true')
+    interrupted = commands.add_parser('acknowledge-interruption')
+    interrupted.add_argument('job')
+    interrupted.add_argument('--worker-stopped', action='store_true')
+    read = commands.add_parser('read')
+    read.add_argument('job')
+    read.add_argument('--source')
+    read.add_argument('--edited', action='store_true')
+    saved_edit = commands.add_parser('save-edit')
+    saved_edit.add_argument('job')
+    saved_edit.add_argument('--source', required=True)
+    saved_edit.add_argument('--text-file', type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.operation == 'register-runtime' and args.trust_runtime and not args.fingerprint:
+        parser.error('--trust-runtime requires the exact --fingerprint from inspect-runtime.')
+    if args.operation == 'export' and bool(args.destination) == bool(args.output):
+        parser.error('Choose exactly one explicit export directory: destination or --output.')
+    def progress(*values):
+        if len(values) == 1 and isinstance(values[0], dict):
+            print(json.dumps(values[0], ensure_ascii=False, allow_nan=False), file=sys.stderr, flush=True)
+        else:
+            done, total, phase = values
+            print(f'{phase}: progress is indeterminate' if total is None else f'{done}/{total}: {phase}',
+                  file=sys.stderr, flush=True)
     try:
         from .application import LibraryApp
         from .durable_state import local_path, regular
@@ -59,10 +128,13 @@ def main(argv=None):
         app = LibraryApp(data_directory(args.data_dir))
         service = app.transcription(args.workspace)
         if args.operation == 'configure':
-            result = service.configure(args.python, args.worker, args.models_dir, protocol=args.protocol)
+            result = service.configure(args.python, args.worker, args.models_dir, protocol=args.protocol,
+                                       runtime_profile_id=args.runtime_profile)
         elif args.operation == 'jobs':
-            result = [{'id': job['id'], 'title': job['title'], 'status': job['status'],
-                       'protocol': job['protocol'], 'done': job['done'], 'total': len(job['sources'])} for job in service.list()]
+            result = (service.list_jobs() if args.canonical else [
+                {'id': job['id'], 'title': job['title'], 'status': job['status'],
+                 'protocol': job['protocol'], 'done': job['done'], 'total': len(job['sources'])}
+                for job in service.list()])
         elif args.operation in ('create', 'create-folder'):
             options = {
                 'model': args.model, 'model_revision': args.model_revision,
@@ -73,26 +145,65 @@ def main(argv=None):
             result = (service.submit_folder(args.folder, title=args.title, options=options, protocol=args.protocol)
                       if args.operation == 'create-folder' else
                       {'id': service.submit(args.files, title=args.title, options=options, protocol=args.protocol)})
+        elif args.operation == 'inspect-runtime':
+            result = service.inspect_runtime(args.python, args.worker, args.model,
+                                             protocol=args.protocol, progress=progress)
+        elif args.operation == 'register-runtime':
+            result = service.register_runtime(args.name, args.python, args.worker, args.model,
+                protocol=args.protocol, owner_trusted=args.trust_runtime,
+                expected_fingerprint=args.fingerprint, progress=progress)
+        elif args.operation == 'runtimes':
+            result = service.list_runtimes()
+        elif args.operation == 'submit':
+            formats = set(args.formats or ('txt', 'srt', 'vtt', 'json'))
+            options = dict(language=args.language, task=args.task, device=args.device,
+                compute_type=args.compute_type, beam_size=args.beam_size, parallel_files=args.parallel_files,
+                multilingual=args.multilingual, vad_filter=not args.no_vad,
+                **{'output_' + name: name in formats for name in ('txt', 'srt', 'vtt', 'json')})
+            result = service.create_job(args.profile, args.inputs, settings=options,
+                title=args.title, recursive=args.recursive, progress=progress)
+            print('Saved transcription job: ' + result['id'], file=sys.stderr, flush=True)
+            if args.run:
+                result = service.run(result['id'], progress=progress)
         elif args.operation == 'run':
-            result = service.run(args.job, timeout=args.timeout,
-                progress=lambda done, total, state: print(
-                    f'{state}: progress is indeterminate' if total is None else f'{done}/{total}: {state}',
-                    file=sys.stderr, flush=True))
-        elif args.operation == 'show':
+            result = service.run(args.job, timeout=args.timeout, progress=progress)
+        elif args.operation == 'resume':
+            result = service.resume(args.job, progress=progress)
+        elif args.operation in ('pause', 'cancel', 'continue'):
+            result = getattr(service, 'continue_job' if args.operation == 'continue' else args.operation)(args.job)
+        elif args.operation == 'bind-workspace':
+            result = service.bind_canonical_job(args.job, reviewed=args.reviewed,
+                                               worker_stopped=args.worker_stopped)
+        elif args.operation == 'rebind-runtime':
+            result = service.rebind_runtime(args.job, args.profile)
+        elif args.operation == 'acknowledge-interruption':
+            result = service.acknowledge_interruption(args.job, worker_stopped=args.worker_stopped)
+        elif args.operation == 'read':
+            result = service.read_transcript(args.job, args.source, edited=args.edited)
+        elif args.operation in ('show', 'status'):
             result = service.get(args.job)
         elif args.operation == 'verify':
             result = service.verify(args.job)
-        elif args.operation == 'edit':
+        elif args.operation in ('edit', 'save-edit'):
             path = local_path(args.text_file, exists=True)
             if regular(path).st_size > MAX_TEXT_BYTES:
                 raise ValueError('Edited text exceeds its size allowance.')
-            result = {'revision': service.save_edit(args.job, args.source, path.read_text(encoding='utf-8-sig'))}
+            saved = service.save_edit(args.job, args.source, path.read_text(encoding='utf-8-sig'))
+            result = saved if args.operation == 'save-edit' else {'revision': saved}
         else:
-            result = {'exported_to': str(service.export(args.job, args.destination))}
+            exported = service.export(args.job, args.destination or args.output,
+                formats=tuple(dict.fromkeys(args.formats)) if args.formats else None,
+                include_edits=not args.without_edits)
+            result = exported if isinstance(exported, dict) else {'exported_to': str(exported)}
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
-        if args.operation == 'run' and result['status'] != 'completed':
-            return 2 if result['status'] == 'stopped' else 1
+        executed = args.operation in ('run', 'resume') or args.operation == 'submit' and args.run
+        if executed and result['status'] not in ('completed', 'complete'):
+            return 2 if result['status'] in ('stopped', 'paused', 'cancelled') else 1
         return 0
+    except TranscriptionExportedError as exc:
+        print(json.dumps(exc.receipt, ensure_ascii=False, indent=2, allow_nan=False))
+        print(str(exc), file=sys.stderr)
+        return 2
     except KeyboardInterrupt:
         print('Transcription stopped. Resume the saved job to reuse completed files.', file=sys.stderr)
         return 130

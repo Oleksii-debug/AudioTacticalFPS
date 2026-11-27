@@ -158,6 +158,18 @@ def test_parallel_barrier():
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('Required suites complete: 2; passed=2; failed=0', result.stdout)
 
+    def test_parallel_real_child_tails_cannot_swallow_strict_verdict_lines(self):
+        source = ("import atexit, os\n"
+                  "atexit.register(lambda: os.write(1, b'CHILD_TAIL_WITHOUT_NEWLINE'))\n"
+                  "def test_ok(): assert True\n")
+        result = self.run_fixture(source, '--jobs', '2', 'test_sample.py', 'test_sample.py')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.count('CHILD_TAIL_WITHOUT_NEWLINE'), 2)
+        expected = 'PASS: test_sample.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0'
+        self.assertEqual(result.stdout.splitlines().count(expected), 2, result.stdout)
+        self.assertEqual(result.stdout.splitlines()[-3:], [
+            expected, expected, 'Required suites complete: 2; passed=2; failed=0'])
+
     def test_parallel_missing_suite_cannot_hide_passing_suite(self):
         result = self.run_fixture('def test_ok(): assert True\n',
                                   '--jobs', '2', 'missing.py', 'test_sample.py')
@@ -378,13 +390,13 @@ def test_parallel_barrier():
 
             real_run_suite = runner.run_suite
 
-            def with_test_deadline(suite):
+            def with_test_deadline(suite, *, report=None):
                 if suite == 'test_timeout.py':
                     # Startup is acknowledged by the real descendant first;
                     # only the wait budget is shortened, never termination.
                     with mock.patch.object(runner, 'SUITE_TIMEOUT_SECONDS', .15):
-                        return real_run_suite(suite)
-                return real_run_suite(suite)
+                        return real_run_suite(suite, report=report)
+                return real_run_suite(suite, report=report)
 
             subprocess_api = types.SimpleNamespace(**vars(subprocess))
             subprocess_api.Popen = observe_started_descendant

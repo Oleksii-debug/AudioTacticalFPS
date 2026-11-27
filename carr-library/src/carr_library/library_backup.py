@@ -359,6 +359,9 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         inventory, entries, pending_entries = _verify_contents(source, stage, manifest,
             copy_originals=True, new_root=destination, cancelled=cancelled)
         backup_sidecars._check_cancelled(cancelled)
+        from .backup_transcription import prepare_restored_inventory
+        restored_sidecars = prepare_restored_inventory(stage, destination, inventory.entries,
+                                                       cancelled=cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -366,7 +369,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-        backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
+        backup_sidecars.publish(stage, destination, restored_sidecars, sync_directory=_sync_directory)
         backup_sidecars.publish(stage, destination, pending_entries, sync_directory=_sync_directory)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)

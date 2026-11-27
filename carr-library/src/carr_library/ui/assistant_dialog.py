@@ -83,7 +83,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
     for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+                             ('jobs', 'Saved &jobs'), ('templates', '&Templates...'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
@@ -125,7 +125,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                     # cancellation and the same proposal identity checks.
                     cancel.clear()
                     busy = 'voices'
-                    for key in ('preview', 'run', 'jobs'):
+                    for key in ('preview', 'run', 'jobs', 'templates'):
                         buttons[key].Disable()
                     buttons['pause'].SetLabel('Cancel voice &discovery')
                     buttons['pause'].Enable()
@@ -148,6 +148,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                             busy = None
                             buttons['preview'].Enable()
                             buttons['jobs'].Enable()
+                            buttons['templates'].Enable()
                             buttons['pause'].Disable()
                             buttons['pause'].SetLabel('&Pause')
                             try:
@@ -217,7 +218,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             profile = profiles[selected - 1]
             cancel.clear()
             busy = 'proposal'
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'run', 'jobs', 'templates'):
                 buttons[key].Disable()
             buttons['pause'].SetLabel('Cancel &proposal')
             buttons['pause'].Enable()
@@ -229,6 +230,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             busy = None
             buttons['preview'].Enable()
             buttons['jobs'].Enable()
+            buttons['templates'].Enable()
             buttons['pause'].Disable()
             buttons['pause'].SetLabel('&Pause')
             report(str(exc))
@@ -243,6 +245,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 busy = None
                 buttons['preview'].Enable()
                 buttons['jobs'].Enable()
+                buttons['templates'].Enable()
                 buttons['pause'].Disable()
                 buttons['pause'].SetLabel('&Pause')
                 if (cancel.is_set() or selected_revision != revision
@@ -279,7 +282,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             identity = job_id
             busy = 'run'
             cancel.clear()
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'run', 'jobs', 'templates'):
                 buttons[key].Disable()
             buttons['pause'].Enable()
             for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
@@ -298,7 +301,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 if not alive:
                     return
                 busy = None
-                for key in ('preview', 'run', 'jobs'):
+                for key in ('preview', 'run', 'jobs', 'templates'):
                     buttons[key].Enable()
                 buttons['pause'].Disable()
                 for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
@@ -329,6 +332,42 @@ def create_assistant_dialog(frame, *, wx_module=None):
         finally:
             choice.Destroy()
 
+    def templates(event=None):
+        if busy:
+            return
+        selected_inputs, selected_revision = input_identity(), revision
+        selected_library = frame.library
+        def current():
+            # Called on the existing worker as well as the UI thread.
+            return (alive and not getattr(frame, '_closing', False)
+                    and frame.library is selected_library and selected_library is service.app
+                    and selected_library.root == library_root and revision == selected_revision)
+        try:
+            if not current():
+                raise ValueError('The assistant library changed. Reopen it before selecting a template.')
+            from .assistant_templates import create_templates_dialog
+            reviewed = plan if plan is not None and approved_inputs == selected_inputs else None
+            picker = create_templates_dialog(dialog, service, executor=executor,
+                is_current=current, current_plan=reviewed, current_job_id=job_id, wx_module=wx)
+            try:
+                picker.ShowModal()
+                draft = picker.template_result
+            finally:
+                picker.template_handlers['close']()
+                picker.Destroy()
+            if not current() or selected_inputs != input_identity():
+                return
+            if draft is not None:
+                invalidate()
+                planning_source.SetSelection(0)
+                instruction.ChangeValue(draft)
+                report('Loaded an unapproved workflow draft. Choose current library and folders, '
+                       'then Preview the complete plan before Run.')
+                instruction.SetFocus()
+        except Exception as exc:
+            if current():
+                report(exc)
+
     def close(event=None):
         nonlocal alive
         if not alive:
@@ -349,7 +388,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'templates': templates, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -361,14 +400,17 @@ def create_assistant_dialog(frame, *, wx_module=None):
         full_backup=full_backup, instruction=instruction, planning_source=planning_source,
         review=review, buttons=buttons)
     dialog.assistant_handlers = dict(preview=preview, run=run, invalidate=invalidate,
-                                    close=close, cancel=cancel.set)
+                                    close=close, cancel=cancel.set, templates=templates)
     dialog.assistant_service = service
     return dialog
 
 
-def show_assistant(frame):
+def show_assistant(frame, *, templates=False):
     dialog = create_assistant_dialog(frame)
     try:
+        if templates:
+            import wx
+            wx.CallAfter(dialog.assistant_handlers['templates'])
         dialog.ShowModal()
     finally:
         dialog.assistant_handlers['close']()
@@ -576,6 +618,7 @@ def install_assistant_actions(frame):
     menu = wx.Menu()
     for identity, title, shortcut, handler in [
             ('assistant.local', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
+            ('assistant.templates', 'Saved workflow templates...', '', lambda e: show_assistant(frame, templates=True)),
             ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
