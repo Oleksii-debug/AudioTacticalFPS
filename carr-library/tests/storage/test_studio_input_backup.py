@@ -228,6 +228,11 @@ def historical_v4(backup, *, forged_review=None, uppercase_job=False):
     manifest['state'] = [item for item in manifest['state'] if item not in omitted]
     for item in omitted:
         (backup / 'state' / item['filename']).unlink()
+    # The historical producer copied only directories owning listed files.
+    # Do not retain a new-format empty input directory outside its inventory.
+    inputs = backup / 'state/studio/inputs'
+    if inputs.exists():
+        inputs.rmdir()
     if forged_review is not None:
         raw = encode(forged_review)
         (backup / 'state' / REVIEW).write_bytes(raw)
@@ -410,18 +415,8 @@ def test_modified_restored_input_is_refused_before_render(backed_up, tmp_path):
 
 def test_legacy_v4_without_studio_receipt_remains_readable(backed_up, tmp_path):
     _app, _source, project, backup, _digest = backed_up
-    manifest = read_json(backup / 'manifest.json')
-    manifest.pop('extensions', None)
-    shutil.rmtree(backup / 'extensions', ignore_errors=True)
-    manifest['version'] = 4 if 'pending' in manifest else 3
-    omitted = [item for item in manifest['state'] if item['filename'] == RECEIPT
-               or item['filename'].startswith('studio/inputs/')]
-    manifest['state'] = [item for item in manifest['state'] if item not in omitted]
-    for item in omitted:
-        (backup / 'state' / item['filename']).unlink()
-    raw = encode(manifest)
-    (backup / 'manifest.json').write_bytes(raw)
-    restored = restore_backup(backup, tmp_path / 'restored', sha256(raw).hexdigest())
+    digest = historical_v4(backup)
+    restored = restore_backup(backup, tmp_path / 'restored', digest)
     exact = ProjectStore(restored / 'state/studio/projects').load(project.id)
     assert exact == project  # No fabricated retained input for historical backups.
     legacy_job = production(restored / 'state/studio').get('restorable-job')

@@ -106,7 +106,7 @@ def _source_text(db, location):
         (location.workspace, location.edition, location.revision, location.asset_sha256,
          location.text_sha256, location.kind, location.index, location.kind, location.index)).fetchone()
     if row is None or sha256(row[0].encode('utf-8')).hexdigest() != location.text_sha256:
-        raise RestoreError('Reading recovery does not match its exact authenticated source.')
+        raise RestoreError('Reading recovery does not match its exact authenticated source; it must match the exact saved source.')
     return row[0]
 
 
@@ -220,6 +220,87 @@ def _has_media(media):
     return any(media.values())
 
 
+def validate_primary_state(root, entries, database, *, legacy_opaque=False,
+                           include_generated=False, cancelled=lambda: False):
+    """Check current primary producers without activating historical opaque data.
+
+    Typed V3/V4 and earlier extension versions also admitted opaque private
+    state. Their original bytes remain recoverable; absent old producer schemas
+    grant no authority to run a job, provider or media operation. New snapshots
+    use only the current finite adapters within these producer namespaces.
+    """
+    from . import backup_generated, backup_producers, backup_sidecars
+    from .studio.backup_inputs import _reserved_names
+
+    root = Path(root)
+    # Preserve the domain inspector's exact-name rule before generic namespace
+    # dispatch; a case alias must not become a different producer on restore.
+    _reserved_names(entry['filename'] for entry in entries)
+    generated, receipts, handled = [], {}, False
+    protected = ('speech/', 'studio/', 'providers/', 'assistant/', 'translation/')
+    with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
+        db.execute('PRAGMA trusted_schema=OFF')
+        for entry in entries:
+            _check(cancelled)
+            relative = entry['filename']
+            if not include_generated and 'cache' in relative.split('/'):
+                raise RestoreError('Generated cache requires explicit backup inclusion.')
+            name = 'state/' + relative
+            maximum = backup_producers.limit(name)
+            generated_limit = backup_generated.limit(name)
+            if generated_limit is not None:
+                if legacy_opaque:
+                    # Older generated state was an opaque optional byte copy.
+                    # Its consumer still inspects the media and exact receipt
+                    # before reuse; restore does not grant completion authority.
+                    continue
+                handled = True
+                generated.append({**entry, 'filename': name})
+                if backup_generated.is_media(name):
+                    size, _checksum, header = backup_sidecars._stream_file(
+                        root / relative, expected=entry, maximum=generated_limit, cancelled=cancelled)
+                    backup_generated.validate_container(name, header, size)
+                else:
+                    raw = backup_sidecars.read_regular(root / relative, generated_limit)
+                    backup_sidecars.validate_sidecar(db, name, raw)
+                    receipts[name] = _json(raw)
+            elif maximum is not None or name in ('state/audio/engines.json',
+                                                 'state/ui/reader-appearance.json'):
+                if legacy_opaque and backup_producers.SUBTITLE.fullmatch(name):
+                    continue
+                maximum = maximum or backup_sidecars.sidecar_limit(name)
+                if legacy_opaque and entry['size_bytes'] > maximum:
+                    continue
+                raw = backup_sidecars.read_regular(root / relative, maximum,
+                    allow_empty=legacy_opaque or backup_sidecars._empty_subtitle(name))
+                # The previous complete-state format did not interpret opaque
+                # JSON at these paths. Preserve it only on that reader path.
+                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):
+                    try:
+                        value = _json(raw)
+                    except RestoreError:
+                        continue
+                    match = backup_producers.STUDIO.fullmatch(name)
+                    control = (match is not None and match[2] == 'control'
+                        or backup_producers.ASSISTANT.fullmatch(name) is not None and name.endswith('.control.json')
+                        or backup_producers.TRANSLATION.fullmatch(name) is not None and name.endswith('.control.json'))
+                    if type(value) is not dict or 'schema' not in value and not control:
+                        continue
+                backup_sidecars.validate_sidecar(db, name, raw)
+                handled = True
+            elif (_PROJECT.fullmatch(relative) or _PUBLICATION.fullmatch(relative)
+                    or _RECORDING.fullmatch(relative) or _RECORDING_WAV.fullmatch(relative)
+                    or relative in ('studio/backup-inputs.json', 'studio/legacy-input-review.json')
+                    or re.fullmatch(r'studio/inputs/[0-9a-f]{64}\.audio', relative)):
+                # The existing typed media/input/session inspectors below own
+                # these formats and bind their complete component inventory.
+                handled = True
+            elif relative.startswith(protected) and not legacy_opaque:
+                raise RestoreError('No validated backup adapter is installed for ' + name + '.')
+    backup_generated.validate_collection(generated, receipts)
+    return handled
+
+
 def inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,
                   retained_inputs=frozenset()):
     """Authenticate typed producers without interpreting unrelated V3 state."""
@@ -305,7 +386,11 @@ def scoped_state_selection(root, database, allowed):
     return selected
 
 
-def snapshot(root, target, database, state_entries, *, independent=True, cancelled=lambda: False):
+def snapshot(root, target, database, state_entries, *, independent=True,
+             max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):
+    if type(max_bytes) is not int or max_bytes < 0:
+        raise RestoreError('Typed backup byte budget must be a nonnegative integer.')
+    max_bytes = min(max_bytes, MAX_BYTES)
     root, target = Path(root), Path(target)
     allowed = workspaces(database)
     sidecars = {}
@@ -317,17 +402,49 @@ def snapshot(root, target, database, state_entries, *, independent=True, cancell
         if raw is not None:
             sidecars[name] = raw
     validate_sidecars(database, sidecars, allowed)
+    canonical_entries, canonical_before = [], None
+    if independent:
+        from . import backup_sidecars
+        canonical_roots = _canonical_root_names()
+        canonical_before = backup_sidecars._capture(root, root_names=canonical_roots, cancelled=cancelled)
+        available = max_bytes - sum(len(raw) for raw in sidecars.values())
+        if available < 0:
+            raise RestoreError('Typed backup exceeds its complete byte budget.')
+        with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
+            db.execute('PRAGMA trusted_schema=OFF')
+            canonical_entries = backup_sidecars.snapshot(db, root, target, max_bytes=available,
+                root_names=canonical_roots, cancelled=cancelled)
+    primary = validate_primary_state(target.parent / 'state', state_entries, database,
+        include_generated=include_generated, cancelled=cancelled)
     media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,
         independent=independent, cancelled=cancelled)
     sessions, projects, transcriptions, required = inspect_state(target.parent / 'state', state_entries,
         database, allowed, independent=independent, cancelled=cancelled, retained_inputs=retained)
     required.extend(media_inputs)
     archives = []
-    if independent and os.path.lexists(root / LEGACY):
+    # Account for every already bounded component before copying a potentially
+    # large inert archive. The final staged inventory checks actual bytes too.
+    planned_bytes = (sum(len(raw) for raw in sidecars.values())
+                     + sum(entry['size_bytes'] for entry in canonical_entries))
+    if planned_bytes > max_bytes:
+        raise RestoreError('Typed backup exceeds its complete byte budget.')
+    legacy_present = False
+    if independent:
+        try:
+            (root / LEGACY).lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            legacy_present = True
+    if legacy_present:
+        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)
+        planned_bytes += sum(info.st_size for info in legacy_files.values())
+        if planned_bytes > max_bytes:
+            raise RestoreError('Typed backup exceeds its complete byte budget.')
         from .backup_compat.archive import snapshot_archives
         archives, archive_inputs = snapshot_archives(root / LEGACY, target / LEGACY, cancelled=cancelled)
         required.extend(archive_inputs)
-    if (not sidecars and not archives and not sessions and not projects and not transcriptions
+    if (not primary and not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions
             and not _has_media(media) and independent):
         return None
     target.mkdir(exist_ok=True, mode=0o700)
@@ -343,7 +460,20 @@ def snapshot(root, target, database, state_entries, *, independent=True, cancell
             required.append(_required(ASR_SETTINGS, 'local-asr-manifest', settings['manifest_path']))
     for item in validate_live_state(sidecars[LIVE]) if LIVE in sidecars else ():
         required.append(_required(LIVE, 'local-voice', item.voice_id))
-    files = inventory(target, cancelled=cancelled)
+    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)
+    for name, maximum in SIDECARS.items():
+        _check(cancelled)
+        if name in (DORDIAI, ASR_SETTINGS) and not independent:
+            continue
+        if read_bytes(root / name, maximum, optional=True) != sidecars.get(name):
+            raise RestoreError('Typed backup sidecar changed during snapshot.')
+    if canonical_before is not None:
+        for entry in canonical_entries:
+            _check(cancelled)
+            backup_sidecars._stream_file(root / entry['filename'], expected=entry,
+                maximum=backup_sidecars.sidecar_limit(entry['filename']), cancelled=cancelled)
+        if backup_sidecars._capture(root, root_names=canonical_roots, cancelled=cancelled) != canonical_before:
+            raise RestoreError('Canonical application state changed during snapshot.')
     manifest = dict(version=1, workspaces=allowed, independent_state=independent,
         files=files, reader_sessions=sessions, studio_projects=projects,
         legacy_archives=archives, required_inputs=_ordered_inputs(required))
@@ -351,6 +481,9 @@ def snapshot(root, target, database, state_entries, *, independent=True, cancell
         manifest.update(version=2, transcription_jobs=transcriptions)
     if _has_media(media):
         manifest.update(version=3, transcription_jobs=transcriptions, **media)
+    if primary or canonical_entries:
+        manifest.update(version=4, transcription_jobs=transcriptions, **media,
+            canonical_sidecars=sorted(entry['filename'] for entry in canonical_entries))
     validate_manifest(manifest)
     return manifest
 
@@ -358,7 +491,9 @@ def snapshot(root, target, database, state_entries, *, independent=True, cancell
 def _tree(root, *, cancelled=lambda: False):
     regular(root, directory=True)
     files, directories, folded = {}, set(), set()
-    for directory, dirs, names in os.walk(root, followlinks=False):
+    def walk_error(error):
+        raise error
+    for directory, dirs, names in os.walk(root, followlinks=False, onerror=walk_error):
         _check(cancelled)
         if len(Path(directory).relative_to(root).parts) > 16:
             raise RestoreError('Typed backup directory nesting exceeds its budget.')
@@ -394,14 +529,17 @@ def _legacy_original_directories(names):
             if re.fullmatch(r'legacy-backups/[0-9a-f]{64}/manifest\.json', name)}
 
 
-def inventory(root, *, cancelled=lambda: False):
+def inventory(root, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
+    if type(max_bytes) is not int or max_bytes < 0:
+        raise RestoreError('Typed backup byte budget must be a nonnegative integer.')
+    max_bytes = min(max_bytes, MAX_BYTES)
     before, directories = _tree(root, cancelled=cancelled)
     if directories != _ancestors(before) | _legacy_original_directories(before):
         raise RestoreError('Typed backup contains an unlisted empty directory.')
     result, total = [], 0
     for name, info in sorted(before.items()):
         total += info.st_size
-        if info.st_size < 1 or total > MAX_BYTES:
+        if info.st_size < 1 or total > max_bytes:
             raise RestoreError('Typed backup exceeds its byte budget.')
         digest, size = sha256(), 0
         with (Path(root) / name).open('rb') as stream:
@@ -416,6 +554,12 @@ def inventory(root, *, cancelled=lambda: False):
         if size != info.st_size:
             raise RestoreError('Typed backup file changed.')
         result.append(dict(filename=name, size_bytes=size, sha256=digest.hexdigest()))
+    # Metadata alone can miss a same-sized rewrite on Windows. Reuse the
+    # bounded canonical file verifier after the first complete byte pass.
+    from .backup_sidecars import _stream_file
+    for entry in result:
+        _stream_file(Path(root) / entry['filename'], expected=entry,
+                     maximum=max_bytes, cancelled=cancelled)
     after, later_directories = _tree(root, cancelled=cancelled)
     if ({name: _stamp(info) for name, info in before.items()} !=
             {name: _stamp(info) for name, info in after.items()} or directories != later_directories):
@@ -423,20 +567,45 @@ def inventory(root, *, cancelled=lambda: False):
     return result
 
 
+def _canonical_root_names():
+    from .backup_sidecars import _SIMPLE, _DIRECTORIES
+    # The established typed producers own reading state and the complete state
+    # tree. Reuse canonical adapters only for the remaining explicit root data.
+    return tuple(name for name in (*_SIMPLE, *_DIRECTORIES) if name not in (READING, 'state'))
+
+
+def _canonical_names(value):
+    names = value.get('canonical_sidecars', [])
+    if (type(names) is not list or len(names) > MAX_FILES
+            or any(type(name) is not str for name in names)
+            or names != sorted(set(names))):
+        raise RestoreError('Invalid canonical sidecar inventory.')
+    from .backup_sidecars import sidecar_limit
+    roots = set(_canonical_root_names())
+    for name in names:
+        if name.split('/')[0] not in roots:
+            raise RestoreError('A canonical sidecar overlaps another backup component.')
+        sidecar_limit(name)
+    return set(names)
+
+
 def validate_manifest(value):
     fields = {'version', 'workspaces', 'independent_state', 'files', 'reader_sessions',
               'studio_projects', 'legacy_archives', 'required_inputs'}
-    if type(value) is dict and value.get('version') in (2, 3):
+    if type(value) is dict and value.get('version') in (2, 3, 4):
         fields.add('transcription_jobs')
-    if type(value) is dict and value.get('version') == 3:
+    if type(value) is dict and value.get('version') in (3, 4):
         fields.update(('studio_input_receipt', 'studio_publications', 'studio_recordings',
                        'studio_unverified_recordings'))
+    if type(value) is dict and value.get('version') == 4:
+        fields.add('canonical_sidecars')
     if (type(value) is not dict or set(value) != fields or type(value['version']) is not int
-or value['version'] not in (1, 2, 3) or type(value['independent_state']) is not bool
+or value['version'] not in (1, 2, 3, 4) or type(value['independent_state']) is not bool
             or type(value['workspaces']) is not list or len(value['workspaces']) > 10000
             or any(not isinstance(item, str) or not item or len(item) > 512 for item in value['workspaces'])
             or value['workspaces'] != sorted(set(value['workspaces']))):
         raise RestoreError('Unsupported typed backup manifest or scope.')
+    canonical_names = _canonical_names(value)
     files = value['files']
     if type(files) is not list or len(files) > MAX_FILES:
         raise RestoreError('Invalid typed backup file inventory.')
@@ -447,18 +616,25 @@ or value['version'] not in (1, 2, 3) or type(value['independent_state']) is not 
                 or not isinstance(item['sha256'], str) or not _HASH.fullmatch(item['sha256'])):
             raise RestoreError('Invalid typed backup file record.')
         name = relative_name(item['filename']).as_posix()
-        if (name not in SIDECARS and not re.fullmatch(r'legacy-backups/[0-9a-f]{64}(?:\.json|/.+)', name)):
+        if (name not in SIDECARS and name not in canonical_names
+                and not re.fullmatch(r'legacy-backups/[0-9a-f]{64}(?:\.json|/.+)', name)):
             raise RestoreError('Unsupported typed backup filename.')
         if name.casefold() in names:
             raise RestoreError('Duplicate typed backup filename.')
         names.add(name.casefold())
         total += item['size_bytes']
+        if name in canonical_names:
+            from .backup_sidecars import sidecar_limit
+            if item['size_bytes'] > sidecar_limit(name):
+                raise RestoreError('Canonical sidecar exceeds its producer byte budget.')
         if total > MAX_BYTES or (name in SIDECARS and item['size_bytes'] > SIDECARS[name]):
             raise RestoreError('Typed backup exceeds its byte budget.')
     if [item['filename'] for item in files] != sorted(item['filename'] for item in files):
         raise RestoreError('Typed backup files must be ordered.')
     validate_portable_paths(item['filename'] for item in files)
-    if value['version'] == 3 and type(value['studio_input_receipt']) is not bool:
+    if not canonical_names <= {item['filename'] for item in files}:
+        raise RestoreError('A canonical sidecar is missing from the exact file inventory.')
+    if value['version'] in (3, 4) and type(value['studio_input_receipt']) is not bool:
         raise RestoreError('Invalid typed Studio input receipt declaration.')
     for field, pattern in (('reader_sessions', _READER), ('studio_projects', _PROJECT),
             ('transcription_jobs', _TRANSCRIPTION), ('studio_publications', _PUBLICATION),
@@ -494,9 +670,9 @@ or value['version'] not in (1, 2, 3) or type(value['independent_state']) is not 
         _required(item['component'], item['kind'], item['reference'])
     if inputs != _ordered_inputs(inputs):
         raise RestoreError('Required inputs must be unique and ordered.')
-    if ASR_SETTINGS in names and value['version'] not in (2, 3):
+    if ASR_SETTINGS in names and value['version'] not in (2, 3, 4):
         raise RestoreError('Transcription settings require the typed ASR extension version.')
-    if not value['independent_state'] and (archives or DORDIAI in names or ASR_SETTINGS in names
+    if not value['independent_state'] and (archives or canonical_names or DORDIAI in names or ASR_SETTINGS in names
             or value['studio_projects'] or value.get('transcription_jobs')
             or value.get('studio_input_receipt') or value.get('studio_publications')
             or value.get('studio_recordings') or value.get('studio_unverified_recordings')):
@@ -534,7 +710,15 @@ def restore(source, stage, manifest, state_entries, *, cancelled=lambda: False):
     if (sessions != value['reader_sessions'] or projects != value['studio_projects']
             or transcriptions != value.get('transcription_jobs', [])):
         raise RestoreError('Typed state producer inventory differs from the snapshot.')
-    paths = []
+    canonical_names = _canonical_names(value)
+    paths = sorted({name.split('/')[0] for name in canonical_names})
+    if canonical_names:
+        from . import backup_sidecars
+        canonical_entries = tuple(entry for entry in value['files'] if entry['filename'] in canonical_names)
+        with closing(sqlite3.connect((Path(stage) / 'library.sqlite').as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
+            db.execute('PRAGMA trusted_schema=OFF')
+            backup_sidecars.restore(db, temporary, Path(stage),
+                backup_sidecars.Inventory(canonical_entries), cancelled=cancelled)
     if value['legacy_archives']:
         from .backup_compat.archive import verify_archives
         archives, legacy_inputs = verify_archives(temporary / LEGACY, cancelled=cancelled)

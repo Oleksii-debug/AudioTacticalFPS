@@ -136,7 +136,7 @@ def _snapshot_locked_state(root, target, *, include_generated, max_bytes, cancel
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
-        source = root / relative
+        source = local_path(root / relative, root=root, exists=True)
         expected_stamp = before_inventory[relative]
         if _stamp(regular(source)) != expected_stamp:
             raise ValueError('Application state changed during backup; retry after saving.')

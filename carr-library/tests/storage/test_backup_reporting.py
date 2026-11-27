@@ -9,22 +9,27 @@ import pytest
 
 from carr_library.__main__ import main
 from carr_library.application import LibraryApp
+from carr_library.durable_state import atomic_json
 
 
 def test_cli_backup_audio_choice_reaches_authenticated_manifest(tmp_path, capsys):
     app = LibraryApp(tmp_path / 'library')
     app.create_workspace('Synthetic reporting fixture')
-    audio = app.root / 'state/studio/cache/synthetic.wav'
+    key = sha256(b'synthetic reporting PCM cache').hexdigest()
+    audio = app.root / 'state/studio/cache' / (key + '-0123456789.wav')
     audio.parent.mkdir(parents=True)
     with wave.open(str(audio), 'wb') as stream:
         stream.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
         stream.writeframes(b'\x00\x00' * 160)
+    atomic_json(audio.with_name(key + '.json'), {'schema': 1, 'key': key, 'file': audio.name,
+        'sha256': sha256(audio.read_bytes()).hexdigest(), 'duration': .01,
+        'sample_rate': 16000, 'channels': 1})
     destination = tmp_path / 'backup'
     assert main(['--data-dir', str(app.root), '--backup', str(destination),
                  '--backup-include-generated']) == 0
     manifest = json.loads((destination / 'manifest.json').read_text())
     assert manifest['generated_audio_included'] is True
-    assert (destination / 'state/studio/cache/synthetic.wav').read_bytes() == audio.read_bytes()
+    assert (destination / audio.relative_to(app.root)).read_bytes() == audio.read_bytes()
     output = capsys.readouterr().out
     assert 'Generated audio stored inside this library is included.' in output
     assert 'External exports, engine/model packs and operating-system credentials are separate.' in output

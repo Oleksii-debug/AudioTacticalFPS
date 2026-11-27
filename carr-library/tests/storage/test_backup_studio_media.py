@@ -94,7 +94,7 @@ def test_full_media_round_trip_keeps_exact_originals_and_inert_publication(
     digest = create_backup(app, backup, include_generated=include_generated)
     manifest = read_json(backup / 'manifest.json')
     extension = manifest['extensions']
-    assert manifest['version'] == 5 and extension['version'] == 3
+    assert manifest['version'] == 5 and extension['version'] == 4
     assert extension['studio_input_receipt'] is False
     assert extension['studio_recordings'] == [audio.with_suffix('.json').relative_to(app.root / 'state').as_posix()]
     assert extension['studio_unverified_recordings'] == [orphan.relative_to(app.root / 'state').as_posix()]
