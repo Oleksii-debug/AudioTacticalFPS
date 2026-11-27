@@ -56,6 +56,120 @@ def _terminate(process):
         process.wait(timeout=5)
 
 
+def _posix_group_snapshot(group, deadline):
+    """Read bounded kernel membership; never select a process from user files."""
+    result = []
+    count = 0
+    with os.scandir('/proc') as entries:
+        for entry in entries:
+            count += 1
+            if count > 100_000 or time.monotonic() >= deadline:
+                raise TimeoutError('Owned process membership exceeded its cleanup allowance.')
+            if not entry.name.isascii() or not entry.name.isdecimal():
+                continue
+            try:
+                identity = _posix_process_identity(int(entry.name))
+            except (FileNotFoundError, ProcessLookupError):
+                continue
+            if identity[0] == group:
+                result.append((int(entry.name), identity[1]))
+                if len(result) > 256:
+                    raise OSError('The owned process group exceeds its cleanup allowance.')
+    return tuple(result)
+
+
+def _posix_process_identity(pid):
+    with open('/proc/' + str(pid) + '/stat', 'rb') as stream:
+        raw = stream.read(4097)
+    if len(raw) > 4096 or b')' not in raw:
+        raise OSError('The kernel process identity exceeds its bounded format.')
+    # The command field can contain spaces and parentheses. Fields after the
+    # final ')' begin at state; pgrp is index2 and starttime is index19.
+    fields = raw.rsplit(b')', 1)[1].split()
+    if len(fields) < 20:
+        raise OSError('The kernel process identity is incomplete.')
+    return int(fields[2]), int(fields[19])
+
+
+def _capture_posix_group(group, retained, deadline):
+    for identity in _posix_group_snapshot(group, deadline):
+        if identity in retained:
+            continue
+        if len(retained) >= 256:
+            raise OSError('The owned process group exceeds its cleanup allowance.')
+        pid, started = identity
+        try:
+            handle = os.pidfd_open(pid, 0)
+        except ProcessLookupError:
+            continue
+        try:
+            try:
+                current = _posix_process_identity(pid)
+            except (FileNotFoundError, ProcessLookupError):
+                current = None
+            if current != (group, started):
+                continue
+            retained[identity] = handle
+            handle = None
+        finally:
+            if handle is not None:
+                os.close(handle)
+
+
+def _posix_process_exited(handle, milliseconds):
+    import select
+    observer = select.poll()
+    observer.register(handle, select.POLLIN)
+    events = observer.poll(milliseconds)
+    if not events:
+        return False
+    if any(descriptor != handle or flags & (select.POLLERR | select.POLLNVAL)
+           for descriptor, flags in events):
+        raise OSError('The owned process exit handle could not be observed.')
+    # POLLIN confirms final-thread exit; POLLHUP confirms subsequent reaping.
+    return any(flags & (select.POLLIN | select.POLLHUP) for _descriptor, flags in events)
+
+
+def _wait_posix_group(group, retained, *, use_pidfds):
+    """Confirm quiescence, preserving exact handles after an uncertain wait."""
+    deadline = time.monotonic() + 5
+    if not use_pidfds:
+        # Other POSIX hosts have no portable wait for non-child process objects.
+        # Only disappearance of the same owned group confirms completion.
+        while True:
+            try:
+                os.killpg(group, 0)
+            except ProcessLookupError:
+                return True
+            if time.monotonic() >= deadline:
+                raise TimeoutError('Owned process-group exit remains unconfirmed.')
+            time.sleep(min(.01, max(0, deadline - time.monotonic())))
+    while True:
+        _capture_posix_group(group, retained, deadline)
+        for handle in retained.values():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not _posix_process_exited(handle, max(1, int(remaining * 1000))):
+                raise TimeoutError('Owned process termination remains unconfirmed.')
+        current = _posix_group_snapshot(group, deadline)
+        if all(identity in retained and _posix_process_exited(retained[identity], 0)
+               for identity in current):
+            for identity, handle in tuple(retained.items()):
+                os.close(handle)
+                del retained[identity]
+            return True
+        if time.monotonic() >= deadline:
+            raise TimeoutError('Owned process-group exit remains unconfirmed.')
+
+
+def _can_own_posix_group():
+    # Keep the leader unreaped while its numeric process-group ID is authority.
+    # Linux pidfds then confirm final-thread exit without mistaking zombies for
+    # running work. Unsupported hosts are refused before a child is created.
+    return (all(hasattr(os, name) for name in
+                ('waitid', 'P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED', 'pidfd_open'))
+            and Path('/proc/self/stat').is_file())
+
+
 def run_process(args, *, budget=None, cancelled=lambda: False,
                 watch=(), progress=None, env=None, cwd=None, owned_tree=False,
                 stop_requested=None, allow_failure=False):
@@ -82,6 +196,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Audio process ownership and diagnostic exits must be explicit.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before starting.')
+    owned_posix = owned_tree and os.name == 'posix'
+    if owned_posix and not _can_own_posix_group():
+        raise AudioError('This host cannot safely observe an owned process group before reaping its leader.')
     watched = tuple(Path(path) for path in watch)
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
@@ -98,6 +215,18 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
     started = time.monotonic()
     stopped_at = None
+
+    def root_status():
+        if not owned_posix or process.returncode is not None:
+            return process.poll() if not owned_posix else process.returncode
+        try:
+            observed = os.waitid(os.P_PID, process.pid,
+                                 os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError as exc:
+            raise AudioError('The owned process leader was reaped outside its cleanup owner.') from exc
+        if observed is None:
+            return None
+        return observed.si_status if observed.si_code == os.CLD_EXITED else -observed.si_status
 
     def read_pipe(pipe, name):
         count = 0
@@ -132,6 +261,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             pipe.close()
 
     threads, started_pipes = [], set()
+    posix_handles = {}
     last_progress = None
 
     def check():
@@ -139,7 +269,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
         if (stop_requested is not None and stopped_at is None
-                and stop_requested() and process.poll() is None):
+                and stop_requested() and root_status() is None):
             stopped_at = time.monotonic()
             try:
                 process.stdin.write(b'q\n')
@@ -148,7 +278,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             except BrokenPipeError:
                 pass  # A concurrent exit is checked by the normal result path.
         if (stopped_at is not None and time.monotonic() - stopped_at > 5
-                and process.poll() is None):
+                and root_status() is None):
             raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
@@ -192,36 +322,58 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             threads.append(thread)
             thread.start()
             started_pipes.add(pipe)
-        while process.poll() is None:
+        while root_status() is None:
             check()
-            try:
-                process.wait(timeout=.05)
-            except subprocess.TimeoutExpired:
-                pass
+            if owned_posix:
+                # WNOWAIT above observes completion without releasing the
+                # leader identity that still authorizes group cleanup.
+                time.sleep(.05)
+            else:
+                try:
+                    process.wait(timeout=.05)
+                except subprocess.TimeoutExpired:
+                    pass
         for thread in threads:
             thread.join(timeout=2)
         if any(thread.is_alive() for thread in threads):
             raise AudioError('Audio worker did not close its diagnostic streams.')
         # Required even for a child which exited before the first polling tick.
         check()
-        if process.returncode and not allow_failure:
+        returncode = root_status()
+        if returncode and not allow_failure:
             message = bytes(buffers['stderr']).decode('utf-8', errors='replace')[-3000:]
-            raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
+            raise AudioError(f'Local audio worker failed (exit {returncode}): {message.strip()}')
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
-                             time.monotonic() - started, process.returncode,
+                             time.monotonic() - started, returncode,
                              stopped_at is not None)
     finally:
         def cleanup_process():
             if owned_tree and os.name == 'nt':
                 return process.close()
-            _terminate(process)
-            if owned_tree and os.name == 'posix':
-                # Kill only the session created by this call, even when its
-                # root exited before its own inference child.
+            if owned_posix:
+                if process.returncode is not None:
+                    # Only this path reaps our root, after confirmed group exit.
+                    return True
+                root_status()  # Refuse signals if another owner already reaped it.
+                _capture_posix_group(process.pid, posix_handles, time.monotonic() + 5)
+                if root_status() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+                    gentle_deadline = time.monotonic() + 1
+                    while root_status() is None and time.monotonic() < gentle_deadline:
+                        time.sleep(.01)
+                # The unreaped leader prevents its PID/PGID being recycled into
+                # a foreign group before this last signal and member barrier.
                 try:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+                _wait_posix_group(process.pid, posix_handles, use_pidfds=True)
+                process.wait(timeout=5)
+                return True
+            _terminate(process)
             return True
 
         def release_streams():
@@ -241,7 +393,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
 
         try:
             cleanup_process()
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
             from .cleanup import pending_cleanup
             raise pending_cleanup(cleanup_process,
                 message='Audio process cleanup is still pending; its admission remains reserved.',
