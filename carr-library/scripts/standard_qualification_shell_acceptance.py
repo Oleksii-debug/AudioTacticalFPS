@@ -134,11 +134,13 @@ def main(argv=None):
                     "output_bytes": len(output), "output_sha256": sha256(output).hexdigest(),
                     "output_file": output_path.name}
         if mode == "absent":
-            if code == 0 or b"CantActivateDocumentInPipeline" not in output or marker.exists():
+            if (code == 0 or shells[0]["pathext"] != ".CPL" or
+                    b"CantActivateDocumentInPipeline" not in output or marker.exists()):
                 raise AssertionError("The exact old classification failure was not reproduced before Python.")
             observed["python_started"] = False
         else:
-            if code != 0 or shells[0]["pathext"] != ".EXE" or not marker.is_file() or not tee.is_file():
+            # WinPS adds .CPL itself; the supplied child environment remains .EXE only.
+            if code != 0 or shells[0]["pathext"] != ".EXE;.CPL" or not marker.is_file() or not tee.is_file():
                 raise AssertionError("The fixed executable classification did not complete its real pipeline.")
             value = json.loads(marker.read_text(encoding="utf-8"))
             if (value.get("status") != "PASS" or value.get("os") != "nt" or
@@ -155,7 +157,8 @@ def main(argv=None):
         "schema": "carr-standard-qualification-shell/1", "status": "PASS",
         "source_commit": args.source_commit, "source_tree": args.source_tree,
         "checks": list(CHECKS), "passed": 3, "failed": 0, "skipped": 0,
-        "fixed_pathext": ".EXE", "host_environment_unchanged": True,
+        "fixed_pathext": ".EXE", "observed_fixed_pathext": ".EXE;.CPL",
+        "host_environment_unchanged": True,
         "fixed_shell": str(shell), "fixed_shell_sha256": digest(shell),
         "python": sys.executable, "python_sha256": digest(sys.executable),
         "source_sha256": {

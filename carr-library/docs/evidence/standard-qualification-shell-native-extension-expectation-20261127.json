@@ -1,0 +1,54 @@
+{
+  "schema": "carr.standard-qualification-shell-initialization-expectation.v1",
+  "status": "SOURCE_REVIEW_PENDING_RUNTIME_NOT_RUN",
+  "previous_frozen_candidate": "a0f5057cae5647722298df95a6e8bf2d7f055a66",
+  "previous_run": 46076104179,
+  "finding": "The product/CI correction supplies exactly PATHEXT=.EXE, but Windows PowerShell initializes its own process by appending .CPL. The first smoke incorrectly expected the inside-shell value to remain exactly .EXE.",
+  "primary_sources": [
+    {
+      "repository": "PowerShell/PowerShell",
+      "ref": "v6.0.0-alpha.9",
+      "path": "src/System.Management.Automation/engine/AutomationEngine.cs",
+      "blob": "bc57b454355e3ca8a1336b38b218b5f3e9c0b7eb",
+      "url": "https://github.com/PowerShell/PowerShell/blob/v6.0.0-alpha.9/src/System.Management.Automation/engine/AutomationEngine.cs",
+      "finding": "The legacy non-CORECLR initializer explicitly maps missing/empty PathEXT to .CPL and otherwise appends ;.CPL when absent."
+    },
+    {
+      "url": "https://github.com/PowerShell/PowerShell/issues/9797",
+      "finding": "The PowerShell maintainer identifies the same automatic .CPL addition as Windows PowerShell behavior that later Core had inadvertently removed."
+    },
+    {
+      "url": "https://github.com/PowerShell/PowerShell/pull/9828",
+      "path": "src/System.Management.Automation/engine/AutomationEngine.cs",
+      "blob": "b1e8e6ef889e479d0e76e56b2ddb8308af204a35",
+      "finding": "The restored implementation uses the same explicit .CPL initialization rule."
+    }
+  ],
+  "correction": {
+    "supplied_child_environment": ".EXE",
+    "observed_old_environment": ".CPL",
+    "observed_fixed_and_poisoned_environment": ".EXE;.CPL",
+    "runtime_added_extension": ".CPL",
+    "ambient_extensions_still_refused": [
+      ".BAT",
+      ".CMD",
+      ".PS1"
+    ],
+    "checks_unchanged": 3
+  },
+  "preserved": [
+    "The exact old CantActivateDocumentInPipeline error must occur before a Python marker.",
+    "Both fixed modes must execute the exact selected isolated/no-bytecode Python and Tee pipeline with exit0.",
+    "The current owned launcher, fixed system shell, source-bound function, argv, timeouts, environment-equality and cleanup-before-PASS remain.",
+    "No product/qualifier/probe/workflow changes; no wildcard or contains-only acceptance for extension lists.",
+    "The frozen previous branch is retained. Its runtime result is not yet inferred from this source correction."
+  ],
+  "standard_counts_unchanged": {
+    "source": 81,
+    "installed": 81,
+    "ordinary": 6,
+    "maintenance": 4,
+    "managed": 15,
+    "library": 50
+  }
+}
