@@ -16,9 +16,15 @@ LANGUAGE = r'[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}'
 
 
 def language(value, *, auto=False):
-    if type(value) is not str or not (auto and value == 'auto' or re.fullmatch(LANGUAGE, value)):
-        raise ValueError('Choose an explicit declared local translation language.')
-    return value
+    if type(value) is str:
+        # Automatic detection is a request sentinel, never a declared language.
+        # The ordinary language regex would otherwise accept this four-letter token.
+        if value.casefold() == 'auto':
+            if auto and value == 'auto':
+                return value
+        elif re.fullmatch(LANGUAGE, value):
+            return value
+    raise ValueError('Choose an explicit declared local translation language.')
 
 
 def request(operation, payload):

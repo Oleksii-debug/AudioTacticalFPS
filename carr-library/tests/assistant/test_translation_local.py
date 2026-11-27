@@ -281,3 +281,37 @@ def test_accepted_local_response_uses_pre_request_pair_snapshot(ready, monkeypat
     assert usage['usage']['decoded_translation_sha256'] == job['receipts'][0]['decoded_translation_sha256']
     assert service.export(identity, tmp_path / 'accepted-offline')['status'] == 'complete'
     assert len(state['calls']) == 2
+
+
+@pytest.mark.parametrize('sentinel', ['auto', 'AUTO', 'Auto'])
+def test_auto_sentinel_is_not_a_local_language(sentinel):
+    with pytest.raises(ValueError):
+        request('translation.languages', {'target': sentinel})
+    with pytest.raises(ValueError):
+        request('translation.text', {'q': 'Synthetic text', 'source': 'en', 'target': sentinel})
+    with pytest.raises(ValueError):
+        validate_languages([{'language': sentinel, 'name': 'Automatic', 'targets': []}])
+    with pytest.raises(ValueError):
+        validate_languages([{'language': 'en', 'name': 'English', 'targets': [sentinel]},
+                            {'language': sentinel, 'name': 'Automatic', 'targets': []}])
+    raw = json.dumps({'translatedText': 'Synthetic derivative',
+                      'detectedLanguage': {'language': sentinel, 'confidence': 90}}).encode()
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'auto'}, maximum=1000)
+    if sentinel != 'auto':
+        with pytest.raises(ValueError):
+            request('translation.text', {'q': 'Synthetic text', 'source': sentinel, 'target': 'uk'})
+    else:
+        _, body, _ = request('translation.text', {'q': 'Synthetic text', 'source': sentinel, 'target': 'uk'})
+        assert body['source'] == 'auto'
+
+
+@pytest.mark.parametrize('sentinel', ['auto', 'AUTO', 'Auto'])
+def test_local_approval_rejects_auto_target_before_provider_call(ready, sentinel):
+    service, p, state = ready.service, ready.profile, ready.state
+    before = len(state['calls'])
+    with pytest.raises(ValueError):
+        service.preview(p, 'Synthetic text', 'en', sentinel)
+    with pytest.raises(ValueError):
+        translation_approval(p, 'Synthetic text', 'en', sentinel, '0')
+    assert len(state['calls']) == before
