@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import ssl
 import threading
 import time
 from uuid import uuid4
@@ -16,7 +17,7 @@ import pytest
 
 from carr_library.assistant.credentials import CredentialUnavailable, WindowsCredentialVault
 from carr_library.assistant.providers import (
-    ConnectionStore, HTTPResult, PlanApproval, ProviderError, ProviderGateway,
+    ConnectionStore, HTTPResult, HTTPTransport, PlanApproval, ProviderError, ProviderGateway,
     ProviderProfile, _addresses, validate_profiles_document,
     validate_ledger_document,
 )
@@ -245,22 +246,43 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        self.server.received.append((self.path,self.rfile.read(int(self.headers['Content-Length'])),dict(self.headers)))
+        request = (self.path,self.rfile.read(int(self.headers['Content-Length'])),dict(self.headers))
+        self.server.received_at = time.monotonic()
+        self.server.received.append(request)
         if self.server.mode == 'redirect':
             self.send_response(307)
             self.send_header('Location','http://127.0.0.1:1/never-follow')
             self.send_header('Content-Length','0')
             self.end_headers()
             return
-        if self.server.mode == 'delay':
-            time.sleep(0.7)
         body = json.dumps({'choices':[{'message':{'content':'Local model result'}}]}).encode()
-        self.send_response(200)
-        self.send_header('Content-Type','application/json')
-        self.send_header('Content-Length',str(len(body)))
-        self.end_headers()
+        delay = getattr(self.server, 'delay', .7)
         try:
-            self.wfile.write(body)
+            if self.server.mode == 'delay':
+                time.sleep(delay)
+            if self.server.mode == 'partial_headers':
+                self.wfile.write(b'HTTP/1.0 200 OK\r\nContent-Type: application/')
+                time.sleep(delay)
+                self.wfile.write(b'json\r\nContent-Length: ' + str(len(body)).encode() + b'\r\n\r\n' + body)
+            elif self.server.mode == 'chunked':
+                self.wfile.write(b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n'
+                                 b'Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n')
+                for chunk in (body[:9], body[9:]):
+                    self.wfile.write(f'{len(chunk):x}\r\n'.encode() + chunk + b'\r\n')
+                    time.sleep(delay)
+                self.wfile.write(b'0\r\n\r\n')
+                self.close_connection = True
+            else:
+                self.send_response(200)
+                self.send_header('Content-Type','application/json')
+                self.send_header('Content-Length',str(len(body)))
+                self.end_headers()
+                if self.server.mode == 'partial_body':
+                    self.wfile.write(body[:9])
+                    time.sleep(delay)
+                    self.wfile.write(body[9:])
+                else:
+                    self.wfile.write(body)
         except OSError:
             pass
 
@@ -281,7 +303,7 @@ def server():
 
 def local_gateway(store,server):
     profile = ProviderProfile('local','Explicit local model','openai-compatible',
-        f'http://127.0.0.1:{server.server_port}/v1','local-model','chat',local=True)
+        f'{getattr(server, "scheme", "http")}://127.0.0.1:{server.server_port}/v1','local-model','chat',local=True)
     store.save_profile(profile)
     approval = PlanApproval.for_profiles((profile,))
     return ProviderGateway(store,approval=approval)
@@ -305,14 +327,123 @@ def test_real_redirect_is_not_followed(store,server):
     assert len(server.received) == 1
 
 
-def test_real_cancellation_interrupts_waiting_response_without_retry(store,server):
-    server.mode = 'delay'
+@pytest.mark.parametrize('shutdown_wakes_reader', [True, False])
+@pytest.mark.parametrize('phase', ['delay', 'partial_headers', 'partial_body'])
+def test_real_cancellation_interrupts_waiting_response_without_retry(store,server,monkeypatch,shutdown_wakes_reader,phase):
+    if not shutdown_wakes_reader:
+        # Some Windows pending buffered reads are not interrupted by shutdown
+        # from another thread. Cancellation must not depend on that behavior.
+        monkeypatch.setattr(socket.socket, 'shutdown', lambda *args: None)
+    server.mode = phase
     gateway = local_gateway(store,server)
-    started = time.monotonic()
     with pytest.raises(InterruptedError):
-        call(gateway,'local',cost=0,cancelled=lambda:time.monotonic()-started>0.12)
-    assert time.monotonic()-started < 0.6
+        call(gateway,'local',cost=0,timeout_seconds=2,
+             cancelled=lambda: bool(server.received) and time.monotonic()-server.received_at>0.12)
     assert len(server.received) == 1
+    assert time.monotonic()-server.received_at < 0.6
+
+
+@pytest.mark.parametrize('phase', ['partial_headers', 'partial_body', 'chunked'])
+def test_real_slow_fragments_keep_standard_http_parser_state(store, server, phase):
+    server.mode, server.delay = phase, .12
+    result = call(local_gateway(store, server), 'local', cost=0)
+    assert result['text'] == 'Local model result'
+    assert len(server.received) == 1
+
+
+@pytest.mark.parametrize('phase', ['delay', 'partial_headers', 'partial_body'])
+def test_real_response_deadline_does_not_wait_for_server_or_retry(store, server, phase):
+    server.mode = phase
+    gateway = local_gateway(store, server)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError, match='time budget'):
+        call(gateway, 'local', cost=0, timeout_seconds=.15)
+    assert time.monotonic() - started < .6
+    assert len(server.received) == 1
+
+
+@pytest.fixture
+def tls_server():
+    # This public fixture key has no use outside these synthetic loopback tests.
+    pem = Path(__file__).with_name('fixtures') / 'provider-loopback-test.pem'
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(str(pem))
+    instance = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    instance.socket = context.wrap_socket(instance.socket, server_side=True)
+    instance.mode, instance.received, instance.scheme = 'normal', [], 'https'
+    worker = threading.Thread(target=instance.serve_forever, daemon=True)
+    worker.start()
+    try:
+        yield instance, ssl.create_default_context(cafile=str(pem))
+    finally:
+        instance.shutdown()
+        instance.server_close()
+        worker.join(timeout=2)
+
+
+def test_real_tls_keeps_certificate_and_host_verification(store, tls_server, monkeypatch):
+    server, trusted = tls_server
+    gateway = local_gateway(store, server)
+    with pytest.raises(ProviderError, match='connection failed'):
+        call(gateway, 'local', cost=0)
+    assert server.received == []
+    assert trusted.check_hostname and trusted.verify_mode == ssl.CERT_REQUIRED
+    monkeypatch.setattr(ssl, 'create_default_context', lambda: trusted)
+    result = call(gateway, 'local', operation='trusted', cost=0)
+    assert result['text'] == 'Local model result' and len(server.received) == 1
+    assert server.received[0][2]['Host'] == f'127.0.0.1:{server.server_port}'
+    profile = ProviderProfile('different-host', 'Mismatched test certificate', 'openai-compatible',
+        f'https://127.0.0.2:{server.server_port}/v1', 'local-model', 'chat', local=True)
+    monkeypatch.setattr('carr_library.assistant.providers._addresses', lambda *args, **kwargs:
+        [(socket.AF_INET, socket.SOCK_STREAM, 6, ('127.0.0.1', server.server_port))])
+    with pytest.raises(ProviderError, match='connection failed'):
+        HTTPTransport().request(profile, '/v1/chat/completions', b'{}', {},
+            maximum_bytes=8192, timeout_seconds=2)
+    assert len(server.received) == 1  # Wrong TLS hostname never reaches HTTP.
+
+
+@pytest.mark.parametrize('phase', ['delay', 'partial_body'])
+def test_real_tls_cancellation_is_prompt_without_cross_thread_shutdown(store, tls_server, monkeypatch, phase):
+    server, trusted = tls_server
+    server.mode = phase
+    monkeypatch.setattr(ssl, 'create_default_context', lambda: trusted)
+    monkeypatch.setattr(socket.socket, 'shutdown', lambda *args: None)
+    gateway = local_gateway(store, server)
+    with pytest.raises(InterruptedError):
+        call(gateway, 'local', cost=0, timeout_seconds=2,
+             cancelled=lambda: bool(server.received) and time.monotonic() - server.received_at > .12)
+    assert len(server.received) == 1
+    assert time.monotonic() - server.received_at < .6
+
+
+@pytest.mark.parametrize('cancel', [True, False])
+def test_stalled_real_tls_handshake_obeys_cancel_and_deadline(store, cancel):
+    listener = socket.socket()
+    listener.bind(('127.0.0.1', 0))
+    listener.listen(1)
+    listener.settimeout(2)
+    entered, release = threading.Event(), threading.Event()
+    def accept():
+        connection, _ = listener.accept()
+        with connection:
+            entered.set()
+            release.wait(2)
+    worker = threading.Thread(target=accept, daemon=True)
+    worker.start()
+    profile = store.save_profile(ProviderProfile('tls-stall', 'Local TLS stall', 'openai-compatible',
+        f'https://127.0.0.1:{listener.getsockname()[1]}/v1', 'local-model', 'chat', local=True))
+    gateway = ProviderGateway(store, approval=PlanApproval.for_profiles((profile,)))
+    started = time.monotonic()
+    try:
+        with pytest.raises(InterruptedError if cancel else TimeoutError):
+            call(gateway, 'tls-stall', cost=0, timeout_seconds=2 if cancel else .15,
+                 cancelled=(lambda: time.monotonic() - started > .12) if cancel else None)
+        assert time.monotonic() - started < .6
+        assert entered.is_set()
+    finally:
+        release.set()
+        listener.close()
+        worker.join(timeout=2)
 
 
 def test_remote_dns_private_address_is_rejected_before_connect(monkeypatch):
@@ -320,6 +451,29 @@ def test_remote_dns_private_address_is_rejected_before_connect(monkeypatch):
         (socket.AF_INET,socket.SOCK_STREAM,6,'',('10.0.0.1',443))])
     with pytest.raises(ProviderError,match='disallowed network'):
         _addresses('api.example.com',443,local=False,timeout=1,cancelled=None)
+
+
+def test_unsupported_socket_setup_closes_the_only_connection(monkeypatch):
+    class UnsupportedSocket:
+        closed = 0
+        def setblocking(self, flag):
+            raise OSError('Synthetic unsupported nonblocking socket.')
+        def close(self):
+            self.closed += 1
+    connection = UnsupportedSocket()
+    opened = []
+    monkeypatch.setattr('carr_library.assistant.providers._addresses', lambda *args, **kwargs:
+        [(socket.AF_INET, socket.SOCK_STREAM, 6, ('127.0.0.1', 1))])
+    def create(*args):
+        opened.append(args)
+        return connection
+    monkeypatch.setattr(socket, 'socket', create)
+    profile = ProviderProfile('local', 'Local fixture', 'openai-compatible',
+        'http://127.0.0.1:1/v1', 'model', 'chat', local=True)
+    with pytest.raises(ProviderError, match='connection failed'):
+        HTTPTransport().request(profile, '/v1/chat/completions', b'{}', {},
+            maximum_bytes=8192, timeout_seconds=1)
+    assert len(opened) == 1 and connection.closed == 1
 
 
 def test_fake_official_tts_returns_valid_wav_only_to_explicit_destination(store,tmp_path):

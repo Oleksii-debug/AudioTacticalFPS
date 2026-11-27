@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, replace
+import errno
 from hashlib import sha256
 import http.client
+import io
 import ipaddress
 import json
 import math
@@ -19,6 +21,7 @@ import os
 from pathlib import Path
 import queue
 import re
+import select
 import socket
 import ssl
 import threading
@@ -358,6 +361,111 @@ class HTTPResult:
     status: int = 200
 
 
+class _ResponseReader(io.RawIOBase):
+    """Keep http.client's parser/buffer while polling before every socket read."""
+    def __init__(self, channel):
+        super().__init__()
+        self.channel = channel
+        channel.readers += 1
+
+    def readable(self):
+        return True
+
+    def readinto(self, target):
+        return self.channel.operation(self.channel.sock.recv_into, target)
+
+    def close(self):
+        if not self.closed:
+            try:
+                super().close()
+            finally:
+                self.channel.readers -= 1
+                if self.channel.closing and not self.channel.readers:
+                    self.channel.sock.close()
+
+
+class _RequestSocket:
+    """One nonblocking connection; no reader thread or cross-thread shutdown.
+
+    select supports Windows sockets. A timed-out socket.makefile cannot safely
+    resume a partial HTTP header, so only the raw socket is nonblocking and the
+    normal http.client parser receives a blocking BufferedReader facade. Every
+    wait returns to the request's own cancellation/deadline check within 50 ms.
+    """
+    def __init__(self, sock, *, deadline, cancelled):
+        self.sock, self.deadline, self.cancelled = sock, deadline, cancelled
+        self.readers, self.closing = 0, False
+        self.sock.setblocking(False)
+
+    def remaining(self):
+        _cancel(self.cancelled)
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('Provider request exceeded its time budget.')
+        return remaining
+
+    def wait(self, *, writing=False):
+        while True:
+            remaining = self.remaining()
+            readable, writable, exceptional = select.select(
+                [] if writing else [self.sock], [self.sock] if writing else [],
+                [self.sock], min(0.05, remaining))
+            self.remaining()
+            if readable or writable or exceptional:
+                return
+
+    def operation(self, call, *arguments, writing=False):
+        while True:
+            self.remaining()
+            try:
+                return call(*arguments)
+            except ssl.SSLWantReadError:
+                self.wait()
+            except ssl.SSLWantWriteError:
+                self.wait(writing=True)
+            except BlockingIOError:
+                self.wait(writing=writing)
+
+    def connect(self, address):
+        self.remaining()
+        error = self.sock.connect_ex(address)
+        pending = {errno.EINPROGRESS, errno.EWOULDBLOCK, errno.EALREADY,
+                   errno.EINTR, 10035, 10036, 10037}  # Winsock pending codes.
+        while error not in (0, errno.EISCONN, 10056):
+            if error not in pending:
+                raise OSError(error, 'Provider connection failed.')
+            self.wait(writing=True)
+            error = self.sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        self.remaining()
+
+    def secure(self, hostname):
+        self.remaining()
+        self.sock = ssl.create_default_context().wrap_socket(
+            self.sock, server_hostname=hostname, do_handshake_on_connect=False)
+        self.operation(self.sock.do_handshake)
+
+    def sendall(self, data):
+        remaining = memoryview(data)
+        while remaining:
+            count = self.operation(self.sock.send, remaining, writing=True)
+            if count <= 0:
+                raise OSError('Provider connection closed while sending.')
+            remaining = remaining[count:]
+
+    def makefile(self, mode):
+        if mode != 'rb':
+            raise ValueError('Provider responses require a binary read stream.')
+        return io.BufferedReader(_ResponseReader(self))
+
+    def close(self):
+        # HTTP/1.0 can release HTTPConnection.sock before its response is read.
+        # Keep that response's reader alive until it closes, as socket.makefile
+        # does, and always force-close the underlying socket in request.finally.
+        self.closing = True
+        if not self.readers:
+            self.sock.close()
+
+
 class HTTPTransport:
     """Direct HTTP(S), pinned resolved IP, normal TLS verification, no proxies.
 
@@ -379,31 +487,13 @@ class HTTPTransport:
         family, kind, protocol, address = addresses[0]
         connection = http.client.HTTPConnection(host, port, timeout=timeout_seconds)
         raw_socket = socket.socket(family, kind, protocol)
-        raw_socket.settimeout(max(0.1, timeout_seconds - (time.monotonic() - started)))
-        done = threading.Event()
-        interrupted = []
-        def interrupt():
-            while not done.wait(0.05):
-                try:
-                    _cancel(cancelled)
-                    if time.monotonic() - started >= timeout_seconds:
-                        raise TimeoutError('Provider request exceeded its time budget.')
-                except BaseException as exc:
-                    interrupted.append(exc)
-                    try:
-                        (connection.sock or raw_socket).shutdown(socket.SHUT_RDWR)
-                    except OSError:
-                        pass
-                    return
-        watcher = threading.Thread(target=interrupt, daemon=True)
-        watcher.start()
+        channel, response = None, None
         try:
-            raw_socket.connect(address)
-            _cancel(cancelled)
+            channel = _RequestSocket(raw_socket, deadline=started + timeout_seconds, cancelled=cancelled)
+            channel.connect(address)
             if parts.scheme == 'https':
-                connection.sock = ssl.create_default_context().wrap_socket(raw_socket, server_hostname=host)
-            else:
-                connection.sock = raw_socket
+                channel.secure(host)
+            connection.sock = channel
             connection.auto_open = 0
             connection.request(method, path, payload, headers)
             response = connection.getresponse()
@@ -427,15 +517,21 @@ class HTTPTransport:
                     raise ProviderError('Provider response exceeds the allowed byte budget.')
             if declared is not None and len(body) != int(declared):
                 raise ProviderError('Provider response was truncated.')
+            channel.remaining()
             return HTTPResult(response.getheader('Content-Type', '')[:256].lower(), bytes(body), response.status)
+        except (InterruptedError, TimeoutError):
+            raise
         except (OSError, http.client.HTTPException, ssl.SSLError, UnicodeError):
-            if interrupted:
-                raise interrupted[0] from None
             raise ProviderError('The provider connection failed; charge state may be uncertain. No automatic retry was made.') from None
         finally:
-            done.set()
-            connection.close()
-            raw_socket.close()
+            try:
+                if response is not None:
+                    response.close()
+                connection.close()
+            finally:
+                if channel is not None:
+                    channel.sock.close()
+                raw_socket.close()
 
 
 class ProviderGateway:

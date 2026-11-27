@@ -541,7 +541,13 @@ def _mail_parts(part, budget, path):
         if not isinstance(raw, bytes):
             raise ValueError('Email text payload is invalid.')
     if transfer == 'base64':
-        raw = base64.b64decode(raw.translate(None, b' \t\r\n'), validate=True)
+        encoded = raw.translate(None, b' \t\r\n')
+        raw = base64.b64decode(encoded, validate=True)
+        # Python 3.11 accepts excess padding after a complete quartet even
+        # with validate=True. Require one canonical representation across
+        # supported Python versions, including padding and unused pad bits.
+        if base64.b64encode(raw) != encoded:
+            raise ValueError('Email base64 payload is malformed.')
     elif transfer == 'quoted-printable':
         if re.search(br'=(?![0-9A-Fa-f]{2}|\r?\n|\r)', raw):
             raise ValueError('Email quoted-printable payload is malformed.')

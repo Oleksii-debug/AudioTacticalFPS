@@ -685,7 +685,8 @@ def main():
         message = json.loads(raw)
         import_keys = {'data_dir', 'request_id', 'timeout'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys):
+        direct_keys = {'action', 'source', 'sha256', 'mime', 'workspace', 'edition', 'timeout'}
+        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, direct_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
@@ -696,6 +697,15 @@ def main():
             raise PermissionError('Network access is disabled in the import worker.')
         socket.create_connection = socket.getaddrinfo = denied
         socket.socket.connect = socket.socket.connect_ex = denied
+        if set(message) == direct_keys:
+            if message['action'] != 'direct-identity' or not isinstance(message['source'], str):
+                raise ValueError('Invalid direct import verification request.')
+            from ..pending_backup import _direct_extraction_identity
+            with redirect_stdout(sys.stderr):
+                result = _direct_extraction_identity(message['source'], message['sha256'],
+                    message['mime'], message['workspace'], message['edition'])
+            print(canonical({'result': result}))
+            return 0
         if set(message) == render_keys:
             if message['action'] != 'render' or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')

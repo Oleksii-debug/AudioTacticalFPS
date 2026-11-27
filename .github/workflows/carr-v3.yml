@@ -57,6 +57,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare pinned OCR for required recognition and backup acceptance
+        id: ocr-runtime
+        timeout-minutes: 10
+        run: |
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-v3-ocr'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $ocrWork 'runtime'
+          python -B packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'cache') --output $ocr --source-archive (Join-Path $ocrWork 'corresponding-source.tar') --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:CARR_OCR_DIR = $ocr
+          $env:PATH = "$ocr;$env:PATH"
+          python -I -B -c "import json; from carr_library.extract.ocr_runtime import check_runtime; result=check_runtime(); assert result['synthetic_recognition']=='RESEARCH'; print(json.dumps(result))" | Tee-Object 'ci-v3-results/ocr-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
@@ -96,7 +113,7 @@ jobs:
           python scripts/ci_check.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_operation_progress.py tests/ui/test_progress_numeric_limits.py tests/ui/test_progress_job_review.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/e2e/test_import_progress.py tests/storage/test_progress_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate local services, DSP, integrity and provider permission boundaries
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.ocr-runtime.outcome == 'success' }}
         run: |
           python -m pytest -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

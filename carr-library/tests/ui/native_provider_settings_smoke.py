@@ -130,8 +130,6 @@ def main():
                     user.GetWindowThreadProcessId.restype = wintypes.DWORD
                     user.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
                     user.GetWindow.restype = wintypes.HWND
-                    user.GetDlgItem.argtypes = (wintypes.HWND, ctypes.c_int)
-                    user.GetDlgItem.restype = wintypes.HWND
                     user.IsWindowEnabled.argtypes = (wintypes.HWND,)
                     user.IsWindowEnabled.restype = wintypes.BOOL
                     user.SendMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
@@ -142,9 +140,14 @@ def main():
                     user.GetWindowThreadProcessId(native, ctypes.byref(owner_pid))
                     assert owner_pid.value == os.getpid()
                     assert user.GetWindow(native, 4) == settings.dialog.GetHandle()  # GW_OWNER
-                    button = user.GetDlgItem(native, 6)  # Win32 IDYES
-                    assert button and user.IsWindowEnabled(button)
-                    user.SendMessageW(button, 0x00F5, 0, 0)  # BM_CLICK
+                    assert user.IsWindowEnabled(native)
+                    # A TaskDialog's buttons need not be direct child HWNDs;
+                    # GetDlgItem(native, IDYES) is not its supported interface.
+                    # wxMSW maps Yes to the Win32 IDYES even for custom labels.
+                    # Use the documented TaskDialog message on the actual
+                    # process/owner-verified confirmation. The following disk
+                    # assertions still require the real removal to complete.
+                    user.SendMessageW(native, 0x0400 + 102, 6, 0)  # TDM_CLICK_BUTTON, IDYES
                     return
                 dialogs = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.MessageDialog) and window.GetTitle() == 'Remove selected connection?']

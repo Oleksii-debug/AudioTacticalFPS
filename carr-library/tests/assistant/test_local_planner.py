@@ -36,7 +36,9 @@ class Handler(BaseHTTPRequestHandler):
         pass
     def do_POST(self):
         payload = self.rfile.read(int(self.headers['Content-Length']))
-        self.server.requests.append((self.path, json.loads(payload), dict(self.headers)))
+        request = (self.path, json.loads(payload), dict(self.headers))
+        self.server.received_at = time.monotonic()
+        self.server.requests.append(request)
         if self.server.delay:
             time.sleep(self.server.delay)
         body = json.dumps({'choices': [{'message': {'content': self.server.proposal}}]}).encode()
@@ -160,11 +162,11 @@ def test_remote_or_changed_profile_never_enters_local_planning(assistant, server
 def test_real_local_planning_cancellation_keeps_tools_unexecuted(assistant, server):
     configured = profile(assistant, server)
     server.delay = .7
-    started = time.monotonic()
     with pytest.raises(InterruptedError):
-        propose_local_plan(assistant, configured, 'List books', cancelled=lambda: time.monotonic() - started > .12)
-    assert time.monotonic() - started < .6
+        propose_local_plan(assistant, configured, 'List books',
+            cancelled=lambda: bool(server.requests) and time.monotonic() - server.received_at > .12)
     assert len(server.requests) == 1 and list(assistant.plans.glob('*.json')) == []
+    assert time.monotonic() - server.received_at < .6
 
 
 def test_real_model_injection_response_is_rejected_before_preview_or_execution(assistant, server):

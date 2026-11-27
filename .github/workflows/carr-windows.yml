@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 60
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -65,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -122,6 +122,21 @@ jobs:
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Require locale-independent backup and real process cancellation regressions
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/packaging/test_ci_check.py 2>&1 | Tee-Object 'ci-results/runner-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $previousUtf8 = $env:PYTHONUTF8
+          try {
+            $env:PYTHONUTF8 = '0'
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/storage/test_v3_state_backup.py tests/e2e/test_pdf_review_cancellation.py 2>&1 | Tee-Object 'ci-results/windows-locale-cancellation-regressions.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PYTHONUTF8 = $previousUtf8
+          }
+
       - name: Check the installed offline OCR catalogue and console entrypoint
         if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         timeout-minutes: 2
@@ -154,6 +169,38 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_keyboard_smoke.py 2>&1 | Tee-Object 'ci-results/native-keyboard-preferences.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B scripts/windows_ocr_languages_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-languages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise the installed native command palette
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/native-command-palette.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_workflow_productivity_smoke.py 2>&1 | Tee-Object 'ci-results/native-workflow-productivity.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the pinned EPUB conformance checker
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        id: epubcheck_runtime
+        timeout-minutes: 5
+        run: |
+          $pin = Get-Content -Raw 'packaging/epubcheck.json' | ConvertFrom-Json
+          $archive = Join-Path $env:RUNNER_TEMP 'carr-epubcheck-5.3.0.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'The EPUBCheck archive does not match its reviewed size and SHA256.' }
+          $java = Join-Path $env:JAVA_HOME_17_X64 'bin/java.exe'
+          if (-not (Test-Path -LiteralPath $java -PathType Leaf)) { throw 'The required installed Java 17 runtime is unavailable.' }
+          "CARR_EPUBCHECK_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_EPUBCHECK_JAVA=$java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify actual native publication controls and EPUB conformance
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.epubcheck_runtime.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_publishing_smoke.py --require-installed 2>&1 | Tee-Object 'ci-results/native-epub-publication.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --lock packaging/epubcheck.json --report ci-results/installed-epubcheck.json --require-installed 2>&1 | Tee-Object 'ci-results/installed-epubcheck.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify actual installed Windows SAPI speech and native preview
@@ -274,11 +321,17 @@ jobs:
             'tests/ui/test_provider_settings.py',
             'tests/ui/test_audio_studio.py',
             'tests/ui/test_audio_effects.py',
+            'tests/ui/test_command_palette.py',
+            'tests/ui/test_keyboard_export.py',
+            'tests/ui/test_keyboard_rename.py',
+            'tests/assistant/test_workflow_access.py',
+            'tests/ui/test_diagnostics.py',
             'tests/assistant/test_workflows.py',
             'tests/acquisition/test_providers.py',
             'tests/acquisition/test_acquisition_security.py',
             'tests/acquisition/test_acquisition_workflow.py',
             'tests/acquisition/test_acquisition_cli.py',
+            'tests/acquisition/test_identifier_lookup_security.py',
             'tests/ui/test_native_acquisition.py',
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',
@@ -421,9 +474,16 @@ jobs:
             'tests/audio/test_music_legacy_contract.py',
             'tests/audio/test_music_compatibility.py',
             'tests/studio/test_restored_output_guard.py',
+            'tests/studio/test_publishing.py',
+            'tests/studio/test_publishing_primary.py',
+            'tests/studio/test_publishing_handlers.py',
+            'tests/storage/test_publication_backup.py',
+            'tests/reader/test_media_overlay.py',
+            'tests/ui/test_media_overlay_dialog.py',
             'tests/storage/test_composite_backup.py',
             'tests/storage/test_v3_state_backup.py',
             'tests/storage/test_pending_backup.py',
+            'tests/storage/test_direct_import_pending_backup.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/storage/test_backup_v4_review.py',
             'tests/ui/test_operation_progress.py',
@@ -437,6 +497,7 @@ jobs:
             'tests/reader/test_export_publication_boundary.py',
             'tests/e2e/test_import_progress.py',
             'tests/e2e/test_import_publication_boundary.py',
+            'tests/e2e/test_pdf_review_cancellation.py',
             'tests/speech/test_progress_speech.py',
             'tests/studio/test_production_cancellation_outcomes.py',
             'tests/storage/test_progress_preferences_backup.py',
@@ -646,9 +707,9 @@ jobs:
           # Finish test-only acquisition before the offline execution boundary.
           $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
           New-Item -ItemType Directory -Force $testWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'), $env:CARR_EPUBCHECK_JAVA) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -682,6 +743,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_keyboard_smoke.py 2>&1 | Tee-Object 'ci-results/offline-bundle-keyboard-preferences.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/offline-bundle-command-palette.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_workflow_productivity_smoke.py 2>&1 | Tee-Object 'ci-results/offline-bundle-workflow-productivity.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_publishing_smoke.py --require-installed 2>&1 | Tee-Object 'ci-results/offline-bundle-epub-publication.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --lock packaging/epubcheck.json --report ci-results/offline-bundle-epubcheck.json --require-installed 2>&1 | Tee-Object 'ci-results/offline-bundle-epubcheck.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_document_formats_smoke.py).Path 2>&1 | Tee-Object 'ci-results/offline-bundle-document-formats.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
@@ -707,7 +776,7 @@ jobs:
 
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
           # Test dependencies are installed only after production installation passes.
-          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
@@ -750,11 +819,17 @@ jobs:
                             'tests/audio/test_project_recovery_boundaries.py',
                             'tests/audio/test_windows_volume_boundary.py',
                             'tests/ui/test_audio_effects.py',
+                            'tests/ui/test_command_palette.py',
+                            'tests/ui/test_keyboard_export.py',
+                            'tests/ui/test_keyboard_rename.py',
+                            'tests/assistant/test_workflow_access.py',
+                            'tests/ui/test_diagnostics.py',
                             'tests/audio/test_director.py',
                             'tests/acquisition/test_providers.py',
                             'tests/acquisition/test_acquisition_security.py',
                             'tests/acquisition/test_acquisition_workflow.py',
                             'tests/acquisition/test_acquisition_cli.py',
+                            'tests/acquisition/test_identifier_lookup_security.py',
                             'tests/ui/test_native_acquisition.py',
                             'tests/e2e/test_extended_document_workflows.py',
                             'tests/extract/test_document_formats_text.py',
@@ -768,9 +843,16 @@ jobs:
                             'tests/audio/test_music_legacy_contract.py',
                             'tests/audio/test_music_compatibility.py',
                             'tests/studio/test_restored_output_guard.py',
+                            'tests/studio/test_publishing.py',
+                            'tests/studio/test_publishing_primary.py',
+                            'tests/studio/test_publishing_handlers.py',
+                            'tests/storage/test_publication_backup.py',
+                            'tests/reader/test_media_overlay.py',
+                            'tests/ui/test_media_overlay_dialog.py',
                             'tests/storage/test_composite_backup.py',
                             'tests/storage/test_v3_state_backup.py',
                             'tests/storage/test_pending_backup.py',
+                            'tests/storage/test_direct_import_pending_backup.py',
                             'tests/storage/test_complete_pending_backup.py',
                             'tests/storage/test_backup_v4_review.py',
                             'tests/ui/test_operation_progress.py',
@@ -784,6 +866,7 @@ jobs:
                             'tests/reader/test_export_publication_boundary.py',
                             'tests/e2e/test_import_progress.py',
                             'tests/e2e/test_import_publication_boundary.py',
+                            'tests/e2e/test_pdf_review_cancellation.py',
                             'tests/speech/test_progress_speech.py',
                             'tests/studio/test_production_cancellation_outcomes.py',
                             'tests/storage/test_progress_preferences_backup.py',
@@ -859,7 +942,7 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required workflows against the complete pinned runtime
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
-        timeout-minutes: 20
+        timeout-minutes: 35
         run: |
           $suites = @(Get-Content -Raw 'ci-results/required-source-suites.json' | ConvertFrom-Json)
           if ($suites.Count -eq 0) { throw 'Required source-suite inventory is missing.' }
@@ -870,7 +953,7 @@ jobs:
           $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           $env:CARR_TEST_MODEL_DIR = $env:CARR_CI_MODEL_DIR
           $env:CARR_TEST_MODEL_MANIFEST = $env:CARR_CI_MODEL_MANIFEST
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/full-runtime-source-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/full-runtime-source-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 

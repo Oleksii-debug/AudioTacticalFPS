@@ -636,6 +636,22 @@ def install_audio_studio(frame):
         except Exception as exc:
             frame.report('Scene engine settings could not open: ' + str(exc))
     frame.Bind(wx.EVT_MENU, configure_scene_engines, registrations)
+    publication = menu.Append(wx.ID_ANY, 'Synchronized &EPUB3 publication...')
+    def open_publication(event):
+        from .publishing_dialog import show_publishing
+        try:
+            show_publishing(frame)
+        except Exception as exc:
+            frame.report('EPUB publication could not be opened: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, open_publication, publication)
+    synchronized_reader = menu.Append(wx.ID_ANY, 'Read synchronized EPUB...')
+    def open_synchronized_reader(event):
+        from .media_overlay_dialog import show_media_overlay
+        try:
+            show_media_overlay(frame)
+        except Exception as exc:
+            frame.report('Synchronized EPUB reading could not open: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, open_synchronized_reader, synchronized_reader)
     frame.menu_bar.Insert(max(0,frame.menu_bar.GetMenuCount()-1),menu,'Audio &Studio')
 
 

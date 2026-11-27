@@ -141,6 +141,10 @@ def test_export_is_queued_and_does_not_render_in_native_event_handler(form):
     assert dialog.pending is not None and not dialog.generate.enabled
     form.executor.finish(0)
     form.drain()
+    dialog.workbench.export.assert_not_called()
+    assert len(form.executor.calls) == 2 and not dialog.generate.enabled
+    form.executor.finish(1)
+    form.drain()
     assert dialog.workbench.export.call_args.args == (selected, str(form.destination))
     assert 'saved to' in dialog.status.value and dialog.pending is None
     assert dialog.generate.enabled and dialog.copy_bibliography.enabled
@@ -157,17 +161,19 @@ def test_new_job_does_not_clear_old_export_cancellation_or_publish_its_file(form
 
     dialog.workbench.export.side_effect = export_file
     dialog.on_export()
-    old_cancelled = form.executor.calls[0][2]['cancelled']
+    form.executor.finish(0)
+    form.drain()
+    old_cancelled = form.executor.calls[1][2]['cancelled']
     dialog.on_options_changed()
     dialog.workbench.preview.return_value = preview('New preview')
     dialog.on_preview()
     assert old_cancelled() and not dialog.cancelled.is_set()
     current_job = dialog.pending
-    form.executor.finish(0)
+    form.executor.finish(1)
     form.drain()
     assert not form.destination.exists()
     assert dialog.pending is current_job and 'not exported' not in dialog.status.value
-    form.executor.finish(1)
+    form.executor.finish(2)
     form.drain()
     assert dialog.output.value == 'New preview'
 
@@ -304,6 +310,10 @@ def test_pending_job_disables_custom_load_and_ignores_queued_load_events(form, m
     assert dialog.pending is job
     form.executor.finish(0)
     form.drain()
+    if operation == 'export':
+        assert dialog.pending is not None and not dialog.custom_style_button.enabled
+        form.executor.finish(1)
+        form.drain()
     assert dialog.pending is None and dialog.custom_style_button.enabled
 
 
@@ -373,11 +383,13 @@ def use_real_writer(form):
 def test_native_new_destination_preserves_file_created_while_export_is_queued(form):
     use_real_writer(form)
     form.dialog.on_export()
-    assert form.executor.calls[0][2]['require_absent'] is True
+    form.executor.finish(0)
+    form.drain()
+    assert form.executor.calls[1][2]['require_absent'] is True
     form.wx.MessageDialog.assert_not_called()
     form.destination.write_bytes(b'Another program created this after file selection')
 
-    form.executor.finish(0)
+    form.executor.finish(1)
     form.drain()
 
     assert form.destination.read_bytes() == b'Another program created this after file selection'
@@ -390,12 +402,15 @@ def test_native_existing_destination_requires_confirmation_and_can_be_replaced(f
     use_real_writer(form)
     form.destination.write_bytes(b'Existing bibliography')
     form.dialog.on_export()
+    form.wx.MessageDialog.assert_not_called()
+    form.executor.finish(0)
+    form.drain()
     form.wx.MessageDialog.assert_called_once()
     assert form.wx.MessageDialog.call_args.kwargs['style'] & form.wx.NO_DEFAULT
-    assert form.executor.calls[0][2]['require_absent'] is False
-    assert form.executor.calls[0][2]['approval'].state is not None
+    assert form.executor.calls[1][2]['require_absent'] is False
+    assert form.executor.calls[1][2]['approval'].state is not None
 
-    form.executor.finish(0)
+    form.executor.finish(1)
     form.drain()
 
     assert form.destination.read_text() == 'New approved bibliography'
@@ -409,8 +424,11 @@ def test_native_declined_overwrite_does_not_submit_or_change_file(form):
     form.wx.MessageDialog.return_value.ShowModal = lambda: form.wx.ID_NO
 
     form.dialog.on_export()
+    assert len(form.executor.calls) == 1
+    form.executor.finish(0)
+    form.drain()
 
-    assert form.executor.calls == [] and form.dialog.pending is None
+    assert len(form.executor.calls) == 1 and form.dialog.pending is None
     form.dialog.workbench.export.assert_not_called()
     assert form.destination.read_bytes() == b'Keep existing bibliography'
     form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
@@ -428,12 +446,128 @@ def test_native_existing_approval_is_bound_before_confirmation_and_async_work(fo
         form.wx.MessageDialog.return_value.ShowModal = confirm_while_another_program_writes
 
     form.dialog.on_export()
+    form.executor.finish(0)
+    form.drain()
     if when == 'queued':
         form.destination.write_bytes(changed)
-    form.executor.finish(0)
+    form.executor.finish(1)
     form.drain()
 
     assert form.destination.read_bytes() == changed
     assert 'not exported' in form.dialog.status.value
     assert 'changed' in form.dialog.status.value
     assert not list(form.destination.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('when', ('snapshot', 'confirmation'))
+@pytest.mark.parametrize('action', ('close', 'options'))
+def test_snapshot_or_confirmation_invalidated_attempt_cannot_export(form, when, action):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Existing owner content')
+    dialog = form.dialog
+
+    def invalidate():
+        if action == 'close':
+            dialog.on_close()
+        else:
+            dialog.on_options_changed()
+
+    def interrupted_confirmation():
+        invalidate()
+        return form.wx.ID_YES
+
+    if when == 'confirmation':
+        form.wx.MessageDialog.return_value.ShowModal = interrupted_confirmation
+    dialog.on_export()
+    assert len(form.executor.calls) == 1
+    form.wx.MessageDialog.assert_not_called()
+    if when == 'snapshot':
+        invalidate()
+    form.executor.finish(0)
+    form.drain()
+    assert len(form.executor.calls) == 1
+    dialog.workbench.export.assert_not_called()
+    assert form.destination.read_bytes() == b'Existing owner content'
+    assert not list(form.destination.parent.glob('.research-export-*'))
+    if when == 'snapshot':
+        form.wx.MessageDialog.assert_not_called()
+
+
+def test_delayed_destination_snapshot_runs_off_ui_thread_and_close_cancels(form, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event, get_ident
+
+    use_real_writer(form)
+    original = b'Existing owner content'
+    form.destination.write_bytes(original)
+    entered, release = Event(), Event()
+    ui_thread = get_ident()
+    capture = style_dialog.capture_export_destination
+
+    def delayed_capture(*args, **kwargs):
+        assert get_ident() != ui_thread, 'Destination hashing blocked the native event handler.'
+        entered.set()
+        assert release.wait(3), 'The controlled snapshot worker was not released.'
+        return capture(*args, **kwargs)
+
+    monkeypatch.setattr(style_dialog, 'capture_export_destination', delayed_capture)
+    executor = ThreadPoolExecutor(max_workers=1)
+    form.dialog.executor = executor
+    try:
+        form.dialog.on_export()
+        assert entered.wait(2)
+        future = form.dialog.pending
+        assert future is not None and not future.done()
+        assert form.dialog.close_button.enabled and not form.dialog.export_button.enabled
+        form.wx.MessageDialog.assert_not_called()
+        form.dialog.on_close()
+        release.set()
+        with pytest.raises(TimeoutError, match='destination was not changed'):
+            future.result(timeout=2)
+        form.drain()
+        form.dialog.workbench.export.assert_not_called()
+        form.wx.MessageDialog.assert_not_called()
+        assert form.destination.read_bytes() == original
+        assert not list(form.destination.parent.glob('.research-export-*'))
+    finally:
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_destination_snapshot_checks_cancellation_between_real_content_chunks(form):
+    original = b'Existing content\n' * 200_000
+    form.destination.write_bytes(original)
+    checks = 0
+
+    def cancelled():
+        nonlocal checks
+        checks += 1
+        return checks >= 3
+
+    with pytest.raises(TimeoutError, match='destination was not changed'):
+        style_dialog.capture_export_destination(form.destination, private_root=form.private,
+                                                cancelled=cancelled)
+    assert checks == 3 and form.destination.read_bytes() == original
+
+
+@pytest.mark.parametrize('picker', ('format', 'file'))
+@pytest.mark.parametrize('action', ('close', 'options'))
+def test_picker_nested_events_cannot_reset_cancellation_and_start_export(form, picker, action):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Preserved while picker is open')
+    dialog = form.dialog
+
+    def interrupt_picker():
+        if action == 'close':
+            dialog.on_close()
+        else:
+            dialog.on_options_changed()
+        return form.wx.ID_OK
+
+    chooser = form.wx.SingleChoiceDialog if picker == 'format' else form.wx.FileDialog
+    chooser.return_value.ShowModal = interrupt_picker
+    dialog.on_export()
+    assert form.executor.calls == []
+    form.wx.MessageDialog.assert_not_called()
+    dialog.workbench.export.assert_not_called()
+    assert form.destination.read_bytes() == b'Preserved while picker is open'

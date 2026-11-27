@@ -93,19 +93,32 @@ def main():
             pump(lambda: not frame.working)
             check('File Save commits the selected evidence note',
                   library.evidence(workspace, topic)[0].note == 'Saved through the native File command.')
-            keyboard.save({save_binding.command.identity: 'Ctrl+Alt+S'})
-            check('shortcut change updates native menu', save_binding.item.GetItemLabel().endswith('\tCtrl+Alt+S'))
+            remapped_save = 'Ctrl+Alt+Shift+S'
+            check('remap fixture is unused in the actual native command inventory',
+                  all(binding.command.shortcut.casefold() != remapped_save.casefold()
+                      for binding in keyboard.bindings))
+            keyboard.save({save_binding.command.identity: remapped_save})
+            check('shortcut change updates native menu',
+                  save_binding.item.GetItemLabel().endswith('\t' + remapped_save))
             check('shortcut persists after reopening preferences',
-                  KeybindingStore(library.root).load()[save_binding.command.identity] == 'Ctrl+Alt+S')
+                  KeybindingStore(library.root).load()[save_binding.command.identity] == remapped_save)
             old_labels = tuple(binding.item.GetItemLabel() for binding in keyboard.bindings)
-            try:
-                keyboard.save({save_binding.command.identity: 'Ctrl+I'})
-            except ValueError:
-                pass
-            else:
-                raise AssertionError('Conflicting shortcut was accepted.')
-            check('conflicting key leaves native menu unchanged',
-                  tuple(binding.item.GetItemLabel() for binding in keyboard.bindings) == old_labels)
+            old_preferences = KeybindingStore(library.root).path.read_bytes()
+            for occupied in ('Ctrl+Alt+S', 'Ctrl+I'):
+                check('collision fixture belongs to another native command: ' + occupied,
+                      any(binding.command.identity != save_binding.command.identity
+                          and binding.command.shortcut.casefold() == occupied.casefold()
+                          for binding in keyboard.bindings))
+                try:
+                    keyboard.save({save_binding.command.identity: occupied})
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError('Conflicting shortcut was accepted: ' + occupied)
+                check('conflicting key leaves native menu unchanged: ' + occupied,
+                      tuple(binding.item.GetItemLabel() for binding in keyboard.bindings) == old_labels)
+                check('conflicting key leaves saved preferences unchanged: ' + occupied,
+                      KeybindingStore(library.root).path.read_bytes() == old_preferences)
 
             desk = ReadingDesk(library, workspace, imported['edition'])
             page = desk.page(1)

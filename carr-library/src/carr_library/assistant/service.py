@@ -156,14 +156,14 @@ class AssistantService:
         self.store.save(record)
         return identity
 
-    def _load(self, identity, *, allow_restored=False):
+    def _load(self, identity, *, allow_restored=False, review_only=False):
         record = self.store.load(identity)
         restored = record.get('restore_requires_review', False)
         if type(restored) is not bool:
             raise ValueError('The assistant restore-review marker is invalid.')
         if restored and not allow_restored:
             raise PermissionError('Restored assistant jobs require a fresh review and submission before execution.')
-        if restored and allow_restored:
+        if review_only or (restored and allow_restored):
             plan, approved_digest = _review_restored_plan(record['plan'])
         else:
             plan = Plan.from_dict(record['plan'])
@@ -186,6 +186,15 @@ class AssistantService:
             if type(checkpoint) is not dict or checkpoint.get('status') not in ('pending', 'running', 'complete', 'failed'):
                 raise ValueError('Invalid assistant step checkpoint.')
         return record, plan
+
+    def review_saved_plan(self, identity):
+        """Read a typed historical recipe without activating its filesystem grants.
+
+        The returned plan has no input or output paths. Its original document
+        and digest remain in the independent record for review; execution still
+        goes through submit/resume with the normal live permission checks.
+        """
+        return self._load(identity, allow_restored=True, review_only=True)
 
     @staticmethod
     def _report(record):

@@ -281,3 +281,51 @@ def test_worker_staging_file_count_is_bounded(tmp_path):
     with pytest.raises(RuntimeError,match='staging file budget'):
         run_process([sys.executable,'-I','-c',code,str(directory)],
                     watched_paths=(directory,),maximum_staging_files=5)
+
+
+def test_many_tracks_fit_windows_process_limit_with_real_audio(tmp_path, monkeypatch):
+    """Exercise the native UTF-16 argv ceiling without replacing FFmpeg."""
+    import subprocess
+    import carr_library.audio.render as rendering
+
+    source_dir = tmp_path / ('input-' + 'long-name-' * 5)
+    source_dir.mkdir()
+    source = tone(source_dir / 'voice.wav', 440, .04)
+    output_dir = tmp_path / 'mixed audio'
+    output_dir.mkdir()
+    original = file_sha256(source)
+    actual_run = rendering.run_process
+    render_commands = []
+
+    def within_windows_budget(args, **options):
+        # CreateProcessW includes the terminating NUL in its 32767-unit limit.
+        units = len(subprocess.list2cmdline(args).encode('utf-16-le')) // 2 + 1
+        assert units <= 32767, 'Audio processing exceeded the Windows process command limit.'
+        if any(flag in args for flag in ('-filter_complex', '-filter_complex_script', '-/filter_complex')):
+            render_commands.append(units)
+        return actual_run(args, **options)
+
+    monkeypatch.setattr(rendering, 'run_process', within_windows_budget)
+    tracks = [Track(source, start_seconds=index / 1000, gain_db=-45, pan=-1)
+              for index in range(128)]
+    result = rendering.mix_tracks(tracks, output_dir / 'many.wav', sample_rate=RATE)
+    (left, right), rate = read_pcm(result.path)
+    assert render_commands and result.frames == round((.127 + .04) * RATE)
+    assert rate == RATE and result.channels == 2
+    assert sum(abs(value) for value in left) > 0 and not any(right)
+    assert file_sha256(source) == original
+    assert not list(output_dir.glob('.carr-audio-*'))
+
+
+def test_oversized_windows_arguments_fail_before_child_launch(monkeypatch):
+    from types import SimpleNamespace
+    import carr_library.audio.render as rendering
+
+    monkeypatch.setattr(rendering, 'os', SimpleNamespace(name='nt'))
+
+    def unexpected_launch(*args, **kwargs):
+        raise AssertionError('An oversized Windows command must not start a child.')
+
+    monkeypatch.setattr(rendering.subprocess, 'Popen', unexpected_launch)
+    with pytest.raises(ValueError, match='shorter local folders or filenames'):
+        rendering.run_process(['reviewed-ffmpeg.exe', '\U0001f4d6' * 16384])

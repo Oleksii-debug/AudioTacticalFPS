@@ -6,7 +6,7 @@ import os
 
 from ..keybindings import (Command, KeybindingStore, normalize_shortcut,
                            validate_bindings, read_preferences, encode_preferences)
-from ..research.export_file import write_binary_export
+from ..research.export_file import write_binary_export, capture_export_destination
 from .research_actions import NativeDialogs
 
 
@@ -65,6 +65,44 @@ def collect_commands(menu_bar):
     return tuple(result)
 
 
+def _migrate_command_aliases(commands, overrides):
+    """Translate reviewed renamed menu identities without rewriting preferences."""
+    known = {command.identity for command in commands}
+    aliases = {
+        'Academic/DOI lookup and open-access sources':
+            'Academic/DOI and ISBN lookup and open-access sources',
+    }
+    candidate, changed = dict(overrides), False
+    for previous, current in aliases.items():
+        if previous not in candidate or previous in known or current not in known:
+            continue
+        value = normalize_shortcut(candidate[previous])
+        if current in candidate and normalize_shortcut(candidate[current]) != value:
+            raise ValueError('Conflicting saved shortcuts for the renamed command: ' + current + '.')
+        candidate.pop(previous)
+        candidate[current] = value
+        changed = True
+    return candidate, changed
+
+
+def _preserve_added_defaults(commands, overrides):
+    """A new palette default cannot displace an already saved assignment."""
+    candidate = dict(overrides)
+    palette = next((command for command in commands
+                    if command.identity == 'Help/Find a command'), None)
+    notice = ''
+    if palette is not None and candidate.get(palette.identity, '') == '':
+        known = {command.identity for command in commands}
+        claimed = any(identity in known and identity != palette.identity
+                      and normalize_shortcut(shortcut) == palette.shortcut
+                      for identity, shortcut in candidate.items())
+        if claimed:
+            candidate[palette.identity] = ''
+            notice = ('Find a command remains unassigned to preserve your saved choices. '
+                      'Open Keyboard shortcuts to choose its shortcut.')
+    return candidate, notice
+
+
 def compatible_shortcuts(root, commands):
     """Read the earlier strict schema without rewriting or dropping commands."""
     from .keyboard_settings import _bytes, _path, _unique
@@ -82,7 +120,9 @@ def compatible_shortcuts(root, commands):
                'file/save all': 'file/save all changes', 'file/exit': 'library/exit',
                'help/keyboard shortcuts': 'options/keyboard shortcuts',
                'help/focus library and research topic': 'options/focus library and research topic',
-               'help/focus operation status': 'options/focus operation status'}
+               'help/focus operation status': 'options/focus operation status',
+               'academic/doi lookup and open-access sources':
+                   'academic/doi and isbn lookup and open-access sources'}
     result = {}
     for key, shortcut in value['overrides'].items():
         command = indexed.get(key) or indexed.get(aliases.get(key, key))
@@ -92,9 +132,11 @@ def compatible_shortcuts(root, commands):
         approved_old_defaults = {'help/current operation progress': 'Ctrl+Alt+P', 'file/save all': ''}
         if original != command.shortcut and original != approved_old_defaults.get(key, object()):
             raise ValueError('The saved command default changed; review the original shortcut settings.')
-        if command.identity in result:
-            raise ValueError('Two previous shortcut entries target the same command.')
-        result[command.identity] = shortcut
+        normalized = normalize_shortcut(shortcut)
+        if command.identity in result and result[command.identity] != normalized:
+            raise ValueError('Conflicting previous shortcut entries target the same command.')
+        result[command.identity] = normalized
+    result, _ = _preserve_added_defaults(commands, result)
     validate_bindings(commands, result)
     return result
 
@@ -131,7 +173,14 @@ class KeyboardActions:
                 overrides = compatible_shortcuts(self.frame.library.root, self.commands)
                 if overrides:
                     self.notice = 'Your previous shortcut preferences are active. Editing them saves the current format; the original file is retained.'
+            overrides, renamed = _migrate_command_aliases(self.commands, overrides)
+            if renamed:
+                self.notice = (self.notice + ' Saved shortcuts for renamed commands are active; '
+                               'the preference file stays unchanged until you save.').strip()
+            overrides, added_notice = _preserve_added_defaults(self.commands, overrides)
             self._apply(overrides)
+            if added_notice:
+                self.notice = (self.notice + ' ' + added_notice).strip()
         except (OSError, ValueError) as exc:
             self._apply({})
             self.notice = f'Default keyboard shortcuts are active because saved preferences could not be used: {exc}'
@@ -187,11 +236,71 @@ class KeyboardActions:
         except Exception as exc:
             self.frame.report(f'Keyboard defaults could not be saved: {exc}')
 
+    def _export_preferences(self, path, context):
+        """Hash on the shared worker, confirm on the UI thread, then publish."""
+        import wx
+        frame = self.frame
+        library, root, active, overrides = context
+        payload = encode_preferences(overrides)
+        cancelled_event = frame.cancel_event
+
+        def current():
+            return (not getattr(frame, '_closing', False)
+                    and frame.library is library and Path(frame.library.root) == root
+                    and getattr(frame, 'active', None) == active
+                    and getattr(frame, 'keyboard_actions', self) is self
+                    and self.overrides == overrides)
+
+        def check():
+            if cancelled_event.is_set():
+                raise InterruptedError('Keyboard export cancelled; the destination was not changed.')
+            if not current():
+                raise ValueError('The library or keyboard preferences changed. Choose the export again.')
+            return False
+
+        def capture():
+            check()
+            return capture_export_destination(path, private_root=root, cancelled=check)
+
+        def captured(approval):
+            check()
+            if not approval.require_absent:
+                answer = wx.MessageBox(
+                    'Replace this existing file with the reviewed keyboard preferences?\n\n' + str(approval.target),
+                    'Export keyboard shortcuts', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, frame)
+                # The next run_job clears its cancellation event, so retain the
+                # user's stop request and scope decision across this modal gap.
+                check()
+                if answer != wx.YES:
+                    frame.report('Keyboard export cancelled; the existing destination is unchanged.')
+                    return
+
+            def write():
+                check()
+                write_binary_export(path, payload, private_root=root, approval=approval, cancelled=check)
+
+            def complete(value):
+                if current():
+                    frame.report('Keyboard shortcuts exported.')
+
+            check()
+            frame.run_job('Exporting keyboard shortcuts', write, complete)
+
+        check()
+        frame.run_job('Checking keyboard export destination', capture, captured)
+
     def transfer(self, *, save):
         import wx
+        if save and (self.frame.working or getattr(self.frame, 'busy', False)):
+            self.frame.report('Wait for the current operation before exporting keyboard shortcuts.')
+            return
+        if save and getattr(self.frame, '_closing', False):
+            return
+        context = (self.frame.library, Path(self.frame.library.root),
+                   getattr(self.frame, 'active', None), dict(self.overrides)) if save else None
         dialog = wx.FileDialog(self.frame, 'Export keyboard shortcuts' if save else 'Import keyboard shortcuts',
             defaultFile='research-keybindings.json' if save else '', wildcard='Keyboard preferences (*.json)|*.json',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -200,10 +309,11 @@ class KeyboardActions:
             dialog.Destroy()
         try:
             if save:
-                write_binary_export(path, encode_preferences(self.overrides), private_root=self.frame.library.root)
-                self.frame.report('Keyboard shortcuts exported.')
+                self._export_preferences(path, context)
             else:
                 candidate = read_preferences(path)
+                candidate, _ = _migrate_command_aliases(self.commands, candidate)
+                candidate, _ = _preserve_added_defaults(self.commands, candidate)
                 values = validate_bindings(self.commands, candidate)
                 changed = [f'{command.label}: {values[command.identity] or "No shortcut"}'
                            for command in self.commands if values[command.identity] != command.shortcut]

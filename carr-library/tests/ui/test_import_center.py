@@ -327,3 +327,118 @@ def test_lost_authorization_clears_visible_batch_data(center):
     center.refresh()
     assert center.batch is None and center.rows.items == [] and center.details.value == ''
     assert center.status.value == 'Library unavailable.'
+
+
+def _report_destination(center, tmp_path, monkeypatch):
+    wx = sys.modules['wx']
+    center.library.root = tmp_path / 'private-library'
+    center.library.root.mkdir()
+    target = tmp_path / 'report.txt'
+    target.write_bytes(b'Existing target')
+    picker = Mock()
+    picker.ShowModal.return_value = 1
+    picker.GetPath.return_value = str(target)
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    wx.YES, wx.NO = 4, 8
+    wx.YES_NO, wx.NO_DEFAULT, wx.ICON_QUESTION = 16, 32, 64
+    wx.FileDialog = Mock(return_value=picker)
+    wx.MessageBox = Mock(return_value=wx.YES)
+    return target, picker, wx
+
+
+def _report_worker(job):
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as worker:
+        return worker.submit(job.operation).result()
+
+
+def test_import_report_hashes_on_worker_then_confirms_before_guarded_publication(
+        center, tmp_path, monkeypatch):
+    from threading import get_ident
+    from carr_library.research import export_file
+    from carr_library.ui.import_center import batch_report
+    target, picker, wx = _report_destination(center, tmp_path, monkeypatch)
+    main_thread, calls = get_ident(), []
+    capture = export_file.capture_export_destination
+
+    def observe(*args, **kwargs):
+        calls.append(get_ident())
+        assert get_ident() != main_thread
+        return capture(*args, **kwargs)
+
+    monkeypatch.setattr(export_file, 'capture_export_destination', observe)
+    wx.MessageBox.side_effect = lambda *args: wx.YES if get_ident() == main_thread else pytest.fail('Not UI')
+    center.save_report()
+    assert calls == [] and len(center.jobs) == 1
+    approval = _report_worker(center.jobs[0])
+    wx.MessageBox.assert_not_called()
+    complete(center, center.jobs[0], approval)
+    assert len(center.jobs) == 2 and target.read_bytes() == b'Existing target'
+    result = _report_worker(center.jobs[1])
+    complete(center, center.jobs[1], result)
+    assert target.read_text(encoding='utf-8') == batch_report(center.saved['first'])
+    assert center.status.value == 'Import report saved.'
+    picker.Destroy.assert_called_once()
+
+
+@pytest.mark.parametrize('stage', ['before_capture', 'after_capture', 'in_confirmation'])
+def test_import_report_cancellation_cannot_be_cleared_by_second_job(
+        center, tmp_path, monkeypatch, stage):
+    target, _, wx = _report_destination(center, tmp_path, monkeypatch)
+    if stage == 'in_confirmation':
+        def confirm(*args):
+            center.frame.cancel_event.set()
+            return wx.YES
+        wx.MessageBox.side_effect = confirm
+    center.save_report()
+    if stage == 'before_capture':
+        center.frame.cancel_event.set()
+        with pytest.raises(InterruptedError):
+            _report_worker(center.jobs[0])
+    else:
+        approval = _report_worker(center.jobs[0])
+        if stage == 'after_capture':
+            center.frame.cancel_event.set()
+        complete(center, center.jobs[0], approval)
+    assert len(center.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+@pytest.mark.parametrize('change', ['closed', 'library', 'batch', 'later_job'])
+def test_import_report_stale_snapshot_never_publishes_to_a_changed_owner(
+        center, tmp_path, monkeypatch, change):
+    target, _, wx = _report_destination(center, tmp_path, monkeypatch)
+    center.save_report()
+    approval = _report_worker(center.jobs[0])
+    if change == 'closed':
+        center.closed = True
+    elif change == 'library':
+        center.frame.library = object()
+    elif change == 'batch':
+        center.batch = batch('other')
+    else:
+        center._job_token = object()
+    complete(center, center.jobs[0], approval)
+    assert len(center.jobs) == 1 and target.read_bytes() == b'Existing target'
+    wx.MessageBox.assert_not_called()
+
+
+def test_import_report_destination_change_after_confirmation_is_not_overwritten(
+        center, tmp_path, monkeypatch):
+    import os
+    target, _, _ = _report_destination(center, tmp_path, monkeypatch)
+    center.save_report()
+    complete(center, center.jobs[0], _report_worker(center.jobs[0]))
+    stamp = target.stat()
+    target.write_bytes(b'Switched target')
+    os.utime(target, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+    with pytest.raises(ValueError, match='changed'):
+        _report_worker(center.jobs[1])
+    assert target.read_bytes() == b'Switched target'
+
+
+def test_import_report_declined_overwrite_never_starts_publication(center, tmp_path, monkeypatch):
+    target, _, wx = _report_destination(center, tmp_path, monkeypatch)
+    wx.MessageBox.return_value = wx.NO
+    center.save_report()
+    complete(center, center.jobs[0], _report_worker(center.jobs[0]))
+    assert len(center.jobs) == 1 and target.read_bytes() == b'Existing target'

@@ -19,14 +19,14 @@ def write(path, data=b'An original text.\n'):
 def test_sorted_folder_plan_uses_existing_intake_without_writing(tmp_path):
     write(tmp_path / 'z.txt', 'Український текст.\n'.encode())
     write(tmp_path / 'nested' / 'a.pdf', b'%PDF-1.7\n')
-    write(tmp_path / 'unsupported.html', b'<p>Not imported.</p>')
+    write(tmp_path / 'unsupported.bin', b'Synthetic unsupported source.')
     # Structural DOCX intake fixture; preflight does not extract document text.
     with ZipFile(tmp_path / 'b.docx', 'w') as archive:
         for name in ('[Content_Types].xml', '_rels/.rels', 'word/document.xml'):
             archive.writestr(name, b'synthetic')
     before = {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
     rows = batch_scan.scan_paths([tmp_path])
-    assert [r['file'] for r in rows] == ['b.docx', 'nested/a.pdf', 'unsupported.html', 'z.txt']
+    assert [r['file'] for r in rows] == ['b.docx', 'nested/a.pdf', 'unsupported.bin', 'z.txt']
     assert [r['state'] for r in rows] == ['queued', 'queued', 'rejected', 'queued']
     for row in rows:
         assert set(row) == {'source', 'file', 'title', 'state', 'message', 'manifest', 'duplicate_of'}
@@ -38,6 +38,31 @@ def test_sorted_folder_plan_uses_existing_intake_without_writing(tmp_path):
             assert row['manifest']['sha256'] == sha256(data).hexdigest()
             assert row['manifest']['size'] == len(data)
     assert before == {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+
+
+@pytest.mark.parametrize('policy', [
+    {'supported': ()}, {'supported': frozenset()}, {'supported': frozenset({'.WAV'})},
+    {'supported': frozenset({'wav'})}, {'file_manifest': False},
+    {'max_files': True}, {'max_files': 0}, {'max_files': batch_scan.MAX_FILES + 1},
+    {'skip_unsupported': 'yes'}, {'cancelled': None},
+])
+def test_invalid_scan_policy_is_rejected_before_any_directory_or_file_read(tmp_path, monkeypatch, policy):
+    monkeypatch.setattr(batch_scan.os, 'scandir', lambda *a, **k: pytest.fail('Invalid scan opened a folder.'))
+    monkeypatch.setattr(batch_scan, 'snapshot', lambda *a, **k: pytest.fail('Invalid scan read a source.'))
+    with pytest.raises(ValueError):
+        batch_scan.scan_paths([tmp_path], **policy)
+
+
+@pytest.mark.parametrize('manifest', [None, {'sha256': 'x', 'mime': 'audio/wav', 'size': 3},
+    {'sha256': 'a' * 64, 'mime': 'audio/wav', 'size': True},
+    {'sha256': 'a' * 64, 'mime': 'audio/wav', 'size': 4}])
+def test_custom_policy_cannot_publish_an_invalid_manifest(tmp_path, manifest):
+    source = write(tmp_path / 'audio.wav', b'123')
+    row, = batch_scan.scan_paths([source], supported=frozenset({'.wav'}),
+                                 file_manifest=lambda path: manifest)
+    assert row['state'] == 'rejected' and row['manifest'] is None
+    assert 'invalid source manifest' in row['message']
+    assert source.read_bytes() == b'123'
 
 
 def test_exact_duplicates_are_scoped_and_keep_original_paths(tmp_path):

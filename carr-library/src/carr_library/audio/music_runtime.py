@@ -179,11 +179,14 @@ def _plain_model_files(root, *, cancelled=lambda: False):
                 entries += 1
                 if entries > 200000:
                     raise ValueError('The local model inventory exceeds its entry budget.')
-                info = entry.stat(follow_symlinks=False)
+                # Windows DirEntry caches can report st_nlink=0 for ordinary
+                # files. Read fresh no-follow identity before trusting it or
+                # descending, retaining the exact one-link materialization rule.
+                path = Path(entry.path)
+                info = path.lstat()
                 if (stat.S_ISLNK(info.st_mode)
                         or getattr(info, 'st_file_attributes', 0) & 0x400):
                     raise ValueError('Local model files and code must not use links or reparse points.')
-                path = Path(entry.path)
                 if stat.S_ISDIR(info.st_mode):
                     pending.append(path)
                 elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:

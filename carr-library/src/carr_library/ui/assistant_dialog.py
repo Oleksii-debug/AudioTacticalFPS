@@ -9,18 +9,21 @@ from uuid import uuid4
 from ..durable_state import atomic_bytes
 
 
-def show_assistant(frame):
+def show_assistant(frame, *, on_ready=None):
     import wx
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
+    from ..assistant.workflow_access import WorkflowAccess, workflow_name
     from ..studio.render import ProductionService
+    library, active_scope = frame.library, frame.active
     production = ProductionService(frame.library.root / 'state' / 'studio')
     service = AssistantService(frame.library, production=production.assistant_callback)
+    workflows = WorkflowAccess(service)
     dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     cancel = threading.Event()
-    alive, busy, plan, job_id = True, False, None, None
+    alive, busy, running, plan, job_id = True, False, False, None, None
     workspaces = frame.library.workspaces()
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
@@ -37,12 +40,18 @@ def show_assistant(frame):
     input_folder = field('Allowed &input folder (optional; no other folders are readable)')
     output_folder = field('Chosen &output folder (required for audio, extraction or backup)')
     choose_row = wx.BoxSizer(wx.HORIZONTAL)
+    folder_buttons = []
     for label, target in [('Choose input folder', input_folder), ('Choose output folder', output_folder)]:
         button = wx.Button(dialog, label=label)
+        folder_buttons.append(button)
         def choose(event, target=target):
+            if busy:
+                return
+            guard()
             picker = wx.DirDialog(dialog, 'Choose a local folder')
             try:
                 if picker.ShowModal() == wx.ID_OK:
+                    guard()
                     target.SetValue(picker.GetPath())
             finally:
                 picker.Destroy()
@@ -51,21 +60,31 @@ def show_assistant(frame):
     layout.Add(choose_row)
     full_backup = wx.CheckBox(dialog, label='Allow a complete backup of all my libraries for this plan')
     layout.Add(full_backup, 0, wx.ALL, 5)
+    saved_name = field('Workflow &name (optional until Save named workflow)')
+    saved_name.SetMaxLength(200)
     instruction = field('&Goal — guided English/Ukrainian commands or typed JSON plan', proportion=1,
                         style=wx.TE_MULTILINE, value='Покажи бібліотеки')
-    review = field('Plan &preview and actual results', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
+    review = field('Plan preview and actual resul&ts', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
-    for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
+    for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', 'Pa&use'),
+                             ('save', '&Save named workflow'), ('reuse', 'Reuse saved &workflow'),
                              ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
-        button = wx.Button(dialog, label=label)
+        button = wx.Button(dialog, wx.ID_CANCEL if identity == 'close' else wx.ID_ANY, label=label)
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
     layout.Add(row)
     dialog.SetSizer(layout)
+    dialog.SetEscapeId(wx.ID_CANCEL)
     buttons['run'].Disable()
     buttons['pause'].Disable()
+    buttons['save'].Disable()
+
+    def guard():
+        if (not alive or getattr(frame, '_closing', False)
+                or frame.library is not library or frame.active != active_scope):
+            raise ValueError('The library or topic changed. Reopen the saved workflow window.')
 
     def report(value):
         if alive:
@@ -75,12 +94,16 @@ def show_assistant(frame):
         nonlocal plan, job_id
         plan, job_id = None, None
         buttons['run'].Disable()
+        buttons['save'].Disable()
         if event is not None:
             event.Skip()
 
     def preview(event=None):
         nonlocal plan, job_id
+        if busy:
+            return
         try:
+            guard()
             index = scope_choice.GetSelection()
             scope = Scope(workspaces[index - 1].id if index > 0 else None,
                           (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
@@ -104,11 +127,14 @@ def show_assistant(frame):
                               if s.tool == 'audio.produce' and 'script' not in s.arguments else s for s in candidate.steps)
                 candidate = Plan(scope, steps, candidate.summary)
                 service.validate(candidate)
+            if saved_name.GetValue().strip():
+                candidate = replace(candidate, summary=workflow_name(saved_name.GetValue()))
             plan, job_id = candidate, None
             report('LOCAL ONLY — no remote services or charges.\n\n' +
                    json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
                    '\n\nChoose Run to authorize these operations inside these directories.')
             buttons['run'].Enable()
+            buttons['save'].Enable()
             review.SetFocus()
         except Exception as exc:
             invalidate()
@@ -116,37 +142,39 @@ def show_assistant(frame):
             review.SetFocus()
 
     def run(event=None):
-        nonlocal busy, job_id
+        nonlocal busy, running, job_id
         if busy or (plan is None and job_id is None):
             return
         try:
+            guard()
             if job_id is None:
                 job_id = service.submit(plan)
             identity = job_id
-            busy = True
+            busy = running = True
             cancel.clear()
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'run', 'jobs', 'save', 'reuse'):
                 buttons[key].Disable()
             buttons['pause'].Enable()
-            for control in (scope_choice, instruction, input_folder, output_folder, full_backup):
+            for control in (scope_choice, instruction, input_folder, output_folder, full_backup, saved_name, *folder_buttons):
                 control.Disable()
             future = executor.submit(service.resume, identity, cancelled=cancel.is_set,
                                       progress=lambda completed, total, message: wx.CallAfter(report,
                                           f'{completed}/{total}: {message}'))
         except Exception as exc:
-            busy = False
+            busy = running = False
             report(str(exc))
             return
         def finish(done):
             def apply():
-                nonlocal busy
+                nonlocal busy, running
                 if not alive:
                     return
-                busy = False
-                for key in ('preview', 'run', 'jobs'):
+                busy = running = False
+                for key in ('preview', 'run', 'jobs', 'reuse'):
                     buttons[key].Enable()
+                buttons['save'].Enable(plan is not None)
                 buttons['pause'].Disable()
-                for control in (scope_choice, instruction, input_folder, output_folder, full_backup):
+                for control in (scope_choice, instruction, input_folder, output_folder, full_backup, saved_name, *folder_buttons):
                     control.Enable()
                 try:
                     result = done.result()
@@ -158,25 +186,136 @@ def show_assistant(frame):
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
-    def jobs(event=None):
-        nonlocal job_id, plan
-        rows = service.jobs()
-        choice = wx.SingleChoiceDialog(dialog, 'Choose a saved local plan.', 'Assistant jobs',
-            [f'{row.id}; {row.status}; {row.completed}/{row.total}' for row in rows])
+    def review_task(action, complete, message):
+        nonlocal busy
+        if busy:
+            return
+        guard()
+        busy = True
+        cancel.clear()
+        for key in ('preview', 'run', 'jobs', 'save', 'reuse'):
+            buttons[key].Disable()
+        buttons['pause'].Enable()
+        for control in (scope_choice, instruction, input_folder, output_folder, full_backup, saved_name, *folder_buttons):
+            control.Disable()
+        report(message)
         try:
-            if choice.ShowModal() == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
-                row = rows[choice.GetSelection()]
-                job_id, plan = row.id, None
-                report(f'{row.status}: {row.completed}/{row.total}. {row.message}\nResume uses the original reviewed scope.')
+            future = executor.submit(action)
+        except Exception:
+            busy = False
+            for key in ('preview', 'jobs', 'reuse'):
+                buttons[key].Enable()
+            buttons['run'].Enable(plan is not None or job_id is not None)
+            buttons['save'].Enable(plan is not None)
+            buttons['pause'].Disable()
+            for control in (scope_choice, instruction, input_folder, output_folder, full_backup, saved_name, *folder_buttons):
+                control.Enable()
+            raise
+        def finished(result):
+            def apply():
+                nonlocal busy
+                if not alive:
+                    return
+                busy = False
+                for key in ('preview', 'jobs', 'reuse'):
+                    buttons[key].Enable()
+                buttons['run'].Enable(plan is not None or job_id is not None)
+                buttons['save'].Enable(plan is not None)
+                buttons['pause'].Disable()
+                for control in (scope_choice, instruction, input_folder, output_folder, full_backup, saved_name, *folder_buttons):
+                    control.Enable()
+                try:
+                    guard()
+                    complete(result.result())
+                except Exception as exc:
+                    report(str(exc))
+                    review.SetFocus()
+            wx.CallAfter(apply)
+        future.add_done_callback(finished)
+
+    def save_workflow(event=None):
+        nonlocal job_id
+        try:
+            guard()
+            if plan is None:
+                raise ValueError('Preview the typed plan before saving it.')
+            name = workflow_name(saved_name.GetValue())
+            candidate = plan
+            def action():
+                if cancel.is_set():
+                    raise InterruptedError('Workflow save was cancelled before publication.')
+                return workflows.save(candidate, name)
+            def complete(identity):
+                nonlocal job_id
+                job_id = identity
                 buttons['run'].Enable()
-        finally:
-            choice.Destroy()
+                report('Named workflow saved. No operation has run. Choose Run to execute this reviewed plan, '
+                       'or Reuse saved workflow later to choose new permissions.\n\n' + candidate.to_json())
+                review.SetFocus()
+            review_task(action, complete, 'Saving the reviewed named workflow. An already completed save remains saved.')
+        except Exception as exc:
+            report(str(exc))
+
+    def choose_saved(event=None, *, reuse=False):
+        def picked(rows):
+            nonlocal job_id, plan
+            if cancel.is_set():
+                raise InterruptedError('Saved workflow review was cancelled.')
+            if not rows:
+                report('No saved typed plans. Preview a plan, give it a name and choose Save named workflow.')
+                return
+            choice = wx.SingleChoiceDialog(dialog,
+                'Choose a recipe to review with new permissions.' if reuse else 'Choose an original job to inspect.',
+                'Reusable typed workflows' if reuse else 'Assistant jobs', [row.label for row in rows])
+            selected = None
+            try:
+                if choice.ShowModal() == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
+                    selected = rows[choice.GetSelection()]
+            finally:
+                choice.Destroy()
+            guard()
+            if selected is None:
+                return
+            def loaded(value):
+                nonlocal job_id, plan
+                if cancel.is_set():
+                    raise InterruptedError('Saved workflow review was cancelled.')
+                if reuse:
+                    instruction.ChangeValue(json.dumps(value, ensure_ascii=False, indent=2))
+                    saved_name.ChangeValue(selected.name[:200])
+                    input_folder.ChangeValue('')
+                    output_folder.ChangeValue('')
+                    full_backup.SetValue(False)
+                    invalidate()
+                    report('Typed recipe loaded. Historical folder permissions and completed results were removed. '
+                           'Choose the current library and input/output folders, edit the steps if needed, '
+                           'then Preview. Run remains a separate explicit action.')
+                    scope_choice.SetFocus()
+                else:
+                    record, _ = value
+                    plan = None
+                    job_id = None if record.get('restore_requires_review', False) else selected.identity
+                    buttons['run'].Enable(job_id is not None)
+                    buttons['save'].Disable()
+                    report(json.dumps(record['plan'], ensure_ascii=False, indent=2) +
+                           '\n\n' + ('Restored job: choose Reuse saved workflow for a new review. Original execution is blocked.'
+                                      if job_id is None else 'Resume uses this original scope and its existing checkpoints. '
+                                      'Reuse saved workflow starts a new reviewed job.'))
+                    review.SetFocus()
+            action = (lambda: workflows.recipe(selected)) if reuse else (
+                lambda: service.review_saved_plan(selected.identity))
+            review_task(action, loaded, 'Reading the saved typed plan without activating its old folders.')
+        try:
+            review_task(lambda: workflows.entries(cancelled=cancel.is_set), picked,
+                        'Reading saved typed workflows. No tools are running.')
+        except Exception as exc:
+            report(str(exc))
 
     def close(event=None):
         nonlocal alive
         cancel.set()
-        if busy and job_id:
-            service.pause(job_id)
+        # The running service observes this same cancellation token and owns
+        # its checkpoint. Closing must not block on a second filesystem review.
         alive = False
         executor.shutdown(wait=False, cancel_futures=True)
         dialog.EndModal(wx.ID_CLOSE)
@@ -186,14 +325,17 @@ def show_assistant(frame):
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'save': save_workflow, 'reuse': lambda e: choose_saved(reuse=True),
+                               'jobs': choose_saved, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
-    for control in (input_folder, output_folder, instruction):
+    for control in (input_folder, output_folder, instruction, saved_name):
         control.Bind(wx.EVT_TEXT, invalidate)
     scope_choice.Bind(wx.EVT_CHOICE, invalidate)
     full_backup.Bind(wx.EVT_CHECKBOX, invalidate)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
+        if on_ready is not None:
+            wx.CallAfter(on_ready, dialog)
         dialog.ShowModal()
     finally:
         if alive:

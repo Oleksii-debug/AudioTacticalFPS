@@ -191,3 +191,42 @@ def test_configured_model_assets_are_not_claimed_as_verified_inference(tmp_path)
     with pytest.raises(AudioUnavailable, match='runtime_code_files'):
         runtime.render_music(MusicSpec(duration=1, engine='musicgen'), 'never.wav')
     assert not (tmp_path / 'never.wav').exists()
+
+
+def test_model_inventory_uses_fresh_file_identity_not_cached_windows_entries(tmp_path, monkeypatch):
+    """Windows scandir metadata can omit link counts for ordinary files."""
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    import carr_library.audio.music_runtime as runtime
+
+    config, data = model_fixture(tmp_path)
+    original_scandir = runtime.os.scandir
+
+    class CachedEntry:
+        def __init__(self, entry):
+            self.entry, self.path = entry, entry.path
+
+        def stat(self, *, follow_symlinks=True):
+            info = self.entry.stat(follow_symlinks=follow_symlinks)
+            return SimpleNamespace(st_mode=info.st_mode, st_size=info.st_size,
+                st_nlink=0, st_file_attributes=getattr(info, 'st_file_attributes', 0))
+
+    @contextmanager
+    def cached_scandir(path):
+        with original_scandir(path) as entries:
+            yield (CachedEntry(entry) for entry in entries)
+
+    with monkeypatch.context() as context:
+        context.setattr(runtime.os, 'scandir', cached_scandir)
+        assert validate_model(config) == data
+
+
+def test_model_inventory_still_rejects_actual_hardlinks(tmp_path):
+    import os
+
+    config, _data = model_fixture(tmp_path)
+    source = config.directory / 'state_dict.bin'
+    os.link(source, tmp_path / 'other-weight-name.bin')
+    assert source.lstat().st_nlink == 2
+    with pytest.raises(ValueError, match='ordinary materialized'):
+        validate_model(config)

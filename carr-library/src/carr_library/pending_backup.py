@@ -508,11 +508,147 @@ def _records(root, data_dir, db, names):
     return requests, batches, reviews
 
 
+def _direct_page_identity(rows, cancelled):
+    """Hash bounded logical pages without granting physical-page verification."""
+    hashed, count, characters = sha256(), 0, 0
+    for count, row in enumerate(rows, 1):
+        _check(cancelled)
+        ordinal, physical, printed, verified, raw, raw_hash = row
+        if (count > 10_000 or type(ordinal) is not int or ordinal != count
+                or physical is not None or printed is not None
+                or type(verified) is not int or verified != 0
+                or not isinstance(raw, str) or '\x00' in raw
+                or not _hash(raw_hash) or digest(raw) != raw_hash):
+            raise ValueError('Pending direct import has invalid logical pages.')
+        characters += len(raw)
+        if characters > 10_000_000:
+            raise ValueError('Pending direct import exceeds its text budget.')
+        hashed.update((canonical([ordinal, None, None, 0, raw_hash]) + '\n').encode('utf-8'))
+    if not count:
+        raise ValueError('Pending direct import has no logical pages.')
+    return count, hashed.hexdigest()
+
+
+def _direct_extraction_identity(source, asset_sha256, mime, workspace, edition):
+    """Read-only child action: prove an unpublished job without catalog writes."""
+    from .extract.document_formats import EXTENDED_MIMES
+    docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    epub = 'application/epub+zip'
+    if (not _hash(asset_sha256) or mime not in EXTENDED_MIMES | {docx, epub}
+            or not _text(workspace, 200) or not _text(edition, 200)):
+        raise ValueError('Invalid direct import identity request.')
+    source = local_path(source, exists=True)
+    raw = _read(source, MAX_BYTES)
+    if sha256(raw).hexdigest() != asset_sha256 or classify(raw, SUFFIXES[mime]) != mime:
+        raise ValueError('Pending direct import source identity changed.')
+    if mime == epub:
+        from .extract.epub_ordered import extract_epub
+        from .reader.ebook_contents import extraction_settings
+        extracted = extract_epub(raw)
+        settings = extraction_settings(extracted)
+    elif mime == docx:
+        from .extract.docx_ordered import extract_docx
+        extracted = extract_docx(raw)
+        settings = canonical(dict(adapter='python-docx-ordered-v1', kind='logical_segment',
+                                  provenance=extracted['provenance']))
+    else:
+        from .extract.document_formats import extract_document, extraction_settings
+        extracted = extract_document(raw, SUFFIXES[mime], deadline=time.monotonic() + 60)
+        settings = canonical(extraction_settings(extracted, mime))
+    count, pages_hash = _direct_page_identity(
+        ((ordinal, None, None, 0, row['raw_text'], row['text_sha256'])
+         for ordinal, row in enumerate(extracted['records'], 1)), lambda: False)
+    return dict(revision=digest(canonical([workspace, edition, asset_sha256, settings])),
+                config_sha256=digest(settings), page_count=count, pages_sha256=pages_hash)
+
+
+def _direct_job(request, catalog, asset, originals, cancelled):
+    """Bind non-journal formats to their sealed revision or exact retained bytes.
+
+    DOCX, EPUB and the additional document adapters publish directly. A stopped
+    request can have a job ID before any catalog row exists. Only that case asks
+    the existing isolated worker for bounded, read-only extraction hashes.
+    Sealed historical imports keep their original extraction configuration.
+    """
+    from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME
+    docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    epub = 'application/epub+zip'
+    if (asset is None or asset['sha256'] != request.get('asset_sha256')
+            or asset['mime'] not in EXTENDED_MIMES | {docx, epub}):
+        raise ValueError('Pending request has a foreign journal job.')
+    mime = asset['mime']
+    expected_adapter = ('python-docx-ordered-v1' if mime == docx else
+                        'epub-spine-v1' if mime == epub else 'ordered-document-v1')
+    expected_format = 'DOCX' if mime == docx else 'EPUB' if mime == epub else FORMAT_BY_MIME[mime].name
+    identity = (request['workspace'], request['metadata']['edition_id'], asset['sha256'])
+    publication = catalog.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
+                                  (request['job'],)).fetchone()
+    intent = request.get('publication')
+    if publication is not None:
+        if tuple(publication[:3]) != identity or catalog.execute(
+                'SELECT 1 FROM sealed WHERE revision=?', (request['job'],)).fetchone() is None:
+            raise ValueError('Pending direct import has a foreign or unsealed publication.')
+        settings = publication['config']
+        if not isinstance(settings, str) or len(settings.encode('utf-8')) > MAX_PAYLOAD:
+            raise ValueError('Pending direct import configuration exceeds its budget.')
+        config = _decode(settings.encode('utf-8'), newline=False)
+        if (not isinstance(config, dict) or config.get('adapter') != expected_adapter
+                or config.get('kind') != 'logical_segment' or not isinstance(config.get('provenance'), dict)
+                or config['provenance'].get('asset_sha256') != asset['sha256']
+                or mime in EXTENDED_MIMES and config.get('format') != expected_format
+                or request['job'] != digest(canonical([*identity, settings]))):
+            raise ValueError('Pending direct import has a foreign extraction identity.')
+        config_hash = digest(settings)
+        count, pages_hash = _direct_page_identity(catalog.execute(
+            'SELECT ordinal,physical,printed,verified,raw,digest FROM page '
+            'WHERE revision=? ORDER BY ordinal', (request['job'],)), cancelled)
+    else:
+        if (request['state'] in ('complete', 'superseded')
+                or intent is not None and (intent['committed'] or intent['before']['revision_existed'])):
+            raise ValueError('Completed direct import has no sealed publication.')
+        from .ingest.worker import _invoke
+        reply = _invoke(dict(action='direct-identity', source=str(originals / asset['filename']),
+            sha256=asset['sha256'], mime=mime, workspace=identity[0], edition=identity[1], timeout=60),
+            timeout=60, cancelled=cancelled)
+        _check(cancelled)
+        if isinstance(reply, dict) and reply.get('state') == 'cancelled':
+            raise InterruptedError('Pending direct import verification cancelled.')
+        if isinstance(reply, dict) and reply.get('state') == 'timed_out':
+            raise TimeoutError('Pending direct import verification time limit reached.')
+        if (not isinstance(reply, dict) or set(reply) !=
+                {'revision', 'config_sha256', 'page_count', 'pages_sha256'}
+                or any(not _hash(reply[key]) for key in ('revision', 'config_sha256', 'pages_sha256'))
+                or type(reply['page_count']) is not int or not 1 <= reply['page_count'] <= 10_000
+                or reply['revision'] != request['job']):
+            raise ValueError('Pending direct import has a foreign or unverifiable extraction identity.')
+        config_hash, count, pages_hash = reply['config_sha256'], reply['page_count'], reply['pages_sha256']
+    result = request.get('result')
+    if request['state'] == 'complete' and (
+            result.get('id') != request['job'] or type(result.get('completed')) is not int
+            or result['completed'] != count or result.get('verified') is not False
+            or result.get('format', expected_format) != expected_format):
+        raise ValueError('Pending direct import completion differs from its sealed publication.')
+    if intent is not None:
+        if (intent['config_sha256'] != config_hash or intent['page_count'] != count
+                or intent['pages_sha256'] != pages_hash):
+            raise ValueError('Pending direct import receipt differs from its source publication.')
+        active = intent['before']['active_revision']
+        if active is not None and catalog.execute(
+                'SELECT 1 FROM revision WHERE id=? AND workspace=? AND edition=?',
+                (active, *identity[:2])).fetchone() is None:
+            raise ValueError('Pending direct import pre-state has a foreign revision.')
+
+
 def _relations(requests, batches, reviews, jobs, journal):
+    # Direct-publication jobs are resolved after the original bytes have been
+    # retained/verified. Batch and journal/review relations are checked first.
+    direct_requests = []
     for request in requests.values():
         if 'job' in request:
             job = jobs.get(request['job'])
-            if job is None or (job['workspace'], job['edition'], job['asset']) != (
+            if job is None:
+                direct_requests.append(request)
+            elif (job['workspace'], job['edition'], job['asset']) != (
                     request['workspace'], request['metadata']['edition_id'], request.get('asset_sha256')):
                 raise ValueError('Pending request has a foreign journal job.')
     for batch in batches.values():
@@ -554,6 +690,7 @@ def _relations(requests, batches, reviews, jobs, journal):
                     or digest(payload['raw_text']) != review['raw_sha256']
                     or payload['physical_index'] != review['physical'] or payload['status'] != 'review_required'):
                 raise ValueError('Pending review differs from its extracted checkpoint.')
+    return direct_requests
 
 
 def _references(requests, batches):
@@ -630,7 +767,7 @@ def snapshot_pending(app, target, *, cancelled=lambda: False):
                 entry['filename'] = name
                 files.append(entry)
             requests, batches, reviews = _records(target, str(root), catalog, before)
-            _relations(requests, batches, reviews, jobs, journal)
+            direct_requests = _relations(requests, batches, reviews, jobs, journal)
 
             def retain(expected=None, known=None, source=None):
                 wanted = known or (expected['sha256'] if expected else None)
@@ -672,6 +809,10 @@ def snapshot_pending(app, target, *, cancelled=lambda: False):
             for asset in assets.values():
                 _check(cancelled)
                 _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
+            for request in direct_requests:
+                _check(cancelled)
+                _direct_job(request, catalog, assets.get(request.get('asset_sha256')),
+                            target / 'originals', cancelled)
         if _inventory(root) != before:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
     finally:
@@ -783,7 +924,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
             if 'imports.sqlite' in names:
                 journal, jobs = _journal(verified / 'imports.sqlite', catalog, cancelled)
             requests, batches, reviews = _records(verified, metadata['data_dir'], catalog, names)
-            _relations(requests, batches, reviews, jobs, journal)
+            direct_requests = _relations(requests, batches, reviews, jobs, journal)
             assets = {entry['sha256']: entry for entry in metadata['assets']}
             bindings = {(entry['filename'], entry['row_id']): entry for entry in metadata['sources']}
             expected_bindings, referenced = set(), {job['asset'] for job in jobs.values()}
@@ -805,6 +946,10 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 if classify(raw, Path(asset['filename']).suffix) != asset['mime'] or sha256(raw).hexdigest() != asset['sha256']:
                     raise ValueError('Pending original MIME or checksum mismatch.')
                 _source_checkpoints(asset, raw, jobs, journal)
+            for request in direct_requests:
+                _check(cancelled)
+                _direct_job(request, catalog, assets.get(request.get('asset_sha256')),
+                            verified / 'originals', cancelled)
 
             # Change only the explicitly listed location fields. Existing
             # status, job, expected manifest, result and identity fields survive.

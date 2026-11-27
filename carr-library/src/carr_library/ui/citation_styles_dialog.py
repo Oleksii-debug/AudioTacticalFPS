@@ -215,7 +215,8 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             if self.pending is not None:
                 return
             try:
-                self.workbench.check(self.preview)
+                selected, prior_cancellation = self.preview, self.cancelled
+                self.workbench.check(selected)
                 choice = wx.SingleChoiceDialog(self, 'Choose the bibliography file format.',
                     'Export bibliography', [label for _, label, _ in EXPORT_FORMATS])
                 try:
@@ -227,6 +228,10 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                     format, label, extension = EXPORT_FORMATS[index]
                 finally:
                     choice.Destroy()
+                if (not self.alive or prior_cancellation.is_set()
+                        or self.cancelled is not prior_cancellation or self.preview is not selected
+                        or self.pending is not None):
+                    return
                 chooser = wx.FileDialog(self, 'Save formatted bibliography',
                     defaultFile='bibliography.' + extension,
                     wildcard=f'{label} (*.{extension})|*.{extension}',
@@ -237,11 +242,37 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                     destination = chooser.GetPath()
                 finally:
                     chooser.Destroy()
-                # Bind the exact file before showing our overwrite question.
-                # A picker prompt cannot carry its file identity into the
-                # asynchronous render, and a new path needs no-clobber.
-                approval = capture_export_destination(destination,
-                    private_root=controller.library.root)
+                if (not self.alive or prior_cancellation.is_set()
+                        or self.cancelled is not prior_cancellation or self.preview is not selected
+                        or self.pending is not None):
+                    return
+                # Existing destinations can be large. Hash their exact bytes on
+                # the same cancellable worker used by rendering, then ask on the
+                # UI thread. Each stage retains this preview and cancellation.
+                self.cancelled = threading.Event()
+                cancelled = self.cancelled
+                self.controls(pending=True)
+                self.report('Checking the destination locally. Close cancels this check.', focus=False)
+                future = self.executor.submit(capture_export_destination, destination,
+                    private_root=controller.library.root, cancelled=cancelled.is_set)
+                self.pending = future
+                future.add_done_callback(lambda completed: wx.CallAfter(
+                    self.on_export_destination, completed, destination, format, selected, cancelled))
+            except Exception as exc:
+                self.pending = None
+                self.controls(pending=False)
+                self.report(f'Bibliography not exported: {exc}')
+
+        def on_export_destination(self, future, destination, format, selected, cancelled):
+            def current():
+                return (self.alive and not cancelled.is_set() and self.cancelled is cancelled
+                        and self.pending is future and self.preview is selected)
+
+            if not current():
+                return
+            try:
+                approval = future.result()
+                self.workbench.check(selected)
                 if not approval.require_absent:
                     question = wx.MessageDialog(self,
                         f'Replace the existing bibliography file?\n{destination}',
@@ -249,21 +280,29 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                         style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
                     try:
                         if question.ShowModal() != wx.ID_YES:
+                            if current():
+                                self.pending = None
+                                self.controls(pending=False)
+                                self.report('Export cancelled. The existing file was preserved.', focus=False)
                             return
                     finally:
                         question.Destroy()
-                self.cancelled = threading.Event()
-                self.controls(pending=True)
+                # Modal questions run a nested event loop: Close or a stale
+                # options event can invalidate this attempt while it is open.
+                if not current():
+                    return
+                self.workbench.check(selected)
                 self.report('Preparing the bibliography file locally. Close cancels an unfinished export.', focus=False)
-                future = self.executor.submit(self.workbench.export, self.preview, destination,
-                    format=format, cancelled=self.cancelled.is_set,
+                exported = self.executor.submit(self.workbench.export, selected, destination,
+                    format=format, cancelled=cancelled.is_set,
                     require_absent=approval.require_absent, approval=approval)
-                self.pending = future
-                future.add_done_callback(lambda completed: wx.CallAfter(self.on_export_ready, completed, destination))
+                self.pending = exported
+                exported.add_done_callback(lambda completed: wx.CallAfter(self.on_export_ready, completed, destination))
             except Exception as exc:
-                self.pending = None
-                self.controls(pending=False)
-                self.report(f'Bibliography not exported: {exc}')
+                if current():
+                    self.pending = None
+                    self.controls(pending=False)
+                    self.report(f'Bibliography not exported: {exc}')
 
         def on_export_ready(self, future, destination):
             if not self.alive or self.cancelled.is_set() or self.pending is not future:

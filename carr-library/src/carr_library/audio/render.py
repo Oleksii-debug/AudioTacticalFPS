@@ -251,6 +251,9 @@ def run_process(args, *, cancelled=None, timeout_seconds=None, cwd=None, env=Non
             raise OSError('Audio worker stopped to preserve the selected free-disk reserve.')
     if not isinstance(args, (list, tuple)) or not args or any(not isinstance(x, str) or '\x00' in x for x in args):
         raise ValueError('Worker arguments must be an explicit string list.')
+    if os.name == 'nt' and len(subprocess.list2cmdline(args).encode('utf-16-le')) // 2 + 1 > 32767:
+        raise ValueError('Audio input paths exceed the Windows process command limit. '
+                         'Choose shorter local folders or filenames, or fewer simultaneous tracks.')
     started = time.monotonic()
     check_storage()
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
@@ -377,6 +380,15 @@ def _ffmpeg_base(binary=None, *, informational=False):
             'info' if informational else 'error', '-nostdin', '-nostats',
             '-max_alloc', str(256*1024**2),
             '-threads', '2', '-filter_threads', '1', '-filter_complex_threads', '1']
+
+
+def _complex_filter_file_options(binary, path, *, cancelled=None):
+    # FFmpeg 9 removed the legacy script option. Discover the actual reviewed
+    # runtime's option instead of assuming its version from the host platform.
+    out, err = run_process([binary, '-hide_banner', '-h', 'long'],
+        cancelled=cancelled, timeout_seconds=10, maximum_log_bytes=512*1024)
+    legacy = re.search(r'(?m)^\s*-filter_complex_script(?:\s|$)', out + '\n' + err)
+    return ['-filter_complex_script' if legacy else '-/filter_complex', str(path)]
 
 
 def runtime_identity(*, ffmpeg=None, ffprobe=None):
@@ -553,7 +565,6 @@ def mix_tracks(tracks, output, *, duration_seconds=None, sample_rate=24000, chan
     graph, args = [], _ffmpeg_base(ffmpeg)
     for index, (track, info, values) in enumerate(prepared):
         start, gain, pan, length, fade_in, fade_out, effects = values
-        args += _input_options(info.path)
         keep_stereo = info.channels >= 2 and (track.kind in ('music', 'ambience') or track.preserve_stereo)
         layout = 'stereo' if keep_stereo else 'mono'
         chain = [f'aresample={sample_rate}', f'aformat=sample_fmts=fltp:channel_layouts={layout}']
@@ -611,15 +622,26 @@ def mix_tracks(tracks, output, *, duration_seconds=None, sample_rate=24000, chan
     with tempfile.TemporaryDirectory(prefix='.carr-audio-', dir=target.parent) as temp:
         stage = Path(temp)
         staged = stage / ('render' + target.suffix.lower())
+        for _track, info, _values in prepared:
+            # Keep repeated project/cache prefixes out of Windows' bounded
+            # command line. The source was authenticated above; cwd is owned.
+            try:
+                argument = Path(os.path.relpath(info.path, stage))
+            except ValueError:  # A different Windows drive has no relative path.
+                argument = info.path
+            args += _input_options(argument)
         chapter_file = _chapter_metadata(chapters, stage, sample_rate, frames)
         if chapter_file:
             args += ['-protocol_whitelist', 'file', '-f', 'ffmetadata', '-i', str(chapter_file)]
-        args += ['-filter_complex', ';'.join(graph), '-map', '[out]', '-map_metadata:g', '-1']
+        graph_file = stage / 'filtergraph.txt'
+        graph_file.write_text(';'.join(graph), encoding='utf-8')
+        args += [*_complex_filter_file_options(args[0], graph_file, cancelled=cancelled),
+                 '-map', '[out]', '-map_metadata:g', '-1']
         if chapter_file:
             args += ['-map_chapters', str(len(prepared))]
         args += [*_encoder_options(target, sample_rate=sample_rate, channels=channels,
                                    bitrate_kbps=bitrate_kbps), '-n', str(staged)]
-        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds,
+        run_process(args, cancelled=cancelled, timeout_seconds=timeout_seconds, cwd=stage,
                     watched_paths=(staged,),max_output_bytes=max_output_bytes,reserve_disk_bytes=1024**2)
         _sources_unchanged(sources, cancelled)
         exact = frames if target.suffix.lower() in ('.wav', '.flac', '.aif', '.aiff') else None

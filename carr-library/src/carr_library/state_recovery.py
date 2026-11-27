@@ -69,9 +69,19 @@ def _assistant(value):
     value['restore_requires_review'] = True
 
 
+def _publication_path(path):
+    return (len(path.parts) == 3 and path.parts[:2] == ('studio', 'publications')
+            and path.suffix == '.json')
+
+
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
     path = PurePosixPath(relative)
+    if _publication_path(path):
+        from .studio.publishing import validate_publication_document
+        validate_publication_document(value)
+        _job_identity(value, path)
+        return {**value, 'restore_requires_output': True}
     if type(value) is not dict:
         if (path == PurePosixPath('transcription/engine.json')
                 or len(path.parts) == 5 and path.parts[0] == 'transcription'
@@ -152,7 +162,7 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
         # uses the bounded durable-state contract; no arbitrary file is executed.
         if entry['size_bytes'] > 32 * 1024 * 1024:
             if (entry['filename'].startswith(('assistant/', 'translation/', 'providers/',
-                                              'studio/jobs/', 'speech/', 'transcription/'))
+                                              'studio/jobs/', 'studio/publications/', 'speech/', 'transcription/'))
                     or entry['filename'].endswith(('.profile.json', '.usage.json'))):
                 raise ValueError('Typed application state exceeds its recovery JSON budget.')
             continue
@@ -160,7 +170,7 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
             relative = PurePosixPath(entry['filename'])
-            if (relative == PurePosixPath('transcription/engine.json')
+            if (_publication_path(relative) or relative == PurePosixPath('transcription/engine.json')
                     or len(relative.parts) == 5 and relative.parts[0] == 'transcription'
                     and relative.parts[2] == 'jobs' and relative.name == 'job.json'):
                 raise ValueError('Invalid typed transcription recovery JSON.') from None

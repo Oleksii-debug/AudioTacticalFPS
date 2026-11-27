@@ -1,5 +1,6 @@
 """Accessible, persistent file-import plans in the existing desktop host."""
 import unicodedata
+from pathlib import Path
 from ..extract.document_formats import file_dialog_wildcard
 
 
@@ -300,23 +301,72 @@ class ImportCenterActions:
 
     def save_report(self, event=None):
         import wx
-        from ..research.export_file import write_export
+        from ..research.export_file import capture_export_destination, write_export
         try:
             self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait for the current operation before exporting its report.')
             if self.batch is None:
                 raise ValueError('Select a saved import batch first.')
-            batch = self.library.import_batch(self.workspace, self.batch['batch_id'])
+            library, workspace, batch_id = self.library, self.workspace, self.batch['batch_id']
             dialog = wx.FileDialog(self, 'Save import report', defaultFile='Import-report.txt',
-                wildcard='Text report (*.txt)|*.txt', style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                wildcard='Text report (*.txt)|*.txt', style=wx.FD_SAVE)
             try:
                 path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
             finally:
                 dialog.Destroy()
-            if path:
-                write_export(path, batch_report(batch), private_root=self.library.root)
-                self.report('Import report saved.')
+            if not path:
+                return
+            self._bound()
+            if self.library is not library or self.workspace != workspace or self.batch is None or self.batch['batch_id'] != batch_id:
+                raise ValueError('The selected import batch changed. Choose its report again.')
+            token = object()
+
+            def cancelled():
+                return (self.closed or getattr(self.frame, '_closing', False)
+                    or self.frame.cancel_event.is_set() or self._job_token is not token
+                    or self.library is not library or self.frame.library is not library
+                    or self.workspace != workspace or (self.batch or {}).get('batch_id') != batch_id)
+
+            def current():
+                if cancelled():
+                    raise InterruptedError('Import report export cancelled; the destination was not changed.')
+                self._bound()
+
+            def capture():
+                current()
+                library.import_batch(workspace, batch_id)
+                return capture_export_destination(path, private_root=library.root, cancelled=cancelled)
+
+            def captured(approval):
+                current()
+                if not approval.require_absent:
+                    decision = wx.MessageBox(
+                        f'Replace the existing export {Path(path).name}?', 'Replace import report',
+                        wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self)
+                    if self.closed:
+                        return
+                    current()
+                    if decision != wx.YES:
+                        self.report('Import report export cancelled.')
+                        return
+                current()
+
+                def publish():
+                    current()
+                    batch = library.import_batch(workspace, batch_id)
+                    content = batch_report(batch)
+                    current()
+                    write_export(path, content, private_root=library.root,
+                                 cancelled=cancelled, approval=approval)
+
+                self._job('Saving import report', publish,
+                          lambda _: self.report('Import report saved.'), token=token)
+
+            self._job('Checking report destination', capture, captured, token=token)
         except Exception as exc:
-            self.report(str(exc))
+            if not self.closed:
+                self.report(str(exc))
 
     def cancel_operation(self, event=None):
         if self.busy:

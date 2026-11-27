@@ -113,7 +113,7 @@ def main(argv=None):
     from .acquisition.cli import add_arguments as add_acquisition_arguments, validate_arguments as validate_acquisition_arguments
     add_acquisition_arguments(parser,research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
-                        help='Library ID for --search; repeat to include another library')
+                        help='Library ID for search or identifier lookup; only search accepts multiple libraries')
     parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'advanced', 'thematic', 'semantic'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
@@ -128,14 +128,15 @@ def main(argv=None):
     add_audio_arguments(parser)
     args = parser.parse_args(argv)
     validate_acquisition_arguments(parser, args)
+    identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     operations = (audio_requested(args), ocr_operation, args.document_formats,
-                  args.list_libraries, args.search is not None, args.lookup_doi is not None,
+                  args.list_libraries, args.search is not None, identifier_lookup,
                   args.self_test, args.backup is not None, args.restore is not None)
     if sum(bool(value) for value in operations) > 1:
         parser.error('Choose one operation: audio, OCR models, document formats, library search, '
-                     'DOI lookup, self-test, backup, or restore.')
+                     'DOI or ISBN lookup, self-test, backup, or restore.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -149,8 +150,8 @@ def main(argv=None):
     args.ocr_profile = args.ocr_profile or 'fast'
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None and args.lookup_doi is None:
-        parser.error('--workspace is used with --search or --lookup-doi.')
+    if args.workspaces and args.search is None and not identifier_lookup:
+        parser.error('--workspace is used with --search, --lookup-doi or --lookup-isbn.')
     native_handle = audio_handle = None
     try:
         if args.document_formats:
@@ -223,7 +224,7 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
-        if args.lookup_doi is not None:
+        if identifier_lookup:
             from .acquisition.cli import run as run_acquisition
             return run_acquisition(app,args)
         if args.list_libraries:

@@ -534,7 +534,7 @@ class DesktopFrame(WorkspaceFrame):
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
-                ('DOI lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
+                ('DOI and ISBN lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help),
                 ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
@@ -585,6 +585,10 @@ class DesktopFrame(WorkspaceFrame):
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
+        from .command_palette import install_command_palette
+        install_command_palette(self)
+        from .diagnostics_dialog import install_diagnostics
+        install_diagnostics(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
