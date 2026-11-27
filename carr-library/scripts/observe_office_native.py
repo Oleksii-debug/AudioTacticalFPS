@@ -58,6 +58,32 @@ def namespace(root):
     return rows
 
 
+def authored_subtree(element):
+    """Bounded descendant evidence for the one actual rejected authored node."""
+    rows, pending, encoded_bytes, clipped = [], [(element, ())], 0, False
+    while pending and len(rows) < 64:
+        node, path = pending.pop()
+        row = {'path': list(path), 'tag': str(node.tag)[:512],
+               'attributes': {str(key)[:512]: str(value)[:512]
+                              for key, value in list(node.attrib.items())[:16]},
+               'text': (node.text or '')[:512], 'tail': (node.tail or '')[:512],
+               'children': len(node)}
+        size = len(json.dumps(row, ensure_ascii=True).encode('ascii'))
+        if encoded_bytes + size > 16 * 1024:
+            clipped = True
+            break
+        encoded_bytes += size
+        rows.append(row)
+        clipped = clipped or (len(node.attrib) > 16
+            or any(len(str(key)) > 512 or len(str(value)) > 512 for key, value in node.attrib.items())
+            or len(node.text or '') > 512 or len(node.tail or '') > 512
+            or len(node) > 16 or (len(path) >= 8 and len(node) > 0))
+        if len(path) < 8:
+            pending.extend((child, (*path, index)) for index, child in
+                           reversed(list(enumerate(node, 1))[:16]))
+    return {'nodes': rows, 'bounded': bool(pending) or clipped}
+
+
 def failure_frames(error):
     """Record the actual rejecting authored node, without changing the parser."""
     rows, trace, count = [], error.__traceback__, 0
@@ -68,7 +94,7 @@ def failure_frames(error):
             element = frame.f_locals.get('element')
             if element is not None:
                 rows.append({'function': frame.f_code.co_name, 'line': trace.tb_lineno,
-                    'tag': str(element.tag)[:512],
+                    'tag': str(element.tag)[:512], 'subtree': authored_subtree(element),
                     'child_tags': [str(child.tag)[:512] for child in list(element)[:32]],
                     'children': [{'tag': str(child.tag)[:512],
                         'attributes': {str(key)[:512]: str(value)[:256]
