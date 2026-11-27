@@ -8,7 +8,8 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.ingest.restore import RestoreError
-from carr_library.library_backup import create_backup, restore_backup
+from carr_library.library_backup import restore_backup
+from backup_compat_fixture import create_historical_backup as create_backup, historical_backup
 from carr_library.storage.revisions import Storage
 from carr_library.storage.schema_identity import (
     expected_schema_fingerprint, schema_fingerprint,
@@ -47,7 +48,7 @@ def forbid_writable_storage(monkeypatch):
     monkeypatch.setattr('carr_library.library_backup.Storage', refused)
 
 
-def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
+def test_historical_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
     assert manifest['version'] == 2
     assert manifest['schema_version'] == 4

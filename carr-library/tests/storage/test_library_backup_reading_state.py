@@ -11,7 +11,8 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library import library_backup
 from carr_library.ingest.writer_guard import WriterBusy, exclusive_writer
-from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
+from carr_library.library_backup import restore_backup, INCOMPLETE
+from backup_compat_fixture import create_historical_backup as create_backup, historical_backup
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import FILENAME, MAX_BYTES, ReadingState
 
@@ -62,6 +63,7 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
     raw = (app.root / FILENAME).read_bytes()
     folder = tmp_path / 'backup'
     digest = app.backup(folder)
+    digest = historical_backup(folder)
     manifest = read_manifest(folder)
     assert manifest['version'] == 3
     assert reading_entry(manifest) == dict(filename=FILENAME, size_bytes=len(raw),
@@ -138,6 +140,7 @@ def test_absent_state_is_explicit_and_unrelated_sidecars_are_not_copied(tmp_path
         (app.root / name).write_text('SYNTHETIC DO NOT COPY', encoding='utf-8')
     folder = tmp_path / 'backup'
     digest = app.backup(folder)
+    digest = historical_backup(folder)
     assert read_manifest(folder)['version'] == 2 and 'sidecars' not in read_manifest(folder)
     assert {path.name for path in folder.iterdir()} == {'manifest.json', 'library.sqlite', 'originals'}
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))

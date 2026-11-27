@@ -2,12 +2,14 @@
 
 Backups include all workspaces, saved research and registered original files,
 reader/editor/preferences state, assistant jobs and managed Audio Studio projects.
-Retained files from failed/unpublished imports are deliberately not included.
+Version 5 also retains validated import journals, reviews and the exact source
+bytes needed by queued or unfinished imports. Unreferenced retained bytes stay out.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 preserves the reader foundation's filename/root sidecar schema.
 Version 4 adds managed audio/assistant state using path/sidecars and streamed
-file checksums. Live audio jobs must release their project locks. Assistant
+file checksums. Version 5 adds the typed pending-import component. The alternate
+historical v3/v4 state-folder schemas are dispatched explicitly, never guessed. Live audio jobs must release their project locks. Assistant
 publications share the application writer and state guards; a backup may borrow
 only its own live same-process/thread execution guard.
 Legacy version 1 backups and newer backups are accepted only for an exact
@@ -33,6 +35,12 @@ from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer, _regular_if_present
 from .data_paths import guard_data_directory
+from .backup_files import local_path, publish_tree
+from .backup_historical import (
+    DIRECTORY as HISTORICAL_DIRECTORY, is_state_path as _historical_path,
+    state_paths as _historical_files, validate_state_tree as _validate_historical,
+    retain_state as _retain_historical,
+)
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
@@ -69,6 +77,7 @@ MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
 SIDECARS = 'sidecars'
+PENDING = 'pending'
 MAX_SIDECAR_FILES = 100000
 MAX_SIDECAR_BYTES = 128 * 1024**3
 MAX_SIDECAR_FILE_BYTES = 32 * 1024**3
@@ -196,9 +205,38 @@ def _portable_relative(value):
     return path.parts
 
 
+def _translation_adapter():
+    # A separate typed producer joins this backup without importing another
+    # assistant or gateway. Its absence is harmless only when no such state is
+    # present; a declared translation namespace must never be silently omitted.
+    try:
+        from .assistant import translation_state
+    except ImportError as exc:
+        raise RestoreError('The translation state backup adapter is unavailable.') from exc
+    return translation_state
+
+
+def _translation_path(value):
+    if not isinstance(value, str) or not value.startswith('state/translation/'):
+        return False
+    return _translation_adapter().is_state_path(value)
+
+
+def _translation_files(root, *, cancelled=lambda: False):
+    if not os.path.lexists(root / 'state' / 'translation'):
+        return ()
+    return _translation_adapter().state_paths(root, cancelled=cancelled)
+
+
+def _validate_translations(db, root, *, cancelled=lambda: False):
+    if os.path.lexists(root / 'state' / 'translation'):
+        _translation_adapter().validate_state_tree(db, root, cancelled=cancelled)
+
+
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
-    if _reader_path(value) or _assistant_path(value):
+    if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
+            or _translation_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -269,8 +307,9 @@ def _sidecar_info(root, relative):
         raise RestoreError('sidecar files cannot be hard links')
     limit = (_reader_limit(relative) if _reader_path(relative) else
              _assistant_limit(relative) if _assistant_path(relative) else
+             _translation_adapter().state_limit(relative) if _translation_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
-    minimum = 0 if relative.lower().endswith(('.srt', '.vtt', '.ffmeta')) else 1
+    minimum = 0 if _historical_path(relative) or relative.lower().endswith(('.srt', '.vtt', '.ffmeta')) else 1
     if not minimum <= info.st_size <= limit:
         raise RestoreError('sidecar file exceeds its size limit')
     return info
@@ -327,6 +366,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
     from .assistant.state import snapshot_job_guard, state_write_guard
     projects = _projects(root)
     assistant = _assistant_documents(root, max_files)
+    translation = _translation_files(root)
     with ExitStack() as stack:
         directory = root / 'state' / 'assistant'
         if os.path.lexists(directory):
@@ -341,6 +381,13 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
                 raise RestoreError('An assistant job or control is being updated. Retry the backup after it stops.') from exc
             if _assistant_documents(root, max_files) != assistant:
                 raise RestoreError('Assistant checkpoints changed before backup. Retry when they are idle.')
+        if os.path.lexists(root / 'state' / 'translation'):
+            try:
+                stack.enter_context(_translation_adapter().snapshot_guard(root))
+            except RuntimeError as exc:
+                raise RestoreError('A translation job is active; retry the backup when it is idle.') from exc
+            if _translation_files(root) != translation:
+                raise RestoreError('Translation checkpoints changed before backup; retry when idle.')
         keymap_lock = root / 'keyboard-shortcuts.json.lock'
         _regular_if_present(keymap_lock, empty=True)
         try:
@@ -362,7 +409,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
                 except RuntimeError as exc:
                     raise RestoreError('An audio project is rendering. Retry the backup after it stops.') from exc
         def verify():
-            if _projects(root) != projects or _assistant_documents(root, max_files) != assistant:
+            if (_projects(root) != projects or _assistant_documents(root, max_files) != assistant
+                    or _translation_files(root) != translation):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -488,6 +536,10 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         add(root / name)
     for path in _assistant_files(root, cancelled=cancelled):
         add(path)
+    for path in _historical_files(root, cancelled=cancelled):
+        add(path)
+    for path in _translation_files(root, cancelled=cancelled):
+        add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
             add(path)
@@ -589,7 +641,7 @@ def _verify_sidecar_tree(root, entries, max_files, ignored=()):
 
 
 def _destination(value, source):
-    path = guard_data_directory(value, purpose='backup or restored library')
+    path = local_path(guard_data_directory(value, purpose='backup or restored library'))
     _plain(path.parent, directory=True)
     if os.path.lexists(path):
         raise FileExistsError(path)
@@ -630,7 +682,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
-    Reader-only sidecars retain version 3; managed audio/assistant uses version 4.
+    Without import journals, reader sidecars use v3 and managed state uses v4.
+    A complete import component selects v5, preserving all current sidecars.
     Active audio jobs and other assistant executions are refused. The assistant
     can snapshot its own durable checkpoint using its actual native job guard.
     File and total-byte budgets are caller-controlled; audio is copied in chunks.
@@ -657,6 +710,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_readers(snapshot_storage.db, _snapshot_readers(app.root))
                 _validate_studios(snapshot_storage.db, app.root)
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_historical(app.root, cancelled=cancelled)
+                _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             # Refuse a newly introduced project before interpreting its files.
@@ -665,20 +720,29 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
                 raise RestoreError('Reading/audio state changed during backup. Retry with the projects idle.')
             check_projects()
-            managed = any(not _reader_path(entry['path']) for entry in sidecars)
-            manifest = dict(version=4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=4,
+            pending = None
+            if any(os.path.lexists(app.root / name) for name in
+                   ('imports.sqlite', 'import-requests', 'import-batches', HISTORICAL_DIRECTORY)):
+                from .pending_backup import snapshot_pending
+                pending = snapshot_pending(app, stage / PENDING, cancelled=cancelled)
+            managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
+            manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
-            if sidecars:
+            if sidecars or pending is not None:
                 manifest['sidecars'] = sidecars if managed else [
                     dict(filename=entry['path'], size_bytes=entry['size_bytes'], sha256=entry['sha256'])
                     for entry in sidecars]
+            if pending is not None:
+                manifest['pending'] = pending
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
                 raise RestoreError('manifest size limit')
             _sync_file(stage / MANIFEST, raw)
+            if cancelled():
+                raise InterruptedError('Library backup cancelled before publication.')
             # mkdir provides exclusive no-replace ownership of the destination.
             # The final manifest is the completion marker; no partial bundle is
             # silently overwritten or presented as a successful backup.
@@ -688,25 +752,37 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             _sync_directory(destination / ORIGINALS)
-            if sidecars:
+            if sidecars or pending is not None:
                 sidecar_destination = destination / SIDECARS if managed else destination
                 if managed:
                     sidecar_destination.mkdir(mode=0o700)
                 _publish_sidecars(stage / SIDECARS, sidecar_destination, sidecars)
                 _sync_directory(sidecar_destination)
+            if pending is not None:
+                publish_tree(stage / PENDING, destination / PENDING, cancelled=cancelled)
+            if cancelled():
+                raise InterruptedError('Library backup cancelled before manifest publication.')
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
 
 
+def _legacy_state_layout(manifest):
+    """The two historical v3/v4 families have disjoint exact field shapes."""
+    return manifest['version'] in (3, 4) and (
+        'state' in manifest or 'generated_audio_included' in manifest)
+
+
 def _sidecar_layout(manifest):
-    """Reading v3 keeps filename/root; combined v4 uses path/sidecars."""
-    return ('path', SIDECARS) if manifest['version'] == 4 else ('filename', '')
+    """Reading v3 keeps filename/root; typed v4/v5 uses path/sidecars."""
+    return ('path', SIDECARS) if manifest['version'] >= 4 else ('filename', '')
 
 
 def _declared_sidecars(manifest):
     """Keep the historical one-reading-file v3 shape as an exact read schema."""
+    if _legacy_state_layout(manifest):
+        return []
     if 'reading_state' not in manifest:
         return manifest.get('sidecars', [])
     reading = manifest['reading_state']
@@ -751,15 +827,22 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3, 4)):
+            or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
     if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
-    if manifest['version'] == 3:
+    legacy_state = _legacy_state_layout(manifest)
+    if legacy_state:
+        fields.update(('state', 'generated_audio_included'))
+        if manifest['version'] == 4:
+            fields.add('pending')
+    elif manifest['version'] == 3:
         fields.add('reading_state' if 'reading_state' in manifest else 'sidecars')
-    elif manifest['version'] == 4:
+    elif manifest['version'] >= 4:
         fields.add('sidecars')
+        if manifest['version'] == 5:
+            fields.add('pending')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
@@ -793,20 +876,39 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    if 'pending' in manifest:
+        from .pending_backup import validate_pending
+        validate_pending(manifest['pending'])
+    if legacy_state:
+        from .backup_legacy_state import validate_state
+        if type(manifest['generated_audio_included']) is not bool:
+            raise RestoreError('invalid legacy application state options')
+        # Retention adds the original manifest as one authenticated sidecar.
+        validate_state(manifest['state'], max_files=max_sidecar_files - 1,
+                       max_bytes=max_sidecar_bytes - size)
+        expected_names = {DATABASE, ORIGINALS, MANIFEST, 'state'}
+        if 'pending' in manifest:
+            expected_names.add(PENDING)
+        if set(p.name for p in directory.iterdir()) != expected_names:
+            raise RestoreError('incomplete legacy application state backup')
+        _plain(directory / 'state', directory=True)
+        return manifest
     field, subdirectory = _sidecar_layout(manifest)
     if manifest['version'] >= 3:
         entries = _declared_sidecars(manifest)
-        minimum = 1 if subdirectory else 0
+        minimum = 1 if manifest['version'] == 4 else 0
         if type(entries) is not list or not minimum <= len(entries) <= max_sidecar_files:
             raise RestoreError('invalid sidecar manifest count')
         names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
+        translation_total, translation_jobs, translation_caches = 0, 0, 0
         for entry in entries:
             if (type(entry) is not dict or set(entry) != {field, 'size_bytes', 'sha256'}
                     or not _backup_sidecar_allowed(entry[field])
                     or (not subdirectory and not _reader_path(entry[field]))
                     or type(entry['size_bytes']) is not int or not 0 <= entry['size_bytes'] <= MAX_SIDECAR_FILE_BYTES
-                    or (entry['size_bytes'] == 0 and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta')))
+                    or (entry['size_bytes'] == 0 and not _historical_path(entry[field])
+                        and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta')))
                     or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
                 raise RestoreError('invalid backup sidecar manifest entry')
             _claim_path(entry[field], names)
@@ -831,8 +933,20 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                         or assistant_total > MAX_ASSISTANT_BYTES
                         or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):
                     raise RestoreError('assistant sidecar count or byte limit')
+            if _translation_path(entry[field]):
+                adapter = _translation_adapter()
+                translation_total += entry['size_bytes']
+                is_cache = PurePosixPath(entry[field]).name.startswith('languages-')
+                translation_caches += int(is_cache)
+                translation_jobs += int(not is_cache)
+                if (entry['size_bytes'] > adapter.state_limit(entry[field])
+                        or translation_total > adapter.MAX_SNAPSHOT_BYTES
+                        or translation_jobs > adapter.MAX_JOBS or translation_caches > adapter.MAX_CACHES):
+                    raise RestoreError('translation sidecar count or byte limit')
     normalized = _manifest_sidecars(manifest)
     expected_names = {DATABASE, ORIGINALS, MANIFEST}
+    if 'pending' in manifest:
+        expected_names.add(PENDING)
     expected_names.update({SIDECARS} if subdirectory else {entry['path'].split('/')[0] for entry in normalized})
     if set(p.name for p in directory.iterdir()) != expected_names:
         raise RestoreError('incomplete backup or unexpected reading-state/sidecar files')
@@ -869,7 +983,8 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def _verify_contents(source, stage, manifest, *, copy_files=False, cancelled=lambda: False):
+def _verify_contents(source, stage, manifest, *, copy_files=False,
+                     expected_manifest_sha256=None, cancelled=lambda: False):
     """One byte/schema/source verifier for restoration and read-only inspection."""
     _plain(source / ORIGINALS, directory=True)
     sidecars = _manifest_sidecars(manifest)
@@ -892,6 +1007,8 @@ def _verify_contents(source, stage, manifest, *, copy_files=False, cancelled=lam
             _validate_readers(storage.db, _snapshot_readers(checked_root))
             _validate_studios(storage.db, checked_root, strict_assets=True)
             _validate_assistants(storage.db, checked_root, cancelled=cancelled)
+            _validate_historical(checked_root, cancelled=cancelled)
+            _validate_translations(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
@@ -903,6 +1020,17 @@ def _verify_contents(source, stage, manifest, *, copy_files=False, cancelled=lam
     if any(_identity(_sidecar_info(sidecar_source, name)) != identity
            for name, identity in identities.items()):
         raise RestoreError('sidecar changed during verification')
+    if _legacy_state_layout(manifest):
+        if copy_files:
+            sidecars = _retain_historical(source, stage / SIDECARS, manifest,
+                                         expected_manifest_sha256, cancelled=cancelled)
+            _validate_historical(stage / SIDECARS, cancelled=cancelled)
+        else:
+            from .backup_legacy_state import verify_state
+            verify_state(source / 'state', None, manifest['state'], cancelled=cancelled)
+    if 'pending' in manifest and not copy_files:
+        from .pending_backup import verify_pending
+        verify_pending(source / PENDING, stage, manifest['pending'], cancelled=cancelled)
     if cancelled():
         raise InterruptedError('Library backup or restore cancelled.')
     return entries, sidecars, _managed_output_directories(sidecars)
@@ -910,19 +1038,19 @@ def _verify_contents(source, stage, manifest, *, copy_files=False, cancelled=lam
 
 def verify_backup(source, expected_manifest_sha256, *, max_sidecar_files=MAX_SIDECAR_FILES,
                   max_sidecar_bytes=MAX_SIDECAR_BYTES, cancelled=lambda: False):
-    """Validate v1-v4 snapshots read-only without publishing a restored library.
+    """Validate exact v1-v5 snapshots read-only without publishing a library.
 
     SQLite validation uses a private database copy. Audio and other sidecars
     are streamed without allocating another full production copy.
     """
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
-    source = Path(source).absolute()
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
-    source = source.resolve(strict=True)
     manifest = _read_manifest(source, expected_manifest_sha256,
         max_sidecar_files=max_sidecar_files, max_sidecar_bytes=max_sidecar_bytes)
     with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
-        _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
+        _verify_contents(source, Path(tmp), manifest,
+                         expected_manifest_sha256=expected_manifest_sha256, cancelled=cancelled)
     return manifest
 
 
@@ -936,16 +1064,20 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
     the application must reject such a root instead of opening partial data.
     """
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
-    source = Path(source).absolute()
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
-    source = source.resolve(strict=True)
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256,
         max_sidecar_files=max_sidecar_files, max_sidecar_bytes=max_sidecar_bytes)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         entries, sidecars, output_directories = _verify_contents(source, stage, manifest,
-            copy_files=True, cancelled=cancelled)
+            copy_files=True, expected_manifest_sha256=expected_manifest_sha256, cancelled=cancelled)
+        pending = {'assets': [], 'paths': []}
+        if 'pending' in manifest:
+            from .pending_backup import restore_pending
+            pending = restore_pending(source / PENDING, stage, destination, manifest['pending'],
+                                      cancelled=cancelled)
         snapshot = stage / DATABASE
         _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
         destination.mkdir(mode=0o700)
@@ -956,7 +1088,19 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         _sync_directory(destination / ORIGINALS)
+        for entry in pending['assets']:
+            if cancelled():
+                raise InterruptedError('Library restore cancelled before completion.')
+            os.link(stage / ORIGINALS / entry['filename'], destination / ORIGINALS / entry['filename'])
         _publish_sidecars(stage / SIDECARS, destination, sidecars, output_directories)
+        for name in pending['paths']:
+            if cancelled():
+                raise InterruptedError('Library restore cancelled before completion.')
+            if (stage / name).is_dir():
+                publish_tree(stage / name, destination / name, cancelled=cancelled)
+            else:
+                os.link(stage / name, destination / name)
+        _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
     (destination / INCOMPLETE).unlink()

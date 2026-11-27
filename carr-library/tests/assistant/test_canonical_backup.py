@@ -57,7 +57,7 @@ def test_actual_self_backup_restore_rebackup_preserves_scope_and_checkpoint(loca
     backup = output / 'checked'
     digest = result.results[1]['manifest_sha256']
     manifest = verify_backup(backup, digest)
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     relative = _relative(app, service, identity)
     raw = (backup / 'sidecars' / relative).read_bytes()
     saved = validate_state_document(Path(relative).name, raw)

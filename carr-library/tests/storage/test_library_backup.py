@@ -199,7 +199,7 @@ def test_v4_exact_reading_and_audio_drafts_roundtrip(with_sidecars, tmp_path):
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text())
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert {entry['path'] for entry in manifest['sidecars']} == set(expected)
     assert all(entry['sha256'] == sha256(expected[entry['path']]).hexdigest()
                and entry['size_bytes'] == len(expected[entry['path']])
