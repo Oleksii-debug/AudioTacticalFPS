@@ -536,7 +536,8 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0,
+                    source_profile=None):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
@@ -544,15 +545,20 @@ class LibraryApp:
         if not isinstance(collections, (tuple, list)) or len(collections) > 100:
             raise ValueError('invalid collections')
         path = Path(path).absolute()
+        if source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            source_profile = profile_from_value(source_profile)
+            if path.suffix.casefold() != '.txt':
+                raise ValueError('The streamed source profile accepts UTF-8 .txt files only.')
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+        if source_profile is not None or path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout, source_profile=source_profile)
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
@@ -641,7 +647,7 @@ class LibraryApp:
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
                      _request_id=None, _resume_job=None, _expected_manifest=None,
-                     _publication_attempt=None):
+                     _publication_attempt=None, _source_profile=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -655,7 +661,12 @@ class LibraryApp:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
-        if _expected_manifest is None:
+        profile = None
+        if _source_profile is not None:
+            from .ingest.streamed_text import inspect_text, profile_from_value
+            profile = profile_from_value(_source_profile)
+            asset = inspect_text(path, profile, cancelled=cancelled)
+        elif _expected_manifest is None:
             asset = snapshot(path.parent, path.name)
         else:
             from .ingest.batch_scan import planned_snapshot
@@ -671,7 +682,11 @@ class LibraryApp:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
-                retained = self.assets.retain(asset.data, asset.mime, asset.digest)
+                if profile is not None:
+                    retained = self.assets.retain_file(path, asset.mime, asset.digest, asset.size,
+                        profile=profile, expected_identity=asset.identity, cancelled=cancelled)
+                else:
+                    retained = self.assets.retain(asset.data, asset.mime, asset.digest)
                 from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
                                             record_publication_candidate)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
@@ -733,6 +748,9 @@ class LibraryApp:
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
+                if profile is not None:
+                    from .ingest.streamed_ingest import StreamedTextIngest
+                    engine, extra = StreamedTextIngest, dict(profile=profile)
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
                         publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
@@ -844,8 +862,10 @@ class LibraryApp:
         if row is None:
             raise ValueError('Source is outside the selected library.')
         mime, size = row
-        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+        if mime not in SUFFIXES or type(size) is not int or size < 1:
             raise ValueError('Invalid original source catalog manifest.')
+        from .ingest.streamed_text import catalog_profile
+        profile = catalog_profile(db, identity.asset_sha256, mime, size)
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
         key = identity.asset_sha256, mime, size
@@ -853,7 +873,8 @@ class LibraryApp:
             return checked_assets[key], mime, size
         # Existing retention resolution checks regular-file/link rules, the
         # 64 MiB size bound, and the complete original-byte SHA256.
-        path = self.assets.resolve(identity.asset_sha256)
+        path = (self.assets.resolve(identity.asset_sha256) if profile is None else
+                self.assets.resolve(identity.asset_sha256, profile=profile, cancelled=cancelled))
         if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -874,6 +895,10 @@ class LibraryApp:
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
         resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
         text = strict_text_attestor(db, workspace, resolve_asset)
+        from .citations.streamed_text_attestation import streamed_text_attestor
+        streamed_paths = {}
+        streamed = streamed_text_attestor(db, workspace, lambda identity: self._retained_source(
+            db, workspace, identity, checked_assets=streamed_paths, cancelled=cancelled)[0], cancelled=cancelled)
 
         def review(identity, physical):
             row = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
@@ -888,7 +913,8 @@ class LibraryApp:
         def attest(identity, locator, raw_hash):
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
-            verified = text(identity, locator, raw_hash) or pdf(identity, locator, raw_hash)
+            verified = (text(identity, locator, raw_hash) or streamed(identity, locator, raw_hash)
+                        or pdf(identity, locator, raw_hash))
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
             return verified

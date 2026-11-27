@@ -28,11 +28,12 @@ def _hex(value, length):
     return value
 
 
-def _manifest(value):
+def _manifest(value, profile=None):
     from ..ingest.retained_assets import MAX_BYTES, SUFFIXES
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or value['mime'] not in SUFFIXES or type(value['size']) is not int
-            or not 0 < value['size'] <= MAX_BYTES):
+            or not 0 < value['size'] <= (profile.maximum_bytes if profile is not None else MAX_BYTES)
+            or profile is not None and value['mime'] != 'text/plain'):
         raise ValueError('Invalid publication source manifest.')
     _hex(value['sha256'], 64)
     return dict(value)
@@ -77,10 +78,16 @@ def validate_configuration(value):
 
 
 def _request(value):
-    if (not isinstance(value, dict) or set(value) != REQUEST_FIELDS
-            or type(value['version']) is not int or value['version'] != 1):
+    if (not isinstance(value, dict) or type(value.get('version')) is not int
+            or value['version'] not in (1, 2)
+            or set(value) != (REQUEST_FIELDS if value['version'] == 1 else REQUEST_FIELDS | {'source_profile'})):
         raise ValueError('Invalid publication request schema.')
     result = dict(value)
+    profile = None
+    if value['version'] == 2:
+        from .streamed_text import profile_from_value
+        profile = profile_from_value(value['source_profile'])
+        result['source_profile'] = profile.to_dict()
     _hex(value['request_id'], 32)
     _identity(value['workspace'])
     for name in ('data_dir', 'source'):
@@ -90,7 +97,7 @@ def _request(value):
     validate_configuration(value['config'])
     result['config'] = dict(value['config'])
     if value['expected_manifest'] is not None:
-        result['expected_manifest'] = _manifest(value['expected_manifest'])
+        result['expected_manifest'] = _manifest(value['expected_manifest'], profile)
     for name in ('pinned_asset', 'resume_job'):
         if value[name] is not None:
             _hex(value[name], 64)
@@ -104,6 +111,8 @@ def request_identity(record):
                  workspace=record['workspace'], metadata=record['metadata'],
                  config=record['config'], expected_manifest=record.get('expected_manifest'),
                  pinned_asset=record.get('asset_sha256'), resume_job=record.get('job'))
+    if record['version'] == 2:
+        value['source_profile'] = record.get('source_profile')
     result = _canonical(_request(value))
     if len(result.encode('utf-8')) > MAX_IDENTITY:
         raise ValueError('Publication request identity exceeds its limit.')

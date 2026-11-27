@@ -34,8 +34,13 @@ class RetainedAssets:
             raise RetentionError('invalid asset digest')
         return [self.root / (digest + suffix) for suffix in SUFFIXES.values()]
 
-    def resolve(self, digest):
+    def resolve(self, digest, *, profile=None, cancelled=lambda: False):
         """Internal verified lookup; never expose directly to unscoped UI."""
+        maximum = MAX_BYTES
+        if profile is not None:
+            from .streamed_text import profile_from_value
+            profile = profile_from_value(profile)
+            maximum = profile.maximum_bytes
         paths = [p for p in self._paths(digest) if os.path.lexists(p)]
         if len(paths) != 1:
             raise RetentionError('missing or ambiguous retained asset')
@@ -43,11 +48,83 @@ class RetainedAssets:
         info = path.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
                 getattr(info, 'st_file_attributes', 0) & 0x400 or
-                not 0 < info.st_size <= MAX_BYTES):
+                not 0 < info.st_size <= maximum or
+                profile is not None and path.suffix != '.txt'):
             raise RetentionError('invalid retained asset file')
-        if hash_file(path) != digest:
+        if profile is None:
+            actual = hash_file(path)
+        else:
+            from ..audio.jobs import sha256_file
+            actual = sha256_file(path, cancelled=cancelled)
+        if actual != digest:
             raise RetentionError('retained asset digest mismatch')
         return path
+
+    def retain_file(self, source, mime, digest, size, *, profile=None,
+                    expected_identity=None, cancelled=lambda: False):
+        """Stream a validated source into the existing immutable original store.
+
+        Larger admission requires the explicit typed text profile. Generic
+        callers keep the old byte ceiling. No caller-supplied executable or
+        alternate original namespace is introduced by this file-backed API.
+        """
+        from ..audio.jobs import (file_identity, publish_noreplace, regular_file,
+                                  verified_reader, _sync_directory)
+        from .streamed_text import check_cancelled, profile_from_value
+        import shutil
+        maximum = MAX_BYTES
+        if profile is not None:
+            profile = profile_from_value(profile)
+            maximum = profile.maximum_bytes
+        if (mime not in SUFFIXES or type(size) is not int or not 0 < size <= maximum
+                or profile is not None and mime != 'text/plain'):
+            raise RetentionError('unsupported or oversized streamed asset')
+        paths = self._paths(digest)
+        source = Path(source)
+        before = regular_file(source)
+        if before.st_nlink != 1 or before.st_size != size:
+            raise RetentionError('invalid streamed source identity')
+        identity = file_identity(before)
+        if expected_identity is not None and tuple(expected_identity) != identity:
+            raise RetentionError('streamed source changed after validation')
+        target = self.root / (digest + SUFFIXES[mime])
+        existing = [path for path in paths if os.path.lexists(path)]
+        if existing:
+            if existing != [target]:
+                raise RetentionError('missing or ambiguous retained asset')
+            result = self.resolve(digest, profile=profile, cancelled=cancelled)
+            if result.stat().st_size != size:
+                raise RetentionError('retained asset size changed')
+            # A previous no-replace move may have succeeded before directory
+            # synchronization failed. Do not acknowledge that entry until this
+            # retry has durably confirmed the directory too.
+            _sync_directory(self.root)
+            return result
+        check_cancelled(cancelled)
+        if shutil.disk_usage(self.root).free < size + 16 * 1024**2:
+            raise RetentionError('not enough disk space to retain the selected original')
+        with TemporaryDirectory(prefix='.carr-original-', dir=self.root) as tmp:
+            stage = Path(tmp) / 'original'
+            hashed, copied = sha256(), 0
+            with verified_reader(source, expected_identity=identity) as incoming, stage.open('xb') as output:
+                while True:
+                    check_cancelled(cancelled)
+                    block = incoming.read(min(1024 * 1024, size + 1 - copied))
+                    if not block:
+                        break
+                    copied += len(block)
+                    if copied > size:
+                        raise RetentionError('streamed source grew during retention')
+                    hashed.update(block)
+                    output.write(block)
+                if (copied != size or hashed.hexdigest() != digest
+                        or os.fstat(incoming.fileno()).st_nlink != 1):
+                    raise RetentionError('streamed source checksum changed during retention')
+                output.flush()
+                os.fsync(output.fileno())
+            check_cancelled(cancelled)
+            publish_noreplace(stage, target, cancelled=cancelled)
+        return self.resolve(digest, profile=profile, cancelled=lambda: False)
 
     def _recover_staged_publication(self, target, digest):
         """Finish only a fully accounted link publication under the writer guard.

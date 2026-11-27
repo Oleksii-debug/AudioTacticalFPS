@@ -193,6 +193,12 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/probe_search_pages_native.py 2>&1 | Tee-Object 'ci-results/native-search-pages.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise native streamed-text profile, real worker and original-bound completion
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_streamed_import_native.py 2>&1 | Tee-Object 'ci-results/native-streamed-import.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Retain explicit core-only fallback and offline startup coverage
         timeout-minutes: 5
         run: |
@@ -447,6 +453,13 @@ jobs:
             'tests/e2e/test_import_scan_pages.py',
             'tests/storage/test_scan_pages_backup.py',
             'tests/ui/test_import_scan_pages.py',
+            'tests/ingest/test_streamed_text.py',
+            'tests/ingest/test_streamed_ingest.py',
+            'tests/citations/test_streamed_text_attestation.py',
+            'tests/e2e/test_streamed_source_import.py',
+            'tests/storage/test_streamed_source_backup.py',
+            'tests/e2e/test_streamed_import_cli.py',
+            'tests/ui/test_streamed_import.py',
             'tests/reader/test_query_manager.py',
             'tests/ui/test_query_manager_actions.py',
             'tests/search/test_federated.py',
@@ -806,6 +819,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/probe_search_pages_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-search-pages.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/probe_streamed_import_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-streamed-import.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           & $installedPython -I -B scripts/windows_v3_reading_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-v3-reading-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -847,6 +862,14 @@ jobs:
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           import carr_library.extract.ocr_runtime
           assert pathlib.Path(carr_library.extract.ocr_runtime.__file__).resolve().is_relative_to(root / '.venv')
+          import importlib
+          streamed_modules = ('carr_library.ingest.streamed_text', 'carr_library.ingest.streamed_ingest',
+                              'carr_library.citations.streamed_text_attestation', 'carr_library.streamed_import_cli',
+                              'carr_library.pending_backup', 'carr_library.ui.import_center',
+                              'bootstrap.vendor.cairn_extractors.hasher')
+          for name in streamed_modules:
+              component = importlib.import_module(name)
+              assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv'), name
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
@@ -933,6 +956,9 @@ jobs:
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
+          for name in streamed_modules:
+              component = importlib.import_module(name)
+              assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv'), name
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
           kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
           kernel.GetModuleHandleW.restype = wintypes.HMODULE
@@ -947,9 +973,9 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_source_pagination.py tests/search/test_federated_pagination.py tests/e2e/test_search_pages_cli.py tests/ui/test_search_paging.py tests/ingest/test_scan_pagination.py tests/e2e/test_import_scan_pages.py tests/storage/test_scan_pages_backup.py tests/ui/test_import_scan_pages.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_source_pagination.py tests/search/test_federated_pagination.py tests/e2e/test_search_pages_cli.py tests/ui/test_search_paging.py tests/ingest/test_scan_pagination.py tests/e2e/test_import_scan_pages.py tests/storage/test_scan_pages_backup.py tests/ui/test_import_scan_pages.py tests/ingest/test_streamed_text.py tests/ingest/test_streamed_ingest.py tests/citations/test_streamed_text_attestation.py tests/e2e/test_streamed_source_import.py tests/storage/test_streamed_source_backup.py tests/e2e/test_streamed_import_cli.py tests/ui/test_streamed_import.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_completed_playback_stops_its_owner_before_advancing_and_saving_cursor','test_verified_pcm_stays_owned_through_delayed_media_handoff','test_live_reading_checkpoint_roundtrips_source_page_and_exact_text_cursor','test_real_master_delay_crosses_chapters_once_and_partitions_are_byte_exact','test_completed_master_survives_full_library_backup_and_exported_publication','test_positive_available_budget_still_completes_a_real_operation[1e+300]', 'test_empty_directory_inventory_has_a_bound', 'test_exact_deadline_before_dispatch_expires_inclusively', 'test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication', 'test_valid_unicode_metadata_is_stored_by_real_import[tuple]', 'test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes', 'test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion', 'test_cancel_settles_existing_ocr_family_before_removing_its_private_files', 'test_completed_step_is_retained_and_resumed_without_duplicate_mutation', 'test_actual_multilingual_ranker_and_complete_token_coverage', 'test_actual_semantic_snapshot_survives_concurrent_membership_revocation', 'test_isolated_cli_reopens_and_reaches_every_retained_source_segment', 'test_real_601_edition_catalog_all_results_reachable_and_exact', 'test_subnanosecond_budget_cannot_authorize_a_same_tick_mutation', 'test_real_desktop_handlers_reach_all_segments_and_go_back_to_exact_page', 'test_actual_5003_files_form_finite_saved_successors_after_reopen', 'test_tampered_managed_model_blocks_reviewed_resume_without_publication', 'test_positive_available_budget_still_completes_a_real_operation[1.0]', 'test_cli_pages_all_twenty_five_explicitly_selected_libraries', 'test_unreadable_directory_rejects_entire_inventory', 'test_reviewed_import_rejects_changed_approval_without_publishing', 'test_positive_available_budget_still_completes_a_real_operation[1]', 'test_real_existing_ocr_bridge_reads_every_selected_image_frame[unicode-png]', 'test_academic_reference_roundtrip_preserves_source_evidence', 'test_academic_import_is_atomic_and_exports_preserve_metadata', 'test_explicit_first_page_uses_captured_budgets_and_existing_deferred_worker', 'test_progress_cannot_spend_the_deadline_then_admit_a_new_mutation', 'test_valid_unicode_metadata_is_stored_by_real_import[list]', 'test_actual_application_semantic_scope_and_original_quotes', 'test_notebook_search_fresh_navigation_and_backup_restore', 'test_directory_inventory_checks_budget_between_entries', 'test_restore_rebackup_preserves_saved_inputs_but_never_reactivates_external_cursor', 'test_real_existing_ocr_bridge_reads_every_selected_image_frame[two-frame-tiff]'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_real_over_64_mib_source_has_bounded_python_memory_and_exact_identity','test_streamed_resume_uses_existing_journal_and_atomic_logical_fragments','test_same_timestamp_change_outside_quote_invalidates_an_already_warm_action','test_actual_over_64_mib_source_imports_without_the_legacy_byte_api','test_real_worker_cancellation_can_resume_from_owned_bytes_after_source_is_deleted','test_actual_large_prepared_request_restore_resume_rebackup_and_verified_quote','test_mixed_streamed_request_and_folder_cursor_restore_keep_external_scan_inactive','test_cli_import_and_reopened_resume_keep_profile_and_original','test_native_handler_captures_profile_and_waits_for_real_worker_completion','test_completed_playback_stops_its_owner_before_advancing_and_saving_cursor','test_verified_pcm_stays_owned_through_delayed_media_handoff','test_live_reading_checkpoint_roundtrips_source_page_and_exact_text_cursor','test_real_master_delay_crosses_chapters_once_and_partitions_are_byte_exact','test_completed_master_survives_full_library_backup_and_exported_publication','test_positive_available_budget_still_completes_a_real_operation[1e+300]', 'test_empty_directory_inventory_has_a_bound', 'test_exact_deadline_before_dispatch_expires_inclusively', 'test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication', 'test_valid_unicode_metadata_is_stored_by_real_import[tuple]', 'test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes', 'test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion', 'test_cancel_settles_existing_ocr_family_before_removing_its_private_files', 'test_completed_step_is_retained_and_resumed_without_duplicate_mutation', 'test_actual_multilingual_ranker_and_complete_token_coverage', 'test_actual_semantic_snapshot_survives_concurrent_membership_revocation', 'test_isolated_cli_reopens_and_reaches_every_retained_source_segment', 'test_real_601_edition_catalog_all_results_reachable_and_exact', 'test_subnanosecond_budget_cannot_authorize_a_same_tick_mutation', 'test_real_desktop_handlers_reach_all_segments_and_go_back_to_exact_page', 'test_actual_5003_files_form_finite_saved_successors_after_reopen', 'test_tampered_managed_model_blocks_reviewed_resume_without_publication', 'test_positive_available_budget_still_completes_a_real_operation[1.0]', 'test_cli_pages_all_twenty_five_explicitly_selected_libraries', 'test_unreadable_directory_rejects_entire_inventory', 'test_reviewed_import_rejects_changed_approval_without_publishing', 'test_positive_available_budget_still_completes_a_real_operation[1]', 'test_real_existing_ocr_bridge_reads_every_selected_image_frame[unicode-png]', 'test_academic_reference_roundtrip_preserves_source_evidence', 'test_academic_import_is_atomic_and_exports_preserve_metadata', 'test_explicit_first_page_uses_captured_budgets_and_existing_deferred_worker', 'test_progress_cannot_spend_the_deadline_then_admit_a_new_mutation', 'test_valid_unicode_metadata_is_stored_by_real_import[list]', 'test_actual_application_semantic_scope_and_original_quotes', 'test_notebook_search_fresh_navigation_and_backup_restore', 'test_directory_inventory_checks_budget_between_entries', 'test_restore_rebackup_preserves_saved_inputs_but_never_reactivates_external_cursor', 'test_real_existing_ocr_bridge_reads_every_selected_image_frame[two-frame-tiff]'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',streamed_original_import='PASS',streamed_cross_root_recovery='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1248,6 +1274,13 @@ jobs:
             tests/e2e/test_import_scan_pages.py \
             tests/storage/test_scan_pages_backup.py \
             tests/ui/test_import_scan_pages.py \
+            tests/ingest/test_streamed_text.py \
+            tests/ingest/test_streamed_ingest.py \
+            tests/citations/test_streamed_text_attestation.py \
+            tests/e2e/test_streamed_source_import.py \
+            tests/storage/test_streamed_source_backup.py \
+            tests/e2e/test_streamed_import_cli.py \
+            tests/ui/test_streamed_import.py \
             tests/storage/test_publication_migration.py \
             tests/ingest/test_canonical_publication_binding.py \
             tests/ingest/test_publication_config_compatibility.py \

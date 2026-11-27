@@ -77,6 +77,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'assistant':
         from .assistant.cli import main as assistant_main
         return assistant_main(arguments[1:])
+    if arguments and arguments[0] == 'import-text':
+        from .streamed_import_cli import main as streamed_main
+        return streamed_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance — offline libraries, reading and audio')
     parser.add_argument('--version', action='version', version=__version__)
