@@ -11,6 +11,7 @@ from time import monotonic
 
 from .models import canonical, text
 from ..reader.reading_state import _location
+from ..reader.legacy_reading import MAX_SOURCE_ORDINAL
 
 SCHEMA = 'carr-translation-structure/1'
 MAX_DOCUMENTS = 32
@@ -22,7 +23,7 @@ def _origin(value, fragment):
     if value is None:
         return
     if (type(value) is not dict or set(value) != {'location', 'ordinal', 'start', 'end'}
-            or type(value['ordinal']) is not int or not 1 <= value['ordinal'] <= 10000
+            or type(value['ordinal']) is not int or not 1 <= value['ordinal'] <= MAX_SOURCE_ORDINAL
             or type(value['start']) is not int or type(value['end']) is not int
             or not 0 <= value['start'] <= value['end'] <= MAX_CHARACTERS
             or value['end'] - value['start'] != len(fragment)):
@@ -121,7 +122,7 @@ def blocks(value, *, location=None, ordinal=None, markdown=False, cancelled=lamb
         raise TypeError('Choose the explicit plain-text or Markdown structure profile.')
     if location is not None:
         _location(asdict(location))
-        if type(ordinal) is not int or not 1 <= ordinal <= 10000:
+        if type(ordinal) is not int or not 1 <= ordinal <= MAX_SOURCE_ORDINAL:
             raise ValueError('A retained source ordinal is required.')
     rows, offset, paragraph_start, paragraph = [], 0, 0, []
     fence = None

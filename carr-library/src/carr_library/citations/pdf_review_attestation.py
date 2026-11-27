@@ -34,19 +34,25 @@ def render_fingerprint(data, physical):
     if type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
         raise ValueError('invalid PDF bytes')
     with pdfium.PdfDocument(data) as doc:
-        if type(physical) is not int or not 1 <= physical <= len(doc) <= 1000:
-            raise ValueError('invalid PDF page')
-        with closing(doc[physical - 1]) as page:
-            w, h = page.get_size()
-            if not all(math.isfinite(v) and v > 0 for v in (w, h)):
-                raise ValueError('invalid PDF dimensions')
-            if math.ceil(w * SCALE) * math.ceil(h * SCALE) > MAX_PIXELS:
+        return render_document_fingerprint(doc, physical)
+
+
+def render_document_fingerprint(doc, physical):
+    """Same reviewed raster identity, with a caller-held current PDF document."""
+    import pypdfium2 as pdfium
+    if type(physical) is not int or not 1 <= physical <= len(doc) <= 1000:
+        raise ValueError('invalid PDF page')
+    with closing(doc[physical - 1]) as page:
+        w, h = page.get_size()
+        if not all(math.isfinite(v) and v > 0 for v in (w, h)):
+            raise ValueError('invalid PDF dimensions')
+        if math.ceil(w * SCALE) * math.ceil(h * SCALE) > MAX_PIXELS:
+            raise ValueError('PDF render limit')
+        with closing(page.render(scale=SCALE)) as bitmap:
+            image = bitmap.to_pil().convert('RGB')
+            if image.width * image.height > MAX_PIXELS:
                 raise ValueError('PDF render limit')
-            with closing(page.render(scale=SCALE)) as bitmap:
-                image = bitmap.to_pil().convert('RGB')
-                if image.width * image.height > MAX_PIXELS:
-                    raise ValueError('PDF render limit')
-                fingerprint = sha256(struct.pack('>II', *image.size) + image.tobytes()).hexdigest()
+            fingerprint = sha256(struct.pack('>II', *image.size) + image.tobytes()).hexdigest()
     return str(pdfium.PYPDFIUM_INFO) + '/' + str(pdfium.PDFIUM_INFO) + '/rgb-scale2-v1', fingerprint
 
 

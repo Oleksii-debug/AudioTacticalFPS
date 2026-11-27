@@ -38,6 +38,11 @@ class TextProfile:
     existing 512 MiB pending-journal backup budget. It is not a corpus limit.
     """
     maximum_bytes: int = MAX_BYTES
+    mime = 'text/plain'
+    suffix = '.txt'
+    maximum_fragments = MAX_FRAGMENTS
+    maximum_records = MAX_FRAGMENTS
+    maximum_timeout = 600
 
     def __post_init__(self):
         if type(self.maximum_bytes) is not int or not 1 <= self.maximum_bytes <= MAX_BYTES:
@@ -52,6 +57,15 @@ class TextProfile:
 
 
 def profile_from_value(value):
+    from .source_profiles import LargeTextProfile, SCHEMA as LARGE_SCHEMA
+    if isinstance(value, LargeTextProfile):
+        return value
+    if type(value) is dict and value.get('schema') == LARGE_SCHEMA:
+        from .source_profiles import profile_from_value as large_profile
+        result = large_profile(value)
+        if not isinstance(result, LargeTextProfile):
+            raise ValueError('A text reader cannot use a PDF source profile.')
+        return result
     if isinstance(value, TextProfile):
         return value
     if (not isinstance(value, dict) or set(value) != {'schema', 'maximum_bytes'}
@@ -64,6 +78,9 @@ def profile_from_config(value):
     """Dispatch without interpreting unknown or historical adapters as this one."""
     if isinstance(value, str):
         value = json.loads(value)
+    from .source_profiles import TEXT_ADAPTER, profile_from_config as large_config
+    if isinstance(value, dict) and value.get('adapter') == TEXT_ADAPTER:
+        return large_config(value)
     if not isinstance(value, dict) or value.get('adapter') != ADAPTER:
         return None
     profile = TextProfile(value.get('maximum_bytes'))
@@ -143,7 +160,7 @@ def _decoded(stream, profile, hashed, cancelled):
             yield decoded
 
 
-def _fragments(chunks, cancelled):
+def _fragments(chunks, cancelled, *, maximum_fragments=MAX_FRAGMENTS):
     buffer, field, offset = '', 1, 0
     emitted, count, nonempty = False, 0, False
 
@@ -151,7 +168,7 @@ def _fragments(chunks, cancelled):
         nonlocal count, nonempty
         check_cancelled(cancelled)
         count += 1
-        if count > MAX_FRAGMENTS:
+        if count > maximum_fragments:
             raise ValueError('Streamed UTF-8 text exceeds its logical-fragment limit.')
         nonempty = nonempty or bool(text.strip())
         return Fragment(text, source_field, start)
@@ -198,7 +215,8 @@ def fragments(path, profile, *, expected_digest=None, expected_size=None,
     with verified_reader(path, expected_identity=identity) as stream:
         from ..native_file_metadata import stream_change_time
         change_time = stream_change_time(stream)
-        yield from _fragments(_decoded(stream, profile, hashed, cancelled), cancelled)
+        yield from _fragments(_decoded(stream, profile, hashed, cancelled), cancelled,
+                             maximum_fragments=profile.maximum_fragments)
         if stream.tell() != info.st_size or os.fstat(stream.fileno()).st_nlink != 1:
             raise ValueError('The streamed original changed while it was read.')
         actual = hashed.hexdigest()
@@ -224,23 +242,6 @@ def inspect_text(path, profile, *, expected_digest=None, expected_size=None,
 
 
 def catalog_profile(db, asset, mime, size):
-    """Large retained bytes need a sealed, typed extraction in this catalog.
-
-    Small legacy assets retain their ordinary byte-oriented retention contract.
-    A bare size change in catalog_asset never authorizes a larger source.
-    """
-    from ..catalog.intake import MAX_BYTES as LEGACY_MAX
-    if type(size) is not int or size < 1:
-        raise ValueError('Invalid original source size.')
-    if size <= LEGACY_MAX:
-        return None
-    if mime != 'text/plain' or size > MAX_BYTES:
-        raise ValueError('The original exceeds its supported format-specific byte limit.')
-    selected = None
-    for row in db.execute('SELECT DISTINCT r.config FROM revision r JOIN sealed s ON s.revision=r.id WHERE r.asset=?', (asset,)):
-        profile = profile_from_config(row[0])
-        if profile is not None and size <= profile.maximum_bytes:
-            selected = profile
-    if selected is None:
-        raise ValueError('A large original has no sealed streamed-text extraction profile.')
-    return selected
+    """Compatibility entry point for the shared typed original admission."""
+    from .source_profiles import catalog_profile as selected_profile
+    return selected_profile(db, asset, mime, size)

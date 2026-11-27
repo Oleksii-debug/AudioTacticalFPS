@@ -55,6 +55,28 @@ if network_mode == 'offline':
 """
 
 PYTEST_CHILD = NETWORK_POLICY + """
+execution_mode, source_checkout = sys.argv.pop(1), sys.argv.pop(1)
+if execution_mode not in ('source', 'installed'):
+    raise SystemExit('Invalid required-test package origin')
+if execution_mode == 'installed':
+    import hashlib
+    import importlib
+    from pathlib import Path
+    source_checkout = Path(source_checkout).resolve(strict=True)
+    for name, relative in (('carr_library', 'src/carr_library'), ('bootstrap', 'bootstrap')):
+        source = source_checkout / relative
+        package = importlib.import_module(name)
+        selected = Path(package.__file__).resolve(strict=True).parent
+        if not source.is_dir() or selected == source.resolve():
+            raise SystemExit('Installed acceptance refused a missing source or source-shadowed package: ' + name)
+        for original in source.rglob('*.py'):
+            retained = selected / original.relative_to(source)
+            if (not retained.is_file() or
+                    hashlib.sha256(original.read_bytes()).digest() !=
+                    hashlib.sha256(retained.read_bytes()).digest()):
+                raise SystemExit('Installed package differs from the tested source: ' + str(original.relative_to(source)))
+    print('PASS: isolated installed package bytes match this exact source checkout', flush=True)
+
 try:
     import onnxruntime
 except ImportError:
@@ -81,19 +103,22 @@ raise SystemExit(status)
 """
 
 
-def run_suite(suite: str, *, allow_loopback=False) -> bool:
+def run_suite(suite: str, *, allow_loopback=False, installed=False) -> bool:
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
         print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
         return False
-    if allow_loopback and suite != 'tests/loopback/test_local_planning.py':
-        print('FAIL: numeric loopback is limited to the explicit local-planning HTTP fixture.', flush=True)
+    if allow_loopback and suite not in (
+            'tests/loopback/test_local_planning.py',
+            'tests/loopback/test_translation_local_adapter.py'):
+        print('FAIL: numeric loopback is limited to the two explicit local planning/translation HTTP fixtures.', flush=True)
         return False
     env = dict(os.environ)
     for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH', 'CARR_CI_ALLOW_LOOPBACK'):
         env.pop(key, None)
     env['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
-    env['PYTHONPATH'] = str(ROOT / 'src')
+    if not installed:
+        env['PYTHONPATH'] = str(ROOT / 'src')
     # Native ONNX initialization can precede Python socket mocks or API opt-outs.
     # Apply the documented opt-out before starting any test interpreter.
     env.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_DISABLE_TELEMETRY='1',
@@ -107,8 +132,11 @@ def run_suite(suite: str, *, allow_loopback=False) -> bool:
         report = Path(tmp) / 'junit.xml'
         try:
             proc = subprocess.run([
-                sys.executable, '-c', PYTEST_CHILD,
-                'numeric-loopback' if allow_loopback else 'offline', '-o', 'addopts=',
+                sys.executable, *(['-I', '-B'] if installed else []), '-c', PYTEST_CHILD,
+                'numeric-loopback' if allow_loopback else 'offline',
+                'installed' if installed else 'source', str(ROOT),
+                *(['-o', 'pythonpath=.', '--import-mode=importlib'] if installed else []),
+                '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '-vv', '--durations=5', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
@@ -132,10 +160,12 @@ def main() -> int:
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
     parser.add_argument('--allow-loopback', action='store_true',
-                        help='Only the explicit synthetic local-planning fixture may use numeric loopback TCP')
+                        help='Only the explicit synthetic planning/translation fixtures may use numeric loopback TCP')
+    parser.add_argument('--installed', action='store_true',
+                        help='Use isolated installed packages and verify their Python bytes against this checkout')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
-    runner = partial(run_suite, allow_loopback=args.allow_loopback)
+    runner = partial(run_suite, allow_loopback=args.allow_loopback, installed=args.installed)
     if args.jobs == 1:
         results = [runner(suite) for suite in args.suites]
     else:

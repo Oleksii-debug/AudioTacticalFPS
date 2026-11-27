@@ -93,7 +93,7 @@ class ScheduleManager:
         for path in paths:
             if cancelled():
                 raise InterruptedError('Schedule review cancelled.')
-            if path.name.endswith('.control.json'):
+            if path.parent != self.service.store.directory or path.name.endswith('.control.json'):
                 continue
             record = self.service.store.load(path.stem)
             if 'schedule' in record:

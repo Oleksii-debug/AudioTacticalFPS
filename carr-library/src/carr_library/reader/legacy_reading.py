@@ -29,6 +29,9 @@ MAX_SESSION_SNAPSHOT_BYTES = 64 * 1024 * 1024
 MAX_CHARACTERS = 2_000_000
 MAX_EDITS = 500
 MAX_POSITIONS = 10000
+# Selected slice count stays bounded; absolute positions can name a later
+# fragment of an explicitly admitted large source. Database binding is required.
+MAX_SOURCE_ORDINAL = 65536
 _MAX_RUNS = MAX_POSITIONS * 2 + MAX_EDITS * 2
 _DIGEST = re.compile(r'[0-9a-f]{64}')
 _FILE = re.compile(r'([0-9a-f]{64})\.json')
@@ -112,7 +115,7 @@ def validate_anchor(value, text):
     previous, positions = None, []
     for item in value['positions']:
         if (type(item) is not dict or set(item) != _POSITION_FIELDS
-                or type(item['ordinal']) is not int or not 1 <= item['ordinal'] <= MAX_POSITIONS
+                or type(item['ordinal']) is not int or not 1 <= item['ordinal'] <= MAX_SOURCE_ORDINAL
                 or type(item['start']) is not int or type(item['end']) is not int
                 or not 0 <= item['start'] <= item['end'] <= len(text)
                 or type(item['text_verified_at_capture']) is not bool):

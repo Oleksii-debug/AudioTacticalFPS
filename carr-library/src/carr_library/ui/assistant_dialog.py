@@ -75,7 +75,8 @@ def show_assistant(frame, *, production=None, on_ready=None):
     schedule_row = wx.BoxSizer(wx.HORIZONTAL)
     for identity, label in (('schedule', 'Schedule reviewed plan...'),
                             ('schedules', 'Local schedules...'),
-                            ('disarm', 'Disarm this window')):
+                            ('disarm', 'Disarm this window'),
+                            ('templates', 'Workflow templates...')):
         button = wx.Button(dialog, label=label)
         button.SetName(label)
         buttons[identity] = button
@@ -129,7 +130,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
     def change_busy(kind):
         nonlocal busy, busy_kind
         busy_kind, busy = kind, kind is not None
-        for key in ('preview', 'model', 'jobs', 'schedules'):
+        for key in ('preview', 'model', 'jobs', 'schedules', 'templates'):
             buttons[key].Enable(not busy)
         buttons['run'].Enable(not busy and (plan is not None or job_id is not None))
         buttons['schedule'].Enable(not busy and (plan is not None or job_id is not None))
@@ -658,6 +659,46 @@ def show_assistant(frame, *, production=None, on_ready=None):
         finally:
             choice.Destroy()
 
+    def templates(event=None):
+        if busy or not alive:
+            return
+        selected_plan, selected_job = plan, job_id
+        selected_inputs, selected_revision = input_identity(), revision
+        if selected_plan is not None and approved_inputs != (selected_inputs, selected_revision):
+            invalidate()
+            selected_plan, selected_job = None, None
+        def current():
+            # The borrowed worker reads only immutable captures and ordinary
+            # ownership fields. wx control values are checked on this UI thread.
+            return (alive and library_current() and selected_revision == revision
+                    and selected_plan is plan and selected_job == job_id)
+        if not current():
+            report('The current plan changed. Preview it again before opening workflow templates.')
+            return
+        from .assistant_templates import create_templates_dialog
+        picker = None
+        try:
+            change_busy('templates')
+            picker = create_templates_dialog(dialog, service, executor=executor,
+                is_current=current, current_plan=selected_plan, current_job_id=selected_job)
+            picker.ShowModal()
+            draft = picker.template_result
+            if draft is not None:
+                if not current() or selected_inputs != input_identity():
+                    raise ValueError('The workflow owner changed before its draft was accepted.')
+                invalidate()
+                instruction.ChangeValue(draft)
+                report('Workflow draft loaded. Saved scope, schedule and execution permission were not copied. '
+                       'Choose current library and folders, edit literal paths if needed, then Preview and Run.')
+        except Exception as error:
+            report(error)
+        finally:
+            if picker is not None:
+                picker.template_handlers['close']()
+                picker.Destroy()
+            if alive:
+                change_busy(None)
+
     def pause(event=None):
         cancel.set()
         if busy_kind in ('schedule-review', 'scheduled'):
@@ -691,7 +732,8 @@ def show_assistant(frame, *, production=None, on_ready=None):
 
     for identity, callback in {'preview': preview, 'model': propose, 'run': run, 'pause': pause,
                                'jobs': jobs, 'help': help_text, 'close': close,
-                               'schedule': schedule_current, 'schedules': schedules, 'disarm': disarm}.items():
+                               'schedule': schedule_current, 'schedules': schedules, 'disarm': disarm,
+                               'templates': templates}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction, budget, file_budget, deadline):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -707,7 +749,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
                 'file_budget': file_budget, 'pause': buttons['pause'], 'jobs': buttons['jobs'],
                 'folder_buttons': tuple(folder_buttons),
                 'schedule': buttons['schedule'], 'schedules': buttons['schedules'],
-                'disarm': buttons['disarm']})
+                'disarm': buttons['disarm'], 'templates': buttons['templates']})
         dialog.ShowModal()
     finally:
         if alive:

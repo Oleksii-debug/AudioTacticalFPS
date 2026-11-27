@@ -50,6 +50,11 @@ class AssistantService:
         self.store = JobStore(managed, writer_root=app.root)
         self.production = production
 
+    def workflow_templates(self):
+        """Current named inert settings; loading never carries execution scope."""
+        from .templates import WorkflowTemplateStore
+        return WorkflowTemplateStore(self.app.root)
+
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
         self.validate(plan)

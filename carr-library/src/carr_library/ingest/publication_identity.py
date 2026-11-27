@@ -33,7 +33,7 @@ def _manifest(value, profile=None):
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or value['mime'] not in SUFFIXES or type(value['size']) is not int
             or not 0 < value['size'] <= (profile.maximum_bytes if profile is not None else MAX_BYTES)
-            or profile is not None and value['mime'] != 'text/plain'):
+            or profile is not None and value['mime'] != profile.mime):
         raise ValueError('Invalid publication source manifest.')
     _hex(value['sha256'], 64)
     return dict(value)
@@ -79,14 +79,16 @@ def validate_configuration(value):
 
 def _request(value):
     if (not isinstance(value, dict) or type(value.get('version')) is not int
-            or value['version'] not in (1, 2)
+            or value['version'] not in (1, 2, 3)
             or set(value) != (REQUEST_FIELDS if value['version'] == 1 else REQUEST_FIELDS | {'source_profile'})):
         raise ValueError('Invalid publication request schema.')
     result = dict(value)
     profile = None
-    if value['version'] == 2:
-        from .streamed_text import profile_from_value
+    if value['version'] >= 2:
+        from .source_profiles import profile_from_value, is_large
         profile = profile_from_value(value['source_profile'])
+        if is_large(profile) != (value['version'] == 3):
+            raise ValueError('Publication profile does not match its request version.')
         result['source_profile'] = profile.to_dict()
     _hex(value['request_id'], 32)
     _identity(value['workspace'])
@@ -111,7 +113,7 @@ def request_identity(record):
                  workspace=record['workspace'], metadata=record['metadata'],
                  config=record['config'], expected_manifest=record.get('expected_manifest'),
                  pinned_asset=record.get('asset_sha256'), resume_job=record.get('job'))
-    if record['version'] == 2:
+    if record['version'] >= 2:
         value['source_profile'] = record.get('source_profile')
     result = _canonical(_request(value))
     if len(result.encode('utf-8')) > MAX_IDENTITY:

@@ -1132,7 +1132,7 @@ class DesktopFrame(WorkspaceFrame):
 
                 def approve_and_resume():
                     self.library.confirm_import_review(workspace,request_id,reviewer,
-                        confirmed=True,expected_checksum=page['checksum'])
+                        confirmed=True,expected_checksum=page['checksum'], cancelled=self.cancel_event.is_set)
                     return self.library.resume_import(workspace,request_id,
                         cancelled=self.cancel_event.is_set)
 
@@ -1153,7 +1153,8 @@ class DesktopFrame(WorkspaceFrame):
                 self.run_job('Saving page review and resuming import',approve_and_resume,resumed)
 
             self.run_job('Preparing imported page for review',
-                lambda: self.library.pending_review(workspace,request_id),prepared)
+                lambda: self.library.pending_review(workspace,request_id,
+                    cancelled=self.cancel_event.is_set),prepared)
         except Exception as exc:
             self.report(f'Imported page review was not started: {exc}')
 
@@ -1281,6 +1282,13 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
+        from .backup_capacity import choose_backup_capacity
+        library = self.library
+        accepted, capacity_profile = choose_backup_capacity(self)
+        if not accepted:
+            return
+        if self.library is not library:
+            raise ValueError('The library folder changed. Choose the backup again.')
         dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of libraries and retained import jobs')
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -1288,6 +1296,8 @@ class DesktopFrame(WorkspaceFrame):
             parent = Path(dialog.GetPath())
         finally:
             dialog.Destroy()
+        if self.library is not library:
+            raise ValueError('The library folder changed. Choose the backup again.')
         from datetime import datetime
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
@@ -1297,8 +1307,12 @@ class DesktopFrame(WorkspaceFrame):
                 'Retained import jobs, required source snapshots and pending reviews are included. '
                 'External model packs and credentials require separate recovery; inspect the manifest.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(
-            destination, cancelled=self.cancel_event.is_set), done)
+        def operation():
+            if self.library is not library:
+                raise ValueError('The library folder changed before backup started.')
+            return library.backup(destination, capacity_profile=capacity_profile,
+                                  cancelled=self.cancel_event.is_set)
+        self.run_job('Backing up all libraries', operation, done)
 
     def restore_backup(self, event):
         dialog = wx.DirDialog(self, 'Select the backup folder')

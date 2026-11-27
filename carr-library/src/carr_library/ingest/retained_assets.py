@@ -38,7 +38,7 @@ class RetainedAssets:
         """Internal verified lookup; never expose directly to unscoped UI."""
         maximum = MAX_BYTES
         if profile is not None:
-            from .streamed_text import profile_from_value
+            from .source_profiles import profile_from_value
             profile = profile_from_value(profile)
             maximum = profile.maximum_bytes
         paths = [p for p in self._paths(digest) if os.path.lexists(p)]
@@ -49,13 +49,17 @@ class RetainedAssets:
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
                 getattr(info, 'st_file_attributes', 0) & 0x400 or
                 not 0 < info.st_size <= maximum or
-                profile is not None and path.suffix != '.txt'):
+                profile is not None and path.suffix != profile.suffix):
             raise RetentionError('invalid retained asset file')
         if profile is None:
             actual = hash_file(path)
         else:
             from ..audio.jobs import sha256_file
-            actual = sha256_file(path, cancelled=cancelled)
+            from .streamed_text import check_cancelled
+            def stopping():
+                check_cancelled(cancelled)
+                return False
+            actual = sha256_file(path, cancelled=stopping)
         if actual != digest:
             raise RetentionError('retained asset digest mismatch')
         return path
@@ -64,20 +68,21 @@ class RetainedAssets:
                     expected_identity=None, cancelled=lambda: False):
         """Stream a validated source into the existing immutable original store.
 
-        Larger admission requires the explicit typed text profile. Generic
+        Larger admission requires an explicit typed TXT/PDF source profile. Generic
         callers keep the old byte ceiling. No caller-supplied executable or
         alternate original namespace is introduced by this file-backed API.
         """
         from ..audio.jobs import (file_identity, publish_noreplace, regular_file,
                                   verified_reader, _sync_directory)
-        from .streamed_text import check_cancelled, profile_from_value
+        from .streamed_text import check_cancelled
+        from .source_profiles import profile_from_value
         import shutil
         maximum = MAX_BYTES
         if profile is not None:
             profile = profile_from_value(profile)
             maximum = profile.maximum_bytes
         if (mime not in SUFFIXES or type(size) is not int or not 0 < size <= maximum
-                or profile is not None and mime != 'text/plain'):
+                or profile is not None and mime != profile.mime):
             raise RetentionError('unsupported or oversized streamed asset')
         paths = self._paths(digest)
         source = Path(source)
@@ -92,6 +97,7 @@ class RetainedAssets:
         if existing:
             if existing != [target]:
                 raise RetentionError('missing or ambiguous retained asset')
+            self._recover_staged_publication(target, digest, maximum_bytes=maximum, cancelled=cancelled)
             result = self.resolve(digest, profile=profile, cancelled=cancelled)
             if result.stat().st_size != size:
                 raise RetentionError('retained asset size changed')
@@ -126,7 +132,8 @@ class RetainedAssets:
             publish_noreplace(stage, target, cancelled=cancelled)
         return self.resolve(digest, profile=profile, cancelled=lambda: False)
 
-    def _recover_staged_publication(self, target, digest):
+    def _recover_staged_publication(self, target, digest, *, maximum_bytes=MAX_BYTES,
+                                    cancelled=lambda: False):
         """Finish only a fully accounted link publication under the writer guard.
 
         A process can die after linking the target but before TemporaryDirectory
@@ -137,13 +144,18 @@ class RetainedAssets:
         published = target.lstat()
         if (not stat.S_ISREG(published.st_mode) or
                 getattr(published, 'st_file_attributes', 0) & 0x400 or
-                not 0 < published.st_size <= MAX_BYTES):
+                not 0 < published.st_size <= maximum_bytes):
             raise RetentionError('invalid retained asset file')
         if published.st_nlink == 1:
             return
         if published.st_nlink < 2 or not published.st_ino:
             raise RetentionError('invalid retained asset links')
-        if hash_file(target) != digest:
+        from ..audio.jobs import sha256_file
+        from .streamed_text import check_cancelled
+        def stopping():
+            check_cancelled(cancelled)
+            return False
+        if sha256_file(target, cancelled=stopping) != digest:
             raise RetentionError('retained asset digest mismatch')
 
         def private_directory(path):
@@ -162,29 +174,43 @@ class RetainedAssets:
                                      'st_size', 'st_mtime_ns', 'st_ctime_ns',
                                      'st_uid', 'st_file_attributes'))
 
+        def stage_children(directory):
+            entries = []
+            with os.scandir(directory) as children:
+                for child in children:
+                    if entries:
+                        raise RetentionError('ambiguous retained asset staging directory')
+                    entries.append(directory / child.name)
+            return tuple(entries)
+
         twins = []
-        for directory in self.root.iterdir():
-            # The fixed prefix and eight-character suffix are the namespace
-            # created by this module's TemporaryDirectory, not arbitrary paths.
-            if not re.fullmatch(r'\.carr-original-[a-z0-9_]{8}', directory.name):
-                continue
-            directory_info = private_directory(directory)
-            entries = tuple(directory.iterdir())
-            if not entries:
-                # A recovery itself may die after unlinking its original.
-                # Empty directories have no proven target binding; leave them.
-                continue
-            if len(entries) != 1 or entries[0].name != 'original':
-                raise RetentionError('ambiguous retained asset staging directory')
-            original = entries[0]
-            original_info = original.lstat()
-            if (not stat.S_ISREG(original_info.st_mode) or
-                    getattr(original_info, 'st_file_attributes', 0) & 0x400):
-                raise RetentionError('invalid retained asset staging original')
-            if os.path.samestat(published, original_info):
-                if not unchanged(published, original_info):
-                    raise RetentionError('retained asset changed during recovery')
-                twins.append((directory, directory_info, original, original_info))
+        with os.scandir(self.root) as inventory:
+            for index, entry in enumerate(inventory, 1):
+                directory = Path(entry.path)
+                check_cancelled(cancelled)
+                if index > 100032:
+                    raise RetentionError('retained asset recovery inventory exceeds its bound')
+                # The fixed prefix and eight-character suffix are the namespace
+                # created by this module's TemporaryDirectory, not arbitrary paths.
+                if not re.fullmatch(r'\.carr-original-[a-z0-9_]{8}', directory.name):
+                    continue
+                directory_info = private_directory(directory)
+                entries = stage_children(directory)
+                if not entries:
+                    # A recovery itself may die after unlinking its original.
+                    # Empty directories have no proven target binding; leave them.
+                    continue
+                if len(entries) != 1 or entries[0].name != 'original':
+                    raise RetentionError('ambiguous retained asset staging directory')
+                original = entries[0]
+                original_info = original.lstat()
+                if (not stat.S_ISREG(original_info.st_mode) or
+                        getattr(original_info, 'st_file_attributes', 0) & 0x400):
+                    raise RetentionError('invalid retained asset staging original')
+                if os.path.samestat(published, original_info):
+                    if not unchanged(published, original_info):
+                        raise RetentionError('retained asset changed during recovery')
+                    twins.append((directory, directory_info, original, original_info))
         if len(twins) != published.st_nlink - 1:
             raise RetentionError('unaccounted retained asset links')
 
@@ -194,9 +220,10 @@ class RetainedAssets:
             raise RetentionError('retained asset changed during recovery')
         for directory, directory_info, original, original_info in twins:
             if (not unchanged(directory_info, private_directory(directory)) or
-                    tuple(directory.iterdir()) != (original,) or
+                    stage_children(directory) != (original,) or
                     not unchanged(original_info, original.lstat())):
                 raise RetentionError('retained asset staging changed during recovery')
+        check_cancelled(cancelled)
         for directory, _, original, _ in twins:
             original.unlink()
             directory.rmdir()

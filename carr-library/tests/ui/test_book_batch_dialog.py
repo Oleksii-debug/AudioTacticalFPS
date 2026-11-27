@@ -78,6 +78,7 @@ def shell():
     view.messages, view.destroyed_count = [], 0
     view.report_box = SimpleNamespace(ChangeValue=view.messages.append, SetFocus=lambda: None)
     view.controls = lambda: None
+    view.wx = SimpleNamespace(CallAfter=lambda callback, *args: callback(*args))
     view.books = SimpleNamespace(close=lambda: None)
     def destroy():
         view.destroyed_count += 1
@@ -143,3 +144,54 @@ def test_late_progress_from_previous_operation_or_changed_library_is_ignored():
     view.frame.library = object()
     view._progress(4, 'foreign context')
     assert view.messages == ['current']
+
+
+def test_suppressed_main_frame_callbacks_still_settle_changed_library_close():
+    view = shell()
+    entered, release = Event(), Event()
+    posted, completed = [], []
+    view.wx = SimpleNamespace(CallAfter=lambda callback, *args: posted.append((callback, args)))
+    def run_job(label, operation, done=None, failed=None):
+        def worker():
+            try:
+                operation()
+            except Exception:
+                pass
+            # Mirrors the current main frame's deliberate scope-revocation
+            # behavior: neither the result nor failure callback is delivered.
+        thread = Thread(target=worker)
+        thread.start()
+        view.thread = thread
+        return True
+    view.frame.run_job = run_job
+    def operation():
+        entered.set()
+        assert release.wait(5)
+        return 'work released all ownership'
+    view.begin('held native ownership', operation, completed.append)
+    assert entered.wait(2)
+    view.frame.library = object()
+    vetoes = []
+    view.close(SimpleNamespace(CanVeto=lambda: True, Veto=lambda: vetoes.append(True)))
+    assert vetoes and view.alive and view.busy and view.destroyed_count == 0
+    release.set()
+    view.thread.join(5)
+    assert not view.thread.is_alive() and view.alive and view.busy
+    assert len(posted) == 1
+    callback, args = posted.pop()
+    callback(*args)
+    assert not view.alive and not view.busy and view.destroyed_count == 1 and not completed
+    callback(*args)
+    assert view.destroyed_count == 1
+
+
+def test_old_settlement_does_not_close_a_new_operation_or_accept_a_late_result():
+    view = shell()
+    view.busy, view.operation_token, view.operation_finished = True, 7, False
+    view._worker_settled(6)
+    assert view.busy and not view.operation_finished and view.alive
+    view._worker_settled(7)
+    assert view.operation_finished and view.busy and view.alive
+    # Main result is still the only successful current-scope acknowledgement.
+    view.close()
+    assert not view.alive and not view.busy

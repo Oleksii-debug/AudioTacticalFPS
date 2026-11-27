@@ -53,13 +53,16 @@ def load_request(root, request_id):
             or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError('Invalid import request file.')
     record = json.loads(path.read_text(encoding='utf-8'))
-    if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] not in (1, 2)
+    if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] not in (1, 2, 3)
             or record.get('request_id') != request_id
             or record.get('data_dir') != str(Path(root).resolve())):
         raise ValueError('Import request identity changed.')
-    if record['version'] == 2:
-        from .streamed_text import profile_from_value
-        profile_from_value(record.get('source_profile'))
+    if record['version'] >= 2:
+        from .source_profiles import profile_from_value
+        from .source_profiles import is_large
+        parsed = profile_from_value(record.get('source_profile'))
+        if is_large(parsed) != (record['version'] == 3):
+            raise ValueError('Source profile does not match the saved request version.')
     elif 'source_profile' in record:
         raise ValueError('Legacy import cannot acquire a streamed source profile.')
     return record
@@ -103,7 +106,7 @@ def _request_identity(record):
     value = {key: record.get(key) for key in (
         'version', 'request_id', 'data_dir', 'workspace', 'source',
         'metadata', 'config', 'expected_manifest')}
-    if record['version'] == 2:
+    if record['version'] >= 2:
         value['source_profile'] = record['source_profile']
     return value
 
@@ -126,10 +129,14 @@ def _publication_state(db, record, revision, *, allow_superseded=False):
                      (revision,)).fetchone()
     if row is None:
         return None
-    if record['version'] == 2:
-        from .streamed_text import profile_from_value
-        if row[3] != canonical(profile_from_value(record['source_profile']).configuration()):
-            raise ValueError('Streamed publication configuration changed.')
+    if record['version'] >= 2:
+        from .source_profiles import profile_from_value
+        from .source_profiles import profile_from_config, PdfProfile
+        profile = profile_from_value(record['source_profile'])
+        if profile_from_config(row[3]) != profile:
+            raise ValueError('File-backed publication configuration changed.')
+        if isinstance(profile, PdfProfile) and json.loads(row[3])['config'] != record['config']:
+            raise ValueError('File-backed PDF publication settings changed.')
     active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
                         (workspace, metadata['edition_id'])).fetchone()
     historical = active is not None and active[0] != revision and allow_superseded
@@ -220,7 +227,7 @@ def record_publication_candidate(root, request_id, db, workspace, revision, *,
             or any(record.get(key) != expected[key] for key in
                    (('version', 'request_id', 'data_dir', 'source', 'workspace',
                     'metadata', 'config', 'expected_manifest') +
-                    (('source_profile',) if expected['version'] == 2 else ())))
+                    (('source_profile',) if expected['version'] >= 2 else ())))
             or config is None
             or asdict(config) != asdict(validate_configuration(expected['config']))
             or expected['pinned_asset'] not in (None, record.get('asset_sha256'))
@@ -322,22 +329,28 @@ class RuntimeBoundIngest(Ingest):
         if review is None:
             return False
         if (record.get('status') != 'review_required' or not record.get('raw_text', '').strip()
-                or type(physical) is not int or not isinstance(self.review_asset, bytes)
+                or type(physical) is not int or self._review_digest() is None
                 or not isinstance(review, dict)
                 or review.get('physical') != physical
                 or review.get('asset_sha256') != record['provenance'].get('asset_sha256')
-                or review.get('asset_sha256') != sha256(self.review_asset).hexdigest()
+                or review.get('asset_sha256') != self._review_digest()
                 or review.get('raw_sha256') != sha256(record['raw_text'].encode('utf-8')).hexdigest()
                 or review.get('checkpoint_sha256') != sha256(canonical(record).encode('utf-8')).hexdigest()
                 or not isinstance(review.get('reviewer'), str) or not review['reviewer'].strip()):
             raise ValueError('Reviewed checkpoint identity differs from the extracted source.')
         if physical not in self.validated_reviews:
-            from ..citations.pdf_review_attestation import render_fingerprint
-            renderer, fingerprint = render_fingerprint(self.review_asset, physical)
+            renderer, fingerprint = self._render_review(physical)
             if review.get('renderer') != renderer or review.get('render_sha256') != fingerprint:
                 raise ValueError('Reviewed PDF page rendering changed.')
             self.validated_reviews[physical] = dict(review)
         return True
+
+    def _review_digest(self):
+        return sha256(self.review_asset).hexdigest() if isinstance(self.review_asset, bytes) else None
+
+    def _render_review(self, physical):
+        from ..citations.pdf_review_attestation import render_fingerprint
+        return render_fingerprint(self.review_asset, physical)
 
     def retry(self, workspace, job):
         # Approved quarantine keeps the exact original checkpoint; ordinary
@@ -394,7 +407,11 @@ def load_reviews(root, request_id):
     return result
 
 
-def _pending_review(root, workspace, request_id):
+def _pending_review(root, workspace, request_id, *, cancelled=lambda: False):
+    from .streamed_text import check_cancelled
+    if not callable(cancelled):
+        raise ValueError('A review cancellation callback is required.')
+    check_cancelled(cancelled)
     request = load_request(root, request_id)
     if request.get('workspace') != workspace:
         raise ValueError('Import request belongs to another library.')
@@ -411,9 +428,11 @@ def _pending_review(root, workspace, request_id):
             raise ValueError('Import review job identity changed.')
         if job['state'] != 'quarantined':
             return None
-        row = db.execute('SELECT ordinal,payload,digest FROM checkpoint WHERE job=? '
-                         'ORDER BY ordinal DESC LIMIT 1', (job['id'],)).fetchone()
-        if row is None or sha256(row['payload'].encode('utf-8')).hexdigest() != row['digest']:
+        row = db.execute('SELECT ordinal,CASE WHEN length(CAST(payload AS BLOB))<=? '
+                         'THEN payload ELSE NULL END AS payload,digest FROM checkpoint WHERE job=? '
+                         'ORDER BY ordinal DESC LIMIT 1', (16 * 1024**2, job['id'])).fetchone()
+        if (row is None or not isinstance(row['payload'], str)
+                or sha256(row['payload'].encode('utf-8')).hexdigest() != row['digest']):
             raise ValueError('Import review checkpoint integrity failed.')
         record = json.loads(row['payload'])
         if (canonical(record) != row['payload'] or record.get('status') != 'review_required'
@@ -423,8 +442,16 @@ def _pending_review(root, workspace, request_id):
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
             raise ValueError('No intact extracted PDF text is available for review.')
         from .retained_assets import RetainedAssets
-        data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
-        renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'])
+        from .source_profiles import profile_from_config, PdfProfile
+        profile = profile_from_config(job['config'])
+        if isinstance(profile, PdfProfile):
+            path = RetainedAssets(Path(root) / 'originals').resolve(job['asset'], profile=profile, cancelled=cancelled)
+            renderer, fingerprint = isolated_render_file_fingerprint(path, row['ordinal'], profile,
+                                                                    expected_digest=job['asset'], cancelled=cancelled)
+        else:
+            data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
+            renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'], cancelled=cancelled)
+        check_cancelled(cancelled)
         binding = dict(request_id=request_id, workspace=workspace, job=job['id'], edition=job['edition'],
                        asset_sha256=job['asset'], physical=row['ordinal'],
                        raw_sha256=sha256(record['raw_text'].encode('utf-8')).hexdigest(),
@@ -434,19 +461,20 @@ def _pending_review(root, workspace, request_id):
                     checksum=sha256(canonical(binding).encode('utf-8')).hexdigest())
 
 
-def pending_review(root, workspace, request_id):
+def pending_review(root, workspace, request_id, *, cancelled=lambda: False):
     with request_lock(root, request_id):
-        return _pending_review(root, workspace, request_id)
+        return _pending_review(root, workspace, request_id, cancelled=cancelled)
 
 
-def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected_checksum):
+def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected_checksum,
+                   cancelled=lambda: False):
     if confirmed is not True:
         raise ValueError('Independent comparison with the original PDF page must be confirmed.')
     if (not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 512
             or '\x00' in reviewer):
         raise ValueError('Enter the reviewer identity.')
     with request_lock(root, request_id):
-        current = _pending_review(root, workspace, request_id)
+        current = _pending_review(root, workspace, request_id, cancelled=cancelled)
         if current is None or current['checksum'] != expected_checksum:
             raise ValueError('The displayed review changed; reopen the pending page.')
         approval = {key: value for key, value in current.items()
@@ -467,6 +495,8 @@ def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
+            from .streamed_text import check_cancelled
+            check_cancelled(cancelled)
             os.replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)
@@ -491,11 +521,12 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                   metadata=metadata, config=asdict(config), state='pending')
     profile = None
     if source_profile is not None:
-        from .streamed_text import profile_from_value
+        from .source_profiles import profile_from_value
         profile = profile_from_value(source_profile)
-        if Path(source).suffix.casefold() != '.txt':
-            raise ValueError('Streamed text requests require an explicit .txt source.')
-        record.update(version=2, source_profile=profile.to_dict())
+        from .source_profiles import is_large
+        if Path(source).suffix.casefold() != profile.suffix:
+            raise ValueError('The selected source format differs from its explicit profile.')
+        record.update(version=3 if is_large(profile) else 2, source_profile=profile.to_dict())
     if expected_manifest is not None:
         from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
@@ -505,7 +536,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
                 or not 0 < expected_manifest['size'] <= (profile.maximum_bytes if profile else MAX_BYTES)
-                or profile is not None and expected_manifest['mime'] != 'text/plain'):
+                or profile is not None and expected_manifest['mime'] != profile.mime):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -558,18 +589,24 @@ def _published_after_stop(app, initial, attempt_id):
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
                  timeout, request_id, new, broker=None, source_profile=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
-            or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
-        raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
+            or not math.isfinite(timeout) or not 0.1 <= timeout <= 7200):
+        raise ValueError('Import timeout must fit the selected finite source profile.')
     if new:
         record = _request_record(root, workspace, source, metadata, config, request_id,
                                  source_profile=source_profile)
-        _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
-        if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
-            return dict(record['result'], request_id=request_id, isolated=True)
+    from .source_profiles import profile_from_value
+    maximum_timeout = (profile_from_value(record['source_profile']).maximum_timeout
+                       if record['version'] >= 2 else 600)
+    if timeout > maximum_timeout:
+        raise ValueError('Import timeout exceeds its selected finite source profile.')
+    if new:
+        _store(root, request_id, record, create=True)
+    elif record.get('state') == 'complete' and isinstance(record.get('result'), dict):
+        return dict(record['result'], request_id=request_id, isolated=True)
     from ..audio.jobs import checked_directory
     from ..operations import ResourceBroker, ResourceCancelled, ResourceStateError
     from ..operations.admission import document_request
@@ -593,9 +630,9 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
                 or selected.policy_path != library / 'state' / 'operations' / 'resources.json'):
             raise ResourceStateError('The resource coordinator belongs to another library directory.')
         request = document_request(library, Path(gettempdir()), selected.limits)
-        if record['version'] == 2:
+        if record['version'] >= 2:
             from dataclasses import replace
-            from .streamed_text import profile_from_value
+            from .source_profiles import profile_from_value
             profile = profile_from_value(record['source_profile'])
             # Source + escaped checkpoint JSON + authoritative pages/indexes
             # and transaction scratch are covered by this declared reservation.
@@ -738,8 +775,9 @@ def _resource_limits(timeout):
         import resource
     except ImportError:
         return
-    # Runtime libraries and a bounded 64 MiB source fit well below this address
-    # limit. Windows uses process/time isolation; POSIX limits are not claimed there.
+    # Keep the existing address-space ceiling even for explicit file-backed
+    # sources: the original is streamed, not admitted as one giant allocation.
+    # Windows uses process/time isolation; POSIX limits are not claimed there.
     for key, value in ((resource.RLIMIT_AS, 3 * 1024**3),
                        (resource.RLIMIT_CPU, max(1, math.ceil(timeout)))):
         _, hard = resource.getrlimit(key)
@@ -771,6 +809,36 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
     return result['renderer'], result['fingerprint']
 
 
+
+def isolated_render_file_fingerprint(path, physical, profile, *, expected_digest,
+                                      cancelled=lambda: False):
+    """Current isolated renderer over an exact caller-held retained PDF."""
+    from ..audio.jobs import file_identity, regular_file, verified_reader
+    from .source_profiles import PdfProfile, profile_from_value
+    from .file_pdf import _hash
+    profile = profile_from_value(profile)
+    if not isinstance(profile, PdfProfile) or type(physical) is not int or not 1 <= physical <= 1000:
+        raise ValueError('Invalid file-backed PDF review selection.')
+    path = Path(path)
+    info = regular_file(path)
+    if info.st_nlink != 1 or not 0 < info.st_size <= profile.maximum_bytes:
+        raise ValueError('Invalid file-backed PDF review original.')
+    identity = file_identity(info)
+    with verified_reader(path, expected_identity=identity) as held:
+        if _hash(held, info.st_size, cancelled) != expected_digest:
+            raise ValueError('The reviewed PDF original checksum changed.')
+        result = _invoke(dict(action='render_file', source=str(path), sha256=expected_digest,
+            source_size=info.st_size, source_identity=list(identity), source_profile=profile.to_dict(),
+            physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
+        raise InterruptedError('PDF source verification cancelled.')
+    if (type(result) is not dict or set(result) != {'renderer', 'fingerprint'}
+            or type(result['renderer']) is not str or not result['renderer']
+            or type(result['fingerprint']) is not str
+            or re.fullmatch('[0-9a-f]{64}', result['fingerprint']) is None):
+        raise ValueError('The isolated file-backed renderer could not verify this page.')
+    return result['renderer'], result['fingerprint']
+
 def main():
     try:
         raw = sys.stdin.buffer.read(MAX_REQUEST + 1)
@@ -779,13 +847,15 @@ def main():
         message = json.loads(raw)
         import_keys = {'data_dir', 'request_id', 'attempt_id', 'request_sha256', 'source', 'timeout'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
+        file_render_keys = render_keys | {'source_size', 'source_identity', 'source_profile'}
         conversion_keys = {'action', 'source', 'output', 'report', 'sha256', 'source_size',
                            'budget', 'ocr_config', 'timeout'}
         conversion_adapter_keys = conversion_keys | {'adapter'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, conversion_keys, conversion_adapter_keys):
+        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, file_render_keys, conversion_keys, conversion_adapter_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
-        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
+        if (type(timeout) not in (int, float) or not math.isfinite(timeout)
+                or not 0.1 <= timeout <= (7200 if set(message) == import_keys else 600)):
             raise ValueError('Invalid import worker timeout.')
         _resource_limits(timeout)
         import socket
@@ -800,6 +870,18 @@ def main():
             with redirect_stdout(sys.stderr):
                 result = convert_request(message)
             print(canonical({'result': result}))
+            return 0
+        if set(message) == file_render_keys:
+            if message['action'] != 'render_file' or type(message['source']) is not str:
+                raise ValueError('Invalid file-backed PDF render request.')
+            from .file_pdf import open_pdf
+            from ..citations.pdf_review_attestation import render_document_fingerprint
+            with redirect_stdout(sys.stderr):
+                with open_pdf(message['source'], message['source_profile'],
+                        expected_digest=message['sha256'], expected_size=message['source_size'],
+                        expected_identity=message['source_identity']) as (_, document, _):
+                    renderer, fingerprint = render_document_fingerprint(document, message['physical'])
+            print(canonical({'result': dict(renderer=renderer, fingerprint=fingerprint)}))
             return 0
         if set(message) == render_keys:
             if message['action'] != 'render' or not isinstance(message['source'], str):
@@ -817,6 +899,11 @@ def main():
             print(canonical({'result': dict(renderer=renderer, fingerprint=fingerprint)}))
             return 0
         record = load_request(message['data_dir'], message['request_id'])
+        from .source_profiles import profile_from_value
+        allowed_timeout = (profile_from_value(record['source_profile']).maximum_timeout
+                           if record['version'] >= 2 else 600)
+        if timeout > allowed_timeout:
+            raise ValueError('The worker timeout differs from its saved source profile.')
         if (not isinstance(record.get('metadata'), dict) or set(record['metadata']) != FIELDS
                 or not isinstance(record.get('config'), dict)
                 or not isinstance(record.get('workspace'), str)
@@ -842,7 +929,7 @@ def main():
             source = record['source']
             if record.get('asset_sha256'):
                 source = (app.assets.resolve(record['asset_sha256'], profile=record['source_profile'])
-                          if record['version'] == 2 else app.assets.resolve(record['asset_sha256']))
+                          if record['version'] >= 2 else app.assets.resolve(record['asset_sha256']))
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),

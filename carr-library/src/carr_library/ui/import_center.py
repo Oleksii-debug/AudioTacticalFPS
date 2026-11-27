@@ -334,6 +334,66 @@ class ImportCenterActions:
         except Exception as exc:
             self.report(str(exc))
 
+    def import_large_source(self, path):
+        """Freeze one explicit large TXT/PDF profile before queueing its worker."""
+        from dataclasses import replace
+        from ..ingest.source_profiles import LargeTextProfile, PdfProfile
+        self._bound()
+        kind, maximum, timeout = (self.large_kind.GetSelection(), self.large_mib.GetValue(),
+                                  self.large_timeout.GetValue())
+        if (type(kind) is not int or kind not in (0, 1) or type(maximum) is not int
+                or not 1 <= maximum <= 4096 or type(timeout) is not int or not 30 <= timeout <= 7200):
+            raise ValueError('Choose a TXT/PDF profile, 1–4096 MiB original allowance and 30–7200 seconds.')
+        profile = (LargeTextProfile if kind == 0 else PdfProfile)(maximum * 1024**2)
+        from pathlib import Path
+        if Path(path).suffix.casefold() != profile.suffix:
+            raise ValueError('The selected original must match the displayed TXT/PDF profile.')
+        index = self.collection.GetSelection()
+        if not 0 <= index < len(self.collection_ids):
+            raise ValueError('Choose the destination for this source.')
+        collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
+        library, workspace, config = self.library, self.workspace, replace(self.ocr_config)
+        def operation():
+            self._bound()
+            return library.import_file(workspace, path, source_profile=profile,
+                collections=collections, config=config, timeout=timeout,
+                cancelled=self.frame.cancel_event.is_set)
+        def done(result):
+            if result.get('state') == 'complete':
+                if self.frame.book is not None:
+                    self.frame.book.GetPage(1).refresh()
+                unit = 'exact unpaginated logical fragments' if kind == 0 else 'original physical PDF pages'
+                self.report(f'Imported {result["completed"]} {unit}. Original bytes are retained. '
+                    'PDF/OCR quotation approval remains separate. Use the large-library backup profile '
+                    'for this explicitly selected large-source request and its saved checkpoints.')
+            else:
+                self.report('Large original request: ' + readable(result.get('state', 'failed')) + '. '
+                    + readable(result.get('message', '')) +
+                    ' Close Import Center and choose Library, Resume interrupted import. '
+                    'The request retains its selected format, byte allowance and existing checkpoints.')
+        self._job('Importing the selected large original', operation, done)
+
+    def choose_large_source(self, event=None):
+        import wx
+        try:
+            self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait or cancel the current operation before choosing another original.')
+            kind = self.large_kind.GetSelection()
+            if kind not in (0, 1):
+                raise ValueError('Choose the TXT or PDF large-source profile.')
+            wildcard = 'UTF-8 text (*.txt)|*.txt' if kind == 0 else 'PDF originals (*.pdf)|*.pdf'
+            dialog = wx.FileDialog(self, 'Import with the explicit large-original profile',
+                                   wildcard=wildcard, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+            try:
+                path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
+            finally:
+                dialog.Destroy()
+            if path:
+                self.import_large_source(path)
+        except Exception as exc:
+            self.report(str(exc))
+
     def add_folder(self, event=None):
         import wx
         dialog = wx.DirDialog(self, 'Select a folder of books', style=wx.DD_DIR_MUST_EXIST)
@@ -577,6 +637,27 @@ def show_import_center(frame, workspace):
             streamed.Add(large_text, 0)
             self.mutable.extend((self.stream_mib, large_text))
             layout.Add(streamed, 0, wx.ALL, 8)
+            large = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
+            large.AddGrowableCol(1)
+            self.large_kind = wx.Choice(self, choices=('UTF-8 TXT', 'PDF with current OCR settings'))
+            self.large_kind.SetSelection(0)
+            self.large_kind.SetName('Explicit large-original format profile')
+            self.large_mib = wx.SpinCtrl(self, min=1, max=4096, initial=512)
+            self.large_mib.SetName('Maximum large-original size in MiB')
+            self.large_timeout = wx.SpinCtrl(self, min=30, max=7200, initial=600)
+            self.large_timeout.SetName('Large-original worker deadline in seconds')
+            for label, control in (('Explicit large-original format', self.large_kind),
+                                   ('Maximum original size (MiB)', self.large_mib),
+                                   ('Worker deadline (seconds)', self.large_timeout)):
+                large.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                large.Add(control, 1, wx.EXPAND)
+                self.mutable.append(control)
+            import_large = wx.Button(self, label='Import selected large &original...')
+            import_large.SetName('Import one explicitly selected large TXT or PDF original')
+            import_large.Bind(wx.EVT_BUTTON, self.choose_large_source)
+            self.mutable.append(import_large)
+            layout.Add(large, 0, wx.EXPAND | wx.ALL, 8)
+            layout.Add(import_large, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
             self.batches = wx.ListBox(self, size=(-1, 65))
             self.batches.SetName('Saved import batches')

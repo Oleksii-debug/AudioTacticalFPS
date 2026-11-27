@@ -52,10 +52,10 @@ class StreamedTextIngest(Ingest):
         path = checked_directory(root) / relative
         return path, inspect_text(path, self.profile, cancelled=cancelled)
 
-    def start(self, workspace, edition, root, relative, config=None):
+    def start(self, workspace, edition, root, relative, config=None, *, cancelled=lambda: False):
         if not all(isinstance(value, str) and value for value in (workspace, edition)):
             raise IngestError('missing scope or edition')
-        _, plan = self._source(root, relative)
+        _, plan = self._source(root, relative, cancelled=cancelled)
         settings = canonical(self.profile.configuration())
         job = digest(canonical([workspace, edition, plan.digest, settings]))
         with self.transaction():
@@ -118,8 +118,11 @@ class StreamedTextIngest(Ingest):
         return True
 
     def run(self, workspace, job, root, relative, config=None, *,
-            max_steps=MAX_FRAGMENTS + 1, cancelled=lambda: False):
-        if type(max_steps) is not int or not 1 <= max_steps <= MAX_FRAGMENTS + 1:
+            max_steps=None, cancelled=lambda: False):
+        maximum = self.profile.maximum_fragments + 1
+        if max_steps is None:
+            max_steps = maximum
+        if type(max_steps) is not int or not 1 <= max_steps <= maximum:
             raise IngestError('invalid streamed step limit')
         row = self._job(workspace, job)
         try:

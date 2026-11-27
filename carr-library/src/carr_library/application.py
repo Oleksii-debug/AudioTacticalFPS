@@ -546,10 +546,10 @@ class LibraryApp:
             raise ValueError('invalid collections')
         path = Path(path).absolute()
         if source_profile is not None:
-            from .ingest.streamed_text import profile_from_value
+            from .ingest.source_profiles import profile_from_value
             source_profile = profile_from_value(source_profile)
-            if path.suffix.casefold() != '.txt':
-                raise ValueError('The streamed source profile accepts UTF-8 .txt files only.')
+            if path.suffix.casefold() != source_profile.suffix:
+                raise ValueError('The selected source format differs from its explicit profile.')
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
@@ -629,19 +629,19 @@ class LibraryApp:
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).set_row(workspace, batch_id, row_id, included=included)
 
-    def pending_review(self, workspace, request_id):
+    def pending_review(self, workspace, request_id, *, cancelled=lambda: False):
         """Return the exact quarantined page for an explicit human comparison."""
         from .ingest.worker import pending_review
         with self.read(workspace):
-            return pending_review(self.root, workspace, request_id)
+            return pending_review(self.root, workspace, request_id, cancelled=cancelled)
 
     def confirm_import_review(self, workspace, request_id, reviewer, *, confirmed=False,
-                              expected_checksum=None):
+                              expected_checksum=None, cancelled=lambda: False):
         """Approve only the displayed exact checkpoint; resume is a separate action."""
         from .ingest.worker import confirm_review
         with self.read(workspace):
             return confirm_review(self.root, workspace, request_id, reviewer,
-                                  confirmed=confirmed, expected_checksum=expected_checksum)
+                                  confirmed=confirmed, expected_checksum=expected_checksum, cancelled=cancelled)
 
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
@@ -663,9 +663,9 @@ class LibraryApp:
                 catalog._active_collection(collection)
         profile = None
         if _source_profile is not None:
-            from .ingest.streamed_text import inspect_text, profile_from_value
+            from .ingest.source_profiles import inspect_source, profile_from_value
             profile = profile_from_value(_source_profile)
-            asset = inspect_text(path, profile, cancelled=cancelled)
+            asset = inspect_source(path, profile, cancelled=cancelled)
         elif _expected_manifest is None:
             asset = snapshot(path.parent, path.name)
         else:
@@ -746,11 +746,17 @@ class LibraryApp:
                                        'printed pages are unknown. ' + (
                                            FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
-                extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
+                extra = (dict(reviews=load_reviews(self.root, _request_id),
+                              review_asset=retained if profile is not None else asset.data)
                          if asset.mime == 'application/pdf' else {})
                 if profile is not None:
-                    from .ingest.streamed_ingest import StreamedTextIngest
-                    engine, extra = StreamedTextIngest, dict(profile=profile)
+                    from .ingest.source_profiles import PdfProfile
+                    if isinstance(profile, PdfProfile):
+                        from .ingest.file_pdf_ingest import FilePdfIngest
+                        engine, extra = FilePdfIngest, dict(extra, profile=profile)
+                    else:
+                        from .ingest.streamed_ingest import StreamedTextIngest
+                        engine, extra = StreamedTextIngest, dict(profile=profile)
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
                         publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
@@ -763,7 +769,8 @@ class LibraryApp:
                         if previous['state'] in ('failed', 'cancelled', 'quarantined'):
                             ingest.retry(workspace, job)
                     else:
-                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings,
+                                           **({'cancelled': cancelled} if profile is not None else {}))
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     if result['state'] in ('complete', 'superseded'):
@@ -885,6 +892,8 @@ class LibraryApp:
 
     def _asset_bytes(self, db, workspace, identity, *, cancelled=lambda: False):
         path, mime, size = self._retained_source(db, workspace, identity, cancelled=cancelled)
+        if size > MAX_SOURCE_BYTES:
+            raise ValueError('This original requires its bounded file-backed source adapter.')
         original = snapshot(self.assets_dir, path.name, max_bytes=size)
         if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
             raise ValueError('The original source differs from its catalog manifest.')
@@ -909,12 +918,15 @@ class LibraryApp:
         from .ingest.worker import isolated_render_fingerprint
         pdf = pdf_review_attestor(workspace, resolve_asset, review,
             renderer=lambda data, physical: isolated_render_fingerprint(data, physical, cancelled=cancelled))
+        from .citations.file_pdf_attestation import file_pdf_attestor
+        file_pdf = file_pdf_attestor(db, workspace, lambda identity: self._retained_source(
+            db, workspace, identity, cancelled=cancelled)[0], review, cancelled=cancelled)
 
         def attest(identity, locator, raw_hash):
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
             verified = (text(identity, locator, raw_hash) or streamed(identity, locator, raw_hash)
-                        or pdf(identity, locator, raw_hash))
+                        or file_pdf(identity, locator, raw_hash) or pdf(identity, locator, raw_hash))
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
             return verified
@@ -1254,11 +1266,20 @@ class LibraryApp:
         with self.read(workspace) as db:
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            _, identity, locator, raw, _ = self._selected(db, workspace, ref, revision)
+            _, identity, locator, raw, _ = self._selected(db, workspace, ref, revision, cancelled=cancelled)
             if locator.kind != 'physical_page':
                 raise ValueError('This review workflow is for physical PDF pages only.')
-            data = self._asset_bytes(db, workspace, identity)
-            renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
+            from .ingest.source_profiles import profile_from_config, PdfProfile
+            extraction = db.execute('SELECT config FROM revision WHERE id=?', (revision,)).fetchone()
+            profile = profile_from_config(extraction[0]) if extraction is not None else None
+            if isinstance(profile, PdfProfile):
+                from .ingest.worker import isolated_render_file_fingerprint
+                original = self._retained_source(db, workspace, identity, cancelled=cancelled)[0]
+                renderer, fingerprint = isolated_render_file_fingerprint(original, locator.index, profile,
+                    expected_digest=identity.asset_sha256, cancelled=cancelled)
+            else:
+                data = self._asset_bytes(db, workspace, identity, cancelled=cancelled)
+                renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
             raw_hash = sha256(raw.encode('utf-8')).hexdigest()
         check()
         with self.write(workspace) as db:
@@ -1267,7 +1288,7 @@ class LibraryApp:
                 TopicTree(db, workspace)._visible(authorized_topic)
             if cancelled():
                 raise InterruptedError('PDF page review cancelled.')
-            _, current, current_loc, current_raw, _ = self._selected(db, workspace, ref, revision)
+            _, current, current_loc, current_raw, _ = self._selected(db, workspace, ref, revision, cancelled=cancelled)
             if (current, current_loc, current_raw) != (identity, locator, raw):
                 raise ValueError('The source changed during review.')
             previous = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer,active '
@@ -1329,9 +1350,10 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination, *, cancelled=lambda: False):
+    def backup(self, destination, *, capacity_profile=None, cancelled=lambda: False):
         from .library_backup import create_backup
-        return create_backup(self, destination, cancelled=cancelled)
+        return create_backup(self, destination, capacity_profile=capacity_profile, cancelled=cancelled)
+
 
 
 

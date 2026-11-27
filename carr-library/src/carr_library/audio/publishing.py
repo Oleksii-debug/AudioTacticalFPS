@@ -645,7 +645,7 @@ def _publication_receipt(value, identity):
                              'artifact', 'source', 'created', 'notice'}
             or value['schema'] != 'resonance-publication/2' or value['id'] != identity
             or value['status'] not in ('prepared', 'complete')
-            or value['format'] not in ('epub', 'daisy-2.02')
+            or value['format'] not in ('epub', 'daisy-2.02', 'pcm-parts')
             or not isinstance(value['project_root'], str) or not Path(value['project_root']).is_absolute()
             or not isinstance(value['output'], str) or not Path(value['output']).is_absolute()):
         raise ValueError('Invalid saved publication receipt.')
@@ -760,6 +760,22 @@ class PublicationService:
                           for name, (_, receipt) in sorted(paths.items())]}
         return plan, timeline, paths, proof, info
 
+    def review_pcm_parts(self, run_key, output, *, book_plan, part_index, maximum_ms,
+                         name_template='{index:04d} - {book} - {part}',
+                         source_guard, cancelled=lambda: False, progress=None, approval=None):
+        """Review completed frame ranges without discovering any live runtime."""
+        from .measured_audio import review
+        return review(self, run_key, output, book=book_plan, part_index=part_index,
+            maximum_ms=maximum_ms, name_template=name_template, source_guard=source_guard,
+            cancelled=cancelled, progress=progress, approval=approval)
+
+    def export_pcm_parts(self, run_key, output, *, book_plan, part_index, maximum_ms,
+                         review_sha256, name_template='{index:04d} - {book} - {part}',
+                         source_guard, cancelled=lambda: False, progress=None, approval=None):
+        return self._export(run_key, output, book_format='pcm-parts', language='und',
+            creator='', publisher='', cancelled=cancelled, progress=progress, approval=approval,
+            measured=(book_plan, part_index, maximum_ms, name_template, review_sha256, source_guard))
+
     def export_epub(self, run_key, output, *, language='und', creator='', cancelled=lambda: False,
                     progress=None, approval=None):
         return self._export(run_key, output, book_format='epub', language=language, creator=creator,
@@ -772,10 +788,23 @@ class PublicationService:
                             progress=progress, approval=approval)
 
     def _export(self, run_key, output, *, book_format, language, creator, publisher,
-                cancelled, progress, approval):
+                cancelled, progress, approval, measured=None):
         if book_format == 'epub':
             label, suffix, notice, inspect = 'EPUB', '.epub', NOTICE, inspect_epub
             schema, audio_member = 'resonance-epub/2', 'EPUB/audio/master.mp3'
+        elif book_format == 'pcm-parts':
+            from . import measured_audio
+            from .book_plan import BookPlan
+            if type(measured) is not tuple or len(measured) != 6:
+                raise ValueError('Measured publication requires its explicit reviewed Book settings.')
+            book, part_index, maximum_ms, name_template, review_sha256, source_guard = measured
+            if (not isinstance(book, BookPlan) or not callable(source_guard)
+                    or type(review_sha256) is not str or not _HASH.fullmatch(review_sha256)):
+                raise ValueError('Review the exact completed Book frames before publication.')
+            book.job_id(part_index)
+            measured_audio.options(maximum_ms, name_template)
+            label, suffix, notice, inspect = 'Measured PCM', '.zip', measured_audio.NOTICE, measured_audio.inspect
+            schema, audio_member = measured_audio.SCHEMA, None
         else:
             from . import daisy
             daisy.language_tag(language)
@@ -784,7 +813,7 @@ class PublicationService:
             schema, audio_member = 'resonance-daisy-2.02/2', 'master.mp3'
         language = language_tag(language)
         creator = _text(creator, 'Creator', maximum=512, empty=True)
-        captured = capture_export_destination(output, private_root=self.private_root)
+        captured = capture_export_destination(output, private_root=self.private_root, cancelled=cancelled)
         if approval is not None and (type(approval) is not ExportDestination or approval != captured):
             raise ValueError('The selected export destination changed. Choose it again.')
         approval = captured if approval is None else approval
@@ -841,15 +870,30 @@ class PublicationService:
                 raise FileExistsError('The selected publication filename became occupied.')
             if current != approval:
                 raise ValueError('The selected publication directory changed.')
+            if book_format == 'pcm-parts':
+                source_guard()
+                check()
 
         with project_lock(self.root), ExitStack() as resources:
             plan, timeline, paths, source_proof, info = self._source(run_key, check, progress)
+            production_proof = source_proof
+            if book_format == 'pcm-parts':
+                source_proof, measured_documents = measured_audio.context(self, plan, timeline, paths,
+                    production_proof, book, part_index, source_guard, check)
+                pcm_info = measured_audio.pcm_info(paths['master.wav'][0], timeline, plan, check)
+                measured_content = measured_audio.content_review(plan, timeline, source_proof, pcm_info,
+                    maximum_ms, name_template, check)
+                if measured_audio.review_document(measured_content, approval)['approval_sha256'] != review_sha256:
+                    raise ValueError('Measured frames, names, source or destination changed. Review them again.')
             # An independent WAV copy and decoded verification copy never
             # coexist. Budget also covers MP3+ZIP, XML and a fixed reserve.
             rate = info.rate if info.rate in (16000, 22050, 24000, 32000, 44100, 48000) else 48000
             estimated_mp3 = math.ceil(info.seconds * 24000) + 1024**2
             decoded_bytes = math.ceil(info.frames * rate / info.rate) * 4 + 16384
             working = max(info.data_size + 16384, decoded_bytes) + estimated_mp3 * 2 + MAX_XML_TOTAL + 1024**2
+            if book_format == 'pcm-parts':
+                working = (info.data_size + sum(map(len, measured_documents.values()))
+                    + len(encode(measured_content)) * 2 + 512 * 1024)
             if working > self.max_bytes:
                 raise ValueError('Verified publication staging exceeds the selected byte budget.')
             if shutil.disk_usage(parent).free < working + self.reserve_bytes:
@@ -858,8 +902,10 @@ class PublicationService:
                 from ..operations import ResourceBroker, ResourceRequest
                 if not isinstance(self.broker, ResourceBroker) or self.broker.limits.memory_bytes == 0:
                     raise ValueError('Configure positive shared local resources for publication.')
-                request = ResourceRequest(cpu_slots=self.broker.limits.cpu_slots,
-                    memory_bytes=self.broker.limits.memory_bytes, disk_bytes=working, disk_path=parent)
+                request = ResourceRequest(
+                    cpu_slots=1 if book_format == 'pcm-parts' else self.broker.limits.cpu_slots,
+                    memory_bytes=256 * 1024**2 if book_format == 'pcm-parts' else self.broker.limits.memory_bytes,
+                    disk_bytes=working, disk_path=parent)
                 progress('Waiting for shared local publication resources.')
                 lease = resources.enter_context(self.broker.reserve(request,
                     operation_id=self.operation_id or 'publication:' + identity,
@@ -867,75 +913,84 @@ class PublicationService:
             scope()
             with TemporaryDirectory(prefix='.publication-', dir=parent) as temporary:
                 stage = live_stage = checked_directory(temporary)
-                pcm, encoded, decoded = stage / 'source.wav', stage / 'master.mp3', stage / 'decoded.wav'
-                master, master_proof = paths['master.wav']
-                _read(master, master_proof, check, copy_to=pcm)
-                from .runtime import resolve_ffmpeg
-                ffmpeg = resolve_ffmpeg(self.ffmpeg)
-                if ffmpeg is None:
-                    raise ValueError('Select an installed reviewed FFmpeg executable for publication.')
-                processor = audio.ffmpeg_identity(ffmpeg, cancelled=stopping)
-                progress('Encoding verified local audio as MP3')
-                # One final output-rate sample covers fractional resampling
-                # endpoints; it is padding, never an invented spoken interval.
-                audio.run_ffmpeg(ffmpeg, ['-protocol_whitelist', 'file', '-f', 'wav', '-i', str(pcm),
-                    '-map', '0:a:0', '-af', f'aresample={rate},apad=pad_len=1', '-ac', '2',
-                    '-c:a', 'libmp3lame', '-b:a', '192k', '-f', 'mp3', '-n', str(encoded)], cancelled=stopping)
-                check()
-                pcm.unlink()
-                progress('Decoding the packaged MP3 to verify actual duration and format')
-                audio.run_ffmpeg(ffmpeg, ['-protocol_whitelist', 'file', '-f', 'mp3', '-i', str(encoded),
-                    '-map', '0:a:0', '-c:a', 'pcm_s16le', '-f', 'wav', '-rf64', 'always',
-                    '-n', str(decoded)], cancelled=stopping)
-                observed = audio.wav_info(decoded)
-                if (observed.rate != rate or observed.channels != 2
-                        or observed.frames < math.ceil(info.frames * rate / info.rate)
-                        or observed.frames > math.ceil(info.frames * rate / info.rate) + 2304):
-                    raise ValueError('The encoded MP3 does not cover the exact measured master within codec padding.')
-                decoded.unlink()
-                audio_identity = _digest(encoded, check, self.max_bytes)
-                provenance = {'schema': schema, 'publication_id': identity,
-                    'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-                    'source': source_proof,
-                    'audio': {'identity': audio_identity, 'media_type': 'audio/mpeg', 'codec': 'mp3',
-                        'duration': observed.seconds, 'sample_rate': observed.rate, 'channels': observed.channels,
-                        'decoded_frames': observed.frames, 'source_artifact': 'master.wav', 'reused': False,
-                        'processor': processor, 'resampling_tail_samples': 1},
-                    'validation': {'zip_xml_graph': 'verified on export', 'decoded_mp3': 'verified on export',
-                        'epubcheck' if book_format == 'epub' else 'independent_daisy_validator': 'NOT_RUN',
-                        'reader_interoperability': 'NOT_RUN'}}
-                parts = (_parts(plan, timeline, provenance, language, creator, check) if book_format == 'epub'
-                         else daisy.parts(plan, timeline, provenance, language, creator, publisher, check))
-                raw_size = sum(len(raw) for raw in parts.values()) + audio_identity['size'] + 20
-                if raw_size + audio_identity['size'] > self.max_bytes or sum(len(raw) for raw in parts.values()) > MAX_XML_TOTAL:
-                    raise ValueError('Publication text and audio exceed their bounded staging budget.')
-                staged = stage / ('publication' + suffix)
-                progress('Packaging text, navigation and measured media overlays')
-                with ZipFile(staged, 'x', compression=ZIP_DEFLATED, allowZip64=True) as archive:
-                    if book_format == 'epub':
-                        mimetype = ZipInfo('mimetype')
-                        mimetype.compress_type = ZIP_STORED
-                        archive.writestr(mimetype, b'application/epub+zip')
-                    for name, raw in parts.items():
-                        check()
-                        archive.writestr(name, raw)
-                    member = ZipInfo(audio_member)
-                    member.compress_type = ZIP_STORED
-                    hashed, count = sha256(), 0
-                    with verified_reader(encoded) as source, archive.open(member, 'w', force_zip64=True) as target:
-                        while block := source.read(1024 * 1024):
+                if book_format == 'pcm-parts':
+                    staged = stage / 'publication.zip'
+                    provenance = {'schema': schema, 'publication_id': identity,
+                        'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                        'source': source_proof}
+                    progress('Packaging exact measured PCM frames without synthesis or decoding')
+                    measured_audio.package(staged, paths['master.wav'][0], measured_content, provenance,
+                        measured_documents, check=check, max_bytes=self.max_bytes)
+                else:
+                    pcm, encoded, decoded = stage / 'source.wav', stage / 'master.mp3', stage / 'decoded.wav'
+                    master, master_proof = paths['master.wav']
+                    _read(master, master_proof, check, copy_to=pcm)
+                    from .runtime import resolve_ffmpeg
+                    ffmpeg = resolve_ffmpeg(self.ffmpeg)
+                    if ffmpeg is None:
+                        raise ValueError('Select an installed reviewed FFmpeg executable for publication.')
+                    processor = audio.ffmpeg_identity(ffmpeg, cancelled=stopping)
+                    progress('Encoding verified local audio as MP3')
+                    # One final output-rate sample covers fractional resampling
+                    # endpoints; it is padding, never an invented spoken interval.
+                    audio.run_ffmpeg(ffmpeg, ['-protocol_whitelist', 'file', '-f', 'wav', '-i', str(pcm),
+                        '-map', '0:a:0', '-af', f'aresample={rate},apad=pad_len=1', '-ac', '2',
+                        '-c:a', 'libmp3lame', '-b:a', '192k', '-f', 'mp3', '-n', str(encoded)], cancelled=stopping)
+                    check()
+                    pcm.unlink()
+                    progress('Decoding the packaged MP3 to verify actual duration and format')
+                    audio.run_ffmpeg(ffmpeg, ['-protocol_whitelist', 'file', '-f', 'mp3', '-i', str(encoded),
+                        '-map', '0:a:0', '-c:a', 'pcm_s16le', '-f', 'wav', '-rf64', 'always',
+                        '-n', str(decoded)], cancelled=stopping)
+                    observed = audio.wav_info(decoded)
+                    if (observed.rate != rate or observed.channels != 2
+                            or observed.frames < math.ceil(info.frames * rate / info.rate)
+                            or observed.frames > math.ceil(info.frames * rate / info.rate) + 2304):
+                        raise ValueError('The encoded MP3 does not cover the exact measured master within codec padding.')
+                    decoded.unlink()
+                    audio_identity = _digest(encoded, check, self.max_bytes)
+                    provenance = {'schema': schema, 'publication_id': identity,
+                        'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                        'source': source_proof,
+                        'audio': {'identity': audio_identity, 'media_type': 'audio/mpeg', 'codec': 'mp3',
+                            'duration': observed.seconds, 'sample_rate': observed.rate, 'channels': observed.channels,
+                            'decoded_frames': observed.frames, 'source_artifact': 'master.wav', 'reused': False,
+                            'processor': processor, 'resampling_tail_samples': 1},
+                        'validation': {'zip_xml_graph': 'verified on export', 'decoded_mp3': 'verified on export',
+                            'epubcheck' if book_format == 'epub' else 'independent_daisy_validator': 'NOT_RUN',
+                            'reader_interoperability': 'NOT_RUN'}}
+                    parts = (_parts(plan, timeline, provenance, language, creator, check) if book_format == 'epub'
+                             else daisy.parts(plan, timeline, provenance, language, creator, publisher, check))
+                    raw_size = sum(len(raw) for raw in parts.values()) + audio_identity['size'] + 20
+                    if raw_size + audio_identity['size'] > self.max_bytes or sum(len(raw) for raw in parts.values()) > MAX_XML_TOTAL:
+                        raise ValueError('Publication text and audio exceed their bounded staging budget.')
+                    staged = stage / ('publication' + suffix)
+                    progress('Packaging text, navigation and measured media overlays')
+                    with ZipFile(staged, 'x', compression=ZIP_DEFLATED, allowZip64=True) as archive:
+                        if book_format == 'epub':
+                            mimetype = ZipInfo('mimetype')
+                            mimetype.compress_type = ZIP_STORED
+                            archive.writestr(mimetype, b'application/epub+zip')
+                        for name, raw in parts.items():
                             check()
-                            count += len(block)
-                            if count > audio_identity['size']:
-                                raise ValueError('Staged MP3 grew during publication.')
-                            hashed.update(block)
-                            target.write(block)
-                    if {'size': count, 'sha256': hashed.hexdigest()} != audio_identity:
-                        raise ValueError('The staged MP3 changed during packaging.')
+                            archive.writestr(name, raw)
+                        member = ZipInfo(audio_member)
+                        member.compress_type = ZIP_STORED
+                        hashed, count = sha256(), 0
+                        with verified_reader(encoded) as source, archive.open(member, 'w', force_zip64=True) as target:
+                            while block := source.read(1024 * 1024):
+                                check()
+                                count += len(block)
+                                if count > audio_identity['size']:
+                                    raise ValueError('Staged MP3 grew during publication.')
+                                hashed.update(block)
+                                target.write(block)
+                        if {'size': count, 'sha256': hashed.hexdigest()} != audio_identity:
+                            raise ValueError('The staged MP3 changed during packaging.')
                 inspect(staged, cancelled=stopping, max_bytes=self.max_bytes)
                 artifact = _digest(staged, check, self.max_bytes)
                 progress('Rechecking exact source receipts before publication')
-                if self._source(run_key, check, lambda _: None)[3] != source_proof:
+                if self._source(run_key, check, lambda _: None)[3] != production_proof:
                     raise ValueError('The completed source changed during publication.')
                 scope()
                 record = {'schema': 'resonance-publication/2', 'id': identity, 'status': 'prepared',
@@ -946,8 +1001,26 @@ class PublicationService:
                 atomic_json(receipt_path, record)
                 progress('Publication prepared; recovery receipt ' + identity)
                 scope()
+                stage_identity = file_identity(regular_file(staged))
+                stage_directory_identity = (stage.stat().st_dev, stage.stat().st_ino)
+
+                def before_publish():
+                    if book_format != 'pcm-parts':
+                        return stopping()
+                    scope()
+                    checked_directory(stage)
+                    if (stage.stat().st_dev, stage.stat().st_ino) != stage_directory_identity:
+                        raise ValueError('The measured publication stage changed.')
+                    if file_identity(regular_file(staged)) != stage_identity:
+                        raise ValueError('The measured publication bytes changed before commit.')
+                    if self._source(run_key, check, lambda _: None)[3] != production_proof:
+                        raise ValueError('The completed source changed before measured publication.')
+                    source_guard()
+                    scope()
+                    return False
+
                 try:
-                    publish_noreplace(staged, output, cancelled=stopping)
+                    publish_noreplace(staged, output, cancelled=before_publish)
                     # The move is the publication boundary. Late cancellation
                     # cannot erase a completed book or turn it into a retry.
                     final_deadline = monotonic() + min(60, self.timeout)
@@ -994,6 +1067,9 @@ class PublicationService:
             if record['format'] == 'daisy-2.02':
                 from .daisy import inspect_daisy
                 inspect = inspect_daisy
+            elif record['format'] == 'pcm-parts':
+                from .measured_audio import inspect as inspect_pcm_parts
+                inspect = inspect_pcm_parts
             provenance = inspect(selected,
                 cancelled=lambda: cancelled() or monotonic() - started > self.timeout, max_bytes=self.max_bytes)
             if provenance.get('publication_id') != publication_id or provenance.get('source') != record['source']:

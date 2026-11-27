@@ -122,7 +122,7 @@ def _capture(library, workspace, edition, *, topic, first, last, chapter, revisi
         first = 1 if first is None else first
         last = len(desk.pages) if last is None else last
     if (type(first) is not int or type(last) is not int
-            or not 1 <= first <= last <= len(desk.pages)):
+            or not 1 <= first <= last <= len(desk.pages) or last - first + 1 > MAX_POSITIONS):
         raise ValueError('Choose a valid ordered source-position range.')
     pieces, positions, warnings, offset = [], [], [], 0
     for ordinal in range(first, last + 1):

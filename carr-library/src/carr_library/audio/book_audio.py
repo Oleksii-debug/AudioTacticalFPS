@@ -236,3 +236,69 @@ class BookAudioService:
             if self._stopping(cancelled) and index < len(plan.parts):
                 break
         return tuple(rows)
+
+
+    def _measured_service(self, plan_id, index, *, cancelled, guard):
+        """Bind one current completed managed part; never resolve an engine."""
+        from ..operations import ResourceBroker
+        from .models import digest
+        from .publishing import PublicationService
+        plan = self.load(plan_id)
+        plan.job_id(index)
+        stopping = lambda: self._stopping(cancelled)
+        self._validate(plan, stopping, guard)
+        if self._document(plan, index) is None:
+            raise ValueError('Prepare and complete the selected Book part before measured splitting.')
+        _, _, audio = self.managed.paths(plan.job_id(index))
+        state = read_json(audio / 'render-journal.json', limit=1024**2)
+        run_key = state.get('run_key') if type(state) is dict else None
+        if (type(state) is not dict or state.get('schema_version') != 1
+                or state.get('state') != 'complete' or type(run_key) is not str
+                or len(run_key) != 64 or any(char not in '0123456789abcdef' for char in run_key)
+                or state.get('source_sha256') != plan.project(index).source_sha256):
+            raise ValueError('Measured splitting requires a recorded complete current Book part.')
+        def current():
+            self._validate(plan, stopping, guard)
+            if (self.load(plan.id).fingerprint != plan.fingerprint or self._document(plan, index) is None
+                    or read_json(audio / 'render-journal.json', limit=1024**2) != state):
+                raise ValueError('The original Book review or completed production changed.')
+        publisher = PublicationService(audio, private_root=self.library.root,
+            broker=ResourceBroker.for_app(self.library.root, cancelled=stopping),
+            operation_id='publication:' + plan.job_id(index),
+            expected_plan_sha256=digest(plan.project(index).to_dict()))
+        return plan, run_key, publisher, current, stopping
+
+    def review_duration(self, plan_id, index, output, *, maximum_ms,
+                        name_template='{index:04d} - {book} - {part}',
+                        cancelled=lambda: False, guard=lambda: None, progress=None,
+                        destination_approval=None):
+        plan, run_key, publisher, current, stopping = self._measured_service(
+            plan_id, index, cancelled=cancelled, guard=guard)
+        return publisher.review_pcm_parts(run_key, output, book_plan=plan, part_index=index,
+            maximum_ms=maximum_ms, name_template=name_template, source_guard=current,
+            cancelled=stopping, progress=progress, approval=destination_approval)
+
+    def publish_duration(self, plan_id, index, output, *, maximum_ms, review_sha256,
+                         name_template='{index:04d} - {book} - {part}',
+                         cancelled=lambda: False, guard=lambda: None, progress=None,
+                         destination_approval=None):
+        plan, run_key, publisher, current, stopping = self._measured_service(
+            plan_id, index, cancelled=cancelled, guard=guard)
+        return publisher.export_pcm_parts(run_key, output, book_plan=plan, part_index=index,
+            maximum_ms=maximum_ms, name_template=name_template, review_sha256=review_sha256,
+            source_guard=current, cancelled=stopping, progress=progress, approval=destination_approval)
+
+    def duration_publications(self, plan_id, index):
+        """Recorded metadata only; explicit verify rehashes the selected archive."""
+        from .publishing import PublicationService
+        plan = self.load(plan_id)
+        _, _, audio = self.managed.paths(plan.job_id(index))
+        return tuple(row for row in PublicationService(audio, private_root=self.library.root).publications()
+                     if row['format'] == 'pcm-parts')
+
+    def verify_duration(self, plan_id, index, publication_id, *, output=None, cancelled=lambda: False):
+        from .publishing import PublicationService
+        plan = self.load(plan_id)
+        _, _, audio = self.managed.paths(plan.job_id(index))
+        return PublicationService(audio, private_root=self.library.root).verify(publication_id,
+            output=output, cancelled=lambda: self._stopping(cancelled))

@@ -68,6 +68,9 @@ from .installation_lease import installed_entrypoint
 @installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'books':
+        from .audio.book_cli import main as books_main
+        return books_main(arguments[1:])
     if arguments and arguments[0] == 'backup-repository':
         from .incremental_backup_cli import main as repository_main
         return repository_main(arguments[1:])
@@ -86,6 +89,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'assistant':
         from .assistant.cli import main as assistant_main
         return assistant_main(arguments[1:])
+    if arguments and arguments[0] == 'import-large':
+        from .large_import_cli import main as large_main
+        return large_main(arguments[1:])
     if arguments and arguments[0] == 'import-text':
         from .streamed_import_cli import main as streamed_main
         return streamed_main(arguments[1:])
@@ -97,6 +103,8 @@ def main(argv=None):
     parser.add_argument('--model-dir', type=Path, help='Verified local MiniLM model directory')
     parser.add_argument('--model-manifest', type=Path, help='Pinned model manifest outside the model directory')
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
+    parser.add_argument('--backup-capacity-profile', choices=('large-source-v1',),
+                        help='Explicit larger complete-backup budget; ordinary limits remain the default')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
     ocr = parser.add_mutually_exclusive_group()
@@ -150,6 +158,8 @@ def main(argv=None):
     from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
     add_audio_arguments(parser)
     args = parser.parse_args(arguments)
+    if args.backup_capacity_profile is not None and args.backup is None:
+        parser.error('--backup-capacity-profile requires --backup.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     operations = (args.self_test, bool(args.backup), bool(args.restore), args.document_formats,
@@ -285,7 +295,7 @@ def main(argv=None):
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            checksum = app.backup(args.backup, capacity_profile=args.backup_capacity_profile)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
         try:

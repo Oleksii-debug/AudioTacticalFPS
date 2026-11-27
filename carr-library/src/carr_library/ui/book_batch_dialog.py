@@ -20,7 +20,12 @@ HELP = (
     'Limits: 32 books, 256 parts, eight million selected characters in total; two million per book. '
     'Character/page/heading boundaries are exact source ranges, not duration estimates. '
     'A source-bound part stays immutable; use a separate reading copy for performance edits. '
-    'Complete library backup retains book plans, originals and managed audio together.'
+    'Complete library backup retains book plans, originals and managed audio together.\n\n'
+    'Measured duration splitting uses one already completed selected Book part. Enter the part number, '
+    'maximum milliseconds and a new ZIP path, then Preview measured parts and separately Publish. '
+    'Its RIFF/RF64 PCM frames are copied exactly without a live voice or decoder. A split inside a speech '
+    'line retains approximate whole-line text scope; it never invents word timing. '
+    'Verify measured publication uses a saved receipt and the explicitly selected existing ZIP after restore.'
 )
 
 
@@ -124,6 +129,19 @@ def review_text(batch, plans, reviewed):
     return '\n'.join(lines)
 
 
+def duration_text(review):
+    pcm = review['content']['pcm']
+    lines = ['MEASURED PREVIEW — no output has been published.',
+        'Approval SHA-256: ' + review['approval_sha256'], review['output'],
+        '%d exact frames; %d Hz; stereo PCM16.' % (pcm['frames'], pcm['sample_rate']),
+        review['content']['notice']]
+    for part in review['content']['parts']:
+        lines.append('%d. Frames %d..%d; %.6f seconds; %s' % (
+            part['index'], part['start_frame'], part['end_frame'],
+            part['frames'] / pcm['sample_rate'], part['name']))
+    return '\n'.join(lines)
+
+
 class BookBatchDialog:
     def __init__(self, frame, *, service=None, wx_module=None):
         if wx_module is None:
@@ -141,6 +159,7 @@ class BookBatchDialog:
         self.operation_token = 0
         self.displayed = ()
         self.voices = ()
+        self.measured, self.duration_generation = None, 0
         self.dialog = wx.Dialog(frame, title='Reviewed books — ordered audio batch', size=(980, 850),
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.dialog.SetName('Reviewed multi-book audio workspace')
@@ -176,6 +195,12 @@ class BookBatchDialog:
         self.rate.SetSelection(5)
         self.first = field('First source position; blank means first', value='')
         self.last = field('Last source position; blank means last', value='')
+        self.duration_index = field('Completed part number for measured splitting', value='1')
+        self.duration_ms = field('Maximum measured part duration in milliseconds', value='600000')
+        self.duration_template = field('Measured PCM part filename template', value='{index:04d} - {book} - {part}')
+        self.duration_output = field('Explicit measured publication ZIP path', value='')
+        for control in (self.duration_index, self.duration_ms, self.duration_template, self.duration_output):
+            control.Bind(wx.EVT_TEXT, self.duration_changed)
         self.report_box = field('Exact review, progress and retained result', style=wx.TE_MULTILINE | wx.TE_READONLY,
                                 value=HELP)
         self.report_box.SetMinSize((-1, 230))
@@ -187,6 +212,8 @@ class BookBatchDialog:
                  ('output', 'Choose output for selected book'), ('all_outputs', 'Choose output for all books')],
                 [('preview', 'Preview exact batch'), ('prepare', 'Prepare managed parts'),
                  ('run', 'Run or resume'), ('pause', 'Pause'), ('cancel', 'Cancel invocation')],
+                [('duration_choose', 'Choose new measured ZIP'), ('duration_review', 'Preview measured PCM parts'),
+                 ('duration_publish', 'Publish reviewed measured parts'), ('duration_verify', 'Verify measured publication')],
                 [('saved', 'Open saved batch'), ('new', 'New batch'), ('studio', 'Open selected part in Audio Studio'),
                  ('help', 'Help'), ('close', 'Close')]):
             row = wx.WrapSizer(wx.HORIZONTAL)
@@ -227,11 +254,15 @@ class BookBatchDialog:
             button.Enable(not self.busy or key in ('pause', 'cancel', 'close'))
         self.buttons['prepare'].Enable(not self.busy and self.state.reviewed is not None)
         self.buttons['run'].Enable(not self.busy and self.state.reviewed is not None and self.state.reviewed.prepared)
+        valid_measured = (self.measured is not None
+            and self.measured[0][:2] == (self.state.generation, self.duration_generation))
+        self.buttons['duration_publish'].Enable(not self.busy and valid_measured)
         for key in ('pause', 'cancel'):
             self.buttons[key].Enable(self.busy)
         for item in (self.title, self.selected, self.voice, self.language, self.voice_rate, self.pitch, self.volume,
                      self.pan, self.mode, self.characters,
-                     self.pattern, self.ignore_case, self.template, self.format, self.rate, self.first, self.last):
+                     self.pattern, self.ignore_case, self.template, self.format, self.rate, self.first, self.last,
+                      self.duration_index, self.duration_ms, self.duration_template, self.duration_output):
             item.Enable(not self.busy)
 
     def selection(self):
@@ -264,14 +295,28 @@ class BookBatchDialog:
             raise ValueError('Wait for or stop the current operation first.')
         self.busy, self.action = True, 'pause'
         self.operation_token += 1
+        token = self.operation_token
+        self.operation_finished = False
         self.cancel.clear()
         self.controls()
         def work():
-            self.guard()
-            if self.stopped():
-                raise InterruptedError('Book operation stopped before starting.')
-            return operation()
+            try:
+                self.guard()
+                if self.stopped():
+                    raise InterruptedError('Book operation stopped before starting.')
+                return operation()
+            finally:
+                # The main frame intentionally suppresses its result callbacks
+                # after a scope/window change. Independently acknowledge that
+                # this owned operation has released its files and native work.
+                try:
+                    self.wx.CallAfter(self._worker_settled, token)
+                except RuntimeError:
+                    pass
         def settled(value=None, error=None):
+            if token != self.operation_token:
+                return
+            self.operation_finished = True
             self.busy = False
             if not self.alive:
                 return
@@ -301,6 +346,15 @@ class BookBatchDialog:
         if accepted is False:
             self.busy = False
             self.controls()
+
+    def _worker_settled(self, token):
+        if not self.alive or token != self.operation_token:
+            return
+        self.operation_finished = True
+        if (self.closing or getattr(self.frame, '_closing', False)
+                or self.frame.library is not self.library or self.frame.active != self.scope):
+            self.busy = False
+            self.dispose()
 
     def _progress(self, token, message):
         if (self.alive and self.busy and token == self.operation_token
@@ -426,6 +480,89 @@ class BookBatchDialog:
         self.begin('Running reviewed book batch' if run else 'Preparing managed book parts' if prepare
                    else 'Reviewing exact ordered book destinations', operation, completed, accept_after_stop=run)
 
+    def duration_changed(self, event=None):
+        self.duration_generation += 1
+        self.measured = None
+        if hasattr(self, 'buttons') and self.buttons:
+            self.controls()
+        if event is not None:
+            event.Skip()
+
+    def _duration_snapshot(self):
+        self.guard()
+        identity = self.selection()
+        plan = self.state.rows[self.state.index(identity)]['plan']
+        index, maximum = int(self.duration_index.GetValue()), int(self.duration_ms.GetValue())
+        plan.job_id(index)
+        from ..audio.measured_audio import options
+        template, output = self.duration_template.GetValue(), self.duration_output.GetValue().strip()
+        options(maximum, template)
+        if not output:
+            raise ValueError('Enter or choose an explicit ZIP path before measured review or verification.')
+        return (self.state.generation, self.duration_generation, identity, plan.fingerprint,
+                index, maximum, template, output)
+
+    def _duration_guard(self, snapshot):
+        self.guard()
+        if (snapshot[:2] != (self.state.generation, self.duration_generation)
+                or self.state.rows[self.state.index(snapshot[2])]['plan'].fingerprint != snapshot[3]):
+            raise ValueError('The selected Book, measured settings or destination changed. Preview again.')
+
+    def measured_action(self, publish=False):
+        snapshot = self._duration_snapshot()
+        _, _, identity, _, index, maximum, template, output = snapshot
+        if publish:
+            if self.measured is None or self.measured[0] != snapshot:
+                raise ValueError('Preview these exact measured frames and destination before Publish.')
+            _, approval, reviewed = self.measured
+        else:
+            from ..research.export_file import capture_export_destination
+            approval = capture_export_destination(output, private_root=self.library.root)
+            if not approval.require_absent:
+                raise FileExistsError('Choose a new measured ZIP filename; completed output is never overwritten.')
+            self.measured = None
+            reviewed = None
+        token = self.operation_token + 1
+        arguments = dict(maximum_ms=maximum, name_template=template, cancelled=self.stopped,
+            guard=lambda: self._duration_guard(snapshot), destination_approval=approval,
+            progress=lambda message: self.wx.CallAfter(self._progress, token, message))
+        def work():
+            if publish:
+                return self.books.publish_duration(identity, index, output,
+                    review_sha256=reviewed['approval_sha256'], **arguments)
+            return self.books.review_duration(identity, index, output, **arguments)
+        def accepted(value):
+            if publish:
+                self.measured = None
+                self.report('Measured PCM publication ' + value['status'] + '. Receipt: ' + value['id']
+                    + '\n' + value['output'] + '\n' + value['notice'])
+            else:
+                self._duration_guard(snapshot)
+                self.measured = (snapshot, approval, value)
+                self.report(duration_text(value))
+        self.begin('Publishing exact retained PCM frames' if publish else 'Reviewing exact completed PCM frames',
+                   work, accepted, accept_after_stop=publish)
+
+    def verify_measured(self):
+        snapshot = self._duration_snapshot()
+        identity, index, selected = snapshot[2], snapshot[4], snapshot[7]
+        def listed(rows):
+            self._duration_guard(snapshot)
+            position = self._choices('Saved measured publication receipts',
+                [row['created'] + ' — ' + row['status'] + ' — ' + row['id'] for row in rows])
+            if position is None:
+                return
+            receipt_id = rows[position]['id']
+            def verify():
+                self._duration_guard(snapshot)
+                return self.books.verify_duration(identity, index, receipt_id, output=selected,
+                                                   cancelled=self.stopped)
+            self.begin('Verifying existing measured archive and receipt', verify,
+                lambda row: self.report('Exact measured publication verified: ' + row['id']
+                    + '\n' + row['output'] + '\nNo new synthesis or runtime qualification.'))
+        self.begin('Reading saved measured publication metadata',
+                   lambda: self.books.duration_publications(identity, index), listed)
+
     def dispatch(self, key):
         try:
             if key == 'close':
@@ -484,6 +621,21 @@ class BookBatchDialog:
                 self.render(identity)
             elif key in ('preview', 'prepare', 'run'):
                 self.preview(prepare=key == 'prepare', run=key == 'run')
+            elif key == 'duration_choose':
+                prompt = self.wx.FileDialog(self.dialog, 'Choose a new measured PCM archive',
+                    wildcard='Measured PCM ZIP (*.zip)|*.zip', style=self.wx.FD_SAVE)
+                try:
+                    if prompt.ShowModal() != self.wx.ID_OK:
+                        return
+                    selected = prompt.GetPath()
+                finally:
+                    prompt.Destroy()
+                self.guard()
+                self.duration_output.SetValue(selected)
+            elif key in ('duration_review', 'duration_publish'):
+                self.measured_action(publish=key == 'duration_publish')
+            elif key == 'duration_verify':
+                self.verify_measured()
             elif key == 'saved':
                 def chosen(values):
                     index = self._choices('Saved ordered book batches', [value.title for value in values])
@@ -525,6 +677,10 @@ class BookBatchDialog:
         if self.busy:
             self.closing = True
             self.cancel.set()
+            if getattr(self, 'operation_finished', False):
+                self.busy = False
+                self.dispose()
+                return
             self.report('Closing after the owned book operation settles; existing receipts are retained.')
             if event is not None and event.CanVeto():
                 event.Veto()

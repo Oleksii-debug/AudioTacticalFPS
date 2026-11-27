@@ -104,12 +104,7 @@ class Config:
 
 
 def extract_page(asset, physical_index, config=Config()):
-    """Return a candidate, never a verified printed label or corrected quote.
-
-    Baseline OCR TSV coordinates are pixels in the original rendered image.
-    Optional orientation evidence has its own pixel coordinate frame.
-    Parser isolation and durable job checkpoints belong to the ingest runner.
-    """
+    """Keep the original bounded byte API and its exact extraction semantics."""
     deadline = time.monotonic() + config.timeout
     from pypdf import PdfReader
     import pypdfium2 as pdfium
@@ -118,6 +113,14 @@ def extract_page(asset, physical_index, config=Config()):
     if len(data) > 64 * 1024 * 1024:
         raise ValueError('source too large')
     reader = PdfReader(BytesIO(data))
+    with pdfium.PdfDocument(data) as doc:
+        return _extract_page_document(reader, doc, physical_index, config, sha256(data).hexdigest(), deadline=deadline)
+
+
+def _extract_page_document(reader, doc, physical_index, config, asset_digest, *, deadline=None):
+    """One current PDF/OCR implementation, reused by a held file-backed source."""
+    deadline = time.monotonic() + config.timeout if deadline is None else deadline
+    import pypdfium2 as pdfium
     if reader.is_encrypted or not 1 <= len(reader.pages) <= 1000:
         raise ValueError('encrypted or oversized PDF')
     if type(physical_index) is not int or not 1 <= physical_index <= len(reader.pages):
@@ -126,118 +129,117 @@ def extract_page(asset, physical_index, config=Config()):
     native = source.extract_text() or ''
     result = dict(physical_index=physical_index, printed_label=None,
                   printed_label_verified=False, raw_text=native, blocks=[], warnings=[],
-                  provenance=dict(asset_sha256=sha256(data).hexdigest(), native_text=native,
+                  provenance=dict(asset_sha256=asset_digest, native_text=native,
                                   native_engine='pypdf', native_version=metadata.version('pypdf'),
                                   rotation=source.rotation, config=vars(config).copy()))
     provenance = result['provenance']
-    with pdfium.PdfDocument(data) as doc:
-        if len(doc) != len(reader.pages):
-            raise ValueError('parser page count disagreement')
-        with closing(doc[physical_index - 1]) as page:
-            has_images = any(page.get_objects(filter=[pdfium.raw.FPDF_PAGEOBJ_IMAGE]))
-            visible = [c for c in native if not c.isspace()]
-            suspect = bool(visible) and (any(c == '\ufffd' or ord(c) < 32 for c in visible)
-                                         or sum(c.isalnum() for c in visible) / len(visible) < .4)
-            if native.strip() and not suspect and not has_images:
-                # Native extraction can include text never painted on this page.
-                # Reuse PDFium visibility and bounds APIs, retaining raw evidence.
-                reason = _native_visibility_warning(page, pdfium, config.max_pixels)
-                if reason:
-                    provenance['method'] = 'native_visibility_review'
-                    result['status'] = 'review_required'
-                    result['warnings'].append(reason)
-                    return result
-                provenance['method'] = 'native'
-                result['status'] = 'candidate'
-                return result
-            result['warnings'].append('ocr_required')
-            if has_images and native.strip():
-                result['warnings'].append('mixed_native_and_image')
-            provenance['renderer'] = 'pypdfium2 ' + metadata.version('pypdfium2')
-            width, height = page.get_size()
-            scale = config.dpi / 72
-            if not all(math.isfinite(v) and v > 0 for v in (width, height)) or math.ceil(width * scale) * math.ceil(height * scale) > config.max_pixels:
+    if len(doc) != len(reader.pages):
+        raise ValueError('parser page count disagreement')
+    with closing(doc[physical_index - 1]) as page:
+        has_images = any(page.get_objects(filter=[pdfium.raw.FPDF_PAGEOBJ_IMAGE]))
+        visible = [c for c in native if not c.isspace()]
+        suspect = bool(visible) and (any(c == '\ufffd' or ord(c) < 32 for c in visible)
+                                     or sum(c.isalnum() for c in visible) / len(visible) < .4)
+        if native.strip() and not suspect and not has_images:
+            # Native extraction can include text never painted on this page.
+            # Reuse PDFium visibility and bounds APIs, retaining raw evidence.
+            reason = _native_visibility_warning(page, pdfium, config.max_pixels)
+            if reason:
+                provenance['method'] = 'native_visibility_review'
                 result['status'] = 'review_required'
-                result['warnings'].append('render_limit')
+                result['warnings'].append(reason)
                 return result
-            with closing(page.render(scale=scale)) as bitmap:
-                image = bitmap.to_pil().convert('RGB')
-                provenance['render_size'] = image.size
-                # Near-white marks can still contain source text. Only an
-                # entirely white raster is eligible for automatic blank status.
-                if all(lo == 255 for lo, hi in image.getextrema()) and not native.strip():
-                    result['status'] = 'blank'
-                    provenance['method'] = 'render_blank'
-                    return result
-                try:
-                    def remaining():
-                        seconds = deadline - time.monotonic()
-                        if seconds <= 0:
-                            raise subprocess.TimeoutExpired('tesseract', config.timeout)
-                        return seconds
+            provenance['method'] = 'native'
+            result['status'] = 'candidate'
+            return result
+        result['warnings'].append('ocr_required')
+        if has_images and native.strip():
+            result['warnings'].append('mixed_native_and_image')
+        provenance['renderer'] = 'pypdfium2 ' + metadata.version('pypdfium2')
+        width, height = page.get_size()
+        scale = config.dpi / 72
+        if not all(math.isfinite(v) and v > 0 for v in (width, height)) or math.ceil(width * scale) * math.ceil(height * scale) > config.max_pixels:
+            result['status'] = 'review_required'
+            result['warnings'].append('render_limit')
+            return result
+        with closing(page.render(scale=scale)) as bitmap:
+            image = bitmap.to_pil().convert('RGB')
+            provenance['render_size'] = image.size
+            # Near-white marks can still contain source text. Only an
+            # entirely white raster is eligible for automatic blank status.
+            if all(lo == 255 for lo, hi in image.getextrema()) and not native.strip():
+                result['status'] = 'blank'
+                provenance['method'] = 'render_blank'
+                return result
+            try:
+                def remaining():
+                    seconds = deadline - time.monotonic()
+                    if seconds <= 0:
+                        raise subprocess.TimeoutExpired('tesseract', config.timeout)
+                    return seconds
 
-                    profile_options = ({'model_profile': config.model_profile}
-                                       if config.model_profile != 'installed' else {})
-                    runtime = discover_ocr_runtime('eng' if config.model_pack_path else config.languages,
-                                                   orientation=False if config.model_pack_path else config.orientation,
-                                                   remaining=remaining, **profile_options)
-                    runtime = bind_model_pack(runtime, config.model_pack_path, config.model_pack_sha256,
-                                              languages=config.languages, orientation=config.orientation,
-                                              remaining=remaining)
-                    if runtime is None:
-                        result['status'] = 'review_required'
-                        result['warnings'].append('ocr_engine_missing')
-                        return result
-                    exe = runtime.executable
-                    if runtime.portable or config.model_pack_path or getattr(runtime, 'managed', False):
-                        provenance['ocr_runtime'] = runtime.fingerprint()
-
-                    with tempfile.TemporaryDirectory() as tmp:
-                        def run(args):
-                            return run_ocr(runtime, args, remaining=remaining)
-
-                        model_args = []
-                        if config.model_policy == POLICY:
-                            try:
-                                report = run([exe, '--list-langs']).stdout.decode('utf-8')
-                                model_args, model_provenance = stage_pinned_models(
-                                    report, config.languages, Path(tmp) / 'verified-models', remaining)
-                            except (ValueError, OSError, subprocess.SubprocessError):
-                                result['status'] = 'review_required'
-                                result['warnings'].append('pinned_ocr_model_unavailable_or_invalid')
-                                return result
-                            provenance['ocr_model'] = model_provenance
-
-                        def recognize(raster, name):
-                            inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
-                            raster.save(inp, dpi=(config.dpi, config.dpi))
-                            run([exe, str(inp), str(out), '-l', config.languages,
-                                 '--dpi', str(config.dpi), '--psm', '3', *model_args,
-                                 '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'])
-                            return (_read_ocr_output(out.with_suffix('.txt')),
-                                    _read_ocr_output(out.with_suffix('.tsv')))
-
-                        provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
-                        raw, tsv = recognize(image, 'baseline')
-                        provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
-                        if config.orientation:
-                            from .ocr_orientation_bridge import orientation_candidate
-                            provenance['orientation'] = orientation_candidate(
-                                image, config, exe, remaining, run, recognize,
-                                native_cli=runtime.portable or bool(config.model_pack_path) or getattr(runtime, 'managed', False))
-                        runtime.assert_unchanged(remaining)
-                except _OcrOutputLimit:
+                profile_options = ({'model_profile': config.model_profile}
+                                   if config.model_profile != 'installed' else {})
+                runtime = discover_ocr_runtime('eng' if config.model_pack_path else config.languages,
+                                               orientation=False if config.model_pack_path else config.orientation,
+                                               remaining=remaining, **profile_options)
+                runtime = bind_model_pack(runtime, config.model_pack_path, config.model_pack_sha256,
+                                          languages=config.languages, orientation=config.orientation,
+                                          remaining=remaining)
+                if runtime is None:
                     result['status'] = 'review_required'
-                    result['warnings'].append('ocr_output_limit')
+                    result['warnings'].append('ocr_engine_missing')
                     return result
-                except OcrRuntimeError:
-                    result['status'] = 'review_required'
-                    result['warnings'].append('portable_ocr_runtime_unavailable_or_invalid')
-                    return result
-                except (OSError, subprocess.SubprocessError, UnicodeError):
-                    result['status'] = 'review_required'
-                    result['warnings'].append('ocr_failed_or_timed_out')
-                    return result
+                exe = runtime.executable
+                if runtime.portable or config.model_pack_path or getattr(runtime, 'managed', False):
+                    provenance['ocr_runtime'] = runtime.fingerprint()
+
+                with tempfile.TemporaryDirectory() as tmp:
+                    def run(args):
+                        return run_ocr(runtime, args, remaining=remaining)
+
+                    model_args = []
+                    if config.model_policy == POLICY:
+                        try:
+                            report = run([exe, '--list-langs']).stdout.decode('utf-8')
+                            model_args, model_provenance = stage_pinned_models(
+                                report, config.languages, Path(tmp) / 'verified-models', remaining)
+                        except (ValueError, OSError, subprocess.SubprocessError):
+                            result['status'] = 'review_required'
+                            result['warnings'].append('pinned_ocr_model_unavailable_or_invalid')
+                            return result
+                        provenance['ocr_model'] = model_provenance
+
+                    def recognize(raster, name):
+                        inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
+                        raster.save(inp, dpi=(config.dpi, config.dpi))
+                        run([exe, str(inp), str(out), '-l', config.languages,
+                             '--dpi', str(config.dpi), '--psm', '3', *model_args,
+                             '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'])
+                        return (_read_ocr_output(out.with_suffix('.txt')),
+                                _read_ocr_output(out.with_suffix('.tsv')))
+
+                    provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
+                    raw, tsv = recognize(image, 'baseline')
+                    provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
+                    if config.orientation:
+                        from .ocr_orientation_bridge import orientation_candidate
+                        provenance['orientation'] = orientation_candidate(
+                            image, config, exe, remaining, run, recognize,
+                            native_cli=runtime.portable or bool(config.model_pack_path) or getattr(runtime, 'managed', False))
+                    runtime.assert_unchanged(remaining)
+            except _OcrOutputLimit:
+                result['status'] = 'review_required'
+                result['warnings'].append('ocr_output_limit')
+                return result
+            except OcrRuntimeError:
+                result['status'] = 'review_required'
+                result['warnings'].append('portable_ocr_runtime_unavailable_or_invalid')
+                return result
+            except (OSError, subprocess.SubprocessError, UnicodeError):
+                result['status'] = 'review_required'
+                result['warnings'].append('ocr_failed_or_timed_out')
+                return result
     provenance.update(method='ocr_candidate', ocr_text=raw, ocr_tsv=tsv, psm=3)
     try:
         result['blocks'] = _ocr_blocks(tsv, provenance['render_size'])

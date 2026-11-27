@@ -458,7 +458,7 @@ class Storage:
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
             self._check()
 
-    def backup(self, path):
+    def backup(self, path, *, cancelled=lambda: False, maximum_bytes=None):
         """Publish a checked SQLite snapshot without replacing any existing path.
 
         Requires a local filesystem supporting hard links. Interrupted processes
@@ -466,6 +466,13 @@ class Storage:
         The caller must own a stable private parent directory and exclude
         concurrent namespace writers; these checks are not a hostile-directory lock.
         """
+        if not callable(cancelled) or (maximum_bytes is not None and
+                (type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 64 * 1024**3)):
+            raise ValueError('invalid backup cancellation or byte budget')
+        def check():
+            if cancelled():
+                raise InterruptedError('Database backup cancelled before publication.')
+        check()
         if self.db.in_transaction:
             raise ValueError('backup forbidden inside publication transaction')
         self._require_pragmas()
@@ -477,17 +484,32 @@ class Storage:
             staged = Path(work) / 'snapshot.db'
             dst = sqlite3.connect(staged)
             try:
-                self.db.backup(dst)
+                page_size = self.db.execute('PRAGMA page_size').fetchone()[0]
+                def progress(status, remaining, total):
+                    check()
+                    if maximum_bytes is not None and total * page_size > maximum_bytes:
+                        raise ValueError('database exceeds the selected backup byte budget')
+                self.db.backup(dst, pages=256, progress=progress)
                 # A backup of a WAL source may retain the WAL file format.
                 # Convert only the private snapshot to a standalone database.
                 if dst.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                     raise ValueError('snapshot journal mode is not DELETE')
             finally:
                 dst.close()
+            check()
+            if maximum_bytes is not None and staged.stat().st_size > maximum_bytes:
+                raise ValueError('database exceeds the selected backup byte budget')
             copy = Storage(staged)
             try:
-                copy.check()
+                copy.db.set_progress_handler(lambda: int(bool(cancelled())), 10000)
+                try:
+                    copy.check()
+                except sqlite3.Error:
+                    check()
+                    raise
+                check()
             finally:
+                copy.db.set_progress_handler(None, 0)
                 copy.close()
             if _sidecars(staged):
                 raise ValueError('snapshot has sidecars')
@@ -497,6 +519,7 @@ class Storage:
             # Unsupported filesystems fail closed; no overwrite/copy fallback.
             if _sidecars(path):
                 raise FileExistsError(path)
+            check()
             os.link(staged, path)
 
 

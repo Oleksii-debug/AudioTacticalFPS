@@ -33,7 +33,7 @@ def streamed_text_attestor(db, workspace, resolve_original, *, cancelled=lambda:
             if profile is None or row[0] != canonical(profile.configuration()):
                 return False
             path = resolve_original(identity)
-            key = (identity.asset_sha256, profile.maximum_bytes)
+            key = (identity.asset_sha256, canonical(profile.configuration()))
             plan = cache.get(key)
             fresh = False
             if plan is not None:
@@ -43,7 +43,9 @@ def streamed_text_attestor(db, workspace, resolve_original, *, cancelled=lambda:
                         fresh = stream_change_time(stream) == plan.change_time
             if not fresh:
                 plan = inspect_text(path, profile, expected_digest=identity.asset_sha256, cancelled=cancelled)
-                # At most 16,384 tiny fragment identities, never raw documents.
+                # Ordinary aggregate cache stays at 16,384 identities; one
+                # explicitly admitted large profile can hold up to 65,536
+                # bounded hashes. It never retains the original text.
                 while cache and (len(cache) >= 8 or sum(len(item.fragments) for item in cache.values())
                                   + len(plan.fragments) > 16384):
                     cache.pop(next(iter(cache)))

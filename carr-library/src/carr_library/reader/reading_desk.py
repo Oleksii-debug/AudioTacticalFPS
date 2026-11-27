@@ -120,11 +120,16 @@ class ReadingDesk:
             identity, metadata = self._header(db)
             if revision is not None and identity.revision != revision:
                 raise ValueError('The saved reading revision is no longer active. Open the book again.')
+            from ..ingest.source_profiles import LargeTextProfile, profile_from_config
+            extraction = db.execute('SELECT config FROM revision WHERE id=?',
+                                    (identity.revision,)).fetchone()
+            profile = profile_from_config(extraction[0]) if extraction is not None else None
+            maximum_pages = profile.maximum_records if isinstance(profile, LargeTextProfile) else MAX_PAGES
             rows = db.execute(
                 'SELECT ordinal,physical,printed,verified,digest FROM page '
                 'WHERE revision=? ORDER BY ordinal LIMIT ?',
-                (identity.revision, MAX_PAGES + 1)).fetchall()
-            if not rows or len(rows) > MAX_PAGES:
+                (identity.revision, maximum_pages + 1)).fetchall()
+            if not rows or len(rows) > maximum_pages:
                 raise ValueError('The source has no readable pages or exceeds the reader page limit.')
             descriptors = []
             previous = None

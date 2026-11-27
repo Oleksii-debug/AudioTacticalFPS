@@ -37,6 +37,8 @@ from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer, _regular_if_present
 from .data_paths import guard_data_directory
 from .backup_files import local_path, publish_tree, optional_present
+from .backup_capacity import capacity, manifest_capacity, LARGE_SOURCE_PROFILE
+from .audio.jobs import sha256_file, file_identity, verified_reader
 from .backup_historical import (
     DIRECTORY as HISTORICAL_DIRECTORY, is_state_path as _historical_path,
     state_paths as _historical_files, validate_state_tree as _validate_historical,
@@ -115,6 +117,10 @@ from .extract.ocr_languages import FILENAME as OCR_PRESETS, MAX_PRESET_BYTES, va
 from .progress import (
     FILENAME as PROGRESS_PREFERENCES, MAX_BYTES as MAX_PROGRESS_PREFERENCES,
     decode_preferences as decode_progress_preferences,
+)
+from .assistant.templates import (
+    is_template_path as _template_path, MAX_TEMPLATES,
+    MAX_COLLECTION_BYTES as MAX_TEMPLATE_COLLECTION_BYTES, template_snapshot_guard,
 )
 from .assistant.snapshots import (
     MAX_JOBS as MAX_ASSISTANT_JOBS, MAX_SNAPSHOT_BYTES as MAX_ASSISTANT_BYTES,
@@ -507,7 +513,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                 # The outer application writer is already held. Publication and
                 # snapshot use that same order; never reacquire it reentrantly.
                 stack.enter_context(state_write_guard(directory))
-                for identity in sorted({path.name[:32] for path in assistant}):
+                stack.enter_context(template_snapshot_guard(root))
+                for identity in sorted({path.name[:32] for path in assistant if path.parent == directory}):
                     stack.enter_context(snapshot_job_guard(directory, identity))
             except RuntimeError as exc:
                 raise RestoreError('An assistant job or control is being updated. Retry the backup after it stops.') from exc
@@ -859,8 +866,16 @@ def _sync_directory(path):
             os.close(fd)
 
 
+def _database_digest(path, cancelled):
+    def stopping():
+        if cancelled():
+            raise InterruptedError('Database backup hashing cancelled.')
+        return False
+    return sha256_file(path, cancelled=stopping)
+
+
 def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
-                  max_sidecar_bytes=MAX_SIDECAR_BYTES, cancelled=lambda: False):
+                  max_sidecar_bytes=MAX_SIDECAR_BYTES, capacity_profile=None, cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
     The host's explicit Backup action authorizes all-workspace inclusion. The
@@ -872,6 +887,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     can snapshot its own durable checkpoint using its actual native job guard.
     File and total-byte budgets are caller-controlled; audio is copied in chunks.
     """
+    limits = capacity(capacity_profile)
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
     destination = _destination(destination, app.root)
     with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files, cancelled=cancelled) as check_projects:
@@ -883,13 +899,24 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             inventory = _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled)
             snapshot = stage / DATABASE
             with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
-                storage.backup(snapshot)
+                if capacity_profile is not None:
+                    import shutil
+                    asset_total = storage.db.execute('SELECT coalesce(sum(size),0) FROM catalog_asset').fetchone()[0]
+                    journal_path = app.root / 'imports.sqlite'
+                    journal_size = _plain(journal_path).st_size if optional_present(journal_path) else 0
+                    required_space = (2 * _plain(app.database).st_size + 2 * asset_total + journal_size
+                                      + sum(identity[4] for identity in inventory.values()) + 128 * 1024**2)
+                    if shutil.disk_usage(destination.parent).free < required_space:
+                        raise RestoreError('Not enough free disk space for the selected complete-backup profile.')
+                    storage.backup(snapshot, cancelled=cancelled, maximum_bytes=limits['database'])
+                else:
+                    storage.backup(snapshot)
             size = _plain(snapshot).st_size
-            if not 0 < size <= MAX_DATABASE:
+            if not 0 < size <= limits['database']:
                 raise RestoreError('database exceeds backup size limit')
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
-                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                    include_all_workspaces=True, max_assets=limits['asset_count'], max_bytes=limits['assets'],
                     cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 _validate_readers(snapshot_storage.db, _snapshot_readers(app.root, cancelled=cancelled),
@@ -927,7 +954,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if any(optional_present(app.root / name) for name in
                    ('imports.sqlite', 'import-requests', 'import-batches', HISTORICAL_DIRECTORY)):
                 from .pending_backup import snapshot_pending
-                pending = snapshot_pending(app, stage / PENDING, cancelled=cancelled)
+                pending = snapshot_pending(app, stage / PENDING, capacity_profile=capacity_profile, cancelled=cancelled)
             # Metadata is not a content identity. In particular, Windows file
             # creation time can survive an equal-size edit with restored mtime.
             # Reuse the bounded streaming reader after all other components
@@ -946,20 +973,22 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 raise RestoreError('Reading/audio state changed during final backup verification.')
             check_projects()
             _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)
-            managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
-            manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
+            managed = capacity_profile is not None or pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
+            manifest = dict(version=6 if capacity_profile is not None else 5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
-                database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
+                database=dict(filename=DATABASE, size_bytes=size, sha256=_database_digest(snapshot, cancelled)),
                 assets=_asset_manifest(entries))
-            if sidecars or pending is not None:
+            if sidecars or pending is not None or capacity_profile is not None:
                 manifest['sidecars'] = sidecars if managed else [
                     dict(filename=entry['path'], size_bytes=entry['size_bytes'], sha256=entry['sha256'])
                     for entry in sidecars]
             if pending is not None:
                 manifest['pending'] = pending
+            if capacity_profile is not None:
+                manifest.update(capacity_profile=capacity_profile, pending=pending)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
-            if len(raw) > MAX_MANIFEST:
+            if len(raw) > limits['manifest']:
                 raise RestoreError('manifest size limit')
             _sync_file(stage / MANIFEST, raw)
             if cancelled():
@@ -973,7 +1002,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             _sync_directory(destination / ORIGINALS)
-            if sidecars or pending is not None:
+            if sidecars or pending is not None or capacity_profile is not None:
                 sidecar_destination = destination / SIDECARS if managed else destination
                 if managed:
                     sidecar_destination.mkdir(mode=0o700)
@@ -1070,10 +1099,10 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
     size = _plain(directory / MANIFEST).st_size
-    if not 0 < size <= MAX_MANIFEST:
+    if not 0 < size <= capacity(LARGE_SOURCE_PROFILE)['manifest']:
         raise RestoreError('manifest size limit')
     with (directory / MANIFEST).open('rb') as stream:
-        raw = stream.read(MAX_MANIFEST + 1)
+        raw = stream.read(capacity(LARGE_SOURCE_PROFILE)['manifest'] + 1)
     if len(raw) != size or sha256(raw).hexdigest() != expected_manifest_sha256:
         raise RestoreError('manifest digest mismatch')
     try:
@@ -1081,9 +1110,14 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3, 4, 5)):
+            or manifest['version'] not in (1, 2, 3, 4, 5, 6)):
         raise RestoreError('unsupported library manifest')
+    limits = manifest_capacity(manifest)
+    if size > limits['manifest']:
+        raise RestoreError('manifest exceeds its selected capacity profile')
     fields = {'version','kind','schema_version','database','assets'}
+    if manifest['version'] == 6:
+        fields.add('capacity_profile')
     if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
     legacy_state = _legacy_state_layout(manifest)
@@ -1098,12 +1132,12 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         fields.add('reading_state' if 'reading_state' in manifest else 'sidecars')
     elif manifest['version'] >= 4:
         fields.add('sidecars')
-        if manifest['version'] == 5:
+        if manifest['version'] >= 5:
             fields.add('pending')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
-            or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
+            or type(manifest['assets']) is not list or len(manifest['assets']) > limits['asset_count']):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:
         fingerprint = manifest['schema_fingerprint']
@@ -1113,7 +1147,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
     database = manifest['database']
     if (type(database) is not dict or set(database) != {'filename','size_bytes','sha256'}
             or database['filename'] != DATABASE or type(database['size_bytes']) is not int
-            or not 0 < database['size_bytes'] <= MAX_DATABASE
+            or not 0 < database['size_bytes'] <= limits['database']
             or not isinstance(database['sha256'],str)
             or not re.fullmatch(r'[0-9a-f]{64}',database['sha256'])):
         raise RestoreError('invalid database manifest')
@@ -1126,18 +1160,24 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
                 or type(asset['size_bytes']) is not int or asset['size_bytes'] < 1
                 or asset['size_bytes'] > MAX_BYTES and not (
-                    manifest['version'] == 5 and asset['mime'] == 'text/plain'
-                    and asset['size_bytes'] <= 128 * 1024**2)):
+                    (manifest['version'] == 5 and asset['mime'] == 'text/plain'
+                     and asset['size_bytes'] <= 128 * 1024**2)
+                    or (manifest['version'] == 6 and asset['mime'] in ('text/plain', 'application/pdf')
+                        and asset['size_bytes'] <= 4 * 1024**3))):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')
         filenames.add(asset['filename'])
         digests.add(asset['sha256'])
         total += asset['size_bytes']
-        if total > MAX_ASSET_BYTES:
+        if total > limits['assets']:
             raise RestoreError('asset manifest byte limit')
     if 'pending' in manifest:
-        if manifest['pending'] is not None or _historical_layout(manifest) != 'state-reading':
+        if manifest['version'] == 6 and manifest['pending'] is not None:
+            if (type(manifest['pending']) is not dict or manifest['pending'].get('version') != 4
+                    or manifest['pending'].get('capacity_profile') != manifest['capacity_profile']):
+                raise RestoreError('Pending component capacity differs from the complete backup.')
+        if manifest['pending'] is not None or (manifest['version'] != 6 and _historical_layout(manifest) != 'state-reading'):
             from .pending_backup import validate_pending
             validate_pending(manifest['pending'])
     if legacy_state:
@@ -1169,6 +1209,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         reading_import_total, reading_import_count = 0, 0
         reader_session_total, reader_session_count = 0, 0
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
+        template_total, template_count = 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         transcription_total, transcription_files, transcription_jobs = 0, 0, set()
         recording_total, recording_files, recording_ids = 0, 0, set()
@@ -1239,13 +1280,20 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2 + MAX_ARCHIVES + MAX_SESSIONS):
                 raise RestoreError('reader sidecar count or byte limit')
             if _assistant_path(entry[field]):
-                assistant_total += entry['size_bytes']
-                assistant_controls += int(entry[field].endswith('.control.json'))
-                assistant_jobs += int(not entry[field].endswith('.control.json'))
-                if (entry['size_bytes'] > _assistant_limit(entry[field])
-                        or assistant_total > MAX_ASSISTANT_BYTES
-                        or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):
-                    raise RestoreError('assistant sidecar count or byte limit')
+                if entry['size_bytes'] > _assistant_limit(entry[field]):
+                    raise RestoreError('assistant sidecar file byte limit')
+                if _template_path(entry[field]):
+                    template_total += entry['size_bytes']
+                    template_count += 1
+                    if template_total > MAX_TEMPLATE_COLLECTION_BYTES or template_count > MAX_TEMPLATES:
+                        raise RestoreError('workflow template count or byte limit')
+                else:
+                    assistant_total += entry['size_bytes']
+                    assistant_controls += int(entry[field].endswith('.control.json'))
+                    assistant_jobs += int(not entry[field].endswith('.control.json'))
+                    if (assistant_total > MAX_ASSISTANT_BYTES
+                            or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):
+                        raise RestoreError('assistant sidecar count or byte limit')
             if _translation_path(entry[field]):
                 adapter = _translation_adapter()
                 translation_total += entry['size_bytes']
@@ -1268,7 +1316,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     raise RestoreError('transcription sidecar count or byte limit')
     normalized = _manifest_sidecars(manifest)
     expected_names = {DATABASE, ORIGINALS, MANIFEST}
-    if 'pending' in manifest:
+    if manifest.get('pending') is not None:
         expected_names.add(PENDING)
     expected_names.update({SIDECARS} if subdirectory else {entry['path'].split('/')[0] for entry in normalized})
     if set(p.name for p in directory.iterdir()) != expected_names:
@@ -1278,14 +1326,16 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
     return manifest
 
 
-def _copy_database(source, target, library_manifest):
+def _copy_database(source, target, library_manifest, *, cancelled=lambda: False):
     manifest = library_manifest['database']
     if _plain(source).st_size != manifest['size_bytes']:
         raise RestoreError('database size mismatch')
     count = 0
     digest = sha256()
-    with source.open('rb') as incoming, target.open('xb') as output:
+    with verified_reader(source, expected_identity=file_identity(_plain(source))) as incoming, target.open('xb') as output:
         while block := incoming.read(min(1024 * 1024, manifest['size_bytes'] + 1 - count)):
+            if cancelled():
+                raise InterruptedError('Database restoration cancelled before publication.')
             count += len(block)
             if count > manifest['size_bytes']:
                 raise RestoreError('database grew during restore')
@@ -1309,6 +1359,7 @@ def _copy_database(source, target, library_manifest):
 def _verify_contents(source, stage, manifest, *, copy_files=False,
                      expected_manifest_sha256=None, cancelled=lambda: False):
     """One byte/schema/source verifier for restoration and read-only inspection."""
+    limits = manifest_capacity(manifest)
     _plain(source / ORIGINALS, directory=True)
     sidecars = _manifest_sidecars(manifest)
     _, subdirectory = _sidecar_layout(manifest)
@@ -1322,9 +1373,20 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
         if actual != entry:
             raise RestoreError('sidecar size or digest mismatch')
     snapshot = stage / DATABASE
-    _copy_database(source / DATABASE, snapshot, manifest)
+    if manifest['version'] == 6:
+        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
+    else:
+        _copy_database(source / DATABASE, snapshot, manifest)
     with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
-        storage.check()
+        storage.db.set_progress_handler(lambda: int(bool(cancelled())), 10000)
+        try:
+            storage.check()
+        except sqlite3.Error:
+            if cancelled():
+                raise InterruptedError('Database verification cancelled before publication.')
+            raise
+        finally:
+            storage.db.set_progress_handler(None, 0)
         if sidecars:
             checked_root = stage / SIDECARS if copy_files else sidecar_source
             if _legacy_state_layout(manifest):
@@ -1345,13 +1407,13 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
                 _validate_books(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
-            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+            include_all_workspaces=True, max_assets=limits['asset_count'], max_bytes=limits['assets'],
             cancelled=cancelled)
         if _asset_manifest(entries) != manifest['assets']:
             raise RestoreError('asset manifest disagrees with the database')
         if copy_files:
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                include_all_workspaces=True, max_assets=limits['asset_count'], max_bytes=limits['assets'],
                 cancelled=cancelled)
     if any(_identity(_sidecar_info(sidecar_source, name)) != identity
            for name, identity in identities.items()):

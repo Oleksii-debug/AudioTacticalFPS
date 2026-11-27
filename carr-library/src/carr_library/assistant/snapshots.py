@@ -10,7 +10,10 @@ import re
 import stat
 
 from .state import read_bytes, regular
-from .validation import validate_state_document
+from .validation import validate_state_document, decode_state_json
+from ..backup_files import optional_present
+from .templates import (is_template_path, template_paths, validate_saved_template,
+                        MAX_TEMPLATE_BYTES)
 
 
 DIRECTORY = 'state/assistant'
@@ -23,13 +26,16 @@ _TRANSIENT = re.compile(r'(?:\.state\.lock|[0-9a-f]{32}\.lock|\.[0-9a-f]{32}(?:\
 
 
 def is_state_path(relative):
-    return (isinstance(relative, str) and relative.startswith(DIRECTORY + '/')
+    return (is_template_path(relative) or
+            isinstance(relative, str) and relative.startswith(DIRECTORY + '/')
             and _DOCUMENT.fullmatch(relative[len(DIRECTORY) + 1:]) is not None)
 
 
 def state_limit(relative):
     if not is_state_path(relative):
         raise ValueError('Unsupported assistant backup sidecar.')
+    if is_template_path(relative):
+        return MAX_TEMPLATE_BYTES
     return MAX_CONTROL_BYTES if relative.endswith('.control.json') else MAX_JOB_BYTES
 
 
@@ -45,7 +51,7 @@ def state_paths(root, *, cancelled=lambda: False):
     folder = root
     for part in DIRECTORY.split('/'):
         folder = folder / part
-        if not os.path.lexists(folder):
+        if not optional_present(folder):
             return ()
         _directory(folder)
     paths, jobs, controls, total, entries = [], set(), set(), 0, 0
@@ -57,6 +63,10 @@ def state_paths(root, *, cancelled=lambda: False):
             entries += 1
             if entries > MAX_JOBS * 4 + 16:
                 raise ValueError('Assistant checkpoint directory exceeds its entry budget.')
+            if path.name == 'templates':
+                _directory(path)
+                paths.extend(template_paths(root, cancelled=cancelled))
+                continue
             # A disposable-looking name never permits following a link or
             # ignoring a directory inside this private namespace.
             info = regular(path)
@@ -202,6 +212,9 @@ def validate_state_tree(db, root, *, cancelled=lambda: False):
     for path in state_paths(root, cancelled=cancelled):
         relative = path.relative_to(root).as_posix()
         raw = read_bytes(path, maximum=state_limit(relative))
+        if is_template_path(relative):
+            validate_saved_template(relative, decode_state_json(raw))
+            continue
         value = validate_state_document(path.name, raw)
         if not path.name.endswith('.control.json'):
             validate_sources(db, value)

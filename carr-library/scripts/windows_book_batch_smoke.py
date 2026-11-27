@@ -147,6 +147,40 @@ def run_native():
                         state['phase'] = 5
                 elif phase == 5 and ready():
                     check('native resume verifies existing production without new synthesis', len(engine.calls) == 2)
+                    view.duration_index.SetValue('1')
+                    view.duration_ms.SetValue('30')
+                    view.duration_output.SetValue(str(root / 'Виміряна книжка ü.zip'))
+                    state['phase'] = 50
+                elif phase == 50 and ready():
+                    if press_next('duration_review'):
+                        state['phase'] = 51
+                elif phase == 51 and ready():
+                    check('actual measured preview retained without synthesis or publication',
+                          view.measured is not None and len(view.measured[2]['content']['parts']) >= 3
+                          and len(engine.calls) == 2 and not (root / 'Виміряна книжка ü.zip').exists())
+                    state['first_duration_hash'] = view.measured[2]['approval_sha256']
+                    view.duration_ms.SetValue('40')
+                    check('native measured setting change revokes old approval',
+                          view.measured is None and not view.buttons['duration_publish'].IsEnabled())
+                    state['phase'] = 52
+                elif phase == 52 and ready():
+                    if press_next('duration_review'):
+                        state['phase'] = 53
+                elif phase == 53 and ready():
+                    check('actual re-review pins changed measured duration',
+                          view.measured is not None
+                          and view.measured[2]['approval_sha256'] != state['first_duration_hash'])
+                    if press_next('duration_publish'):
+                        state['phase'] = 54
+                elif phase == 54 and ready():
+                    from carr_library.audio.measured_audio import inspect as inspect_measured
+                    publication = root / 'Виміряна книжка ü.zip'
+                    check('native measured Publish has a verified exact PCM archive',
+                          publication.is_file() and inspect_measured(publication)['content']['pcm']['frames'] > 0
+                          and len(engine.calls) == 2 and view.measured is None)
+                    check('native completed publication exposes retained receipt',
+                          'publication complete' in view.report_box.GetValue()
+                          and 'not new synthesis' in view.report_box.GetValue())
                     def held():
                         hold_started.set()
                         if not hold_release.wait(8):
@@ -190,7 +224,7 @@ def run_native():
             check('complete native state sequence', state['phase'] == 7 and not state['active'])
             print(json.dumps({'status': 'PASS', 'checks': len(checks), 'native_order': 'PASS',
                 'native_prepare': 'PASS', 'actual_ffmpeg_receipt_reuse': 'PASS',
-                'native_close_settlement': 'PASS', 'voice_quality': 'NOT_QUALIFIED', 'nvda': 'NOT_RUN'}), flush=True)
+                'native_close_settlement': 'PASS', 'native_measured_pcm': 'PASS', 'voice_quality': 'NOT_QUALIFIED', 'nvda': 'NOT_RUN'}), flush=True)
             return 0
         finally:
             state['active'] = False
