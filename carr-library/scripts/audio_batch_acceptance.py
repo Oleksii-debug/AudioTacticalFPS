@@ -7,15 +7,19 @@ from argparse import ArgumentParser
 from collections import Counter
 from hashlib import sha256
 import importlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import runpy
 import shutil
+import stat
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
+import tomllib
+import traceback
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,7 +65,7 @@ def source_identity(results):
     require(source['source_commit'] == git('rev-parse', 'HEAD') == os.environ['GITHUB_SHA'],
             'The event checkout source commit changed.')
     require(source['source_tree'] == git('rev-parse', 'HEAD^{tree}'), 'The source tree changed.')
-    require(git('diff', '--name-only', 'HEAD', '--') == '', 'Tracked candidate source changed.')
+    require(git('diff', '--name-only', 'HEAD', '--', ':/') == '', 'Tracked candidate source changed.')
     wheel = read(results / 'source-wheel.json')
     require(wheel['source_commit'] == source['source_commit'], 'The wheel belongs to another source.')
     require(file_hash(os.environ['CARR_BATCH_WHEEL']) == wheel['wheel_sha256'], 'The wheel bytes changed.')
@@ -90,6 +94,63 @@ def installed_identity(results):
             'Installed inventory belongs to another wheel.')
     return {'module_origins': origins, 'installed_python': files,
             'wheel_sha256': before['wheel_sha256']}
+
+
+def checkout_inventory():
+    """Retain every tracked repository file, independently of wheel packaging."""
+    repository = ROOT.parent.resolve(strict=True)
+    result = {}
+    for row in git('ls-tree', '-rz', '--full-tree', 'HEAD').split('\0'):
+        if not row:
+            continue
+        header, name = row.split('\t', 1)
+        mode, kind, identity = header.split()
+        require(kind == 'blob' and mode in ('100644', '100755'),
+                'The qualification checkout contains a nonregular tracked entry: ' + name)
+        path = repository / name
+        require(path.resolve(strict=True).is_relative_to(repository)
+                and stat.S_ISREG(path.lstat().st_mode) and not path.is_symlink(),
+                'A tracked source path escaped the checkout: ' + name)
+        result[name] = {'git_blob': identity, 'mode': mode, 'sha256': file_hash(path)}
+    require(result, 'The complete tracked source inventory is empty.')
+    return result
+
+
+def source_python_inventory(checkout, installed):
+    """Use the existing explicit-package recipe, not a recursive wheel guess."""
+    spec = importlib.util.spec_from_file_location(
+        '_batch_source_wheel', ROOT / 'packaging' / 'source_wheel.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    entries = {name: (row['mode'], 'blob', row['git_blob']) for name, row in checkout.items()}
+    project = tomllib.loads(module._blob(ROOT.parent, entries, 'carr-library/pyproject.toml').decode('utf-8'))
+    admitted, _ = module._inventory(project, entries)
+    packaged = {name: checkout[path]['sha256'] for name, path in admitted.items()
+                if name.endswith('.py') and name.split('/')[0] in ('carr_library', 'bootstrap')}
+    require(packaged == installed,
+            'Declared package Python differs from the exact source-bound installed wheel.')
+    complete = {}
+    for name, row in checkout.items():
+        for prefix, package in (('carr-library/src/carr_library/', 'carr_library/'),
+                                ('carr-library/bootstrap/', 'bootstrap/')):
+            if name.startswith(prefix) and name.endswith('.py'):
+                complete[package + name[len(prefix):]] = row['sha256']
+    require(set(packaged) <= set(complete), 'A declared Python file is absent from the complete checkout.')
+    return {'installed': installed, 'source': complete,
+            'source_only': {name: value for name, value in complete.items() if name not in packaged}}
+
+
+def failure_diagnostics(log, error):
+    """Expose bounded actual child output without requiring artifact download."""
+    print('FAILURE TRACEBACK (last 12000 characters):', flush=True)
+    print(''.join(traceback.format_exception(type(error), error, error.__traceback__))[-12000:], flush=True)
+    if log.is_file():
+        with log.open('rb') as stream:
+            stream.seek(0, 2)
+            stream.seek(max(0, stream.tell() - 24000))
+            tail = stream.read(24000).decode('utf-8-sig', errors='replace')
+        print('ACTUAL PYTEST OUTPUT (last 24000 bytes):', flush=True)
+        print(tail, flush=True)
 
 
 def runtime_identity():
@@ -152,9 +213,29 @@ def inventory():
             if not actual.is_relative_to(origin.parent):
                 raise ValueError('An application source escaped its declared package.')
             files[name + '/' + path.relative_to(origin.parent).as_posix()] = hashlib.sha256(actual.read_bytes()).hexdigest()
-    if files != expected:
-        raise ValueError('The test interpreter application bytes differ from the source-bound wheel.')
-    return {'mode': mode, 'isolated': bool(sys.flags.isolated), 'module_origins': origins, 'files': files}
+    wanted_files = expected['source' if mode == 'source' else 'installed']
+    if files != wanted_files:
+        missing = sorted(wanted_files.keys() - files.keys())
+        extra = sorted(files.keys() - wanted_files.keys())
+        changed = sorted(name for name in files.keys() & wanted_files.keys() if files[name] != wanted_files[name])
+        raise ValueError('Application inventory differs: ' + json.dumps(
+            {'missing': missing, 'extra': extra, 'changed': changed})[:12000])
+    # The complete checkout can contain explicitly unshipped diagnostics. Those
+    # bytes remain attested above; they are never admitted as application code.
+    for name, module in tuple(sys.modules.items()):
+        top = name.partition('.')[0]
+        if top not in origins or module is None or not getattr(module, '__file__', None):
+            continue
+        actual = pathlib.Path(module.__file__).resolve(strict=True)
+        package = pathlib.Path(origins[top]).parent
+        if not actual.is_relative_to(package):
+            raise ValueError('An executed application module escaped its exact package: ' + name)
+        key = top + '/' + actual.relative_to(package).as_posix()
+        if key not in expected['installed'] or hashlib.sha256(actual.read_bytes()).hexdigest() != expected['installed'][key]:
+            raise ValueError('An executed application module is not declared in the source-bound wheel: ' + name)
+    packaged = {name: files[name] for name in expected['installed']}
+    return {'mode': mode, 'isolated': bool(sys.flags.isolated), 'module_origins': origins,
+            'files': packaged, 'complete_python': files}
 before = inventory()
 receipt = {'status': 'FAIL', 'before': before}
 try:
@@ -175,10 +256,19 @@ def tests(mode, results, work):
     report = {'schema': 1, 'status': 'FAIL', 'mode': mode, 'declared_cases': ORACLE['total_cases'],
               'timeout_seconds': PHASE_SECONDS, 'oracle_sha256': file_hash(ORACLE_PATH)}
     started = monotonic()
+    log_path = results / (mode + '-pytest.txt')
     try:
         report.update(source_identity(results))
         installed = installed_identity(results)
         report['wheel_sha256'] = installed['wheel_sha256']
+        checkout = checkout_inventory()
+        checkout_path = results / (mode + '-checkout.json')
+        write(checkout_path, {'source_commit': report['source_commit'],
+                              'source_tree': report['source_tree'], 'files': checkout})
+        report['checkout_manifest_sha256'] = file_hash(checkout_path)
+        report['tracked_source_files'] = len(checkout)
+        expected_python = source_python_inventory(checkout, installed['installed_python'])
+        report['source_only_python'] = expected_python['source_only']
         runtime = runtime_identity()
         report['actual_ffmpeg'] = runtime
         names = tuple(ORACLE['tests']) + SUPPORT
@@ -194,7 +284,7 @@ def tests(mode, results, work):
                 require(file_hash(destination) == report['test_source_sha256'][name],
                         'An exact test fixture changed while staging.')
             manifest = staging / 'expected-source.json'
-            write(manifest, installed['installed_python'])
+            write(manifest, expected_python)
             interpreter_report = results / (mode + '-interpreter.json')
             xml = results / (mode + '-junit.xml')
             arguments = [
@@ -208,7 +298,7 @@ def tests(mode, results, work):
             environment = dict(os.environ, PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTHONDONTWRITEBYTECODE='1')
             for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH', 'CARR_CI_ALLOW_LOOPBACK'):
                 environment.pop(key, None)
-            with (results / (mode + '-pytest.txt')).open('wb') as log:
+            with log_path.open('wb') as log:
                 process = subprocess.run(arguments, cwd=ROOT, env=environment,
                                          stdout=log, stderr=subprocess.STDOUT,
                                          timeout=PHASE_SECONDS, check=False)
@@ -219,15 +309,19 @@ def tests(mode, results, work):
             require(executed['status'] == 'PASS' and executed['before'] == executed['after']
                     and executed['before']['mode'] == mode
                     and executed['before']['isolated'] is True
-                    and executed['before']['files'] == installed['installed_python'],
+                    and executed['before']['files'] == installed['installed_python']
+                    and executed['before']['complete_python'] == expected_python[
+                        'source' if mode == 'source' else 'installed'],
                     'The actual test interpreter did not preserve the complete source identity.')
             report['interpreter_sha256'] = file_hash(interpreter_report)
         require(source_identity(results) == {key: report[key] for key in ('source_commit', 'source_tree')},
                 'Candidate source changed during tests.')
+        require(checkout_inventory() == checkout, 'The complete tracked source inventory changed during tests.')
         require(installed_identity(results) == installed, 'Installed Python changed during tests.')
         require(runtime_identity() == runtime, 'The selected real FFmpeg runtime changed during tests.')
         report.update(status='PASS', actual_cases=ORACLE['total_cases'])
     except Exception as error:
+        failure_diagnostics(log_path, error)
         report['reason'] = type(error).__name__ + ': ' + str(error)
         if isinstance(error, subprocess.TimeoutExpired):
             report['reason'] = 'TIMEOUT: actual pytest phase exceeded ' + str(PHASE_SECONDS) + ' seconds.'
@@ -263,6 +357,18 @@ def finalize(results):
                     'The retained actual JUnit population changed.')
             require(file_hash(results / (mode + '-interpreter.json')) == phase['interpreter_sha256'],
                     'The test interpreter identity receipt changed.')
+            checkout_path = results / (mode + '-checkout.json')
+            require(file_hash(checkout_path) == phase['checkout_manifest_sha256'],
+                    'The retained complete source inventory receipt changed.')
+            checkout = read(checkout_path)
+            require(checkout['source_commit'] == source['source_commit']
+                    and checkout['source_tree'] == source['source_tree']
+                    and checkout['files'] == checkout_inventory()
+                    and len(checkout['files']) == phase['tracked_source_files'],
+                    'The complete tracked source inventory differs from the executed checkout.')
+            expected_python = source_python_inventory(checkout['files'], installed['installed_python'])
+            require(expected_python['source_only'] == phase['source_only_python'],
+                    'Unshipped source diagnostics changed after execution.')
             for name, expected in phase['test_source_sha256'].items():
                 require(file_hash(ROOT / name) == expected, 'A test or fixture changed after execution.')
             for name, expected in phase['runner_sha256'].items():
@@ -297,6 +403,7 @@ def finalize(results):
                     native_receipt_sha256=file_hash(results / 'native.txt'))
         write(results / 'native.json', native)
     except Exception as error:
+        print(''.join(traceback.format_exception(type(error), error, error.__traceback__))[-12000:], flush=True)
         gate['reason'] = type(error).__name__ + ': ' + str(error)
     write(results / 'audio-batch-gate.json', gate)
     print(json.dumps(gate, ensure_ascii=False), flush=True)

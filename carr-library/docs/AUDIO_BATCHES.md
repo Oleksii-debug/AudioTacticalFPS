@@ -218,12 +218,17 @@ runtime/source changes, late publication and cleanup ownership, signed
 admission, CLI behavior, shared task controls, and common backup/restore/rebackup.
 
 The gate builds and verifies the application wheel against the exact Git
-commit, installs the existing 53-pin qualification runtime without compiling
+commit, installs the existing reviewed 56-pin integrated runtime without compiling
 application bytecode, and compares every installed Python file with the wheel.
-It keeps the current 56-pin full-platform workflow unchanged. Test subprocesses
+The signed-admission fixtures require its TUF/securesystemslib dependencies.
+The full-platform workflow and its lock remain unchanged. Test subprocesses
 reuse the existing offline pytest policy and case watchdog. Their application
 origins and complete Python inventories are checked before and after execution.
-The installed lane adds only copied test files to its import path.
+The source lane records every tracked repository file separately, including tests
+and deliberately unshipped diagnostics. The existing source-wheel explicit-package
+recipe determines the installed application inventory. Undeclared diagnostics
+cannot execute as application modules. The installed lane adds only copied test
+files to its import path.
 
 Actual JUnit function Counters must match the oracle exactly, with zero
 failures, errors, skips, XFAIL or XPASS. The native report must match all 26
@@ -236,9 +241,22 @@ The job is bounded at 75 minutes; each source/installed test process has a
 uploaded on every outcome; synthetic media, private inputs and executable/model
 payloads are not uploaded.
 
-**Authoring status: NOT_RUN.** This component was prepared and independently
-source-reviewed while the local executor was unavailable. Compilation,
-collection, actual source/installed tests and native execution must be recorded
-by the composed candidate's CI run. Earlier R6/R7 or owner results are not
-transferred to this component. No manual NVDA, physical microphone/playback,
+**Recorded qualification: FAIL at candidate 5c98cc855c55a12a6d43a7a33a0a7f83e1aafd24.**
+Windows run 46001491511/job 140513971297 failed before pytest collection:
+the source inventory incorrectly included deliberately unshipped diagnostics in
+the wheel equality check, and the installed test environment lacked the existing
+signed-admission fixture dependency securesystemslib. All 26 native checks ran,
+but cleanup then called close on a valid absent optional DLL handle. The overall
+run remains FAIL. Read-only Ubuntu diagnostic run 46003273085/job 140520057192
+verified artifact 15198991074, SHA-256
+c55a1e52159bb68286878c6cacf9decab54e86f932619f95551d684dde9781d1,
+and exposed both exact child errors without executing artifact content.
+
+The focused repair preserves all 143/143/26 required checks, retains a separate
+complete tracked-source manifest, uses the existing 56-pin runtime, handles the
+optional DLL handle, and emits the native PASS receipt only after cleanup.
+Failures also print bounded actual pytest output and tracebacks directly in the
+job log. The repaired candidate requires a new actual run; these changes are
+source-reviewed only until that run completes. Earlier R6/R7 or owner results
+are not transferred to this component. No manual NVDA, physical microphone/playback,
 speech-quality or general external-player conformance claim is made.
