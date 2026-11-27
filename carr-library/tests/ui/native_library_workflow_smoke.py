@@ -127,7 +127,7 @@ def run_native():
     ui_module.NativeLibraryWorkflow = ObservedNativeWorkflow
     try:
         with TemporaryDirectory(prefix='carr-native-library-workflow-') as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             inputs, outputs = root / 'selected inputs', root / 'selected outputs'
             inputs.mkdir()
             outputs.mkdir()
