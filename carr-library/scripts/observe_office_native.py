@@ -59,7 +59,7 @@ def namespace(root):
 
 
 def authored_subtree(element):
-    """Bounded descendant evidence for the one actual rejected authored node."""
+    """Bounded descendant evidence for one authored visibility or rejected node."""
     rows, pending, encoded_bytes, clipped = [], [(element, ())], 0, False
     while pending and len(rows) < 64:
         node, path = pending.pop()
@@ -136,18 +136,30 @@ def odf_census(root, extension='odt'):
                 raise ValueError('Authored content.xml changed during its bounded capture.')
     tree = ElementTree.fromstring(raw)
     counts, nodes, visibility = Counter(), 0, []
+    visibility_seen, visibility_bytes, visibility_bounded = 0, 0, False
+    style = '{urn:oasis:names:tc:opendocument:xmlns:style:1.0}'
+    header_slots = {style + name for name in ('header', 'header-left', 'header-first',
+                                             'footer', 'footer-left', 'footer-first')}
     for node in tree.iter():
         nodes += 1
         if nodes > 4096:
             raise ValueError('Authored XML node census exceeded its bound.')
         counts[str(node.tag)] += 1
-        if any(key.rsplit('}', 1)[-1] in ('display', 'visibility')
-               for key in node.attrib) and len(visibility) < 64:
-            visibility.append({'tag': str(node.tag)[:512],
+        if (node.tag in header_slots or any(
+                key.rsplit('}', 1)[-1] in ('display', 'visibility') for key in node.attrib)):
+            visibility_seen += 1
+            row = {'tag': str(node.tag)[:512],
                 'attributes': {str(key)[:512]: str(value)[:256]
                                for key, value in list(node.attrib.items())[:32]},
                 'child_tags': [str(child.tag)[:512] for child in list(node)[:32]],
-                'text': (node.text or '')[:256]})
+                'text': (node.text or '')[:256], 'subtree': authored_subtree(node)}
+            size = len(json.dumps(row, ensure_ascii=True).encode('ascii'))
+            if len(visibility) >= 64 or visibility_bytes + size > 64 * 1024:
+                visibility_bounded = True
+            else:
+                visibility.append(row)
+                visibility_bytes += size
+                visibility_bounded = visibility_bounded or row['subtree']['bounded']
         if len(counts) > 256:
             raise ValueError('Authored XML tag census exceeded its bound.')
     office = '{urn:oasis:names:tc:opendocument:xmlns:office:1.0}'
@@ -172,6 +184,8 @@ def odf_census(root, extension='odt'):
             'content_bytes': len(raw), 'content_sha256': sha256(raw).hexdigest(),
             'tag_counts': dict(sorted(counts.items())), 'body_nodes': rows,
             'visibility_nodes': visibility,
+            'visibility_nodes_total': visibility_seen,
+            'visibility_census_bounded': visibility_bounded,
             'body_census_bounded': bool(pending)}
 
 
