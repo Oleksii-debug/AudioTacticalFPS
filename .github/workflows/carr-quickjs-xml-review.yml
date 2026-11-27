@@ -1,0 +1,92 @@
+name: CARR QuickJS XML profile review
+
+on:
+  push:
+    branches: [carr/quickjs-xml-review-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-quickjs-xml-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  historical-styles:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PYTHONPATH: 'src;.'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the exact selected citation runtime and test dependencies
+        run: |
+          python -m pip install --only-binary=:all: pytest==9.0.2 quickjs-ng==0.18.0.2 lxml==6.1.3 defusedxml==0.7.1 filelock==3.29.0 platformdirs==4.10.0 python-docx==1.2.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record exact source and runtime origins
+        run: |
+          New-Item -ItemType Directory -Force ci-quickjs | Out-Null
+          $check = @'
+          import hashlib, importlib.metadata, json, pathlib, sys
+          import quickjs
+          from carr_library.academic_integration import formatting
+          from carr_library.citations import csl
+          root = pathlib.Path.cwd().resolve()
+          sources = {}
+          for module, relative in ((formatting, 'academic_integration/formatting.py'), (csl, 'citations/csl.py')):
+              path = pathlib.Path(module.__file__).resolve()
+              assert path == root / 'src/carr_library' / relative, (path, relative)
+              sources[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+          assert importlib.metadata.version('quickjs-ng') == '0.18.0.2'
+          assert csl.RenderBudget().cpu_seconds == 30.0
+          context = quickjs.Context()
+          context.set_memory_limit(8 * 1024 * 1024)
+          context.set_time_limit(1.0)
+          assert context.eval('6 * 7') == 42
+          print(json.dumps({'python': sys.executable, 'quickjs': str(pathlib.Path(quickjs.__file__).resolve()),
+                            'quickjs_ng': importlib.metadata.version('quickjs-ng'), 'sources': sources,
+                            'historical_cpu_budget_seconds': 30, 'historical_memory_bytes': 256 * 1024 * 1024},
+                           sort_keys=True))
+          '@
+          $check | python -B - | Tee-Object ci-quickjs/origins.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run every unchanged historical style oracle and all runtime boundaries
+        timeout-minutes: 8
+        run: |
+          python -B -m pytest --import-mode=importlib -p no:cacheprovider -o xfail_strict=true -vv --durations=30 --junitxml=ci-quickjs/results.xml tests/academic_integration/test_formatting.py 2>&1 | Tee-Object ci-quickjs/formatting.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $check = @'
+          import json, xml.etree.ElementTree as ET
+          root = ET.parse('ci-quickjs/results.xml').getroot()
+          cases = root.findall('.//testcase')
+          bad = [case.attrib.get('name') for case in cases if any(case.find(kind) is not None for kind in ('failure', 'error', 'skipped'))]
+          styles = [case.attrib['name'] for case in cases if case.attrib['name'].startswith('test_real_styles_preserve_page_extent_and_apply_the_actual_rules[')]
+          assert len(cases) == 27 and len(styles) == 7 and not bad, (len(cases), styles, bad)
+          print(json.dumps({'status': 'PASS', 'passed': len(cases), 'failed': 0, 'skipped': 0, 'historical_styles': styles}, sort_keys=True))
+          '@
+          $check | python -B - | Tee-Object ci-quickjs/summary.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain exact-head diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-quickjs-xml-review-${{ github.sha }}
+          path: carr-library/ci-quickjs
+          if-no-files-found: error
