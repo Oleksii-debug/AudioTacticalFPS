@@ -165,7 +165,7 @@ jobs:
             'tests/ui/test_engine_settings_review.py',
             'tests/audio/test_cleanup_contexts.py',
             'tests/audio/test_audio_process.py',
-            'tests/audio/test_process_deadline.py',
+            'tests/audio/test_process_deadline.py'
           )
           if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
           python -B scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-component-results/source.txt
@@ -211,7 +211,7 @@ jobs:
             'tests/ui/test_engine_settings_review.py',
             'tests/audio/test_cleanup_contexts.py',
             'tests/audio/test_audio_process.py',
-            'tests/audio/test_process_deadline.py',
+            'tests/audio/test_process_deadline.py'
           )
           if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
           python -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/installed.xml @suites 2>&1 | Tee-Object ci-component-results/installed.txt
