@@ -274,3 +274,22 @@ def test_base_corruption_during_current_snapshot_work_is_detected_before_publica
         create_incremental_backup(app, tmp_path / 'rejected', base=base)
     assert damaged and not (tmp_path / 'rejected').exists()
     assert not list(tmp_path.glob('.carr-incremental-*'))
+
+
+@pytest.mark.parametrize('operation', ['create', 'recheck'])
+def test_full_base_budget_is_checked_before_any_payload_verification(source, tmp_path, monkeypatch, operation):
+    app, _, _, _, base = source
+    # This is an actual complete backup with its independently retained digest.
+    # A one-byte budget cannot admit its real database and retained originals.
+    before = bytes_in(base.path)
+    def forbidden(*args, **kwargs):
+        pytest.fail('The over-budget backup reached payload verification.')
+    monkeypatch.setattr(incremental.full, 'verify_backup', forbidden)
+    with pytest.raises(ValueError, match='budget'):
+        if operation == 'create':
+            create_incremental_backup(app, tmp_path / 'over-budget', base=base, max_bytes=1)
+        else:
+            incremental._recheck_chain((base,), lambda: False, 1)
+    assert not (tmp_path / 'over-budget').exists()
+    assert bytes_in(base.path) == before
+    assert not list(tmp_path.glob('.carr-incremental-*'))

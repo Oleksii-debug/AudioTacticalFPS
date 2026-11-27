@@ -63,11 +63,39 @@ def main(argv=None):
     render.add_argument('--no-stems', action='store_true')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
+    convert = operations.add_parser('convert-batch', aliases=['convert'],
+        help='Convert explicitly selected local audio/video files into a reviewed batch folder')
+    convert.add_argument('sources', nargs='+', type=Path, help='Explicit local media files; at most 64')
+    convert.add_argument('--output', type=Path, required=True,
+                         help='New batch folder in an existing parent; existing files are never overwritten')
+    convert.add_argument('--format', choices=('wav', 'flac', 'mp3', 'm4a', 'm4b', 'ogg', 'opus', 'aac', 'aiff', 'wma'), default='wav')
+    convert.add_argument('--resume', action='store_true',
+                         help='Review the same originals/settings and keep exact matching saved outputs')
+    convert.add_argument('--preview', action='store_true', help='Print the reviewed plan without creating any output')
+    convert.add_argument('--start', type=float, default=0)
+    convert.add_argument('--duration', type=float)
+    convert.add_argument('--sample-rate', type=int, default=24000)
+    convert.add_argument('--channels', type=int, choices=(1, 2), default=2)
+    convert.add_argument('--bit-depth', type=int, choices=(16, 24, 32), default=16)
+    convert.add_argument('--bitrate', type=int, default=192)
+    convert.add_argument('--gain-db', type=float, default=0)
+    convert.add_argument('--tempo', type=float, default=1)
+    convert.add_argument('--loudness', type=float)
+    convert.add_argument('--denoise', action='store_true')
+    convert.add_argument('--preset', help='Existing reviewed local effect-preset ID; cannot combine with basic effects')
+    convert.add_argument('--timeout', type=float, default=3600)
+    convert.add_argument('--max-bytes', type=int, default=32 * 1024**3)
     args = parser.parse_args(arguments)
     service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
+        if args.operation in ('convert', 'convert-batch'):
+            result = _convert_batch(app, args)
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            if args.preview or result['status'] == 'completed':
+                return 0
+            return 2 if result['status'] in ('cancelled', 'timed_out', 'partial', 'attention') else 1
         service = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
         if args.operation == 'voices':
             result = [json_safe(asdict(voice)) for voice in service.voices.voices()]
@@ -115,7 +143,7 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        print('Operation interrupted. Completed files are retained. Resume a production job or verify its prepared publication receipt.',
+        print('Operation interrupted. Completed files are retained. Resume a production job, review the same audio batch with --resume, or verify its prepared publication receipt.',
               file=sys.stderr)
         return 130
     except (ValueError, OSError, RuntimeError) as exc:
@@ -124,6 +152,42 @@ def main(argv=None):
     finally:
         if service is not None:
             service.close()
+
+
+def _convert_batch(app, args):
+    from ..audio import AudioBudget, Effect
+    from ..audio.conversion_batch import AudioConversionBatch
+    from ..audio.effect_presets import EffectPresetStore
+    from ..durable_state import local_path, regular
+    from ..runtime_settings import audio_runtime
+    destination = local_path(args.output)
+    regular(local_path(destination.parent, exists=True), directory=True)
+    selected = tuple(local_path(path, exists=True) for path in args.sources)
+    basic = (args.gain_db != 0 or args.tempo != 1 or args.loudness is not None or args.denoise)
+    if args.preset is not None:
+        if basic:
+            raise ValueError('A reviewed preset cannot be silently combined with different basic effect controls.')
+        effects = EffectPresetStore(app.root).get(args.preset).effects
+    else:
+        effects = [Effect('gain', gain_db=args.gain_db), Effect('tempo', factor=args.tempo)]
+        if args.denoise:
+            effects.append(Effect('denoise'))
+        if args.loudness is not None:
+            effects.append(Effect('loudness', target_lufs=args.loudness, peak_db=-1))
+        effects = tuple(effects)
+    runtime = audio_runtime(destination.parent, state_root=app.root / 'state',
+        input_roots=tuple(dict.fromkeys(path.parent for path in selected)),
+        budget=AudioBudget(timeout=args.timeout, max_output_bytes=args.max_bytes))
+    service = AudioConversionBatch(runtime, library_root=app.root)
+    progress = lambda done, total, phase: print(f'{done}/{total}: {phase}', file=sys.stderr, flush=True)
+    plan = service.prepare(selected, destination, format=args.format, resume=args.resume,
+        effects=effects, sample_rate=args.sample_rate, channels=args.channels,
+        bit_depth=args.bit_depth, bitrate=args.bitrate, start=args.start, duration=args.duration,
+        progress=progress)
+    if args.preview:
+        return {'status': 'ready', 'plan': plan}
+    print('Reviewed output folder: ' + plan['directory'], file=sys.stderr, flush=True)
+    return service.run(plan, resume=args.resume, progress=progress)
 
 
 @installed_entrypoint

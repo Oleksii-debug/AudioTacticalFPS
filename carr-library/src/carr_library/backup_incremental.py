@@ -121,9 +121,11 @@ def _inventory(manifest, max_bytes):
         name, size, checksum = row.get('filename'), row.get('size_bytes'), row.get('sha256')
         portable = backup_sidecars.portable_name(name)
         key = backup_sidecars._portable_key(name)
-        if (key in keys or type(size) is not int or size < 0 or size > max_bytes
+        if (key in keys or type(size) is not int or size < 0
                 or type(checksum) is not str or _HASH.fullmatch(checksum) is None):
             raise RestoreError('Invalid or duplicate incremental file identity.')
+        if size > max_bytes:
+            raise RestoreError('Incremental logical backup exceeds its byte budget.')
         keys.add(key)
         files[name] = {'filename': name, 'size_bytes': size, 'sha256': checksum}
         total += size
@@ -239,6 +241,9 @@ def _snapshot(reference, parents, temporary_parent, cancelled, max_bytes, *, dep
     raw = _read(reference.path / 'manifest.json', reference.sha256)
     descriptor = _layer_header(raw)
     if descriptor is None:
+        # The authenticated manifest is enough to reject the caller's logical
+        # byte budget before canonical verification opens any backup payload.
+        _inventory(_json(raw), max_bytes)
         manifest = full.verify_backup(reference.path, reference.sha256, cancelled=cancelled)
         files, directories = _inventory(manifest, max_bytes)
         _root_guard(reference, identity)
@@ -280,8 +285,10 @@ def _recheck_chain(chain, cancelled, max_bytes):
         _check(cancelled)
         value = _plain(reference.path, directory=True)
         identity = value.st_dev, value.st_ino
-        descriptor = _layer_header(_read(reference.path / 'manifest.json', reference.sha256))
+        raw = _read(reference.path / 'manifest.json', reference.sha256)
+        descriptor = _layer_header(raw)
         if descriptor is None:
+            _inventory(_json(raw), max_bytes)
             full.verify_backup(reference.path, reference.sha256, cancelled=cancelled)
         else:
             manifest = _json(_read(reference.path / 'snapshot.json', descriptor['snapshot_sha256']))
