@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-local-studio-20261126-a4f9]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -84,6 +84,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require supplied-worker supervision, receipt, recovery and UI contracts
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 tests/test_transcription_receipt.py tests/test_transcription_service.py tests/storage/test_transcription_backup.py tests/ui/test_transcription_dialog.py 2>&1 | Tee-Object 'ci-results/transcription-contracts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the installed offline OCR catalogue and console entrypoint
@@ -644,6 +650,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_progress_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_transcription_smoke.py --native --output ci-results/full-bundle-native-transcription.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-transcription.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item Env:CARR_FFMPEG -ErrorAction SilentlyContinue
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; from carr_library.audio.runtime import resolve_ffmpeg; from pathlib import Path; assert resolve_ffmpeg().samefile(Path(sys.prefix).parent/'audio-runtime/ffmpeg.exe'); runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_audio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -695,6 +703,10 @@ jobs:
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/reader/test_ebook_contents.py',
+                            'tests/test_transcription_receipt.py',
+                            'tests/test_transcription_service.py',
+                            'tests/storage/test_transcription_backup.py',
+                            'tests/ui/test_transcription_dialog.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
                             'tests/reader/test_narration.py', 'tests/ui/test_narration_editor.py',
                             'tests/ui/test_save_all.py',
@@ -871,6 +883,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_progress_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native transcription settings and cancellation
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_transcription_smoke.py --native --output keyboard-results/native-transcription.json 2>&1 | Tee-Object 'keyboard-results/native-transcription.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve actual keyboard and recovery evidence

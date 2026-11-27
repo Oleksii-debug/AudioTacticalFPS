@@ -255,10 +255,13 @@ def storage_bytes(root, *, cancelled=lambda: False):
 
 
 @contextmanager
-def project_lock(root):
-    """OS lock is released on process death, unlike a persistent lease file."""
+def project_lock(root, *, lock_name='.render.lock'):
+    """One native process lock; callers select only a checked local basename."""
+    filename_component(lock_name)
+    if not lock_name.startswith('.') or not lock_name.endswith('.lock') or len(lock_name) > 128:
+        raise ValueError('A native project lock needs a bounded local .lock basename.')
     root = checked_directory(root, create=True)
-    path = root / '.render.lock'
+    path = root / lock_name
     if path.is_symlink():
         raise ValueError('Unsafe render lock.')
     descriptor = os.open(path, os.O_CREAT | os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0), 0o600)

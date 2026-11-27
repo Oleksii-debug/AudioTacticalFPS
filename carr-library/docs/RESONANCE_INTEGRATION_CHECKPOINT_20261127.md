@@ -1,8 +1,51 @@
 # Verified integration checkpoint — 27 November 2026
 
-This checkpoint composes the already reviewed source changes on top of
-`587559f403b0c7a164b7e496bcd6975506bbe881`. It is not a final installer
-or a declaration that every V3 platform acceptance gate has passed.
+The newest source composition extends
+`2f011f8999eed0ecb2fdbfe987b3364c832b4f85`. Earlier checkpoints below are
+historical evidence for their exact sources. This is not a final installer or
+a declaration that every V3 platform acceptance gate has passed.
+
+## Supplied transcription and exact-source Windows continuation
+
+The supplied-worker adapter now joins the existing desktop, reading-copy editor,
+process supervisor, project locks and typed backup producers. Files/folders,
+seventeen frozen settings, local runtime admission, real child supervision,
+pause/resume/stop, exact TXT/SRT/VTT/JSON receipts and relocated saved-text reading
+are implemented. See [the integration contract](SUPPLIED_TRANSCRIPTION_INTEGRATION.md)
+for user actions, portability and the distinction between synthetic protocol
+execution and actual model inference.
+
+The composed portable gates passed without skips: receipt/settings 112,
+supervisor 37, transcription backup 27, dialog/session 22 and complete desktop
+handler/menu composition 64. Existing model admission and command registry
+checks also ran. The independent backup selection passed 466 cases across its
+new and existing recovery/audio suites; counts overlap and are not additive.
+The corrected native snapshot automation passed 95 portable source cases. Its
+new Windows execution remains a separate required gate.
+
+On exact source `b74d9e26ea8c0a2f8dbed1c858deca48534366a4`, Windows actually
+passed native Save All/close, shared progress and keyboard/recovery controls,
+the native effect dialogs, all 41 portable OCR runtime cases and four PDF
+cancellation cases. The main workflow stopped on two incomplete OCR diagnostic
+fixtures; `2f011f` supplied their missing tessdata field. The snapshot native
+probe failed because UI Automation exposed no TaskDialog button descendants.
+The continuation invokes the actual owned native Yes/No TaskDialog through its
+documented button message, rechecks ownership and observes real closure. It
+does not manufacture a dialog return value or suppress publication assertions.
+
+An unchanged acceptance branch at `ec4067bdbe44992f3b961a60732fcaca62ad5191`
+permits the existing long Windows suites to finish independently of concurrent
+development pushes. It changes only four workflow push filters, and contains no
+new transcription adapter. Results from that snapshot never certify later
+source. The transcription source, installed-package and native controls have
+their own added gates in the composed workflow.
+
+Private worker evidence is retained outside public Git. Actual ASR weights and
+quality, NVDA, the native corrected snapshot probe and final installed source
+qualification are not implied by these portable tests. Canonical V5 schema and
+behavior convergence is being handled separately. The audio-runtime transfer
+rights gate remains in force; local execution evidence does not authorize
+redistribution of its binaries.
 
 ## Continuation after the 6c7afd Windows checkpoint
 
