@@ -57,6 +57,15 @@ jobs:
                   target.write_bytes(git('show',sha).stdout)
                   stages.append(dict(path=path,stage=int(stage),blob=sha,mode=mode))
               (folder/'combined-conflicts.patch').write_bytes(git('diff','--cc').stdout)
+              changed=sorted(set(git('diff','--name-only',base).stdout.decode().splitlines()) | paths)
+              files=[]
+              for path in changed:
+                  item=Path(path)
+                  files.append(dict(path=path,content=item.read_text(encoding='utf-8') if item.is_file() else None))
+              payload=json.dumps(dict(base=base,incoming=commit,files=files),ensure_ascii=True)
+              (folder/'worktree.json').write_text(payload+'\n')
+              for offset in range(0,len(payload),8000):
+                  print('PUBLIC_MERGE_PAYLOAD '+label+' '+str(offset//8000)+' '+json.dumps(payload[offset:offset+8000]),flush=True)
               row=dict(base=base,incoming=commit,result='MERGE_CLEAN' if result.returncode==0 else 'CONFLICT' if paths else 'ERROR',returncode=result.returncode,conflicts=sorted(paths),stages=stages,runtime_acceptance='NOT_RUN')
               if result.returncode==0:
                   row['tree']=git('write-tree').stdout.decode().strip()
