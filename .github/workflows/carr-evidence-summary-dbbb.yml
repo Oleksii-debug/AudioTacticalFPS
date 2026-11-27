@@ -21,4 +21,4 @@ jobs:
       - name: Verify and summarize immutable prior failure evidence
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python -I -B .github/scripts/carr_evidence_summary_dbbb.py
+        run: python -I -B -X utf8 .github/scripts/carr_evidence_summary_dbbb.py
