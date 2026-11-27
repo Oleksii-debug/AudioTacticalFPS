@@ -79,7 +79,8 @@ root_wanted = {
     'full-bundle-verified.json', 'sealed-sbom.json'}
 installer_wanted = {'inputs.json', 'native.json', 'proof.json', 'disk-budget.json',
                     'payload-manifest.json', 'good-build.json', 'negative-build.json'}
-library_wanted = {'before-test-dependencies.json', 'installed-library.json', 'qualification.log'}
+library_wanted = {'before-test-dependencies.json', 'installed-library.json', 'qualification.log',
+                  'snapshot.log', 'test-dependencies.log'}
 for number in range(1, 7):
     library_wanted.update({'library-' + str(number) + '.xml',
                           'library-' + str(number) + '-origins.json',
@@ -127,6 +128,9 @@ for pin in ARTIFACTS:
         if (len(names) != len(set(names)) or len(names) > 10000
                 or sum(member.file_size for member in members) > 512 * 1024 * 1024):
             raise ValueError('Ambiguous or oversized artifact inventory.')
+        if len(names) != 90 or sum(len(name) for name in names) > 65536:
+            raise ValueError('The observed standard artifact inventory changed.')
+        print('MEMBER_NAMES', json.dumps(names), flush=True)
         selected = [name for name in names if selected_member(name)]
         found = {PurePosixPath(name).name for name in selected}
         print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected,
