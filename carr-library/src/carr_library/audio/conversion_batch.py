@@ -459,10 +459,16 @@ class AudioConversionBatch:
             raise FileExistsError('An unbound existing output was preserved: ' + row['output'])
         self._validate_candidate(candidate, output)
         integer(candidate['size'], 'Prepared audio recovery bytes', 1, self.runtime.budget.max_output_bytes)
-        if output.lstat().st_nlink != 1:
+        saved = candidate['staging']
+        expected = (saved['device'], saved['inode'], saved['size'], saved['mtime_ns'])
+        before = output.lstat()
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != expected:
+            raise ValueError('A prepared/completed output changed its exact publication identity; it was not adopted.')
+        if before.st_nlink != 1:
             self._retire_published_staging(destination, output, candidate, cancelled)
         identity = _identity(output, maximum=self.runtime.budget.max_output_bytes, cancelled=cancelled)
-        if identity['size_bytes'] != candidate['size'] or identity['sha256'] != candidate['sha256']:
+        if (tuple(identity['stamp'][:4]) != expected
+                or identity['size_bytes'] != candidate['size'] or identity['sha256'] != candidate['sha256']):
             raise ValueError('A prepared/completed output changed; it was not overwritten.')
         row.update(status='completed', error='')
         return True

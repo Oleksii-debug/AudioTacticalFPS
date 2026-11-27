@@ -713,3 +713,63 @@ def test_voice_inventory_waits_for_real_registry_cleanup_before_releasing_admiss
         else:
             registry.close()
     assert closed[-1] is True and e.broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('kind', ['evidence.export', 'audio.convert'])
+@pytest.mark.parametrize('fault', ['intent_once', 'all_after_publication', 'final_status'])
+def test_actual_publication_survives_assistant_status_failure_without_running_uncheckpointed_next_step(
+        env, monkeypatch, kind, fault):
+    e = env
+    source = tone(e.inputs / 'exact-before-status-failure.wav')
+    original = source.read_bytes()
+    chosen = (Step(kind, {'topic': e.topic, 'evidence_ids': [e.evidence], 'name': 'durable-evidence.md'})
+              if kind == 'evidence.export' else conversion(e, [source], name='durable-audio'))
+    identity = e.service.submit(plan(e, chosen, Step('library.catalog')))
+    actual_save, actual_execute = e.service.store.save, e.service._execute
+    faults, calls = [], []
+    def failed_status(record):
+        committed = record['steps'][0]['intent'].get('publication_committed') is True
+        fail = (committed and (
+            fault == 'all_after_publication'
+            or fault == 'intent_once' and not faults
+            or fault == 'final_status' and record['status'] == 'complete'))
+        if fail:
+            faults.append(record['steps'][0]['status'])
+            raise OSError('Controlled assistant journal failure after the actual writer returned.')
+        return actual_save(record)
+    def observe_execution(step, *args, **kwargs):
+        calls.append(step.tool)
+        return actual_execute(step, *args, **kwargs)
+    monkeypatch.setattr(e.service.store, 'save', failed_status)
+    monkeypatch.setattr(e.service, '_execute', observe_execution)
+    report = e.service.run(identity)
+    assert faults and source.read_bytes() == original
+    assert report.completed == (1 if fault == 'all_after_publication' else 2)
+    assert calls == ([kind] if fault == 'all_after_publication' else [kind, 'library.catalog'])
+    assert report.status == ('complete' if fault == 'intent_once' else 'attention')
+    published = report.results[0]
+    assert published['publication_committed'] is True
+    if fault != 'final_status':
+        assert 'checkpoint needs attention' in published['checkpoint_warning']
+    for receipt in published['artifacts']:
+        actual = Path(receipt['path']).read_bytes()
+        assert len(actual) == receipt['size'] and sha256(actual).hexdigest() == receipt['sha256']
+    stable = {receipt['path']: Path(receipt['path']).read_bytes()
+              for receipt in published['artifacts']
+              if not receipt['path'].endswith('conversion-manifest.json')}
+    assert stable and e.broker.snapshot()['leases'] == []
+    monkeypatch.setattr(e.service.store, 'save', actual_save)
+    def no_repeat(*args, **kwargs):
+        pytest.fail('A status-write failure cannot repeat an acknowledged writer.')
+    if kind == 'evidence.export':
+        monkeypatch.setattr(export_file, 'write_export', no_repeat)
+    else:
+        from carr_library.audio import AudioRuntime
+        monkeypatch.setattr(AudioRuntime, 'convert', no_repeat)
+    resumed = e.service.resume(identity)
+    if fault == 'all_after_publication' and kind == 'evidence.export':
+        assert resumed.status == 'attention' and resumed.completed == 0
+    else:
+        assert resumed.status == 'complete' and resumed.completed == 2
+    assert all(Path(path).read_bytes() == raw for path, raw in stable.items())
+    assert source.read_bytes() == original

@@ -273,6 +273,19 @@ def _audio_read(app, scope, step, cancelled, identity):
             'notice': 'Measured existing local audio; no conversion or playback occurred.'}, scope)
 
 
+def _persist_committed(intent, persist):
+    """Keep an acknowledged publication receipt across a status-write failure."""
+    intent['publication_committed'] = True
+    try:
+        persist()
+    except AudioCleanupPending:
+        raise
+    except (OSError, ValueError, RuntimeError) as exc:
+        return ('Output publication was confirmed; saving its assistant checkpoint needs attention: '
+                + str(exc))[:2000]
+    return ''
+
+
 def _export(app, workspace, scope, args, intent, persist, cancelled):
     from ..research.export_file import write_export, write_binary_export
     target = scope.output(args['name'])
@@ -298,12 +311,12 @@ def _export(app, workspace, scope, args, intent, persist, cancelled):
     persist()
     writer = write_export if isinstance(content, str) else write_binary_export
     receipt = writer(target, content, private_root=app.root, require_absent=True, cancelled=stop)
-    intent['publication_committed'] = True
-    persist()
+    checkpoint_warning = _persist_committed(intent, persist)
     return {'artifacts': [{'path': str(target), 'size': len(raw), 'sha256': sha256(raw).hexdigest()}],
         'source_sha256': fingerprint,
         'selected_evidence': args['evidence_ids'], 'topic': args['topic'],
         'publication_committed': True, 'cleanup_warning': receipt.cleanup_warning,
+        'checkpoint_warning': checkpoint_warning,
         'notice': 'Existing authenticated quotations exported; the assistant created no evidence or approval.'}
 
 
@@ -359,11 +372,11 @@ def _convert(app, workspace, scope, args, intent, persist, cancelled, progress, 
         manifest = encode(result)
         artifacts.append({'path': str(destination / MANIFEST), 'size': len(manifest),
                           'sha256': sha256(manifest).hexdigest()})
-        intent['publication_committed'] = True
-        persist()
+        checkpoint_warning = _persist_committed(intent, persist)
         return {'status': 'complete', 'directory': str(destination), 'conversion_plan_sha256': reviewed['id'],
             'artifacts': artifacts,
             'publication_committed': True, 'warning': result['warning'],
+            'checkpoint_warning': checkpoint_warning,
             'notice': 'Existing local conversion runtime and resource broker; originals remain unchanged.'}
 
 

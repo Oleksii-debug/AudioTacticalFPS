@@ -369,7 +369,19 @@ class AssistantService:
                     result['artifacts'] = artifacts
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
-                    persist()
+                    try:
+                        persist()
+                    except AudioCleanupPending:
+                        raise
+                    except (OSError, ValueError, RuntimeError) as exc:
+                        if not committed:
+                            raise
+                        # The exact output has just been verified. Do not start a
+                        # later action without its durable assistant checkpoint.
+                        record['status'] = 'attention'
+                        record['message'] = ('Verified published output is retained; its assistant checkpoint '
+                                             'could not be confirmed. Review before explicit resume: ' + str(exc))[:2000]
+                        return self._report(record)
                 record['status'] = 'complete'
                 record['message'] = 'All selected operations completed and returned artifacts were verified.'
             except InterruptedError as exc:
@@ -388,7 +400,16 @@ class AssistantService:
                     if checkpoint['status'] == 'running':
                         checkpoint['status'] = 'failed'
                         checkpoint['message'] = record['message']
-            persist()
+            try:
+                persist()
+            except AudioCleanupPending:
+                raise
+            except (OSError, ValueError, RuntimeError) as exc:
+                if record['status'] != 'complete':
+                    raise
+                record['status'] = 'attention'
+                record['message'] = ('All selected results were verified, but their final assistant status '
+                                     'could not be confirmed. Completed outputs are retained: ' + str(exc))[:2000]
             _observe(progress, sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
             return self._report(record)
 

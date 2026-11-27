@@ -231,24 +231,58 @@ def test_source_change_after_review_refuses_before_creating_any_output(peer):
     assert not Path(plan['directory']).exists() and peer.broker.snapshot()['leases'] == []
 
 
-def test_output_race_before_actual_link_preserves_foreign_bytes_and_other_items(peer, monkeypatch):
+@pytest.mark.parametrize('equal_bytes', [False, True])
+def test_output_race_before_actual_link_preserves_foreign_bytes_and_other_items(peer, monkeypatch, equal_bytes):
     plan = chosen(peer)
     save = peer.service._save
-    raced = []
+    raced, payloads = [], []
     def after_prepare(directory, value, **kwargs):
         result = save(directory, value, **kwargs)
         row = value['items'][0]
         if row['status'] == 'prepared' and not raced:
+            staged = directory / row['candidate']['staging']['relative']
+            original = staged.stat()
+            payload = staged.read_bytes() if equal_bytes else b'Foreign occupant; never replace.'
             raced.append(directory / row['output'])
-            raced[0].write_bytes(b'Foreign occupant; never replace.')
+            payloads.append(payload)
+            raced[0].write_bytes(payload)
+            os.utime(raced[0], ns=(original.st_atime_ns, original.st_mtime_ns))
+            foreign = raced[0].stat()
+            assert foreign.st_nlink == 1
+            assert (foreign.st_dev, foreign.st_ino) != (original.st_dev, original.st_ino)
+            if equal_bytes:
+                assert foreign.st_size == original.st_size and foreign.st_mtime_ns == original.st_mtime_ns
         return result
     monkeypatch.setattr(peer.service, '_save', after_prepare)
     result = peer.service.run(plan)
-    assert raced and raced[0].read_bytes() == b'Foreign occupant; never replace.'
+    assert raced and raced[0].read_bytes() == payloads[0]
     assert result['status'] != 'completed'
     assert result['done'] == 0
     assert not (Path(plan['directory']) / plan['sources'][1]['output']).exists()
     assert peer.broker.snapshot()['leases'] == []
+    monkeypatch.setattr(peer.runtime, 'convert',
+        lambda *args, **kwargs: pytest.fail('A foreign occupant cannot trigger automatic publication.'))
+    resumed = peer.service.run(plan, resume=True)
+    assert resumed['status'] != 'completed' and resumed['done'] == 0
+    assert raced[0].read_bytes() == payloads[0]
+
+
+def test_completed_equal_byte_replacement_cannot_inherit_the_saved_publication_receipt(peer):
+    plan = chosen(peer, [peer.first])
+    result = peer.service.run(plan)
+    assert result['status'] == 'completed' and result['done'] == 1
+    output = Path(plan['directory']) / plan['sources'][0]['output']
+    before, raw = output.stat(), output.read_bytes()
+    replacement = output.with_name('foreign-equal-byte-copy.wav')
+    replacement.write_bytes(raw)
+    os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+    os.replace(replacement, output)
+    current = output.stat()
+    assert current.st_nlink == 1 and current.st_size == before.st_size
+    assert (current.st_dev, current.st_ino) != (before.st_dev, before.st_ino)
+    with pytest.raises(ValueError, match='exact publication identity'):
+        peer.service.verify(plan)
+    assert output.read_bytes() == raw and peer.first.is_file()
 
 
 def test_scope_revocation_in_final_candidate_callback_prevents_publication(peer, monkeypatch):
