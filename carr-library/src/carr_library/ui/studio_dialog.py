@@ -22,9 +22,12 @@ Optional directions, each on its own line:
 [Music: suspense; tempo=80; gain=-24]
 [Pause: 2]
 [Duration: 3600]
+[Pronunciation: spoken text for the preceding line]
+[Вимова: варіант попередньої репліки з наголосами]
 
 Music moods: calm, suspense, hopeful, sad, energetic.
 Default music is locally composed procedural instrumental, with no remote request.
+After [Music: suspense; engine=ace-step], use [Music prompt: quiet cello and rain].
 Role voices, gain and position can be edited before rendering. Source prose is never
 rewritten automatically. Generated scripts are separate from saved quotations.
 Ctrl+S saves the project and draft. Ctrl+Shift+S exports project JSON.

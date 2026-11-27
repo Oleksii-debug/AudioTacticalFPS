@@ -64,3 +64,31 @@ def test_saved_pronunciation_is_rendered_in_new_job_and_old_verified_outputs_sta
     with wave.open(str(Path(second['destination']) / 'master.wav'), 'rb') as audio:
         assert audio.getnframes() > 0 and audio.getnchannels() == 2
     assert service.get(first['id']) == first
+
+
+def test_script_pronunciation_keeps_subtitles_and_reuses_unchanged_line(tmp_path):
+    assert shutil.which('ffmpeg') and shutil.which('ffprobe')
+    library = LibraryApp(tmp_path / 'library')
+    editor = StudioPronunciations(library.root)
+    script = 'Narrator: На горі стоїть замок.\n[Вимова: На горі стоїть за́мок.]\nДалі.'
+    project = parse_script(script, voice_ids=('synthetic-tone',))
+    editor.projects.save(project)
+    scene = project.scenes[0]
+    draft = editor.open_line(project, scene.id, scene.lines[0].id)
+    assert draft.document.text == 'На горі стоїть за́мок.' and not draft.dirty
+    tones = ToneVoices()
+    service = ProductionService(library.root / 'state' / 'studio', voices=tones)
+    output = tmp_path / 'rendered'
+    output.mkdir()
+    first = service.run(service.submit(project, output, stems=False))
+    assert tones.received == ['На горі стоїть за́мок.', 'Далі.']
+    draft.document.set_text('На горі стоїть за́мок!', label='New pronunciation take')
+    changed = editor.save_line(draft)
+    saved = editor.projects.load(project.id)
+    assert saved == changed.after and saved.original_script == script
+    second = service.run(service.submit(saved, output, stems=False))
+    assert [row['text'] for row in second['result']['lines']] == ['На горі стоїть замок.', 'Далі.']
+    assert tones.received[2:] == ['На горі стоїть за́мок!']
+    assert service.get(first['id']) == first
+    reverted = editor.undo_line(changed)
+    assert reverted.after.scenes[0].lines[0] == scene.lines[0]

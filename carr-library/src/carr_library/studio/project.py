@@ -1,5 +1,5 @@
 """Versioned, editable performances kept separate from immutable source quotations."""
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from hashlib import sha256
 import math
 from pathlib import Path
@@ -101,13 +101,22 @@ class Line:
     text: str
     pause_after: float = .3
     source_ref: str = ''
+    spoken_text: str = ''
 
     def __post_init__(self):
         _id(self.id)
         _id(self.role)
         _text(self.text, 'line text', 100_000, True)
+        _text(self.spoken_text, 'pronunciation text', 100_000, True)
+        if self.spoken_text and (not self.spoken_text.strip() or not self.text.strip()):
+            raise ValueError('A pronunciation override requires a spoken line and nonempty text.')
         _text(self.source_ref, 'source reference', 2048, True)
         _number(self.pause_after, 'Pause', 0, 86400)
+
+
+    @property
+    def synthesis_text(self):
+        return self.spoken_text or self.text
 
 
 @dataclass(frozen=True)
@@ -117,6 +126,7 @@ class Music:
     gain_db: float = -24
     engine: str = 'procedural'
     seed: int = 0
+    prompt: str = ''
 
     def __post_init__(self):
         if self.mood not in ('calm', 'suspense', 'hopeful', 'sad', 'energetic'):
@@ -127,6 +137,9 @@ class Music:
             raise ValueError('Unknown music engine.')
         if type(self.seed) is not int or not 0 <= self.seed < 2**31:
             raise ValueError('Invalid music seed.')
+        _text(self.prompt, 'music prompt', 8000, True)
+        if self.prompt and self.engine not in ('musicgen', 'ace-step'):
+            raise ValueError('Select a local neural engine to use a music prompt.')
 
 
 @dataclass(frozen=True)
@@ -259,6 +272,13 @@ class Project:
                 for cue in scene['cues']:
                     for name in ('trim_start', 'duration', 'fade_in', 'fade_out', 'title'):
                         cue.pop(name)
+        # Omit unused options in every schema to retain earlier project and job fingerprints.
+        for scene in value['scenes']:
+            if scene['music'] is not None and not scene['music']['prompt']:
+                scene['music'].pop('prompt')
+            for line in scene['lines']:
+                if not line['spoken_text']:
+                    line.pop('spoken_text')
         return value
 
     @classmethod
@@ -287,6 +307,8 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
 
     [Scene: title], [Music: suspense; tempo=80; gain=-24], [Pause: 2],
     [Duration: 3600] and Speaker [left|center|right]: text are directions.
+    [Pronunciation: text] changes only the synthesized text of the preceding line.
+    [Music prompt: text] supplies a prompt to the selected local neural music engine.
     No document instruction can become a process, path, URL, or filter graph.
     """
     _text(text, 'script', 16_000_000)
@@ -306,7 +328,6 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
             roles.append(role)
             role_names[key] = role.id
         elif pan is not None:
-            from dataclasses import replace
             roles[:] = [replace(r, pan=pan) if r.id == role_names[key] else r for r in roles]
         return role_names[key]
 
@@ -329,6 +350,12 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
             elif command in ('pause', 'пауза'):
                 delay = _number(float(body), 'Pause', 0, 86400)
                 lines.append(Line('line-' + str(len(lines) + 1), role_for('Narrator'), '', delay))
+            elif command in ('pronunciation', 'вимова'):
+                if not lines or not lines[-1].text.strip():
+                    raise ValueError('Place the pronunciation direction after a spoken line.')
+                if lines[-1].spoken_text:
+                    raise ValueError('A line can have only one pronunciation direction.')
+                lines[-1] = replace(lines[-1], spoken_text=_text(body, 'pronunciation text', 100_000))
             elif command in ('duration', 'тривалість'):
                 minimum = _number(float(body), 'Scene duration', 0, 31_536_000)
             elif command in ('music', 'музика'):
@@ -341,6 +368,12 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
                     options[key] = value
                 music = Music(items[0], int(options.get('tempo', 90)), float(options.get('gain', -24)),
                               options.get('engine', 'procedural'), int(options.get('seed', 0)))
+            elif command in ('music prompt', 'опис музики'):
+                if music is None:
+                    raise ValueError('Select a local neural engine before setting a music prompt.')
+                if music.prompt:
+                    raise ValueError('A scene can have only one music prompt.')
+                music = replace(music, prompt=_text(body, 'music prompt', 8000))
             else:
                 raise ValueError('Unknown script direction: ' + command)
             continue

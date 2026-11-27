@@ -39,7 +39,7 @@ class SpokenLineDraft:
 
     @property
     def dirty(self):
-        return self.document.text != self.line.text
+        return self.document.text != self.line.synthesis_text
 
 
 @dataclass(frozen=True)
@@ -94,7 +94,7 @@ class StudioPronunciations:
         check_cancelled(cancelled)
         scene, line, role = spoken_line(project, scene_id, line_id)
         self._current(project)
-        document = ReadingDocument(line.text, title=f'{project.title} — {scene.title} — {role.name}')
+        document = ReadingDocument(line.synthesis_text, title=f'{project.title} — {scene.title} — {role.name}')
         check_cancelled(cancelled)
         return SpokenLineDraft(project, scene_id, line_id, document)
 
@@ -109,12 +109,13 @@ class StudioPronunciations:
             raise ValueError('Open an existing spoken-line reading draft.')
         guard(); check_cancelled(cancelled)
         scene, line, _ = spoken_line(draft.project, draft.scene_id, draft.line_id)
-        if draft.document.source_text != line.text:
+        if draft.document.source_text != line.synthesis_text:
             raise ValueError('The reading draft belongs to a different spoken line.')
         self._current(draft.project)
         if not draft.dirty:
             return SpokenLineChange(draft.project, draft.project, scene.id, line.id)
-        edited = replace(line, text=draft.document.text)
+        edited = (replace(line, spoken_text=draft.document.text) if line.spoken_text else
+                  replace(line, text=draft.document.text))
         changed_scene = replace(scene, lines=tuple(edited if item.id == line.id else item for item in scene.lines))
         updated = replace(draft.project, revision=draft.project.revision + 1,
             scenes=tuple(changed_scene if item.id == scene.id else item for item in draft.project.scenes))
@@ -131,5 +132,5 @@ class StudioPronunciations:
         guard(); check_cancelled(cancelled)
         previous = spoken_line(change.before, change.scene_id, change.line_id)[1]
         current = self.open_line(change.after, change.scene_id, change.line_id, cancelled=cancelled)
-        current.document.set_text(previous.text, label='Undo saved pronunciation')
+        current.document.set_text(previous.synthesis_text, label='Undo saved pronunciation')
         return self.save_line(current, cancelled=cancelled, guard=guard)

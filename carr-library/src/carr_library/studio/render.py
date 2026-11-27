@@ -193,7 +193,7 @@ class ProductionService:
         seconds, source_info, source_hashes = 0.0, {}, {}
         for scene in project.scenes:
             duration = max(scene.minimum_duration,
-                sum(len(line.text) * .5 + line.pause_after for line in scene.lines))
+                sum(len(line.synthesis_text) * .5 + line.pause_after for line in scene.lines))
             for cue in scene.cues:
                 source = self._cue_source(cue, cancelled=cancelled)
                 if source not in source_info:
@@ -728,9 +728,9 @@ class ProductionService:
                             if callable(fingerprint):
                                 voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id))
                             settings = SpeechSettings(rate=role.rate, volume=role.volume)
-                            speech, info = node('speech', [line.text, voice_identity, asdict(settings)],
+                            speech, info = node('speech', [line.synthesis_text, voice_identity, asdict(settings)],
                                 lambda target, line=line, role=role, settings=settings:
-                                self.voices.synthesize(line.text, role.voice_id, target,
+                                self.voices.synthesize(line.synthesis_text, role.voice_id, target,
                                     settings=settings, cancelled=stopping))
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
                             placement_identity = [digest_file(speech), duration,
@@ -794,6 +794,7 @@ class ProductionService:
                     if scene.music is not None:
                         spec = MusicSpec(duration=voice_info.duration, mood=scene.music.mood,
                                          tempo=scene.music.tempo, seed=scene.music.seed, engine=scene.music.engine,
+                                         prompt=scene.music.prompt,
                                          fade_in=min(.15, voice_info.duration), fade_out=min(.4, voice_info.duration))
                         identity = music_installation_identity(runtime, spec.engine)
                         # Chunk scheduling is durable and bounded for optional neural engines.

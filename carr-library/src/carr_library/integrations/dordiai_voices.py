@@ -29,6 +29,7 @@ REVIEWED_WORKER_SHA256 = "8fb4303098489bc8ad255696895a05f3daf731e60c4dbb8b271c16
 SAMPLE_RATE = 24000
 MAX_REPLY_BYTES = 16 * 1024 * 1024
 MAX_REQUEST_BYTES = 1024 * 1024
+MAX_REPLY_NESTING = 64
 MAX_TEXT_CHARACTERS = 16384
 # A production timeline uses many requests; one malformed endless utterance
 # must not consume unbounded storage even when its individual replies are small.
@@ -182,6 +183,17 @@ class _JsonLinesProcess:
             except Full:
                 continue
 
+    @staticmethod
+    def _check_reply_nesting(value, remaining=MAX_REPLY_NESTING) -> None:
+        if not isinstance(value, (dict, list)):
+            return
+        if not remaining:
+            raise DordiaiProtocolError("dordiai-voices returned invalid JSON: nesting limit exceeded")
+        children = value.values() if isinstance(value, dict) else value
+        for child in children:
+            if isinstance(child, (dict, list)):
+                _JsonLinesProcess._check_reply_nesting(child, remaining - 1)
+
     def _read(self) -> None:
         try:
             while not self._closed.is_set():
@@ -197,6 +209,7 @@ class _JsonLinesProcess:
                     raise DordiaiProtocolError("dordiai-voices returned invalid JSON") from None
                 if not isinstance(value, dict):
                     raise DordiaiProtocolError("dordiai-voices reply must be an object")
+                self._check_reply_nesting(value)
                 self._put(value)
         except (OSError, ValueError, DordiaiProtocolError) as error:
             self._put(error if isinstance(error, DordiaiError)
