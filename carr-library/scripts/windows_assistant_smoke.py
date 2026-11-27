@@ -19,6 +19,7 @@ import traceback
 SOURCE_FILES = (
     'assistant/__init__.py', 'assistant/models.py', 'assistant/planner.py',
     'assistant/service.py', 'assistant/state.py', 'assistant/backup_receipt.py',
+    'assistant/templates.py',
     'ui/assistant_dialog.py',
 )
 EXPECTED_CHECKS = (
@@ -28,6 +29,8 @@ EXPECTED_CHECKS = (
     'reopened native saved job resumes without duplicate imports',
     'unsupported native instructions execute nothing',
     'original Unicode document bytes remain unchanged',
+    'native instruction template save stores only text and creates no job',
+    'native template load preserves scope and requires a fresh non-executing preview',
 )
 
 
@@ -152,6 +155,121 @@ def exercise_controls(root, wx, *, timeout=60):
                         window.EndModal(wx.ID_CANCEL)
                 wx.CallAfter(close)
 
+        def template_picker(title, kind, prepare, trigger):
+            """Operate an actual nested modal and stop every scheduled poll."""
+            accepted, calls = [], []
+
+            def visit():
+                try:
+                    if monotonic() - started > timeout:
+                        raise RuntimeError('The native template picker exceeded the test deadline.')
+                    choices = [window for window in wx.GetTopLevelWindows()
+                               if isinstance(window, kind) and window.IsModal()
+                               and window.IsShown() and window.GetTitle() == title]
+                    if not choices:
+                        calls.append(wx.CallLater(25, visit))
+                        return
+                    picker = choices[0]
+                    prepare(picker)
+                    trace_phase('accept-template-picker', title=title, reopened=reopened)
+                    click(wx.Window.FindWindowById(wx.ID_OK, picker))
+                    accepted.append(True)
+                except BaseException:
+                    failures.append(traceback.format_exc())
+                    trace_phase('template-picker-failed', reopened=reopened, error=failures[-1])
+                    for window in wx.GetTopLevelWindows():
+                        if isinstance(window, kind) and window.IsModal():
+                            window.EndModal(wx.ID_CANCEL)
+
+            calls.append(wx.CallLater(25, visit))
+            try:
+                trigger()
+            finally:
+                for call in calls:
+                    call.Stop()
+            assert not failures and accepted == [True], 'The native template picker was not accepted.'
+
+        def inspect_templates(dialog, controls):
+            from carr_library.assistant.templates import TemplateStore
+            trace_phase('verify-instruction-templates', reopened=reopened)
+            store = TemplateStore(observer.store.directory)
+            assert store.list() == ()
+            saved_jobs = {identity: observer.store.load(identity)
+                          for identity in observer.store.identities()}
+            assert len(saved_jobs) == 1
+            scope = controls['Library scope']
+            goal = controls['Goal — guided English/Ukrainian commands or typed JSON plan']
+            input_control = controls['Allowed input folder (optional; no other folders are readable)']
+            output_control = controls['Chosen output folder (required for audio, extraction or backup)']
+            backup = next(control for control in descendants(dialog)
+                          if isinstance(control, wx.CheckBox)
+                          and control.GetLabel() == 'Allow a complete backup of all my libraries for this plan')
+            assert scope.SetStringSelection('Separate private scope')
+            input_control.SetValue(str(inputs))
+            output_control.SetValue(str(outputs))
+            backup.SetValue(True)
+            instruction = 'Search "Railway transport"'
+            name = 'Native instruction — Українська Ω'
+            goal.SetValue(instruction)
+            assert not button(dialog, 'Run / resume').IsEnabled()
+
+            def current_scope():
+                return (scope.GetSelection(), input_control.GetValue(),
+                        output_control.GetValue(), backup.GetValue())
+
+            def unchanged_jobs():
+                assert {identity: observer.store.load(identity)
+                        for identity in observer.store.identities()} == saved_jobs
+                assert len(frame.library.workspaces()) == 2
+                assert tuple(row.edition_id for row in frame.library.browse(other)) == baseline_ids
+                assert source.read_bytes() == raw
+
+            selected_scope = current_scope()
+            assert controls['Save template'].GetId() == button(dialog, 'Save template').GetId()
+            assert controls['Load template'].GetId() == button(dialog, 'Load template').GetId()
+
+            def enter_name(picker):
+                picker.SetValue(name)
+                assert picker.GetValue() == name
+
+            template_picker('Save assistant template', wx.TextEntryDialog, enter_name,
+                            lambda: click(button(dialog, 'Save template')))
+            assert json.loads(store.path.read_text(encoding='utf-8')) == {
+                'schema': 'carr-assistant-templates/1',
+                'templates': [{'name': name, 'instruction': instruction}]}
+            assert not button(dialog, 'Run / resume').IsEnabled()
+            assert current_scope() == selected_scope
+            unchanged_jobs()
+            checks.append(EXPECTED_CHECKS[6])
+
+            goal.SetValue('List libraries')
+            click(button(dialog, 'Preview plan'))
+            assert button(dialog, 'Run / resume').IsEnabled()
+            assert 'library.list' in controls['Plan preview and actual results'].GetValue()
+
+            def choose_name(picker):
+                picker.SetSelection(0)
+                assert picker.GetStringSelection() == name
+
+            template_picker('Load assistant template', wx.SingleChoiceDialog, choose_name,
+                            lambda: click(button(dialog, 'Load template')))
+            assert goal.GetValue() == instruction and current_scope() == selected_scope
+            assert not button(dialog, 'Run / resume').IsEnabled()
+            assert 'Preview plan, then Run' in controls['Plan preview and actual results'].GetValue()
+            unchanged_jobs()
+            click(button(dialog, 'Preview plan'))
+            assert button(dialog, 'Run / resume').IsEnabled()
+            reviewed = controls['Plan preview and actual results'].GetValue()
+            plan, _end = json.JSONDecoder().raw_decode(reviewed[reviewed.index('{'):])
+            assert [step['tool'] for step in plan['steps']] == ['library.search']
+            assert plan['scope']['workspace_id'] == other
+            assert plan['scope']['input_roots'] == [str(inputs.resolve())]
+            assert plan['scope']['output_root'] == str(outputs.resolve())
+            assert plan['scope']['allow_full_backup'] is True
+            unchanged_jobs()
+            checks.append(EXPECTED_CHECKS[7])
+            trace_phase('template-save-load-verified', reopened=reopened)
+
         def poll():
             try:
                 if monotonic() - started > timeout:
@@ -228,6 +346,7 @@ def exercise_controls(root, wx, *, timeout=60):
                         checks.append(EXPECTED_CHECKS[4])
                         assert source.read_bytes() == raw
                         checks.append(EXPECTED_CHECKS[5])
+                        inspect_templates(dialog, controls)
                     else:
                         completed_state.update(id=job.id, editions=imported, results=job.results)
                         observed = [row for row in progress if not row['reopened']]

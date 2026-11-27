@@ -20,6 +20,8 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Supplied transcription | Opt-in adapter to the exact owner-supplied V4.3 worker through existing typed assistant jobs; verified TXT/SRT/VTT/JSON, input/settings binding, cancellation and publication recovery | Actual supplied worker protocol exercised with an isolated synthetic SDK; real model inference, desktop configuration, Windows/NVDA and complete ASR migration remain pending |
+| Named assistant templates | Save/load/delete inert named instructions inside the existing assistant; load clears old plan/job authority and requires fresh preview; common backup preserves text | Actual store, handler and legacy/current backup tests; native controls and manual NVDA require exact-candidate evidence |
+| Diagnostic export | Named native Help preview, bounded allowlisted technical states, immutable reviewed text and protected explicit Save As | Sensitive-field, cancellation, replacement-race and publication tests; collection does not activate engines or contact support |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
@@ -41,8 +43,8 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
-  the remaining approved Balabolka-equivalent workflow checklist and synchronized
-  publishing/Braille workflows.
+  the remaining functions in the [bounded reading/synthesis checklist](BALABOLKA_WORKFLOW_CHECKLIST.md)
+  and synchronized publishing/Braille workflows.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native

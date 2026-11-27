@@ -579,6 +579,8 @@ class DesktopFrame(WorkspaceFrame):
         from .language_matrix import install_language_actions
         install_conversion_actions(self)
         install_language_actions(self)
+        from .diagnostics_dialog import install_diagnostic_actions
+        install_diagnostic_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
         from .progress_panel import install_progress_panel

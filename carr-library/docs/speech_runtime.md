@@ -28,13 +28,13 @@ contains only entries actually enumerated by installed engines.
 
 | Engine | Implemented adapter | Actual evidence in this development environment |
 | --- | --- | --- |
-| SAPI 5 | Default isolated native Python COM worker using pinned comtypes; installed tokens, native rate/volume/punctuation, real PCM file rendering. PowerShell compatibility hosts require explicit opt-in | Native Windows gate required; Linux tests validate protocol/cancellation and do not claim Windows audio acceptance |
+| SAPI 5 | Default isolated native Python COM worker using pinned comtypes; installed tokens, native rate/volume/punctuation, real PCM file rendering. PowerShell compatibility hosts require explicit opt-in | Exact `2b951ff0` Windows V3 run rendered actual SAPI PCM and Studio scenes with two enumerated voices; manual NVDA/listening and other source/runtime identities remain separate |
 | FFmpeg Flite | Actual runtime voice enumeration, CMU English voices, PCM rendering and gain; no invented native rate/pitch controls | FFmpeg 7.1.5 Debian, five discovered voices; three distinct voices rendered and measured |
 | eSpeak/eSpeak NG | Installed CLI enumeration and rendering, native rate/volume/pitch/punctuation | Adapter implemented; executable unavailable in this environment |
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
 | Local JSON helper | Explicit opt-in, executable SHA256, configurable catalog budget, JSON v1 enumerate/render contract | Contract boundary implemented; no claim of a particular vendor implementation |
 | SAPI 4 | No available verified Windows 11 32-bit engine contract | Unavailable; no simulated voice or promised obsolete-driver compatibility |
-| dordiai-voices | Exact-name integration remains dependent on its actual private/local contract | Not claimed; a reviewed bridge may implement the JSON contract below |
+| dordiai-voices | Existing reviewed exact-name adapter connects through the shared voice registry and saved desktop configuration | Synthetic process/protocol/configuration tests passed; real owner-runtime inference and multilingual/cloning quality remain pending. See `DORDIAI_DESKTOP.md` |
 
 Piper support follows the inspected upstream CLI at
 `OHF-Voice/piper1-gpl` revision `6aacdbc98eda4b1cb81d960bef7c7fae710b13fd`.
@@ -59,7 +59,9 @@ clsctx=CLSCTX_INPROC_SERVER)` for only `SAPI.SpVoice`, `SAPI.SpFileStream` and
 `SAPI.SpAudioFormat`. It needs no PowerShell/.NET startup or generated typelib
 wrapper. This change addresses observed PowerShell discovery timeouts during
 the firewall-blocked Windows gate; actual native COM success still must pass
-that gate. It does not change firewall, execution policy or OS security settings.
+that gate for each candidate. The exact `2b951ff0` Windows V3 run has since passed
+real SAPI/Studio execution; it does not establish manual NVDA or every voice
+installation. It does not change firewall, execution policy or OS security settings.
 
 Native discovery exposes the application's real interpreter bitness (64-bit in
 the target Windows build), preserving `sapi5-64:<token-hash>` IDs. It cannot see

@@ -23,6 +23,9 @@ SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
 
 
 def limit(name):
+    if name == 'state/assistant/templates.json':
+        from .assistant.templates import MAX_BYTES
+        return MAX_BYTES
     if READER.fullmatch(name) or STUDIO.fullmatch(name) or SUBTITLE.fullmatch(name):
         return 32 * 1024 * 1024
     if PROFILE.fullmatch(name):
@@ -358,7 +361,10 @@ def _translation_job(value, identity):
 
 
 def validate(db, name, value):
-    if READER.fullmatch(name):
+    if name == 'state/assistant/templates.json':
+        from .assistant.templates import validate_templates
+        validate_templates(value)
+    elif READER.fullmatch(name):
         from .speech.reading import ReadingDocument
         from .speech.session import ReaderResume
         fields(value, {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'})

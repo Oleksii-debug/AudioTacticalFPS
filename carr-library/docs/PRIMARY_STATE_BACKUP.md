@@ -63,3 +63,11 @@ expired approvals or grant execution permission after restore. Current provider
 profile fingerprints and Studio music-continuity notices are retained alongside
 compatible older checkpoint formats. Ten translation-backup regressions and the
 35 canonical synthetic transport/authorization tests passed without skips.
+
+Named assistant instruction templates are an optional exact producer at
+`state/assistant/templates.json`. Backup retains bounded names and instruction
+text only, using the same passive validator as the template store. It never
+turns a template into a job or imports execution authority. After restore,
+loading a template still clears the old plan/job selection and requires a new
+Preview and Run under the current scope. Historical backups without templates
+remain supported without a manifest-format change.

@@ -12,9 +12,11 @@ from ..durable_state import atomic_bytes
 def show_assistant(frame):
     import wx
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
+    from ..assistant.templates import TemplateStore
     from ..studio.render import ProductionService
     production = ProductionService(frame.library.root / 'state' / 'studio')
     service = AssistantService(frame.library, production=production.assistant_callback)
+    templates = TemplateStore(service.store.directory)
     dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
@@ -63,6 +65,14 @@ def show_assistant(frame):
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
     layout.Add(row)
+    template_row = wx.BoxSizer(wx.HORIZONTAL)
+    for identity, label in [('template_save', 'Save &template'), ('template_load', 'Load te&mplate'),
+                            ('template_delete', '&Delete template')]:
+        button = wx.Button(dialog, label=label)
+        button.SetName(label.replace('&', ''))
+        buttons[identity] = button
+        template_row.Add(button, 0, wx.ALL, 4)
+    layout.Add(template_row)
     dialog.SetSizer(layout)
     buttons['run'].Disable()
     buttons['pause'].Disable()
@@ -125,7 +135,7 @@ def show_assistant(frame):
             identity = job_id
             busy = True
             cancel.clear()
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'run', 'jobs', 'template_save', 'template_load', 'template_delete'):
                 buttons[key].Disable()
             buttons['pause'].Enable()
             for control in (scope_choice, instruction, input_folder, output_folder, full_backup):
@@ -143,7 +153,7 @@ def show_assistant(frame):
                 if not alive:
                     return
                 busy = False
-                for key in ('preview', 'run', 'jobs'):
+                for key in ('preview', 'run', 'jobs', 'template_save', 'template_load', 'template_delete'):
                     buttons[key].Enable()
                 buttons['pause'].Disable()
                 for control in (scope_choice, instruction, input_folder, output_folder, full_backup):
@@ -184,12 +194,75 @@ def show_assistant(frame):
         close_after_worker(executor, production)
         dialog.EndModal(wx.ID_CLOSE)
 
+    def save_template(event=None):
+        if busy or not alive:
+            return
+        picker = wx.TextEntryDialog(dialog, 'Name this instruction template. No permissions or job are saved.',
+                                    'Save assistant template')
+        try:
+            if picker.ShowModal() != wx.ID_OK or busy or not alive:
+                return
+            templates.save(picker.GetValue(), instruction.GetValue())
+            report('Instruction template saved locally. Loading requires a new Preview and Run.')
+        except Exception as exc:
+            report(str(exc))
+        finally:
+            picker.Destroy()
+
+    def choose_template(*, deleting=False):
+        if busy or not alive:
+            return
+        try:
+            rows = templates.list()
+            if not rows:
+                report('No saved instruction templates. Enter a goal and choose Save template.')
+                return
+            picker = wx.SingleChoiceDialog(dialog, 'Choose an instruction template.',
+                'Delete assistant template' if deleting else 'Load assistant template',
+                [item['name'] for item in rows])
+            try:
+                if picker.ShowModal() != wx.ID_OK or busy or not alive:
+                    return
+                index = picker.GetSelection()
+            finally:
+                picker.Destroy()
+            if not 0 <= index < len(rows):
+                return
+            item = rows[index]
+            if deleting:
+                if wx.MessageBox('Delete the instruction template “' + item['name'] + '”?',
+                        'Delete assistant template', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+                    return
+                if busy or not alive:
+                    return
+                templates.delete(item['name'], expected_instruction=item['instruction'])
+                report('Instruction template deleted. Existing jobs and source files are unchanged.')
+            else:
+                value = templates.load(item['name'])
+                # ChangeValue deliberately emits no text event: clear both
+                # prior execution authorities explicitly before changing text.
+                invalidate()
+                instruction.ChangeValue(value)
+                report('Template loaded. Current library and folders remain selected. '
+                       'Review the goal, choose Preview plan, then Run to authorize it.')
+                instruction.SetFocus()
+        except Exception as exc:
+            report(str(exc))
+
     def help_text(event):
         from .desktop_app import show_text
-        show_text(dialog, 'Local assistant commands', HELP)
+        show_text(dialog, 'Local assistant commands', HELP + '\n\n'
+            'Save template stores only the current instruction text under a unique name. '
+            'Load template keeps the current library and folder selections and requires a new Preview plan, then Run. '
+            'A JSON plan with a different embedded scope is rejected; omit its scope to use the current selection. '
+            'Delete template removes only the explicitly selected saved text. Templates are included in library backups. '
+            'Limits: 100 templates, 120 characters per name, 256 KiB per instruction and 4 MiB total.')
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'help': help_text, 'close': close,
+                               'template_save': save_template,
+                               'template_load': lambda e: choose_template(),
+                               'template_delete': lambda e: choose_template(deleting=True)}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)

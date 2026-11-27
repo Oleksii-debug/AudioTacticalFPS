@@ -61,11 +61,13 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-Full-library backups now include this sidecar automatically when it exists.
-Backup format 3 records its exact size and SHA256 alongside the database and
-registered originals. The library writer lock covers both snapshots, and backup
-and restore validate every saved place against the copied source identities.
-Bookmark names, IDs, timestamps and resume locations are preserved exactly.
+Full-library backups include this sidecar automatically when it exists. The
+current common version-4 format preserves its exact size and SHA256 alongside
+the database, retained originals and other registered state. Reading-state
+support was introduced in format 3. The library writer lock covers the snapshots,
+and backup and restore validate every saved place against the copied source
+identities. Bookmark names, IDs, timestamps and resume locations are preserved
+exactly.
 
 An archived library or an older sealed revision keeps its original reading
 state. Restoring the backup does not reactivate it or move its bookmarks to a
@@ -75,8 +77,12 @@ backup formats 1 and 2 remain restorable; they contain no reading sidecar, so us
 the separate per-library export when recovering reading state from those backups.
 
 Restore always creates a new data folder after validation. Keep the reported
-manifest SHA256 separately from the backup. Arbitrary sidecars, credentials,
-audio projects and pending import journals are outside this backup format.
+manifest SHA256 separately from the backup. The current common format also
+preserves registered primary Studio/assistant state and prepared pending-import
+journals with their required retained source bytes. Unknown private sidecars fail
+validation; they are not silently omitted. Credential values, external output
+folders and separately installed engines/models have explicit separate recovery
+requirements. See [the current state-backup contract](PRIMARY_STATE_BACKUP.md).
 A different library cannot accept a per-library reading export. No cloud account
 or network retrieval is involved.
 

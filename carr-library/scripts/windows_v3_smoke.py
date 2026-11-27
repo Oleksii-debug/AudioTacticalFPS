@@ -9,6 +9,67 @@ import wave
 from tempfile import TemporaryDirectory
 
 
+def inspect_diagnostic_preview(frame, app):
+    """Open the registered real native menu command and close its named button."""
+    import wx
+    outcome = []
+    calls = []
+    title = 'Diagnostics preview and export'
+
+    def diagnostic_dialogs():
+        return [window for window in wx.GetTopLevelWindows()
+                if isinstance(window, wx.Dialog) and window.IsShown()
+                and window.GetTitle() == title]
+
+    def expired():
+        outcome.append('Timed out while inspecting the native diagnostic preview.')
+        for dialog in diagnostic_dialogs():
+            if dialog.IsModal():
+                dialog.EndModal(wx.ID_CANCEL)
+
+    def visit():
+        dialogs = diagnostic_dialogs()
+        if not dialogs:
+            calls.append(wx.CallLater(100, visit))
+            return
+        dialog = dialogs[-1]
+        try:
+            content = wx.FindWindowByName('Diagnostics preview', dialog)
+            status = wx.FindWindowByName('Diagnostic export status', dialog)
+            save = wx.FindWindowByName('Save diagnostics as', dialog)
+            close = wx.FindWindowByName('Close diagnostics', dialog)
+            assert isinstance(content, wx.TextCtrl) and not content.IsEditable()
+            assert content.GetValue().startswith('Resonance diagnostic report\n')
+            assert 'Nothing is sent automatically.' in content.GetValue()
+            assert isinstance(status, wx.TextCtrl) and not status.IsEditable()
+            assert isinstance(save, wx.Button) and save.IsEnabled()
+            assert isinstance(close, wx.Button) and close.IsEnabled()
+            event = wx.CommandEvent(wx.EVT_BUTTON.typeId, close.GetId())
+            event.SetEventObject(close)
+            assert close.GetEventHandler().ProcessEvent(event)
+            assert not dialog.IsModal(), 'Named Close button did not end the diagnostic dialog.'
+            outcome.append('PASS')
+        except BaseException as exc:
+            outcome.append(type(exc).__name__ + ': ' + str(exc))
+        finally:
+            if dialog.IsModal():
+                dialog.EndModal(wx.ID_CANCEL)
+
+    calls.append(wx.CallLater(10000, expired))
+    calls.append(wx.CallLater(250, visit))
+    try:
+        item = frame.keyboard_commands.bindings['help.diagnostics'].item
+        assert item.IsEnabled()
+        event = wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId())
+        event.SetEventObject(frame)
+        assert frame.GetEventHandler().ProcessEvent(event), 'Diagnostic menu command was not handled.'
+    finally:
+        for call in calls:
+            call.Stop()
+    assert outcome == ['PASS'], 'Native diagnostic preview failed: ' + repr(outcome)
+    app.Yield()
+
+
 def main():
     if sys.platform != 'win32':
         raise RuntimeError('This acceptance script requires actual Windows execution.')
@@ -104,6 +165,8 @@ def main():
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
+        inspect_diagnostic_preview(frame, app)
+        result['checks'].append('registered native diagnostic preview with read-only text and named save/close controls')
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'

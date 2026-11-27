@@ -14,6 +14,8 @@ For every requirement record: requirement ID, supported scenario and limitation,
 
 “Like Balabolka” means familiar accessible reading/synthesis workflows, independently implemented. Maintain a finite checklist of the requested functions from official documentation; do not introduce a moving, unlimited promise of identical behavior or all features of any third-party application. Preserve requested formats and workflows in the checklist; mark each supported, limited, pending or unsupported with evidence. Reuse existing code, never copy that application's proprietary code/assets or imply affiliation.
 
+The [bounded reading/synthesis checklist](BALABOLKA_WORKFLOW_CHECKLIST.md) records the inspected subset and outstanding workflows; its creation does not pass those open features.
+
 A guided command parser is not proof of a local language-model agent. A registered voice is not proof of voice cloning. A MIDI/looped or synthetic long-file test is not proof of hours of original neural music. A 135-entry catalog is not proof of every feature in 135 languages. Translation, ASR, OCR, UI localization and each voice/model pair have distinct coverage.
 
 ### 2. Reuse and integration order

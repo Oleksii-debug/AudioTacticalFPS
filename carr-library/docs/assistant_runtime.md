@@ -43,6 +43,34 @@ delete, shell, Python, browser, credential-reading, publishing or arbitrary
 network tool. Source contents and provider responses are never reinterpreted
 as executable instructions.
 
+## Named instruction templates
+
+The native Assistant dialog provides **Save template**, **Load template** and
+**Delete template**. A template keeps its unique name and exact instruction text;
+it does not create a job or grant execution permission. Save never silently
+replaces a name. Delete requires selecting and confirming one template and
+refuses if its instruction changed during confirmation.
+
+Loading clears both any previously reviewed plan and saved-job selection,
+disables Run, and leaves the currently chosen library, input/output folders and
+full-backup permission unchanged. Review the loaded text and choose **Preview
+plan**, then **Run**. A typed JSON template may omit scope to use the current
+selection; a different embedded scope is still rejected. All template controls
+and callbacks refuse changes while a job is running.
+
+The optional `state/assistant/templates.json` uses the existing atomic writer
+and a separate recognized lock. It accepts at most 100 templates, 120 characters
+per name, 256 KiB per instruction, and 4 MiB total. Case-equivalent names are
+unique after Unicode normalization. Invalid, oversized, linked or damaged
+state is preserved and reported. Common version-4 backups validate and preserve
+this inert file without previewing or executing it; old backups need no rewrite.
+Instruction text is ordinary local saved text. Provider credential values belong
+in the existing OS credential settings and are not template fields.
+
+Source and handler tests exercise actual persistence, fresh authorization and
+backup/restore. Native template controls and manual NVDA require their separately
+recorded candidate-specific execution evidence.
+
 ## Native host API
 
 ```python
