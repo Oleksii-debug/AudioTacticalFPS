@@ -85,9 +85,11 @@ def artifacts(values):
 
 def _studio_job(value, identity):
     from .studio.project import Project
+    from .studio.render import _operation_sha256
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'total_disk_bytes'})
+                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'total_disk_bytes',
+                                                   'operation_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
@@ -118,6 +120,12 @@ def _studio_job(value, identity):
         raise ValueError('Invalid production output format.')
     if type(value['stems']) is not bool or type(value['nodes']) is not dict or len(value['nodes']) > 100000:
         raise ValueError('Invalid production options or nodes.')
+    # Validate the same immutable operation identity as the renderer. Legacy
+    # receipts stay readable without creating evidence that never existed.
+    if 'operation_sha256' in value:
+        digest(value['operation_sha256'])
+        if value['operation_sha256'] != _operation_sha256(value):
+            raise ValueError('Production operation options changed.')
     path(value['destination'])
     for name in ('created', 'updated'):
         number(value[name])
