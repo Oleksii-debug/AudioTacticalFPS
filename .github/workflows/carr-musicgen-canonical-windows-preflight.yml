@@ -42,8 +42,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ((git rev-parse HEAD) -ne $env:GITHUB_SHA) { throw 'Source identity mismatch' }
+          git -c core.autocrlf=false -c core.eol=lf checkout-index --force --all
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git rev-parse HEAD 'HEAD^{tree}'
-          python -c "import ast,pathlib; ast.parse(pathlib.Path('carr-library/scripts/musicgen_canonical_windows_preflight.py').read_text(encoding='utf-8'))"
+          python -c "import ast,pathlib; tree=ast.parse(pathlib.Path('carr-library/scripts/musicgen_canonical_windows_preflight.py').read_text(encoding='utf-8')); codes=[n.value for n in ast.walk(tree) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id in ('NETWORK_PROBE','probe') for t in n.targets)]; assert len(codes)==2; [ast.parse(ast.literal_eval(v.right if isinstance(v,ast.BinOp) else v)) for v in codes]; print('Helper and both embedded probes parsed before installation')"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install exact public Conda and CPU AudioCraft runtime without models
         shell: pwsh
