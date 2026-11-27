@@ -110,6 +110,41 @@ adapter. Profile exports clear credential references and disable restored
 connections. The new device must reconnect each account. No provider test is
 performed on save, open, import or application startup.
 
+## Request and review a local model proposal
+
+The existing **Local assistant** dialog defaults to guided commands and typed
+JSON. Its **Planning source** selector additionally lists enabled, explicitly
+local `openai-compatible` profiles with `llm.chat`. Create these in **AI and API
+connections**, using a numeric loopback endpoint and the model ID your already
+running server exposes. Opening either dialog does not contact or start a server.
+
+Choose a local profile and **Preview plan** to request a proposal. Only the goal
+text is sent; selected folder contents and library documents are not added.
+The shared provider gateway uses a 120-second request budget and an 8 MiB response
+limit for planning. Cancellation or a reached deadline may wait for the pending
+network read, whose timeout is at most 30 seconds. The result must pass the same typed tool, argument, workspace
+and path checks as a guided plan. The request is cancellable in the background.
+Editing the goal, selected scope or profile discards a pending response and
+invalidates a reviewed plan. **Run / resume** is a separate action that records
+and executes the reviewed plan through `AssistantService`.
+
+The CLI uses the same boundary. In PowerShell, for a configured profile named
+`chosen_local`, the two separate invocations are:
+
+```powershell
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --list-local-profiles
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "goal.txt" --allow-create --local-profile chosen_local | Set-Content -Encoding utf8 "reviewed-plan.json"
+# Open and review reviewed-plan.json, including every operation and its scope.
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "reviewed-plan.json" --allow-create --run
+```
+
+Repeat the exact workspace, input/output folders and permissions when executing
+the reviewed JSON. Scope changes are rejected. `--local-profile` cannot be
+combined with `--run` or `--resume`, so execution never regenerates a different
+model proposal. Listing profiles makes no model request. Provider errors produce
+no executable proposal. The protocol and native control fixtures validate this
+flow; an actual local model and its planning quality require separate acceptance.
+
 ## Implemented provider protocol adapters
 
 | Adapter | Operations | Protocol |
@@ -170,6 +205,15 @@ The user must reconcile the existing output/charge before authorizing another
 operation. No real paid or external provider call is part of the automated tests.
 
 ## Verification scope
+
+The reused local-planning checks cover offline permission guards, actual
+synthetic loopback HTTP and CLI calls, and native Windows proposal/review
+controls. The installed gate checks the exact application source and module
+bytes before and after those actions, rejects failed/skipped/expected-failure
+cases, and preserves the existing operation and source-integrity gates.
+This composition still requires its own exact-head execution evidence; donor
+runs do not qualify this assembled application. An actual local LLM, its model
+weights and planning quality, manual keyboard use and NVDA remain unqualified.
 
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create
