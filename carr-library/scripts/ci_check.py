@@ -16,12 +16,19 @@ ROOT = Path(__file__).resolve().parents[1]
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
 # Use pytest's own report classification in the isolated subprocess.
 PYTEST_CHILD = """
+import importlib.util
 import sys
 import socket
-from pathlib import Path
 
-sys.path.insert(0, str(Path.cwd() / 'scripts'))
-from ci_watchdog import CaseWatchdog, without_scheduled_faulthandler
+# The child may run under -I from an installed-test staging directory.
+# Load only this runner's exact helper; never add a checkout to import paths.
+_watchdog_spec = importlib.util.spec_from_file_location(
+    '_carr_ci_watchdog', __CARR_CI_WATCHDOG_PATH__)
+_watchdog = importlib.util.module_from_spec(_watchdog_spec)
+sys.modules[_watchdog_spec.name] = _watchdog
+_watchdog_spec.loader.exec_module(_watchdog)
+CaseWatchdog = _watchdog.CaseWatchdog
+without_scheduled_faulthandler = _watchdog.without_scheduled_faulthandler
 
 def offline_network(*args, **kwargs):
     raise OSError('Network access is disabled during offline verification')
@@ -77,7 +84,7 @@ if policy.seen:
     if status == pytest.ExitCode.OK:
         status = pytest.ExitCode.TESTS_FAILED
 raise SystemExit(status)
-"""
+""".replace("__CARR_CI_WATCHDOG_PATH__", repr(str(Path(__file__).resolve().with_name("ci_watchdog.py"))))
 
 
 def run_suite(suite: str) -> bool:
